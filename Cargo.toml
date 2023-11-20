@@ -1,0 +1,42 @@
+[package]
+name = "libpep"
+version = "0.3.0"
+edition = "2021"
+authors = ["Bernard van Gastel <bvgastel@bitpowder.com>"]
+homepage = "https://www.bitpowder.com/libs/libpep-rust/"
+repository = "https://gitlab.com/bitpowder/indigo-ng"
+license = "Apache-2.0"
+keywords = ["crypto", "pep", "pseudonimization"]
+categories = ["command-line-interface"]
+description = "implementation of PEP primitives, offering pseudonimization and encryption interfaces"
+readme = "README.md"
+
+[features]
+default = ["build-binary"]
+build-binary = ["buildinfy","commandy","commandy_macros"]
+[[bin]]
+name = "peppy"
+required-features = ["build-binary"]
+
+[dependencies]
+curve25519-dalek = "3"
+rand = { version = "0.7", features = ["std"] }
+rand_core = { version = "0.5", features = ["std"] }
+sha2 = "0.10.5"
+buildinfy = { version = "^0.1", path = "../buildinfy", optional = true }
+commandy = { version = "^0.2", path = "../commandy", optional = true }
+commandy_macros = { version = "^0.2", path = "../commandy_macros", optional = true }
+
+[package.metadata.deb]
+name = "peppy"
+depends = ""
+assets = [
+    ["peppy.1", "usr/man/man1/", "444"],
+    ["target/release/peppy", "usr/bin/peppy", "555"],
+]
+
+[package.metadata.freebsd]
+assets = [
+    ["peppy.1", "man/man1/", "444"],
+    ["target/release/peppy", "bin/peppy", "555"],
+]
