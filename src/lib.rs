@@ -1180,15 +1180,24 @@ mod libpep {
         assert_eq!(proved_rks3.rekeyed_by(), w*server3_public_rekeying_group_element);
         assert_eq!(proved_data_rekey3.rekeyed_by(), w*server3_public_rekeying_group_element);
         let pp_received = verify_rks(&pp_before_reshuffle3, &proved_rks3).unwrap();
-        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng));
+        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // TODO proved_rerandomize should probably be used here, but why again?
         let ciphertext_b = verify_rekey(&ciphertext_received3, &proved_data_rekey3).unwrap();
 
 
         // On client B:
         // - Receive the polymorphic pseudonym from client A
         // - Receive the decryption factors from all servers (after authentication)
-        // - TODO Receive and verify the re-key/shuffle proofs from all servers
+        // - Receive and verify the re-key/shuffle proofs from all servers
         // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
+        assert_eq!(proved_rks1.reshuffled_by(), v*server1_public_pseudonymisation_group_element);
+        assert_eq!(proved_rks1.rekeyed_by(), w*server1_public_rekeying_group_element);
+        assert_eq!(proved_data_rekey1.rekeyed_by(), w*server1_public_rekeying_group_element);
+        assert_eq!(proved_rks2.reshuffled_by(), v*server2_public_pseudonymisation_group_element);
+        assert_eq!(proved_rks2.rekeyed_by(), w*server2_public_rekeying_group_element);
+        assert_eq!(proved_data_rekey2.rekeyed_by(), w*server2_public_rekeying_group_element);
+        assert_eq!(proved_rks3.reshuffled_by(), v*server3_public_pseudonymisation_group_element);
+        assert_eq!(proved_rks3.rekeyed_by(), w*server3_public_rekeying_group_element);
+        assert_eq!(proved_data_rekey3.rekeyed_by(), w*server3_public_rekeying_group_element);
         let decryption_key_b = server1_decryption_key_part * server2_decryption_key_part * server3_decryption_key_part * blinded_global_secret_key;
         let lp_b = decrypt(&pp_b, &decryption_key_b);
         let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
@@ -1287,18 +1296,22 @@ mod libpep {
         let mut proved_rkss:Vec<ProvedRKS> = Vec::new();
         let mut proved_data_rekeys:Vec<ProvedRekey> = Vec::new();
 
+        fn verify_zkps(n: usize, servers: &Vec<Server>, received_pps: &Vec<ElGamal>, proved_rkss: &Vec<ProvedRKS>, received_ciphertexts: &Vec<ElGamal>, proved_data_rekeys: &Vec<ProvedRekey>) {
+            for i in 0..n {
+                let server = &servers[i];
+                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
+                assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
+                assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
+            }
+        }
+
 
         // On PEP server i (i=0..n):
         for i in 0..n {
             let server = &servers[i];
 
             // - Verify the re-key/shuffles of all previous servers
-            for j in 0..i {
-                let server = &servers[j];
-                assert_eq!(proved_rkss[j].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
-                assert_eq!(proved_rkss[j].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-                assert_eq!(proved_data_rekeys[j].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-            }
+            verify_zkps(i, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
 
             // - Receive polymorphic pseudonym from previous server...
             let pp_received = if i == 0 {
@@ -1328,23 +1341,19 @@ mod libpep {
 
         // On PEP server 1:
         // The first server is the entry point for the client, so it sends the final pseudonym back to the client
-        for i in 0..n {
-            // First it verifies the re-key/shuffles of all servers in the network
-            let server = &servers[i];
-            assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
-            assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-            assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-        }
+        verify_zkps(n, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
         let pp_received = verify_rks(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
-        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng));
+        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // TODO proved_rerandomize should probably be used
+        // TODO why do we actually need to rerandomize here?
         let ciphertext_b = verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap();
 
 
         // On client B:
         // - Receive the polymorphic pseudonym from client A
         // - Receive the decryption factors from both servers (after authentication)
-        // - TODO Receive and verify the re-key/shuffle proofs from all servers
+        // - Receive and verify the re-key/shuffle proofs from all servers
         // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
+        verify_zkps(n, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
         let decryption_key_b = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
         let lp_b = decrypt(&pp_b, &decryption_key_b);
         let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
