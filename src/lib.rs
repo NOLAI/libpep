@@ -1105,8 +1105,8 @@ mod libpep {
 
         // SESSION INITIALIZATION
         let secret = "verysecret";
-        let pseudonymisation_context = "pseudonymizing for user a";
-        let decryption_context = "encrypting for user a";
+        let pseudonymisation_context = "pc-user-a";
+        let decryption_context = "dc-user-a";
         let v = make_pseudonymisation_factor(secret, pseudonymisation_context);
         let w = make_decryption_factor(secret, decryption_context);
 
@@ -1234,12 +1234,12 @@ mod libpep {
                     session: None,
                 }
             }
-            fn new_session(&mut self, rng: &mut OsRng, secret: &str, pseudonymisation_context: &str, decryption_context: &str) {
-                self.session = Some(ServerSession::new(rng, self, secret, pseudonymisation_context, decryption_context));
+            fn new_session(&mut self, secret: &str, pseudonymisation_context: &str, decryption_context: &str) {
+                self.session = Some(ServerSession::new(self, secret, pseudonymisation_context, decryption_context));
             }
         }
         impl ServerSession {
-            fn new(rng: &mut OsRng, server: &Server, secret: &str, pseudonymisation_context: &str, decryption_context: &str ) -> ServerSession {
+            fn new(server: &Server, secret: &str, pseudonymisation_context: &str, decryption_context: &str ) -> ServerSession {
                 let v = make_pseudonymisation_factor(secret, pseudonymisation_context);
                 let w = make_decryption_factor(secret, decryption_context);
                 let decryption_key_part = w * server.pseudonymisation_scalar.invert() * server.rekeying_scalar;
@@ -1263,10 +1263,10 @@ mod libpep {
 
         // SESSION INITIALIZATION
         let secret = "verysecret";
-        let pseudonymisation_context = "pc";
-        let decryption_context = "dc";
+        let pseudonymisation_context = "pc-user-a";
+        let decryption_context = "dc-user-a";
         for server in &mut servers {
-            server.new_session(&mut rng, secret, pseudonymisation_context, decryption_context);
+            server.new_session(secret, pseudonymisation_context, decryption_context);
         }
 
 
