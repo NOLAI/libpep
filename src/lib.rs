@@ -1260,10 +1260,26 @@ mod libpep {
             }
         }
 
+        let mut servers = Vec::new();
+
+        // Messages over the network:
+        let mut received_pps:Vec<ElGamal> = Vec::new();
+        let mut received_ciphertexts:Vec<ElGamal> = Vec::new();
+        let mut proved_rkss:Vec<ProvedRKS> = Vec::new();
+        let mut proved_data_rekeys:Vec<ProvedRekey> = Vec::new();
+
+        fn verify_zkps(n: usize, servers: &Vec<Server>, received_pps: &Vec<ElGamal>, proved_rkss: &Vec<ProvedRKS>, received_ciphertexts: &Vec<ElGamal>, proved_data_rekeys: &Vec<ProvedRekey>) {
+            for i in 0..n {
+                let server = &servers[i];
+                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
+                assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
+                assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
+            }
+        }
+
 
         // SYSTEM INITIALIZATION
         let (global_public_key, global_secret_key) = generate_global_keys(&mut rng);
-        let mut servers = Vec::new();
         for _ in 0..n {
             servers.push(Server::new(&mut rng));
         }
@@ -1289,22 +1305,6 @@ mod libpep {
 
         let plaintext_a = GroupElement::random(&mut rng); // data
         let ciphertext_a = encrypt(&plaintext_a, &global_public_key, &mut rng);
-
-        // Messages over the network:
-        let mut received_pps:Vec<ElGamal> = Vec::new();
-        let mut received_ciphertexts:Vec<ElGamal> = Vec::new();
-        let mut proved_rkss:Vec<ProvedRKS> = Vec::new();
-        let mut proved_data_rekeys:Vec<ProvedRekey> = Vec::new();
-
-        fn verify_zkps(n: usize, servers: &Vec<Server>, received_pps: &Vec<ElGamal>, proved_rkss: &Vec<ProvedRKS>, received_ciphertexts: &Vec<ElGamal>, proved_data_rekeys: &Vec<ProvedRekey>) {
-            for i in 0..n {
-                let server = &servers[i];
-                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
-                assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-                assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-            }
-        }
-
 
         // On PEP server i (i=0..n):
         for i in 0..n {
