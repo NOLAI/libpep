@@ -1208,6 +1208,30 @@ mod libpep {
         let expected_lp_b = decrypt(&rks(&rks(&rks(&pp_a, &(w*server1_secret_rekeying_scalar), &(v*server1_secret_pseudonymisation_scalar)), &(w*server2_secret_rekeying_scalar), &(v*server2_secret_pseudonymisation_scalar)), &(w*server3_secret_rekeying_scalar), &(v*server3_secret_pseudonymisation_scalar)),&decryption_key_b);
         assert_eq!(expected_lp_b, lp_b);
         assert_eq!(plaintext_a, plaintext_b);
+
+
+        // RETURNING TO CLIENT A
+        // To return the data to client A, we need to re-key/shuffle the data back to client A's pseudonym
+        // As the regular reshuffling operation is not commutative, we need a special reverse reshuffle operation.
+        // That is: reshuffling lp A for B is not the same as reshuffling lp B for A.
+        // To solve this, we can use the same RKS operation, but with the inverse of the pseudonymisation factor.
+        // NB: we could also just make a new channel to client A and send the data directly to client A, but that would not result in the same pseudonym for A as they originally submitted.
+        // TODO: use a different decryption context and thus a different decryption key for the return channel
+        let return_pp_b = encrypt(&lp_b, &global_public_key, &mut rng);
+        let return_proved_rks1 = prove_rks(&return_pp_b, &(w*server1_secret_rekeying_scalar), &(v.invert()*server1_secret_pseudonymisation_scalar.invert()), &mut rng);
+
+        let return_pp_1 = verify_rks(&return_pp_b, &return_proved_rks1).unwrap();
+        let return_proved_rks2 = prove_rks(&return_pp_1, &(w*server2_secret_rekeying_scalar), &(v.invert()*server2_secret_pseudonymisation_scalar.invert()), &mut rng);
+
+        let return_pp_2 = verify_rks(&return_pp_1, &return_proved_rks2).unwrap();
+        let return_proved_rks3 = prove_rks(&return_pp_2, &(w*server3_secret_rekeying_scalar), &(v.invert()*server3_secret_pseudonymisation_scalar.invert()), &mut rng);
+
+        let return_pp_a = verify_rks(&return_pp_2, &return_proved_rks3).unwrap();
+
+        let decryption_key_a = server1_decryption_key_part * server2_decryption_key_part * server3_decryption_key_part * blinded_global_secret_key;
+        let return_lp_a = decrypt(&return_pp_a, &decryption_key_a);
+
+        assert_eq!(lp_a, return_lp_a);
     }
 
 
@@ -1268,7 +1292,7 @@ mod libpep {
         let mut proved_rkss:Vec<ProvedRKS> = Vec::new();
         let mut proved_data_rekeys:Vec<ProvedRekey> = Vec::new();
 
-        fn verify_zkps(n: usize, servers: &Vec<Server>, received_pps: &Vec<ElGamal>, proved_rkss: &Vec<ProvedRKS>, received_ciphertexts: &Vec<ElGamal>, proved_data_rekeys: &Vec<ProvedRekey>) {
+        fn verify_zkps(n: usize, servers: &Vec<Server>, proved_rkss: &Vec<ProvedRKS>, proved_data_rekeys: &Vec<ProvedRekey>) {
             for i in 0..n {
                 let server = &servers[i];
                 assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
@@ -1311,7 +1335,7 @@ mod libpep {
             let server = &servers[i];
 
             // - Verify the re-key/shuffles of all previous servers
-            verify_zkps(i, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
+            verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
 
             // - Receive polymorphic pseudonym from previous server...
             let pp_received = if i == 0 {
@@ -1341,7 +1365,7 @@ mod libpep {
 
         // On PEP server 1:
         // The first server is the entry point for the client, so it sends the final pseudonym back to the client
-        verify_zkps(n, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
+        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let pp_received = verify_rks(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
         let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // TODO proved_rerandomize should probably be used
         // TODO why do we actually need to rerandomize here?
@@ -1353,7 +1377,7 @@ mod libpep {
         // - Receive the decryption factors from both servers (after authentication)
         // - Receive and verify the re-key/shuffle proofs from all servers
         // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
-        verify_zkps(n, &servers, &received_pps, &proved_rkss, &received_ciphertexts, &proved_data_rekeys);
+        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let decryption_key_b = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
         let lp_b = decrypt(&pp_b, &decryption_key_b);
         let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
