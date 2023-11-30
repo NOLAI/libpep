@@ -1080,162 +1080,6 @@ mod libpep {
     }
 
     #[test]
-    fn pep_3_with_zkp() {
-        let mut rng = OsRng;
-
-        let (global_public_key, global_secret_key) = generate_global_keys(&mut rng);
-
-        let server1_secret_pseudonymisation_scalar = ScalarNonZero::random(&mut rng);
-        let server1_public_pseudonymisation_group_element = server1_secret_pseudonymisation_scalar * G;
-        let server1_secret_rekeying_scalar = ScalarNonZero::random(&mut rng);
-        let server1_public_rekeying_group_element = server1_secret_rekeying_scalar * G;
-
-        let server2_secret_pseudonymisation_scalar = ScalarNonZero::random(&mut rng);
-        let server2_public_pseudonymisation_group_element = server2_secret_pseudonymisation_scalar * G;
-        let server2_secret_rekeying_scalar = ScalarNonZero::random(&mut rng);
-        let server2_public_rekeying_group_element = server2_secret_rekeying_scalar * G;
-
-        let server3_secret_pseudonymisation_scalar = ScalarNonZero::random(&mut rng);
-        let server3_public_pseudonymisation_group_element = server3_secret_pseudonymisation_scalar * G;
-        let server3_secret_rekeying_scalar = ScalarNonZero::random(&mut rng);
-        let server3_public_rekeying_group_element = server3_secret_rekeying_scalar * G;
-
-        let blinded_global_secret_key = server1_secret_pseudonymisation_scalar * server2_secret_pseudonymisation_scalar * server3_secret_pseudonymisation_scalar * global_secret_key;
-
-
-        // SESSION INITIALIZATION
-        let secret = "verysecret";
-        let pseudonymisation_context = "pc-user-a";
-        let decryption_context = "dc-user-a";
-        let v = make_pseudonymisation_factor(secret, pseudonymisation_context);
-        let w = make_decryption_factor(secret, decryption_context);
-
-        let server1_decryption_key_part = w * server1_secret_pseudonymisation_scalar.invert() * server1_secret_rekeying_scalar;
-        let server2_decryption_key_part = w * server2_secret_pseudonymisation_scalar.invert() * server2_secret_rekeying_scalar;
-        let server3_decryption_key_part = w * server3_secret_pseudonymisation_scalar.invert() * server3_secret_rekeying_scalar;
-
-        // On client A:
-        // - Client A has a pseudonym and wants to convert it to a pseudonym for client B, using the PEP network of servers
-        let lp_a = GroupElement::random(&mut rng); // local pseudonym
-        let pp_a = encrypt(&lp_a, &global_public_key, &mut rng); // polymorphic pseudonym
-        // or using an existing persistent/main identifier:
-        // let id = "foobar";
-        // let mut pp = generate_pseudonym(id, &public_key, &mut rng);
-
-        let plaintext_a = GroupElement::random(&mut rng); // data
-        let ciphertext_a = encrypt(&plaintext_a, &global_public_key, &mut rng);
-
-        // On PEP server 1:
-        // - Receive polymorphic pseudonym from client and re-key/shuffle it with your own secret scalar
-        let pp_before_reshuffle1 = rerandomize(&pp_a, &ScalarNonZero::random(&mut rng));
-        let proved_rks1 = prove_rks(&pp_before_reshuffle1, &(w*server1_secret_rekeying_scalar), &(v*server1_secret_pseudonymisation_scalar), &mut rng);
-        let _rks1 = rks(&pp_a, &(w*server1_secret_rekeying_scalar), &(v*server1_secret_pseudonymisation_scalar)); // effectively sent
-        let proved_data_rekey1 = prove_rekey(&ciphertext_a, &(w*server1_secret_rekeying_scalar), &mut rng);
-
-
-        // On PEP server 2:
-        // - Verify that server 1 has re-key/shuffled the pseudonym correctly
-        // - Receive polymorphic pseudonym from server 1 and re-key/shuffle it with your own secret scalar as well
-        assert_eq!(proved_rks1.reshuffled_by(), v*server1_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        let pp_received2 = verify_rks(&pp_before_reshuffle1, &proved_rks1).unwrap();
-        let pp_before_reshuffle2 = rerandomize(&pp_received2, &ScalarNonZero::random(&mut rng));
-        let ciphertext_received2 = verify_rekey(&ciphertext_a, &proved_data_rekey1).unwrap();
-
-        let proved_rks2 = prove_rks(&pp_before_reshuffle2, &(w*server2_secret_rekeying_scalar), &(v*server2_secret_pseudonymisation_scalar), &mut rng);
-        let _rks2 = rks(&pp_a, &(w*server2_secret_rekeying_scalar), &(v*server2_secret_pseudonymisation_scalar)); // effectively sent
-        let proved_data_rekey2 = prove_rekey(&ciphertext_received2, &(w*server2_secret_rekeying_scalar), &mut rng);
-
-
-        // On PEP server 3:
-        // - Verify that server 1 and server 2 have re-key/shuffled the pseudonym correctly
-        // - Receive polymorphic pseudonym from server 2 and re-key/shuffle it with your own secret scalar as well
-        assert_eq!(proved_rks1.reshuffled_by(), v*server1_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        assert_eq!(proved_rks2.reshuffled_by(), v*server2_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        let pp_received3 = verify_rks(&pp_before_reshuffle2, &proved_rks2).unwrap();
-        let pp_before_reshuffle3 = rerandomize(&pp_received3, &ScalarNonZero::random(&mut rng));
-        let ciphertext_received3 = verify_rekey(&ciphertext_received2, &proved_data_rekey2).unwrap();
-
-        let proved_rks3 = prove_rks(&pp_before_reshuffle3, &(w*server3_secret_rekeying_scalar), &(v*server3_secret_pseudonymisation_scalar), &mut rng);
-        let _rks3 = rks(&pp_a, &(w*server3_secret_rekeying_scalar), &(v*server3_secret_pseudonymisation_scalar)); // effectively sent
-        let proved_data_rekey3 = prove_rekey(&ciphertext_received3, &(w*server3_secret_rekeying_scalar), &mut rng);
-
-
-        // On PEP server 1:
-        // - Verify that server 2 has re-key/shuffled the pseudonym correctly
-        // - Send it back to the client
-        // NB 1: we could also send the proof of the second reshuffle back to client A (and let the client verify the reshuffle of both servers).
-        //     However, if we consider server 1 to be a primary entry point for party A that should handle all crypto on behalf of party A, then this design is preferred.
-        // NB 2: to prevent binary comparison of the two reshuffled pseudonyms, we rerandomize it once more
-        // TODO what is actually the attack here
-        assert_eq!(proved_rks2.reshuffled_by(), v*server2_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        assert_eq!(proved_rks3.reshuffled_by(), v*server3_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks3.rekeyed_by(), w*server3_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey3.rekeyed_by(), w*server3_public_rekeying_group_element);
-        let pp_received = verify_rks(&pp_before_reshuffle3, &proved_rks3).unwrap();
-        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // TODO proved_rerandomize should probably be used here, but why again?
-        let ciphertext_b = verify_rekey(&ciphertext_received3, &proved_data_rekey3).unwrap();
-
-
-        // On client B:
-        // - Receive the polymorphic pseudonym from client A
-        // - Receive the decryption factors from all servers (after authentication)
-        // - Receive and verify the re-key/shuffle proofs from all servers
-        // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
-        assert_eq!(proved_rks1.reshuffled_by(), v*server1_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey1.rekeyed_by(), w*server1_public_rekeying_group_element);
-        assert_eq!(proved_rks2.reshuffled_by(), v*server2_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey2.rekeyed_by(), w*server2_public_rekeying_group_element);
-        assert_eq!(proved_rks3.reshuffled_by(), v*server3_public_pseudonymisation_group_element);
-        assert_eq!(proved_rks3.rekeyed_by(), w*server3_public_rekeying_group_element);
-        assert_eq!(proved_data_rekey3.rekeyed_by(), w*server3_public_rekeying_group_element);
-        let decryption_key_b = server1_decryption_key_part * server2_decryption_key_part * server3_decryption_key_part * blinded_global_secret_key;
-        let lp_b = decrypt(&pp_b, &decryption_key_b);
-        let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
-        // lp_b is the local pseudonym of lp_a for client B
-
-
-        // TESTING FRAMEWORK
-        let expected_lp_b = decrypt(&rks(&rks(&rks(&pp_a, &(w*server1_secret_rekeying_scalar), &(v*server1_secret_pseudonymisation_scalar)), &(w*server2_secret_rekeying_scalar), &(v*server2_secret_pseudonymisation_scalar)), &(w*server3_secret_rekeying_scalar), &(v*server3_secret_pseudonymisation_scalar)),&decryption_key_b);
-        assert_eq!(expected_lp_b, lp_b);
-        assert_eq!(plaintext_a, plaintext_b);
-
-
-        // RETURNING TO CLIENT A
-        // To return the data to client A, we need to re-key/shuffle the data back to client A's pseudonym
-        // As the regular reshuffling operation is not symmetric reversible, we need a special reverse reshuffle operation.
-        // That is: reshuffling lp A for B is not the same as reshuffling lp B for A.
-        // To solve this, we can use the same RKS operation, but with the inverse of the pseudonymisation factor.
-        // NB: we could also just make a new channel to client A and send the data directly to client A, but that would not result in the same pseudonym for A as they originally submitted.
-        // TODO: use a different decryption context and thus a different decryption key for the return channel
-        let return_pp_b = encrypt(&lp_b, &global_public_key, &mut rng);
-        let return_proved_rks1 = prove_rks(&return_pp_b, &(w*server1_secret_rekeying_scalar), &(v.invert()*server1_secret_pseudonymisation_scalar.invert()), &mut rng);
-
-        let return_pp_1 = verify_rks(&return_pp_b, &return_proved_rks1).unwrap();
-        let return_proved_rks2 = prove_rks(&return_pp_1, &(w*server2_secret_rekeying_scalar), &(v.invert()*server2_secret_pseudonymisation_scalar.invert()), &mut rng);
-
-        let return_pp_2 = verify_rks(&return_pp_1, &return_proved_rks2).unwrap();
-        let return_proved_rks3 = prove_rks(&return_pp_2, &(w*server3_secret_rekeying_scalar), &(v.invert()*server3_secret_pseudonymisation_scalar.invert()), &mut rng);
-
-        let return_pp_a = verify_rks(&return_pp_2, &return_proved_rks3).unwrap();
-
-        let decryption_key_a = server1_decryption_key_part * server2_decryption_key_part * server3_decryption_key_part * blinded_global_secret_key;
-        let return_lp_a = decrypt(&return_pp_a, &decryption_key_a);
-
-        assert_eq!(lp_a, return_lp_a);
-    }
-
-
-    #[test]
     fn n_pep_rks_with_zkp() {
         let n = 5;
         let mut rng = OsRng;
@@ -1250,7 +1094,8 @@ mod libpep {
             session: Option<ServerSession>,
         }
         pub struct ServerSession {
-            v: ScalarNonZero,
+            v_from: ScalarNonZero,
+            v_to: ScalarNonZero,
             w: ScalarNonZero,
             decryption_key_part: ScalarNonZero,
         }
@@ -1270,32 +1115,28 @@ mod libpep {
                     session: None,
                 }
             }
-            fn new_session(&mut self, secret: &str, pseudonymisation_context: &str, decryption_context: &str) {
-                self.session = Some(ServerSession::new(self, secret, pseudonymisation_context, decryption_context));
+            fn new_session(&mut self, secret: &str, pseudonymisation_context_from: &str, pseudonymisation_context_to: &str, decryption_context_to: &str) {
+                self.session = Some(ServerSession::new(self, secret, pseudonymisation_context_from, pseudonymisation_context_to, decryption_context_to));
             }
             fn prove_rks(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRKS {
-                return prove_rks(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), &(self.session.as_ref().unwrap().v*self.pseudonymisation_scalar), rng)
-            }
-            fn prove_rks_inverse(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRKS {
-                return prove_rks(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), &(self.session.as_ref().unwrap().v.invert()*self.pseudonymisation_scalar.invert()), rng)
+                return prove_rks(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), &(self.session.as_ref().unwrap().v_from.invert()*self.pseudonymisation_scalar.invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
             }
             fn prove_reshuffle(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedReshuffle {
-                return prove_reshuffle(&m, &(self.session.as_ref().unwrap().v*self.pseudonymisation_scalar), rng)
-            }
-            fn prove_reshuffle_inverse(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedReshuffle {
-                return prove_reshuffle(&m, &(self.session.as_ref().unwrap().v.invert()*self.pseudonymisation_scalar.invert()), rng)
+                return prove_reshuffle(&m, &(self.session.as_ref().unwrap().v_from.invert()*self.pseudonymisation_scalar.invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
             }
             fn prove_rekey(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRekey {
                 return prove_rekey(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), rng)
             }
         }
         impl ServerSession {
-            fn new(server: &Server, secret: &str, pseudonymisation_context: &str, decryption_context: &str ) -> ServerSession {
-                let v = make_pseudonymisation_factor(secret, pseudonymisation_context);
+            fn new(server: &Server, secret: &str, pseudonymisation_context_from: &str, pseudonymisation_context_to: &str, decryption_context: &str) -> ServerSession {
+                let v_from = make_pseudonymisation_factor(secret, pseudonymisation_context_from);
+                let v_to = make_pseudonymisation_factor(secret, pseudonymisation_context_to);
                 let w = make_decryption_factor(secret, decryption_context);
                 let decryption_key_part = w * server.pseudonymisation_scalar.invert() * server.rekeying_scalar;
                 ServerSession {
-                    v,
+                    v_from,
+                    v_to,
                     w,
                     decryption_key_part,
                 }
@@ -1313,16 +1154,7 @@ mod libpep {
         fn verify_zkps(n: usize, servers: &Vec<Server>, proved_rkss: &Vec<ProvedRKS>, proved_data_rekeys: &Vec<ProvedRekey>) {
             for i in 0..n {
                 let server = &servers[i];
-                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v*server.pseudonymisation_group_element);
-                assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-                assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
-            }
-        }
-
-        fn verify_zkps_inverse(n: usize, servers: &Vec<Server>, proved_rkss: &Vec<ProvedRKS>, proved_data_rekeys: &Vec<ProvedRekey>) {
-            for i in 0..n {
-                let server = &servers[i];
-                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v.invert()*server.pseudonymisation_group_element_inverse);
+                assert_eq!(proved_rkss[i].reshuffled_by(), server.session.as_ref().unwrap().v_from.invert()*server.session.as_ref().unwrap().v_to*G); // TODO is this correct? We're not bound to the server specific pseudonymisation scalar here anymore
                 assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
                 assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w*server.rekeying_group_element);
             }
@@ -1335,13 +1167,15 @@ mod libpep {
         }
         let blinded_global_secret_key = servers.iter().fold(global_secret_key, |acc, s| acc * s.pseudonymisation_scalar);
 
+        let secret = "verysecret";
+        let pc_b = "pc-user-b";
+        let dc_b = "dc-user-b";
+        let pc_a = "pc-user-a";
+        let dc_a = "dc-user-a";
 
         // SESSION INITIALIZATION
-        let secret = "verysecret";
-        let pseudonymisation_context = "pc-user-a-user-b";
-        let decryption_context = "dc-user-b";
         for server in &mut servers {
-            server.new_session(secret, pseudonymisation_context, decryption_context);
+            server.new_session(secret, pc_a, pc_b, dc_b);
         }
 
 
@@ -1392,8 +1226,7 @@ mod libpep {
         // The first server is the entry point for the client, so it sends the final pseudonym back to the client
         verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let pp_received = verify_rks(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
-        let pp_b = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // TODO proved_rerandomize should probably be used
-        // TODO why do we actually need to rerandomize here?
+        let pp_b_rerandomized = prove_rerandomize(&pp_received, &ScalarNonZero::random(&mut rng), &mut rng);
         let ciphertext_b = verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap();
 
 
@@ -1404,12 +1237,13 @@ mod libpep {
         // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
         verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let decryption_key_b = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
+        let pp_b = verify_rerandomize(&pp_received, &pp_b_rerandomized).unwrap();
         let lp_b = decrypt(&pp_b, &decryption_key_b);
         let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
 
 
         // TESTING FRAMEWORK
-        let expected_lp = decrypt(&servers.iter().fold(pp_a, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v*s.pseudonymisation_scalar))), &decryption_key_b);
+        let expected_lp = decrypt(&servers.iter().fold(pp_a, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v_from.invert()*s.pseudonymisation_scalar.invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &decryption_key_b);
         assert_eq!(expected_lp, lp_b);
         assert_eq!(plaintext_a, plaintext_b);
 
@@ -1420,21 +1254,16 @@ mod libpep {
         proved_rkss = Vec::new();
         proved_data_rekeys = Vec::new();
 
+        for server in &mut servers {
+            server.new_session(secret, pc_b, pc_a, dc_a);
+        }
+
         let return_pp_b = encrypt(&lp_b, &global_public_key, &mut rng);
         let return_ciphertext_b = encrypt(&plaintext_b, &global_public_key, &mut rng);
 
-        let secret = "verysecret";
-        let pseudonymisation_context = "pc-user-a-user-b";
-        // NB: dont change this, otherwise the pseudonymisation factors will be different and we cannot reverse!
-        // So the pc for the channel between a and b should be the same as the channel between b and a, if we want to be able to reverse the pseudonymisation
-        let decryption_context = "dc-user-a";
-        for server in &mut servers {
-            server.new_session(secret, pseudonymisation_context, decryption_context);
-        }
-
         for i in 0..n {
             let server = &servers[i];
-            verify_zkps_inverse(i, &servers, &proved_rkss, &proved_data_rekeys);
+            verify_zkps(i, &servers, &proved_rkss, &proved_data_rekeys);
 
             let pp_received = if i == 0 {
                 return_pp_b.clone()
@@ -1448,7 +1277,7 @@ mod libpep {
             };
 
             let pp_before_reshuffle = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // rerandomize the pp before reshuffling
-            let proved_rks = server.prove_rks_inverse(&pp_before_reshuffle, &mut rng);
+            let proved_rks = server.prove_rks(&pp_before_reshuffle, &mut rng);
             let proved_data_rekey = server.prove_rekey(&ciphertext_received, &mut rng);
 
             received_pps.push(pp_before_reshuffle);
@@ -1458,20 +1287,21 @@ mod libpep {
         }
 
         // On PEP server 1:
-        verify_zkps_inverse(n, &servers, &proved_rkss, &proved_data_rekeys);
+        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let return_pp_received = verify_rks(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
-        let return_pp_a = rerandomize(&return_pp_received, &ScalarNonZero::random(&mut rng));
+        let pp_a_rerandomized = prove_rerandomize(&return_pp_received, &ScalarNonZero::random(&mut rng), &mut rng);
         let return_ciphertext_a = verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap();
 
         // On client A:
-        verify_zkps_inverse(n, &servers, &proved_rkss, &proved_data_rekeys);
+        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
         let return_decryption_key_a = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
+        let return_pp_a = verify_rerandomize(&return_pp_received, &pp_a_rerandomized).unwrap();
         let return_lp_a = decrypt(&return_pp_a, &return_decryption_key_a);
         let return_plaintext_a = decrypt(&return_ciphertext_a, &return_decryption_key_a);
 
 
         // TESTING FRAMEWORK
-        let expected_lp_return = decrypt(&servers.iter().fold(return_pp_b, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v.invert()*s.pseudonymisation_scalar.invert()))), &return_decryption_key_a);
+        let expected_lp_return = decrypt(&servers.iter().fold(return_pp_b, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v_from.invert()*s.pseudonymisation_scalar.invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &return_decryption_key_a);
         assert_eq!(expected_lp_return, return_lp_a);
         assert_eq!(lp_a, return_lp_a);
         assert_eq!(plaintext_b, return_plaintext_a);
