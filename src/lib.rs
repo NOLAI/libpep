@@ -596,8 +596,7 @@ impl std::ops::Deref for ProofInv {
     }
 }
 
-
-    // returns <A=a*G, Proof with a value N = a^-1*M>
+// returns <A=a*G, Proof with a value N = a^-1*M>
 pub fn create_proof_inv<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, rng: &mut R) -> (GroupElement, ProofInv) {
     let r = ScalarNonZero::random(rng);
 
@@ -613,7 +612,7 @@ pub fn create_proof_inv<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, rn
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::from_hash(&bytes);
     let s = ScalarCanBeZero::from(a.invert() * e) + ScalarCanBeZero::from(r);
-    (ga_inv, ProofInv {ga_inv, gc, s})
+    (ga, ProofInv {ga_inv, gc, s})
 }
 
 #[must_use]
@@ -631,8 +630,8 @@ pub fn verify_proof_split_inv(ga: &GroupElement, ga_inv: &GroupElement, gc: &Gro
 }
 
 #[must_use]
-pub fn verify_proof_inv(ga: &GroupElement, ga_inv: &GroupElement, p: &ProofInv) -> bool {
-    verify_proof_split_inv(ga, ga_inv, &p.gc, &p.s)
+pub fn verify_proof_inv(ga: &GroupElement, p: &ProofInv) -> bool {
+    verify_proof_split_inv(ga, &p.ga_inv, &p.gc, &p.s)
 }
 //// SIGNATURES
 
@@ -715,6 +714,47 @@ impl ProvedReshuffle {
         self.0
     }
 }
+pub struct ProvedReshuffleFromTo(pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub Proof);
+pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffleFromTo {
+    // Reshuffle is normally {n_from^-1 * n_to * in.b, n_from^-1 * n_to * in.c, in.y};
+    let n = n_from.invert() * n_to;
+    let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
+    let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to,&*p_n_from_inv, rng);
+    let (ab, pb) = create_proof(&n, &v.b, rng);
+    let (ac, pc) = create_proof(&n, &v.c, rng);
+    debug_assert_eq!(ab, ac);
+    debug_assert_eq!(ab, n * G);
+    ProvedReshuffleFromTo(gn_from, gn_to, p_n_from_inv, p_n_from_inv_n_to, pb, pc)
+}
+
+#[must_use]
+pub fn verify_reshuffle_from_to(v: &ElGamal, p: &ProvedReshuffleFromTo) -> Option<ElGamal> {
+    verify_reshuffle_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5)
+}
+
+#[must_use]
+pub fn verify_reshuffle_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
+    if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(p_n_from_inv_n_to, gb, pb) && verify_proof(p_n_from_inv_n_to, gc, pc) {
+        Some(ElGamal {
+            b: **pb,
+            c: **pc,
+            y: *gy,
+        })
+    } else {
+        None
+    }
+}
+
+impl ProvedReshuffleFromTo {
+    pub fn reshuffled_by_from(&self) -> GroupElement {
+        self.0
+    }
+    pub fn reshuffled_by_to(&self) -> GroupElement {
+        self.1
+    }
+
+}
+
 
 //// REKEY
 
@@ -983,17 +1023,16 @@ mod libpep {
         let mut rng = OsRng;
         // prover
         let a = ScalarNonZero::random(&mut rng);
-        let ga = a * G;
 
-        let (ga_inv, p) = create_proof_inv(&a, &mut rng); // Use a instead of a_inverse
-        assert_eq!(ga_inv, *p);
+        let (ga, p) = create_proof_inv(&a, &mut rng); // Use a instead of a_inverse
+        assert_eq!(a.invert() * G, *p);
 
         // verifier
-        assert!(verify_proof_inv(&ga, &ga_inv, &p));
+        assert!(verify_proof_inv(&ga, &p));
     }
 
     #[test]
-    fn pep_schnorr_basic_offline_combined_inv() {
+    fn pep_schnorr_basic_offline_from_to() {
         let mut rng = OsRng;
         // given secret a1, a2 and public Min, proof that a certain triplet (A1, A2, M, N) is actually calculated by (a1 * G, a2 * G, M, a1.inv() * a2 * M)
         // using Fiat-Shamir transform
@@ -1008,8 +1047,8 @@ mod libpep {
 
         let min = GroupElement::random(&mut rng);
 
-        let (ga1_inv, p_a1_inv) = create_proof_inv(&a1, &mut rng);
-        let (ga1_inv_a2, p_a1_inv_a2) = create_proof(&a2,&ga1_inv, &mut rng);
+        let (ga1, p_a1_inv) = create_proof_inv(&a1, &mut rng);
+        let (ga1_inv_a2, p_a1_inv_a2) = create_proof(&a2,&*p_a1_inv, &mut rng);
         let (ga1_inv_a2_min, p_a1_inv_a2_min) = create_proof(&(a1_inv*a2),&min, &mut rng);
 
         assert_eq!(a1_inv * G, *p_a1_inv);
@@ -1017,8 +1056,8 @@ mod libpep {
         assert_eq!(a1_inv*a2 * min, *p_a1_inv_a2_min);
 
         // verifier
-        assert!(verify_proof_inv(&ga1, &ga1_inv, &p_a1_inv));
-        assert!(verify_proof(&ga2, &ga1_inv, &p_a1_inv_a2));
+        assert!(verify_proof_inv(&ga1, &p_a1_inv));
+        assert!(verify_proof(&ga2, &*p_a1_inv, &p_a1_inv_a2));
         assert!(verify_proof(&*p_a1_inv_a2, &min, &p_a1_inv_a2_min));
 
         // first we proof to know a scalar that is indeed the inverse of a1, based on A1
@@ -1072,6 +1111,33 @@ mod libpep {
         assert_eq!(&reshuffle(&msg, &n), checked.as_ref().unwrap());
         assert_eq!(n*G, proved.reshuffled_by());
     }
+
+    #[test]
+    fn pep_schnorr_reshuffle_from_to() {
+        let mut rng = OsRng;
+        // secret key of system
+        let y = ScalarNonZero::random(&mut rng);
+        // public key of system
+        let gy = y*G;
+
+        let gm = GroupElement::random(&mut rng);
+        let n_from = ScalarNonZero::random(&mut rng);
+        let n_to = ScalarNonZero::random(&mut rng);
+
+        let msg = encrypt(&gm, &gy, &mut rng);
+
+        let proved = prove_reshuffle_from_to(&msg, &n_from, &n_to, &mut rng);
+
+        let checked = verify_reshuffle_from_to(&msg, &proved);
+
+        assert!(checked.is_some());
+        assert_ne!(&msg, checked.as_ref().unwrap());
+        assert_eq!(n_from.invert()*n_to*gm, decrypt(checked.as_ref().unwrap(), &y));
+        assert_eq!(&reshuffle(&msg, &(n_from.invert()*n_to)), checked.as_ref().unwrap());
+        assert_eq!(n_from*G, proved.reshuffled_by_from());
+        assert_eq!(n_to*G, proved.reshuffled_by_to());
+    }
+
 
     #[test]
     fn pep_schnorr_rekey() {
