@@ -581,6 +581,59 @@ pub fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
     verify_proof_split(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
 }
 
+
+pub struct ProofInv {
+    pub ga_inv: GroupElement,
+    pub gc: GroupElement,
+    pub s: ScalarCanBeZero,
+}
+
+impl std::ops::Deref for ProofInv {
+    type Target = GroupElement;
+
+    fn deref(&self) -> &Self::Target {
+        &self.ga_inv
+    }
+}
+
+
+    // returns <A=a*G, Proof with a value N = a^-1*M>
+pub fn create_proof_inv<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, rng: &mut R) -> (GroupElement, ProofInv) {
+    let r = ScalarNonZero::random(rng);
+
+    let ga = a * G;
+    let ga_inv = a.invert() * G;
+    let gc = r*G;
+
+    let mut hasher = Sha512::default();
+    hasher.update(ga.0.compress().as_bytes());
+    hasher.update(ga_inv.0.compress().as_bytes());
+    hasher.update(gc.0.compress().as_bytes());
+    let mut bytes = [0u8; 64];
+    bytes.copy_from_slice(hasher.finalize().as_slice());
+    let e = ScalarNonZero::from_hash(&bytes);
+    let s = ScalarCanBeZero::from(a.invert() * e) + ScalarCanBeZero::from(r);
+    (ga_inv, ProofInv {ga_inv, gc, s})
+}
+
+#[must_use]
+pub fn verify_proof_split_inv(ga: &GroupElement, ga_inv: &GroupElement, gc: &GroupElement, s: &ScalarCanBeZero) -> bool {
+    let mut hasher = Sha512::default();
+    hasher.update(ga.0.compress().as_bytes());
+    hasher.update(ga_inv.0.compress().as_bytes());
+    hasher.update(gc.0.compress().as_bytes());
+    let mut bytes = [0u8; 64];
+    bytes.copy_from_slice(hasher.finalize().as_slice());
+    let e = ScalarNonZero::from_hash(&bytes);
+
+    debug_assert_eq!(s*G, e * ga_inv + gc);
+    s*G == e * ga_inv + gc
+}
+
+#[must_use]
+pub fn verify_proof_inv(ga: &GroupElement, ga_inv: &GroupElement, p: &ProofInv) -> bool {
+    verify_proof_split_inv(ga, ga_inv, &p.gc, &p.s)
+}
 //// SIGNATURES
 
 type Signature = Proof;
@@ -916,13 +969,61 @@ mod libpep {
 
         // prover
         let a = ScalarNonZero::random(&mut rng);
-        let min = GroupElement::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
 
-        let (ga, p) = create_proof(&a, &min, &mut rng);
-        assert_eq!(a * min, *p);
+        let (ga, p) = create_proof(&a, &gm, &mut rng);
+        assert_eq!(a * gm, *p);
 
         // verifier
-        assert!(verify_proof(&ga, &min, &p));
+        assert!(verify_proof(&ga, &gm, &p));
+    }
+
+    #[test]
+    fn pep_schnorr_basic_offline_inv() {
+        let mut rng = OsRng;
+        // prover
+        let a = ScalarNonZero::random(&mut rng);
+        let ga = a * G;
+
+        let (ga_inv, p) = create_proof_inv(&a, &mut rng); // Use a instead of a_inverse
+        assert_eq!(ga_inv, *p);
+
+        // verifier
+        assert!(verify_proof_inv(&ga, &ga_inv, &p));
+    }
+
+    #[test]
+    fn pep_schnorr_basic_offline_combined_inv() {
+        let mut rng = OsRng;
+        // given secret a1, a2 and public Min, proof that a certain triplet (A1, A2, M, N) is actually calculated by (a1 * G, a2 * G, M, a1.inv() * a2 * M)
+        // using Fiat-Shamir transform
+
+        // prover
+        let a1 = ScalarNonZero::random(&mut rng);
+        let a2 = ScalarNonZero::random(&mut rng);
+        let a1_inv = a1.invert();
+
+        let ga1 = a1 * G;
+        let ga2 = a2 * G;
+
+        let min = GroupElement::random(&mut rng);
+
+        let (ga1_inv, p_a1_inv) = create_proof_inv(&a1, &mut rng);
+        let (ga1_inv_a2, p_a1_inv_a2) = create_proof(&a2,&ga1_inv, &mut rng);
+        let (ga1_inv_a2_min, p_a1_inv_a2_min) = create_proof(&(a1_inv*a2),&min, &mut rng);
+
+        assert_eq!(a1_inv * G, *p_a1_inv);
+        assert_eq!(a1_inv*a2 * G, *p_a1_inv_a2);
+        assert_eq!(a1_inv*a2 * min, *p_a1_inv_a2_min);
+
+        // verifier
+        assert!(verify_proof_inv(&ga1, &ga1_inv, &p_a1_inv));
+        assert!(verify_proof(&ga2, &ga1_inv, &p_a1_inv_a2));
+        assert!(verify_proof(&*p_a1_inv_a2, &min, &p_a1_inv_a2_min));
+
+        // first we proof to know a scalar that is indeed the inverse of a1, based on A1
+        // then we proof to know a different scalar that is a1*^-1 * a2, based on A2
+        // finally, we proof that our message M was multiplied by that number.
     }
 
     #[test]
@@ -969,6 +1070,7 @@ mod libpep {
         assert_ne!(&msg, checked.as_ref().unwrap());
         assert_eq!(n*gm, decrypt(checked.as_ref().unwrap(), &y));
         assert_eq!(&reshuffle(&msg, &n), checked.as_ref().unwrap());
+        assert_eq!(n*G, proved.reshuffled_by());
     }
 
     #[test]
@@ -1119,10 +1221,10 @@ mod libpep {
                 self.session = Some(ServerSession::new(self, secret, pseudonymisation_context_from, pseudonymisation_context_to, decryption_context_to));
             }
             fn prove_rks(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRKS {
-                return prove_rks(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), &(self.session.as_ref().unwrap().v_from.invert()*self.pseudonymisation_scalar.invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
+                return prove_rks(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), &((self.session.as_ref().unwrap().v_from*self.pseudonymisation_scalar).invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
             }
             fn prove_reshuffle(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedReshuffle {
-                return prove_reshuffle(&m, &(self.session.as_ref().unwrap().v_from.invert()*self.pseudonymisation_scalar.invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
+                return prove_reshuffle(&m, &((self.session.as_ref().unwrap().v_from*self.pseudonymisation_scalar).invert() * self.session.as_ref().unwrap().v_to*self.pseudonymisation_scalar), rng)
             }
             fn prove_rekey(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRekey {
                 return prove_rekey(&m, &(self.session.as_ref().unwrap().w*self.rekeying_scalar), rng)
@@ -1166,6 +1268,7 @@ mod libpep {
             servers.push(Server::new(&mut rng));
         }
         let blinded_global_secret_key = servers.iter().fold(global_secret_key, |acc, s| acc * s.pseudonymisation_scalar);
+
 
         let secret = "verysecret";
         let pc_b = "pc-user-b";
@@ -1243,7 +1346,7 @@ mod libpep {
 
 
         // TESTING FRAMEWORK
-        let expected_lp = decrypt(&servers.iter().fold(pp_a, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v_from.invert()*s.pseudonymisation_scalar.invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &decryption_key_b);
+        let expected_lp = decrypt(&servers.iter().fold(pp_a, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &((s.session.as_ref().unwrap().v_from*s.pseudonymisation_scalar).invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &decryption_key_b);
         assert_eq!(expected_lp, lp_b);
         assert_eq!(plaintext_a, plaintext_b);
 
@@ -1301,7 +1404,7 @@ mod libpep {
 
 
         // TESTING FRAMEWORK
-        let expected_lp_return = decrypt(&servers.iter().fold(return_pp_b, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &(s.session.as_ref().unwrap().v_from.invert()*s.pseudonymisation_scalar.invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &return_decryption_key_a);
+        let expected_lp_return = decrypt(&servers.iter().fold(return_pp_b, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w*s.rekeying_scalar), &((s.session.as_ref().unwrap().v_from*s.pseudonymisation_scalar).invert()*s.session.as_ref().unwrap().v_to*s.pseudonymisation_scalar))), &return_decryption_key_a);
         assert_eq!(expected_lp_return, return_lp_a);
         assert_eq!(lp_a, return_lp_a);
         assert_eq!(plaintext_b, return_plaintext_a);
