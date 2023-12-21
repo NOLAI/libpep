@@ -633,6 +633,7 @@ pub fn verify_proof_split_inv(ga: &GroupElement, ga_inv: &GroupElement, gc: &Gro
 pub fn verify_proof_inv(ga: &GroupElement, p: &ProofInv) -> bool {
     verify_proof_split_inv(ga, &p.ga_inv, &p.gc, &p.s)
 }
+
 //// SIGNATURES
 
 type Signature = Proof;
@@ -714,27 +715,28 @@ impl ProvedReshuffle {
         self.0
     }
 }
-pub struct ProvedReshuffleFromTo(pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub Proof);
+pub struct ProvedReshuffleFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub Proof);
 pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffleFromTo {
     // Reshuffle is normally {n_from^-1 * n_to * in.b, n_from^-1 * n_to * in.c, in.y};
     let n = n_from.invert() * n_to;
     let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
+    let gn_from_inv = p_n_from_inv.ga_inv;
     let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to,&*p_n_from_inv, rng);
     let (ab, pb) = create_proof(&n, &v.b, rng);
     let (ac, pc) = create_proof(&n, &v.c, rng);
     debug_assert_eq!(ab, ac);
     debug_assert_eq!(ab, n * G);
-    ProvedReshuffleFromTo(gn_from, gn_to, p_n_from_inv, p_n_from_inv_n_to, pb, pc)
+    ProvedReshuffleFromTo(gn_from, gn_from_inv, gn_to, p_n_from_inv, p_n_from_inv_n_to, pb, pc)
 }
 
 #[must_use]
 pub fn verify_reshuffle_from_to(v: &ElGamal, p: &ProvedReshuffleFromTo) -> Option<ElGamal> {
-    verify_reshuffle_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5)
+    verify_reshuffle_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6)
 }
 
 #[must_use]
-pub fn verify_reshuffle_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
-    if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(p_n_from_inv_n_to, gb, pb) && verify_proof(p_n_from_inv_n_to, gc, pc) {
+pub fn verify_reshuffle_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
+    if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(p_n_from_inv_n_to, gb, pb) && verify_proof(p_n_from_inv_n_to, gc, pc) && p_n_from_inv.ga_inv == *gn_from_inv {
         Some(ElGamal {
             b: **pb,
             c: **pc,
@@ -749,8 +751,11 @@ impl ProvedReshuffleFromTo {
     pub fn reshuffled_by_from(&self) -> GroupElement {
         self.0
     }
-    pub fn reshuffled_by_to(&self) -> GroupElement {
+    pub fn reshuffled_by_from_inv(&self) -> GroupElement {
         self.1
+    }
+    pub fn reshuffled_by_to(&self) -> GroupElement {
+        self.2
     }
 
 }
@@ -838,12 +843,13 @@ impl ProvedRKS {
         self.2
     }
 }
-pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
+pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
 
     pub fn prove_rks_from_to<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedRKSFromTo {
         // RKS is normally {(n_from^-1 * n_to / k) * in.B, n_from^-1 * n_to * in.C, k * in.Y};
         let n = n_from.invert() * n_to;
         let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
+        let gn_from_inv = p_n_from_inv.ga_inv;
         let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to,&*p_n_from_inv, rng);
 
         let a = create_proof(&(n * k.invert()), &v.b, rng);
@@ -852,18 +858,18 @@ pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub ProofInv, pub
         // different order so that first and second group elements for prove_reshuffle,
         // prove_rekey, prove_rks have the same meaning
 
-        ProvedRKSFromTo(gn_from, gn_to, p_n_from_inv, p_n_from_inv_n_to, b.0, b.1, c.0, c.1, a.0, a.1)
+        ProvedRKSFromTo(gn_from, gn_from_inv, gn_to, p_n_from_inv, p_n_from_inv_n_to, b.0, b.1, c.0, c.1, a.0, a.1)
     }
 
     #[must_use]
     pub fn verify_rks_from_to(v: &ElGamal, p: &ProvedRKSFromTo) -> Option<ElGamal> {
-        verify_rks_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6, &p.7, &p.8, &p.9)
+        verify_rks_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6, &p.7, &p.8, &p.9, &p.10)
     }
 
     #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn verify_rks_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof ) -> Option<ElGamal> {
-        if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc)&& verify_proof(gay, gy, py) {
+    pub fn verify_rks_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof ) -> Option<ElGamal> {
+        if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc)&& verify_proof(gay, gy, py) && p_n_from_inv.ga_inv == *gn_from_inv {
             Some(ElGamal {
                 b: **pb,
                 c: **pc,
@@ -878,11 +884,14 @@ pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub ProofInv, pub
         pub fn reshuffled_by_from(&self) -> GroupElement {
             self.0
         }
-        pub fn reshuffled_by_to(&self) -> GroupElement {
+        pub fn reshuffled_by_from_inv(&self) -> GroupElement {
             self.1
         }
+        pub fn reshuffled_by_to(&self) -> GroupElement {
+            self.2
+        }
         pub fn rekeyed_by(&self) -> GroupElement {
-            self.6
+            self.7
         }
     }
 }
@@ -979,11 +988,169 @@ pub fn rerandomize_local<R: RngCore + CryptoRng>(p: &LocalEncryptedPseudonym, rn
 
 }
 
+pub mod distributed {
+    use std::collections::HashMap;
+    use crate::*;
+    use crate::zkp::*;
+    use crate::simple::*;
+    use crate::libpep::encode_hex;
+
+    pub type Message = ElGamal;
+    pub type Context = String;
+    pub type SystemId = String;
+    pub struct TrustedGroupElementCache {
+        cache: HashMap<(SystemId, Context), GroupElement>,
+    }
+    impl TrustedGroupElementCache {
+        fn new() -> Self {
+            TrustedGroupElementCache {
+                cache: HashMap::new(),
+            }
+        }
+        fn store(&mut self, key1: String, key2: String, element: GroupElement) {
+            self.cache.insert((key1, key2), element);
+        }
+        fn retrieve(&self, key1: &str, key2: &str) -> Option<&GroupElement> {
+            self.cache.get(&(key1.to_string(), key2.to_string()))
+        }
+    }
+    pub struct PEPSystem {
+        pub system_id: String,
+        pub config: PEPNetworkConfig,
+        pseudonymisation_secret: String,
+        rekeying_secret: String,
+        blinding_factor: ScalarNonZero,
+        trusted_pseudonymisation_factors: TrustedGroupElementCache,
+        trusted_inv_pseudonymisation_factors: TrustedGroupElementCache,
+        trusted_rekeying_factors: TrustedGroupElementCache,
+    }
+    pub struct PEPNetworkConfig {
+        pub global_public_key: GroupElement,
+        pub blinded_global_private_key: ScalarNonZero,
+        pub system_ids: Vec<String>,
+    }
+    impl PEPNetworkConfig {
+        pub fn new(global_public_key: GroupElement, blinded_global_private_key: ScalarNonZero, system_ids: Vec<String>) -> Self {
+            Self {
+                global_public_key,
+                blinded_global_private_key,
+                system_ids,
+            }
+        }
+    }
+    impl PEPSystem {
+        pub fn new<R: RngCore + CryptoRng>(system_id: SystemId, config: PEPNetworkConfig, blinding_factor: ScalarNonZero, rng: &mut R) -> Self {
+            let pseudonymisation_secret = encode_hex(&ScalarNonZero::random(rng).encode());
+            let rekeying_secret = encode_hex(&ScalarNonZero::random(rng).encode());
+
+            Self {
+                system_id,
+                config,
+                pseudonymisation_secret,
+                rekeying_secret,
+                blinding_factor,
+                trusted_pseudonymisation_factors: TrustedGroupElementCache::new(),
+                trusted_inv_pseudonymisation_factors: TrustedGroupElementCache::new(),
+                trusted_rekeying_factors: TrustedGroupElementCache::new(),
+            }
+        }
+        fn verify_system_pseudonymize(&mut self, system_id: &SystemId, msg_in: &Message, proved_rks: &ProvedRKSFromTo, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Option<Message> {
+            let trusted_from = self.trusted_pseudonymisation_factors.retrieve(system_id, from_pc);
+            let trusted_from_inv = self.trusted_inv_pseudonymisation_factors.retrieve(system_id, from_pc);
+            let trusted_to = self.trusted_pseudonymisation_factors.retrieve(system_id, to_pc);
+            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
+
+            let msg_out = verify_rks_from_to(msg_in, proved_rks);
+            assert!(msg_out.is_some());
+
+            if trusted_from.is_some() {
+                assert_eq!(proved_rks.reshuffled_by_from(), *trusted_from.unwrap());
+            }
+            if trusted_from_inv.is_some() {
+                assert_eq!(proved_rks.reshuffled_by_from_inv(), *trusted_from_inv.unwrap());
+            }
+            if trusted_to.is_some() {
+                assert_eq!(proved_rks.reshuffled_by_to(), *trusted_to.unwrap());
+            }
+            if trusted_k.is_some() {
+                assert_eq!(proved_rks.rekeyed_by(), *trusted_k.unwrap());
+            }
+
+            self.trusted_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from());
+            self.trusted_inv_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from_inv());
+            self.trusted_pseudonymisation_factors.store(system_id.clone(), to_pc.clone(), proved_rks.reshuffled_by_to());
+            self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rks.rekeyed_by());
+
+            msg_out
+        }
+        pub fn verify_pseudonymize(&mut self, messages: &Vec<(SystemId,Message,ProvedRKSFromTo)>, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Option<Message> {
+            let mut msg_out = None;
+            let mut visited_systems = Vec::new();
+            for (system_id, msg_in, proved_rks) in messages {
+                if !self.config.system_ids.contains(&String::from(system_id)) || visited_systems.contains(&system_id) {
+                    // Make sure we only visit each system once, and that the system is part of the network
+                    return None
+                }
+                if msg_out.is_some() {
+                    assert_eq!(msg_out.unwrap(), *msg_in);
+                }
+                msg_out = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, from_pc, to_pc, to_dc);
+                visited_systems.push(system_id);
+            }
+            msg_out
+        }
+        fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, to_dc: &Context) -> Option<Message> {
+            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
+            let msg_out = verify_rekey(msg_in, proved_rekey);
+            assert!(msg_out.is_some());
+
+            if trusted_k.is_some() {
+                assert_eq!(proved_rekey.rekeyed_by(), *trusted_k.unwrap());
+            }
+
+            self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rekey.rekeyed_by());
+
+            msg_out
+        }
+        pub fn verify_transcrypt(&mut self, messages: &Vec<(SystemId,Message,ProvedRekey)>, to_dc: &Context) -> Option<Message> {
+            let mut msg_out = None;
+            let mut visited_systems = Vec::new();
+            for (system_id, msg_in, proved_rekey) in messages {
+                if !self.config.system_ids.contains(&String::from(system_id)) || visited_systems.contains(&system_id) {
+                    // Make sure we only visit each system once, and that the system is part of the network
+                    return None
+                }
+                if msg_out.is_some() {
+                    assert_eq!(msg_out.unwrap(), *msg_in);
+                }
+                msg_out = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, to_dc);
+                visited_systems.push(system_id);
+            }
+            msg_out
+        }
+        pub fn pseudonymize<R: RngCore + CryptoRng>(&mut self, message: &Message, from_pc: &Context, to_pc: &Context, to_dc: &Context, rng: &mut R) -> ProvedRKSFromTo {
+            let n_from = make_pseudonymisation_factor(&self.pseudonymisation_secret, from_pc);
+            let n_to = make_pseudonymisation_factor(&self.pseudonymisation_secret, to_pc);
+            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+            prove_rks_from_to(message, &k, &n_from, &n_to, rng)
+        }
+        pub fn transcrypt<R: RngCore + CryptoRng>(&mut self, message: &Message, to_dc: &Context, rng: &mut R) -> ProvedRekey {
+            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+            prove_rekey(message, &k, rng)
+        }
+
+        pub fn decryption_key_part(&self, to_dc: &Context) -> ScalarNonZero {
+            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+            k * &self.blinding_factor.invert()
+        }
+    }
+}
 #[cfg(test)]
 mod libpep {
     use crate::*;
     use crate::zkp::*;
     use crate::simple::*;
+    use crate::distributed::*;
     use rand_core::OsRng;
 
     #[test]
@@ -1095,9 +1262,9 @@ mod libpep {
 
         let min = GroupElement::random(&mut rng);
 
-        let (ga1, p_a1_inv) = create_proof_inv(&a1, &mut rng);
-        let (ga1_inv_a2, p_a1_inv_a2) = create_proof(&a2,&*p_a1_inv, &mut rng);
-        let (ga1_inv_a2_min, p_a1_inv_a2_min) = create_proof(&(a1_inv*a2),&min, &mut rng);
+        let (_ga1, p_a1_inv) = create_proof_inv(&a1, &mut rng);
+        let (_ga1_inv_a2, p_a1_inv_a2) = create_proof(&a2,&*p_a1_inv, &mut rng);
+        let (_ga1_inv_a2_min, p_a1_inv_a2_min) = create_proof(&(a1_inv*a2),&min, &mut rng);
 
         assert_eq!(a1_inv * G, *p_a1_inv);
         assert_eq!(a1_inv*a2 * G, *p_a1_inv_a2);
@@ -1262,6 +1429,7 @@ mod libpep {
 
     // https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
     use std::{fmt::Write, num::ParseIntError};
+
     pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
         (0..s.len())
             .step_by(2)
@@ -1323,261 +1491,79 @@ mod libpep {
     }
 
     #[test]
-    fn n_pep_rks_with_zkp() {
+    fn distributed_pep_api() {
         let n = 5;
         let mut rng = OsRng;
 
-        // SERVER DEFINITION
-        pub struct Server {
-            pseudonymisation_secret: ScalarNonZero,
-            rekeying_secret: ScalarNonZero,
-            key_blinding_factor: ScalarNonZero,
-            key_blinding_group_element: GroupElement,
-            key_blinding_inv_group_element: GroupElement,
-            session: Option<ServerSession>,
-        }
-        pub struct ServerSession {
-            v_from: ScalarNonZero,
-            v_from_public: GroupElement,
-            v_to: ScalarNonZero,
-            v_to_public: GroupElement,
-            w: ScalarNonZero,
-            w_public: GroupElement,
-            decryption_key_part: ScalarNonZero,
-            decryption_key_part_proof: Proof,
-        }
-        impl Server {
-            fn new(rng: &mut OsRng) -> Server {
-                let pseudonymisation_secret = ScalarNonZero::random(rng);
-                let rekeying_secret = ScalarNonZero::random(rng);
-                let key_blinding_factor = ScalarNonZero::random(rng);
-                let key_blinding_group_element = key_blinding_factor * G;
-                let key_blinding_inv_group_element = key_blinding_factor.invert() * G;
-                Server {
-                    pseudonymisation_secret,
-                    rekeying_secret,
-                    key_blinding_factor,
-                    key_blinding_group_element,
-                    key_blinding_inv_group_element,
-                    session: None,
-                }
-            }
-            fn new_session(&mut self, pseudonymisation_context_from: &str, pseudonymisation_context_to: &str, decryption_context_to: &str, rng: &mut OsRng) {
-                self.session = Some(ServerSession::new(self, pseudonymisation_context_from, pseudonymisation_context_to, decryption_context_to, rng));
-            }
-            fn prove_rks(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRKSFromTo {
-                let v_from = self.session.as_ref().unwrap().v_from;
-                let v_to = self.session.as_ref().unwrap().v_to;
-                let w = self.session.as_ref().unwrap().w;
-                return prove_rks_from_to(&m, &w, &v_from, &v_to, rng)
-            }
-            fn prove_reshuffle(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedReshuffleFromTo {
-                let v_from = self.session.as_ref().unwrap().v_from;
-                let v_to = self.session.as_ref().unwrap().v_to;
-                return prove_reshuffle_from_to(&m, &v_from, &v_to, rng)
-            }
-            fn prove_rekey(&self, m: &ElGamal, rng: &mut OsRng) -> ProvedRekey {
-                let w = self.session.as_ref().unwrap().w;
-                return prove_rekey(&m, &w, rng)
-            }
-        }
-        impl ServerSession {
-            fn new(server: &Server, pseudonymisation_context_from: &str, pseudonymisation_context_to: &str, decryption_context: &str, rng: &mut OsRng) -> ServerSession {
-                let v_from = make_pseudonymisation_factor(&encode_hex(&server.pseudonymisation_secret.encode()), pseudonymisation_context_from);
-                let v_to = make_pseudonymisation_factor(&encode_hex(&server.pseudonymisation_secret.encode()), pseudonymisation_context_to);
-                let w = make_decryption_factor(&encode_hex(&server.rekeying_secret.encode()), decryption_context);
-                let decryption_key_part = w * server.key_blinding_factor.invert();
-                let (gw, decryption_key_part_proof) = create_proof(&server.key_blinding_factor.invert(), &(w*G), rng);
-                ServerSession {
-                    v_from,
-                    v_from_public: v_from * G,
-                    v_to,
-                    v_to_public: v_to * G,
-                    w,
-                    w_public: w * G,
-                    decryption_key_part,
-                    decryption_key_part_proof,
-                }
-            }
-        }
-
-        let mut servers = Vec::new();
-
-        // Messages over the network:
-        let mut received_pps:Vec<ElGamal> = Vec::new();
-        let mut received_ciphertexts:Vec<ElGamal> = Vec::new();
-        let mut proved_rkss:Vec<ProvedRKSFromTo> = Vec::new();
-        let mut proved_data_rekeys:Vec<ProvedRekey> = Vec::new();
-
-        fn verify_zkps(n: usize, servers: &Vec<Server>, proved_rkss: &Vec<ProvedRKSFromTo>, proved_data_rekeys: &Vec<ProvedRekey>) {
-            for i in 0..n {
-                let server = &servers[i];
-                // Verify that v_from and v_to match the context (trust on first use)
-                // For each server and each context keep a list of factors that were used for that context
-                // and check that the factors are the same as the ones used in the proofs
-                assert_eq!(proved_rkss[i].reshuffled_by_from(), server.session.as_ref().unwrap().v_from_public);
-                assert_eq!(proved_rkss[i].reshuffled_by_to(), server.session.as_ref().unwrap().v_to_public);
-                assert_eq!(proved_rkss[i].rekeyed_by(), server.session.as_ref().unwrap().w_public);
-                assert_eq!(proved_data_rekeys[i].rekeyed_by(), server.session.as_ref().unwrap().w_public);
-            }
-        }
-
-        // SYSTEM INITIALIZATION
         let (global_public_key, global_secret_key) = generate_global_keys(&mut rng);
+
+        let mut blinding_factors = Vec::new();
         for _ in 0..n {
-            servers.push(Server::new(&mut rng));
+            let blinding_factor = ScalarNonZero::random(&mut rng);
+            blinding_factors.push(blinding_factor);
         }
-        let blinded_global_secret_key = servers.iter().fold(global_secret_key, |acc, s| acc * s.key_blinding_factor);
+        let blinded_global_secret_key = blinding_factors.iter().fold(global_secret_key, |acc, s| acc * s);
 
-
-        let pc_a = "pc-user-a";
-        let dc_a = "dc-user-a";
-        let pc_b = "pc-user-b";
-        let dc_b = "dc-user-b";
-
-        // SESSION INITIALIZATION
-        for server in &mut servers {
-            server.new_session(pc_a, pc_b, dc_b, &mut rng);
-        }
-
-
-        // On client A:
-        // - Client A has a pseudonym and wants to convert it to a pseudonym for client B, using the PEP network of servers
-        let lp_a = GroupElement::random(&mut rng); // local pseudonym
-        let pp_a = encrypt(&lp_a, &global_public_key, &mut rng); // polymorphic pseudonym
-        // or using an existing persistent/main identifier:
-        // let id = "foobar";
-        // let mut pp = generate_pseudonym(id, &public_key, &mut rng);
-
-        let plaintext_a = GroupElement::random(&mut rng); // data
-        let ciphertext_a = encrypt(&plaintext_a, &global_public_key, &mut rng);
-
-        // On PEP server i (i=0..n):
+        let mut systems = Vec::new();
         for i in 0..n {
-            let server = &servers[i];
-
-            // - Verify the re-key/shuffles of all previous servers
-            verify_zkps(i, &servers, &proved_rkss, &proved_data_rekeys);
-
-            // - Receive polymorphic pseudonym from previous server...
-            let pp_received = if i == 0 {
-                pp_a.clone() // first server receives the pp_a from the uploader
-            } else {
-                verify_rks_from_to(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap() // other servers use the pp from the previous server
-            };
-            let ciphertext_received = if i == 0 {
-                ciphertext_a.clone() // first server receives the pp_a from the uploader
-            } else {
-                verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap() // other servers use the pp from the previous server
-            };
-
-
-            // ... and re-key/shuffle it with your own secret scalar as well
-            let pp_before_reshuffle = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // rerandomize the pp before reshuffling
-            let proved_rks = server.prove_rks(&pp_before_reshuffle, &mut rng);
-            let proved_data_rekey = server.prove_rekey(&ciphertext_received, &mut rng);
-
-            // - Send them to the other servers
-            received_pps.push(pp_before_reshuffle);
-            proved_rkss.push(proved_rks);
-            received_ciphertexts.push(ciphertext_received);
-            proved_data_rekeys.push(proved_data_rekey);
+            let system_id: SystemId = format!("system-{}", i);
+            let system = PEPSystem::new(system_id, PEPNetworkConfig::new(global_public_key, blinded_global_secret_key, (0..n).map(|i| format!("system-{}", i)).collect()), blinding_factors[i], &mut rng);
+            systems.push(system);
         }
 
-        // On PEP server 1:
-        // The first server is the entry point for the client, so it sends the final pseudonym back to the client
-        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
-        let pp_received = verify_rks_from_to(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
-        let pp_b_rerandomized = prove_rerandomize(&pp_received, &ScalarNonZero::random(&mut rng), &mut rng);
-        let ciphertext_b = verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap();
+        fn pseudonymize_through_network(data_in: &GroupElement, from_pc: &Context, to_pc: &Context, to_dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
+            let mut network = Vec::new();
 
+            let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
 
-        // On client B:
-        // - Receive the polymorphic pseudonym from client A
-        // - Receive the decryption factors from both servers (after authentication)
-        // - Receive and verify the re-key/shuffle proofs from all servers
-        // - Decrypt pp_b using the secret key that you can calculate from the decryption factors
-        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
-        for s in &servers {
-            let decryption_key_part_proof = &s.session.as_ref().unwrap().decryption_key_part_proof;
-            let decryption_key_part = &s.session.as_ref().unwrap().decryption_key_part;
-            let w_public = &s.session.as_ref().unwrap().w_public;
-            assert!(verify_proof(&s.key_blinding_inv_group_element, &w_public,  &decryption_key_part_proof));
+            let proven = systems[0].pseudonymize(&msg_in, from_pc, to_pc, to_dc, rng);
+            network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
+
+            for i in 1..systems.len() {
+                let system = &mut systems[i];
+                let msg_in = system.verify_pseudonymize(&network, &from_pc, &to_pc, &to_dc).unwrap();
+                let proven = system.pseudonymize(&msg_in, from_pc, to_pc, to_dc, rng);
+                network.push((system.system_id.clone(), msg_in.clone(), proven));
+            }
+            let msg_out = systems[0].verify_pseudonymize(&network, from_pc, to_pc, to_dc).unwrap();
+            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
+            let data_out = decrypt(&msg_out, &decryption_key);
+            data_out
         }
-        let decryption_key_b = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
-        let pp_b = verify_rerandomize(&pp_received, &pp_b_rerandomized).unwrap();
-        let lp_b = decrypt(&pp_b, &decryption_key_b);
-        let plaintext_b = decrypt(&ciphertext_b, &decryption_key_b);
 
+        fn transcrypt_through_network(data_in: &GroupElement, to_dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
+            let mut network = Vec::new();
 
-        // TESTING FRAMEWORK
-        let expected_lp = decrypt(&servers.iter().fold(pp_a, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w), &((s.session.as_ref().unwrap().v_from).invert()*s.session.as_ref().unwrap().v_to))), &decryption_key_b);
-        assert_eq!(expected_lp, lp_b);
+            let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
+
+            let proven = systems[0].transcrypt(&msg_in, to_dc, rng);
+            network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
+
+            for i in 1..systems.len() {
+                let system = &mut systems[i];
+                let msg_in = system.verify_transcrypt(&network, &to_dc).unwrap();
+                let proven = system.transcrypt(&msg_in, to_dc, rng);
+                network.push((system.system_id.clone(), msg_in.clone(), proven));
+            }
+            let msg_out = systems[0].verify_transcrypt(&network, to_dc).unwrap();
+            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
+            let data_out = decrypt(&msg_out, &decryption_key);
+            data_out
+        }
+
+        let pc_a: Context = Context::from("pc-user-a");
+        let dc_a: Context = Context::from("dc-user-a");
+        let pc_b: Context = Context::from("pc-user-b");
+        let dc_b: Context = Context::from("dc-user-b");
+
+        let lp_a = GroupElement::random(&mut rng);
+        let lp_b = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b, &mut systems, &mut rng);
+        let lp_a_return = pseudonymize_through_network(&lp_b, &pc_b, &pc_a, &dc_a, &mut systems, &mut rng);
+        assert_ne!(lp_a, lp_b);
+        assert_eq!(lp_a, lp_a_return);
+
+        let plaintext_a = GroupElement::random(&mut rng);
+        let plaintext_b = transcrypt_through_network(&plaintext_a, &dc_b, &mut systems, &mut rng);
         assert_eq!(plaintext_a, plaintext_b);
-
-
-        // RETURNING TO CLIENT A
-        received_ciphertexts = Vec::new();
-        received_pps = Vec::new();
-        proved_rkss = Vec::new();
-        proved_data_rekeys = Vec::new();
-
-        for server in &mut servers {
-            server.new_session(pc_b, pc_a, dc_a, &mut rng);
-        }
-
-        let return_pp_b = encrypt(&lp_b, &global_public_key, &mut rng);
-        let return_ciphertext_b = encrypt(&plaintext_b, &global_public_key, &mut rng);
-
-        for i in 0..n {
-            let server = &servers[i];
-            verify_zkps(i, &servers, &proved_rkss, &proved_data_rekeys);
-
-            let pp_received = if i == 0 {
-                return_pp_b.clone()
-            } else {
-                verify_rks_from_to(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap() // other servers use the pp from the previous server
-            };
-            let ciphertext_received = if i == 0 {
-                return_ciphertext_b.clone()
-            } else {
-                verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap() // other servers use the pp from the previous server
-            };
-
-            let pp_before_reshuffle = rerandomize(&pp_received, &ScalarNonZero::random(&mut rng)); // rerandomize the pp before reshuffling
-            let proved_rks = server.prove_rks(&pp_before_reshuffle, &mut rng);
-            let proved_data_rekey = server.prove_rekey(&ciphertext_received, &mut rng);
-
-            received_pps.push(pp_before_reshuffle);
-            proved_rkss.push(proved_rks);
-            received_ciphertexts.push(ciphertext_received);
-            proved_data_rekeys.push(proved_data_rekey);
-        }
-
-        // On PEP server 1:
-        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
-        let return_pp_received = verify_rks_from_to(&received_pps.last().unwrap(), &proved_rkss.last().unwrap()).unwrap();
-        let pp_a_rerandomized = prove_rerandomize(&return_pp_received, &ScalarNonZero::random(&mut rng), &mut rng);
-        let return_ciphertext_a = verify_rekey(&received_ciphertexts.last().unwrap(), &proved_data_rekeys.last().unwrap()).unwrap();
-
-        // On client A:
-        verify_zkps(n, &servers, &proved_rkss, &proved_data_rekeys);
-        for s in &servers {
-            let decryption_key_part_proof = &s.session.as_ref().unwrap().decryption_key_part_proof;
-            let decryption_key_part = &s.session.as_ref().unwrap().decryption_key_part;
-            let w_public = &s.session.as_ref().unwrap().w_public;
-            assert!(verify_proof(&s.key_blinding_inv_group_element, &w_public,  &decryption_key_part_proof));
-        }
-        let return_decryption_key_a = servers.iter().fold(blinded_global_secret_key, |acc, s| acc * s.session.as_ref().unwrap().decryption_key_part);
-        let return_pp_a = verify_rerandomize(&return_pp_received, &pp_a_rerandomized).unwrap();
-        let return_lp_a = decrypt(&return_pp_a, &return_decryption_key_a);
-        let return_plaintext_a = decrypt(&return_ciphertext_a, &return_decryption_key_a);
-
-
-        // TESTING FRAMEWORK
-        let expected_lp_return = decrypt(&servers.iter().fold(return_pp_b, |acc, s| rks(&acc, &(s.session.as_ref().unwrap().w), &((s.session.as_ref().unwrap().v_from).invert()*s.session.as_ref().unwrap().v_to))), &return_decryption_key_a);
-        assert_eq!(expected_lp_return, return_lp_a);
-        assert_eq!(lp_a, return_lp_a);
-        assert_eq!(plaintext_b, return_plaintext_a);
     }
 }
