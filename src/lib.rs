@@ -1047,10 +1047,7 @@ pub mod distributed {
         }
     }
     impl PEPSystem {
-        pub fn new<R: RngCore + CryptoRng>(system_id: SystemId, config: PEPNetworkConfig, blinding_factor: ScalarNonZero, rng: &mut R) -> Self {
-            let pseudonymisation_secret = encode_hex(&ScalarNonZero::random(rng).encode());
-            let rekeying_secret = encode_hex(&ScalarNonZero::random(rng).encode());
-
+        pub fn new(system_id: SystemId, config: PEPNetworkConfig, pseudonymisation_secret: String, rekeying_secret: String, blinding_factor: ScalarNonZero) -> Self {
             Self {
                 system_id,
                 config,
@@ -1062,11 +1059,11 @@ pub mod distributed {
                 trusted_rekeying_factors: TrustedGroupElementCache::new(),
             }
         }
-        fn verify_system_pseudonymize(&mut self, system_id: &SystemId, msg_in: &Message, proved_rks: &ProvedRKSFromTo, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Result<Message, &'static str> {
-            let trusted_from = self.trusted_pseudonymisation_factors.retrieve(system_id, from_pc);
-            let trusted_from_inv = self.trusted_inv_pseudonymisation_factors.retrieve(system_id, from_pc);
-            let trusted_to = self.trusted_pseudonymisation_factors.retrieve(system_id, to_pc);
-            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
+        fn verify_system_pseudonymize(&mut self, system_id: &SystemId, msg_in: &Message, proved_rks: &ProvedRKSFromTo, pc_from: &Context, pc_to: &Context, dc: &Context) -> Result<Message, &'static str> {
+            let trusted_from = self.trusted_pseudonymisation_factors.retrieve(system_id, pc_from);
+            let trusted_from_inv = self.trusted_inv_pseudonymisation_factors.retrieve(system_id, pc_from);
+            let trusted_to = self.trusted_pseudonymisation_factors.retrieve(system_id, pc_to);
+            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, dc);
 
             let msg_out = verify_rks_from_to(msg_in, proved_rks);
 
@@ -1089,14 +1086,14 @@ pub mod distributed {
                 return Err("inverse factors used")
             }
 
-            self.trusted_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from());
-            self.trusted_inv_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from_inv());
-            self.trusted_pseudonymisation_factors.store(system_id.clone(), to_pc.clone(), proved_rks.reshuffled_by_to());
-            self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rks.rekeyed_by());
+            self.trusted_pseudonymisation_factors.store(system_id.clone(), pc_from.clone(), proved_rks.reshuffled_by_from());
+            self.trusted_inv_pseudonymisation_factors.store(system_id.clone(), pc_from.clone(), proved_rks.reshuffled_by_from_inv());
+            self.trusted_pseudonymisation_factors.store(system_id.clone(), pc_to.clone(), proved_rks.reshuffled_by_to());
+            self.trusted_rekeying_factors.store(system_id.clone(), dc.clone(), proved_rks.rekeyed_by());
 
             Ok(msg_out.unwrap())
         }
-        pub fn verify_pseudonymize(&mut self, messages: &Vec<(SystemId,Message,ProvedRKSFromTo)>, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Result<Message, &'static str> {
+        pub fn verify_pseudonymize(&mut self, messages: &Vec<(SystemId,Message,ProvedRKSFromTo)>, pc_from: &Context, pc_to: &Context, dc: &Context) -> Result<Message, &'static str> {
             let mut msg_out = None;
             let mut visited_systems = Vec::new();
             for (system_id, msg_in, proved_rks) in messages {
@@ -1109,7 +1106,7 @@ pub mod distributed {
                 if msg_out.is_some() && msg_out.unwrap() != *msg_in{
                     return Err("inconsistent messages");
                 }
-                let verification = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, from_pc, to_pc, to_dc);
+                let verification = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, pc_from, pc_to, dc);
                 if verification.is_err() {
                     return verification
                 }
@@ -1118,8 +1115,8 @@ pub mod distributed {
             }
             Ok(msg_out.unwrap())
         }
-        fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, to_dc: &Context) -> Result<Message, &'static str> {
-            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
+        fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, dc: &Context) -> Result<Message, &'static str> {
+            let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, dc);
             let msg_out = verify_rekey(msg_in, proved_rekey);
             if msg_out.is_none() {
                 return Err("invalid proof")
@@ -1133,11 +1130,11 @@ pub mod distributed {
                 return Err("forbidden factors used")
             }
 
-            self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rekey.rekeyed_by());
+            self.trusted_rekeying_factors.store(system_id.clone(), dc.clone(), proved_rekey.rekeyed_by());
 
             Ok(msg_out.unwrap())
         }
-        pub fn verify_transcrypt(&mut self, messages: &Vec<(SystemId,Message,ProvedRekey)>, to_dc: &Context) -> Result<Message, &'static str> {
+        pub fn verify_transcrypt(&mut self, messages: &Vec<(SystemId,Message,ProvedRekey)>, dc: &Context) -> Result<Message, &'static str> {
             let mut msg_out = None;
             let mut visited_systems = Vec::new();
             for (system_id, msg_in, proved_rekey) in messages {
@@ -1150,7 +1147,7 @@ pub mod distributed {
                 if msg_out.is_some() && msg_out.unwrap() != *msg_in{
                     return Err("inconsistent messages");
                 }
-                let verification = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, to_dc);
+                let verification = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, dc);
                 if verification.is_err() {
                     return verification
                 }
@@ -1159,18 +1156,18 @@ pub mod distributed {
             }
             Ok(msg_out.unwrap())
         }
-        pub fn pseudonymize<R: RngCore + CryptoRng>(&mut self, message: &Message, from_pc: &Context, to_pc: &Context, to_dc: &Context, rng: &mut R) -> ProvedRKSFromTo {
-            let n_from = make_pseudonymisation_factor(&self.pseudonymisation_secret, from_pc);
-            let n_to = make_pseudonymisation_factor(&self.pseudonymisation_secret, to_pc);
-            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+        pub fn pseudonymize<R: RngCore + CryptoRng>(&mut self, message: &Message, pc_from: &Context, pc_to: &Context, dc: &Context, rng: &mut R) -> ProvedRKSFromTo {
+            let n_from = make_pseudonymisation_factor(&self.pseudonymisation_secret, pc_from);
+            let n_to = make_pseudonymisation_factor(&self.pseudonymisation_secret, pc_to);
+            let k = make_decryption_factor(&self.rekeying_secret, dc);
             prove_rks_from_to(message, &k, &n_from, &n_to, rng)
         }
-        pub fn transcrypt<R: RngCore + CryptoRng>(&mut self, message: &Message, to_dc: &Context, rng: &mut R) -> ProvedRekey {
-            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+        pub fn transcrypt<R: RngCore + CryptoRng>(&mut self, message: &Message, dc: &Context, rng: &mut R) -> ProvedRekey {
+            let k = make_decryption_factor(&self.rekeying_secret, dc);
             prove_rekey(message, &k, rng)
         }
-        pub fn decryption_key_part(&self, to_dc: &Context) -> DecryptionKeyPart {
-            let k = make_decryption_factor(&self.rekeying_secret, to_dc);
+        pub fn decryption_key_part(&self, dc: &Context) -> DecryptionKeyPart {
+            let k = make_decryption_factor(&self.rekeying_secret, dc);
             k * &self.blinding_factor.invert()
         }
     }
@@ -1534,49 +1531,55 @@ mod libpep {
         }
         let blinded_global_secret_key = blinding_factors.iter().fold(global_secret_key, |acc, s| acc * s);
 
+        let mut pseudonymisation_secrets = Vec::new();
+        let mut rekeying_secrets = Vec::new();
         let mut systems = Vec::new();
         for i in 0..n {
             let system_id: SystemId = format!("system-{}", i);
-            let system = PEPSystem::new(system_id, PEPNetworkConfig::new(global_public_key, blinded_global_secret_key, (0..n).map(|i| format!("system-{}", i)).collect()), blinding_factors[i], &mut rng);
+            let pseudonymisation_secret = encode_hex(&ScalarNonZero::random(&mut rng).encode());
+            pseudonymisation_secrets.push(pseudonymisation_secret.clone());
+            let rekeying_secret = encode_hex(&ScalarNonZero::random(&mut rng).encode());
+            rekeying_secrets.push(rekeying_secret.clone());
+            let system = PEPSystem::new(system_id, PEPNetworkConfig::new(global_public_key, blinded_global_secret_key, (0..n).map(|i| format!("system-{}", i)).collect()), pseudonymisation_secret, rekeying_secret, blinding_factors[i]);
             systems.push(system);
         }
 
-        fn pseudonymize_through_network(data_in: &GroupElement, from_pc: &Context, to_pc: &Context, to_dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
+        fn pseudonymize_through_network(data_in: &GroupElement, pc_from: &Context, pc_to: &Context, dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
             let mut network = Vec::new();
 
             let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
 
-            let proven = systems[0].pseudonymize(&msg_in, from_pc, to_pc, to_dc, rng);
+            let proven = systems[0].pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
             network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
 
             for i in 1..systems.len() {
                 let system = &mut systems[i];
-                let msg_in = system.verify_pseudonymize(&network, &from_pc, &to_pc, &to_dc).unwrap();
-                let proven = system.pseudonymize(&msg_in, from_pc, to_pc, to_dc, rng);
+                let msg_in = system.verify_pseudonymize(&network, &pc_from, &pc_to, &dc).unwrap();
+                let proven = system.pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
-            let msg_out = systems[0].verify_pseudonymize(&network, from_pc, to_pc, to_dc).unwrap(); // can be done by client
-            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
+            let msg_out = systems[0].verify_pseudonymize(&network, pc_from, pc_to, dc).unwrap(); // can be done by client
+            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(dc));
             let data_out = decrypt(&msg_out, &decryption_key);
             data_out
         }
 
-        fn transcrypt_through_network(data_in: &GroupElement, to_dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
+        fn transcrypt_through_network(data_in: &GroupElement, dc: &Context, systems: &mut Vec<PEPSystem>, rng: &mut OsRng) -> GroupElement {
             let mut network = Vec::new();
 
             let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
 
-            let proven = systems[0].transcrypt(&msg_in, to_dc, rng);
+            let proven = systems[0].transcrypt(&msg_in, dc, rng);
             network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
 
             for i in 1..systems.len() {
                 let system = &mut systems[i];
-                let msg_in = system.verify_transcrypt(&network, &to_dc).unwrap();
-                let proven = system.transcrypt(&msg_in, to_dc, rng);
+                let msg_in = system.verify_transcrypt(&network, &dc).unwrap();
+                let proven = system.transcrypt(&msg_in, dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
-            let msg_out = systems[0].verify_transcrypt(&network, to_dc).unwrap(); // can be done by client
-            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
+            let msg_out = systems[0].verify_transcrypt(&network, dc).unwrap(); // can be done by client
+            let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(dc));
             let data_out = decrypt(&msg_out, &decryption_key);
             data_out
         }
@@ -1591,7 +1594,8 @@ mod libpep {
 
         let lp_a = GroupElement::random(&mut rng);
         let lp_b = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b1, &mut systems, &mut rng);
-        assert_ne!(lp_a, lp_b);
+        let expected = decrypt(&(0..n).fold(encrypt(&lp_a, &global_public_key, &mut rng), |acc, i| rks(&acc, &make_decryption_factor(&rekeying_secrets[i], &dc_b1), &(make_pseudonymisation_factor(&pseudonymisation_secrets[i], &pc_a).invert() * make_pseudonymisation_factor(&pseudonymisation_secrets[i], &pc_b)))), &(0..n).fold(blinded_global_secret_key, |acc, i| acc * make_decryption_factor(&rekeying_secrets[i], &dc_b1) * &blinding_factors[i].invert()));
+        assert_eq!(expected, lp_b);
 
         // Pseudonymization is invertible
         let lp_a_return = pseudonymize_through_network(&lp_b, &pc_b, &pc_a, &dc_a1, &mut systems, &mut rng);
@@ -1610,5 +1614,10 @@ mod libpep {
         let plaintext_a = GroupElement::random(&mut rng);
         let plaintext_b = transcrypt_through_network(&plaintext_a, &dc_b1, &mut systems, &mut rng);
         assert_eq!(plaintext_a, plaintext_b);
+
+        // Network is commutative
+        systems.reverse();
+        let lp_b_reversed = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b1, &mut systems, &mut rng);
+        assert_eq!(lp_b, lp_b_reversed);
     }
 }
