@@ -1018,6 +1018,9 @@ pub mod distributed {
         fn retrieve(&self, system_id: &SystemId, context: &Context) -> Option<&GroupElement> {
             self.cache.get(&(system_id.to_string(), context.to_string()))
         }
+        fn contains(&self, element: &GroupElement) -> bool {
+            self.cache.values().any(|x| x == element)
+        }
     }
     pub struct PEPSystem {
         pub system_id: String,
@@ -1059,7 +1062,7 @@ pub mod distributed {
                 trusted_rekeying_factors: TrustedGroupElementCache::new(),
             }
         }
-        fn verify_system_pseudonymize(&mut self, system_id: &SystemId, msg_in: &Message, proved_rks: &ProvedRKSFromTo, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Option<Message> {
+        fn verify_system_pseudonymize(&mut self, system_id: &SystemId, msg_in: &Message, proved_rks: &ProvedRKSFromTo, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Result<Message, &'static str> {
             let trusted_from = self.trusted_pseudonymisation_factors.retrieve(system_id, from_pc);
             let trusted_from_inv = self.trusted_inv_pseudonymisation_factors.retrieve(system_id, from_pc);
             let trusted_to = self.trusted_pseudonymisation_factors.retrieve(system_id, to_pc);
@@ -1068,28 +1071,22 @@ pub mod distributed {
             let msg_out = verify_rks_from_to(msg_in, proved_rks);
 
             if msg_out.is_none() {
-                return None
+                return Err("invalid proof")
             }
 
-            if trusted_from.is_some() {
-                if proved_rks.reshuffled_by_from() != *trusted_from.unwrap() {
-                    return None
-                }
+            if trusted_from.is_some() && proved_rks.reshuffled_by_from() != *trusted_from.unwrap()
+                || trusted_from_inv.is_some() && proved_rks.reshuffled_by_from_inv() != *trusted_from_inv.unwrap()
+                || trusted_to.is_some() &&  proved_rks.reshuffled_by_to() != *trusted_to.unwrap()
+                || trusted_k.is_some() && proved_rks.rekeyed_by() != *trusted_k.unwrap() {
+                return Err("inconsistent factors used")
             }
-            if trusted_from_inv.is_some() {
-                if proved_rks.reshuffled_by_from_inv() != *trusted_from_inv.unwrap() {
-                    return None
-                }
+
+            if proved_rks.reshuffled_by_from() == GroupElement::identity() || proved_rks.reshuffled_by_from_inv() == GroupElement::identity() || proved_rks.reshuffled_by_to() == GroupElement::identity() || proved_rks.rekeyed_by() == GroupElement::identity(){
+                return Err("forbidden factors used")
             }
-            if trusted_to.is_some() {
-                if proved_rks.reshuffled_by_to() != *trusted_to.unwrap() {
-                    return None
-                }
-            }
-            if trusted_k.is_some() {
-                if proved_rks.rekeyed_by() != *trusted_k.unwrap() {
-                    return None
-                }
+
+            if self.trusted_inv_pseudonymisation_factors.contains(&proved_rks.reshuffled_by_from()) || self.trusted_inv_pseudonymisation_factors.contains(&proved_rks.reshuffled_by_to()) {
+                return Err("inverse factors used")
             }
 
             self.trusted_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from());
@@ -1097,60 +1094,70 @@ pub mod distributed {
             self.trusted_pseudonymisation_factors.store(system_id.clone(), to_pc.clone(), proved_rks.reshuffled_by_to());
             self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rks.rekeyed_by());
 
-            msg_out
+            Ok(msg_out.unwrap())
         }
-        pub fn verify_pseudonymize(&mut self, messages: &Vec<(SystemId,Message,ProvedRKSFromTo)>, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Option<Message> {
+        pub fn verify_pseudonymize(&mut self, messages: &Vec<(SystemId,Message,ProvedRKSFromTo)>, from_pc: &Context, to_pc: &Context, to_dc: &Context) -> Result<Message, &'static str> {
             let mut msg_out = None;
             let mut visited_systems = Vec::new();
             for (system_id, msg_in, proved_rks) in messages {
-                if !self.config.system_ids.contains(&String::from(system_id)) || visited_systems.contains(&system_id) {
-                    // Make sure we only visit each system once, and that the system is part of the network
-                    return None
+                if !self.config.system_ids.contains(&String::from(system_id)) {
+                    return Err("invalid system id");
                 }
-                if msg_out.is_some() {
-                    if msg_out.unwrap() != *msg_in {
-                        return None
-                    }
+                if visited_systems.contains(&system_id) {
+                    return Err("system visited twice");
                 }
-                msg_out = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, from_pc, to_pc, to_dc);
+                if msg_out.is_some() && msg_out.unwrap() != *msg_in{
+                    return Err("inconsistent messages");
+                }
+                let verification = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, from_pc, to_pc, to_dc);
+                if verification.is_err() {
+                    return verification
+                }
+                msg_out = Some(verification.unwrap());
                 visited_systems.push(system_id);
             }
-            msg_out
+            Ok(msg_out.unwrap())
         }
-        fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, to_dc: &Context) -> Option<Message> {
+        fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, to_dc: &Context) -> Result<Message, &'static str> {
             let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
             let msg_out = verify_rekey(msg_in, proved_rekey);
             if msg_out.is_none() {
-                return None
+                return Err("invalid proof")
             }
 
-            if trusted_k.is_some() {
-                if proved_rekey.rekeyed_by() != *trusted_k.unwrap() {
-                    return None
-                }
+            if trusted_k.is_some() && proved_rekey.rekeyed_by() != *trusted_k.unwrap() {
+                return Err("inconsistent factors used")
+            }
+
+            if proved_rekey.rekeyed_by() == GroupElement::identity() {
+                return Err("forbidden factors used")
             }
 
             self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rekey.rekeyed_by());
 
-            msg_out
+            Ok(msg_out.unwrap())
         }
-        pub fn verify_transcrypt(&mut self, messages: &Vec<(SystemId,Message,ProvedRekey)>, to_dc: &Context) -> Option<Message> {
+        pub fn verify_transcrypt(&mut self, messages: &Vec<(SystemId,Message,ProvedRekey)>, to_dc: &Context) -> Result<Message, &'static str> {
             let mut msg_out = None;
             let mut visited_systems = Vec::new();
             for (system_id, msg_in, proved_rekey) in messages {
-                if !self.config.system_ids.contains(&String::from(system_id)) || visited_systems.contains(&system_id) {
-                    // Make sure we only visit each system once, and that the system is part of the network
-                    return None
+                if !self.config.system_ids.contains(&String::from(system_id)) {
+                    return Err("invalid system id");
                 }
-                if msg_out.is_some() {
-                    if msg_out.unwrap() != *msg_in {
-                        return None
-                    }
+                if visited_systems.contains(&system_id) {
+                    return Err("system visited twice");
                 }
-                msg_out = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, to_dc);
+                if msg_out.is_some() && msg_out.unwrap() != *msg_in{
+                    return Err("inconsistent messages");
+                }
+                let verification = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, to_dc);
+                if verification.is_err() {
+                    return verification
+                }
+                msg_out = Some(verification.unwrap());
                 visited_systems.push(system_id);
             }
-            msg_out
+            Ok(msg_out.unwrap())
         }
         pub fn pseudonymize<R: RngCore + CryptoRng>(&mut self, message: &Message, from_pc: &Context, to_pc: &Context, to_dc: &Context, rng: &mut R) -> ProvedRKSFromTo {
             let n_from = make_pseudonymisation_factor(&self.pseudonymisation_secret, from_pc);
@@ -1162,7 +1169,6 @@ pub mod distributed {
             let k = make_decryption_factor(&self.rekeying_secret, to_dc);
             prove_rekey(message, &k, rng)
         }
-
         pub fn decryption_key_part(&self, to_dc: &Context) -> DecryptionKeyPart {
             let k = make_decryption_factor(&self.rekeying_secret, to_dc);
             k * &self.blinding_factor.invert()
@@ -1549,7 +1555,7 @@ mod libpep {
                 let proven = system.pseudonymize(&msg_in, from_pc, to_pc, to_dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
-            let msg_out = systems[0].verify_pseudonymize(&network, from_pc, to_pc, to_dc).unwrap();
+            let msg_out = systems[0].verify_pseudonymize(&network, from_pc, to_pc, to_dc).unwrap(); // can be done by client
             let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
             let data_out = decrypt(&msg_out, &decryption_key);
             data_out
@@ -1569,7 +1575,7 @@ mod libpep {
                 let proven = system.transcrypt(&msg_in, to_dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
-            let msg_out = systems[0].verify_transcrypt(&network, to_dc).unwrap();
+            let msg_out = systems[0].verify_transcrypt(&network, to_dc).unwrap(); // can be done by client
             let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(to_dc));
             let data_out = decrypt(&msg_out, &decryption_key);
             data_out
