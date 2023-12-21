@@ -995,11 +995,16 @@ pub mod distributed {
     use crate::simple::*;
     use crate::libpep::encode_hex;
 
+    pub type GlobalPublicKey = GroupElement;
+    pub type GlobalSecretKey = ScalarNonZero;
+    pub type BlindedGlobalSecretKey = ScalarNonZero;
+    pub type DecryptionKeyPart = ScalarNonZero;
+
     pub type Message = ElGamal;
     pub type Context = String;
     pub type SystemId = String;
     pub struct TrustedGroupElementCache {
-        cache: HashMap<(SystemId, Context), GroupElement>,
+        pub cache: HashMap<(SystemId, Context), GroupElement>,
     }
     impl TrustedGroupElementCache {
         fn new() -> Self {
@@ -1007,11 +1012,11 @@ pub mod distributed {
                 cache: HashMap::new(),
             }
         }
-        fn store(&mut self, key1: String, key2: String, element: GroupElement) {
-            self.cache.insert((key1, key2), element);
+        fn store(&mut self, system_id: SystemId, context: Context, element: GroupElement) {
+            self.cache.insert((system_id, context), element);
         }
-        fn retrieve(&self, key1: &str, key2: &str) -> Option<&GroupElement> {
-            self.cache.get(&(key1.to_string(), key2.to_string()))
+        fn retrieve(&self, system_id: &SystemId, context: &Context) -> Option<&GroupElement> {
+            self.cache.get(&(system_id.to_string(), context.to_string()))
         }
     }
     pub struct PEPSystem {
@@ -1020,17 +1025,17 @@ pub mod distributed {
         pseudonymisation_secret: String,
         rekeying_secret: String,
         blinding_factor: ScalarNonZero,
-        trusted_pseudonymisation_factors: TrustedGroupElementCache,
-        trusted_inv_pseudonymisation_factors: TrustedGroupElementCache,
-        trusted_rekeying_factors: TrustedGroupElementCache,
+        pub trusted_pseudonymisation_factors: TrustedGroupElementCache,
+        pub trusted_inv_pseudonymisation_factors: TrustedGroupElementCache,
+        pub trusted_rekeying_factors: TrustedGroupElementCache,
     }
     pub struct PEPNetworkConfig {
-        pub global_public_key: GroupElement,
+        pub global_public_key: GlobalPublicKey,
         pub blinded_global_private_key: ScalarNonZero,
         pub system_ids: Vec<String>,
     }
     impl PEPNetworkConfig {
-        pub fn new(global_public_key: GroupElement, blinded_global_private_key: ScalarNonZero, system_ids: Vec<String>) -> Self {
+        pub fn new(global_public_key: GlobalPublicKey, blinded_global_private_key: BlindedGlobalSecretKey, system_ids: Vec<SystemId>) -> Self {
             Self {
                 global_public_key,
                 blinded_global_private_key,
@@ -1061,19 +1066,30 @@ pub mod distributed {
             let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
 
             let msg_out = verify_rks_from_to(msg_in, proved_rks);
-            assert!(msg_out.is_some());
+
+            if msg_out.is_none() {
+                return None
+            }
 
             if trusted_from.is_some() {
-                assert_eq!(proved_rks.reshuffled_by_from(), *trusted_from.unwrap());
+                if proved_rks.reshuffled_by_from() != *trusted_from.unwrap() {
+                    return None
+                }
             }
             if trusted_from_inv.is_some() {
-                assert_eq!(proved_rks.reshuffled_by_from_inv(), *trusted_from_inv.unwrap());
+                if proved_rks.reshuffled_by_from_inv() != *trusted_from_inv.unwrap() {
+                    return None
+                }
             }
             if trusted_to.is_some() {
-                assert_eq!(proved_rks.reshuffled_by_to(), *trusted_to.unwrap());
+                if proved_rks.reshuffled_by_to() != *trusted_to.unwrap() {
+                    return None
+                }
             }
             if trusted_k.is_some() {
-                assert_eq!(proved_rks.rekeyed_by(), *trusted_k.unwrap());
+                if proved_rks.rekeyed_by() != *trusted_k.unwrap() {
+                    return None
+                }
             }
 
             self.trusted_pseudonymisation_factors.store(system_id.clone(), from_pc.clone(), proved_rks.reshuffled_by_from());
@@ -1092,7 +1108,9 @@ pub mod distributed {
                     return None
                 }
                 if msg_out.is_some() {
-                    assert_eq!(msg_out.unwrap(), *msg_in);
+                    if msg_out.unwrap() != *msg_in {
+                        return None
+                    }
                 }
                 msg_out = self.verify_system_pseudonymize(&system_id, &msg_in, &proved_rks, from_pc, to_pc, to_dc);
                 visited_systems.push(system_id);
@@ -1102,10 +1120,14 @@ pub mod distributed {
         fn verify_system_transcrypt(&mut self, system_id: &SystemId, msg_in: &Message, proved_rekey: &ProvedRekey, to_dc: &Context) -> Option<Message> {
             let trusted_k = self.trusted_rekeying_factors.retrieve(system_id, to_dc);
             let msg_out = verify_rekey(msg_in, proved_rekey);
-            assert!(msg_out.is_some());
+            if msg_out.is_none() {
+                return None
+            }
 
             if trusted_k.is_some() {
-                assert_eq!(proved_rekey.rekeyed_by(), *trusted_k.unwrap());
+                if proved_rekey.rekeyed_by() != *trusted_k.unwrap() {
+                    return None
+                }
             }
 
             self.trusted_rekeying_factors.store(system_id.clone(), to_dc.clone(), proved_rekey.rekeyed_by());
@@ -1121,7 +1143,9 @@ pub mod distributed {
                     return None
                 }
                 if msg_out.is_some() {
-                    assert_eq!(msg_out.unwrap(), *msg_in);
+                    if msg_out.unwrap() != *msg_in {
+                        return None
+                    }
                 }
                 msg_out = self.verify_system_transcrypt(&system_id, &msg_in, &proved_rekey, to_dc);
                 visited_systems.push(system_id);
@@ -1139,7 +1163,7 @@ pub mod distributed {
             prove_rekey(message, &k, rng)
         }
 
-        pub fn decryption_key_part(&self, to_dc: &Context) -> ScalarNonZero {
+        pub fn decryption_key_part(&self, to_dc: &Context) -> DecryptionKeyPart {
             let k = make_decryption_factor(&self.rekeying_secret, to_dc);
             k * &self.blinding_factor.invert()
         }
@@ -1552,18 +1576,33 @@ mod libpep {
         }
 
         let pc_a: Context = Context::from("pc-user-a");
-        let dc_a: Context = Context::from("dc-user-a");
+        let dc_a1: Context = Context::from("dc-user-a1");
         let pc_b: Context = Context::from("pc-user-b");
-        let dc_b: Context = Context::from("dc-user-b");
+        let dc_b1: Context = Context::from("dc-user-b1");
+        let dc_b2: Context = Context::from("dc-user-b2");
+        let pc_c: Context = Context::from("pc-user-c");
+        let dc_c1: Context = Context::from("dc-user-c1");
 
         let lp_a = GroupElement::random(&mut rng);
-        let lp_b = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b, &mut systems, &mut rng);
-        let lp_a_return = pseudonymize_through_network(&lp_b, &pc_b, &pc_a, &dc_a, &mut systems, &mut rng);
+        let lp_b = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b1, &mut systems, &mut rng);
         assert_ne!(lp_a, lp_b);
+
+        // Pseudonymization is invertible
+        let lp_a_return = pseudonymize_through_network(&lp_b, &pc_b, &pc_a, &dc_a1, &mut systems, &mut rng);
         assert_eq!(lp_a, lp_a_return);
 
+        // Pseudonymization is transitive
+        let lp_c = pseudonymize_through_network(&lp_a, &pc_a, &pc_c, &dc_c1, &mut systems, &mut rng);
+        let lp_c_via_b = pseudonymize_through_network(&lp_b, &pc_b, &pc_c, &dc_c1, &mut systems, &mut rng);
+        assert_eq!(lp_c, lp_c_via_b);
+
+        // Pseudonymization is deterministic for user
+        let lp_b_2 = pseudonymize_through_network(&lp_a, &pc_a, &pc_b, &dc_b2, &mut systems, &mut rng);
+        assert_eq!(lp_b, lp_b_2);
+        assert_ne!(lp_b, lp_c);
+
         let plaintext_a = GroupElement::random(&mut rng);
-        let plaintext_b = transcrypt_through_network(&plaintext_a, &dc_b, &mut systems, &mut rng);
+        let plaintext_b = transcrypt_through_network(&plaintext_a, &dc_b1, &mut systems, &mut rng);
         assert_eq!(plaintext_a, plaintext_b);
     }
 }
