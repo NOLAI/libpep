@@ -41,6 +41,7 @@ extern crate sha2;
 use rand::CryptoRng;
 use rand::RngCore;
 use sha2::{Sha512, Digest};
+use crate::zkp::{create_proof, create_proof_inv, Proof, ProofInv, verify_proof, verify_proof_inv};
 
 /// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
@@ -514,343 +515,345 @@ pub fn rks(v: &ElGamal, k: &ScalarNonZero, n: &ScalarNonZero) -> ElGamal {
 
 /// Zero-knowledge proofs useful for example if PEP is distributed across multiple hosts.
 pub mod zkp {
-use crate::*;
+    use crate::*;
 
-// Offline Schnorr proof using Fiat-Shamir transform.
+    // Offline Schnorr proof using Fiat-Shamir transform.
 // Proof that given a GroupElement `m` and a scalar `a`,
 // member `n` is equal to `a*m`. This can be verified using
 // this struct, the original `m` and `a*G`, so that the original
 // scalar `a` remains secret.
-pub struct Proof {
-  pub n: GroupElement,
-  pub c1: GroupElement,
-  pub c2: GroupElement,
-  pub s: ScalarCanBeZero,
-}
-
-impl std::ops::Deref for Proof {
-    type Target = GroupElement;
-
-    fn deref(&self) -> &Self::Target {
-        &self.n
+    pub struct Proof {
+        pub n: GroupElement,
+        pub c1: GroupElement,
+        pub c2: GroupElement,
+        pub s: ScalarCanBeZero,
     }
-}
 
-// returns <A=a*G, Proof with a value N = a*M>
-pub fn create_proof<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, gm: &GroupElement /*public*/, rng: &mut R) -> (GroupElement,Proof) {
-    let r = ScalarNonZero::random(rng);
+    impl std::ops::Deref for Proof {
+        type Target = GroupElement;
 
-    let ga = a*G;
-    let gn = a*gm;
-    let gc1 = r*G;
-    let gc2 = r*gm;
-
-    let mut hasher = Sha512::default();
-    hasher.update(ga.encode());
-    hasher.update(gm.encode());
-    hasher.update(gn.0.compress().as_bytes());
-    hasher.update(gc1.0.compress().as_bytes());
-    hasher.update(gc2.0.compress().as_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
-    let s = ScalarCanBeZero::from(a*e) + ScalarCanBeZero::from(r);
-    (ga, Proof {n: gn, c1: gc1, c2: gc2, s})
-}
-
-#[must_use]
-pub fn verify_proof_split(ga: &GroupElement, gm: &GroupElement, gn: &GroupElement, gc1: &GroupElement, gc2: &GroupElement, s: &ScalarCanBeZero) -> bool {
-    let mut hasher = Sha512::default();
-    hasher.update(ga.0.compress().as_bytes());
-    hasher.update(gm.0.compress().as_bytes());
-    hasher.update(gn.0.compress().as_bytes());
-    hasher.update(gc1.0.compress().as_bytes());
-    hasher.update(gc2.0.compress().as_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
-    // FIXME: speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
-    // FIXME: check if a faster non-constant time equality can be used
-    s*G == e*ga + gc1 && s*gm == e*gn + gc2
-    // (a*e + r)*G = e*a*G + r*G
-    // (a*e + r)*gm == e*a*gm + r*gm
-}
-
-#[must_use]
-pub fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
-    verify_proof_split(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
-}
-
-
-pub struct ProofInv {
-    pub ga_inv: GroupElement,
-    pub gc: GroupElement,
-    pub s: ScalarCanBeZero,
-}
-
-impl std::ops::Deref for ProofInv {
-    type Target = GroupElement;
-
-    fn deref(&self) -> &Self::Target {
-        &self.ga_inv
+        fn deref(&self) -> &Self::Target {
+            &self.n
+        }
     }
-}
 
-// returns <A=a*G, Proof with a value N = a^-1*M>
-pub fn create_proof_inv<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, rng: &mut R) -> (GroupElement, ProofInv) {
-    let r = ScalarNonZero::random(rng);
+    // returns <A=a*G, Proof with a value N = a*M>
+    pub fn create_proof<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, gm: &GroupElement /*public*/, rng: &mut R) -> (GroupElement, Proof) {
+        let r = ScalarNonZero::random(rng);
 
-    let ga = a * G;
-    let ga_inv = a.invert() * G;
-    let gc = r*G;
+        let ga = a * G;
+        let gn = a * gm;
+        let gc1 = r * G;
+        let gc2 = r * gm;
 
-    let mut hasher = Sha512::default();
-    hasher.update(ga.0.compress().as_bytes());
-    hasher.update(ga_inv.0.compress().as_bytes());
-    hasher.update(gc.0.compress().as_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
-    let s = ScalarCanBeZero::from(a.invert() * e) + ScalarCanBeZero::from(r);
-    (ga, ProofInv {ga_inv, gc, s})
-}
+        let mut hasher = Sha512::default();
+        hasher.update(ga.encode());
+        hasher.update(gm.encode());
+        hasher.update(gn.0.compress().as_bytes());
+        hasher.update(gc1.0.compress().as_bytes());
+        hasher.update(gc2.0.compress().as_bytes());
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(hasher.finalize().as_slice());
+        let e = ScalarNonZero::from_hash(&bytes);
+        let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
+        (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
+    }
 
-#[must_use]
-pub fn verify_proof_split_inv(ga: &GroupElement, ga_inv: &GroupElement, gc: &GroupElement, s: &ScalarCanBeZero) -> bool {
-    let mut hasher = Sha512::default();
-    hasher.update(ga.0.compress().as_bytes());
-    hasher.update(ga_inv.0.compress().as_bytes());
-    hasher.update(gc.0.compress().as_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
+    #[must_use]
+    pub fn verify_proof_split(ga: &GroupElement, gm: &GroupElement, gn: &GroupElement, gc1: &GroupElement, gc2: &GroupElement, s: &ScalarCanBeZero) -> bool {
+        let mut hasher = Sha512::default();
+        hasher.update(ga.0.compress().as_bytes());
+        hasher.update(gm.0.compress().as_bytes());
+        hasher.update(gn.0.compress().as_bytes());
+        hasher.update(gc1.0.compress().as_bytes());
+        hasher.update(gc2.0.compress().as_bytes());
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(hasher.finalize().as_slice());
+        let e = ScalarNonZero::from_hash(&bytes);
+        // FIXME: speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
+        // FIXME: check if a faster non-constant time equality can be used
+        s * G == e * ga + gc1 && s * gm == e * gn + gc2
+        // (a*e + r)*G = e*a*G + r*G
+        // (a*e + r)*gm == e*a*gm + r*gm
+    }
 
-    debug_assert_eq!(s*G, e * ga_inv + gc);
-    s*G == e * ga_inv + gc
-}
+    #[must_use]
+    pub fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
+        verify_proof_split(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
+    }
 
-#[must_use]
-pub fn verify_proof_inv(ga: &GroupElement, p: &ProofInv) -> bool {
-    verify_proof_split_inv(ga, &p.ga_inv, &p.gc, &p.s)
-}
+
+    pub struct ProofInv {
+        pub ga_inv: GroupElement,
+        pub gc: GroupElement,
+        pub s: ScalarCanBeZero,
+    }
+
+    impl std::ops::Deref for ProofInv {
+        type Target = GroupElement;
+
+        fn deref(&self) -> &Self::Target {
+            &self.ga_inv
+        }
+    }
+
+    // returns <A=a*G, Proof with a value N = a^-1*G>
+    pub fn create_proof_inv<R: RngCore + CryptoRng>(a: &ScalarNonZero /*secret*/, rng: &mut R) -> (GroupElement, ProofInv) {
+        let r = ScalarNonZero::random(rng);
+
+        let ga = a * G;
+        let ga_inv = a.invert() * G;
+        let gc = r * G;
+
+        let mut hasher = Sha512::default();
+        hasher.update(ga.0.compress().as_bytes());
+        hasher.update(ga_inv.0.compress().as_bytes());
+        hasher.update(gc.0.compress().as_bytes());
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(hasher.finalize().as_slice());
+        let e = ScalarNonZero::from_hash(&bytes);
+        let s = ScalarCanBeZero::from(a.invert() * e) + ScalarCanBeZero::from(r);
+        (ga, ProofInv { ga_inv, gc, s })
+    }
+
+    #[must_use]
+    pub fn verify_proof_split_inv(ga: &GroupElement, ga_inv: &GroupElement, gc: &GroupElement, s: &ScalarCanBeZero) -> bool {
+        let mut hasher = Sha512::default();
+        hasher.update(ga.0.compress().as_bytes());
+        hasher.update(ga_inv.0.compress().as_bytes());
+        hasher.update(gc.0.compress().as_bytes());
+        let mut bytes = [0u8; 64];
+        bytes.copy_from_slice(hasher.finalize().as_slice());
+        let e = ScalarNonZero::from_hash(&bytes);
+
+        debug_assert_eq!(s * G, e * ga_inv + gc);
+        s * G == e * ga_inv + gc
+    }
+
+    #[must_use]
+    pub fn verify_proof_inv(ga: &GroupElement, p: &ProofInv) -> bool {
+        verify_proof_split_inv(ga, &p.ga_inv, &p.gc, &p.s)
+    }
 
 //// SIGNATURES
 
-type Signature = Proof;
+    type Signature = Proof;
 
-pub fn sign<R: RngCore + CryptoRng>(message: &GroupElement, secret_key: &ScalarNonZero, rng: &mut R) -> Signature {
-    create_proof(secret_key, message, rng).1
-}
+    pub fn sign<R: RngCore + CryptoRng>(message: &GroupElement, secret_key: &ScalarNonZero, rng: &mut R) -> Signature {
+        create_proof(secret_key, message, rng).1
+    }
 
-#[must_use]
-pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) -> bool {
-    verify_proof(public_key, message, p)
-}
+    #[must_use]
+    pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) -> bool {
+        verify_proof(public_key, message, p)
+    }
 
 //// RERANDOMIZE
 
-// We are re-using some variables from the Proof to reconstruct the Rerandomize operation.
+    // We are re-using some variables from the Proof to reconstruct the Rerandomize operation.
 // This way, we only need 1 Proof object (which are fairly large)
-type ProvedRerandomize = (GroupElement,Proof);
+    type ProvedRerandomize = (GroupElement, Proof);
 
-pub fn prove_rerandomize<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
-    // Rerandomize is normally {s * G + in.b, s*in.y + in.c, in.y};
-    create_proof(s, &v.y, rng)
-}
-
-#[must_use]
-pub fn verify_rerandomize(v: &ElGamal, p: &ProvedRerandomize) -> Option<ElGamal> {
-  verify_rerandomize_split(&v.b, &v.c, &v.y, &p.0, &p.1)
-}
-
-#[must_use]
-pub fn verify_rerandomize_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, s: &GroupElement, p: &Proof) -> Option<ElGamal> {
-    // slightly different than the others, as we reuse the structure of a standard proof to reconstruct the Rerandomize operation after sending
-    if verify_proof(s, gy, p) {
-        Some(ElGamal {
-            b: s + gb,
-            c: **p + gc,
-            y: *gy
-        })
-    } else {
-        None
+    pub fn prove_rerandomize<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
+        // Rerandomize is normally {s * G + in.b, s*in.y + in.c, in.y};
+        create_proof(s, &v.y, rng)
     }
-}
+
+    #[must_use]
+    pub fn verify_rerandomize(v: &ElGamal, p: &ProvedRerandomize) -> Option<ElGamal> {
+        verify_rerandomize_split(&v.b, &v.c, &v.y, &p.0, &p.1)
+    }
+
+    #[must_use]
+    pub fn verify_rerandomize_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gs: &GroupElement, p: &Proof) -> Option<ElGamal> {
+        // slightly different than the others, as we reuse the structure of a standard proof to reconstruct the Rerandomize operation after sending
+        if verify_proof(gs, gy, p) {
+            Some(ElGamal {
+                b: gs + gb,
+                c: **p + gc,
+                y: *gy
+            })
+        } else {
+            None
+        }
+    }
 
 //// RESHUFFLE
 
-/// GroupElement is `n*G` if prove_reshuffle with `n` is called.
-pub struct ProvedReshuffle(pub GroupElement, pub Proof, pub Proof);
+    /// GroupElement is `n*G` if prove_reshuffle with `n` is called.
+    pub struct ProvedReshuffle(pub GroupElement, pub Proof, pub Proof);
 
-pub fn prove_reshuffle<R: RngCore + CryptoRng>(v: &ElGamal, n: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
-    // Reshuffle is normally {n * in.b, n * in.c, in.y};
-    // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same n is used, saving a n*G operation)
-    let (ab, pb) = create_proof(n, &v.b, rng);
-    let (ac, pc) = create_proof(n, &v.c, rng);
-    debug_assert_eq!(ab, ac);
-    ProvedReshuffle(ab, pb, pc)
-}
-
-#[must_use]
-pub fn verify_reshuffle(v: &ElGamal, p: &ProvedReshuffle) -> Option<ElGamal> {
-  verify_reshuffle_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2)
-}
-
-#[must_use]
-pub fn verify_reshuffle_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gab: &GroupElement, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
-    if verify_proof(gab, gb, pb) && verify_proof(gab, gc, pc) {
-        Some(ElGamal {
-            b: **pb,
-            c: **pc,
-            y: *gy,
-        })
-    } else {
-        None
-    }
-}
-
-impl ProvedReshuffle {
-    /// Returns `n*G` after `prove_reshuffle(in, n)`.
-    pub fn reshuffled_by(&self) -> GroupElement {
-        self.0
-    }
-}
-pub struct ProvedReshuffleFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub Proof);
-pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffleFromTo {
-    // Reshuffle is normally {n_from^-1 * n_to * in.b, n_from^-1 * n_to * in.c, in.y};
-    let n = n_from.invert() * n_to;
-    let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
-    let gn_from_inv = p_n_from_inv.ga_inv;
-    let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to,&*p_n_from_inv, rng);
-    let (ab, pb) = create_proof(&n, &v.b, rng);
-    let (ac, pc) = create_proof(&n, &v.c, rng);
-    debug_assert_eq!(ab, ac);
-    debug_assert_eq!(ab, n * G);
-    ProvedReshuffleFromTo(gn_from, gn_from_inv, gn_to, p_n_from_inv, p_n_from_inv_n_to, pb, pc)
-}
-
-#[must_use]
-pub fn verify_reshuffle_from_to(v: &ElGamal, p: &ProvedReshuffleFromTo) -> Option<ElGamal> {
-    verify_reshuffle_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6)
-}
-
-#[must_use]
-pub fn verify_reshuffle_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
-    if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(p_n_from_inv_n_to, gb, pb) && verify_proof(p_n_from_inv_n_to, gc, pc) && p_n_from_inv.ga_inv == *gn_from_inv {
-        Some(ElGamal {
-            b: **pb,
-            c: **pc,
-            y: *gy,
-        })
-    } else {
-        None
-    }
-}
-
-impl ProvedReshuffleFromTo {
-    pub fn reshuffled_by_from(&self) -> GroupElement {
-        self.0
-    }
-    pub fn reshuffled_by_from_inv(&self) -> GroupElement {
-        self.1
-    }
-    pub fn reshuffled_by_to(&self) -> GroupElement {
-        self.2
+    pub fn prove_reshuffle<R: RngCore + CryptoRng>(v: &ElGamal, n: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
+        // Reshuffle is normally {n * in.b, n * in.c, in.y};
+        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same n is used, saving a n*G operation)
+        let (ab, pb) = create_proof(n, &v.b, rng);
+        let (ac, pc) = create_proof(n, &v.c, rng);
+        debug_assert_eq!(ab, ac);
+        ProvedReshuffle(ab, pb, pc)
     }
 
-}
+    #[must_use]
+    pub fn verify_reshuffle(v: &ElGamal, p: &ProvedReshuffle) -> Option<ElGamal> {
+        verify_reshuffle_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2)
+    }
+
+    #[must_use]
+    pub fn verify_reshuffle_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gab: &GroupElement, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
+        if verify_proof(gab, gb, pb) && verify_proof(gab, gc, pc) {
+            Some(ElGamal {
+                b: **pb,
+                c: **pc,
+                y: *gy,
+            })
+        } else {
+            None
+        }
+    }
+
+    impl ProvedReshuffle {
+        /// Returns `n*G` after `prove_reshuffle(in, n)`.
+        pub fn reshuffled_by(&self) -> GroupElement {
+            self.0
+        }
+    }
+
+    pub struct ProvedReshuffleFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub Proof);
+
+    pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffleFromTo {
+        // Reshuffle is normally {n_from^-1 * n_to * in.b, n_from^-1 * n_to * in.c, in.y};
+        let n = n_from.invert() * n_to;
+        let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
+        let gn_from_inv = p_n_from_inv.ga_inv;
+        let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to, &*p_n_from_inv, rng);
+        let (ab, pb) = create_proof(&n, &v.b, rng);
+        let (ac, pc) = create_proof(&n, &v.c, rng);
+        debug_assert_eq!(ab, ac);
+        debug_assert_eq!(ab, n * G);
+        ProvedReshuffleFromTo(gn_from, gn_from_inv, gn_to, p_n_from_inv, p_n_from_inv_n_to, pb, pc)
+    }
+
+    #[must_use]
+    pub fn verify_reshuffle_from_to(v: &ElGamal, p: &ProvedReshuffleFromTo) -> Option<ElGamal> {
+        verify_reshuffle_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6)
+    }
+
+    #[must_use]
+    pub fn verify_reshuffle_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, pb: &Proof, pc: &Proof) -> Option<ElGamal> {
+        if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(p_n_from_inv_n_to, gb, pb) && verify_proof(p_n_from_inv_n_to, gc, pc) && p_n_from_inv.ga_inv == *gn_from_inv {
+            Some(ElGamal {
+                b: **pb,
+                c: **pc,
+                y: *gy,
+            })
+        } else {
+            None
+        }
+    }
+
+    impl ProvedReshuffleFromTo {
+        pub fn reshuffled_by_from(&self) -> GroupElement {
+            self.0
+        }
+        pub fn reshuffled_by_from_inv(&self) -> GroupElement {
+            self.1
+        }
+        pub fn reshuffled_by_to(&self) -> GroupElement {
+            self.2
+        }
+    }
 
 
 //// REKEY
 
-/// Second GroupElement is `k*G` if prove_rekey with `k` is called.
-pub struct ProvedRekey(pub GroupElement,pub Proof,pub GroupElement,pub Proof);
+    /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
+    pub struct ProvedRekey(pub GroupElement, pub Proof, pub GroupElement, pub Proof);
 
-pub fn prove_rekey<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> ProvedRekey {
-    // Rekey is normmaly {in.b/k, in.c, k*in.y};
-    let (ab, pb) = create_proof(&k.invert(), &v.b, rng);
-    let (ay, py) = create_proof(k, &v.y, rng);
-    ProvedRekey(ab, pb, ay, py)
-}
-
-#[must_use]
-pub fn verify_rekey(v: &ElGamal, p: &ProvedRekey) -> Option<ElGamal> {
-  verify_rekey_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3)
-}
-
-#[must_use]
-pub fn verify_rekey_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gab: &GroupElement, pb: &Proof, gay: &GroupElement, py: &Proof) -> Option<ElGamal> {
-    if verify_proof(gab, gb, pb) && verify_proof(gay, gy, py) {
-        Some(ElGamal {
-            b: **pb,
-            c: *gc,
-            y: **py,
-        })
-    } else {
-        None
+    pub fn prove_rekey<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> ProvedRekey {
+        // Rekey is normally {in.b/k, in.c, k*in.y};
+        let (ab, pb) = create_proof(&k.invert(), &v.b, rng);
+        let (ay, py) = create_proof(k, &v.y, rng);
+        ProvedRekey(ab, pb, ay, py)
     }
-}
 
-impl ProvedRekey {
-    /// Returns `k*G` after `prove_rekey(in, k)`.
-    pub fn rekeyed_by(&self) -> GroupElement {
-        self.2
+    #[must_use]
+    pub fn verify_rekey(v: &ElGamal, p: &ProvedRekey) -> Option<ElGamal> {
+        verify_rekey_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3)
     }
-}
+
+    #[must_use]
+    pub fn verify_rekey_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gab: &GroupElement, pb: &Proof, gay: &GroupElement, py: &Proof) -> Option<ElGamal> {
+        if verify_proof(gab, gb, pb) && verify_proof(gay, gy, py) {
+            Some(ElGamal {
+                b: **pb,
+                c: *gc,
+                y: **py,
+            })
+        } else {
+            None
+        }
+    }
+
+    impl ProvedRekey {
+        /// Returns `k*G` after `prove_rekey(in, k)`.
+        pub fn rekeyed_by(&self) -> GroupElement {
+            self.2
+        }
+    }
 
 //// RKS
 
-/// First GroupElement is `n*G` if prove_rks with `n` is called.
-/// Second GroupElement is `k*G` if prove_rks with `k` is called.
-pub struct ProvedRKS(pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
+    /// First GroupElement is `n*G` if prove_rks with `n` is called.
+    /// Second GroupElement is `k*G` if prove_rks with `k` is called.
+    pub struct ProvedRKS(pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
 
-pub fn prove_rks<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, n: &ScalarNonZero, rng: &mut R) -> ProvedRKS {
-    // RKS is normally {(n / k) * in.B, n * in.C, k * in.Y};
-    let a = create_proof(&(n * k.invert()), &v.b, rng);
-    let b = create_proof(n, &v.c, rng);
-    let c = create_proof(k, &v.y, rng);
-    // different order so that first and second group elements for prove_reshuffle,
-    // prove_rekey, prove_rks have the same meaning
-    ProvedRKS(b.0, b.1, c.0, c.1, a.0, a.1)
-}
-
-#[must_use]
-pub fn verify_rks(v: &ElGamal, p: &ProvedRKS) -> Option<ElGamal> {
-  verify_rks_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5)
-}
-
-#[must_use]
-#[allow(clippy::too_many_arguments)]
-pub fn verify_rks_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof) -> Option<ElGamal> {
-    if verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc)&& verify_proof(gay, gy, py) {
-        Some(ElGamal {
-            b: **pb,
-            c: **pc,
-            y: **py,
-        })
-    } else {
-        None
+    pub fn prove_rks<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, n: &ScalarNonZero, rng: &mut R) -> ProvedRKS {
+        // RKS is normally {(n / k) * in.B, n * in.C, k * in.Y};
+        let a = create_proof(&(n * k.invert()), &v.b, rng);
+        let b = create_proof(n, &v.c, rng);
+        let c = create_proof(k, &v.y, rng);
+        // different order so that first and second group elements for prove_reshuffle,
+        // prove_rekey, prove_rks have the same meaning
+        ProvedRKS(b.0, b.1, c.0, c.1, a.0, a.1)
     }
-}
 
-impl ProvedRKS {
-    /// Returns `n*G` after `prove_rks(in, k, n)`.
-    pub fn reshuffled_by(&self) -> GroupElement {
-        self.0
+    #[must_use]
+    pub fn verify_rks(v: &ElGamal, p: &ProvedRKS) -> Option<ElGamal> {
+        verify_rks_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5)
     }
-    /// Returns `k*G` after `prove_rks(in, k, n)`.
-    pub fn rekeyed_by(&self) -> GroupElement {
-        self.2
+
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn verify_rks_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof) -> Option<ElGamal> {
+        if verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc) && verify_proof(gay, gy, py) {
+            Some(ElGamal {
+                b: **pb,
+                c: **pc,
+                y: **py,
+            })
+        } else {
+            None
+        }
     }
-}
-pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
+
+    impl ProvedRKS {
+        /// Returns `n*G` after `prove_rks(in, k, n)`.
+        pub fn reshuffled_by(&self) -> GroupElement {
+            self.0
+        }
+        /// Returns `k*G` after `prove_rks(in, k, n)`.
+        pub fn rekeyed_by(&self) -> GroupElement {
+            self.2
+        }
+    }
+
+    pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
 
     pub fn prove_rks_from_to<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> ProvedRKSFromTo {
         // RKS is normally {(n_from^-1 * n_to / k) * in.B, n_from^-1 * n_to * in.C, k * in.Y};
         let n = n_from.invert() * n_to;
         let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
         let gn_from_inv = p_n_from_inv.ga_inv;
-        let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to,&*p_n_from_inv, rng);
+        let (gn_to, p_n_from_inv_n_to) = create_proof(&n_to, &*p_n_from_inv, rng);
 
         let a = create_proof(&(n * k.invert()), &v.b, rng);
         let b = create_proof(&n, &v.c, rng);
@@ -868,8 +871,8 @@ pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement,
 
     #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn verify_rks_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof ) -> Option<ElGamal> {
-        if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc)&& verify_proof(gay, gy, py) && p_n_from_inv.ga_inv == *gn_from_inv {
+    pub fn verify_rks_from_to_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, p_n_from_inv: &ProofInv, p_n_from_inv_n_to: &Proof, gac: &GroupElement, pc: &Proof, gay: &GroupElement, py: &Proof, gab: &GroupElement, pb: &Proof) -> Option<ElGamal> {
+        if verify_proof_inv(&gn_from, &p_n_from_inv) && verify_proof(&gn_to, &*p_n_from_inv, &p_n_from_inv_n_to) && verify_proof(gab, gb, pb) && verify_proof(gac, gc, pc) && verify_proof(gay, gy, py) && p_n_from_inv.ga_inv == *gn_from_inv {
             Some(ElGamal {
                 b: **pb,
                 c: **pc,
@@ -894,7 +897,104 @@ pub struct ProvedRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement,
             self.7
         }
     }
+
+    pub struct ProvedRRKSFromTo(pub GroupElement, pub GroupElement, pub GroupElement, pub GroupElement, pub GroupElement, pub GroupElement, pub ProofInv, pub Proof, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof, pub GroupElement, pub Proof);
+
+    pub fn prove_rrks_from_to<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero, n_from: &ScalarNonZero, n_to: &ScalarNonZero, rng: &mut R) -> crate::zkp::ProvedRRKSFromTo {
+        // RRKS is {(s * n / k * G) + ((n / k) * in.B), (n * s * in.y) + n * in.C, k * in.Y};
+        let n = n_from.invert() * n_to;
+        let (gn_from, p_n_from_inv) = create_proof_inv(&n_from, rng);
+        let gn_from_inv = p_n_from_inv.ga_inv;
+        let (gn_to, p_n) = create_proof(&n_to, &gn_from_inv, rng);
+        let gn = p_n.n;
+        let (gs, p_n_s) = create_proof(&s, &gn, rng);
+        let gn_s = p_n_s.n;
+
+        let (gs_n_kinv, pb1) = create_proof(&(s * n * k.invert()), &G, rng); // I think this can be removed
+        let (gs_n_k_b, pb2) = create_proof(&(n * k.invert()), &v.b, rng);
+        let (gs_n_y, pc1) = create_proof(&(n * s), &v.y, rng);
+        let (gn_c, pc2) = create_proof(&n, &v.c, rng);
+        let (gk_y, py) = create_proof(k, &v.y, rng);
+
+        crate::zkp::ProvedRRKSFromTo(gn_from, gn_from_inv, gn_to, gn, gs, gn_s,
+                                     p_n_from_inv, p_n, p_n_s,
+                                     gs_n_y, pc1, gn_c, pc2, gk_y, py, gs_n_kinv, pb1, gs_n_k_b, pb2)
+    }
+
+    #[must_use]
+    pub fn verify_rrks_from_to(v: &ElGamal, p: &crate::zkp::ProvedRRKSFromTo) -> Option<ElGamal> {
+        crate::zkp::verify_rrks_from_to_split(&v.b, &v.c, &v.y, &p.0, &p.1, &p.2, &p.3, &p.4, &p.5, &p.6, &p.7, &p.8, &p.9, &p.10, &p.11, &p.12, &p.13, &p.14, &p.15, &p.16, &p.17, &p.18)
+    }
+
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn verify_rrks_from_to_split(
+        gb: &GroupElement,
+        gc: &GroupElement,
+        gy: &GroupElement,
+        gn_from: &GroupElement,
+        gn_from_inv: &GroupElement,
+        gn_to: &GroupElement,
+        gn: &GroupElement,
+        gs: &GroupElement,
+        gn_s: &GroupElement,
+        p_n_from_inv: &ProofInv,
+        p_n: &Proof,
+        p_n_s: &Proof,
+        gs_n_y: &GroupElement,
+        pc1: &Proof,
+        gn_c: &GroupElement,
+        pc2: &Proof,
+        gk_y: &GroupElement,
+        py: &Proof,
+        gs_n_kinv: &GroupElement,
+        pb1: &Proof,
+        gs_n_k_b: &GroupElement,
+        pb2: &Proof,
+    ) -> Option<ElGamal> {
+        if verify_proof_inv(&gn_from, &p_n_from_inv)
+            && verify_proof(&gn_to, &*p_n_from_inv, &p_n)
+            && verify_proof(&gs, &*p_n, &p_n_s)
+
+            && verify_proof(&gs_n_y, gy, &pc1)
+            && verify_proof(&gn_c, gc, &pc2)
+            && verify_proof(&gk_y, gy, &py)
+            // && verify_proof(gs_n_kinv, &G, &pb1) // TODO remove
+            && verify_proof(gs_n_k_b, gb, &pb2)
+
+            // && p_n_from_inv.ga_inv == *gn_from_inv
+            // && *gs_n_kinv == **pb1
+            // && *gs_n_k_b == **pb2
+            // && *gs_n_y == **pc1
+            // && *gn_c == **pc2
+            // && *gk_y == **py
+        {
+            Some(ElGamal {
+                b: **pb1 + **pb2,
+                c: **pc1 + **pc2,
+                y: **py,
+            })
+        } else {
+            None
+        }
+    }
+    impl crate::zkp::ProvedRRKSFromTo {
+        pub fn reshuffled_by_from(&self) -> GroupElement {
+            self.0
+        }
+        pub fn reshuffled_by_from_inv(&self) -> GroupElement {
+            self.1
+        }
+        pub fn reshuffled_by_to(&self) -> GroupElement {
+            self.2
+        }
+        pub fn rekeyed_by(&self) -> GroupElement {
+            self.13
+        }
+    }
+
 }
+
 
 
 /// Higher lever API for simple pseudonimisation on a single host.
@@ -1454,6 +1554,45 @@ mod libpep {
         assert_eq!(n_to*G, proved.reshuffled_by_to());
     }
 
+    #[test]
+    fn pep_schnorr_rrks_from_to() {
+        let mut rng = OsRng;
+        // secret key of system
+        let y = ScalarNonZero::random(&mut rng);
+        // public key of system
+        let gy = y*G;
+
+        let gm = GroupElement::random(&mut rng);
+        let k = ScalarNonZero::random(&mut rng);
+        let n_from = ScalarNonZero::random(&mut rng);
+        let n_to = ScalarNonZero::random(&mut rng);
+        let s1 = ScalarNonZero::random(&mut rng);
+
+        let msg = encrypt(&gm, &gy, &mut rng);
+
+        let proved = prove_rrks_from_to(&msg, &s1, &k, &n_from, &n_to, &mut rng);
+
+        let checked = verify_rrks_from_to(&msg, &proved);
+
+        assert!(checked.is_some());
+        assert_ne!(&msg, checked.as_ref().unwrap());
+        assert_eq!(proved.rekeyed_by(), k*G);
+        assert_eq!(n_from.invert()*n_to*gm, decrypt(checked.as_ref().unwrap(), &(k*y)));
+        assert_eq!(n_from*G, proved.reshuffled_by_from());
+        assert_eq!(n_to*G, proved.reshuffled_by_to());
+
+        let s2= ScalarNonZero::random(&mut rng);
+
+        let proved2 = prove_rrks_from_to(&msg, &s2, &k, &n_from, &n_to, &mut rng);
+
+        let checked2 = verify_rrks_from_to(&msg, &proved2);
+        assert!(checked2.is_some());
+        assert_ne!(checked, checked2); // messages should be different because of the rerandomization
+        assert_eq!(proved2.rekeyed_by(), k*G);
+        assert_eq!(n_from*G, proved2.reshuffled_by_from());
+        assert_eq!(n_to*G, proved2.reshuffled_by_to());
+    }
+
     // https://stackoverflow.com/questions/52987181/how-can-i-convert-a-hex-string-to-a-u8-slice
     use std::{fmt::Write, num::ParseIntError};
 
@@ -1549,15 +1688,19 @@ mod libpep {
 
             let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
 
+            // First system
             let proven = systems[0].pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
             network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
 
+            // All other systems
             for i in 1..systems.len() {
                 let system = &mut systems[i];
                 let msg_in = system.verify_pseudonymize(&network, &pc_from, &pc_to, &dc).unwrap();
                 let proven = system.pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
+
+            // Recipient
             let msg_out = systems[0].verify_pseudonymize(&network, pc_from, pc_to, dc).unwrap(); // can be done by client
             let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(dc));
             let data_out = decrypt(&msg_out, &decryption_key);
@@ -1569,15 +1712,19 @@ mod libpep {
 
             let msg_in = encrypt(&data_in, &systems[0].config.global_public_key, rng);
 
+            // First system
             let proven = systems[0].transcrypt(&msg_in, dc, rng);
             network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
 
+            // All other systems
             for i in 1..systems.len() {
                 let system = &mut systems[i];
                 let msg_in = system.verify_transcrypt(&network, &dc).unwrap();
                 let proven = system.transcrypt(&msg_in, dc, rng);
                 network.push((system.system_id.clone(), msg_in.clone(), proven));
             }
+
+            // Recipient
             let msg_out = systems[0].verify_transcrypt(&network, dc).unwrap(); // can be done by client
             let decryption_key = systems.iter().fold(systems[0].config.blinded_global_private_key, |acc, s| acc * s.decryption_key_part(dc));
             let data_out = decrypt(&msg_out, &decryption_key);
