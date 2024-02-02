@@ -1032,7 +1032,7 @@ pub mod distributed {
     pub type SystemId = String;
 
     pub struct TrustedPEPFactorVerifiersCache {
-        pub cache: HashMap<(SystemId, Context), PEPFactorVerifiers>,
+        cache: HashMap<(SystemId, Context), PEPFactorVerifiers>,
     }
 
     impl TrustedPEPFactorVerifiersCache {
