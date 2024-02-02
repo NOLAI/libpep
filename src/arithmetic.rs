@@ -2,8 +2,6 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
-extern crate rand_core;
-extern crate sha2;
 
 use rand_core::{CryptoRng, RngCore};
 

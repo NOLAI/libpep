@@ -1,5 +1,3 @@
-extern crate rand_core;
-extern crate sha2;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Sha512, Digest};
 use crate::arithmetic::*;

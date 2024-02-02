@@ -3,9 +3,6 @@ use rand_core::{CryptoRng, RngCore};
 use sha2::{Sha512, Digest};
 use crate::arithmetic::*;
 
-extern crate rand_core;
-extern crate sha2;
-
 // Offline Schnorr proof using Fiat-Shamir transform.
 // Proof that given a GroupElement `m` and a scalar `a`,
 // member `n` is equal to `a*m`. This can be verified using
