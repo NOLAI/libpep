@@ -1,8 +1,8 @@
 [package]
 name = "libpep"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
-authors = ["Bernard van Gastel <bvgastel@bitpowder.com>"]
+authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://www.bitpowder.com/libs/libpep-rust/"
 repository = "https://gitlab.com/bitpowder/indigo-ng"
 license = "Apache-2.0"
