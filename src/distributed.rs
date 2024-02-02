@@ -104,11 +104,11 @@ impl PEPSystem {
     }
     pub fn pseudonymisation_factor_verifiers_proof<R: RngCore + CryptoRng>(&self, pc: &Context, rng: &mut R) -> (ReshuffleFactorVerifiers, PEPFactorVerifiersProof) {
         let n = make_pseudonymisation_factor(&self.pseudonymisation_secret, pc);
-        generate_pep_factor_verifiers(&n, rng)
+        PEPFactorVerifiers::new(&n, rng)
     }
     pub fn rekeying_factor_verifiers_proof<R: RngCore + CryptoRng>(&self, dc: &Context, rng: &mut R) -> (RekeyFactorVerifiers, PEPFactorVerifiersProof) {
         let n = make_decryption_factor(&self.rekeying_secret, dc);
-        generate_pep_factor_verifiers(&n, rng)
+        PEPFactorVerifiers::new(&n, rng)
     }
     pub fn decryption_key_part<R: RngCore + CryptoRng>(&self, dc: &Context, rng: &mut R) -> (DecryptionKeyPart, Proof) {
         let k = make_decryption_factor(&self.rekeying_secret, dc);
@@ -192,11 +192,11 @@ impl PEPClient {
         Ok(msg_out.unwrap())
     }
     pub fn trust_pseudonymisation_factor_verifiers(&mut self, system_id: &SystemId, pc: &Context, verifiers: &ReshuffleFactorVerifiers, proof: &PEPFactorVerifiersProof) {
-        assert!(verify_pep_factor_verifiers(&verifiers, &proof));
+        assert!(&proof.verify(verifiers));
         self.trusted_pseudonymisation_factors.store(system_id.to_string(), pc.to_string(), *verifiers);
     }
     pub fn trust_rekeying_factor_verifiers(&mut self, system_id: &SystemId, dc: &Context, verifiers: &RekeyFactorVerifiers, proof: &PEPFactorVerifiersProof) {
-        assert!(verify_pep_factor_verifiers(&verifiers, &proof));
+        assert!(&proof.verify(verifiers));
         self.trusted_rekeying_factors.store(system_id.to_string(), dc.to_string(), *verifiers);
     }
 

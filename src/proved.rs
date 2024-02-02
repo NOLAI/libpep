@@ -7,23 +7,25 @@ pub type PEPFactor = ScalarNonZero;
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct PEPFactorVerifiers(pub GroupElement, pub GroupElement);
-
 pub struct PEPFactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
 
-pub fn generate_pep_factor_verifiers<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (PEPFactorVerifiers, PEPFactorVerifiersProof) {
-    let r = ScalarNonZero::random(rng);
-    let gra = a * r * G;
-    let (gai, pai) = create_proof(&a.invert(), &gra, rng);
-    // Checking pki.n == gr proves that a.invert()*a == 1.
-    // Assume a'^-1 * (a*r*G) = r*G, then a = a' trivially holds for any a, a', r
-    (PEPFactorVerifiers(a * G, gai), PEPFactorVerifiersProof(pai, r, gra))
+impl PEPFactorVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, PEPFactorVerifiersProof) {
+        let r = ScalarNonZero::random(rng);
+        let gra = a * r * G;
+        let (gai, pai) = create_proof(&a.invert(), &gra, rng);
+        // Checking pki.n == gr proves that a.invert()*a == 1.
+        // Assume a'^-1 * (a*r*G) = r*G, then a = a' trivially holds for any a, a', r
+        (Self(a * G, gai), PEPFactorVerifiersProof(pai, r, gra))
+    }
 }
 
-#[must_use]
-pub fn verify_pep_factor_verifiers(verifiers: &PEPFactorVerifiers, proof: &PEPFactorVerifiersProof) -> bool {
-    let PEPFactorVerifiers(ga, gai) = verifiers;
-    let PEPFactorVerifiersProof(pai, r, gra) = proof;
-    verify_proof(gai, gra, pai) && pai.n == r * G && r * ga == *gra
+impl PEPFactorVerifiersProof {
+    #[must_use]
+    pub fn verify(&self, verifiers: &PEPFactorVerifiers) -> bool {
+        let PEPFactorVerifiers(ga, gai) = verifiers;
+        verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
+    }
 }
 
 //// RERANDOMIZE

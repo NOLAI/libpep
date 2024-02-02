@@ -92,8 +92,8 @@ fn pep_factor_verifiers_proof() {
     let mut rng = OsRng;
 
     let x = ScalarNonZero::random(&mut rng);
-    let (verifiers, proof) = generate_pep_factor_verifiers(&x, &mut rng);
-    assert!(verify_pep_factor_verifiers(&verifiers, &proof));
+    let (verifiers, proof) = PEPFactorVerifiers::new(&x, &mut rng);
+    assert!(&proof.verify(&verifiers))
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn pep_proved_reshuffle() {
     let gm = GroupElement::random(&mut rng);
     let n = ScalarNonZero::random(&mut rng);
 
-    let (verifiers, _) = generate_pep_factor_verifiers(&n, &mut rng);
+    let (verifiers, _) = PEPFactorVerifiers::new(&n, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -155,7 +155,7 @@ fn pep_proved_rekey() {
     let gm = GroupElement::random(&mut rng);
     let k = ScalarNonZero::random(&mut rng);
 
-    let (verifiers, _) = generate_pep_factor_verifiers(&k, &mut rng);
+    let (verifiers, _) = PEPFactorVerifiers::new(&k, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -179,8 +179,8 @@ fn pep_proved_reshuffle_from_to() {
     let n_from = ScalarNonZero::random(&mut rng);
     let n_to = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_from, _) = generate_pep_factor_verifiers(&n_from, &mut rng);
-    let (verifiers_to, _) = generate_pep_factor_verifiers(&n_to, &mut rng);
+    let (verifiers_from, _) = PEPFactorVerifiers::new(&n_from, &mut rng);
+    let (verifiers_to, _) = PEPFactorVerifiers::new(&n_to, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -205,8 +205,8 @@ fn pep_proved_rsk() {
     let n = ScalarNonZero::random(&mut rng);
     let k = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_n, _) = generate_pep_factor_verifiers(&n, &mut rng);
-    let (verifiers_k, _) = generate_pep_factor_verifiers(&k, &mut rng);
+    let (verifiers_n, _) = PEPFactorVerifiers::new(&n, &mut rng);
+    let (verifiers_k, _) = PEPFactorVerifiers::new(&k, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -232,9 +232,9 @@ fn pep_proved_rsk_from_to() {
     let n_to = ScalarNonZero::random(&mut rng);
     let k = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_from, _) = generate_pep_factor_verifiers(&n_from, &mut rng);
-    let (verifiers_to, _) = generate_pep_factor_verifiers(&n_to, &mut rng);
-    let (verifiers_k, _) = generate_pep_factor_verifiers(&k, &mut rng);
+    let (verifiers_from, _) = PEPFactorVerifiers::new(&n_from, &mut rng);
+    let (verifiers_to, _) = PEPFactorVerifiers::new(&n_to, &mut rng);
+    let (verifiers_k, _) = PEPFactorVerifiers::new(&k, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
