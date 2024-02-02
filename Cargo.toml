@@ -26,6 +26,7 @@ sha2 = "0.10.5"
 buildinfy = { version = "^0.1", path = "../buildinfy", optional = true }
 commandy = { version = "^0.2", path = "../commandy", optional = true }
 commandy_macros = { version = "^0.2", path = "../commandy_macros", optional = true }
+hex = "0.4.3"
 
 [package.metadata.deb]
 name = "peppy"
