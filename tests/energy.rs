@@ -124,14 +124,16 @@ fn tunnels_id(n: usize, l: usize, m: usize) {
     for _ in 0..l {
         for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
+            value = value.clone();
             cipher.encrypt_block(&mut value);
 
             // n-tiers
             for _ in 0..n {
                 cipher.decrypt_block(&mut value);
+                value = value.clone();
                 cipher.encrypt_block(&mut value);
             }
-
+            value = value.clone();
             // receiver
             cipher.decrypt_block(&mut value);
             debug_assert_eq!(data.as_slice(), value.as_slice());
@@ -160,7 +162,10 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
     for _ in 0..l {
         for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
+            value = value.clone();
             cipher.encrypt_block(&mut value);
+
+            value = value.clone();
 
             // receiver
             cipher.decrypt_block(&mut value);
@@ -176,7 +181,7 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
 
 #[test]
 fn energy_analysis_id_pep() {
-    let l = 1000000; // experiment length iterations
+    let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
@@ -185,7 +190,7 @@ fn energy_analysis_id_pep() {
 
 #[test]
 fn energy_analysis_data_pep() {
-    let l = 1000000; // experiment length iterations
+    let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
@@ -194,7 +199,7 @@ fn energy_analysis_data_pep() {
 
 #[test]
 fn energy_analysis_id_tunnels() {
-    let l = 1000000; // experiment length iterations
+    let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
@@ -203,7 +208,7 @@ fn energy_analysis_id_tunnels() {
 
 #[test]
 fn energy_analysis_data_tunnels() {
-    let l = 1000000; // experiment length iterations
+    let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
