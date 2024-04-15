@@ -128,7 +128,7 @@ fn tunnels_id(n: usize, l: usize, m: usize) {
             let x = value.as_slice();
             value = GenericArray::clone_from_slice(x);
             cipher.encrypt_block(&mut value);
-            println!("value: {}", value.as_slice().to_hex());
+            eprintln!("test");
 
 
             // n-tiers
@@ -136,13 +136,13 @@ fn tunnels_id(n: usize, l: usize, m: usize) {
                 cipher.decrypt_block(&mut value);
                 let x = value.as_slice();
                 value = GenericArray::clone_from_slice(x);
-                println!("value: {}", value.as_slice().to_hex());
+                eprintln!("test");
 
                 cipher.encrypt_block(&mut value);
             }
             let x = value.as_slice();
             value = GenericArray::clone_from_slice(x);
-            println!("value: {}", value.as_slice().to_hex());
+            eprintln!("test");
 
             // receiver
             cipher.decrypt_block(&mut value);
@@ -175,14 +175,14 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
             // sender
             let x = value.as_slice();
             value = GenericArray::clone_from_slice(x);
-            println!("value: {}", value.as_slice().to_hex());
+            eprintln!("test");
 
             cipher.encrypt_block(&mut value);
-            println!("value: {}", value.as_slice().to_hex());
+            eprintln!("test");
 
             let x = value.as_slice();
             value = GenericArray::clone_from_slice(x);
-            println!("value: {}", value.as_slice().to_hex());
+            eprintln!("test");
 
             // receiver
             cipher.decrypt_block(&mut value);
