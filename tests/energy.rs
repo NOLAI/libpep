@@ -116,24 +116,24 @@ fn tunnels(n: usize, l: usize, m: usize) {
 
 #[test]
 fn n_pep_energy_id() {
-    let n = 2;
-    let l = 1000;
-    let m = 1; // aantal blokken van 32 bytes
-    transcrypt_rsk(n, l, m); // single identifier, just under 32 bytes
+    let l = 1000; // experiment length iterations
+    let n = 2; // number of tiers
+    let m = 1; // number of blocks / data length (multiples of 32 bytes)
+    transcrypt_rsk(n, l, m);
 }
 
 #[test]
 fn n_pep_energy_data() {
-    let n = 2;
-    let l = 1000;
-    let m = 1; // aantal blokken van 32 bytes
-    transcrypt_rekey(n, l, m); // single data points, just under 32 bytes
+    let l = 1000; // experiment length iterations
+    let n = 2; // number of tiers
+    let m = 1; // number of blocks / data length (multiples of 32 bytes)
+    transcrypt_rekey(n, l, m);
 }
 
 #[test]
 fn tunnels_energy() {
-    let n = 2;
-    let l = 1000;
-    let m = 1; // aantal blokken van 32 bytes
-    tunnels(n, l, m); // single identifier, just under 32 bytes
+    let l = 1000; // experiment length iterations
+    let n = 2; // number of tiers
+    let m = 1; // number of blocks / data length (multiples of 32 bytes)
+    tunnels(n, l, m);
 }
