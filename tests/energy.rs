@@ -8,6 +8,18 @@ use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, encrypt};
 use libpep::primitives::{rekey_from_to, rsk_from_to};
 
+fn get_ina() -> Option<f64> {
+    let url = std::env::var("ENERGY_STATS").ok()?;
+    let agent: ureq::Agent = ureq::AgentBuilder::new()
+      .user_agent(&format!("{} {}/{}", env!("CARGO_PKG_NAME"), buildinfy::build_reference().unwrap_or_default(), buildinfy::build_pipeline_id_per_project().unwrap_or_default()))
+      .timeout_read(std::time::Duration::from_secs(60))
+      .timeout_write(std::time::Duration::from_secs(5))
+      .build();
+    let resp = agent.get(&url).call().ok()?;
+    resp.header("X-Electricity-Consumed-Total")?.parse().ok()
+}
+
+
 fn transcrypt_rsk(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
 
@@ -33,6 +45,7 @@ fn transcrypt_rsk(n: usize, l: usize, m: usize) {
     let s = s_from.invert() * s_to;
 
     // START BENCHMARK
+    let before = get_ina();
 
     for _ in 0.. l {
         for _ in 0..m {
@@ -48,6 +61,10 @@ fn transcrypt_rsk(n: usize, l: usize, m: usize) {
         }
     }
     // END BENCHMARK
+    let after = get_ina();
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("energy {} J", after - before);
+    }
 }
 
 fn transcrypt_rekey(n: usize, l: usize, m: usize) {
