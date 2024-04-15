@@ -1,0 +1,27 @@
+stages:
+  - build
+
+variables:
+  DOCKER_DRIVER: overlay # faster docker builds, see https://gitlab.com/gitlab-org/gitlab-ce/issues/21374
+  GIT_DEPTH: "16"
+  GIT_STRATEGY: fetch
+  GIT_SUBMODULE_STRATEGY: recursive
+  DEBIAN_PACKAGE_TARGET_AMD64: "x86_64-unknown-linux-musl"
+  DEBIAN_PACKAGE_TARGET_ARM64: "aarch64-unknown-linux-musl"
+  DEBIAN_PACKAGE_TARGET_ARMHF: "armv7-unknown-linux-musleabihf"
+  PACKAGES: # set to package:binary pairs
+  PROFILE: "release"
+
+benchmark:
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "push"'
+    when: never # prevent pipeline run for push event
+  - when: always
+  stage: build
+  tags: [$RUNNER_TAG]
+  image: bitpowder.com:2444/bitpowder/docker-build/rust-stable:main
+  script:
+  - env cargo +stable test --release $TEST_NAME $TEST_ARGS
+  artifacts:
+    paths:
+    - bin/*
