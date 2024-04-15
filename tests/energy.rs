@@ -3,6 +3,7 @@ use aes::cipher::{
     BlockEncrypt, BlockDecrypt, KeyInit,
     generic_array::GenericArray,
 };
+use hex::ToHex;
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, encrypt};
@@ -124,16 +125,19 @@ fn tunnels_id(n: usize, l: usize, m: usize) {
     for _ in 0..l {
         for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
-            value = value.clone();
+            let x = value.as_slice();
+            value = GenericArray::clone_from_slice(x);
             cipher.encrypt_block(&mut value);
 
             // n-tiers
             for _ in 0..n {
                 cipher.decrypt_block(&mut value);
-                value = value.clone();
+                let x = value.as_slice();
+                value = GenericArray::clone_from_slice(x);
                 cipher.encrypt_block(&mut value);
             }
-            value = value.clone();
+            let x = value.as_slice();
+            value = GenericArray::clone_from_slice(x);
             // receiver
             cipher.decrypt_block(&mut value);
             debug_assert_eq!(data.as_slice(), value.as_slice());
@@ -151,6 +155,7 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
     let key = GenericArray::from(GroupElement::random(&mut rng).encode());
     let cipher = Aes256::new(&key);
 
+    // Get a randomly initialized array of 32 bytes (AES block size)
     let data = GenericArray::from([42u8; 16]);
     let mut value = data.clone();
 
@@ -162,10 +167,13 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
     for _ in 0..l {
         for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
-            value = value.clone();
+            let x = value.as_slice();
+            value = GenericArray::clone_from_slice(x);
+
             cipher.encrypt_block(&mut value);
 
-            value = value.clone();
+            let x = value.as_slice();
+            value = GenericArray::clone_from_slice(x);
 
             // receiver
             cipher.decrypt_block(&mut value);
