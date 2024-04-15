@@ -1,6 +1,6 @@
 use aes::{Aes256};
 use aes::cipher::{
-    BlockCipher, BlockEncrypt, BlockDecrypt, KeyInit,
+    BlockEncrypt, BlockDecrypt, KeyInit,
     generic_array::GenericArray,
 };
 use rand_core::OsRng;
@@ -20,7 +20,7 @@ fn get_ina() -> Option<f64> {
 }
 
 
-fn transcrypt_rsk(n: usize, l: usize, m: usize) {
+fn transcrypt_id(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
 
     // system params
@@ -67,7 +67,7 @@ fn transcrypt_rsk(n: usize, l: usize, m: usize) {
     }
 }
 
-fn transcrypt_rekey(n: usize, l: usize, m: usize) {
+fn transcrypt_data(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
 
     // system params
@@ -85,6 +85,7 @@ fn transcrypt_rekey(n: usize, l: usize, m: usize) {
     let k_to = k_to_s.iter().fold(ScalarNonZero::one(), |acc, k| acc * k);
 
     // START BENCHMARK
+    let before = get_ina();
 
     for _ in 0.. l {
         for _ in 0..m {
@@ -100,19 +101,28 @@ fn transcrypt_rekey(n: usize, l: usize, m: usize) {
         }
     }
     // END BENCHMARK
+    let after = get_ina();
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("energy {} J", after - before);
+    }
+
 }
 
-fn tunnels(n: usize, l: usize, m: usize) {
+fn tunnels_id(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
     let key = GenericArray::from(GroupElement::random(&mut rng).encode());
     let cipher = Aes256::new(&key);
 
-    let mut data = GenericArray::from([42u8; 16]);
+    let data = GenericArray::from([42u8; 16]);
     let mut value = data.clone();
 
+    let m2 = 2*m;
+
     // START BENCHMARK
+    let before = get_ina();
+
     for _ in 0..l {
-        for _ in 0 .. 2*m { // 2*m blocks because blocks are 16 bytes, not 32
+        for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
             cipher.encrypt_block(&mut value);
 
@@ -128,29 +138,58 @@ fn tunnels(n: usize, l: usize, m: usize) {
         }
     }
     // END BENCHMARK
+    let after = get_ina();
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("energy {} J", after - before);
+    }
 }
 
+fn tunnels_data(_: usize, l: usize, m: usize) {
+    let mut rng = OsRng;
+    let key = GenericArray::from(GroupElement::random(&mut rng).encode());
+    let cipher = Aes256::new(&key);
 
-#[test]
-fn n_pep_energy_id() {
-    let l = 1000; // experiment length iterations
-    let n = 2; // number of tiers
-    let m = 1; // number of blocks / data length (multiples of 32 bytes)
-    transcrypt_rsk(n, l, m);
+    let data = GenericArray::from([42u8; 16]);
+    let mut value = data.clone();
+
+    let m2 = 2*m;
+
+    // START BENCHMARK
+    let before = get_ina();
+
+    for _ in 0..l {
+        for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
+            // sender
+            cipher.encrypt_block(&mut value);
+
+            // receiver
+            cipher.decrypt_block(&mut value);
+            debug_assert_eq!(data.as_slice(), value.as_slice());
+        }
+    }
+    // END BENCHMARK
+    let after = get_ina();
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("energy {} J", after - before);
+    }
 }
 
 #[test]
-fn n_pep_energy_data() {
-    let l = 1000; // experiment length iterations
-    let n = 2; // number of tiers
+fn energy_analysis_id() {
+    let l = 10000; // experiment length iterations
+    let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
-    transcrypt_rekey(n, l, m);
+
+    transcrypt_id(n, l, m);
+    tunnels_id(n, l, m);
 }
 
 #[test]
-fn tunnels_energy() {
-    let l = 1000; // experiment length iterations
-    let n = 2; // number of tiers
-    let m = 1; // number of blocks / data length (multiples of 32 bytes)
-    tunnels(n, l, m);
+fn energy_analysis_data() {
+    let l = 10000; // experiment length iterations
+    let n = 3; // number of tiers
+    let m = 10; // number of blocks / data length (multiples of 32 bytes)
+
+    transcrypt_data(n, l, m);
+    tunnels_data(n, l, m);
 }
