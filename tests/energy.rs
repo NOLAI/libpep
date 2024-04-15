@@ -176,7 +176,7 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
 
 #[test]
 fn energy_analysis_id_pep() {
-    let l = 10000; // experiment length iterations
+    let l = 1000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
@@ -185,7 +185,7 @@ fn energy_analysis_id_pep() {
 
 #[test]
 fn energy_analysis_data_pep() {
-    let l = 10000; // experiment length iterations
+    let l = 1000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
@@ -194,7 +194,7 @@ fn energy_analysis_data_pep() {
 
 #[test]
 fn energy_analysis_id_tunnels() {
-    let l = 10000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
@@ -203,7 +203,7 @@ fn energy_analysis_id_tunnels() {
 
 #[test]
 fn energy_analysis_data_tunnels() {
-    let l = 10000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
