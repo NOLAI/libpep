@@ -1,10 +1,11 @@
 use rand_core::OsRng;
 use crate::arithmetic::*;
+use crate::authenticity::*;
 use crate::distributed::*;
 use crate::elgamal::*;
 use crate::primitives::*;
 use crate::proved::*;
-use crate::simple::*;
+use crate::utils::*;
 use crate::zkps::*;
 
 #[test]
@@ -92,7 +93,7 @@ fn pep_factor_verifiers_proof() {
     let mut rng = OsRng;
 
     let x = ScalarNonZero::random(&mut rng);
-    let (verifiers, proof) = PEPFactorVerifiers::new(&x, &mut rng);
+    let (verifiers, proof) = FactorVerifiers::new(&x, &mut rng);
     assert!(&proof.verify(&verifiers))
 }
 
@@ -130,7 +131,7 @@ fn pep_proved_reshuffle() {
     let gm = GroupElement::random(&mut rng);
     let n = ScalarNonZero::random(&mut rng);
 
-    let (verifiers, _) = PEPFactorVerifiers::new(&n, &mut rng);
+    let (verifiers, _) = FactorVerifiers::new(&n, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -155,7 +156,7 @@ fn pep_proved_rekey() {
     let gm = GroupElement::random(&mut rng);
     let k = ScalarNonZero::random(&mut rng);
 
-    let (verifiers, _) = PEPFactorVerifiers::new(&k, &mut rng);
+    let (verifiers, _) = FactorVerifiers::new(&k, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -176,22 +177,48 @@ fn pep_proved_reshuffle_from_to() {
     let gy = y * G;
 
     let gm = GroupElement::random(&mut rng);
-    let n_from = ScalarNonZero::random(&mut rng);
-    let n_to = ScalarNonZero::random(&mut rng);
+    let s_from = ScalarNonZero::random(&mut rng);
+    let s_to = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_from, _) = PEPFactorVerifiers::new(&n_from, &mut rng);
-    let (verifiers_to, _) = PEPFactorVerifiers::new(&n_to, &mut rng);
+    let (verifiers_from, _) = FactorVerifiers::new(&s_from, &mut rng);
+    let (verifiers_to, _) = FactorVerifiers::new(&s_to, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
-    let proved = ProvedReshuffleFromTo::new(&msg, &n_from, &n_to, &mut rng);
+    let proved = ProvedReshuffleFromTo::new(&msg, &s_from, &s_to, &mut rng);
 
     let checked = proved.verified_reconstruct(&msg, &verifiers_from, &verifiers_to);
 
     assert!(checked.is_some());
     assert_ne!(&msg, checked.as_ref().unwrap());
-    assert_eq!(n_from.invert() * n_to * gm, decrypt(checked.as_ref().unwrap(), &y));
-    assert_eq!(&reshuffle_from_to(&msg, &n_from, &n_to), checked.as_ref().unwrap());
+    assert_eq!(s_from.invert() * s_to * gm, decrypt(checked.as_ref().unwrap(), &y));
+    assert_eq!(&reshuffle_from_to(&msg, &s_from, &s_to), checked.as_ref().unwrap());
+}
+#[test]
+fn pep_proved_rekey_from_to() {
+    let mut rng = OsRng;
+    // secret key of system
+    let y = ScalarNonZero::random(&mut rng);
+    // public key of system
+    let gy = y * G;
+
+    let gm = GroupElement::random(&mut rng);
+    let k_from = ScalarNonZero::random(&mut rng);
+    let k_to = ScalarNonZero::random(&mut rng);
+
+    let (verifiers_from, _) = FactorVerifiers::new(&k_from, &mut rng);
+    let (verifiers_to, _) = FactorVerifiers::new(&k_to, &mut rng);
+
+    let msg = encrypt(&gm, &(k_from * gy), &mut rng);
+
+    let proved = ProvedRekeyFromTo::new(&msg, &k_from, &k_to, &mut rng);
+
+    let checked = proved.verified_reconstruct(&msg, &verifiers_from, &verifiers_to);
+
+    assert!(checked.is_some());
+    assert_ne!(&msg, checked.as_ref().unwrap());
+    assert_eq!(k_from.invert() * k_to * gm, decrypt(checked.as_ref().unwrap(), &(k_to * y)));
+    assert_eq!(&rekey_from_to(&msg, &k_from, &k_to), checked.as_ref().unwrap());
 }
 #[test]
 fn pep_proved_rsk() {
@@ -205,8 +232,8 @@ fn pep_proved_rsk() {
     let n = ScalarNonZero::random(&mut rng);
     let k = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_n, _) = PEPFactorVerifiers::new(&n, &mut rng);
-    let (verifiers_k, _) = PEPFactorVerifiers::new(&k, &mut rng);
+    let (verifiers_n, _) = FactorVerifiers::new(&n, &mut rng);
+    let (verifiers_k, _) = FactorVerifiers::new(&k, &mut rng);
 
     let msg = encrypt(&gm, &gy, &mut rng);
 
@@ -228,24 +255,44 @@ fn pep_proved_rsk_from_to() {
     let gy = y * G;
 
     let gm = GroupElement::random(&mut rng);
-    let n_from = ScalarNonZero::random(&mut rng);
-    let n_to = ScalarNonZero::random(&mut rng);
-    let k = ScalarNonZero::random(&mut rng);
+    let s_from = ScalarNonZero::random(&mut rng);
+    let s_to = ScalarNonZero::random(&mut rng);
+    let k_from = ScalarNonZero::random(&mut rng);
+    let k_to = ScalarNonZero::random(&mut rng);
 
-    let (verifiers_from, _) = PEPFactorVerifiers::new(&n_from, &mut rng);
-    let (verifiers_to, _) = PEPFactorVerifiers::new(&n_to, &mut rng);
-    let (verifiers_k, _) = PEPFactorVerifiers::new(&k, &mut rng);
+    let (verifiers_s_from, _) = FactorVerifiers::new(&s_from, &mut rng);
+    let (verifiers_s_to, _) = FactorVerifiers::new(&s_to, &mut rng);
+    let (verifiers_k_from, _) = FactorVerifiers::new(&k_from, &mut rng);
+    let (verifiers_k_to, _) = FactorVerifiers::new(&k_to, &mut rng);
 
-    let msg = encrypt(&gm, &gy, &mut rng);
+    let msg = encrypt(&gm, &(k_from * gy), &mut rng);
 
-    let proved = ProvedRSKFromTo::new(&msg, &n_from, &n_to, &k, &mut rng);
+    let proved = ProvedRSKFromTo::new(&msg, &s_from, &s_to, &k_from, &k_to, &mut rng);
 
-    let checked = proved.verified_reconstruct(&msg, &verifiers_from, &verifiers_to, &verifiers_k);
+    let checked = proved.verified_reconstruct(&msg, &verifiers_s_from, &verifiers_s_to, &verifiers_k_from, &verifiers_k_to);
 
     assert!(checked.is_some());
     assert_ne!(&msg, checked.as_ref().unwrap());
-    assert_eq!(n_from.invert() * n_to * gm, decrypt(checked.as_ref().unwrap(), &(k * y)));
-    assert_eq!(&rsk_from_to(&msg, &n_from, &n_to, &k), checked.as_ref().unwrap());
+    assert_eq!(s_from.invert() * s_to * gm, decrypt(checked.as_ref().unwrap(), &(k_to * y)));
+    assert_eq!(&rsk_from_to(&msg, &s_from, &s_to, &k_from, &k_to), checked.as_ref().unwrap());
+}
+#[test]
+fn authenticity() {
+    let mut rng = OsRng;
+
+    let y = ScalarNonZero::random(&mut rng);
+    let gy = y * G;
+
+    let data = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
+    let pseudonym = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
+    let metadata = GroupElement::random(&mut rng);
+    let system_id = "foobar".to_string();
+    let shared_secret = ScalarNonZero::random(&mut rng);
+
+    let tag = authenticity_tag(&data, &pseudonym, &metadata, &system_id, &shared_secret);
+    assert!(verify_authenticity_tag(&tag, &data, &pseudonym, &metadata, &system_id, &shared_secret));
+    let tag_false = authenticity_tag(&data, &data, &metadata, &system_id, &shared_secret);
+    assert!(!verify_authenticity_tag(&tag_false, &data, &pseudonym, &metadata, &system_id, &shared_secret));
 }
 
 #[test]
@@ -312,8 +359,6 @@ fn distributed_pep_api() {
 
         (network_config, systems, pseudonymisation_secrets, rekeying_secrets, blinding_factors) // secrets are only returned for testing
     }
-
-
     fn retrieve_factor_verifiers(systems: &mut Vec<PEPSystem>, user: &mut PEPClient, pc_from: &Context, pc_to: &Context, dc: &Context, rng: &mut OsRng) {
         for i in 0..systems.len() {
             let system_id = &systems[i].system_id.clone();
@@ -336,27 +381,36 @@ fn distributed_pep_api() {
         }
     }
 
-    fn pseudonymize_through_network(data_in: &GroupElement, pc_from: &Context, pc_to: &Context, dc: &Context, systems: &mut Vec<PEPSystem>, sender: &mut PEPClient, receiver: &mut PEPClient, rng: &mut OsRng) -> GroupElement {
+    fn session_key(client: &PEPClient, systems: &mut Vec<PEPSystem>, context: &Context, rng: &mut OsRng) -> (SessionKey, Vec<(SystemId, (SessionKeyShare, Proof))>) {
+        let skss = systems.iter().map(|s| (s.system_id.clone(), s.session_key_share(context, rng))).collect();
+        let key = client.session_key(&skss, context).unwrap();
+        (key, skss)
+    }
+
+    fn pseudonymize_through_network(data_in: &GroupElement, pc_from: &Context, pc_to: &Context, dc_from: &Context, dc_to: &Context, systems: &mut Vec<PEPSystem>, sender: &mut PEPClient, receiver: &mut PEPClient, rng: &mut OsRng) -> GroupElement {
         let mut network = Vec::new();
 
-        let msg_in = sender.encrypt(&data_in, rng);
-        // TODO: rerandomize?
+        let (sender_session_key, sender_skss) = session_key(sender, systems, dc_from, rng);
+
+        let msg_in = sender.encrypt(&data_in, sender_session_key, rng);
+        let tags = sender.authenticity_tags(&msg_in, &msg_in, &GroupElement::identity(), &sender_skss);
 
         // First system
-        let proven = systems[0].pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
-        network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
+        assert!(systems[0].verify_authenticity_tag(&tags[0], &msg_in, &msg_in, &GroupElement::identity(), dc_from));
+        let proven = systems[0].pseudonymize(&msg_in, pc_from, pc_to, dc_from, dc_to, rng);
+        network.push((systems[0].system_id.clone(), msg_in.clone(), tags, proven));
 
         // All other systems
         for i in 1..systems.len() {
             let system = &mut systems[i];
-            let msg_in = system.client.verify_pseudonymize(&network, &pc_from, &pc_to, &dc).unwrap();
-            let proven = system.pseudonymize(&msg_in, pc_from, pc_to, dc, rng);
-            network.push((system.system_id.clone(), msg_in.clone(), proven));
+            let msg_in = system.client.verify_pseudonymize(&network, &pc_from, &pc_to, &dc_from, &dc_to).unwrap();
+            let proven = system.pseudonymize(&msg_in, pc_from, pc_to, dc_from, dc_to, rng);
+            network.push((system.system_id.clone(), msg_in.clone(), tags, proven)); // TODO MSG WITH TAGS AS SINGLE TYPE
         }
 
         // Recipient
-        let msg_out = receiver.verify_pseudonymize(&network, pc_from, pc_to, dc).unwrap(); // can be done by client
-        let decryption_key_parts = systems.iter().map(|s| (s.system_id.clone(), s.decryption_key_part(dc, rng))).collect::<Vec<_>>();
+        let msg_out = receiver.verify_pseudonymize(&network, pc_from, pc_to, dc_from, dc_to).unwrap(); // can be done by client
+        let decryption_session_key_parts = systems.iter().map(|s| (s.system_id.clone(), s.session_key_share(dc_to, rng))).collect();
         let data_out = receiver.decrypt(&msg_out, &decryption_key_parts, dc);
         data_out
     }
@@ -370,20 +424,20 @@ fn distributed_pep_api() {
         let msg_in = rerandomize(&msg_in, &ScalarNonZero::random(rng));
 
         // First system
-        let proven = systems[0].transcrypt(&msg_in, dc, rng);
+        let proven = systems[0].rekey(&msg_in, dc, rng);
         network.push((systems[0].system_id.clone(), msg_in.clone(), proven));
 
         // All other systems
         for i in 1..systems.len() {
             let system = &mut systems[i];
-            let msg_in = system.client.verify_transcrypt(&network, &dc).unwrap();
-            let proven = system.transcrypt(&msg_in, dc, rng);
+            let msg_in = system.client.verify_rekey(&network, &dc).unwrap();
+            let proven = system.rekey(&msg_in, dc, rng);
             network.push((system.system_id.clone(), msg_in.clone(), proven));
         }
 
         // Recipient
-        let msg_out = receiver.verify_transcrypt(&network, dc).unwrap(); // can be done by client
-        let decryption_key_parts = systems.iter().map(|s| (s.system_id.clone(), s.decryption_key_part(dc, rng))).collect::<Vec<_>>();
+        let msg_out = receiver.verify_rekey(&network, dc).unwrap(); // can be done by client
+        let decryption_key_parts = systems.iter().map(|s| (s.system_id.clone(), s.session_key_share(dc, rng))).collect::<Vec<_>>();
         let data_out = receiver.decrypt(&msg_out, &decryption_key_parts, dc);
         data_out
     }

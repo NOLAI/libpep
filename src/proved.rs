@@ -3,27 +3,26 @@ use crate::arithmetic::*;
 use crate::elgamal::*;
 use crate::zkps::*;
 
-pub type PEPFactor = ScalarNonZero;
 
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct PEPFactorVerifiers(pub GroupElement, pub GroupElement);
-pub struct PEPFactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
+pub struct FactorVerifiers(pub GroupElement, pub GroupElement);
+pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
 
-impl PEPFactorVerifiers {
-    pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, PEPFactorVerifiersProof) {
+impl FactorVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, FactorVerifiersProof) {
         let r = ScalarNonZero::random(rng);
         let gra = a * r * G;
         let (gai, pai) = create_proof(&a.invert(), &gra, rng);
         // Checking pki.n == gr proves that a.invert()*a == 1.
         // Assume a'^-1 * (a*r*G) = r*G, then a = a' trivially holds for any a, a', r
-        (Self(a * G, gai), PEPFactorVerifiersProof(pai, r, gra))
+        (Self(a * G, gai), FactorVerifiersProof(pai, r, gra))
     }
 }
 
-impl PEPFactorVerifiersProof {
+impl FactorVerifiersProof {
     #[must_use]
-    pub fn verify(&self, verifiers: &PEPFactorVerifiers) -> bool {
-        let PEPFactorVerifiers(ga, gai) = verifiers;
+    pub fn verify(&self, verifiers: &FactorVerifiers) -> bool {
+        let FactorVerifiers(ga, gai) = verifiers;
         verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
     }
 }
@@ -35,10 +34,10 @@ impl PEPFactorVerifiersProof {
 pub struct ProvedRerandomize(GroupElement, Proof);
 
 impl ProvedRerandomize {
-    pub fn new<R: RngCore + CryptoRng>(original: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
-        // Rerandomize is normally {s * G + in.b, s*in.y + in.c, in.y};
-        let (gs, p) = create_proof(s, &original.y, rng);
-        Self(gs, p)
+    pub fn new<R: RngCore + CryptoRng>(original: &ElGamal, r: &ScalarNonZero, rng: &mut R) -> Self {
+        // Rerandomize is normally {r * G + in.b, r*in.y + in.c, in.y};
+        let (gr, p) = create_proof(r, &original.y, rng);
+        Self(gr, p)
     }
     pub fn verified_reconstruct(&self, original: &ElGamal) -> Option<ElGamal> {
         if self.verify(original) {
@@ -60,25 +59,25 @@ impl ProvedRerandomize {
     fn verify_rerandomized(&self, original: &ElGamal, new: &ElGamal) -> bool {
         self.verify(original) && new.b == self.0 + original.b && new.c == *self.1 + original.c && new.y == original.y
     }
-    fn verify_split(_gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gs: &GroupElement, p: &Proof) -> bool {
-        // slightly different than the others, as we reuse the structure of a standard proof to reconstruct the Rerandomize operation after sending
-        verify_proof(gs, gy, p)
+    fn verify_split(_gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gr: &GroupElement, p: &Proof) -> bool {
+        // slightly different from the others, as we reuse the structure of a standard proof to reconstruct the Rerandomize operation after sending
+        verify_proof(gr, gy, p)
     }
 }
 //// RESHUFFLE
 
 pub type ReshuffleFactor = ScalarNonZero;
-pub type ReshuffleFactorVerifiers = PEPFactorVerifiers;
+pub type ReshuffleFactorVerifiers = FactorVerifiers;
 
 /// GroupElement is `n*G` if prove_reshuffle with `n` is called.
 pub struct ProvedReshuffle(pub Proof, pub Proof);
 
 impl ProvedReshuffle {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, n: &ReshuffleFactor, rng: &mut R) -> Self {
-        // Reshuffle is normally {n * in.b, n * in.c, in.y};
-        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same n is used, saving a n*G operation)
-        let (_gn, pb) = create_proof(&n, &v.b, rng);
-        let (_gn, pc) = create_proof(&n, &v.c, rng);
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, rng: &mut R) -> Self {
+        // Reshuffle is normally {s * in.b, s * in.c, in.y};
+        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving a s*G operation)
+        let (_gs, pb) = create_proof(&s, &v.b, rng);
+        let (_gs, pc) = create_proof(&s, &v.c, rng);
         Self(pb, pc)
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> Option<ElGamal> {
@@ -107,7 +106,7 @@ impl ProvedReshuffle {
 }
 
 pub type RekeyFactor = ScalarNonZero;
-pub type RekeyFactorVerifiers = PEPFactorVerifiers;
+pub type RekeyFactorVerifiers = FactorVerifiers;
 
 /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
 pub struct ProvedRekey(pub Proof, pub Proof);
@@ -144,17 +143,55 @@ impl ProvedRekey {
     }
 }
 
+pub struct ProvedRekeyFromTo(pub Proof, pub Proof, pub Proof, pub Proof);
+
+impl ProvedRekeyFromTo {
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
+        // RekeyFromTo is normally {k_from * k_to^-1 * in.B, in.c, k_from^-1 * k_to * in.y};
+        let k_from_inv = k_from.invert();
+        let k = k_from_inv * k_to;
+        let (_gki, pb) = create_proof(&k.invert(), &v.b, rng);
+        let (_gk, pc) = create_proof(&k, &v.c, rng);
+        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
+        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
+        Self(pb, pc, pk, pki)
+    }
+    pub fn verified_reconstruct(&self, original: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<ElGamal> {
+        if self.verify(original, verifiers_from, verifiers_to) {
+            Some(self.reconstruct(original))
+        } else {
+            None
+        }
+    }
+    fn reconstruct(&self, original: &ElGamal) -> ElGamal {
+        ElGamal {
+            b: *self.0,
+            c: original.c,
+            y: *self.1,
+        }
+    }
+    fn verify(&self, original: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+        Self::verify_split(&original.b, &original.c, &original.y, &verifiers_from.0, &verifiers_from.1, &verifiers_to.0, &verifiers_to.1, &self.0, &self.1, &self.2, &self.3)
+    }
+    fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+        self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.y == self.1.n && new.c == original.c
+    }
+    fn verify_split(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, py: &Proof, pk: &Proof, pki: &Proof) -> bool {
+        verify_proof(&pk.n, gb, pb) && verify_proof(&pki.n, gy, py) && verify_proof(gk_to, gk_from_inv, pk) && verify_proof(gk_to_inv, gk_from, pki)
+    }
+}
+
 pub struct ProvedReshuffleFromTo(pub Proof, pub Proof, pub Proof);
 
 impl ProvedReshuffleFromTo {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ReshuffleFactor, n_to: &ReshuffleFactor, rng: &mut R) -> Self {
-        // Reshuffle is normally {n_from^-1 * n_to * in.b, n_from^-1 * n_to * in.c, in.y};
-        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same n is used, saving a n*G operation)
-        let n = n_from.invert() * n_to;
-        let (_gn, pb) = create_proof(&n, &v.b, rng);
-        let (_gn, pc) = create_proof(&n, &v.c, rng);
-        let (_gn_to, pn) = create_proof(n_to, &(n_from.invert() * G), rng);
-        Self(pb, pc, pn)
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, rng: &mut R) -> Self {
+        // ReshuffleFromTo is normally {s_from^-1 * s_to * in.b, s_from^-1 * s_to * in.c, in.y};
+        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving a s*G operation)
+        let s = s_from.invert() * s_to;
+        let (_gs, pb) = create_proof(&s, &v.b, rng);
+        let (_gs, pc) = create_proof(&s, &v.c, rng);
+        let (_gs_to, ps) = create_proof(s_to, &(s_from.invert() * G), rng);
+        Self(pb, pc, ps)
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> Option<ElGamal> {
         if self.verify(original, verifiers_from, verifiers_to) {
@@ -176,22 +213,23 @@ impl ProvedReshuffleFromTo {
     fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == original.y
     }
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, _gy: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, pb: &Proof, pc: &Proof, pn: &Proof) -> bool {
-        // pn is needed as proof that n is constructed as n_from.invert() * n_t
-        verify_proof(&pn.n, gb, pb) && verify_proof(&pn.n, gc, pc) && verify_proof(gn_to, gn_from_inv, pn)
+    fn verify_split(gb: &GroupElement, gc: &GroupElement, _gy: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, pb: &Proof, pc: &Proof, ps: &Proof) -> bool {
+        // ps is needed as proof that s is constructed as s_from.invert() * s_t
+        verify_proof(&ps.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(gs_to, gs_from_inv, ps)
     }
 }
+
 
 pub struct ProvedRSK(pub Proof, pub Proof, pub Proof, pub Proof);
 
 impl ProvedRSK {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, n: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> Self {
-        // RSK is normally {n * k^-1 * in.b, n * in.c, k * in.y};
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> Self {
+        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
         let ki = k.invert();
-        let nki = n * ki;
-        let (_gm, pnki) = create_proof(&ki, &(n * G), rng);
-        let (_gnki, pb) = create_proof(&nki, &v.b, rng);
-        let (_gn, pc) = create_proof(&n, &v.c, rng);
+        let ski = s * ki;
+        let (_gm, pnki) = create_proof(&ki, &(s * G), rng);
+        let (_gski, pb) = create_proof(&ski, &v.b, rng);
+        let (_gn, pc) = create_proof(&s, &v.c, rng);
         let (_gk, py) = create_proof(k, &v.y, rng);
         Self(pb, pc, py, pnki)
     }
@@ -215,29 +253,35 @@ impl ProvedRSK {
     fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
         self.verify(original, reshuffle_verifiers, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
     }
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pnki: &Proof) -> bool {
-        verify_proof(&pnki.n, gb, pb) && verify_proof(gn, gc, pc) && verify_proof(gk, gy, py) && verify_proof(gki, gn, pnki)
+    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gs: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pski: &Proof) -> bool {
+        verify_proof(&pski.n, gb, pb) && verify_proof(gs, gc, pc) && verify_proof(gk, gy, py) && verify_proof(gki, gs, pski)
     }
 }
 
-pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
+pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
 
 impl ProvedRSKFromTo {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ReshuffleFactor, n_to: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> Self {
-        // RSK is normally {n * k^-1 * in.b, n * in.c, k * in.y};
-        let n_from_inv = n_from.invert();
-        let n = n_from_inv * n_to;
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
+        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
+        let s_from_inv = s_from.invert();
+        let k_from_inv = k_from.invert();
+        let s = s_from_inv * s_to;
+        let k = k_from_inv * k_to;
         let ki = k.invert();
-        let nki = n * ki;
-        let (_gn_from_inv, pn) = create_proof(&n_from_inv, &(n_to * G), rng);
-        let (_gm, pnki) = create_proof(&ki, &pn.n, rng);
-        let (_gnki, pb) = create_proof(&nki, &v.b, rng);
-        let (_gn, pc) = create_proof(&n, &v.c, rng);
-        let (_gk, py) = create_proof(k, &v.y, rng);
-        Self(pb, pc, py, pnki, pn)
+        let ski = s * ki;
+
+        let (_gn_from_inv, ps) = create_proof(&s_from_inv, &(s_to * G), rng);
+        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
+        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
+        let (_gm, pski) = create_proof(&ki, &ps.n, rng);
+
+        let (_gski, pb) = create_proof(&ski, &v.b, rng);
+        let (_gs, pc) = create_proof(&s, &v.c, rng);
+        let (_gk, py) = create_proof(&k, &v.y, rng);
+        Self(pb, pc, py, pski, ps, pk, pki)
     }
-    pub fn verified_reconstruct(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
-        if self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers) {
+    pub fn verified_reconstruct(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> Option<ElGamal> {
+        if self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to){
             Some(self.reconstruct())
         } else {
             None
@@ -250,37 +294,41 @@ impl ProvedRSKFromTo {
             y: *self.2,
         }
     }
-    fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers.0, &rekey_verifiers.1, &self.0, &self.1, &self.2, &self.3, &self.4)
+    fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+        Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6)
     }
-    fn verify_rskd_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
+    fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+        self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
     }
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gn_from_inv: &GroupElement, gn_to: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pnki: &Proof, pn: &Proof) -> bool {
-        verify_proof(&pnki.n, gb, pb) && verify_proof(&pn.n, gc, pc) && verify_proof(gk, gy, py) && verify_proof(gki, &pn.n, pnki) && verify_proof(gn_from_inv, &gn_to, pn)
+    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pski: &Proof, ps: &Proof, pk: &Proof, pki: &Proof) -> bool {
+        verify_proof(&pski.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(&pk.n, gy, py) && verify_proof(&pki.n, &ps.n, pski) && verify_proof(gs_from_inv, &gs_to, ps) && verify_proof(gk_to, gk_from_inv, pk) && verify_proof(gk_to_inv, gk_from, pki)
     }
 }
 
-pub fn prove_rerandomize<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
-    ProvedRerandomize::new(v, s, rng)
+pub fn prove_rerandomize<R: RngCore + CryptoRng>(v: &ElGamal, r: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
+    ProvedRerandomize::new(v, r, rng)
 }
 
-pub fn prove_reshuffle<R: RngCore + CryptoRng>(v: &ElGamal, n: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffle {
-    ProvedReshuffle::new(v, n, rng)
+pub fn prove_reshuffle<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffle {
+    ProvedReshuffle::new(v, s, rng)
 }
 
 pub fn prove_rekey<R: RngCore + CryptoRng>(v: &ElGamal, k: &RekeyFactor, rng: &mut R) -> ProvedRekey {
     ProvedRekey::new(v, k, rng)
 }
 
-pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ReshuffleFactor, n_to: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffleFromTo {
-    ProvedReshuffleFromTo::new(v, n_from, n_to, rng)
+pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffleFromTo {
+    ProvedReshuffleFromTo::new(v, s_from, s_to, rng)
 }
 
-pub fn prove_rsk<R: RngCore + CryptoRng>(v: &ElGamal, n: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> ProvedRSK {
-    ProvedRSK::new(v, n, k, rng)
+pub fn prove_rekey_from_to<R: RngCore + CryptoRng>(v: &ElGamal, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> ProvedRekeyFromTo {
+    ProvedRekeyFromTo::new(v, k_from, k_to, rng)
 }
 
-pub fn prove_rsk_from_to<R: RngCore + CryptoRng>(v: &ElGamal, n_from: &ReshuffleFactor, n_to: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> ProvedRSKFromTo {
-    ProvedRSKFromTo::new(v, n_from, n_to, k, rng)
+pub fn prove_rsk<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> ProvedRSK {
+    ProvedRSK::new(v, s, k, rng)
+}
+
+pub fn prove_rsk_from_to<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> ProvedRSKFromTo {
+    ProvedRSKFromTo::new(v, s_from, s_to, k_from, k_to, rng)
 }

@@ -75,8 +75,39 @@ type Signature = Proof;
 pub fn sign<R: RngCore + CryptoRng>(message: &GroupElement, secret_key: &ScalarNonZero, rng: &mut R) -> Signature {
     create_proof(secret_key, message, rng).1
 }
-
 #[must_use]
 pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) -> bool {
     verify_proof(public_key, message, p)
 }
+
+// NON-RANDOMIZED SIGNATURES
+// Signatures that do not make use of a random nonce, and are therefore do not make the data linkable based on the signature.
+pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupElement, Proof) {
+    let mut hasher = Sha512::default();
+    hasher.update(gm.encode());
+    let mut bytes = [0u8; 64];
+    bytes.copy_from_slice(hasher.finalize().as_slice());
+    let r = ScalarNonZero::from_hash(&bytes);
+
+    let ga = a * G;
+    let gn = a * gm;
+    let gc1 = r * G;
+    let gc2 = r * gm;
+
+    let mut hasher = Sha512::default();
+    hasher.update(ga.encode());
+    hasher.update(gm.encode());
+    hasher.update(gn.0.compress().as_bytes());
+    hasher.update(gc1.0.compress().as_bytes());
+    hasher.update(gc2.0.compress().as_bytes());
+    let mut bytes = [0u8; 64];
+    bytes.copy_from_slice(hasher.finalize().as_slice());
+    let e = ScalarNonZero::from_hash(&bytes);
+    let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
+    (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
+}
+
+pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Signature {
+    create_proof_unlinkable(secret_key, message).1
+}
+

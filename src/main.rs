@@ -3,7 +3,8 @@ pub mod elgamal;
 pub mod primitives;
 pub mod zkps;
 pub mod proved;
-pub mod simple;
+pub mod authenticity;
+pub mod utils;
 pub mod distributed;
 #[cfg(test)]
 mod tests;

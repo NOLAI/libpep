@@ -47,18 +47,6 @@ pub fn encrypt<R: RngCore + CryptoRng>(msg: &GroupElement, public_key: &GroupEle
     }
 }
 
-
-/// Encrypt message [GroupElement] `msg` using randomized public key [GroupElement] `public_key` and the randomizer [GroupElement] `randomizer_g` to a ElGamal tuple. A randomized public key can be computed from a [GroupElement] public key `pk` by `randomizer*pk` using a random [ScalarNonZero] randomizer. The `randomizer` can be converted to the necessary [GroupElement] argument by doing `randomizer*G`.
-pub fn encrypt_using_randomizer<R: RngCore + CryptoRng>(msg: &GroupElement, public_key: &GroupElement, randomizer_g: &GroupElement, rng: &mut R) -> ElGamal {
-    debug_assert!(public_key != &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text send over the line
-    let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
-    ElGamal {
-        b: r * G,
-        c: msg + r * public_key + r * randomizer_g,
-        y: *public_key,
-    }
-}
-
 /// Decrypt ElGamal tuple (encrypted using `secret_key * G`) using secret key [ScalarNonZero] `secret_key`.
 pub fn decrypt(s: &ElGamal, secret_key: &ScalarNonZero) -> GroupElement {
     s.c - secret_key * s.b
