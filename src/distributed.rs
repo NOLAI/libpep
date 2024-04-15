@@ -240,9 +240,9 @@ impl PEPClient {
         // If the ciphertext cannot securely generate ciphertexts, the network should rerandomize the ciphertexts to prevent linkability
         encrypt(msg, &(session_key * G), rng)
     }
-    pub fn authenticity_tags<R: RngCore + CryptoRng>(&self, data: &ElGamal, pseudonym: &ElGamal, metadata: &Message, skss: &Vec<(SystemId, (SessionKeyShare, Proof))>) -> Option<Vec<AuthenticityTag>> {
-        skss.iter().map(|(sid, (dkp, _p))| authenticity_tag(data, pseudonym, metadata, sid, &dkp)).collect()
-    }
+    // pub fn authenticity_tags<R: RngCore + CryptoRng>(&self, data: &ElGamal, pseudonym: &ElGamal, metadata: &Message, skss: &Vec<(SystemId, (SessionKeyShare, Proof))>) -> Option<Vec<AuthenticityTag>> {
+    //     skss.iter().map(|(sid, (dkp, _p))| authenticity_tag(data, pseudonym, metadata, sid, &dkp)).collect()
+    // }
     pub fn encrypt_global<R: RngCore + CryptoRng>(&self, msg: &Message, rng: &mut R) -> Ciphertext {
         // Note this is the only operation that requires a random number generator
         // If the ciphertext cannot securely generate ciphertexts, the network should rerandomize the ciphertexts to prevent linkability

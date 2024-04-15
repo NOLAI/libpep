@@ -14,9 +14,6 @@ readme = "README.md"
 [features]
 default = ["build-binary"]
 build-binary = ["buildinfy","commandy","commandy_macros"]
-[[bin]]
-name = "peppy"
-required-features = ["build-binary"]
 
 [dependencies]
 curve25519-dalek = "3"
@@ -27,17 +24,3 @@ buildinfy = { version = "^0.1", path = "../buildinfy", optional = true }
 commandy = { version = "^0.2", path = "../commandy", optional = true }
 commandy_macros = { version = "^0.2", path = "../commandy_macros", optional = true }
 hex = "0.4.3"
-
-[package.metadata.deb]
-name = "peppy"
-depends = ""
-assets = [
-    ["peppy.1", "usr/man/man1/", "444"],
-    ["target/release/peppy", "usr/bin/peppy", "555"],
-]
-
-[package.metadata.freebsd]
-assets = [
-    ["peppy.1", "man/man1/", "444"],
-    ["target/release/peppy", "bin/peppy", "555"],
-]

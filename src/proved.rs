@@ -177,7 +177,10 @@ impl ProvedRekeyFromTo {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.y == self.1.n && new.c == original.c
     }
     fn verify_split(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, py: &Proof, pk: &Proof, pki: &Proof) -> bool {
-        verify_proof(&pk.n, gb, pb) && verify_proof(&pki.n, gy, py) && verify_proof(gk_to, gk_from_inv, pk) && verify_proof(gk_to_inv, gk_from, pki)
+        verify_proof(&pki.n, gb, pb)
+            && verify_proof(&pk.n, gy, py)
+            && verify_proof(gk_to, gk_from_inv, pk)
+            && verify_proof(gk_to_inv, gk_from, pki)
     }
 }
 

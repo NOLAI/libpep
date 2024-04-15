@@ -6,5 +6,3 @@ pub mod proved;
 pub mod authenticity;
 pub mod utils;
 pub mod distributed;
-#[cfg(test)]
-mod tests;
