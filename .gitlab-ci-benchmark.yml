@@ -13,10 +13,6 @@ variables:
   PROFILE: "release"
 
 benchmark:
-  rules:
-  - if: '$CI_PIPELINE_SOURCE == "push"'
-    when: never # prevent pipeline run for push event
-  - when: always
   stage: build
   tags: [$RUNNER_TAG]
   image: bitpowder.com:2444/bitpowder/docker-build/rust-stable:main
