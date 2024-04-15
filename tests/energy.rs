@@ -175,21 +175,37 @@ fn tunnels_data(_: usize, l: usize, m: usize) {
 }
 
 #[test]
-fn energy_analysis_id() {
+fn energy_analysis_id_pep() {
     let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
     transcrypt_id(n, l, m);
-    tunnels_id(n, l, m);
 }
 
 #[test]
-fn energy_analysis_data() {
+fn energy_analysis_data_pep() {
     let l = 10000; // experiment length iterations
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
     transcrypt_data(n, l, m);
+}
+
+#[test]
+fn energy_analysis_id_tunnels() {
+    let l = 10000; // experiment length iterations
+    let n = 3; // number of tiers
+    let m = 1; // number of blocks / data length (multiples of 32 bytes)
+
+    tunnels_id(n, l, m);
+}
+
+#[test]
+fn energy_analysis_data_tunnels() {
+    let l = 10000; // experiment length iterations
+    let n = 3; // number of tiers
+    let m = 10; // number of blocks / data length (multiples of 32 bytes)
+
     tunnels_data(n, l, m);
 }
