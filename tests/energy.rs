@@ -106,23 +106,25 @@ fn transcrypt_data(n: usize, l: usize, m: usize) {
 }
 
 fn tunnels(n: usize, l: usize, m: usize) {
-    let mut key = [0u8; 32];
-    rand::thread_rng().fill(&mut key[..]);
-
-    let iv = [0u8; 16];
-    rand::thread_rng().fill(&mut key[..]);
-
-    let data_length = 32 * m;
-    let mut data = vec![0u8; data_length];
-    rand::thread_rng().fill(&mut data[..]);
-
-    let cipher = Cipher::new_256(&key);
 
     // START BENCHMARK
     let before = get_ina();
 
     for _ in 0..l {
-        for _ in 0 .. m { // 2*m blocks because blocks are 16 bytes, not 32
+        let mut key = [0u8; 32];
+        rand::thread_rng().fill(&mut key[..]);
+
+        let iv = [0u8; 16];
+        rand::thread_rng().fill(&mut key[..]);
+
+        for _ in 0 .. m {
+
+            let data_length = 32 * m;
+            let mut data = vec![0u8; data_length];
+            rand::thread_rng().fill(&mut data[..]);
+
+            let cipher = Cipher::new_256(&key);
+
             // sender
             let mut encrypted = cipher.cbc_encrypt(&iv, &data);
 
