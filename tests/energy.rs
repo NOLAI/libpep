@@ -129,7 +129,10 @@ fn tunnels(n: usize, l: usize, m: usize) {
             // n-tiers
             for _ in 0..n {
                 let decrypted = cipher.cbc_decrypt(&iv, &encrypted);
-                encrypted = cipher.cbc_encrypt(&iv, &decrypted);
+                let clone = decrypted.clone();
+
+                encrypted = cipher.cbc_encrypt(&iv, &clone);
+                encrypted = encrypted.clone();
             }
             let received = cipher.cbc_decrypt(&iv, &encrypted);
             debug_assert_eq!(data, received);
