@@ -1,9 +1,5 @@
-use aes::{Aes256};
-use aes::cipher::{
-    BlockEncrypt, BlockDecrypt, KeyInit,
-    generic_array::GenericArray,
-};
-use hex::ToHex;
+use libaes::Cipher;
+use rand::Rng;
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, encrypt};
@@ -109,84 +105,34 @@ fn transcrypt_data(n: usize, l: usize, m: usize) {
 
 }
 
-fn tunnels_id(n: usize, l: usize, m: usize) {
-    let mut rng = OsRng;
-    let key = GenericArray::from(GroupElement::random(&mut rng).encode());
-    let cipher = Aes256::new(&key);
+fn tunnels(n: usize, l: usize, m: usize) {
+    let mut key = [0u8; 32];
+    rand::thread_rng().fill(&mut key[..]);
 
-    let data = GenericArray::from([42u8; 16]);
-    let mut value = data.clone();
+    let iv = [0u8; 16];
+    rand::thread_rng().fill(&mut key[..]);
 
-    let m2 = 2*m;
+    let data_length = 32 * m;
+    let mut data = vec![0u8; data_length];
+    rand::thread_rng().fill(&mut data[..]);
+
+    let cipher = Cipher::new_256(&key);
 
     // START BENCHMARK
     let before = get_ina();
 
     for _ in 0..l {
-        for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
+        for _ in 0 .. m { // 2*m blocks because blocks are 16 bytes, not 32
             // sender
-            let x = value.as_slice();
-            value = GenericArray::clone_from_slice(x);
-            cipher.encrypt_block(&mut value);
-            eprintln!("test");
-
+            let mut encrypted = cipher.cbc_encrypt(&iv, &data);
 
             // n-tiers
             for _ in 0..n {
-                cipher.decrypt_block(&mut value);
-                let x = value.as_slice();
-                value = GenericArray::clone_from_slice(x);
-                eprintln!("test");
-
-                cipher.encrypt_block(&mut value);
+                let decrypted = cipher.cbc_decrypt(&iv, &encrypted);
+                encrypted = cipher.cbc_encrypt(&iv, &decrypted);
             }
-            let x = value.as_slice();
-            value = GenericArray::clone_from_slice(x);
-            eprintln!("test");
-
-            // receiver
-            cipher.decrypt_block(&mut value);
-            debug_assert_eq!(data.as_slice(), value.as_slice());
-        }
-    }
-    // END BENCHMARK
-    let after = get_ina();
-    if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("energy {} J", after - before);
-    }
-}
-
-fn tunnels_data(_: usize, l: usize, m: usize) {
-    let mut rng = OsRng;
-    let key = GenericArray::from(GroupElement::random(&mut rng).encode());
-    let cipher = Aes256::new(&key);
-
-    // Get a randomly initialized array of 32 bytes (AES block size)
-    let data = GenericArray::from([42u8; 16]);
-    let mut value = data.clone();
-
-    let m2 = 2*m;
-
-    // START BENCHMARK
-    let before = get_ina();
-
-    for _ in 0..l {
-        for _ in 0 .. m2 { // 2*m blocks because blocks are 16 bytes, not 32
-            // sender
-            let x = value.as_slice();
-            value = GenericArray::clone_from_slice(x);
-            eprintln!("test");
-
-            cipher.encrypt_block(&mut value);
-            eprintln!("test");
-
-            let x = value.as_slice();
-            value = GenericArray::clone_from_slice(x);
-            eprintln!("test");
-
-            // receiver
-            cipher.decrypt_block(&mut value);
-            debug_assert_eq!(data.as_slice(), value.as_slice());
+            let received = cipher.cbc_decrypt(&iv, &encrypted);
+            debug_assert_eq!(data, received);
         }
     }
     // END BENCHMARK
@@ -220,7 +166,7 @@ fn energy_analysis_id_tunnels() {
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
-    tunnels_id(n, l, m);
+    tunnels(n, l, m);
 }
 
 #[test]
@@ -229,5 +175,5 @@ fn energy_analysis_data_tunnels() {
     let n = 3; // number of tiers
     let m = 10; // number of blocks / data length (multiples of 32 bytes)
 
-    tunnels_data(n, l, m);
+    tunnels(n, l, m);
 }
