@@ -6,3 +6,4 @@ pub mod proved;
 pub mod authenticity;
 pub mod utils;
 pub mod distributed;
+pub mod tls;
