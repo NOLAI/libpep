@@ -2,6 +2,8 @@ use std::cell::RefCell;
 use std::net::IpAddr;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::thread::sleep;
+use std::time::SystemTime;
 use hyper::body::Incoming;
 use hyper::{Request, Response};
 use rand_core::OsRng;
@@ -49,7 +51,7 @@ fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_fro
     })
 }
 
-fn transcrypt(n: usize, l: usize, m: usize) {
+fn transcrypt(n: usize, m: usize, iterations: usize, rest_before_measure: u64) -> (f64, f64) {
     let mut rng = OsRng;
 
     // system params
@@ -81,9 +83,11 @@ fn transcrypt(n: usize, l: usize, m: usize) {
     let sender = get_agent();
 
     // START BENCHMARK
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+    let t_before = SystemTime::now();
     let before = get_ina();
 
-    for _ in 0.. l {
+    for _ in 0.. iterations {
         for _ in 0..m {
             let mut value = encrypt(&data, &(k_from * gy), &mut OsRng); // initial encryption
 
@@ -102,18 +106,121 @@ fn transcrypt(n: usize, l: usize, m: usize) {
     }
     // END BENCHMARK
     let after = get_ina();
-    if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("energy {} J", after - before);
+
+    let t_after = SystemTime::now();
+
+    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
+    if before.is_none() || after.is_none() {
+        return (0.0, 0.0);
     }
+    let energy_used = after.unwrap() - before.unwrap();
+    (energy_used, time_elapsed)
+}
+
+fn tunnel_handler(bytes: Vec<u8>, _: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
+    let value = ElGamal::decode(&bytes).unwrap();
+
+    let result = value.encode().to_vec();
+    Ok(Response::new(box_body(BodyVec::from(result))))
+}
+
+fn start_tunnel(i:usize) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .thread_name("background")
+            .worker_threads(std::thread::available_parallelism().map(|x| x.get()).unwrap_or(4))
+            .enable_all()
+            .build()
+            .expect("build runtime");
+
+        let local = Box::new(tokio::task::LocalSet::new());
+        let local : &'static tokio::task::LocalSet = Box::leak(local);
+
+        let state = ServerState { s_from: ScalarNonZero::one(), s_to: ScalarNonZero::one(), k_from: ScalarNonZero::one(), k_to: ScalarNonZero::one()};
+        local.block_on(&rt, webserver((3330 + i) as u16, tunnel_handler, state));
+    })
+}
+
+fn no_transcrypt(n: usize, m: usize, iterations: usize, rest_before_measure: u64) -> (f64, f64) {
+    let mut rng = OsRng;
+
+    // system params
+    let y = ScalarNonZero::random(&mut rng); // global private
+    let gy = y * G; // global public
+
+    // random message
+    let data = GroupElement::random(&mut rng);
+
+    // factors
+    let tiers = Vec::from_iter((0..n).map(|x| start_tunnel(x)));
+
+    // wait for webserver to start
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
+    let sender = get_agent();
+
+    // START BENCHMARK
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+    let t_before = SystemTime::now();
+    let before = get_ina();
+
+    for _ in 0.. iterations {
+        for _ in 0..m {
+            let mut value = encrypt(&data, &(gy), &mut OsRng); // initial encryption
+
+            // transcryption
+            for i in 0..n {
+                let bytes = value.encode();
+                let response = sender.post(&format!("https://127.0.0.1:{}", 3330 + i)).send_bytes(&bytes[..]).unwrap();
+                let mut body = Vec::new();
+                response.into_reader().read_to_end(&mut body).unwrap();
+                value = ElGamal::decode(&body).unwrap();
+            }
+
+            let decrypted = decrypt(&value, &(y)); // final decryption
+            debug_assert_eq!(data, decrypted);
+        }
+    }
+    // END BENCHMARK
+    let after = get_ina();
+
+    let t_after = SystemTime::now();
+
+    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
+    if before.is_none() || after.is_none() {
+        return (0.0, 0.0);
+    }
+    let energy_used = after.unwrap() - before.unwrap();
+    (energy_used, time_elapsed)
 }
 
 #[test]
 fn energy_transcrypt() {
-    let l = 1; // experiment length iterations
+    let iterations = 1000;
+    let rest_before_measure = 2;
     let n = 3; // number of tiers
-    let m = 1; // number of blocks / data length (multiples of 32 bytes)
+    let m = 1;
 
-    transcrypt(n, l, m);
+    let num_messages = 10u64.pow(m as u32) as usize;
+    eprintln!("Benchmarking with {} tiers and {} messages", n, num_messages);
+
+    let (energy_used, time_elapsed) = transcrypt(n, num_messages, iterations, rest_before_measure);
+    eprintln!("Time elapsed: {} s", time_elapsed);
+    eprintln!("Energy used: {} J", energy_used);
 }
 
+#[test]
+fn energy_no_transcrypt() {
+    let iterations = 1000;
+    let rest_before_measure = 2;
+    let n = 3; // number of tiers
+    let m = 1;
+
+    let num_messages = 10u64.pow(m as u32) as usize;
+    eprintln!("Benchmarking with {} tiers and {} messages", n, num_messages);
+
+    let (energy_used, time_elapsed) = no_transcrypt(n, num_messages, iterations, rest_before_measure);
+    eprintln!("Time elapsed: {} s", time_elapsed);
+    eprintln!("Energy used: {} J", energy_used);
+}
 

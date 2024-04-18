@@ -91,7 +91,6 @@ async fn handle_wrap(req: Request<Incoming>, server_state: Rc<RefCell<ServerStat
         let b = b.unwrap();
         bytes.extend_from_slice(&b.into_data().unwrap());
     }
-    eprintln!("got body: {:?}", bytes);
     f(bytes, server_state)
 }
 
@@ -106,7 +105,6 @@ pub async fn webserver(port:u16,
     http1.title_case_headers(true);
 
     let mut servers = Vec::new();
-    eprintln!("listening for HTTPS on port {}", port);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let socket = tokio::net::TcpSocket::new_v4().unwrap();
     socket.set_nodelay(true).unwrap();
