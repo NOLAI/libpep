@@ -2,8 +2,8 @@ use libaes::Cipher;
 use rand::Rng;
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
-use libpep::elgamal::{decrypt, encrypt};
-use libpep::primitives::{rekey_from_to, rsk_from_to};
+use libpep::elgamal::{decrypt, ElGamal, encrypt};
+use libpep::primitives::{rekey, rekey_from_to, reshuffle, reshuffle_from_to, rsk, rsk_from_to};
 use libpep::tls::*;
 
 fn get_ina() -> Option<f64> {
@@ -225,3 +225,233 @@ fn energy_analysis_data_tunnels() {
 
     tunnels(n, l, m);
 }
+
+
+#[test]
+fn energy_pep_rekey() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let k = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let before = get_ina();
+    let mut rekeyed;
+
+    for _ in 0..l {
+        rekeyed = rekey(&encrypted, &k);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Rekey: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&rekeyed, &(k*y));
+
+    assert_eq!(m, decrypted);
+}
+
+
+#[test]
+fn energy_pep_reshuffle() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let s = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let before = get_ina();
+
+    let mut reshuffled;
+
+    for _ in 0..l {
+        reshuffled = reshuffle(&encrypted, &s);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Reshuffle: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&reshuffled, &y);
+
+    assert_eq!((s*m), decrypted);
+}
+
+#[test]
+fn pep_rsk() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let k = ScalarNonZero::random(&mut rng);
+    let s = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let before = get_ina();
+
+    let mut rsked;
+
+    for _ in 0..l {
+        rsked = rsk(&encrypted, &s, &k);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Reshuffle: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&rsked, &(k*y));
+
+    assert_eq!((s*m), decrypted);
+}
+
+#[test]
+fn pep_rekey_from_to() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let k_from = ScalarNonZero::random(&mut rng);
+    let k_to = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+
+    let before = get_ina();
+
+    let mut rekeyed;
+
+    for _ in 0..l {
+        rekeyed = rekey_from_to(&encrypted, &k_from, &k_to);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Reshuffle: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&rekeyed, &(k_to*y));
+
+    assert_eq!(m, decrypted);
+}
+
+#[test]
+fn pep_reshuffle_from_to() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let s_from = ScalarNonZero::random(&mut rng);
+    let s_to = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let before = get_ina();
+
+    let mut reshuffled;
+
+    for _ in 0..l {
+        reshuffled = reshuffle_from_to(&encrypted, &s_from, &s_to);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Reshuffle: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&reshuffled, &y);
+
+    assert_eq!(s_from.invert() * s_to * m, decrypted);
+}
+
+#[test]
+fn pep_rsk_from_to() {
+    let l = 100000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let s_from = ScalarNonZero::random(&mut rng);
+    let s_to = ScalarNonZero::random(&mut rng);
+    let k_from = ScalarNonZero::random(&mut rng);
+    let k_to = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+
+    let before = get_ina();
+
+    let mut rsked;
+
+    for _ in 0..l {
+        rsked = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
+    }
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("Reshuffle: {} J", after - before);
+    }
+
+    let decrypted = decrypt(&rsked, &(k_to*y));
+
+    assert_eq!(s_from.invert() * s_to * m, decrypted);
+}
+

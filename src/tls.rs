@@ -183,7 +183,7 @@ pub async fn webserver() {
                                             }
                                         },
                                         Ok(Err(err)) => {
-                                            crashy::log::info!("TLS secondairy handshake error {err} for SNI '{}'", sni.unwrap_or_default());
+                                            crashy::log::info!("TLS secondary handshake error {err} for SNI '{}'", sni.unwrap_or_default());
                                         },
                                         Err(_) => {
                                             // time out
