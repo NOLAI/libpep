@@ -19,7 +19,7 @@ fn get_ina() -> Option<f64> {
     resp.header("X-Electricity-Consumed-Total")?.parse().ok()
 }
 
-fn get_agent() -> ureq::Agent {
+fn get_agent(id : usize) -> ureq::Agent {
     let mut root_store = tokio_rustls::rustls::RootCertStore::empty();
     let certs = load_pem_certs_from_bytes(include_bytes!("../certs/CA.pem")).unwrap();
     root_store.add(certs.last().unwrap().clone()).unwrap();
@@ -63,6 +63,8 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
 
     let s = s_from.invert() * s_to;
 
+    let agents = Vec::from_iter((0..n).map(|x| get_agent(x)));
+
     std::thread::spawn(|| {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -74,11 +76,11 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
 
         local.block_on(&rt, async {
             eprintln!("server starting");
-            let _ = webserver().await;
+            let _ = webserver(3333).await;
             eprintln!("server stopped");
         });
     });
-    let agent = get_agent();
+    let agent = get_agent(1);
 
     eprintln!("waiting for server to start");
     std::thread::sleep(std::time::Duration::from_secs(1));
@@ -230,8 +232,7 @@ fn energy_analysis_data_tunnels() {
 
 #[test]
 fn energy_idle() {
-    let millis = time::Duration::from_millis(31000);
-
+    let millis = std::time::Duration::from_millis(30000);
     let before = get_ina();
     thread::sleep(millis);
 

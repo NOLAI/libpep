@@ -91,7 +91,7 @@ async fn handle(port: u16, encrypted: bool, conn: IpAddr, req: Request<Incoming>
     return error_page(200, "foobar", "localhost", None, None, 0);
 }
 
-pub async fn webserver() {
+pub async fn webserver(port:u16) {
     let key = load_pem_private_key_from_bytes(include_bytes!("../certs/cert.key")).unwrap();
     let certs = load_pem_certs_from_bytes(include_bytes!("../certs/cert.crt")).unwrap();
     let server_state = Rc::new(RefCell::new(ServerState {}));
@@ -99,7 +99,6 @@ pub async fn webserver() {
     http1.title_case_headers(true);
 
     let mut servers = Vec::new();
-    let port = 3333;
     eprintln!("listening for HTTPS on port {}", port);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let socket = tokio::net::TcpSocket::new_v4().unwrap();
