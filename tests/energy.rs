@@ -499,41 +499,60 @@ fn energy_pep_rsk_from_to(iterations: i32, rest_before_measure:u64) -> (f64,f64)
 
 #[test]
 fn energy_individual_operations() {
-    let iterations = 200000;
+    let iterations = 100000;
     let time_per_iteration_estimate = 0.0003; // 100000 is approx 30 seconds
     let rest_before_measure = 2;
 
+    eprintln!("Running individual energy measurements for {} iterations", iterations);
+    eprintln!("Resting for {} seconds before each measurement", rest_before_measure);
+
     let approx_time_seconds = iterations as f64 * time_per_iteration_estimate;
+    eprintln!("Approximate time per measurement: {} seconds", approx_time_seconds);
+
     let idle_energy = energy_idle(approx_time_seconds as u64, rest_before_measure);
     let idle_energy_per_second = idle_energy / approx_time_seconds;
-    eprintln!("Idle energy: {} J", idle_energy);
+    eprintln!("Idle energy: {} J or {} J/s", idle_energy, idle_energy_per_second);
 
     let (energy_rekey, time_rekey) = energy_pep_rekey(iterations, rest_before_measure);
     let energy_rekey_net = energy_rekey - (idle_energy_per_second * time_rekey);
-    eprintln!("Rekey energy: {} J", energy_rekey_net);
+    eprintln!("Rekey energy: {} J total in {} seconds", energy_rekey, time_rekey);
+    eprintln!("Rekey energy net: {} J", energy_rekey_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_rekey_net / iterations as f64);
 
     let (energy_reshuffle, time_reshuffle) = energy_pep_reshuffle(iterations, rest_before_measure);
     let energy_reshuffle_net = energy_reshuffle - (idle_energy_per_second * time_reshuffle);
-    eprintln!("Reshuffle energy: {} J", energy_reshuffle_net);
+    eprintln!("Reshuffle energy: {} J total in {} seconds", energy_reshuffle, time_reshuffle);
+    eprintln!("Reshuffle energy net: {} J", energy_reshuffle_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_reshuffle_net / iterations as f64);
 
     let (energy_rerandomize, time_rerandomize) = energy_pep_rerandomize(iterations, rest_before_measure);
     let energy_rerandomize_net = energy_rerandomize - (idle_energy_per_second * time_rerandomize);
-    eprintln!("Rerandomize energy: {} J", energy_rerandomize_net);
+    eprintln!("Rerandomize energy: {} J total in {} seconds", energy_rerandomize, time_rerandomize);
+    eprintln!("Rerandomize energy net: {} J", energy_rerandomize_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_rerandomize_net / iterations as f64);
 
     let (energy_rsk, time_rsk) = energy_pep_rsk(iterations, rest_before_measure);
     let energy_rsk_net = energy_rsk - (idle_energy_per_second * time_rsk);
-    eprintln!("RSK energy: {} J", energy_rsk_net);
+    eprintln!("RSK energy: {} J total in {} seconds", energy_rsk, time_rsk);
+    eprintln!("RSK energy net: {} J", energy_rsk_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_rsk_net / iterations as f64);
 
     let (energy_rekey_from_to, time_rekey_from_to) = energy_pep_rekey_from_to(iterations, rest_before_measure);
     let energy_rk2_net = energy_rekey_from_to - (idle_energy_per_second * time_rekey_from_to);
-    eprintln!("RK2 energy: {} J", energy_rk2_net);
+    eprintln!("RK2 energy: {} J total in {} seconds", energy_rekey_from_to, time_rekey_from_to);
+    eprintln!("RK2 energy net: {} J", energy_rk2_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_rk2_net / iterations as f64);
 
     let (energy_reshuffle_from_to, time_reshuffle_from_to) = energy_pep_reshuffle_from_to(iterations, rest_before_measure);
     let energy_rs2_net = energy_reshuffle_from_to - (idle_energy_per_second * time_reshuffle_from_to);
-    eprintln!("RS2 energy: {} J", energy_rs2_net);
+    eprintln!("RS2 energy: {} J total in {} seconds", energy_reshuffle_from_to, time_reshuffle_from_to);
+    eprintln!("RS2 energy net: {} J", energy_rs2_net);
+    eprintln!("RS2 energy net per iteration: {} J", energy_rs2_net / iterations as f64);
 
     let (energy_rsk_from_to, time_rsk_from_to) = energy_pep_rsk_from_to(iterations, rest_before_measure);
     let energy_rsk2_net = energy_rsk_from_to - (idle_energy_per_second * time_rsk_from_to);
-    eprintln!("RSK2 energy: {} J", energy_rsk2_net);
+    eprintln!("RSK2 energy: {} J total in {} seconds", energy_rsk_from_to, time_rsk_from_to);
+    eprintln!("RSK2 energy net: {} J", energy_rsk2_net);
+    eprintln!("RSK2 energy net per iteration: {} J", energy_rsk2_net / iterations as f64);
 }
 
