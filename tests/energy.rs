@@ -1,9 +1,10 @@
+use std::time::SystemTime;
 use libaes::Cipher;
 use rand::Rng;
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, ElGamal, encrypt};
-use libpep::primitives::{rekey, rekey_from_to, reshuffle, reshuffle_from_to, rsk, rsk_from_to};
+use libpep::primitives::{rekey, rekey_from_to, rerandomize, reshuffle, reshuffle_from_to, rsk, rsk_from_to};
 use libpep::tls::*;
 
 fn get_ina() -> Option<f64> {
@@ -228,8 +229,41 @@ fn energy_analysis_data_tunnels() {
 
 
 #[test]
+fn energy_pep_rerandomize() {
+    let l = 1000000; // experiment length iterations
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let r = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let t_before = SystemTime::now();
+    let before = get_ina();
+    for _ in 0..l {
+        let _ = rerandomize(&encrypted, &r);
+    }
+
+    let after = get_ina();
+    let t_after = SystemTime::now();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("RR: {} J", after - before);
+        eprintln!("RR: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
+    }
+}
+
+#[test]
 fn energy_pep_rekey() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -245,22 +279,25 @@ fn energy_pep_rekey() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
     for _ in 0..l {
         let _ = rekey(&encrypted, &k);
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Rekey: {} J", after - before);
+        eprintln!("RK: {} J", after - before);
+        eprintln!("RK: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
 
 #[test]
 fn energy_pep_reshuffle() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -276,6 +313,7 @@ fn energy_pep_reshuffle() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
 
     for _ in 0..l {
@@ -283,15 +321,17 @@ fn energy_pep_reshuffle() {
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Reshuffle: {} J", after - before);
+        eprintln!("RS: {} J", after - before);
+        eprintln!("RS: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
 #[test]
 fn pep_rsk() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -308,6 +348,7 @@ fn pep_rsk() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
 
     for _ in 0..l {
@@ -315,15 +356,17 @@ fn pep_rsk() {
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Reshuffle: {} J", after - before);
+        eprintln!("RSK: {} J", after - before);
+        eprintln!("RSK: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
 #[test]
 fn pep_rekey_from_to() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -340,6 +383,7 @@ fn pep_rekey_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
 
     for _ in 0..l {
@@ -347,15 +391,17 @@ fn pep_rekey_from_to() {
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Reshuffle: {} J", after - before);
+        eprintln!("RK2: {} J", after - before);
+        eprintln!("RK2: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
 #[test]
 fn pep_reshuffle_from_to() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -372,6 +418,7 @@ fn pep_reshuffle_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
 
     for _ in 0..l {
@@ -379,15 +426,17 @@ fn pep_reshuffle_from_to() {
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Reshuffle: {} J", after - before);
+        eprintln!("RS2: {} J", after - before);
+        eprintln!("RS2: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
 #[test]
 fn pep_rsk_from_to() {
-    let l = 100000; // experiment length iterations
+    let l = 1000000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -406,6 +455,7 @@ fn pep_rsk_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
 
+    let t_before = SystemTime::now();
     let before = get_ina();
 
 
@@ -414,9 +464,11 @@ fn pep_rsk_from_to() {
     }
 
     let after = get_ina();
+    let t_after = SystemTime::now();
 
     if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("Reshuffle: {} J", after - before);
+        eprintln!("RSK2: {} J", after - before);
+        eprintln!("RSK2: {} s", t_after.duration_since(t_before).unwrap().as_secs_f64());
     }
 }
 
