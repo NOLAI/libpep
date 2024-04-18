@@ -17,19 +17,22 @@ fn get_ina() -> Option<f64> {
     resp.header("X-Electricity-Consumed-Total")?.parse().ok()
 }
 
-fn request() -> Result<String,String> {
+fn get_agent() -> ureq::Agent {
     let mut root_store = tokio_rustls::rustls::RootCertStore::empty();
     let certs = load_pem_certs_from_bytes(include_bytes!("../certs/CA.pem")).unwrap();
     root_store.add(certs.last().unwrap().clone()).unwrap();
     let tls_config = tokio_rustls::rustls::ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
-    let agent: ureq::Agent = ureq::AgentBuilder::new()
+    ureq::AgentBuilder::new()
       .user_agent(&format!("{} {}/{}", env!("CARGO_PKG_NAME"), buildinfy::build_reference().unwrap_or_default(), buildinfy::build_pipeline_id_per_project().unwrap_or_default()))
       .timeout_read(std::time::Duration::from_secs(60))
       .timeout_write(std::time::Duration::from_secs(5))
       .tls_config(std::sync::Arc::new(tls_config))
-      .build();
+      .build()
+}
+
+fn request(agent: &ureq::Agent) -> Result<String,String> {
     let resp = agent.post("https://127.0.0.1:3333").send_bytes(b"bar").map_err(|e| e.to_string())?;
     resp.into_string().map_err(|e| e.to_string())
 }
@@ -73,11 +76,12 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
             eprintln!("server stopped");
         });
     });
+    let agent = get_agent();
 
     eprintln!("waiting for server to start");
     std::thread::sleep(std::time::Duration::from_secs(1));
     eprintln!("server started");
-    let response = request();
+    let response = request(&agent);
     eprintln!("response: {:?}", response);
 
     // START BENCHMARK
