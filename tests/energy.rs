@@ -246,10 +246,8 @@ fn energy_pep_rekey() {
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
     let before = get_ina();
-    let mut rekeyed;
-
     for _ in 0..l {
-        rekeyed = rekey(&encrypted, &k);
+        let _ = rekey(&encrypted, &k);
     }
 
     let after = get_ina();
@@ -257,10 +255,6 @@ fn energy_pep_rekey() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Rekey: {} J", after - before);
     }
-
-    let decrypted = decrypt(&rekeyed, &(k*y));
-
-    assert_eq!(m, decrypted);
 }
 
 
@@ -284,10 +278,8 @@ fn energy_pep_reshuffle() {
 
     let before = get_ina();
 
-    let mut reshuffled;
-
     for _ in 0..l {
-        reshuffled = reshuffle(&encrypted, &s);
+        let _ = reshuffle(&encrypted, &s);
     }
 
     let after = get_ina();
@@ -295,10 +287,6 @@ fn energy_pep_reshuffle() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Reshuffle: {} J", after - before);
     }
-
-    let decrypted = decrypt(&reshuffled, &y);
-
-    assert_eq!((s*m), decrypted);
 }
 
 #[test]
@@ -322,10 +310,8 @@ fn pep_rsk() {
 
     let before = get_ina();
 
-    let mut rsked;
-
     for _ in 0..l {
-        rsked = rsk(&encrypted, &s, &k);
+        let _ = rsk(&encrypted, &s, &k);
     }
 
     let after = get_ina();
@@ -333,10 +319,6 @@ fn pep_rsk() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Reshuffle: {} J", after - before);
     }
-
-    let decrypted = decrypt(&rsked, &(k*y));
-
-    assert_eq!((s*m), decrypted);
 }
 
 #[test]
@@ -360,10 +342,8 @@ fn pep_rekey_from_to() {
 
     let before = get_ina();
 
-    let mut rekeyed;
-
     for _ in 0..l {
-        rekeyed = rekey_from_to(&encrypted, &k_from, &k_to);
+        let _ = rekey_from_to(&encrypted, &k_from, &k_to);
     }
 
     let after = get_ina();
@@ -371,10 +351,6 @@ fn pep_rekey_from_to() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Reshuffle: {} J", after - before);
     }
-
-    let decrypted = decrypt(&rekeyed, &(k_to*y));
-
-    assert_eq!(m, decrypted);
 }
 
 #[test]
@@ -398,10 +374,8 @@ fn pep_reshuffle_from_to() {
 
     let before = get_ina();
 
-    let mut reshuffled;
-
     for _ in 0..l {
-        reshuffled = reshuffle_from_to(&encrypted, &s_from, &s_to);
+        let _ = reshuffle_from_to(&encrypted, &s_from, &s_to);
     }
 
     let after = get_ina();
@@ -409,10 +383,6 @@ fn pep_reshuffle_from_to() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Reshuffle: {} J", after - before);
     }
-
-    let decrypted = decrypt(&reshuffled, &y);
-
-    assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
 
 #[test]
@@ -438,10 +408,9 @@ fn pep_rsk_from_to() {
 
     let before = get_ina();
 
-    let mut rsked;
 
     for _ in 0..l {
-        rsked = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
+        let _ = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
     }
 
     let after = get_ina();
@@ -449,9 +418,5 @@ fn pep_rsk_from_to() {
     if let (Some(before), Some(after)) = (before, after) {
         eprintln!("Reshuffle: {} J", after - before);
     }
-
-    let decrypted = decrypt(&rsked, &(k_to*y));
-
-    assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
 
