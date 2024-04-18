@@ -1,13 +1,13 @@
-use std::thread;
-use std::thread::sleep;
-use std::time::SystemTime;
-use libaes::Cipher;
-use rand::Rng;
+use std::cell::RefCell;
+use std::net::IpAddr;
+use std::ops::Deref;
+use std::rc::Rc;
+use hyper::body::Incoming;
+use hyper::{Request, Response};
 use rand_core::OsRng;
-use tokio::time::Sleep;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, ElGamal, encrypt};
-use libpep::primitives::{rekey, rekey_from_to, rerandomize, reshuffle, reshuffle_from_to, rsk, rsk_from_to};
+use libpep::primitives::{rekey_from_to, rsk_from_to};
 use libpep::tls::*;
 
 fn get_ina() -> Option<f64> {
@@ -21,27 +21,32 @@ fn get_ina() -> Option<f64> {
     resp.header("X-Electricity-Consumed-Total")?.parse().ok()
 }
 
-fn get_agent(id : usize) -> ureq::Agent {
-    let mut root_store = tokio_rustls::rustls::RootCertStore::empty();
-    let certs = load_pem_certs_from_bytes(include_bytes!("../certs/CA.pem")).unwrap();
-    root_store.add(certs.last().unwrap().clone()).unwrap();
-    let tls_config = tokio_rustls::rustls::ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
-    ureq::AgentBuilder::new()
-      .user_agent(&format!("{} {}/{}", env!("CARGO_PKG_NAME"), buildinfy::build_reference().unwrap_or_default(), buildinfy::build_pipeline_id_per_project().unwrap_or_default()))
-      .timeout_read(std::time::Duration::from_secs(60))
-      .timeout_write(std::time::Duration::from_secs(5))
-      .tls_config(std::sync::Arc::new(tls_config))
-      .build()
+
+async fn transcryptor_handle(port: u16, encrypted: bool, conn: IpAddr, req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
+    let mut reader = req.into_body();
+    let mut bytes = Vec::new();
+    while let Some(b) = reader.frame().await {
+        let b = b.unwrap();
+        bytes.extend_from_slice(&b.into_data().unwrap());
+    }
+    eprintln!("got body: {:?}", bytes);
+    let value = ElGamal::decode(&bytes).unwrap();
+
+    let state = server_state.borrow().deref();
+
+    let result = rsk_from_to(&value, &state.s_from, &state.s_to, &state.k_from, &state.k_to);
+
+    return Ok(Response::new(*Box::new(result.encode().to_vec().into())));
 }
 
-fn request(agent: &ureq::Agent) -> Result<String,String> {
-    let resp = agent.post("https://127.0.0.1:3333").send_bytes(b"bar").map_err(|e| e.to_string())?;
-    resp.into_string().map_err(|e| e.to_string())
+
+
+async fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: ScalarNonZero, k_to: ScalarNonZero) {
+    let state = ServerState { s_from, s_to, k_from, k_to };
+    webserver((3330 + i) as u16, transcryptor_handle, state.clone()).await;
 }
 
-fn transcrypt_id(n: usize, l: usize, m: usize) {
+async fn transcrypt(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
 
     // system params
@@ -65,30 +70,9 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
 
     let s = s_from.invert() * s_to;
 
-    let agents = Vec::from_iter((0..n).map(|x| get_agent(x)));
+    let transcryptors = Vec::from_iter((0..n).map(|x| start_transcryptor(x, s_from_s[x], s_to_s[x], k_from_s[x], k_to_s[x])));
 
-    std::thread::spawn(|| {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("build runtime");
-
-        let local = Box::new(tokio::task::LocalSet::new());
-        let local : &'static tokio::task::LocalSet = Box::leak(local);
-
-        local.block_on(&rt, async {
-            eprintln!("server starting");
-            let _ = webserver(3333).await;
-            eprintln!("server stopped");
-        });
-    });
-    let agent = get_agent(1);
-
-    eprintln!("waiting for server to start");
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    eprintln!("server started");
-    let response = request(&agent);
-    eprintln!("response: {:?}", response);
+    let sender = get_agent();
 
     // START BENCHMARK
     let before = get_ina();
@@ -99,7 +83,7 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
 
             // transcryption
             for i in 0..n {
-                value = rsk_from_to(&value, &s_from_s[i], &s_to_s[i], &k_from_s[i], &k_to_s[i]);
+                value = sender.post(&format!("https://127.0.0.1:{}", 3330 + i)).send_bytes(&*value.encode()).await.unwrap();
             }
 
             let decrypted = decrypt(&value, &(k_to * y)); // final decryption
@@ -113,446 +97,13 @@ fn transcrypt_id(n: usize, l: usize, m: usize) {
     }
 }
 
-fn transcrypt_data(n: usize, l: usize, m: usize) {
-    let mut rng = OsRng;
-
-    // system params
-    let y = ScalarNonZero::random(&mut rng); // global private
-    let gy = y * G; // global public
-
-    // random message
-    let data = GroupElement::random(&mut rng);
-
-    // factors
-    let k_from_s = Vec::from_iter((0..n).map(|_| ScalarNonZero::random(&mut rng)));
-    let k_to_s = Vec::from_iter((0..n).map(|_| ScalarNonZero::random(&mut rng)));
-
-    let k_from = k_from_s.iter().fold(ScalarNonZero::one(), |acc, k| acc * k);
-    let k_to = k_to_s.iter().fold(ScalarNonZero::one(), |acc, k| acc * k);
-
-    // START BENCHMARK
-    let before = get_ina();
-
-    for _ in 0.. l {
-        for _ in 0..m {
-            let mut value = encrypt(&data, &(k_from * gy), &mut OsRng); // initial encryption
-
-            // transcryption
-            for i in 0..n {
-                value = rekey_from_to(&value, &k_from_s[i], &k_to_s[i]);
-            }
-
-            let decrypted = decrypt(&value, &(k_to * y)); // final decryption
-            debug_assert_eq!(data, decrypted);
-        }
-    }
-    // END BENCHMARK
-    let after = get_ina();
-    if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("energy {} J", after - before);
-    }
-
-}
-
-fn tunnels(n: usize, l: usize, m: usize) {
-
-    // START BENCHMARK
-    let before = get_ina();
-
-    for _ in 0..l {
-        let mut key = [0u8; 32];
-        rand::thread_rng().fill(&mut key[..]);
-
-        let iv = [0u8; 16];
-        rand::thread_rng().fill(&mut key[..]);
-
-        for _ in 0 .. m {
-
-            let data_length = 32 * m;
-            let mut data = vec![0u8; data_length];
-            rand::thread_rng().fill(&mut data[..]);
-
-            let cipher = Cipher::new_256(&key);
-
-            // sender
-            let mut encrypted = cipher.cbc_encrypt(&iv, &data);
-
-            // n-tiers
-            for _ in 0..n {
-                let decrypted = cipher.cbc_decrypt(&iv, &encrypted);
-                let clone = decrypted.clone();
-
-                encrypted = cipher.cbc_encrypt(&iv, &clone);
-                encrypted = encrypted.clone();
-            }
-            let received = cipher.cbc_decrypt(&iv, &encrypted);
-            debug_assert_eq!(data, received);
-        }
-    }
-    // END BENCHMARK
-    let after = get_ina();
-    if let (Some(before), Some(after)) = (before, after) {
-        eprintln!("energy {} J", after - before);
-    }
-}
-
 #[test]
-fn energy_analysis_id_pep() {
-    let l = 10000; // experiment length iterations
+async fn energy_transcrypt() {
+    let l = 1; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
-    transcrypt_id(n, l, m);
+    transcrypt(n, l, m).await;
 }
 
-#[test]
-fn energy_analysis_data_pep() {
-    let l = 10000; // experiment length iterations
-    let n = 3; // number of tiers
-    let m = 10; // number of blocks / data length (multiples of 32 bytes)
-
-    transcrypt_data(n, l, m);
-}
-
-#[test]
-fn energy_analysis_id_tunnels() {
-    let l = 10000; // experiment length iterations
-    let n = 3; // number of tiers
-    let m = 1; // number of blocks / data length (multiples of 32 bytes)
-
-    tunnels(n, l, m);
-}
-
-#[test]
-fn energy_analysis_data_tunnels() {
-    let l = 10000; // experiment length iterations
-    let n = 3; // number of tiers
-    let m = 10; // number of blocks / data length (multiples of 32 bytes)
-
-    tunnels(n, l, m);
-}
-
-fn energy_idle(seconds:u64, rest_before_measure:u64) -> f64 {
-    let millis = std::time::Duration::from_millis(seconds * 1000);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let before = get_ina();
-    sleep(millis);
-    let after = get_ina();
-
-    if before.is_none() || after.is_none() {
-        return 0.0;
-    }
-    return after.unwrap() - before.unwrap();
-}
-
-fn energy_pep_rerandomize(iterations: i32, rest_before_measure:u64) -> (f64, f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let r = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &gy, &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-    for _ in 0..iterations {
-        let _ = rerandomize(&encrypted, &r);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-fn energy_pep_rekey(iterations: i32, rest_before_measure:u64) -> (f64, f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let k = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &gy, &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-    for _ in 0..iterations {
-        let _ = rekey(&encrypted, &k);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-
-fn energy_pep_reshuffle(iterations: i32, rest_before_measure:u64) -> (f64,f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let s = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &gy, &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-
-    for _ in 0..iterations {
-        let _ = reshuffle(&encrypted, &s);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-fn energy_pep_rsk(iterations: i32, rest_before_measure:u64) -> (f64,f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let k = ScalarNonZero::random(&mut rng);
-    let s = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &gy, &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-
-    for _ in 0..iterations {
-        let _ = rsk(&encrypted, &s, &k);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-fn energy_pep_rekey_from_to(iterations: i32, rest_before_measure:u64) -> (f64,f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let k_from = ScalarNonZero::random(&mut rng);
-    let k_to = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-
-    for _ in 0..iterations {
-        let _ = rekey_from_to(&encrypted, &k_from, &k_to);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-fn energy_pep_reshuffle_from_to(iterations: i32, rest_before_measure:u64) -> (f64,f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let s_from = ScalarNonZero::random(&mut rng);
-    let s_to = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &gy, &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-
-    for _ in 0..iterations {
-        let _ = reshuffle_from_to(&encrypted, &s_from, &s_to);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-fn energy_pep_rsk_from_to(iterations: i32, rest_before_measure:u64) -> (f64,f64) {
-    let mut rng = OsRng;
-
-    // secret key
-    let y = ScalarNonZero::random(&mut rng);
-    // public key
-    let gy = y * G;
-
-    let s_from = ScalarNonZero::random(&mut rng);
-    let s_to = ScalarNonZero::random(&mut rng);
-    let k_from = ScalarNonZero::random(&mut rng);
-    let k_to = ScalarNonZero::random(&mut rng);
-
-    // choose a random value to encrypt
-    let m = GroupElement::random(&mut rng);
-
-    // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
-
-    sleep(std::time::Duration::from_secs(rest_before_measure));
-    let t_before = SystemTime::now();
-    let before = get_ina();
-
-
-    for _ in 0..iterations {
-        let _ = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
-    }
-
-    let after = get_ina();
-    let t_after = SystemTime::now();
-
-    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
-    if before.is_none() || after.is_none() {
-        return (0.0, 0.0);
-    }
-    let energy_used = after.unwrap() - before.unwrap();
-    (energy_used, time_elapsed)
-}
-
-#[test]
-fn energy_individual_operations() {
-    let iterations = 100000;
-    let time_per_iteration_estimate = 0.0003; // 100000 is approx 30 seconds
-    let rest_before_measure = 2;
-
-    eprintln!("Running individual energy measurements for {} iterations", iterations);
-    eprintln!("Resting for {} seconds before each measurement", rest_before_measure);
-
-    let approx_time_seconds = iterations as f64 * time_per_iteration_estimate;
-    eprintln!("Approximate time per measurement: {} seconds", approx_time_seconds);
-
-    let idle_energy = energy_idle(approx_time_seconds as u64, rest_before_measure);
-    let idle_energy_per_second = idle_energy / approx_time_seconds;
-    eprintln!("Idle energy: {} J or {} J/s", idle_energy, idle_energy_per_second);
-
-    let (energy_rekey, time_rekey) = energy_pep_rekey(iterations, rest_before_measure);
-    let energy_rekey_net = energy_rekey - (idle_energy_per_second * time_rekey);
-    eprintln!("Rekey energy: {} J total in {} seconds", energy_rekey, time_rekey);
-    eprintln!("Rekey energy net: {} J", energy_rekey_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_rekey_net / iterations as f64);
-
-    let (energy_reshuffle, time_reshuffle) = energy_pep_reshuffle(iterations, rest_before_measure);
-    let energy_reshuffle_net = energy_reshuffle - (idle_energy_per_second * time_reshuffle);
-    eprintln!("Reshuffle energy: {} J total in {} seconds", energy_reshuffle, time_reshuffle);
-    eprintln!("Reshuffle energy net: {} J", energy_reshuffle_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_reshuffle_net / iterations as f64);
-
-    let (energy_rerandomize, time_rerandomize) = energy_pep_rerandomize(iterations, rest_before_measure);
-    let energy_rerandomize_net = energy_rerandomize - (idle_energy_per_second * time_rerandomize);
-    eprintln!("Rerandomize energy: {} J total in {} seconds", energy_rerandomize, time_rerandomize);
-    eprintln!("Rerandomize energy net: {} J", energy_rerandomize_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_rerandomize_net / iterations as f64);
-
-    let (energy_rsk, time_rsk) = energy_pep_rsk(iterations, rest_before_measure);
-    let energy_rsk_net = energy_rsk - (idle_energy_per_second * time_rsk);
-    eprintln!("RSK energy: {} J total in {} seconds", energy_rsk, time_rsk);
-    eprintln!("RSK energy net: {} J", energy_rsk_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_rsk_net / iterations as f64);
-
-    let (energy_rekey_from_to, time_rekey_from_to) = energy_pep_rekey_from_to(iterations, rest_before_measure);
-    let energy_rk2_net = energy_rekey_from_to - (idle_energy_per_second * time_rekey_from_to);
-    eprintln!("RK2 energy: {} J total in {} seconds", energy_rekey_from_to, time_rekey_from_to);
-    eprintln!("RK2 energy net: {} J", energy_rk2_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_rk2_net / iterations as f64);
-
-    let (energy_reshuffle_from_to, time_reshuffle_from_to) = energy_pep_reshuffle_from_to(iterations, rest_before_measure);
-    let energy_rs2_net = energy_reshuffle_from_to - (idle_energy_per_second * time_reshuffle_from_to);
-    eprintln!("RS2 energy: {} J total in {} seconds", energy_reshuffle_from_to, time_reshuffle_from_to);
-    eprintln!("RS2 energy net: {} J", energy_rs2_net);
-    eprintln!("RS2 energy net per iteration: {} J", energy_rs2_net / iterations as f64);
-
-    let (energy_rsk_from_to, time_rsk_from_to) = energy_pep_rsk_from_to(iterations, rest_before_measure);
-    let energy_rsk2_net = energy_rsk_from_to - (idle_energy_per_second * time_rsk_from_to);
-    eprintln!("RSK2 energy: {} J total in {} seconds", energy_rsk_from_to, time_rsk_from_to);
-    eprintln!("RSK2 energy net: {} J", energy_rsk2_net);
-    eprintln!("RSK2 energy net per iteration: {} J", energy_rsk2_net / iterations as f64);
-}
 

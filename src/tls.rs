@@ -14,6 +14,7 @@ use tokio_stream::StreamExt;
 use hyper::{Response,Request};
 
 use std::net::SocketAddr;
+use std::ops::Deref;
 
 use hyper::body::{Body,Incoming};
 
@@ -26,6 +27,7 @@ pub use bytes::Bytes;
 const ACCEPT_TIMEOUT: u64 = 5; // in seconds
 
 pub use http_body_util::{Full,BodyExt,Limited,StreamBody,combinators::BoxBody};
+use crate::arithmetic::ScalarNonZero;
 
 pub type BoxedBody = BoxBody<bytes::Bytes,String>;
 pub type BodyVec = Full<Bytes>;
@@ -75,26 +77,20 @@ pub fn load_pem_certs_from_bytes(contents: &[u8]) -> std::io::Result<Vec<tokio_r
     certs.collect()
 }
 
-struct ServerState {
+pub struct ServerState {
+    pub s_from: ScalarNonZero,
+    pub s_to: ScalarNonZero,
+    pub k_from: ScalarNonZero,
+    pub k_to: ScalarNonZero,
 }
 
-async fn handle(port: u16, encrypted: bool, conn: IpAddr, req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
-    // let bytes = req.collect();
-    // let bytes = bytes.await.unwrap().to_vec();
-    let mut reader = req.into_body();
-    let mut bytes = Vec::new();
-    while let Some(b) = reader.frame().await {
-        let b = b.unwrap();
-        bytes.extend_from_slice(&b.into_data().unwrap());
-    }
-    eprintln!("got body: {:?}", bytes);
-    return error_page(200, "foobar", "localhost", None, None, 0);
-}
-
-pub async fn webserver(port:u16) {
+pub async fn webserver(port:u16,
+                       handle: fn(u16, bool, IpAddr, Request<Incoming>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>,
+                       server_state: ServerState
+){
     let key = load_pem_private_key_from_bytes(include_bytes!("../certs/cert.key")).unwrap();
     let certs = load_pem_certs_from_bytes(include_bytes!("../certs/cert.crt")).unwrap();
-    let server_state = Rc::new(RefCell::new(ServerState {}));
+    let server_state = Rc::new(RefCell::new(server_state));
     let mut http1 = hyper::server::conn::http1::Builder::new();
     http1.title_case_headers(true);
 
@@ -295,3 +291,45 @@ h2 {{
         .header(hyper::header::CONTENT_TYPE, "text/html; charset=UTF-8")
         .body(box_body(BodyVec::from(script)))
 }
+
+
+pub fn get_agent() -> ureq::Agent {
+    let mut root_store = tokio_rustls::rustls::RootCertStore::empty();
+    let certs = load_pem_certs_from_bytes(include_bytes!("../certs/CA.pem")).unwrap();
+    root_store.add(certs.last().unwrap().clone()).unwrap();
+    let tls_config = tokio_rustls::rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+    ureq::AgentBuilder::new()
+        .user_agent(&format!("{} {}/{}", env!("CARGO_PKG_NAME"), buildinfy::build_reference().unwrap_or_default(), buildinfy::build_pipeline_id_per_project().unwrap_or_default()))
+        .timeout_read(std::time::Duration::from_secs(60))
+        .timeout_write(std::time::Duration::from_secs(5))
+        .tls_config(std::sync::Arc::new(tls_config))
+        .build()
+}
+
+
+// fn start_server(port:u16, handle: fn(port: u16, encrypted: bool, conn: IpAddr, req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>){
+//     std::thread::spawn(|| {
+//         let rt = tokio::runtime::Builder::new_current_thread()
+//             .enable_all()
+//             .build()
+//             .expect("build runtime");
+//
+//         let local = Box::new(tokio::task::LocalSet::new());
+//         let local : &'static tokio::task::LocalSet = Box::leak(local);
+//
+//         local.block_on(&rt, async {
+//             eprintln!("server starting");
+//             let _ = webserver(port, handle).await;
+//             eprintln!("server stopped");
+//         });
+//     });
+//     let agent = get_agent(1);
+//
+//     eprintln!("waiting for server to start");
+//     std::thread::sleep(std::time::Duration::from_secs(1));
+//     eprintln!("server started");
+//     let response = request(&agent);
+//     eprintln!("response: {:?}", response);
+// }
