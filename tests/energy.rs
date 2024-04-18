@@ -22,7 +22,7 @@ fn get_ina() -> Option<f64> {
 }
 
 
-async fn transcryptor_handle(port: u16, encrypted: bool, conn: IpAddr, req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
+async fn transcryptor_handle(req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
     let mut reader = req.into_body();
     let mut bytes = Vec::new();
     while let Some(b) = reader.frame().await {

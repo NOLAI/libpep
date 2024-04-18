@@ -85,7 +85,7 @@ pub struct ServerState {
 }
 
 pub async fn webserver(port:u16,
-                       handle: fn(u16, bool, IpAddr, Request<Incoming>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>,
+                       handle: fn(Request<Incoming>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>,
                        server_state: ServerState
 ){
     let key = load_pem_private_key_from_bytes(include_bytes!("../certs/cert.key")).unwrap();
@@ -151,9 +151,8 @@ pub async fn webserver(port:u16,
                                     let conn = tokio::time::timeout(Duration::from_secs(ACCEPT_TIMEOUT), start.into_stream(tls_config)).await;
                                     match conn {
                                         Ok(Ok(conn)) => {
-                                            let conn_ip = addr.ip();
                                             let service = service_fn(move |req| {
-                                                handle(port, true, conn_ip, req, server_state.clone())
+                                                handle(req, server_state.clone())
                                             });
                                             let conn = TokioIo::new(conn);
                                             counter.borrow_mut().0 += 1;
