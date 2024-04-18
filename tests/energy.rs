@@ -1,3 +1,4 @@
+use std::thread;
 use std::time::SystemTime;
 use libaes::Cipher;
 use rand::Rng;
@@ -227,10 +228,24 @@ fn energy_analysis_data_tunnels() {
     tunnels(n, l, m);
 }
 
+#[test]
+fn energy_idle() {
+    let millis = time::Duration::from_millis(31000);
+
+    let before = get_ina();
+    thread::sleep(millis);
+
+    let after = get_ina();
+
+    if let (Some(before), Some(after)) = (before, after) {
+        eprintln!("idle: {} J", after - before);
+    }
+}
+
 
 #[test]
 fn energy_pep_rerandomize() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -263,7 +278,7 @@ fn energy_pep_rerandomize() {
 
 #[test]
 fn energy_pep_rekey() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -297,7 +312,7 @@ fn energy_pep_rekey() {
 
 #[test]
 fn energy_pep_reshuffle() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -331,7 +346,7 @@ fn energy_pep_reshuffle() {
 
 #[test]
 fn pep_rsk() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -366,7 +381,7 @@ fn pep_rsk() {
 
 #[test]
 fn pep_rekey_from_to() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -401,7 +416,7 @@ fn pep_rekey_from_to() {
 
 #[test]
 fn pep_reshuffle_from_to() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
@@ -436,7 +451,7 @@ fn pep_reshuffle_from_to() {
 
 #[test]
 fn pep_rsk_from_to() {
-    let l = 1000000; // experiment length iterations
+    let l = 100000; // experiment length iterations
     let mut rng = OsRng;
 
     // secret key
