@@ -22,31 +22,34 @@ fn get_ina() -> Option<f64> {
 }
 
 
-async fn transcryptor_handle(req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
-    let mut reader = req.into_body();
-    let mut bytes = Vec::new();
-    while let Some(b) = reader.frame().await {
-        let b = b.unwrap();
-        bytes.extend_from_slice(&b.into_data().unwrap());
-    }
-    eprintln!("got body: {:?}", bytes);
+fn transcryptor_handle(bytes: Vec<u8>, server_state: Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error> {
     let value = ElGamal::decode(&bytes).unwrap();
 
-    let state = server_state.borrow().deref();
+    let state = server_state.borrow();
 
     let result = rsk_from_to(&value, &state.s_from, &state.s_to, &state.k_from, &state.k_to);
-
-    return Ok(Response::new(*Box::new(result.encode().to_vec().into())));
+    let result = result.encode().to_vec();
+    Ok(Response::new(box_body(BodyVec::from(result))))
 }
 
+fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: ScalarNonZero, k_to: ScalarNonZero) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .thread_name("background")
+            .worker_threads(std::thread::available_parallelism().map(|x| x.get()).unwrap_or(4))
+            .enable_all()
+            .build()
+            .expect("build runtime");
 
+        let local = Box::new(tokio::task::LocalSet::new());
+        let local : &'static tokio::task::LocalSet = Box::leak(local);
 
-async fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: ScalarNonZero, k_to: ScalarNonZero) {
-    let state = ServerState { s_from, s_to, k_from, k_to };
-    webserver((3330 + i) as u16, transcryptor_handle, state.clone()).await;
+        let state = ServerState { s_from, s_to, k_from, k_to };
+        local.block_on(&rt, webserver((3330 + i) as u16, transcryptor_handle, state));
+    })
 }
 
-async fn transcrypt(n: usize, l: usize, m: usize) {
+fn transcrypt(n: usize, l: usize, m: usize) {
     let mut rng = OsRng;
 
     // system params
@@ -72,6 +75,9 @@ async fn transcrypt(n: usize, l: usize, m: usize) {
 
     let transcryptors = Vec::from_iter((0..n).map(|x| start_transcryptor(x, s_from_s[x], s_to_s[x], k_from_s[x], k_to_s[x])));
 
+    // wait for webserver to start
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
     let sender = get_agent();
 
     // START BENCHMARK
@@ -83,7 +89,11 @@ async fn transcrypt(n: usize, l: usize, m: usize) {
 
             // transcryption
             for i in 0..n {
-                value = sender.post(&format!("https://127.0.0.1:{}", 3330 + i)).send_bytes(&*value.encode()).await.unwrap();
+                let bytes = value.encode();
+                let response = sender.post(&format!("https://127.0.0.1:{}", 3330 + i)).send_bytes(&bytes[..]).unwrap();
+                let mut body = Vec::new();
+                response.into_reader().read_to_end(&mut body).unwrap();
+                value = ElGamal::decode(&body).unwrap();
             }
 
             let decrypted = decrypt(&value, &(k_to * y)); // final decryption
@@ -98,12 +108,12 @@ async fn transcrypt(n: usize, l: usize, m: usize) {
 }
 
 #[test]
-async fn energy_transcrypt() {
+fn energy_transcrypt() {
     let l = 1; // experiment length iterations
     let n = 3; // number of tiers
     let m = 1; // number of blocks / data length (multiples of 32 bytes)
 
-    transcrypt(n, l, m).await;
+    transcrypt(n, l, m);
 }
 
 

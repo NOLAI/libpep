@@ -84,8 +84,19 @@ pub struct ServerState {
     pub k_to: ScalarNonZero,
 }
 
+async fn handle_wrap(req: Request<Incoming>, server_state: Rc<RefCell<ServerState>>, f: fn(Vec<u8>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>) -> Result<Response<BoxedBody>, hyper::http::Error> {
+    let mut reader = req.into_body();
+    let mut bytes = Vec::new();
+    while let Some(b) = reader.frame().await {
+        let b = b.unwrap();
+        bytes.extend_from_slice(&b.into_data().unwrap());
+    }
+    eprintln!("got body: {:?}", bytes);
+    f(bytes, server_state)
+}
+
 pub async fn webserver(port:u16,
-                       handle: fn(Request<Incoming>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>,
+                       handle: fn(Vec<u8>, Rc<RefCell<ServerState>>) -> Result<Response<BoxedBody>, hyper::http::Error>,
                        server_state: ServerState
 ){
     let key = load_pem_private_key_from_bytes(include_bytes!("../certs/cert.key")).unwrap();
@@ -152,7 +163,7 @@ pub async fn webserver(port:u16,
                                     match conn {
                                         Ok(Ok(conn)) => {
                                             let service = service_fn(move |req| {
-                                                handle(req, server_state.clone())
+                                                handle_wrap(req, server_state.clone(), handle)
                                             });
                                             let conn = TokioIo::new(conn);
                                             counter.borrow_mut().0 += 1;
