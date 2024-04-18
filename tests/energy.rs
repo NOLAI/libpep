@@ -1,15 +1,12 @@
 use std::cell::RefCell;
-use std::net::IpAddr;
-use std::ops::Deref;
 use std::rc::Rc;
 use std::thread::sleep;
 use std::time::SystemTime;
-use hyper::body::Incoming;
-use hyper::{Request, Response};
+use hyper::{Response};
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
 use libpep::elgamal::{decrypt, ElGamal, encrypt};
-use libpep::primitives::{rekey_from_to, rsk_from_to};
+use libpep::primitives::{rsk_from_to};
 use libpep::tls::*;
 
 fn get_ina() -> Option<f64> {
@@ -53,9 +50,9 @@ fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_fro
 
 #[test]
 fn energy_transcrypt() {
-    let iterations = 50;
+    let iterations = 100;
     let rest_before_measure = 2;
-    let n_max = 5; // number of tiers
+    let n_max = 4; // number of tiers
     let m_exp_max = 4;
 
     let mut rng = OsRng;
@@ -93,7 +90,7 @@ fn energy_transcrypt() {
         for exp in 0..m_exp_max {
             let m = 10u64.pow(exp as u32) as usize;
 
-            eprintln!("\nBenchmarking PEP with {} tiers and {} messages", n, m);
+            eprintln!("\nBenchmarking PEP with {} tiers and {} messages, {} iterations", n, m, iterations);
 
             sleep(std::time::Duration::from_secs(rest_before_measure));
             let t_before = SystemTime::now();
@@ -165,10 +162,10 @@ fn start_tunnel(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: Sca
 
 #[test]
 fn energy_tunnel() {
-    let iterations = 50;
+    let iterations = 100;
     let rest_before_measure = 2;
     let n_max = 4; // number of tiers
-    let m_exp_max = 3;
+    let m_exp_max = 4;
 
     let mut rng = OsRng;
 
@@ -205,7 +202,7 @@ fn energy_tunnel() {
         for exp in 0..m_exp_max {
             let m = 10u64.pow(exp as u32) as usize;
 
-            eprintln!("\nBenchmarking NO PEP with {} tiers and {} messages", n, m);
+            eprintln!("\nBenchmarking NO PEP with {} tiers and {} messages, {} iterations", n, m, iterations);
 
             sleep(std::time::Duration::from_secs(rest_before_measure));
             let t_before = SystemTime::now();
