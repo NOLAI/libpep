@@ -17,7 +17,7 @@ benchmark:
   tags: [$RUNNER_TAG]
   image: bitpowder.com:2444/bitpowder/docker-build/rust-stable:main
   script:
-  - env cargo +stable test --release $TEST_NAME $TEST_ARGS -- --nocapture
+  - env cargo +stable test --release $TEST_NAME $TEST_ARGS -- --nocapture --test-threads 1
   artifacts:
     paths:
     - bin/*
