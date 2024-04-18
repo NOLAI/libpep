@@ -2,7 +2,7 @@ use std::thread::sleep;
 use std::time::SystemTime;
 use rand_core::OsRng;
 use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
-use libpep::elgamal::encrypt;
+use libpep::elgamal::{decrypt, encrypt};
 use libpep::primitives::{rekey, rekey_from_to, rerandomize, reshuffle, reshuffle_from_to, rsk, rsk_from_to};
 
 fn get_ina() -> Option<f64> {
@@ -28,6 +28,65 @@ fn energy_idle(seconds:u64, rest_before_measure:u64) -> f64 {
         return 0.0;
     }
     return after.unwrap() - before.unwrap();
+}
+
+fn energy_pep_enc(iterations: i32, rest_before_measure:u64) -> (f64, f64) {
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+    let t_before = SystemTime::now();
+    let before = get_ina();
+    for _ in 0..iterations {
+        let _ = encrypt(&m, &gy, &mut OsRng);
+    }
+
+    let after = get_ina();
+    let t_after = SystemTime::now();
+
+    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
+    if before.is_none() || after.is_none() {
+        return (0.0, 0.0);
+    }
+    let energy_used = after.unwrap() - before.unwrap();
+    (energy_used, time_elapsed)
+}
+
+fn energy_pep_dec(iterations: i32, rest_before_measure:u64) -> (f64, f64) {
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+    let t_before = SystemTime::now();
+    let before = get_ina();
+    for _ in 0..iterations {
+        let _ = decrypt(&encrypted, &y);
+    }
+
+    let after = get_ina();
+    let t_after = SystemTime::now();
+
+    let time_elapsed = t_after.duration_since(t_before).unwrap().as_secs_f64();
+    if before.is_none() || after.is_none() {
+        return (0.0, 0.0);
+    }
+    let energy_used = after.unwrap() - before.unwrap();
+    (energy_used, time_elapsed)
 }
 
 fn energy_pep_rerandomize(iterations: i32, rest_before_measure:u64) -> (f64, f64) {
@@ -296,6 +355,18 @@ fn energy_individual_operations() {
     let idle_energy = energy_idle(approx_time_seconds as u64, rest_before_measure);
     let idle_energy_per_second = idle_energy / approx_time_seconds;
     eprintln!("Idle energy: {} J or {} J/s", idle_energy, idle_energy_per_second);
+
+    let (energy_enc, time_enc) = energy_pep_enc(iterations, rest_before_measure);
+    let energy_rekey_enc = energy_enc - (idle_energy_per_second * time_enc);
+    eprintln!("Enc energy: {} J total in {} seconds", energy_enc, time_enc);
+    eprintln!("Enc energy net: {} J", energy_rekey_enc);
+    eprintln!("Enc energy net per iteration: {} J", energy_rekey_enc / iterations as f64);
+
+    let (energy_dec, time_dec) = energy_pep_dec(iterations, rest_before_measure);
+    let energy_dec_net = energy_dec - (idle_energy_per_second * time_dec);
+    eprintln!("Dec energy: {} J total in {} seconds", energy_dec, time_dec);
+    eprintln!("Dec energy net: {} J", energy_dec_net);
+    eprintln!("Dec energy net per iteration: {} J", energy_dec_net / iterations as f64);
 
     let (energy_rekey, time_rekey) = energy_pep_rekey(iterations, rest_before_measure);
     let energy_rekey_net = energy_rekey - (idle_energy_per_second * time_rekey);
