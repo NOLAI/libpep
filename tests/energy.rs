@@ -50,10 +50,10 @@ fn start_transcryptor(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_fro
 
 #[test]
 fn energy_transcrypt() {
-    let iterations = 50;
+    let iterations = 200;
     let rest_before_measure = 2;
     let n_max = 4; // number of tiers
-    let m_exp_max = 4;
+    let m_exp_max = 2;
 
     let mut rng = OsRng;
 
@@ -183,10 +183,10 @@ fn start_tunnel(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: Sca
 
 #[test]
 fn energy_tunnel() {
-    let iterations = 50;
+    let iterations = 200;
     let rest_before_measure = 2;
     let n_max = 4; // number of tiers
-    let m_exp_max = 4;
+    let m_exp_max = 2;
 
     let mut rng = OsRng;
 
