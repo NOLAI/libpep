@@ -85,6 +85,24 @@ fn energy_transcrypt() {
 
     let sender = get_agent();
 
+    // FIRST TEST IDLE
+    let idle_test_seconds =30;
+    let millis = std::time::Duration::from_millis(idle_test_seconds * 1000);
+
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+
+    let before = get_ina();
+    sleep(millis);
+    let after = get_ina();
+
+    let mut idle_energy = 0.0;
+    let mut idle_energy_per_second = 0.0;
+
+    if !(before.is_none() || after.is_none()) {
+        idle_energy = after.unwrap() - before.unwrap();
+        idle_energy_per_second = idle_energy / idle_test_seconds as f64;
+    }
+
     // START BENCHMARK
     for n in 1..=n_max {
         for exp in 0..m_exp_max {
@@ -125,7 +143,10 @@ fn energy_transcrypt() {
             let energy_used = after.unwrap() - before.unwrap();
 
             eprintln!("Time elapsed: {} s", time_elapsed);
-            eprintln!("Energy used: {} J", energy_used);
+            eprintln!("Energy used: {} J, or {} per iteration", energy_used, energy_used / iterations as f64);
+
+            let net_energy_used = energy_used - time_elapsed * idle_energy_per_second;
+            eprintln!("Energy used (net): {} J or {} per iteration", net_energy_used, net_energy_used / iterations as f64);
         }
     }
 }
@@ -197,6 +218,24 @@ fn energy_tunnel() {
 
     let sender = get_agent();
 
+    // FIRST TEST IDLE
+    let idle_test_seconds =30;
+    let millis = std::time::Duration::from_millis(idle_test_seconds * 1000);
+
+    sleep(std::time::Duration::from_secs(rest_before_measure));
+
+    let before = get_ina();
+    sleep(millis);
+    let after = get_ina();
+
+    let mut idle_energy = 0.0;
+    let mut idle_energy_per_second = 0.0;
+
+    if !(before.is_none() || after.is_none()) {
+        idle_energy = after.unwrap() - before.unwrap();
+        idle_energy_per_second = idle_energy / idle_test_seconds as f64;
+    }
+
     // START BENCHMARK
     for n in 1..=n_max {
         for exp in 0..m_exp_max {
@@ -237,7 +276,10 @@ fn energy_tunnel() {
             let energy_used = after.unwrap() - before.unwrap();
 
             eprintln!("Time elapsed: {} s", time_elapsed);
-            eprintln!("Energy used: {} J", energy_used);
+            eprintln!("Energy used: {} J, or {} per iteration", energy_used, energy_used / iterations as f64);
+
+            let net_energy_used = energy_used - time_elapsed * idle_energy_per_second;
+            eprintln!("Energy used (net): {} J or {} per iteration", net_energy_used, net_energy_used / iterations as f64);
         }
     }
 }
