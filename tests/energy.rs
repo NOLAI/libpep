@@ -185,8 +185,8 @@ fn start_tunnel(i:usize, s_from: ScalarNonZero, s_to: ScalarNonZero, k_from: Sca
 fn energy_tunnel() {
     let iterations = 50;
     let rest_before_measure = 2;
-    let n_max = 3; // number of tiers
-    let m_exp_max = 3;
+    let n_max = 4; // number of tiers
+    let m_exp_max = 4;
 
     let mut rng = OsRng;
 
