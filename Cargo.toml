@@ -46,3 +46,4 @@ futures = { version = "^0.3" }
 # testing
 crashy = { version = "^0.2", features = ["trace"] }
 time = "0.3.36"
+base64 = "0.22.1"

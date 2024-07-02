@@ -1,3 +1,5 @@
+use base64::Engine;
+use base64::engine::general_purpose;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::*;
 #[derive(Debug, Eq, PartialEq)]
@@ -14,7 +16,6 @@ impl ElGamal {
         retval[64..96].clone_from_slice(self.y.0.compress().as_bytes());
         retval
     }
-
     pub fn decode(v: &[u8]) -> Option<Self> {
         if v.len() != 96 {
             None
@@ -25,6 +26,12 @@ impl ElGamal {
                 y: GroupElement::decode_from_slice(&v[64..96])?,
             })
         }
+    }
+    pub fn encode_to_string(&self) -> String {
+        general_purpose::STANDARD.encode(&self.encode())
+    }
+    pub fn decode_from_string(s: &str) -> Option<Self> {
+        general_purpose::STANDARD.decode(s).ok().and_then(|v| Self::decode(&v))
     }
 
     pub fn clone(&self) -> Self {
