@@ -16,6 +16,7 @@ default = ["build-binary"]
 build-binary = ["buildinfy","commandy","commandy_macros","hyper","hyper-util","rustls-webpki","tokio-rustls","rustls-native-certs","rustls-pemfile"]
 
 [dependencies]
+wasm-bindgen = "0.2"
 curve25519-dalek = "3"
 rand = { version = "0.7", features = ["std"] }
 rand_core = { version = "0.5", features = ["std"] }
