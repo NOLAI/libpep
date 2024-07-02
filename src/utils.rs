@@ -33,7 +33,7 @@ fn make_factor(typ: &str, secret: &str, context: &str) -> ScalarNonZero {
 }
 
 /// Generates a non-zero scalar.
-pub(crate) fn make_pseudonymisation_factor(secret: &str, context: &str) -> ScalarNonZero {
+pub fn make_pseudonymisation_factor(secret: &str, context: &str) -> ScalarNonZero {
     make_factor("pseudonym", secret, context)
 }
 
