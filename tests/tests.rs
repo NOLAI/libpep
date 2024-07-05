@@ -1,4 +1,3 @@
-use rand_core::OsRng;
 use libpep::arithmetic::*;
 use libpep::authenticity::*;
 use libpep::distributed::*;
@@ -7,6 +6,7 @@ use libpep::primitives::*;
 use libpep::proved::*;
 use libpep::utils::*;
 use libpep::zkps::*;
+use rand_core::OsRng;
 
 #[test]
 fn elgamal_encryption() {
@@ -24,7 +24,6 @@ fn elgamal_encryption() {
     let decrypted = decrypt(&encrypted, &s);
 
     assert_eq!(value, decrypted);
-
 
     let encoded = encrypted.encode();
     let decoded = ElGamal::decode(&encoded);
@@ -51,11 +50,10 @@ fn pep_rekey() {
 
     let rekeyed = rekey(&encrypted, &k);
 
-    let decrypted = decrypt(&rekeyed, &(k*y));
+    let decrypted = decrypt(&rekeyed, &(k * y));
 
     assert_eq!(m, decrypted);
 }
-
 
 #[test]
 fn pep_reshuffle() {
@@ -78,7 +76,7 @@ fn pep_reshuffle() {
 
     let decrypted = decrypt(&reshuffled, &y);
 
-    assert_eq!((s*m), decrypted);
+    assert_eq!((s * m), decrypted);
 }
 
 #[test]
@@ -101,9 +99,9 @@ fn pep_rsk() {
 
     let rsked = rsk(&encrypted, &s, &k);
 
-    let decrypted = decrypt(&rsked, &(k*y));
+    let decrypted = decrypt(&rsked, &(k * y));
 
-    assert_eq!((s*m), decrypted);
+    assert_eq!((s * m), decrypted);
 }
 
 #[test]
@@ -122,11 +120,11 @@ fn pep_rekey_from_to() {
     let m = GroupElement::random(&mut rng);
 
     // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+    let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
     let rekeyed = rekey_from_to(&encrypted, &k_from, &k_to);
 
-    let decrypted = decrypt(&rekeyed, &(k_to*y));
+    let decrypted = decrypt(&rekeyed, &(k_to * y));
 
     assert_eq!(m, decrypted);
 }
@@ -174,11 +172,11 @@ fn pep_rsk_from_to() {
     let m = GroupElement::random(&mut rng);
 
     // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+    let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
     let rsked = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
 
-    let decrypted = decrypt(&rsked, &(k_to*y));
+    let decrypted = decrypt(&rsked, &(k_to * y));
 
     assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
@@ -210,7 +208,7 @@ fn n_pep_rsk_from_to() {
 
     let s = s_from.invert() * s_to;
 
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+    let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
     let mut rsked = encrypted.clone();
 
@@ -219,11 +217,10 @@ fn n_pep_rsk_from_to() {
         rsked = rsk_from_to(&rsked, &s_froms[i], &s_tos[i], &k_froms[i], &k_tos[i]);
     }
 
-    let decrypted = decrypt(&rsked, &(k_to*y));
+    let decrypted = decrypt(&rsked, &(k_to * y));
 
     assert_eq!(s * m, decrypted);
 }
-
 
 #[test]
 fn pep_assumptions() {
@@ -243,8 +240,14 @@ fn pep_assumptions() {
     let encrypted = encrypt(&value, &pk, &mut OsRng);
     let k = ScalarNonZero::random(&mut rng);
     let n = ScalarNonZero::random(&mut rng);
-    assert_eq!(reshuffle(&rekey(&encrypted, &k), &n), rekey(&reshuffle(&encrypted, &n), &k));
-    assert_eq!(reshuffle(&rekey(&encrypted, &k), &n), rsk(&encrypted, &n, &k));
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rekey(&reshuffle(&encrypted, &n), &k)
+    );
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rsk(&encrypted, &n, &k)
+    );
 }
 
 #[test]
@@ -384,8 +387,14 @@ fn pep_proved_reshuffle_from_to() {
 
     assert!(checked.is_some());
     assert_ne!(&msg, checked.as_ref().unwrap());
-    assert_eq!(s_from.invert() * s_to * gm, decrypt(checked.as_ref().unwrap(), &y));
-    assert_eq!(&reshuffle_from_to(&msg, &s_from, &s_to), checked.as_ref().unwrap());
+    assert_eq!(
+        s_from.invert() * s_to * gm,
+        decrypt(checked.as_ref().unwrap(), &y)
+    );
+    assert_eq!(
+        &reshuffle_from_to(&msg, &s_from, &s_to),
+        checked.as_ref().unwrap()
+    );
 }
 // #[test]
 // fn pep_proved_rekey_from_to() {
@@ -462,12 +471,24 @@ fn pep_proved_rsk_from_to() {
 
     let proved = ProvedRSKFromTo::new(&msg, &s_from, &s_to, &k_from, &k_to, &mut rng);
 
-    let checked = proved.verified_reconstruct(&msg, &verifiers_s_from, &verifiers_s_to, &verifiers_k_from, &verifiers_k_to);
+    let checked = proved.verified_reconstruct(
+        &msg,
+        &verifiers_s_from,
+        &verifiers_s_to,
+        &verifiers_k_from,
+        &verifiers_k_to,
+    );
 
     assert!(checked.is_some());
     assert_ne!(&msg, checked.as_ref().unwrap());
-    assert_eq!(s_from.invert() * s_to * gm, decrypt(checked.as_ref().unwrap(), &(k_to * y)));
-    assert_eq!(&rsk_from_to(&msg, &s_from, &s_to, &k_from, &k_to), checked.as_ref().unwrap());
+    assert_eq!(
+        s_from.invert() * s_to * gm,
+        decrypt(checked.as_ref().unwrap(), &(k_to * y))
+    );
+    assert_eq!(
+        &rsk_from_to(&msg, &s_from, &s_to, &k_from, &k_to),
+        checked.as_ref().unwrap()
+    );
 }
 #[test]
 fn authenticity() {
@@ -483,9 +504,23 @@ fn authenticity() {
     let shared_secret = ScalarNonZero::random(&mut rng);
 
     let tag = authenticity_tag(&data, &pseudonym, &metadata, &system_id, &shared_secret);
-    assert!(verify_authenticity_tag(&tag, &data, &pseudonym, &metadata, &system_id, &shared_secret));
+    assert!(verify_authenticity_tag(
+        &tag,
+        &data,
+        &pseudonym,
+        &metadata,
+        &system_id,
+        &shared_secret
+    ));
     let tag_false = authenticity_tag(&data, &data, &metadata, &system_id, &shared_secret);
-    assert!(!verify_authenticity_tag(&tag_false, &data, &pseudonym, &metadata, &system_id, &shared_secret));
+    assert!(!verify_authenticity_tag(
+        &tag_false,
+        &data,
+        &pseudonym,
+        &metadata,
+        &system_id,
+        &shared_secret
+    ));
 }
 
 #[test]
@@ -496,20 +531,43 @@ fn pep_high_level_api() {
     let id = "foobar";
     let mut gep = generate_pseudonym(id, &public_key, &mut rng);
     gep = rerandomize_global(&gep, &mut rng);
-    let mut lep = convert_to_local_pseudonym(&gep, "very_secret_on_server", "login_session_of_user", "access_group_of_user");
+    let mut lep = convert_to_local_pseudonym(
+        &gep,
+        "very_secret_on_server",
+        "login_session_of_user",
+        "access_group_of_user",
+    );
     lep = rerandomize_local(&lep, &mut rng);
 
-    let decryption_key = make_local_decryption_key(&secret_key, "very_secret_on_server", "login_session_of_user");
+    let decryption_key = make_local_decryption_key(
+        &secret_key,
+        "very_secret_on_server",
+        "login_session_of_user",
+    );
     let lp = decrypt_local_pseudonym(&lep, &decryption_key);
     let hex = "be26a708fcf722db8d19f6d8c8443794156af30b17c44bcf4bb41791c0708945";
     let expected = hex::decode(hex).unwrap();
     assert_eq!(&lp.encode()[..], &expected);
 
-    let gep = convert_from_local_pseudonym(&lep, "very_secret_on_server", "login_session_of_user", "access_group_of_user");
-    let mut lep = convert_to_local_pseudonym(&gep, "very_secret_on_server", "login_session_of_user", "access_group_of_user");
+    let gep = convert_from_local_pseudonym(
+        &lep,
+        "very_secret_on_server",
+        "login_session_of_user",
+        "access_group_of_user",
+    );
+    let mut lep = convert_to_local_pseudonym(
+        &gep,
+        "very_secret_on_server",
+        "login_session_of_user",
+        "access_group_of_user",
+    );
     lep = rerandomize_local(&lep, &mut rng);
 
-    let decryption_key = make_local_decryption_key(&secret_key, "very_secret_on_server", "login_session_of_user");
+    let decryption_key = make_local_decryption_key(
+        &secret_key,
+        "very_secret_on_server",
+        "login_session_of_user",
+    );
     let lp = decrypt_local_pseudonym(&lep, &decryption_key);
     let hex = "be26a708fcf722db8d19f6d8c8443794156af30b17c44bcf4bb41791c0708945";
     let expected = hex::decode(hex).unwrap();

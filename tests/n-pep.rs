@@ -1,7 +1,7 @@
-use rand_core::OsRng;
-use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
+use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
 use libpep::elgamal::{decrypt, encrypt};
 use libpep::primitives::rsk_from_to;
+use rand_core::OsRng;
 
 #[test]
 fn n_pep_rsk_from_to() {
@@ -29,14 +29,14 @@ fn n_pep_rsk_from_to() {
 
     let s = s_from.invert() * s_to;
 
-    let mut value = encrypt(&m, &(k_from*gy), &mut OsRng); // initial encryption
+    let mut value = encrypt(&m, &(k_from * gy), &mut OsRng); // initial encryption
 
     // transcryption
     for i in 0..n {
         value = rsk_from_to(&value, &s_from_s[i], &s_to_s[i], &k_from_s[i], &k_to_s[i]);
     }
 
-    let decrypted = decrypt(&value, &(k_to*y)); // final decryption
+    let decrypted = decrypt(&value, &(k_to * y)); // final decryption
 
     debug_assert_eq!(s * m, decrypted);
 }

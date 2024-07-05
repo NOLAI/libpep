@@ -39,7 +39,7 @@ impl GroupElement {
     pub fn from_hash(v: &[u8; 64]) -> Self {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
-    pub fn from_string(s: &str) -> Option<Self> {
+    pub fn from_hex(s: &str) -> Option<Self> {
         if s.len() != 64 { // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
         }
@@ -49,7 +49,7 @@ impl GroupElement {
         };
         CompressedRistretto::from_slice(&bytes).unwrap().decompress().map(Self)
     }
-    pub fn to_string(&self) -> String {
+    pub fn to_hex(&self) -> String {
         hex::encode(self.encode())
     }
     pub fn identity() -> Self {

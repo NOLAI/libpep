@@ -1,17 +1,24 @@
+use libpep::lib_wasm::*;
 use wasm_bindgen_test::*;
-use libpep::lib_wasm::{decrypt, encrypt, encode};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 fn test_encrypt_decrypt() {
-    let message = "Hello, world!";
-    let public_key = [0u8; 32]; // Replace with actual public key data
-    let secret_key = [1u8; 32]; // Replace with actual secret key data
+    let secret_key = generate_secret_key();
+    let public_key = get_public_key(&secret_key);
+    let message = get_random();
 
-    let encrypted = encrypt(message.as_bytes(), &public_key);
-    let decrypted = decrypt(&encrypted, &secret_key);
-    let decrypted_message = String::from_utf8(decrypted).unwrap();
+    let encrypted = pep_encrypt(&message, &public_key);
+    let decrypted = pep_decrypt(&encrypted, &secret_key);
 
-    assert_eq!(message, decrypted_message);
+    assert_eq!(message.to_vec(), decrypted);
+}
+
+#[wasm_bindgen_test]
+fn test_encode_decode() {
+    let pseudonym = get_random_hex();
+    let encoded = encode_hex(&pseudonym);
+    let decoded = decode_hex(&encoded);
+    assert_eq!(pseudonym, decoded);
 }

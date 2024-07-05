@@ -6,7 +6,6 @@ pub mod proved;
 pub mod authenticity;
 pub mod utils;
 pub mod distributed;
-pub mod tls;
 
-#[cfg(target_arch = "wasm32")]
+// #[cfg(target_arch = "wasm32")]
 pub mod lib_wasm;
