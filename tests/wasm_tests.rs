@@ -1,5 +1,5 @@
 use wasm_bindgen_test::*;
-use libpep::{encrypt, decrypt};
+use libpep::lib_wasm::{decrypt, encrypt};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
