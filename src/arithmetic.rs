@@ -26,7 +26,7 @@ impl GroupElement {
         if v.len() != 32 {
             None
         } else {
-            CompressedRistretto::from_slice(v).decompress().map(Self)
+            CompressedRistretto::from_slice(v).unwrap().decompress().map(Self)
         }
     }
 
@@ -47,7 +47,7 @@ impl GroupElement {
             Ok(v) => v,
             Err(_) => return None,
         };
-        CompressedRistretto::from_slice(&bytes).decompress().map(Self)
+        CompressedRistretto::from_slice(&bytes).unwrap().decompress().map(Self)
     }
     pub fn to_string(&self) -> String {
         hex::encode(self.encode())
@@ -75,14 +75,14 @@ impl ScalarNonZero {
     pub fn from_hash(v: &[u8; 64]) -> Self {
         let retval = Scalar::from_bytes_mod_order_wide(v);
         if retval.as_bytes().iter().all(|x| *x == 0) {
-            Self(Scalar::one())
+            Self(Scalar::ONE)
         } else {
             Self(retval)
         }
     }
 
     pub fn one() -> Self {
-        Self(Scalar::one())
+        Self(Scalar::ONE)
     }
 
     pub fn invert(&self) -> Self {
@@ -101,20 +101,20 @@ impl ScalarCanBeZero {
         } else {
             let mut tmp = [0u8; 32];
             tmp.copy_from_slice(v);
-            Scalar::from_canonical_bytes(tmp).map(Self)
+            Option::from(Scalar::from_canonical_bytes(tmp).map(Self))
         }
     }
 
     pub fn decode(v: [u8; 32]) -> Option<Self> {
-        Scalar::from_canonical_bytes(v).map(Self)
+        Option::from(Scalar::from_canonical_bytes(v).map(Self))
     }
 
     pub fn one() -> Self {
-        Self(Scalar::one())
+        Self(Scalar::ONE)
     }
 
     pub fn zero() -> Self {
-        Self(Scalar::zero())
+        Self(Scalar::ZERO)
     }
 
     pub fn is_zero(&self) -> bool {

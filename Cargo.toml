@@ -17,14 +17,15 @@ build-binary = ["buildinfy","commandy","commandy_macros","hyper","hyper-util","r
 
 [dependencies]
 wasm-bindgen = "0.2"
-curve25519-dalek = "3"
-rand = { version = "0.7", features = ["std"] }
-rand_core = { version = "0.5", features = ["std"] }
+curve25519-dalek = { versio = "4", features = ["rand_core"] }
+rand = { version = "^0.8", features = ["std"] }
+rand_core = { version = "^0.6", features = ["std"] }
 sha2 = "0.10.5"
 buildinfy = { version = "^0.1", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
 hex = "0.4.3"
+
 ureq = { version = "2.9.6", features = ["tls"] }
 libaes = "0.7.0"
 
