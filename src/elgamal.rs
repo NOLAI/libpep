@@ -27,10 +27,10 @@ impl ElGamal {
             })
         }
     }
-    pub fn encode_to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         general_purpose::STANDARD.encode(&self.encode())
     }
-    pub fn decode_from_string(s: &str) -> Option<Self> {
+    pub fn from_string(s: &str) -> Option<Self> {
         general_purpose::STANDARD.decode(s).ok().and_then(|v| Self::decode(&v))
     }
 
