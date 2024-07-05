@@ -32,7 +32,7 @@ libaes = "0.7.0"
 # HTTP + TLS benchmark
 hyper = { version = "^1.0", features = ["client","http1","http2","server"], optional = true }
 hyper-util = { version = "^0.1", features = ["client-legacy","server-auto","server","http1","http2","tokio"], optional = true }
-http-body-util = { version = "^0.1", optional = true }
+http-body-util = { version = "^0.1" }
 rustls-webpki = { version = "^0.102", optional = true }
 tokio-rustls = { version = "^0.25", optional = true }
 rustls-native-certs = { version = "^0.7", optional = true }
