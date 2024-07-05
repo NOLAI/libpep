@@ -15,7 +15,16 @@ readme = "README.md"
 default = ["build-binary"]
 build-binary = ["buildinfy","commandy","commandy_macros","hyper","hyper-util","rustls-webpki","tokio-rustls","rustls-native-certs","rustls-pemfile"]
 
-[dependencies]
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[test]]
+name = "wasm_tests"
+path = "tests/wasm_tests.rs"
+required-features = ["wasm-bindgen-test"]
 wasm-bindgen = "0.2"
 curve25519-dalek = { versio = "4", features = ["rand_core"] }
 rand = { version = "^0.8", features = ["std"] }
