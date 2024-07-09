@@ -35,12 +35,5 @@ wasm-bindgen-test = "0.3"
 getrandom = { version = "^0.2", features = ["js"] }
 log = "0.4.22"
 
-[[test]]
-name = "wasm_tests"
-path = "tests/wasm_tests.rs"
-
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-[build]
-target = "wasm32-unknown-unknown"
