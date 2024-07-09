@@ -36,4 +36,4 @@ getrandom = { version = "^0.2", features = ["js"] }
 log = "0.4.22"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "rlib", "wasm"]

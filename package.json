@@ -5,7 +5,7 @@
     "wasm-pack": "^0.13.0"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build --target web",
+    "build:wasm": "wasm-pack build --target web --out-dir pkg",
     "test": "npm run build:wasm && jest"
   }
 }
