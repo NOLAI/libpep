@@ -1,5 +1,4 @@
 use rand_core::OsRng;
-use wasm_bindgen::prelude::*;
 use crate::arithmetic::{G, GroupElement, ScalarNonZero};
 use crate::elgamal::{ElGamal, encrypt, decrypt};
 use crate::primitives::{rekey_from_to, rsk_from_to, rerandomize};
@@ -15,11 +14,15 @@ pub struct DataPoint(pub GroupElement);
 pub struct EncryptedPseudonym(pub ElGamal);
 pub struct EncryptedDataPoint(pub ElGamal);
 
-pub struct PseudonymizationContext(pub String);
-pub struct EncryptionContext(pub String);
+pub type Context = String;
 
-pub struct PseudonymizationSecret(pub String);
-pub struct EncryptionSecret(pub String);
+pub struct PseudonymizationContext(pub Context);
+pub struct EncryptionContext(pub Context);
+
+pub type Secret = String;
+
+pub struct PseudonymizationSecret(pub Secret);
+pub struct EncryptionSecret(pub Secret);
 
 /// Generate a new global key pair
 pub fn generate_global_keys() -> (GlobalPublicKey, GlobalSecretKey) {

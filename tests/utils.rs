@@ -1,4 +1,3 @@
-use hex::decode;
 use libpep::arithmetic::GroupElement;
 use libpep::elgamal::{encrypt, ElGamal};
 use rand_core::OsRng;

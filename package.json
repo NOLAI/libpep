@@ -5,8 +5,5 @@
   "scripts": {
     "build:wasm": "wasm-pack build --target nodejs --out-dir ./pkg",
     "test": "npm run build:wasm && jest"
-  },
-  "dependencies": {
-    "wasm-pack": "^0.13.0"
   }
 }

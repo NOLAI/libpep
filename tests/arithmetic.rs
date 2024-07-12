@@ -24,9 +24,9 @@ fn encode_decode_scalar_can_be_zero() {
 #[test]
 fn encode_decode_group_element() {
     let mut rng = OsRng;
-    let x = libpep::arithmetic::GroupElement::random(&mut rng);
+    let x = GroupElement::random(&mut rng);
     let encoded = x.encode();
-    let decoded = libpep::arithmetic::GroupElement::decode(&encoded);
+    let decoded = GroupElement::decode(&encoded);
     assert!(decoded.is_some());
     assert_eq!(decoded.unwrap(), x);
 }
@@ -39,25 +39,16 @@ fn encode_decode_group_element_32_bytes() {
     let decoded = element.unwrap().encode();
     assert_eq!(decoded, *bytes);
 }
-#[test]
-fn encode_decode_group_element_less_bytes() {
-    // let bytes = b"test data";
-    // let element = GroupElement::from_bytes(bytes);
-    // assert!(element.is_some());
-    // let decoded = element.unwrap().to_bytes();
-    // assert_eq!(decoded, *bytes);
-}
-
 
 #[test]
 fn add_group_elements() {
     let mut rng = OsRng;
-    let x = libpep::arithmetic::GroupElement::random(&mut rng);
-    let y = libpep::arithmetic::GroupElement::random(&mut rng);
+    let x = GroupElement::random(&mut rng);
+    let y = GroupElement::random(&mut rng);
     let z = x + y;
 }
 
-
+#[test]
 fn add_scalars() {
     let mut rng = OsRng;
     let x = ScalarCanBeZero::random(&mut rng);
@@ -68,7 +59,7 @@ fn add_scalars() {
 #[test]
 fn mul_scalar_group_element() {
     let mut rng = OsRng;
-    let x = libpep::arithmetic::GroupElement::random(&mut rng);
+    let x = GroupElement::random(&mut rng);
     let s = ScalarNonZero::random(&mut rng);
     let z = s * x;
 }
