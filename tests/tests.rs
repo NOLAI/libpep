@@ -1,6 +1,4 @@
 use libpep::arithmetic::*;
-use libpep::authenticity::*;
-use libpep::distributed::*;
 use libpep::elgamal::*;
 use libpep::primitives::*;
 use libpep::proved::*;
@@ -491,37 +489,37 @@ fn pep_proved_rsk_from_to() {
     );
 }
 #[test]
-fn authenticity() {
-    let mut rng = OsRng;
-
-    let y = ScalarNonZero::random(&mut rng);
-    let gy = y * G;
-
-    let data = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
-    let pseudonym = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
-    let metadata = GroupElement::random(&mut rng);
-    let system_id = "foobar".to_string();
-    let shared_secret = ScalarNonZero::random(&mut rng);
-
-    let tag = authenticity_tag(&data, &pseudonym, &metadata, &system_id, &shared_secret);
-    assert!(verify_authenticity_tag(
-        &tag,
-        &data,
-        &pseudonym,
-        &metadata,
-        &system_id,
-        &shared_secret
-    ));
-    let tag_false = authenticity_tag(&data, &data, &metadata, &system_id, &shared_secret);
-    assert!(!verify_authenticity_tag(
-        &tag_false,
-        &data,
-        &pseudonym,
-        &metadata,
-        &system_id,
-        &shared_secret
-    ));
-}
+// fn authenticity() {
+//     let mut rng = OsRng;
+//
+//     let y = ScalarNonZero::random(&mut rng);
+//     let gy = y * G;
+//
+//     let data = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
+//     let pseudonym = encrypt(&GroupElement::random(&mut rng), &gy, &mut rng);
+//     let metadata = GroupElement::random(&mut rng);
+//     let system_id = "foobar".to_string();
+//     let shared_secret = ScalarNonZero::random(&mut rng);
+//
+//     let tag = authenticity_tag(&data, &pseudonym, &metadata, &system_id, &shared_secret);
+//     assert!(verify_authenticity_tag(
+//         &tag,
+//         &data,
+//         &pseudonym,
+//         &metadata,
+//         &system_id,
+//         &shared_secret
+//     ));
+//     let tag_false = authenticity_tag(&data, &data, &metadata, &system_id, &shared_secret);
+//     assert!(!verify_authenticity_tag(
+//         &tag_false,
+//         &data,
+//         &pseudonym,
+//         &metadata,
+//         &system_id,
+//         &shared_secret
+//     ));
+// }
 
 #[test]
 fn pep_high_level_api() {

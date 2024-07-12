@@ -1,11 +1,12 @@
 {
   "devDependencies": {
-    "jest": "^29.7.0",
-    "ts-jest": "^29.2.0",
-    "wasm-pack": "^0.13.0"
+    "jest": "^29.7.0"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build --target web --out-dir pkg",
+    "build:wasm": "wasm-pack build --target nodejs --out-dir ./pkg",
     "test": "npm run build:wasm && jest"
+  },
+  "dependencies": {
+    "wasm-pack": "^0.13.0"
   }
 }

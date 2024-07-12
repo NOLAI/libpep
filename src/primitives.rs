@@ -24,7 +24,7 @@ pub fn rekey(v: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     }
 }
 
-/// Change encrypted representation using [ScalarNonZero] `s` so that is has different contents when decrypted equal to `s*msg`, if the original encrypted message was [GroupElement] `msg`.
+/// Change encrypted representation using [ScalarNonZero] `s` so that is has different contents when decrypted equal to `s*msg`, if the original encrypted message wasm [GroupElement] `msg`.
 pub fn reshuffle(v: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: s * v.b,

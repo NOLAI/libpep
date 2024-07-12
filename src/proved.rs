@@ -23,7 +23,7 @@ impl FactorVerifiersProof {
     #[must_use]
     pub fn verify(&self, verifiers: &FactorVerifiers) -> bool {
         let FactorVerifiers(ga, gai) = verifiers;
-        verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
+        verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2 // TODO check self.1 * G for sender
     }
 }
 

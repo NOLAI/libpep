@@ -2,13 +2,30 @@ use base64::Engine;
 use base64::engine::general_purpose;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::*;
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ElGamal {
     pub b: GroupElement,
     pub c: GroupElement,
     pub y: GroupElement,
 }
 impl ElGamal {
+    pub fn decode(v: &[u8; 96]) -> Option<Self> {
+        Some(Self {
+            b: GroupElement::decode_from_slice(&v[0..32])?,
+            c: GroupElement::decode_from_slice(&v[32..64])?,
+            y: GroupElement::decode_from_slice(&v[64..96])?,
+        })
+    }
+    pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
+        if v.len() != 96 {
+            None
+        } else {
+            let mut arr = [0u8; 96];
+            arr.copy_from_slice(v);
+            Self::decode(&arr)
+        }
+    }
+
     pub fn encode(&self) -> [u8; 96] {
         let mut retval = [0u8; 96];
         retval[0..32].clone_from_slice(self.b.0.compress().as_bytes());
@@ -16,22 +33,12 @@ impl ElGamal {
         retval[64..96].clone_from_slice(self.y.0.compress().as_bytes());
         retval
     }
-    pub fn decode(v: &[u8]) -> Option<Self> {
-        if v.len() != 96 {
-            None
-        } else {
-            Some(Self {
-                b: GroupElement::decode_from_slice(&v[0..32])?,
-                c: GroupElement::decode_from_slice(&v[32..64])?,
-                y: GroupElement::decode_from_slice(&v[64..96])?,
-            })
-        }
+
+    pub fn encode_to_base64(&self) -> String {
+        general_purpose::URL_SAFE.encode(&self.encode())
     }
-    pub fn to_string(&self) -> String {
-        general_purpose::STANDARD.encode(&self.encode())
-    }
-    pub fn from_string(s: &str) -> Option<Self> {
-        general_purpose::STANDARD.decode(s).ok().and_then(|v| Self::decode(&v))
+    pub fn decode_from_base64(s: &str) -> Option<Self> {
+        general_purpose::URL_SAFE.decode(s).ok().and_then(|v| Self::decode_from_slice(&v))
     }
 
     pub fn clone(&self) -> Self {

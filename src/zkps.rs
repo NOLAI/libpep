@@ -40,7 +40,7 @@ pub fn create_proof<R: RngCore + CryptoRng>(a: &ScalarNonZero, gm: &GroupElement
     hasher.update(gc2.0.compress().as_bytes());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
+    let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
     (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
 }
@@ -55,7 +55,7 @@ pub fn verify_proof_split(ga: &GroupElement, gm: &GroupElement, gn: &GroupElemen
     hasher.update(gc2.0.compress().as_bytes());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
+    let e = ScalarNonZero::decode_from_hash(&bytes);
     // FIXME: speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
     // FIXME: check if a faster non-constant time equality can be used
     s * G == e * ga + gc1 && s * gm == e * gn + gc2
@@ -87,7 +87,7 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     hasher.update(gm.encode());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
-    let r = ScalarNonZero::from_hash(&bytes);
+    let r = ScalarNonZero::decode_from_hash(&bytes);
 
     let ga = a * G;
     let gn = a * gm;
@@ -102,7 +102,7 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     hasher.update(gc2.0.compress().as_bytes());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
+    let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
     (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
 }

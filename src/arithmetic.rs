@@ -1,3 +1,5 @@
+use base64::Engine;
+use base64::engine::general_purpose;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::scalar::Scalar;
@@ -18,10 +20,13 @@ pub struct ZeroArgumentError;
 pub struct GroupElement(pub(crate) RistrettoPoint);
 
 impl GroupElement {
-    pub fn encode(&self) -> [u8; 32] {
-        self.0.compress().0
+    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+        Self(RistrettoPoint::random(rng))
     }
-
+    pub fn decode(v: &[u8; 32]) -> Option<Self> {
+        CompressedRistretto(*v).decompress().map(Self)
+        // TODO this will fail in specific cases! See https://ristretto.group/test_vectors/ristretto255.html bad_encodings. We need to create our own bijective encoding (for example, take 30 bytes and add 2 bytes of random padding, proofing that there's always a valid encoding)
+    }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != 32 {
             None
@@ -29,17 +34,10 @@ impl GroupElement {
             CompressedRistretto::from_slice(v).unwrap().decompress().map(Self)
         }
     }
-
-    pub fn decode(v: [u8; 32]) -> Option<Self> {
-        CompressedRistretto(v).decompress().map(Self)
-    }
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
-        Self(RistrettoPoint::random(rng))
-    }
-    pub fn from_hash(v: &[u8; 64]) -> Self {
+    pub fn decode_from_hash(v: &[u8; 64]) -> Self {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
-    pub fn from_hex(s: &str) -> Option<Self> {
+    pub fn decode_from_hex(s: &str) -> Option<Self> {
         if s.len() != 64 { // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
         }
@@ -49,11 +47,23 @@ impl GroupElement {
         };
         CompressedRistretto::from_slice(&bytes).unwrap().decompress().map(Self)
     }
-    pub fn to_hex(&self) -> String {
+    pub fn encode(&self) -> [u8; 32] {
+        self.0.compress().0
+    }
+    pub fn encode_to_hex(&self) -> String {
         hex::encode(self.encode())
+    }
+    pub fn encode_to_base64(&self) -> String {
+        general_purpose::URL_SAFE.encode(&self.encode())
+    }
+    pub fn decode_from_base64(s: &str) -> Option<Self> {
+        general_purpose::URL_SAFE.decode(s).ok().and_then(|v| Self::decode_from_slice(&v))
     }
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
+    }
+    pub fn raw(&self) -> &RistrettoPoint {
+        &self.0
     }
 }
 
@@ -65,14 +75,19 @@ impl ScalarNonZero {
     /// Always return a non-zero scalar.
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         loop {
-            let retval = Scalar::random(rng);
-            if !retval.as_bytes().iter().all(|x| *x == 0) {
-                return Self(retval);
+            let r = ScalarCanBeZero::random(rng);
+            if let Ok(s) = r.try_into() {
+                return s;
             }
         }
     }
-
-    pub fn from_hash(v: &[u8; 64]) -> Self {
+    pub fn decode(v: &[u8; 32]) -> Option<Self> {
+        ScalarCanBeZero::decode(v).and_then(|x| x.try_into().ok())
+    }
+    pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
+        ScalarCanBeZero::decode_from_slice(v).and_then(|x| x.try_into().ok())
+    }
+    pub fn decode_from_hash(v: &[u8; 64]) -> Self {
         let retval = Scalar::from_bytes_mod_order_wide(v);
         if retval.as_bytes().iter().all(|x| *x == 0) {
             Self(Scalar::ONE)
@@ -80,7 +95,9 @@ impl ScalarNonZero {
             Self(retval)
         }
     }
-
+    pub fn decode_from_hex(s: &str) -> Option<Self> {
+        ScalarCanBeZero::decode_from_hex(s).and_then(|x| x.try_into().ok())
+    }
     pub fn one() -> Self {
         Self(Scalar::ONE)
     }
@@ -95,6 +112,12 @@ impl ScalarNonZero {
 pub struct ScalarCanBeZero(Scalar);
 
 impl ScalarCanBeZero {
+    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+        Self(Scalar::random(rng))
+    }
+    pub fn decode(v: &[u8; 32]) -> Option<Self> {
+        Option::from(Scalar::from_canonical_bytes(*v).map(Self))
+    }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != 32 {
             None
@@ -104,11 +127,18 @@ impl ScalarCanBeZero {
             Option::from(Scalar::from_canonical_bytes(tmp).map(Self))
         }
     }
-
-    pub fn decode(v: [u8; 32]) -> Option<Self> {
-        Option::from(Scalar::from_canonical_bytes(v).map(Self))
+    pub fn decode_from_hex(s: &str) -> Option<Self> {
+        if s.len() != 64 { // A valid hexadecimal string should be 64 characters long for 32 bytes
+            return None;
+        }
+        let bytes = match hex::decode(s) {
+            Ok(v) => v,
+            Err(_) => return None,
+        };
+        let mut tmp = [0u8; 32];
+        tmp.copy_from_slice(&bytes);
+        Option::from(Scalar::from_canonical_bytes(tmp).map(Self))
     }
-
     pub fn one() -> Self {
         Self(Scalar::ONE)
     }
@@ -145,6 +175,9 @@ pub trait ScalarTraits {
         let mut retval = [0u8; 32];
         retval[0..32].clone_from_slice(self.raw().as_bytes());
         retval
+    }
+    fn encode_to_hex(&self) -> String {
+        hex::encode(self.encode())
     }
     fn raw(&self) -> &Scalar;
 }
