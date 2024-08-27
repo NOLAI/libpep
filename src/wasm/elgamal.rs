@@ -1,8 +1,7 @@
 use std::ops::Deref;
 use rand_core::{OsRng};
 use wasm_bindgen::prelude::*;
-use crate::arithmetic::ScalarCanBeZero;
-use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarCanBeZero, WASMScalarNonZero};
+use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use crate::elgamal::{decrypt, ElGamal, encrypt};
 
 #[wasm_bindgen(js_name = ElGamal)]
@@ -48,11 +47,4 @@ pub fn encrypt_wasm(msg: &WASMGroupElement, public_key: &WASMGroupElement) -> WA
 #[wasm_bindgen(js_name = decrypt)]
 pub fn decrypt_wasm(s: &WASMElGamal, secret_key: &WASMScalarNonZero) -> WASMGroupElement {
     decrypt(&s, &secret_key).into()
-}
-
-impl IntoWasmAbi for ElGamal {
-    type Abi = WASMElGamal;
-    fn into_abi(self) -> Self::Abi {
-        self.into()
-    }
 }

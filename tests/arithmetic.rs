@@ -45,7 +45,7 @@ fn add_group_elements() {
     let mut rng = OsRng;
     let x = GroupElement::random(&mut rng);
     let y = GroupElement::random(&mut rng);
-    let z = x + y;
+    let _z = x + y;
 }
 
 #[test]
@@ -53,7 +53,7 @@ fn add_scalars() {
     let mut rng = OsRng;
     let x = ScalarCanBeZero::random(&mut rng);
     let y = ScalarCanBeZero::random(&mut rng);
-    let z = x + y;
+    let _z = x + y;
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn mul_scalar_group_element() {
     let mut rng = OsRng;
     let x = GroupElement::random(&mut rng);
     let s = ScalarNonZero::random(&mut rng);
-    let z = s * x;
+    let _z = s * x;
 }
 
 #[test]

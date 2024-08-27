@@ -10,5 +10,4 @@ pub mod wasm {
     pub mod arithmetic;
     pub mod elgamal;
     pub mod primitives;
-    pub mod high_level;
 }

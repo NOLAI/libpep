@@ -3,8 +3,6 @@ const {GroupElement, ScalarNonZero, ScalarCanBeZero} = require("../../pkg/libpep
 test('GroupElement arithmetic', async () => {
     const a = GroupElement.fromHex("503f0bbed01007ad413d665131c48c4f92ad506704305873a2128f29430c2674");
     const b = GroupElement.fromHex("ceab6438bae4a0b5662afa5776029d60f1f2aa5440cf966bc4592fae088c5639");
-    console.log(a.toBase64());
-    console.log(b.toBase64());
 
     const c = a.add(b);
     const d = a.sub(b);

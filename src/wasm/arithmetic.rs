@@ -201,25 +201,3 @@ impl WASMScalarCanBeZero {
         Some(WASMScalarNonZero(s))
     }
 }
-
-
-impl IntoWasmAbi for GroupElement {
-    type Abi = WASMGroupElement;
-    fn into_abi(self) -> Self::Abi {
-        self.into()
-    }
-}
-
-impl IntoWasmAbi for ScalarNonZero {
-    type Abi = WASMScalarNonZero;
-    fn into_abi(self) -> Self::Abi {
-        self.into()
-    }
-}
-
-impl IntoWasmAbi for ScalarCanBeZero {
-    type Abi = WASMScalarCanBeZero;
-    fn into_abi(self) -> Self::Abi {
-        self.into()
-    }
-}
