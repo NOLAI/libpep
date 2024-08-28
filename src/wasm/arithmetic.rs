@@ -80,7 +80,6 @@ impl WASMGroupElement {
     pub fn mul(&self, other: &WASMScalarNonZero) -> WASMGroupElement {
         (&other.0 * self.0).into() // Only possible if the scalar is non-zero
     }
-
 }
 
 

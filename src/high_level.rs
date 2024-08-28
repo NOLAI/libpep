@@ -45,7 +45,7 @@ pub fn make_global_keys() -> (GlobalPublicKey, GlobalSecretKey) {
 }
 
 /// Generate a subkey from a global secret key, a context, and an encryption secret
-pub fn generate_session_keys(global: &GlobalSecretKey, context: &EncryptionContext, encryption_secret: &EncryptionSecret) -> (SessionPublicKey, SessionSecretKey) {
+pub fn make_session_keys(global: &GlobalSecretKey, context: &EncryptionContext, encryption_secret: &EncryptionSecret) -> (SessionPublicKey, SessionSecretKey) {
     let k = make_decryption_factor(&encryption_secret.0, &context.0);
     let sk = k * &global.0;
     let pk = sk * G;

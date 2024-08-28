@@ -13,8 +13,8 @@ fn test() {
     let pseudo_context2 = PseudonymizationContext("context2".to_string());
     let enc_context2 = EncryptionContext("session2".to_string());
 
-    let (session1_public, session1_secret) = generate_session_keys(&global_secret, &enc_context1, &enc_secret);
-    let (_session2_public, session2_secret) = generate_session_keys(&global_secret, &enc_context2, &enc_secret);
+    let (session1_public, session1_secret) = make_session_keys(&global_secret, &enc_context1, &enc_secret);
+    let (_session2_public, session2_secret) = make_session_keys(&global_secret, &enc_context2, &enc_secret);
 
     let pseudo = new_random_pseudonym();
     let enc_pseudo = encrypt_pseudonym(&pseudo, &session1_public);
