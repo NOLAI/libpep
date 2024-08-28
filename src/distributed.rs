@@ -3,8 +3,11 @@ use crate::arithmetic::*;
 use crate::utils::*;
 use crate::high_level::*;
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct BlindingFactor(ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct BlindedGlobalSecretKey(ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SessionKeyShare(ScalarNonZero);
 
 pub fn make_blinding_factor() -> BlindingFactor {

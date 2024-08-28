@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use crate::elgamal::{decrypt, ElGamal, encrypt};
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = ElGamal)]
 pub struct WASMElGamal (ElGamal);
 impl Deref for WASMElGamal {
@@ -13,6 +14,11 @@ impl Deref for WASMElGamal {
 impl From<ElGamal> for WASMElGamal {
     fn from(x: ElGamal) -> Self {
         WASMElGamal(x)
+    }
+}
+impl From<WASMElGamal> for ElGamal {
+    fn from(x: WASMElGamal) -> Self {
+        x.0
     }
 }
 #[wasm_bindgen(js_class = "ElGamal")]
@@ -43,7 +49,6 @@ pub fn encrypt_wasm(msg: &WASMGroupElement, public_key: &WASMGroupElement) -> WA
     let mut rng = OsRng;
     encrypt(&msg, &public_key, &mut rng).into()
 }
-
 #[wasm_bindgen(js_name = decrypt)]
 pub fn decrypt_wasm(s: &WASMElGamal, secret_key: &WASMScalarNonZero) -> WASMGroupElement {
     decrypt(&s, &secret_key).into()

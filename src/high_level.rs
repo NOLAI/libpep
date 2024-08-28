@@ -1,31 +1,43 @@
 use rand_core::OsRng;
 use crate::arithmetic::{G, GroupElement, ScalarNonZero};
 use crate::elgamal::{ElGamal, encrypt, decrypt};
-use crate::primitives::{rekey_from_to, rsk_from_to, rerandomize};
+use crate::primitives::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SessionSecretKey(pub ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct GlobalSecretKey(pub ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SessionPublicKey(pub GroupElement);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct GlobalPublicKey(pub GroupElement);
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Pseudonym(pub GroupElement);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct DataPoint(pub GroupElement);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct EncryptedPseudonym(pub ElGamal);
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct EncryptedDataPoint(pub ElGamal);
 
 pub type Context = String;
 
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PseudonymizationContext(pub Context);
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct EncryptionContext(pub Context);
 
 pub type Secret = String;
 
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct PseudonymizationSecret(pub Secret);
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct EncryptionSecret(pub Secret);
 
 /// Generate a new global key pair
-pub fn generate_global_keys() -> (GlobalPublicKey, GlobalSecretKey) {
+pub fn make_global_keys() -> (GlobalPublicKey, GlobalSecretKey) {
     let mut rng = rand::thread_rng();
     let sk = ScalarNonZero::random(&mut rng);
     let pk = sk * G;

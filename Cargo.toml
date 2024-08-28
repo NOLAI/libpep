@@ -17,9 +17,9 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["build-binary"]
-elgamal2 = []
 build-binary = ["buildinfy","commandy","commandy_macros"]
-wasm = ["wasm-bindgen"]
+elgamal2 = []
+wasm = ["wasm-bindgen", "wasm-bindgen-test", "getrandom"]
 legacy-pep-repo-compatible = []
 
 [dependencies]
@@ -35,10 +35,10 @@ hex = "0.4.3"
 # testing
 time = "0.3.36"
 base64 = "0.22.1"
+log = "0.4.22"
 
 # wasm
 wasm-bindgen = { version = "0.2", optional = true }
-wasm-bindgen-test = "0.3"
-getrandom = { version = "^0.2", features = ["js"] }
-log = "0.4.22"
+wasm-bindgen-test = { version = "0.3", optional = true }
+getrandom = { version = "^0.2", features = ["js"], optional = true }
 

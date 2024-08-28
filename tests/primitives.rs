@@ -175,3 +175,32 @@ fn pep_rsk_from_to() {
 
     assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
+
+
+#[test]
+fn pep_assumptions() {
+    let mut rng = OsRng;
+    // secret key of system
+    let sk = ScalarNonZero::random(&mut rng);
+    // public key of system
+    let pk = sk * G;
+
+    // secret key of service provider
+    let sj = ScalarNonZero::random(&mut rng);
+    let yj = sj * sk;
+    assert_eq!(yj * G, sj * pk);
+
+    // Lemma 2: RS(RK(..., k), n) == RK(RS(..., n), k)
+    let value = GroupElement::random(&mut rng);
+    let encrypted = encrypt(&value, &pk, &mut OsRng);
+    let k = ScalarNonZero::random(&mut rng);
+    let n = ScalarNonZero::random(&mut rng);
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rekey(&reshuffle(&encrypted, &n), &k)
+    );
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rsk(&encrypted, &n, &k)
+    );
+}
