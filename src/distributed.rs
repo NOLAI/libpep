@@ -44,9 +44,11 @@ impl PEPSystem {
     pub fn pseudonymize(&self, p: &EncryptedPseudonym, from_context: &PseudonymizationContext, to_context: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext) -> EncryptedPseudonym {
         pseudonymize(&p, from_context, to_context, from_session, to_session, &self.pseudonymisation_secret, &self.rekeying_secret)
     }
+    #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_pseudonym(&self, encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
         rerandomize_encrypted_pseudonym(encrypted)
     }
+    #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_data_point(&self, encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
         rerandomize_encrypted(encrypted)
     }
@@ -82,10 +84,12 @@ impl PEPClient {
         encrypt_pseudonym(p, &(self.session_public_key))
     }
 
+    #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_pseudonym(&self, encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
         rerandomize_encrypted_pseudonym(encrypted)
     }
 
+    #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_data_point(&self, encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
         rerandomize_encrypted(encrypted)
     }

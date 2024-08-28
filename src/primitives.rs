@@ -7,6 +7,7 @@ use crate::elgamal::*;
 /// - [rekey]: change encrypted representation, can be decrypted by a different key.
 ///
 /// Change encrypted representation using [ScalarNonZero] `r`, same contents when decrypted.
+#[cfg(not(feature = "elgamal2"))]
 pub fn rerandomize(v: &ElGamal, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: r * G + v.b,
@@ -20,6 +21,7 @@ pub fn rekey(v: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: k.invert() * v.b,
         c: v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: k * v.y,
     }
 }
@@ -29,6 +31,7 @@ pub fn reshuffle(v: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: s * v.b,
         c: s * v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: v.y,
     }
 }
@@ -50,6 +53,7 @@ pub fn rsk(v: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: (s * k.invert()) * v.b,
         c: s * v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: k * v.y,
     }
 }

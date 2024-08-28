@@ -68,6 +68,7 @@ pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoi
     DataPoint(decrypt(&data.0, &sk.0))
 }
 
+#[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_encrypted_pseudonym(encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
     let mut rng = OsRng;
@@ -75,6 +76,7 @@ pub fn rerandomize_encrypted_pseudonym(encrypted: EncryptedPseudonym) -> Encrypt
     EncryptedPseudonym(rerandomize(&encrypted.0, &r))
 }
 
+#[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted data point
 pub fn rerandomize_encrypted(encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
     let mut rng = OsRng;

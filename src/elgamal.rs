@@ -2,34 +2,45 @@ use base64::Engine;
 use base64::engine::general_purpose;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::*;
+
+#[cfg(feature = "elgamal2")]
+const ELGAMAL_LENGTH : usize = 64;
+#[cfg(not(feature = "elgamal2"))]
+const ELGAMAL_LENGTH : usize = 96;
+
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ElGamal {
     pub b: GroupElement,
     pub c: GroupElement,
+    #[cfg(not(feature = "elgamal2"))]
     pub y: GroupElement,
 }
+
 impl ElGamal {
-    pub fn decode(v: &[u8; 96]) -> Option<Self> {
+    pub fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self> {
         Some(Self {
             b: GroupElement::decode_from_slice(&v[0..32])?,
             c: GroupElement::decode_from_slice(&v[32..64])?,
+            #[cfg(not(feature = "elgamal2"))]
             y: GroupElement::decode_from_slice(&v[64..96])?,
         })
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
-        if v.len() != 96 {
+        if v.len() != ELGAMAL_LENGTH {
             None
         } else {
-            let mut arr = [0u8; 96];
+            let mut arr = [0u8; ELGAMAL_LENGTH];
             arr.copy_from_slice(v);
             Self::decode(&arr)
         }
     }
 
-    pub fn encode(&self) -> [u8; 96] {
-        let mut retval = [0u8; 96];
+    pub fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
+        let mut retval = [0u8; ELGAMAL_LENGTH];
         retval[0..32].clone_from_slice(self.b.0.compress().as_bytes());
         retval[32..64].clone_from_slice(self.c.0.compress().as_bytes());
+        #[cfg(not(feature = "elgamal2"))]
         retval[64..96].clone_from_slice(self.y.0.compress().as_bytes());
         retval
     }
@@ -45,6 +56,7 @@ impl ElGamal {
         Self {
             b: self.b,
             c: self.c,
+            #[cfg(not(feature = "elgamal2"))]
             y: self.y,
         }
     }
@@ -57,6 +69,7 @@ pub fn encrypt<R: RngCore + CryptoRng>(msg: &GroupElement, public_key: &GroupEle
     ElGamal {
         b: r * G,
         c: msg + r * public_key,
+        #[cfg(not(feature = "elgamal2"))]
         y: *public_key,
     }
 }

@@ -3,6 +3,7 @@ use crate::wasm::arithmetic::WASMScalarNonZero;
 use crate::wasm::elgamal::WASMElGamal;
 use crate::primitives::*;
 
+#[cfg(not(feature = "elgamal2"))]
 #[wasm_bindgen(js_name = rerandomize)]
 pub fn rerandomize_wasm(v: &WASMElGamal, r: &WASMScalarNonZero) -> WASMElGamal {
     rerandomize(v, r).into()
