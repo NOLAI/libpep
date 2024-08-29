@@ -4,19 +4,23 @@ use crate::utils::*;
 use crate::high_level::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct BlindingFactor(ScalarNonZero);
+pub struct BlindingFactor(pub ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct BlindedGlobalSecretKey(ScalarNonZero);
+pub struct BlindedGlobalSecretKey(pub ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct SessionKeyShare(ScalarNonZero);
+pub struct SessionKeyShare(pub ScalarNonZero);
 
-pub fn make_blinding_factor() -> BlindingFactor {
-    let mut rng = OsRng;
-    BlindingFactor(ScalarNonZero::random(&mut rng))
+impl BlindingFactor {
+    pub fn new(x: ScalarNonZero) -> Self {
+        BlindingFactor(x)
+    }
+    pub fn random() -> Self {
+        BlindingFactor(ScalarNonZero::random(&mut OsRng))
+    }
 }
-
-pub fn make_blinded_global_secret_key(global_secret_key: GlobalSecretKey, blinding_factors: Vec<BlindingFactor>) -> BlindedGlobalSecretKey {
-    let x = blinding_factors.iter().fold(global_secret_key.0, |acc, x| acc * x.0);
+pub fn make_blinded_global_secret_key(global_secret_key: &GlobalSecretKey, blinding_factors: &Vec<BlindingFactor>) -> BlindedGlobalSecretKey {
+    let y = global_secret_key.0.clone();
+    let x = blinding_factors.iter().fold(y, |acc, x| acc * x.0);
     BlindedGlobalSecretKey(x)
 }
 
@@ -49,11 +53,11 @@ impl PEPSystem {
     }
     #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_pseudonym(&self, encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(encrypted)
+        rerandomize_encrypted_pseudonym(&encrypted)
     }
     #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_data_point(&self, encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
-        rerandomize_encrypted(encrypted)
+        rerandomize_encrypted(&encrypted)
     }
 }
 
@@ -89,11 +93,11 @@ impl PEPClient {
 
     #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_pseudonym(&self, encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(encrypted)
+        rerandomize_encrypted_pseudonym(&encrypted)
     }
 
     #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize_encrypted_data_point(&self, encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
-        rerandomize_encrypted(encrypted)
+        rerandomize_encrypted(&encrypted)
     }
 }

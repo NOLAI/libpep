@@ -11,4 +11,5 @@ pub mod wasm {
     pub mod elgamal;
     pub mod primitives;
     pub mod high_level;
+    pub mod distributed;
 }

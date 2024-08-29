@@ -24,14 +24,14 @@ fn test() {
 
     let dec_pseudo = decrypt_pseudonym(&enc_pseudo, &session1_secret);
     let dec_data = decrypt_data(&enc_data, &session1_secret);
-    
+
     assert_eq!(pseudo, dec_pseudo);
     assert_eq!(data, dec_data);
 
     #[cfg(not(feature = "elgamal2"))]
     {
-        let rr_pseudo = rerandomize_encrypted_pseudonym(enc_pseudo);
-        let rr_data = rerandomize_encrypted(enc_data);
+        let rr_pseudo = rerandomize_encrypted_pseudonym(&enc_pseudo);
+        let rr_data = rerandomize_encrypted(&enc_data);
 
         assert_ne!(enc_pseudo, rr_pseudo);
         assert_ne!(enc_data, rr_data);

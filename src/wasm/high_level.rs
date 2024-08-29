@@ -115,7 +115,7 @@ impl WASMDataPoint {
 
 impl From<WASMDataPoint> for DataPoint {
     fn from(x: WASMDataPoint) -> Self {
-        DataPoint { value: x.value.into() }
+        DataPoint::new(x.value.into())
     }
 
 }
@@ -135,9 +135,8 @@ pub struct WASMEncryptedPseudonym {
 }
 impl From<WASMEncryptedPseudonym> for EncryptedPseudonym {
     fn from(x: WASMEncryptedPseudonym) -> Self {
-        EncryptedPseudonym {
-            value : x.value.into()
-        }
+        EncryptedPseudonym::new( x.value.into())
+
     }
 
 }
@@ -156,7 +155,7 @@ pub struct WASMEncryptedDataPoint {
 }
 impl From<WASMEncryptedDataPoint> for EncryptedDataPoint {
     fn from(x: WASMEncryptedDataPoint) -> Self {
-        EncryptedDataPoint { value: x.value.into() }
+        EncryptedDataPoint::new(x.value.into())
     }
 
 }
@@ -232,15 +231,15 @@ pub fn wasm_decrypt_data(data: &WASMEncryptedDataPoint, sk: &WASMSessionSecretKe
 /// Rerandomize the ciphertext of an encrypted pseudonym
 #[cfg(not(feature = "elgamal2"))]
 #[wasm_bindgen(js_name = rerandomizePseudonym)]
-pub fn wasm_rerandomize_encrypted_pseudonym(encrypted: WASMEncryptedPseudonym) -> WASMEncryptedPseudonym {
-    rerandomize_encrypted_pseudonym(encrypted.into()).into()
+pub fn wasm_rerandomize_encrypted_pseudonym(encrypted: &WASMEncryptedPseudonym) -> WASMEncryptedPseudonym {
+    rerandomize_encrypted_pseudonym(&(*encrypted).into()).into()
 }
 
 /// Rerandomize the ciphertext of an encrypted data point
 #[cfg(not(feature = "elgamal2"))]
 #[wasm_bindgen(js_name = rerandomizeData)]
-pub fn wasm_rerandomize_encrypted(encrypted: WASMEncryptedDataPoint) -> WASMEncryptedDataPoint {
-    rerandomize_encrypted(encrypted.into()).into()
+pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEncryptedDataPoint {
+    rerandomize_encrypted(&(*encrypted).into()).into()
 }
 
 /// Pseudonymize an encrypted pseudonym, from one context to another context

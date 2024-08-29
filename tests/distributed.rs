@@ -1,6 +1,6 @@
 use rand_core::OsRng;
 use libpep::arithmetic::{GroupElement};
-use libpep::distributed::{make_blinded_global_secret_key, make_blinding_factor, PEPClient, PEPSystem};
+use libpep::distributed::{BlindingFactor, make_blinded_global_secret_key, PEPClient, PEPSystem};
 use libpep::high_level::{DataPoint, EncryptionContext, EncryptionSecret, make_global_keys, Pseudonym, PseudonymizationContext, PseudonymizationSecret};
 
 #[test]
@@ -8,8 +8,8 @@ fn n_pep() {
     let n = 3;
 
     let (_global_public, global_secret) = make_global_keys();
-    let blinding_factors = (0..n).map(|_| {make_blinding_factor()}).collect::<Vec<_>>();
-    let blinded_global_secret_key = make_blinded_global_secret_key(global_secret, blinding_factors.clone());
+    let blinding_factors = (0..n).map(|_| {BlindingFactor::random()}).collect::<Vec<_>>();
+    let blinded_global_secret_key = make_blinded_global_secret_key(&global_secret, &blinding_factors.clone());
 
     let systems = (0..n).map(|i| {
         let pseudonymization_secret = PseudonymizationSecret(format!("secret-{}", i));

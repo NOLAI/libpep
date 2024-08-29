@@ -4,7 +4,7 @@ const {
     GroupElement,
     makeGlobalKeys,
     makeSessionKeys,
-    newRandomPseudonym, pseudonymize, rekeyData, Pseudonym
+    pseudonymize, rekeyData, Pseudonym
 } = require("../../pkg");
 
 test('test high level', async () => {
