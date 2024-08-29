@@ -1,7 +1,0 @@
-include: "/.gitlab-ci-benchmark.yml"
-
-variables:
-  PACKAGES:
-  EXPORT_DOCKER_ON: "domain.com"
-  BUILD_PACKAGES_ON: "domain.com"
-  RUNNER_TAG: docker
