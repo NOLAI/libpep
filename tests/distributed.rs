@@ -30,8 +30,8 @@ fn n_pep() {
     let client_a = PEPClient::new(blinded_global_secret_key.clone(), sks_a1);
     let client_b = PEPClient::new(blinded_global_secret_key.clone(), sks_b1);
 
-    let pseudonym = Pseudonym(GroupElement::random(&mut OsRng));
-    let data = DataPoint(GroupElement::random(&mut OsRng));
+    let pseudonym = Pseudonym::random();
+    let data = DataPoint { value: GroupElement::random(&mut OsRng) };
 
     let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym);
     let enc_data = client_a.encrypt_data(&data);

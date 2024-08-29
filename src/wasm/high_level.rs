@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use wasm_bindgen::prelude::wasm_bindgen;
 use crate::high_level::*;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
@@ -59,69 +60,111 @@ impl From<WASMGlobalPublicKey> for GlobalPublicKey {
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = Pseudonym)]
-pub struct WASMPseudonym(pub WASMGroupElement);
+pub struct WASMPseudonym {
+    pub value: WASMGroupElement
+}
+#[wasm_bindgen(js_class = "Pseudonym")]
+impl WASMPseudonym {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMGroupElement) -> Self {
+        WASMPseudonym {
+            value: x
+        }
+    }
+    #[wasm_bindgen]
+    pub fn random() -> Self {
+        Pseudonym::random().into()
+    }
+}
+impl Deref for WASMPseudonym {
+    type Target = WASMGroupElement;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
 impl From<Pseudonym> for WASMPseudonym {
     fn from(x: Pseudonym) -> Self {
-        WASMPseudonym(x.0.into())
+        WASMPseudonym {
+            value: x.value.into()
+        }
     }
 }
 impl From<WASMPseudonym> for Pseudonym {
     fn from(x: WASMPseudonym) -> Self {
-        Pseudonym(x.0.into())
+        Pseudonym { value: x.value.into()}
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = DataPoint)]
-pub struct WASMDataPoint(pub WASMGroupElement);
+pub struct WASMDataPoint {
+    pub value: WASMGroupElement
+}
+
+impl Deref for WASMDataPoint {
+    type Target = WASMGroupElement;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
 
 #[wasm_bindgen(js_class = "DataPoint")]
 impl WASMDataPoint {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMGroupElement) -> Self {
-        WASMDataPoint(x)
+        WASMDataPoint {
+            value: x
+        }
     }
 }
 
 impl From<WASMDataPoint> for DataPoint {
     fn from(x: WASMDataPoint) -> Self {
-        DataPoint(x.0.into())
+        DataPoint { value: x.value.into() }
     }
 
 }
 impl From<DataPoint> for WASMDataPoint {
     fn from(x: DataPoint) -> Self {
-        WASMDataPoint(x.0.into())
+        WASMDataPoint {
+            value: x.value.into()
+        }
     }
 }
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = EncryptedPseudonym)]
-pub struct WASMEncryptedPseudonym(pub WASMElGamal);
+pub struct WASMEncryptedPseudonym {
+    pub value: WASMElGamal
+}
 impl From<WASMEncryptedPseudonym> for EncryptedPseudonym {
     fn from(x: WASMEncryptedPseudonym) -> Self {
-        EncryptedPseudonym(x.0.into())
+        EncryptedPseudonym {
+            value : x.value.into()
+        }
     }
 
 }
 impl From<EncryptedPseudonym> for WASMEncryptedPseudonym {
     fn from(x: EncryptedPseudonym) -> Self {
-        WASMEncryptedPseudonym(x.0.into())
+        WASMEncryptedPseudonym {
+            value: x.value.into()
+        }
     }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = EncryptedDataPoint)]
-pub struct WASMEncryptedDataPoint(pub WASMElGamal);
+pub struct WASMEncryptedDataPoint {
+    pub value: WASMElGamal
+}
 impl From<WASMEncryptedDataPoint> for EncryptedDataPoint {
     fn from(x: WASMEncryptedDataPoint) -> Self {
-        EncryptedDataPoint(x.0.into())
+        EncryptedDataPoint { value: x.value.into() }
     }
 
 }
 impl From<EncryptedDataPoint> for WASMEncryptedDataPoint {
     fn from(x: EncryptedDataPoint) -> Self {
-        WASMEncryptedDataPoint(x.0.into())
+        WASMEncryptedDataPoint {
+            value: x.value.into()
+        }
     }
 }
 
@@ -160,12 +203,6 @@ pub fn wasm_make_session_keys(global: &WASMGlobalSecretKey, context: &str, encry
         public: public.into(),
         secret: secret.into(),
     }
-}
-
-/// Generate a new random pseudonym
-#[wasm_bindgen(js_name = newRandomPseudonym)]
-pub fn wasm_new_random_pseudonym() -> WASMPseudonym {
-    new_random_pseudonym().into()
 }
 
 /// Encrypt a pseudonym

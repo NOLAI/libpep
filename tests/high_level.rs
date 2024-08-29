@@ -16,15 +16,15 @@ fn test() {
     let (session1_public, session1_secret) = make_session_keys(&global_secret, &enc_context1, &enc_secret);
     let (_session2_public, session2_secret) = make_session_keys(&global_secret, &enc_context2, &enc_secret);
 
-    let pseudo = new_random_pseudonym();
+    let pseudo = Pseudonym::random();
     let enc_pseudo = encrypt_pseudonym(&pseudo, &session1_public);
 
-    let data = DataPoint(GroupElement::random(&mut OsRng));
+    let data = DataPoint::new(GroupElement::random(&mut OsRng));
     let enc_data = encrypt_data(&data, &session1_public);
 
     let dec_pseudo = decrypt_pseudonym(&enc_pseudo, &session1_secret);
     let dec_data = decrypt_data(&enc_data, &session1_secret);
-
+    
     assert_eq!(pseudo, dec_pseudo);
     assert_eq!(data, dec_data);
 

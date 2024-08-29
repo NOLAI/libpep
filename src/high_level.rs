@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use rand_core::OsRng;
 use crate::arithmetic::{G, GroupElement, ScalarNonZero};
 use crate::elgamal::{ElGamal, encrypt, decrypt};
@@ -14,13 +15,63 @@ pub struct SessionPublicKey(pub GroupElement);
 pub struct GlobalPublicKey(pub GroupElement);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct Pseudonym(pub GroupElement);
+pub struct Pseudonym {
+    pub value: GroupElement
+}
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct DataPoint(pub GroupElement);
+pub struct DataPoint{
+    pub value: GroupElement
+}
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct EncryptedPseudonym(pub ElGamal);
+pub struct EncryptedPseudonym{
+    pub value: ElGamal
+}
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct EncryptedDataPoint(pub ElGamal);
+pub struct EncryptedDataPoint{
+    pub value: ElGamal
+}
+
+impl Deref for Pseudonym {
+    type Target = GroupElement;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
+impl Deref for DataPoint {
+    type Target = GroupElement;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
+impl Deref for EncryptedPseudonym {
+    type Target = ElGamal;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
+impl Deref for EncryptedDataPoint {
+    type Target = ElGamal;
+    fn deref(&self) -> &Self::Target { &self.value }
+}
+
+impl Pseudonym {
+    pub fn new(value: GroupElement) -> Self {
+        Pseudonym { value }
+    }
+    pub fn random() -> Self {
+        let mut rng = OsRng;
+        Pseudonym::new(GroupElement::random(&mut rng))
+    }
+}
+impl DataPoint {
+    pub fn new(value: GroupElement) -> Self {
+        DataPoint { value }
+    }
+}
+impl EncryptedPseudonym {
+    pub fn new(value: ElGamal) -> Self {
+        EncryptedPseudonym { value }
+    }
+}
+impl EncryptedDataPoint {
+    pub fn new(value: ElGamal) -> Self {
+        EncryptedDataPoint { value }
+    }
+}
 
 pub type Context = String;
 
@@ -52,32 +103,26 @@ pub fn make_session_keys(global: &GlobalSecretKey, context: &EncryptionContext, 
     (SessionPublicKey(pk), SessionSecretKey(sk))
 }
 
-/// Generate a new random pseudonym
-pub fn new_random_pseudonym() -> Pseudonym {
-    let mut rng = OsRng;
-    Pseudonym(GroupElement::random(&mut rng))
-}
-
 /// Encrypt a pseudonym
 pub fn encrypt_pseudonym(p: &Pseudonym, pk: &SessionPublicKey) -> EncryptedPseudonym {
     let mut rng = OsRng;
-    EncryptedPseudonym(encrypt(&p.0, &pk.0, &mut rng))
+    EncryptedPseudonym::new(encrypt(&p, &pk.0, &mut rng))
 }
 
 /// Decrypt an encrypted pseudonym
 pub fn decrypt_pseudonym(p: &EncryptedPseudonym, sk: &SessionSecretKey) -> Pseudonym {
-    Pseudonym(decrypt(&p.0, &sk.0))
+    Pseudonym::new(decrypt(&p, &sk.0))
 }
 
 /// Encrypt a data point
 pub fn encrypt_data(data: &DataPoint, pk: &SessionPublicKey) -> EncryptedDataPoint {
     let mut rng = OsRng;
-    EncryptedDataPoint(encrypt(&data.0, &pk.0, &mut rng))
+    EncryptedDataPoint::new(encrypt(&data, &pk.0, &mut rng))
 }
 
 /// Decrypt an encrypted data point
 pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoint {
-    DataPoint(decrypt(&data.0, &sk.0))
+    DataPoint::new(decrypt(&data, &sk.0))
 }
 
 #[cfg(not(feature = "elgamal2"))]
@@ -85,7 +130,7 @@ pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoi
 pub fn rerandomize_encrypted_pseudonym(encrypted: EncryptedPseudonym) -> EncryptedPseudonym {
     let mut rng = OsRng;
     let r = ScalarNonZero::random(&mut rng);
-    EncryptedPseudonym(rerandomize(&encrypted.0, &r))
+    EncryptedPseudonym::new(rerandomize(&encrypted.value, &r))
 }
 
 #[cfg(not(feature = "elgamal2"))]
@@ -93,7 +138,7 @@ pub fn rerandomize_encrypted_pseudonym(encrypted: EncryptedPseudonym) -> Encrypt
 pub fn rerandomize_encrypted(encrypted: EncryptedDataPoint) -> EncryptedDataPoint {
     let mut rng = OsRng;
     let r = ScalarNonZero::random(&mut rng);
-    EncryptedDataPoint(rerandomize(&encrypted.0, &r))
+    EncryptedDataPoint::new(rerandomize(&encrypted.value, &r))
 }
 
 /// Pseudonymize an encrypted pseudonym, from one context to another context
@@ -102,12 +147,12 @@ pub fn pseudonymize(p: &EncryptedPseudonym, from_user: &PseudonymizationContext,
     let s_to = make_pseudonymisation_factor(&pseudonymization_secret.0, &to_user.0);
     let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
     let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
-    EncryptedPseudonym(rsk_from_to(&p.0, &s_from, &s_to, &k_from, &k_to))
+    EncryptedPseudonym::new(rsk_from_to(&p.value, &s_from, &s_to, &k_from, &k_to))
 }
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 pub fn rekey(p: &EncryptedDataPoint, from_session: &EncryptionContext, to_session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> EncryptedDataPoint {
     let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
     let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
-    EncryptedDataPoint(rekey_from_to(&p.0, &k_from, &k_to))
+    EncryptedDataPoint::new(rekey_from_to(&p.value, &k_from, &k_to))
 }

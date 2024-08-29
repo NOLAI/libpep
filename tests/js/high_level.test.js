@@ -4,12 +4,12 @@ const {
     GroupElement,
     makeGlobalKeys,
     makeSessionKeys,
-    newRandomPseudonym, pseudonymize, rekeyData
+    newRandomPseudonym, pseudonymize, rekeyData, Pseudonym
 } = require("../../pkg");
 
 test('test high level', async () => {
     const globalKeys = makeGlobalKeys();
-    const _globalPublicKey = globalKeys.public;
+    const globalPublicKey = globalKeys.public;
     const globalPrivateKey = globalKeys.secret;
 
     const pseudoSecret = "secret";
@@ -23,7 +23,7 @@ test('test high level', async () => {
     const session1Keys = makeSessionKeys(globalPrivateKey, encContext1, encSecret);
     const session2Keys = makeSessionKeys(globalPrivateKey, encContext2, encSecret);
 
-    const pseudo = newRandomPseudonym();
+    const pseudo = Pseudonym.random();
     const encPseudo = encryptPseudonym(pseudo, session1Keys.public);
 
     const random = GroupElement.random();
@@ -33,22 +33,22 @@ test('test high level', async () => {
     const decPseudo = decryptPseudonym(encPseudo, session1Keys.secret);
     const decData = decryptData(encData, session1Keys.secret);
 
-    expect(pseudo["0"].toHex()).toEqual(decPseudo["0"].toHex());
-    expect(data["0"].toHex()).toEqual(decData["0"].toHex());
+    expect(pseudo.value.toHex()).toEqual(decPseudo.value.toHex());
+    expect(data.value.toHex()).toEqual(decData.value.toHex());
 
     const rekeyed = rekeyData(encData, encContext1, encContext2, encSecret);
     const rekeyedDec = decryptData(rekeyed, session2Keys.secret);
 
-    expect(data["0"].toHex()).toEqual(rekeyedDec["0"].toHex());
+    expect(data.value.toHex()).toEqual(rekeyedDec.value.toHex());
 
     const pseudonymized = pseudonymize(encPseudo, pseudoContext1, pseudoContext2, encContext1, encContext2, pseudoSecret, encSecret);
     const pseudonymizedDec = decryptPseudonym(pseudonymized, session2Keys.secret);
 
-    expect(pseudo["0"].toHex()).not.toEqual(pseudonymizedDec["0"].toHex());
+    expect(pseudo.value.toHex()).not.toEqual(pseudonymizedDec.value.toHex());
 
     const revPseudonymized = pseudonymize(pseudonymized, pseudoContext2, pseudoContext1, encContext2, encContext1, pseudoSecret, encSecret);
     const revPseudonymizedDec = decryptPseudonym(revPseudonymized, session1Keys.secret);
 
-    expect(pseudo["0"].toHex()).toEqual(revPseudonymizedDec["0"].toHex());
+    expect(pseudo.value.toHex()).toEqual(revPseudonymizedDec.value.toHex());
 
 })
