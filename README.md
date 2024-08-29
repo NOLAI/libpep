@@ -63,26 +63,11 @@ The hashing algorithm used is SHA512.
 
 ## Building and running
 
-Build using cargo:
-```
-cargo build
-```
+Build using cargo: `cargo build` and test using `cargo test`.
 
-To build the WASM library, use either (for in-browser usage):
-```
-wasm-pack build --target web --out-dir ./pkg-web --features wasm
-```
+To build the WASM library, use either `npm run build:nodejs` or `npm run build:web` (which will call `wasm-pack build --features wasm` for the preferred target).
 
-or (for nodejs usage):
-```
-wasm-pack build --target nodejs --out-dir ./pkg --features wasm
-```
-
-
-The wasm library can be tested using the nodejs `jest` framework, after compiling the wasm library for nodejs:
-```
-npm run test
-```
+The wasm library can be tested using the nodejs `jest` framework, after compiling the wasm library for nodejs: `npm run test`.
 
 ## Install
 
