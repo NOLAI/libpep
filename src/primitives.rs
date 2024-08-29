@@ -7,6 +7,7 @@ use crate::elgamal::*;
 /// - [rekey]: change encrypted representation, can be decrypted by a different key.
 ///
 /// Change encrypted representation using [ScalarNonZero] `r`, same contents when decrypted.
+#[cfg(not(feature = "elgamal2"))]
 pub fn rerandomize(v: &ElGamal, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: r * G + v.b,
@@ -14,21 +15,25 @@ pub fn rerandomize(v: &ElGamal, r: &ScalarNonZero) -> ElGamal {
         y: v.y,
     }
 }
+// TODO: Rerandomization is in fact possible with the ElGamal2 scheme, but then public key `y` should be provided as an argument
+// When using one-directional encryption (towards a global public key), this is actually feasible, but not when using two-directional encryption (towards a session key)
 
 /// Change encrypted representation using [ScalarNonZero] `k`, so it can be decrypted by a different key `k*y` if the input can be decrypted by [ScalarNonZero] `y`.
 pub fn rekey(v: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: k.invert() * v.b,
         c: v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: k * v.y,
     }
 }
 
-/// Change encrypted representation using [ScalarNonZero] `s` so that is has different contents when decrypted equal to `s*msg`, if the original encrypted message was [GroupElement] `msg`.
+/// Change encrypted representation using [ScalarNonZero] `s` so that it has different contents when decrypted equal to `s*msg`, if the original encrypted message was [GroupElement] `msg`.
 pub fn reshuffle(v: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: s * v.b,
         c: s * v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: v.y,
     }
 }
@@ -50,6 +55,7 @@ pub fn rsk(v: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: (s * k.invert()) * v.b,
         c: s * v.c,
+        #[cfg(not(feature = "elgamal2"))]
         y: k * v.y,
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "libpep"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://www.bitpowder.com/libs/libpep-rust/"
@@ -11,13 +11,19 @@ categories = ["command-line-interface"]
 description = "implementation of PEP primitives, offering pseudonimization and encryption interfaces"
 readme = "README.md"
 
+[lib]
+name = "libpep"
+crate-type = ["cdylib", "rlib"]
+
 [features]
 default = ["build-binary"]
-build-binary = ["buildinfy","commandy","commandy_macros","hyper","hyper-util","rustls-webpki","tokio-rustls","rustls-native-certs","rustls-pemfile"]
+build-binary = ["buildinfy","commandy","commandy_macros"]
+elgamal2 = []
+wasm = ["wasm-bindgen", "wasm-bindgen-test", "getrandom"]
+legacy-pep-repo-compatible = []
 
 [dependencies]
-wasm-bindgen = "0.2"
-curve25519-dalek = { versio = "4", features = ["rand_core"] }
+curve25519-dalek = { version = "4", features = ["rand_core"] }
 rand = { version = "^0.8", features = ["std"] }
 rand_core = { version = "^0.6", features = ["std"] }
 sha2 = "0.10.5"
@@ -26,26 +32,13 @@ commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
 hex = "0.4.3"
 
-ureq = { version = "2.9.6", features = ["tls"] }
-libaes = "0.7.0"
-
-# HTTP + TLS benchmark
-hyper = { version = "^1.0", features = ["client","http1","http2","server"], optional = true }
-hyper-util = { version = "^0.1", features = ["client-legacy","server-auto","server","http1","http2","tokio"], optional = true }
-http-body-util = { version = "^0.1" }
-rustls-webpki = { version = "^0.102", optional = true }
-tokio-rustls = { version = "^0.25", optional = true }
-rustls-native-certs = { version = "^0.7", optional = true }
-rustls-pemfile = { version = "^2.0", optional = true }
-
-# async runtime
-tokio = { version = "^1", features = ["signal","rt-multi-thread","macros","io-util","parking_lot","time","test-util"]  }
-tokio-util = { version = "^0.7", features = ["codec"] }
-tokio-stream = { version = "^0.1" }
-bytes = { version = "^1" }
-futures = { version = "^0.3" }
-
 # testing
-crashy = { version = "^0.2", features = ["trace"] }
 time = "0.3.36"
 base64 = "0.22.1"
+log = "0.4.22"
+
+# wasm
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-test = { version = "0.3", optional = true }
+getrandom = { version = "^0.2", features = ["js"], optional = true }
+

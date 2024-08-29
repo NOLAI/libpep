@@ -1,7 +1,7 @@
-use rand_core::OsRng;
 use libpep::arithmetic::*;
 use libpep::elgamal::*;
 use libpep::primitives::*;
+use rand_core::OsRng;
 
 #[test]
 fn elgamal_encryption() {
@@ -19,7 +19,6 @@ fn elgamal_encryption() {
     let decrypted = decrypt(&encrypted, &s);
 
     assert_eq!(value, decrypted);
-
 
     let encoded = encrypted.encode();
     let decoded = ElGamal::decode(&encoded);
@@ -46,11 +45,10 @@ fn pep_rekey() {
 
     let rekeyed = rekey(&encrypted, &k);
 
-    let decrypted = decrypt(&rekeyed, &(k*y));
+    let decrypted = decrypt(&rekeyed, &(k * y));
 
     assert_eq!(m, decrypted);
 }
-
 
 #[test]
 fn pep_reshuffle() {
@@ -73,7 +71,7 @@ fn pep_reshuffle() {
 
     let decrypted = decrypt(&reshuffled, &y);
 
-    assert_eq!((s*m), decrypted);
+    assert_eq!((s * m), decrypted);
 }
 
 #[test]
@@ -96,9 +94,9 @@ fn pep_rsk() {
 
     let rsked = rsk(&encrypted, &s, &k);
 
-    let decrypted = decrypt(&rsked, &(k*y));
+    let decrypted = decrypt(&rsked, &(k * y));
 
-    assert_eq!((s*m), decrypted);
+    assert_eq!((s * m), decrypted);
 }
 
 #[test]
@@ -117,11 +115,11 @@ fn pep_rekey_from_to() {
     let m = GroupElement::random(&mut rng);
 
     // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+    let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
     let rekeyed = rekey_from_to(&encrypted, &k_from, &k_to);
 
-    let decrypted = decrypt(&rekeyed, &(k_to*y));
+    let decrypted = decrypt(&rekeyed, &(k_to * y));
 
     assert_eq!(m, decrypted);
 }
@@ -169,12 +167,40 @@ fn pep_rsk_from_to() {
     let m = GroupElement::random(&mut rng);
 
     // encrypt/decrypt this value
-    let encrypted = encrypt(&m, &(k_from*gy), &mut OsRng);
+    let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
     let rsked = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
 
-    let decrypted = decrypt(&rsked, &(k_to*y));
+    let decrypted = decrypt(&rsked, &(k_to * y));
 
     assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
 
+
+#[test]
+fn pep_assumptions() {
+    let mut rng = OsRng;
+    // secret key of system
+    let sk = ScalarNonZero::random(&mut rng);
+    // public key of system
+    let pk = sk * G;
+
+    // secret key of service provider
+    let sj = ScalarNonZero::random(&mut rng);
+    let yj = sj * sk;
+    assert_eq!(yj * G, sj * pk);
+
+    // Lemma 2: RS(RK(..., k), n) == RK(RS(..., n), k)
+    let value = GroupElement::random(&mut rng);
+    let encrypted = encrypt(&value, &pk, &mut OsRng);
+    let k = ScalarNonZero::random(&mut rng);
+    let n = ScalarNonZero::random(&mut rng);
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rekey(&reshuffle(&encrypted, &n), &k)
+    );
+    assert_eq!(
+        reshuffle(&rekey(&encrypted, &k), &n),
+        rsk(&encrypted, &n, &k)
+    );
+}

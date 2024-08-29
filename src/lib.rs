@@ -1,12 +1,15 @@
 pub mod arithmetic;
 pub mod elgamal;
 pub mod primitives;
-pub mod zkps;
-pub mod proved;
-pub mod authenticity;
-pub mod utils;
+pub mod high_level;
 pub mod distributed;
-pub mod tls;
+pub mod utils;
 
-#[cfg(target_arch = "wasm32")]
-pub mod lib_wasm;
+#[cfg(feature = "wasm")]
+pub mod wasm {
+    pub mod arithmetic;
+    pub mod elgamal;
+    pub mod primitives;
+    pub mod high_level;
+    pub mod distributed;
+}
