@@ -1,6 +1,8 @@
 pub mod arithmetic;
 pub mod elgamal;
+pub mod zkps;
 pub mod primitives;
+pub mod proved;
 pub mod high_level;
 pub mod distributed;
 pub mod utils;
