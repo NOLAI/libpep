@@ -3,7 +3,8 @@
     "jest": "^29.7.0"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build --target nodejs --features wasm",
-    "test": "npm run build:wasm && jest"
+    "build:nodejs": "wasm-pack build --target nodejs --features wasm",
+    "build:web": "wasm-pack build --target web --out-dir ../pkg-web --features wasm",
+    "test": "npm run build:nodejs && jest"
   }
 }
