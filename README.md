@@ -1,4 +1,4 @@
-# `libpep`: Library for polymorphic pseudonimisation and encryption
+# `libpep`: Library for polymorphic pseudonymization and encryption
 
 This library implements the PEP encryption based on ElGamal, and operations on these encrypted messages.
 A message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
@@ -6,32 +6,31 @@ This encryption is random: every time a different random `r` is used, resulting 
 We represent this encryption function as `EG(r, M, Y)`.
 
 The library supports three operations on ciphertext `in` (= `EG(r, M, Y)`, encrypting message `M` for public key `Y` with random `r`):
-- `out = rerandomize(in, s)`: scrambles a ciphertext. 
-   Both `in` and `out` can be decrypted by the same secret key `y`, both resulting in the same decrypted message `M`. 
-   However, the binary form of `in` and `out` differs. Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r+s, M, Y)`;
-- `out = reshuffle(in, n)`: modifies a ciphertext `in` (an encrypted form of `M`), so that after decryption of `out` the decrypted message will be equal to `n*M`.
-   Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r, n*M, Y)`.
 - `out = rekey(in, k)`: if `in` can be decrypted by secret key `y`, then `out` can be decrypted by secret key `k*y`.
    Decryption will both result in message `M`. Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r, M, k*Y)`.
+- `out = reshuffle(in, n)`: modifies a ciphertext `in` (an encrypted form of `M`), so that after decryption of `out` the decrypted message will be equal to `n*M`.
+  Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r, n*M, Y)`.
+- `out = rerandomize(in, s)`: scrambles a ciphertext.
+  Both `in` and `out` can be decrypted by the same secret key `y`, both resulting in the same decrypted message `M`.
+  However, the binary form of `in` and `out` differs. Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r+s, M, Y)`;
 
-The `rekey(in, k)` and `reshuffle(in, n)` can be combined in a `rks(in, k, n)`.
+The `reshuffle(in, n)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, k, n)`.
 
-Additionally, `rekey_from_to(in, k_from, k_to)` and `reshuffle_from_to(in, n_from, n_to)`, as well as `rks_from_to(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
+Additionally, `reshuffle_from_to(in, n_from, n_to)` and `rekey_from_to(in, k_from, k_to)`, as well as `rsk_from_to(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
 
 There are also zero knowledge proof version of these operations.
 These are needed so that a party can prove to another party that it has consistently applied the operation on the input data with a specific secret factor, without revealing that factor (but only a public 'verifier' value related to that secret factor).
-
 When distributing trust over multiple central servers, these zero knowledge proofs are essential, so that a malfunctioning server can not violate security guarantees of the system.
 
-The key idea behind this form of cryptography is that the operations are asynchronously applied on encrypted data.
-This means that during initial encryption, the final receiver does not yet need to be known.
-Data can initially be encrypted for one key, and later be reshuffled and rekeyed for another key, leading to asynchronous end-to-end encryption with built-in pseudonymisation.
+The key idea behind this form of cryptography is that the pseudonymization and rekeying operations are applied on *encrypted* data.
+This means that during initial encryption, the ultimate receiver(s) do(es) not yet need to be known.
+Data can initially be encrypted for one key, and later rekeyed and potentially reshuffled (in case of identifiers) for another key, leading to asynchronous end-to-end encryption with built-in pseudonymisation.
 
 Apart from a Rust crate, this library also contains a WASM library for usage in the browser or web applications, enabled with the `wasm` feature.
 
 ## Applications
 
-For pseudonimisation, the core operation is *reshuffle* with `n`.
+For pseudonymization, the core operation is *reshuffle* with `n`.
 It modifies a main pseudonym with a factor `n` that is specific to a user (or user group) receiving the pseudonym.
 After applying a user specific factor `n`, a pseudonym is called a *local pseudonym*.
 The factor `n` is typically tied to the *access group* or *domain of a user*.
@@ -61,13 +60,24 @@ Scalars are also 32 bytes, and can be generated with `Scalar::random(..)` or `Sc
 The zero knowledge proofs are offline Schnorr proofs, based on a Fiat-Shamir transform.
 The hashing algorithm used is SHA512.
 
+## API
+
+We offer APIs at different abstraction levels.
+
+- The `arithmetic` module offers the basic arithmetic operations on scalars and group elements and the `elgamal` module offers the ElGamal encryption and decryption operations.
+- The `primitives` module implements the basic PEP operations such as `rekey`, `reshuffle`, and `rerandomize`.
+- The `high_level` module offers a more user-friendly API for `Pseudonyms` and `DataPoints`.
+- The `distributed` modules additionally provides a high-level API for distributed scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple master keys.
+
+Depending on the use case, you can choose the appropriate level of abstraction.
+
 ## Building and running
 
 Build using cargo: `cargo build` and test using `cargo test`.
 
 To build the WASM library, use either `npm run build:nodejs` or `npm run build:web` (which will call `wasm-pack build --features wasm` for the preferred target).
 
-The wasm library can be tested using the nodejs `jest` framework, after compiling the wasm library for nodejs: `npm run test`.
+The wasm library can be tested using the Node.js `jest` framework, after compiling the wasm library for Node.js: `npm run test`.
 
 ## Install
 
