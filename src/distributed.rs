@@ -175,13 +175,13 @@ impl PEPClient {
     pub fn encrypt_pseudonym(&self, p: &Pseudonym) -> EncryptedPseudonym {
         encrypt_pseudonym(p, &(self.session_public_key))
     }
-    pub fn verified_decrypt_pseudonym(&self, messages: &Vec<ProvedEncryptedPseudonym>, original: &EncryptedPseudonym, pseudo_verifiers_from: &Vec<PseudonymizationVerifiers>, pseudo_verifiers_to: &Vec<PseudonymizationVerifiers>, rekey_verifiers_from: &Vec<RekeyVerifiers>, rekey_verifiers_to: &Vec<RekeyVerifiers>) -> Option<Pseudonym> {
+    pub fn verified_decrypt_pseudonym(&self, messages: &Vec<ProvedEncryptedPseudonym>, original: &EncryptedPseudonym, pseudo_verifiers_from: &Vec<PseudonymizationVerifiers>, pseudo_verifiers_to: &Vec<PseudonymizationVerifiers>, rekey_verifiers_from: &Vec<RekeyVerifiers>, rekey_verifiers_to: &Vec<RekeyVerifiers>) -> Option<(Pseudonym, EncryptedPseudonym)> {
         let result = verify_pseudonym_transcryption(messages, original, pseudo_verifiers_from, pseudo_verifiers_to, rekey_verifiers_from, rekey_verifiers_to);
-        result.map(|x| decrypt_pseudonym(&x, &self.session_secret_key))
+        result.map(|x| (decrypt_pseudonym(&x, &self.session_secret_key), x))
     }
-    pub fn verified_decrypt_data(&self, messages: &Vec<ProvedEncryptedDataPoint>, original: &EncryptedDataPoint, rekey_verifiers_from: &Vec<RekeyVerifiers>, rekey_verifiers_to: &Vec<RekeyVerifiers>) -> Option<DataPoint> {
+    pub fn verified_decrypt_data(&self, messages: &Vec<ProvedEncryptedDataPoint>, original: &EncryptedDataPoint, rekey_verifiers_from: &Vec<RekeyVerifiers>, rekey_verifiers_to: &Vec<RekeyVerifiers>) -> Option<(DataPoint, EncryptedDataPoint)> {
         let result = verify_data_transcryption(messages, original, rekey_verifiers_from, rekey_verifiers_to);
-        result.map(|x| decrypt_data(&x, &self.session_secret_key))
+        result.map(|x| (decrypt_data(&x, &self.session_secret_key), x))
     }
 
     #[cfg(not(feature = "elgamal2"))]

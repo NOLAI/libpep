@@ -1,6 +1,6 @@
 use rand_core::OsRng;
 use libpep::arithmetic::{GroupElement};
-use libpep::distributed::{BlindingFactor, make_blinded_global_secret_key, PEPClient, PEPSystem};
+use libpep::distributed::{BlindingFactor, make_blinded_global_secret_key, PEPClient, PEPSystem, verify_pseudonym_transcryption};
 use libpep::high_level::{DataPoint, EncryptionContext, EncryptionSecret, make_global_keys, Pseudonym, PseudonymizationContext, PseudonymizationSecret};
 
 #[test]
@@ -108,11 +108,17 @@ fn n_pep_proved() {
         messages_data.push(result.unwrap());
     }
 
-    let dec_pseudo = client_b.verified_decrypt_pseudonym(&messages_pseudo, &enc_pseudo, &pseudo_verifiers_a, &pseudo_verifiers_b, &rekey_verifiers_a1, &rekey_verifiers_b1);
-    let dec_data = client_b.verified_decrypt_data(&messages_data, &enc_data, &rekey_verifiers_a1, &rekey_verifiers_b1);
+    let (dec_pseudo_2, enc_pseudo_2) = client_b.verified_decrypt_pseudonym(&messages_pseudo, &enc_pseudo, &pseudo_verifiers_a, &pseudo_verifiers_b, &rekey_verifiers_a1, &rekey_verifiers_b1).unwrap();
+    let (dec_data, _enc_data_2) = client_b.verified_decrypt_data(&messages_data, &enc_data, &rekey_verifiers_a1, &rekey_verifiers_b1).unwrap();
 
-    assert!(dec_data.is_some());
-    assert!(dec_pseudo.is_some());
-    assert_eq!(data, dec_data.unwrap());
-    assert_ne!(pseudonym, dec_pseudo.unwrap());
+    assert_eq!(data, dec_data);
+    assert_ne!(pseudonym, dec_pseudo_2);
+
+    let mut messages_rev_pseudo = Vec::new();
+    for system in systems.iter() {
+        let result = system.proved_distributed_pseudonymize(&messages_rev_pseudo, &enc_pseudo_2, &pseudo_verifiers_b, &pseudo_verifiers_a, &rekey_verifiers_b1, &rekey_verifiers_a1, &pc_b, &pc_a, &ec_b1, &ec_a1);
+        messages_rev_pseudo.push(result.unwrap());
+    }
+    let (rev_pseudo, _rev_enc_pseudo) = client_a.verified_decrypt_pseudonym(&messages_rev_pseudo, &enc_pseudo_2, &pseudo_verifiers_b, &pseudo_verifiers_a, &rekey_verifiers_b1, &rekey_verifiers_a1).unwrap();
+    assert_eq!(pseudonym, rev_pseudo);
 }
