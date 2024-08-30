@@ -7,7 +7,8 @@ use crate::zkps::*;
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct FactorVerifiers(pub GroupElement, pub GroupElement);
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement); // TODO maybe we shouldnt send the scalar but only the group element associated to the scalar, since we should never send scalars in the clear
+pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
+// TODO maybe we shouldn't send the scalar but only the group element associated to the scalar, since we should never send scalars in the clear
 
 impl FactorVerifiers {
     pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, FactorVerifiersProof) {
@@ -417,6 +418,8 @@ pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof
 #[cfg(feature = "elgamal2")]
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
+
+// TODO: Only two of these proofs are specific to the message, the others are specific to the factors used, and thus the session! So we should separate them to avoid recomputation and save bandwidth!!!
 
 impl ProvedRSKFromTo {
     #[cfg(not(feature = "elgamal2"))]
