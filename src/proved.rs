@@ -8,7 +8,6 @@ use crate::zkps::*;
 pub struct FactorVerifiers(pub GroupElement, pub GroupElement);
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
-// TODO maybe we shouldn't send the scalar but only the group element associated to the scalar, since we should never send scalars in the clear
 
 impl FactorVerifiers {
     pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, FactorVerifiersProof) {

@@ -25,7 +25,7 @@ impl GroupElement {
     }
     pub fn decode(v: &[u8; 32]) -> Option<Self> {
         CompressedRistretto(*v).decompress().map(Self)
-        // TODO this will fail in specific cases! See https://ristretto.group/test_vectors/ristretto255.html bad_encodings. We need to create our own bijective encoding (for example, take 30 bytes and add 2 bytes of random padding, proofing that there's always a valid encoding)
+        // TODO this will fail in specific cases! See https://ristretto.group/test_vectors/ristretto255.html bad_encodings which we include in our tests/arithmetic.rs. We need to create our own bijective encoding (for example, take 30 bytes and add 2 bytes of random padding, proofing that there's always a valid encoding)
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != 32 {
