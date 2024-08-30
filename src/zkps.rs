@@ -8,6 +8,7 @@ use crate::arithmetic::*;
 // member `n` is equal to `a*m`. This can be verified using
 // this struct, the original `m` and `a*G`, so that the original
 // scalar `a` remains secret.
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct Proof {
     pub n: GroupElement,
     pub c1: GroupElement,

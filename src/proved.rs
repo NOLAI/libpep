@@ -6,6 +6,7 @@ use crate::zkps::*;
 
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct FactorVerifiers(pub GroupElement, pub GroupElement);
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement); // TODO maybe we shouldnt send the scalar but only the group element associated to the scalar, since we should never send scalars in the clear
 
 impl FactorVerifiers {
@@ -57,7 +58,7 @@ impl ProvedRerandomize {
     fn verify(&self, original: &ElGamal) -> bool {
         Self::verify_split(&original.b, &original.c, &original.y, &self.0, &self.1)
     }
-    fn verify_rerandomized(&self, original: &ElGamal, new: &ElGamal) -> bool {
+    pub fn verify_rerandomized(&self, original: &ElGamal, new: &ElGamal) -> bool {
         self.verify(original) && new.b == self.0 + original.b && new.c == *self.1 + original.c && new.y == original.y
     }
     fn verify_split(_gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gr: &GroupElement, p: &Proof) -> bool {
@@ -71,6 +72,7 @@ impl ProvedRerandomize {
 pub type ReshuffleFactor = ScalarNonZero;
 pub type ReshuffleFactorVerifiers = FactorVerifiers;
 
+#[derive(Eq, PartialEq, Clone, Copy)]
 /// GroupElement is `n*G` if prove_reshuffle with `n` is called.
 pub struct ProvedReshuffle(pub Proof, pub Proof);
 
@@ -89,12 +91,19 @@ impl ProvedReshuffle {
             None
         }
     }
+    #[cfg(not(feature = "elgamal2"))]
     fn reconstruct(&self, original: &ElGamal) -> ElGamal {
         ElGamal {
             b: *self.0,
             c: *self.1,
-            #[cfg(not(feature = "elgamal2"))]
             y: original.y,
+        }
+    }
+    #[cfg(feature = "elgamal2")]
+    fn reconstruct(&self, _original: &ElGamal) -> ElGamal {
+        ElGamal {
+            b: *self.0,
+            c: *self.1,
         }
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -102,7 +111,7 @@ impl ProvedReshuffle {
         Self::verify_split(&original.b, &original.c, &original.y, &verifiers.0, &self.0, &self.1)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
+    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
         self.verify(original, verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == original.y
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -114,7 +123,7 @@ impl ProvedReshuffle {
         Self::verify_split(&original.b, &original.c, &verifiers.0, &self.0, &self.1)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
+    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
         self.verify(original, verifiers) && new.b == self.0.n && new.c == self.1.n
     }
     #[cfg(feature = "elgamal2")]
@@ -127,10 +136,12 @@ pub type RekeyFactor = ScalarNonZero;
 pub type RekeyFactorVerifiers = FactorVerifiers;
 
 #[cfg(not(feature = "elgamal2"))]
+#[derive(Eq, PartialEq, Clone, Copy)]
 /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
 pub struct ProvedRekey(pub Proof, pub Proof);
 
 #[cfg(feature = "elgamal2")]
+#[derive(Eq, PartialEq, Clone, Copy)]
 /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
 pub struct ProvedRekey(pub Proof);
 
@@ -168,7 +179,7 @@ impl ProvedRekey {
         Self::verify_split(&original.b, &original.c, &original.y, &verifiers.0, &verifiers.1, &self.0, &self.1)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
         self.verify(original, verifiers) && new.b == self.0.n && new.c == original.c && new.y == self.1.n
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -181,19 +192,21 @@ impl ProvedRekey {
         Self::verify_split(&original.b, &original.c, &verifiers.0, &verifiers.1, &self.0)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
         self.verify(original, verifiers) && new.b == self.0.n && new.c == original.c
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_split(gb: &GroupElement, _gc: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof) -> bool {
+    fn verify_split(gb: &GroupElement, _gc: &GroupElement, _gk: &GroupElement, gki: &GroupElement, pb: &Proof) -> bool {
         verify_proof(gki, gb, pb)
     }
 
 }
 
 #[cfg(not(feature = "elgamal2"))]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRekeyFromTo(pub Proof, pub Proof, pub Proof, pub Proof);
 #[cfg(feature = "elgamal2")]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRekeyFromTo(pub Proof, pub Proof, pub Proof);
 
 impl ProvedRekeyFromTo {
@@ -238,7 +251,7 @@ impl ProvedRekeyFromTo {
         Self::verify_split(&original.b, &original.c, &original.y, &verifiers_from.0, &verifiers_from.1, &verifiers_to.0, &verifiers_to.1, &self.0, &self.1, &self.2, &self.3)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.y == self.1.n && new.c == original.c
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -253,7 +266,7 @@ impl ProvedRekeyFromTo {
         Self::verify_split(&original.b, &original.c, &verifiers_from.0, &verifiers_from.1, &verifiers_to.0, &verifiers_to.1, &self.0, &self.1, &self.2)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == original.c
     }
     #[cfg(feature = "elgamal2")]
@@ -264,6 +277,7 @@ impl ProvedRekeyFromTo {
     }
 }
 
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedReshuffleFromTo(pub Proof, pub Proof, pub Proof);
 
 impl ProvedReshuffleFromTo {
@@ -283,12 +297,19 @@ impl ProvedReshuffleFromTo {
             None
         }
     }
+    #[cfg(not(feature = "elgamal2"))]
     fn reconstruct(&self, original: &ElGamal) -> ElGamal {
         ElGamal {
             b: *self.0,
             c: *self.1,
-            #[cfg(not(feature = "elgamal2"))]
             y: original.y,
+        }
+    }
+    #[cfg(feature = "elgamal2")]
+    fn reconstruct(&self, _original: &ElGamal) -> ElGamal {
+        ElGamal {
+            b: *self.0,
+            c: *self.1,
         }
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -296,7 +317,7 @@ impl ProvedReshuffleFromTo {
         Self::verify_split(&original.b, &original.c, &original.y, &verifiers_from.1, &verifiers_to.0, &self.0, &self.1, &self.2)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
+    pub fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == original.y
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -309,7 +330,7 @@ impl ProvedReshuffleFromTo {
         Self::verify_split(&original.b, &original.c, &verifiers_from.1, &verifiers_to.0, &self.0, &self.1, &self.2)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
+    pub fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
         self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == self.1.n
     }
     #[cfg(feature = "elgamal2")]
@@ -320,8 +341,10 @@ impl ProvedReshuffleFromTo {
 }
 
 #[cfg(not(feature = "elgamal2"))]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRSK(pub Proof, pub Proof, pub Proof, pub Proof);
 #[cfg(feature = "elgamal2")]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRSK(pub Proof, pub Proof, pub Proof);
 
 impl ProvedRSK {
@@ -368,7 +391,7 @@ impl ProvedRSK {
         Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers.0, &rekey_verifiers.0, &rekey_verifiers.1, &self.0, &self.1, &self.2, &self.3)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
         self.verify(original, reshuffle_verifiers, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -380,7 +403,7 @@ impl ProvedRSK {
         Self::verify_split(&original.b, &original.c, &reshuffle_verifiers.0, &rekey_verifiers.0, &rekey_verifiers.1, &self.0, &self.1, &self.2)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
         self.verify(original, reshuffle_verifiers, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n
     }
     #[cfg(feature = "elgamal2")]
@@ -389,8 +412,10 @@ impl ProvedRSK {
     }
 }
 #[cfg(not(feature = "elgamal2"))]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
 #[cfg(feature = "elgamal2")]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
 
 impl ProvedRSKFromTo {
@@ -448,12 +473,13 @@ impl ProvedRSKFromTo {
             y: *self.2,
         }
     }
+    // TODO maybe also create an UNSAFE unverified reconstruct? Maybe with a feature flag?
     #[cfg(not(feature = "elgamal2"))]
     fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
         Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6)
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
         self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
     }
     #[cfg(not(feature = "elgamal2"))]
@@ -465,7 +491,7 @@ impl ProvedRSKFromTo {
         Self::verify_split(&original.b, &original.c, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+    pub fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
         self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to) && new.b == self.0.n && new.c == self.1.n
     }
     #[cfg(feature = "elgamal2")]

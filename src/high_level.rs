@@ -89,7 +89,7 @@ pub struct EncryptionSecret(pub Secret);
 
 /// Generate a new global key pair
 pub fn make_global_keys() -> (GlobalPublicKey, GlobalSecretKey) {
-    let mut rng = rand::thread_rng();
+    let mut rng = OsRng;
     let sk = ScalarNonZero::random(&mut rng);
     let pk = sk * G;
     (GlobalPublicKey(pk), GlobalSecretKey(sk))

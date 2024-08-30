@@ -4,6 +4,7 @@ pub mod zkps;
 pub mod primitives;
 pub mod proved;
 pub mod high_level;
+pub mod high_level_proved;
 pub mod distributed;
 pub mod utils;
 
