@@ -1,7 +1,7 @@
 use std::ops::Deref;
 use rand_core::OsRng;
-use crate::high_level::{DataPoint, decrypt_data, decrypt_pseudonym, EncryptedDataPoint, EncryptedPseudonym, EncryptionContext, EncryptionSecret, Pseudonym, PseudonymizationContext, PseudonymizationSecret, SessionSecretKey};
-use crate::proved::{FactorVerifiers, FactorVerifiersProof, prove_rekey_from_to, prove_rsk_from_to, ProvedRekeyFromTo, ProvedRSKFromTo};
+use crate::high_level::*;
+use crate::proved::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -52,10 +52,10 @@ impl ProvedEncryptedDataPoint {
 pub fn proved_pseudonymize(p: &EncryptedPseudonym, from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret) -> ProvedEncryptedPseudonym {
     let mut rng = OsRng;
 
-    let s_from = make_pseudonymisation_factor(&pseudonymization_secret.0, &from_user.0);
-    let s_to = make_pseudonymisation_factor(&pseudonymization_secret.0, &to_user.0);
-    let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
-    let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
+    let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
+    let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
+    let k_from = make_decryption_factor(&encryption_secret, &from_session.0);
+    let k_to = make_decryption_factor(&encryption_secret, &to_session);
 
     let original  = p.value;
     ProvedEncryptedPseudonym::new(prove_rsk_from_to(&original, &s_from, &s_to, &k_from, &k_to, &mut rng))
@@ -65,8 +65,8 @@ pub fn proved_pseudonymize(p: &EncryptedPseudonym, from_user: &PseudonymizationC
 pub fn proved_rekey(p: &EncryptedDataPoint, from_session: &EncryptionContext, to_session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> ProvedEncryptedDataPoint {
     let mut rng = OsRng;
 
-    let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
-    let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
+    let k_from = make_decryption_factor(&encryption_secret, &from_session);
+    let k_to = make_decryption_factor(&encryption_secret, &to_session);
     let original  = p.value;
 
     ProvedEncryptedDataPoint::new(prove_rekey_from_to(&original, &k_from, &k_to, &mut rng))
@@ -81,7 +81,7 @@ impl Deref for RekeyVerifiers {
 impl RekeyVerifiers {
     pub fn new(session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> (RekeyVerifiers, FactorVerifiersProof) {
         let mut rng = OsRng;
-        let k = make_decryption_factor(&encryption_secret.0, &session.0);
+        let k = make_decryption_factor(&encryption_secret, &session);
         let (v,p) = FactorVerifiers::new(&k, &mut rng);
         (RekeyVerifiers(v), p)
     }
@@ -97,7 +97,7 @@ impl Deref for PseudonymizationVerifiers {
 impl PseudonymizationVerifiers {
     pub fn new(session: &PseudonymizationContext, pseudonymization_secret: &PseudonymizationSecret) -> (PseudonymizationVerifiers, FactorVerifiersProof) {
         let mut rng = OsRng;
-        let k = make_pseudonymisation_factor(&pseudonymization_secret.0, &session.0);
+        let k = make_pseudonymisation_factor(&pseudonymization_secret, &session);
         let (v,p) = FactorVerifiers::new(&k, &mut rng);
         (PseudonymizationVerifiers(v), p)
     }
@@ -122,10 +122,10 @@ pub fn proved_decrypt_data(x: &ProvedEncryptedDataPoint, original: &EncryptedDat
 pub fn proved_re_pseudonymize(x: &ProvedEncryptedPseudonym, original: &EncryptedPseudonym, from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret, pseudo_verifiers_from: &PseudonymizationVerifiers, pseudo_verifiers_to: &PseudonymizationVerifiers, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<ProvedEncryptedPseudonym> {
     let mut rng = OsRng;
 
-    let s_from = make_pseudonymisation_factor(&pseudonymization_secret.0, &from_user.0);
-    let s_to = make_pseudonymisation_factor(&pseudonymization_secret.0, &to_user.0);
-    let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
-    let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
+    let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
+    let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
+    let k_from = make_decryption_factor(&encryption_secret, &from_session);
+    let k_to = make_decryption_factor(&encryption_secret, &to_session);
 
     let reconstructed = x.value.verified_reconstruct(&original.value, &pseudo_verifiers_from, &pseudo_verifiers_to, &rekey_verifiers_from, &rekey_verifiers_to);
     if reconstructed.is_none() {
@@ -139,8 +139,8 @@ pub fn proved_re_pseudonymize(x: &ProvedEncryptedPseudonym, original: &Encrypted
 pub fn proved_re_rekey(x: &ProvedEncryptedDataPoint, original: &EncryptedDataPoint, from_session: &EncryptionContext, to_session: &EncryptionContext, encryption_secret: &EncryptionSecret, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<ProvedEncryptedDataPoint> {
     let mut rng = OsRng;
 
-    let k_from = make_decryption_factor(&encryption_secret.0, &from_session.0);
-    let k_to = make_decryption_factor(&encryption_secret.0, &to_session.0);
+    let k_from = make_decryption_factor(&encryption_secret, &from_session);
+    let k_to = make_decryption_factor(&encryption_secret, &to_session);
 
     let reconstructed = x.value.verified_reconstruct(&original.value, &rekey_verifiers_from, &rekey_verifiers_to);
     if reconstructed.is_none() {
