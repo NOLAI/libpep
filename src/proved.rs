@@ -476,6 +476,8 @@ impl ProvedRSKFromTo {
         }
     }
     // TODO maybe also create an UNSAFE unverified reconstruct? Maybe with a feature flag?
+    // Note: this may actually be required if we want to validate only _parts_ of a transcryption chain
+    // Note: For Rekey and RekeyFromTo, we don't actually have enough data in the struct to reconstruct without knowing the original C or Y...
     #[cfg(not(feature = "elgamal2"))]
     fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
         Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6)

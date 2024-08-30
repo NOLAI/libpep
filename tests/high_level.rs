@@ -91,14 +91,14 @@ fn test_proved() {
     let enc_data = encrypt_data(&data, &session1_public);
 
     let rekeyed = proved_rekey(&enc_data, &enc_context1, &enc_context2, &enc_secret);
-    let rekeyed_dec = proved_decrypt_data(&rekeyed, &enc_data, &session2_secret, &rekey_verifiers1, &rekey_verifiers2);
+    let rekeyed_dec = verified_decrypt_data(&rekeyed, &enc_data, &session2_secret, &rekey_verifiers1, &rekey_verifiers2);
 
     assert!(rekeyed_dec.is_some());
     assert_eq!(data, rekeyed_dec.unwrap());
 
     let pseudonymized = proved_pseudonymize(&enc_pseudo_1, &pseudo_context1, &pseudo_context2, &enc_context1, &enc_context2, &pseudo_secret, &enc_secret);
 
-    let pseudonymized_dec = proved_decrypt_pseudonym(&pseudonymized, &enc_pseudo_1, &session2_secret, &pseudo_verifiers1, &pseudo_verifiers2, &rekey_verifiers1, &rekey_verifiers2);
+    let pseudonymized_dec = verified_decrypt_pseudonym(&pseudonymized, &enc_pseudo_1, &session2_secret, &pseudo_verifiers1, &pseudo_verifiers2, &rekey_verifiers1, &rekey_verifiers2);
 
     assert!(pseudonymized_dec.is_some());
     assert_ne!(pseudo_1, pseudonymized_dec.unwrap());
@@ -111,9 +111,8 @@ fn test_proved() {
     let non_proved_dec = decrypt_pseudonym(&non_proved, &session2_secret);
     assert_eq!(pseudonymized_dec.unwrap(), non_proved_dec);
 
-    let rev_pseudonymized = proved_re_pseudonymize(&pseudonymized, &enc_pseudo_1, &pseudo_context2, &pseudo_context1, &enc_context2, &enc_context1, &pseudo_secret, &enc_secret, &pseudo_verifiers1, &pseudo_verifiers2, &rekey_verifiers1, &rekey_verifiers2);
-    let rev_pseudonymized_dec = proved_decrypt_pseudonym(&rev_pseudonymized.unwrap(), &enc_pseudo_2.unwrap(), &session1_secret, &pseudo_verifiers2, &pseudo_verifiers1, &rekey_verifiers2, &rekey_verifiers1);
+    let rev_pseudonymized = proved_pseudonymize(&enc_pseudo_2.unwrap(), &pseudo_context2, &pseudo_context1, &enc_context2, &enc_context1, &pseudo_secret, &enc_secret);
+    let rev_pseudonymized_dec = verified_decrypt_pseudonym(&rev_pseudonymized, &enc_pseudo_2.unwrap(), &session1_secret, &pseudo_verifiers2, &pseudo_verifiers1, &rekey_verifiers2, &rekey_verifiers1);
 
-    assert!(rev_pseudonymized_dec.is_some());
     assert_eq!(pseudo_1, rev_pseudonymized_dec.unwrap());
 }
