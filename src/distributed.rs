@@ -83,6 +83,7 @@ pub fn verify_data_transcryption(messages: &Vec<ProvedEncryptedDataPoint>, origi
     Some(previous)
 }
 
+#[derive(Clone)]
 pub struct PEPSystem {
     pseudonymisation_secret: PseudonymizationSecret,
     rekeying_secret: EncryptionSecret,
