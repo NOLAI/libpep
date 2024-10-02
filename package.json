@@ -4,7 +4,7 @@
   },
   "scripts": {
     "build:nodejs": "wasm-pack build --target nodejs --features wasm",
-    "build:web": "wasm-pack build --target web --out-dir ../pkg-web --features wasm",
+    "build:web": "wasm-pack build --target web --out-dir ./pkg-web --features wasm",
     "test": "npm run build:nodejs && jest"
   }
 }
