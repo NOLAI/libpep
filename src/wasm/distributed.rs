@@ -31,6 +31,15 @@ impl From<WASMBlindedGlobalSecretKey> for BlindedGlobalSecretKey {
         BlindedGlobalSecretKey(x.0.into())
     }
 }
+
+#[wasm_bindgen(js_class = "BlindedGlobalSecretKey")]
+impl WASMBlindedGlobalSecretKey{
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {
+        BlindedGlobalSecretKey(x.into()).into()
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[wasm_bindgen(js_name = SessionKeyShare)]
 pub struct WASMSessionKeyShare(pub WASMScalarNonZero);
@@ -43,6 +52,12 @@ impl From<WASMSessionKeyShare> for SessionKeyShare {
     fn from(x: WASMSessionKeyShare) -> Self {
         SessionKeyShare(x.0.into())
     }
+}
+
+#[wasm_bindgen(js_class = "SessionKeyShare")]
+impl WASMSessionKeyShare {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {WASMSessionKeyShare(x.into())}
 }
 
 #[wasm_bindgen(js_class = "BlindingFactor")]
