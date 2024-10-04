@@ -2,42 +2,42 @@ use crate::arithmetic::{GroupElement, ScalarNonZero, G};
 use crate::elgamal::{decrypt, encrypt, ElGamal};
 use crate::primitives::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
-use derive_more::Deref;
+use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionSecretKey(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct GlobalSecretKey(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionPublicKey(pub GroupElement);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct GlobalPublicKey(pub GroupElement);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct Pseudonym {
     pub value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct DataPoint {
     pub value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
 pub type Context = String;
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationContext(pub Context);
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct EncryptionContext(pub Context);
 pub type Secret = String;
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationSecret(pub Secret);
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct EncryptionSecret(pub Secret);
 impl Pseudonym {
     pub fn new(value: GroupElement) -> Self {
@@ -100,27 +100,12 @@ pub fn encrypt_data<R: RngCore + CryptoRng>(data: &DataPoint, pk: &SessionPublic
 pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoint {
     DataPoint::new(decrypt(&data, &sk))
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct RerandomizeFactor(ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct ReshuffleFactor(ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct RekeyFactor(ScalarNonZero);
-impl From<ScalarNonZero> for RerandomizeFactor {
-    fn from(x: ScalarNonZero) -> Self {
-        RerandomizeFactor(x)
-    }
-}
-impl From<ScalarNonZero> for ReshuffleFactor {
-    fn from(x: ScalarNonZero) -> Self {
-        ReshuffleFactor(x)
-    }
-}
-impl From<ScalarNonZero> for RekeyFactor {
-    fn from(x: ScalarNonZero) -> Self {
-        RekeyFactor(x)
-    }
-}
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(encrypted: &EncryptedPseudonym, rng: &mut R) -> EncryptedPseudonym {
@@ -204,6 +189,3 @@ pub fn pseudonymize(p: &EncryptedPseudonym, pseudonymization_info: &Pseudonymiza
 pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
     EncryptedDataPoint::new(rekey2(&p.value, &rekey_info.from, &rekey_info.to))
 }
-
-
-// TODO use deref macro everywhere to make the code more readable

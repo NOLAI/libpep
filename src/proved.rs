@@ -1,7 +1,7 @@
 use crate::arithmetic::*;
 use crate::elgamal::*;
 use crate::zkps::*;
-use derive_more::Deref;
+use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 
 
@@ -32,13 +32,13 @@ impl FactorVerifiersProof {
         verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
     }
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct RekeyFactorVerifiers(FactorVerifiers);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationFactorVerifiers(FactorVerifiers);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct RekeyFactorVerifiersProof(FactorVerifiersProof);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationFactorVerifiersProof(FactorVerifiersProof);
 impl RekeyFactorVerifiers {
     pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, RekeyFactorVerifiersProof) {

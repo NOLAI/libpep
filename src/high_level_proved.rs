@@ -1,17 +1,17 @@
 use crate::high_level::*;
 use crate::proved::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
-use derive_more::Deref;
+use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct ProvedEncryptedPseudonym(pub ProvedRSK);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct ProvedEncryptedDataPoint(pub ProvedRekey);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationContextVerifiers(pub PseudonymizationFactorVerifiers);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct EncryptionContextVerifiers(pub RekeyFactorVerifiers);
 impl PseudonymizationContextVerifiers {
     pub fn new<R: RngCore + CryptoRng>(context: &PseudonymizationContext, secret: &PseudonymizationSecret, rng: &mut R) -> (Self, PseudonymizationFactorVerifiersProof) {
@@ -34,7 +34,7 @@ pub struct PseudonymizationInfoProof {
     pub rekey_proof: Rekey2FactorsProof,
     pub rsk_proof: RSK2FactorsProof,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct RekeyInfoProof(pub Rekey2FactorsProof);
 impl PseudonymizationInfoProof {
     pub fn new<R: RngCore + CryptoRng>(factors: &PseudonymizationInfo, rng: &mut R) -> Self {

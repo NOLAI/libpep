@@ -4,14 +4,14 @@ use crate::high_level_proved::*;
 use crate::proved::{PseudonymizationFactorVerifiers, PseudonymizationFactorVerifiersProof, RekeyFactorVerifiers, RekeyFactorVerifiersProof};
 use crate::utils::*;
 use crate::verifiers_cache::VerifiersCache;
-use derive_more::Deref;
+use derive_more::{Deref, From};
 use rand_core::{CryptoRng, OsRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct BlindingFactor(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct BlindedGlobalSecretKey(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionKeyShare(pub ScalarNonZero);
 impl BlindingFactor {
     pub fn new(x: ScalarNonZero) -> Self {
