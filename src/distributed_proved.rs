@@ -24,6 +24,8 @@ impl PEPVerifier {
         self.session_verifiers_cache.has(system_id, context)
     }
     pub fn store_pseudo_verifiers(&mut self, system_id: PEPSystemID, context: PseudonymizationContext, verifiers: &PseudonymizationContextVerifiers, proof: &PseudonymizationFactorVerifiersProof) {
+        // TODO: check if the verifiers are not weak / invalid verifiers / edge cases
+
         if proof.verify(&verifiers) {
             self.pseudo_verifiers_cache.store(system_id, context, verifiers.0);
         } else {
@@ -31,6 +33,8 @@ impl PEPVerifier {
         }
     }
     pub fn store_rekey_verifiers(&mut self, system_id: PEPSystemID, context: EncryptionContext, verifiers: &EncryptionContextVerifiers, proof: &RekeyFactorVerifiersProof) {
+        // TODO: check if the verifiers are not weak / invalid verifiers / edge cases
+
         if proof.verify(&verifiers) {
             self.session_verifiers_cache.store(system_id, context, verifiers.0);
         } else {

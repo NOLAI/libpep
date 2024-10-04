@@ -67,7 +67,7 @@ We offer APIs at different abstraction levels.
 0. The `arithmetic` module offers the basic arithmetic operations on scalars and group elements, the `elgamal` module offers the ElGamal encryption and decryption operations and the `zkps` module offers basic zero knowledge proofs and signature operations.
 1. The `primitives` module implements the basic PEP operations such as `rekey`, `reshuffle`, and `rerandomize`, and the `proved` module offers the same operations with zero knowledge proofs.
 2. The `high_level` and `high_level_proved` modules offer a more user-friendly API with many high level data types such as `Pseudonyms` and `DataPoints`.
-3. The `distributed` modules additionally provides a high-level API for distributed scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple master keys.
+3. The `distributed` and `distributed_proved` modules additionally provides a high-level API for distributed scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple master keys.
 
 Depending on the use case, you can choose the appropriate level of abstraction.
 

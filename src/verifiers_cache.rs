@@ -14,12 +14,6 @@ pub trait VerifiersCache {
     fn has(&self, system_id: &PEPSystemID, context: &Self::Key) -> bool;
     fn contains(&self, verifiers: &Self::Verifiers) -> bool;
     fn dump(&self) -> Vec<(PEPSystemID, Self::Key, Self::Verifiers)>;
-
-    #[must_use]
-    fn is_valid(&self, system_id: &PEPSystemID, context: &Self::Key, verifiers: &Self::Verifiers) -> bool {
-        // TODO check for weak edge cases
-        true
-    }
 }
 
 pub struct InMemoryVerifiersCache<Context, FactorVerifiers>
