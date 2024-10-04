@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::*;
 use crate::elgamal::*;
@@ -5,7 +6,11 @@ use crate::zkps::*;
 
 
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct FactorVerifiers(pub GroupElement, pub GroupElement);
+pub struct FactorVerifiers {
+    pub reg: GroupElement,
+    pub inv: GroupElement
+}
+
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
 
@@ -16,15 +21,50 @@ impl FactorVerifiers {
         let (gai, pai) = create_proof(&a.invert(), &gra, rng);
         // Checking pki.n == gr proves that a.invert()*a == 1.
         // Assume a'^-1 * (a*r*G) = r*G, then a = a' trivially holds for any a, a', r
-        (Self(a * G, gai), FactorVerifiersProof(pai, r, gra))
+        (Self{reg: a * G, inv: gai}, FactorVerifiersProof(pai, r, gra))
     }
 }
 
 impl FactorVerifiersProof {
     #[must_use]
     pub fn verify(&self, verifiers: &FactorVerifiers) -> bool {
-        let FactorVerifiers(ga, gai) = verifiers;
+        let FactorVerifiers{reg: ga, inv: gai} = verifiers;
         verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
+    }
+}
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub struct RekeyFactorVerifiers(FactorVerifiers);
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub struct PseudonymizationFactorVerifiers(FactorVerifiers);
+pub struct RekeyFactorVerifiersProof(FactorVerifiersProof);
+pub struct PseudonymizationFactorVerifiersProof(FactorVerifiersProof);
+impl Deref for RekeyFactorVerifiers {
+    type Target = FactorVerifiers;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl Deref for PseudonymizationFactorVerifiers {
+    type Target = FactorVerifiers;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl Deref for RekeyFactorVerifiersProof {
+    type Target = FactorVerifiersProof;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl Deref for PseudonymizationFactorVerifiersProof {
+    type Target = FactorVerifiersProof;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl RekeyFactorVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, RekeyFactorVerifiersProof) {
+        let (verifiers, proof) = FactorVerifiers::new(a, rng);
+        (Self(verifiers), RekeyFactorVerifiersProof(proof))
+    }
+}
+
+impl PseudonymizationFactorVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, PseudonymizationFactorVerifiersProof) {
+        let (verifiers, proof) = FactorVerifiers::new(a, rng);
+        (Self(verifiers), PseudonymizationFactorVerifiersProof(proof))
     }
 }
 
@@ -55,12 +95,15 @@ impl ProvedRerandomize {
             y: original.y,
         }
     }
+    #[must_use]
     fn verify(&self, original: &ElGamal) -> bool {
         Self::verify_split(&original.b, &original.c, &original.y, &self.0, &self.1)
     }
+    #[must_use]
     pub fn verify_rerandomized(&self, original: &ElGamal, new: &ElGamal) -> bool {
         self.verify(original) && new.b == self.0 + original.b && new.c == *self.1 + original.c && new.y == original.y
     }
+    #[must_use]
     fn verify_split(_gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gr: &GroupElement, p: &Proof) -> bool {
         // slightly different from the others, as we reuse the structure of a standard proof to reconstruct the Rerandomize operation after sending
         verify_proof(gr, gy, p)
@@ -69,24 +112,26 @@ impl ProvedRerandomize {
 
 //// RESHUFFLE
 
-pub type ReshuffleFactor = ScalarNonZero;
-pub type ReshuffleFactorVerifiers = FactorVerifiers;
-
 #[derive(Eq, PartialEq, Clone, Copy)]
 /// GroupElement is `n*G` if prove_reshuffle with `n` is called.
-pub struct ProvedReshuffle(pub Proof, pub Proof);
+pub struct ProvedReshuffle {
+    pub pb: Proof, pub pc: Proof
+}
 
 impl ProvedReshuffle {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, rng: &mut R) -> Self {
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
         // Reshuffle is normally {s * in.b, s * in.c, in.y};
-        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving a s*G operation)
-        let (_gs, pb) = create_proof(&s, &v.b, rng);
-        let (_gs, pc) = create_proof(&s, &v.c, rng);
-        Self(pb, pc)
+        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving one s*G operation)
+        let (_gs, pb) = create_proof(s, &v.b, rng);
+        let (_gs, pc) = create_proof(s, &v.c, rng);
+        Self{pb, pc}
     }
-    pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> Option<ElGamal> {
+    pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> Option<ElGamal> {
         if self.verify(original, verifiers) {
-            Some(self.reconstruct(original))
+            #[cfg(not(feature = "elgamal2"))]
+            return Some(self.reconstruct(original));
+            #[cfg(feature = "elgamal2")]
+            Some(self.reconstruct())
         } else {
             None
         }
@@ -94,70 +139,62 @@ impl ProvedReshuffle {
     #[cfg(not(feature = "elgamal2"))]
     fn reconstruct(&self, original: &ElGamal) -> ElGamal {
         ElGamal {
-            b: *self.0,
-            c: *self.1,
+            b: *self.pb,
+            c: *self.pc,
             y: original.y,
         }
     }
     #[cfg(feature = "elgamal2")]
-    fn reconstruct(&self, _original: &ElGamal) -> ElGamal {
+    fn reconstruct(&self) -> ElGamal {
         ElGamal {
-            b: *self.0,
-            c: *self.1,
+            b: *self.pb,
+            c: *self.pc,
         }
     }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify(&self, original: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &verifiers.0, &self.0, &self.1)
+    #[must_use]
+    fn verify(&self, original: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.reg, &self.pb, &self.pc);
+        #[cfg(feature = "elgamal2")]
+        Self::verify_split(&original.b, &original.c, &verifiers.reg, &self.pb, &self.pc)
+    }
+    #[must_use]
+    pub fn verify_reshuffle(&self, original: &ElGamal, new: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify(original, verifiers) && new.b == *self.pb && new.c == *self.pc && new.y == original.y;
+        #[cfg(feature = "elgamal2")]
+        return self.verify(original, verifiers) && new.b == *self.pb && new.c == *self.pc;
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
-        self.verify(original, verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == original.y
-    }
-    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
     fn verify_split(gb: &GroupElement, gc: &GroupElement, _gy: &GroupElement, gn: &GroupElement, pb: &Proof, pc: &Proof) -> bool {
         verify_proof(gn, gb, pb) && verify_proof(gn, gc, pc)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &verifiers.0, &self.0, &self.1)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &ReshuffleFactorVerifiers) -> bool {
-        self.verify(original, verifiers) && new.b == self.0.n && new.c == self.1.n
-    }
-    #[cfg(feature = "elgamal2")]
+    #[must_use]
     fn verify_split(gb: &GroupElement, gc: &GroupElement, gn: &GroupElement, pb: &Proof, pc: &Proof) -> bool {
         verify_proof(gn, gb, pb) && verify_proof(gn, gc, pc)
     }
 }
 
-pub type RekeyFactor = ScalarNonZero;
-pub type RekeyFactorVerifiers = FactorVerifiers;
-
-#[cfg(not(feature = "elgamal2"))]
-#[derive(Eq, PartialEq, Clone, Copy)]
 /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
-pub struct ProvedRekey(pub Proof, pub Proof);
-
-#[cfg(feature = "elgamal2")]
 #[derive(Eq, PartialEq, Clone, Copy)]
-/// Second GroupElement is `k*G` if prove_rekey with `k` is called.
-pub struct ProvedRekey(pub Proof);
-
-impl ProvedRekey {
+pub struct ProvedRekey {
+    pub pb: Proof,
     #[cfg(not(feature = "elgamal2"))]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k: &RekeyFactor, rng: &mut R) -> Self {
+    pub py: Proof
+}
+impl ProvedRekey {
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> Self {
         // Rekey is normally {in.b/k, in.c, k*in.y};
         let (_, pb) = create_proof(&k.invert(), &v.b, rng);
+        #[cfg(not(feature = "elgamal2"))]
         let (_, py) = create_proof(k, &v.y, rng);
-        Self(pb, py)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k: &RekeyFactor, rng: &mut R) -> Self {
-        // Rekey is normally {in.b/k, in.c, k*in.y};
-        let (_, pb) = create_proof(&k.invert(), &v.b, rng);
-        Self(pb)
+        Self {
+            pb,
+            #[cfg(not(feature = "elgamal2"))]
+            py
+        }
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
         if self.verify(original, verifiers) {
@@ -168,211 +205,88 @@ impl ProvedRekey {
     }
     fn reconstruct(&self, original: &ElGamal) -> ElGamal {
         ElGamal {
-            b: *self.0,
+            b: *self.pb,
             c: original.c,
             #[cfg(not(feature = "elgamal2"))]
-            y: *self.1,
+            y: *self.py,
         }
     }
-    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
     fn verify(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &verifiers.0, &verifiers.1, &self.0, &self.1)
+        #[cfg(not(feature = "elgamal2"))]
+        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.reg, &verifiers.inv, &self.pb, &self.py);
+        #[cfg(feature = "elgamal2")]
+        Self::verify_split(&original.b, &original.c, &verifiers.reg, &verifiers.inv, &self.pb)
+    }
+    #[must_use]
+    pub fn verify_rekey(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify(original, verifiers) && new.b == *self.pb && new.c == original.c && new.y == *self.py;
+        #[cfg(feature = "elgamal2")]
+        return self.verify(original, verifiers) && new.b == self.pb.n && new.c == original.c;
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, verifiers) && new.b == self.0.n && new.c == original.c && new.y == self.1.n
-    }
-    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
     fn verify_split(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof, py: &Proof) -> bool {
         verify_proof(gki, gb, pb) && verify_proof(gk, gy, py)
     }
-
     #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &verifiers.0, &verifiers.1, &self.0)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn verify_reshuffled(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, verifiers) && new.b == self.0.n && new.c == original.c
-    }
-    #[cfg(feature = "elgamal2")]
+    #[must_use]
     fn verify_split(gb: &GroupElement, _gc: &GroupElement, _gk: &GroupElement, gki: &GroupElement, pb: &Proof) -> bool {
         verify_proof(gki, gb, pb)
     }
-
+}
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub struct RSKFactorsProof {
+    pub pski: Proof,
 }
 
-#[cfg(not(feature = "elgamal2"))]
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRekeyFromTo(pub Proof, pub Proof, pub Proof, pub Proof);
-#[cfg(feature = "elgamal2")]
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRekeyFromTo(pub Proof, pub Proof, pub Proof);
-
-impl ProvedRekeyFromTo {
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
-        // RekeyFromTo is normally {k_from * k_to^-1 * in.B, in.c, k_from^-1 * k_to * in.y};
-        let k_from_inv = k_from.invert();
-        let k = k_from_inv * k_to;
-        let (_gki, pb) = create_proof(&k.invert(), &v.b, rng);
-        let (_gk, py) = create_proof(&k, &v.y, rng);
-        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
-        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
-        Self(pb, py, pk, pki)
+impl RSKFactorsProof {
+    pub fn new<R: RngCore + CryptoRng>(s: &ScalarNonZero, k: &ScalarNonZero, rng: &mut R) -> Self {
+        let ki = k.invert();
+        let (_gm, pski) = create_proof(&ki, &(s * G), rng);
+        Self{pski}
     }
-    #[cfg(feature = "elgamal2")]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
-        // RekeyFromTo is normally {k_from * k_to^-1 * in.B, in.c, k_from^-1 * k_to * in.y};
-        let k_from_inv = k_from.invert();
-        let k = k_from_inv * k_to;
-        let (_gki, pb) = create_proof(&k.invert(), &v.b, rng);
-        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
-        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
-        Self(pb, pk, pki)
-    }
-    pub fn verified_reconstruct(&self, original: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<ElGamal> {
-        if self.verify(original, verifiers_from, verifiers_to) {
-            Some(self.reconstruct(original))
+    pub fn from_proof(pski: &Proof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<Self> {
+        let x = Self{pski: *pski};
+        if x.verify(reshuffle_verifiers, rekey_verifiers) {
+            Some(x)
         } else {
             None
         }
     }
-    fn reconstruct(&self, original: &ElGamal) -> ElGamal {
-        ElGamal {
-            b: *self.0,
-            c: original.c,
-            #[cfg(not(feature = "elgamal2"))]
-            y: *self.1,
-        }
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify(&self, original: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &verifiers_from.0, &verifiers_from.1, &verifiers_to.0, &verifiers_to.1, &self.0, &self.1, &self.2, &self.3)
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.y == self.1.n && new.c == original.c
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify_split(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, py: &Proof, pk: &Proof, pki: &Proof) -> bool {
-        verify_proof(&pki.n, gb, pb)
-            && verify_proof(&pk.n, gy, py)
-            && verify_proof(gk_to, gk_from_inv, pk)
-            && verify_proof(gk_to_inv, gk_from, pki)
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &verifiers_from.0, &verifiers_from.1, &verifiers_to.0, &verifiers_to.1, &self.0, &self.1, &self.2)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn verify_rekey_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == original.c
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify_split(gb: &GroupElement, _gc: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, pk: &Proof, pki: &Proof) -> bool {
-        verify_proof(&pki.n, gb, pb)
-            && verify_proof(gk_to, gk_from_inv, pk)
-            && verify_proof(gk_to_inv, gk_from, pki)
+    #[must_use]
+    pub fn verify(&self, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+        verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.reg, &self.pski)
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedReshuffleFromTo(pub Proof, pub Proof, pub Proof);
-
-impl ProvedReshuffleFromTo {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, rng: &mut R) -> Self {
-        // ReshuffleFromTo is normally {s_from^-1 * s_to * in.b, s_from^-1 * s_to * in.c, in.y};
-        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving one s*G operation)
-        let s = s_from.invert() * s_to;
-        let (_gs, pb) = create_proof(&s, &v.b, rng);
-        let (_gs, pc) = create_proof(&s, &v.c, rng);
-        let (_gs_to, ps) = create_proof(s_to, &(s_from.invert() * G), rng);
-        Self(pb, pc, ps)
-    }
-    pub fn verified_reconstruct(&self, original: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> Option<ElGamal> {
-        if self.verify(original, verifiers_from, verifiers_to) {
-            Some(self.reconstruct(original))
-        } else {
-            None
-        }
-    }
+pub struct ProvedRSK {
+    pub pb: Proof,
+    pub pc: Proof,
     #[cfg(not(feature = "elgamal2"))]
-    fn reconstruct(&self, original: &ElGamal) -> ElGamal {
-        ElGamal {
-            b: *self.0,
-            c: *self.1,
-            y: original.y,
-        }
-    }
-    #[cfg(feature = "elgamal2")]
-    fn reconstruct(&self, _original: &ElGamal) -> ElGamal {
-        ElGamal {
-            b: *self.0,
-            c: *self.1,
-        }
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify(&self, original: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &verifiers_from.1, &verifiers_to.0, &self.0, &self.1, &self.2)
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
-        self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == original.y
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, _gy: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, pb: &Proof, pc: &Proof, ps: &Proof) -> bool {
-        // ps is needed as proof that s is constructed as s_from.invert() * s_t
-        verify_proof(&ps.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(gs_to, gs_from_inv, ps)
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &verifiers_from.1, &verifiers_to.0, &self.0, &self.1, &self.2)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn verify_reshuffled_from_to(&self, original: &ElGamal, new: &ElGamal, verifiers_from: &ReshuffleFactorVerifiers, verifiers_to: &ReshuffleFactorVerifiers) -> bool {
-        self.verify(original, verifiers_from, verifiers_to) && new.b == self.0.n && new.c == self.1.n
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, pb: &Proof, pc: &Proof, ps: &Proof) -> bool {
-        // ps is needed as proof that s is constructed as s_from.invert() * s_t
-        verify_proof(&ps.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(gs_to, gs_from_inv, ps)
-    }
+    pub py: Proof
 }
-
-#[cfg(not(feature = "elgamal2"))]
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRSK(pub Proof, pub Proof, pub Proof, pub Proof);
-#[cfg(feature = "elgamal2")]
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRSK(pub Proof, pub Proof, pub Proof);
 
 impl ProvedRSK {
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> Self {
+    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero, rng: &mut R) -> Self {
         // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
         let ki = k.invert();
         let ski = s * ki;
-        let (_gm, pnki) = create_proof(&ki, &(s * G), rng);
         let (_gski, pb) = create_proof(&ski, &v.b, rng);
-        let (_gn, pc) = create_proof(&s, &v.c, rng);
+        let (_gn, pc) = create_proof(s, &v.c, rng);
+        #[cfg(not(feature = "elgamal2"))]
         let (_gk, py) = create_proof(k, &v.y, rng);
-        Self(pb, pc, py, pnki)
+        Self {
+            pb,
+            pc,
+            #[cfg(not(feature = "elgamal2"))]
+            py
+        }
     }
-    #[cfg(feature = "elgamal2")]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> Self {
-        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
-        let ki = k.invert();
-        let ski = s * ki;
-        let (_gm, pnki) = create_proof(&ki, &(s * G), rng);
-        let (_gski, pb) = create_proof(&ski, &v.b, rng);
-        let (_gn, pc) = create_proof(&s, &v.c, rng);
-        Self(pb, pc, pnki)
-    }
-
-
-    pub fn verified_reconstruct(&self, original: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
-        if self.verify(original, reshuffle_verifiers, rekey_verifiers) {
+    pub fn verified_reconstruct(&self, original: &ElGamal, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
+        if self.verify(original, rsk_proof, reshuffle_verifiers, rekey_verifiers) {
             Some(self.reconstruct())
         } else {
             None
@@ -380,155 +294,331 @@ impl ProvedRSK {
     }
     fn reconstruct(&self) -> ElGamal {
         ElGamal {
-            b: *self.0,
-            c: *self.1,
+            b: *self.pb,
+            c: *self.pc,
             #[cfg(not(feature = "elgamal2"))]
-            y: *self.2,
+            y: *self.py,
         }
     }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify(&self, original: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers.0, &rekey_verifiers.0, &rekey_verifiers.1, &self.0, &self.1, &self.2, &self.3)
+    #[must_use]
+    fn verify(&self, original: &ElGamal, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return Self::verify_split(&original.b, &original.c, &original.y, &self.pb, &self.pc, &self.py, rsk_proof, reshuffle_verifiers, rekey_verifiers);
+        #[cfg(feature = "elgamal2")]
+        Self::verify_split(&original.b, &original.c, &self.pb, &self.pc, rsk_proof, reshuffle_verifiers, rekey_verifiers)
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, reshuffle_verifiers, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
+    #[must_use]
+    pub fn verify_rsk(&self, original: &ElGamal, new: &ElGamal, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify(original, rsk_proof, reshuffle_verifiers, rekey_verifiers) && new.b == self.pb.n && new.c == self.pc.n && new.y == self.py.n;
+        #[cfg(feature = "elgamal2")]
+        return self.verify(original, rsk_proof, reshuffle_verifiers, rekey_verifiers) && new.b == self.pb.n && new.c == self.pc.n;
     }
     #[cfg(not(feature = "elgamal2"))]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gs: &GroupElement, gk: &GroupElement, gki: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pski: &Proof) -> bool {
-        verify_proof(&pski.n, gb, pb) && verify_proof(gs, gc, pc) && verify_proof(gk, gy, py) && verify_proof(gki, gs, pski)
+    #[must_use]
+    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+        let check1 = verify_proof(&rsk_proof.pski, gb, pb);
+        let check2 = verify_proof(&reshuffle_verifiers.reg, gc, pc);
+        let check3 = verify_proof(&rekey_verifiers.reg, gy, py);
+        check1 && check2 && check3
     }
     #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &reshuffle_verifiers.0, &rekey_verifiers.0, &rekey_verifiers.1, &self.0, &self.1, &self.2)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn verify_rskd(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers: &ReshuffleFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, reshuffle_verifiers, rekey_verifiers) && new.b == self.0.n && new.c == self.1.n
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gs: &GroupElement, _gk: &GroupElement, gki: &GroupElement, pb: &Proof, pc: &Proof, pski: &Proof) -> bool {
-        verify_proof(&pski.n, gb, pb) && verify_proof(gs, gc, pc) && verify_proof(gki, gs, pski)
+    #[must_use]
+    fn verify_split(gb: &GroupElement, gc: &GroupElement, pb: &Proof, pc: &Proof, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
+        verify_proof(&rsk_proof.pski, gb, pb) && verify_proof(&reshuffle_verifiers.reg, gc, pc) && verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.reg, &rsk_proof.pski)
     }
 }
-#[cfg(not(feature = "elgamal2"))]
 #[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
-#[cfg(feature = "elgamal2")]
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct ProvedRSKFromTo(pub Proof, pub Proof, pub Proof, pub Proof, pub Proof, pub Proof);
+pub struct Reshuffle2FactorsProof {
+    pub ps: Proof
+}
 
-// TODO: Only two of these proofs are specific to the message, the others are specific to the factors used, and thus the session! So we should separate them to avoid recomputation and save bandwidth!!!
-
-impl ProvedRSKFromTo {
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
-        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
-        let s_from_inv = s_from.invert();
-        let k_from_inv = k_from.invert();
-        let s = s_from_inv * s_to;
-        let k = k_from_inv * k_to;
-        let ki = k.invert();
-        let ski = s * ki;
-
-        let (_gn_from_inv, ps) = create_proof(&s_from_inv, &(s_to * G), rng);
-        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
-        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
-        let (_gm, pski) = create_proof(&ki, &ps.n, rng);
-
-        let (_gski, pb) = create_proof(&ski, &v.b, rng);
-        let (_gs, pc) = create_proof(&s, &v.c, rng);
-        let (_gk, py) = create_proof(&k, &v.y, rng);
-        Self(pb, pc, py, pski, ps, pk, pki)
+impl Reshuffle2FactorsProof {
+    pub fn new<R: RngCore + CryptoRng>(from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
+        let (_gs, ps) = create_proof(&from.invert(), &(to * G), rng);
+        Self{ps}
     }
-    #[cfg(feature = "elgamal2")]
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> Self {
-        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
-        let s_from_inv = s_from.invert();
-        let k_from_inv = k_from.invert();
-        let s = s_from_inv * s_to;
-        let k = k_from_inv * k_to;
-        let ki = k.invert();
-        let ski = s * ki;
-
-        let (_gn_from_inv, ps) = create_proof(&s_from_inv, &(s_to * G), rng);
-        let (_gk_to, pk) = create_proof(k_to, &(k_from_inv * G), rng);
-        let (_gki_to, pki) = create_proof(&k_to.invert(), &(k_from * G), rng);
-        let (_gm, pski) = create_proof(&ki, &ps.n, rng);
-
-        let (_gski, pb) = create_proof(&ski, &v.b, rng);
-        let (_gs, pc) = create_proof(&s, &v.c, rng);
-        Self(pb, pc, pski, ps, pk, pki)
+    pub fn from_proof(ps: &Proof, verifiers_from: &PseudonymizationFactorVerifiers, verifiers_to: &PseudonymizationFactorVerifiers) -> Option<Self> {
+        let x = Self{ps: *ps};
+        if x.verify(&verifiers_from, &verifiers_to) {
+            Some(x)
+        } else {
+            None
+        }
     }
-    pub fn verified_reconstruct(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> Option<ElGamal> {
-        if self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to){
+    #[must_use]
+    pub fn verify(&self, verifiers_from: &PseudonymizationFactorVerifiers, verifiers_to: &PseudonymizationFactorVerifiers) -> bool {
+        verify_proof(&verifiers_from.inv, &verifiers_to.reg, &self.ps)
+    }
+
+}
+impl ProvedReshuffle {
+    pub fn new2<R: RngCore + CryptoRng>(v: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
+        // Reshuffle2 is normally {s_from^-1 * s_to * in.b, s_from^-1 * s_to * in.c, in.y};
+        // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving one s*G operation)
+        let s = from.invert() * to;
+        let (_gs, pb) = create_proof(&s, &v.b, rng);
+        let (_gs, pc) = create_proof(&s, &v.c, rng);
+        Self{pb, pc}
+    }
+    pub fn verified_reconstruct2(&self, original: &ElGamal, reshuffle2_proof: &Reshuffle2FactorsProof) -> Option<ElGamal> {
+        if self.verify2(original, reshuffle2_proof) {
+            #[cfg(not(feature = "elgamal2"))]
+            return Some(self.reconstruct(original));
+            #[cfg(feature = "elgamal2")]
             Some(self.reconstruct())
         } else {
             None
         }
     }
-    fn reconstruct(&self) -> ElGamal {
-        ElGamal {
-            b: *self.0,
-            c: *self.1,
+    #[must_use]
+    fn verify2(&self, original: &ElGamal, reshuffle2_proof: &Reshuffle2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return Self::verify_split2(&original.b, &original.c, &original.y, &self.pb, &self.pc, reshuffle2_proof);
+        #[cfg(feature = "elgamal2")]
+        Self::verify_split2(&original.b, &original.c, &self.pb, &self.pc, reshuffle2_proof)
+    }
+    #[must_use]
+    pub fn verify_reshuffled2(&self, original: &ElGamal, new: &ElGamal, reshuffle2_proof: &Reshuffle2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify2(original, reshuffle2_proof) && new.b == self.pb.n && new.c == self.pc.n && new.y == original.y;
+        #[cfg(feature = "elgamal2")]
+        return self.verify2(original, reshuffle2_proof) && new.b == self.pb.n && new.c == self.pc.n;
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, gc: &GroupElement, _gy: &GroupElement, pb: &Proof, pc: &Proof, reshuffle2_proof: &Reshuffle2FactorsProof) -> bool {
+        // ps is needed as proof that s is constructed as s_from.invert() * s_t
+        verify_proof(&reshuffle2_proof.ps, gb, pb) && verify_proof(&reshuffle2_proof.ps, gc, pc)
+    }
+    #[cfg(feature = "elgamal2")]
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, gc: &GroupElement, pb: &Proof, pc: &Proof, reshuffle2_proof: &Reshuffle2FactorsProof) -> bool {
+        // ps is needed as proof that s is constructed as s_from.invert() * s_t
+        verify_proof(&reshuffle2_proof.ps, gb, pb) && verify_proof(&reshuffle2_proof.ps, gc, pc)
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub struct Rekey2FactorsProof {
+    #[cfg(not(feature = "elgamal2"))]
+    pub pk: Proof,
+    pub pki: Proof
+}
+impl Rekey2FactorsProof {
+    pub fn new<R: RngCore + CryptoRng>(from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
+        #[cfg(not(feature = "elgamal2"))]
+        let (_gk_to, pk) = create_proof(&from.invert(), &(to * G), rng);
+        let (_gki_to, pki) = create_proof(&from, &(to.invert() * G), rng);
+        Self {
             #[cfg(not(feature = "elgamal2"))]
-            y: *self.2,
+            pk,
+            pki
+        }
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    pub fn from_proof(pk: &Proof, pki: &Proof, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<Self> {
+        let x = Self{pk: *pk, pki: *pki};
+        if x.verify(verifiers_from, verifiers_to) {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    #[cfg(feature = "elgamal2")]
+    pub fn from_proof(pki: &Proof, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<Self> {
+        let x = Self{pki: *pki};
+        if x.verify(&verifiers_from, &verifiers_to) {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    #[must_use]
+    pub fn verify(&self, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return verify_proof(&verifiers_from.inv, &verifiers_to.reg, &self.pk) && verify_proof(&verifiers_from.reg, &verifiers_to.inv, &self.pki);
+        #[cfg(feature = "elgamal2")]
+        verify_proof(&verifiers_to.inv, &verifiers_from.reg, &self.pki)
+    }
+}
+
+impl ProvedRekey {
+    pub fn new2<R: RngCore + CryptoRng>(v: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
+        // Rekey2 is normally {k_from * k_to^-1 * in.B, in.c, k_from^-1 * k_to * in.y};
+        let k_from_inv = from.invert();
+        let k = k_from_inv * to;
+        let (_gki, pb) = create_proof(&k.invert(), &v.b, rng);
+        #[cfg(not(feature = "elgamal2"))]
+        let (_gk, py) = create_proof(&k, &v.y, rng);
+        Self {
+            pb,
+            #[cfg(not(feature = "elgamal2"))]
+            py
+        }
+    }
+    pub fn verified_reconstruct2(&self, original: &ElGamal, rekey2_proof: &Rekey2FactorsProof) -> Option<ElGamal> {
+        if self.verify2(original, rekey2_proof) {
+            Some(self.reconstruct(original))
+        } else {
+            None
+        }
+    }
+    #[must_use]
+    fn verify2(&self, original: &ElGamal, rekey2_proof: &Rekey2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return Self::verify_split2(&original.b, &original.c, &original.y, &self.pb, &self.py, rekey2_proof);
+        #[cfg(feature = "elgamal2")]
+        Self::verify_split2(&original.b, &original.c, &self.pb, rekey2_proof)
+    }
+    #[must_use]
+    pub fn verify_rekey2(&self, original: &ElGamal, new: &ElGamal, rekey2_proof: &Rekey2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify2(original, rekey2_proof) && new.b == self.pb.n && new.y == self.py.n && new.c == original.c;
+        #[cfg(feature = "elgamal2")]
+        return self.verify2(original, rekey2_proof) && new.b == self.pb.n && new.c == original.c;
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, pb: &Proof, py: &Proof, rekey2_proof: &Rekey2FactorsProof) -> bool {
+        verify_proof(&rekey2_proof.pki, gb, pb) && verify_proof(&rekey2_proof.pk, gy, py) // TODO REMOVE ALL VERIFY_SPLITs
+    }
+    #[cfg(feature = "elgamal2")]
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, _gc: &GroupElement, pb: &Proof, rekey2_proof: &Rekey2FactorsProof) -> bool {
+        verify_proof(&rekey2_proof.pki, gb, pb)
+    }
+}
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub struct RSK2FactorsProof {
+    pub pski: Proof,
+    pub gs: GroupElement,
+    #[cfg(not(feature = "elgamal2"))]
+    pub gk: GroupElement
+}
+
+impl RSK2FactorsProof {
+    pub fn new<R: RngCore + CryptoRng>(s_from: &ScalarNonZero, s_to: &ScalarNonZero, k_from: &ScalarNonZero, k_to: &ScalarNonZero, rng: &mut R) -> Self {
+        let gs = s_from.invert() * s_to * G;
+        let k = k_from.invert() * k_to;
+        let (_gm, pski) = create_proof(&k.invert(), &gs, rng);
+        #[cfg(not(feature = "elgamal2"))]
+        let gk = k * G;
+        Self {
+            pski,
+            gs,
+            #[cfg(not(feature = "elgamal2"))]
+            gk
+        }
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    pub fn from_proof(pski: &Proof, gs: &GroupElement, gk: &GroupElement, reshuffle2_proof: &Reshuffle2FactorsProof, rekey2_proof: &Rekey2FactorsProof) -> Option<Self> {
+        let x = Self{pski: *pski, gs: *gs, gk: *gk};
+        if x.verify(&reshuffle2_proof, &rekey2_proof) {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    #[cfg(feature = "elgamal2")]
+    pub fn from_proof(pski: &Proof, gs: &GroupElement, reshuffle2_proof: &Reshuffle2FactorsProof, rekey2_proof: &Rekey2FactorsProof) -> Option<Self> {
+        let x = Self{pski: *pski, gs: *gs};
+        if x.verify(&reshuffle2_proof, &rekey2_proof) {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    #[must_use]
+    pub fn verify(&self, reshuffle2_proof: &Reshuffle2FactorsProof, rekey2_proof: &Rekey2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return verify_proof(&rekey2_proof.pki.n, &reshuffle2_proof.ps.n, &self.pski) && self.gs == reshuffle2_proof.ps.n && self.gk == rekey2_proof.pk.n;
+        #[cfg(feature = "elgamal2")]
+        return verify_proof(&rekey2_proof.pki.n, &reshuffle2_proof.ps.n, &self.pski) && self.gs == reshuffle2_proof.ps.n;
+    }
+}
+
+impl ProvedRSK {
+    pub fn new2<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero, k_from: &ScalarNonZero, k_to: &ScalarNonZero, rng: &mut R) -> Self {
+        // RSK is normally {s * k^-1 * in.b, s * in.c, k * in.y};
+        let s = s_from.invert() * s_to;
+        let k = k_from.invert() * k_to;
+        let ki = k.invert();
+        let ski = s * ki;
+
+        let (_gski, pb) = create_proof(&ski, &v.b, rng);
+        let (_gs, pc) = create_proof(&s, &v.c, rng);
+        #[cfg(not(feature = "elgamal2"))]
+        let (_gk, py) = create_proof(&k, &v.y, rng);
+        Self {
+            pb,
+            pc,
+            #[cfg(not(feature = "elgamal2"))]
+            py
+        }
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    pub fn verified_reconstruct2(&self, original: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> Option<ElGamal> {
+        if self.verify2(original, rsk2_proof) {
+            Some(self.reconstruct())
+        } else {
+            None
         }
     }
     // TODO maybe also create an UNSAFE unverified reconstruct? Maybe with a feature flag?
-    // Note: this may actually be required if we want to validate only _parts_ of a transcryption chain
-    // Note: For Rekey and RekeyFromTo, we don't actually have enough data in the struct to reconstruct without knowing the original C or Y...
     #[cfg(not(feature = "elgamal2"))]
-    fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &original.y, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5, &self.6)
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to) && new.b == self.0.n && new.c == self.1.n && new.y == self.2.n
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, pski: &Proof, ps: &Proof, pk: &Proof, pki: &Proof) -> bool {
-        verify_proof(&pski.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(&pk.n, gy, py) && verify_proof(&pki.n, &ps.n, pski) && verify_proof(gs_from_inv, &gs_to, ps) && verify_proof(gk_to, gk_from_inv, pk) && verify_proof(gk_to_inv, gk_from, pki)
+    #[must_use]
+    fn verify2(&self, original: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> bool {
+        Self::verify_split2(&original.b, &original.c, &original.y, &self.pb, &self.pc, &self.py, rsk2_proof)
     }
     #[cfg(feature = "elgamal2")]
-    fn verify(&self, original: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
-        Self::verify_split(&original.b, &original.c, &reshuffle_verifiers_from.1, &reshuffle_verifiers_to.0, &rekey_verifiers_from.0, &rekey_verifiers_from.1, &rekey_verifiers_to.0, &rekey_verifiers_to.1, &self.0, &self.1, &self.2, &self.3, &self.4, &self.5)
+    #[must_use]
+    fn verify2(&self, original: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> bool {
+        Self::verify_split2(&original.b, &original.c, &self.pb, &self.pc, rsk2_proof)
+    }
+    #[must_use]
+    pub fn verify_rsk2(&self, original: &ElGamal, new: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> bool {
+        #[cfg(not(feature = "elgamal2"))]
+        return self.verify2(original, rsk2_proof) && new.b == self.pb.n && new.c == self.pc.n && new.y == self.py.n;
+        #[cfg(feature = "elgamal2")]
+        return self.verify2(original, rsk2_proof) && new.b == self.pb.n && new.c == self.pc.n;
+    }
+    #[cfg(not(feature = "elgamal2"))]
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, rsk2_proof: &RSK2FactorsProof) -> bool {
+        verify_proof(&rsk2_proof.pski.n, gb, pb) && verify_proof(&rsk2_proof.gs, gc, pc) && verify_proof(&rsk2_proof.gk, gy, py)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn verify_rsk_from_to(&self, original: &ElGamal, new: &ElGamal, reshuffle_verifiers_from: &ReshuffleFactorVerifiers, reshuffle_verifiers_to: &ReshuffleFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
-        self.verify(original, reshuffle_verifiers_from, reshuffle_verifiers_to, rekey_verifiers_from, rekey_verifiers_to) && new.b == self.0.n && new.c == self.1.n
-    }
-    #[cfg(feature = "elgamal2")]
-    fn verify_split(gb: &GroupElement, gc: &GroupElement, gs_from_inv: &GroupElement, gs_to: &GroupElement, gk_from: &GroupElement, gk_from_inv: &GroupElement, gk_to: &GroupElement, gk_to_inv: &GroupElement, pb: &Proof, pc: &Proof, pski: &Proof, ps: &Proof, pk: &Proof, pki: &Proof) -> bool {
-        verify_proof(&pski.n, gb, pb) && verify_proof(&ps.n, gc, pc) && verify_proof(&pki.n, &ps.n, pski) && verify_proof(gs_from_inv, &gs_to, ps) && verify_proof(gk_to, gk_from_inv, pk) && verify_proof(gk_to_inv, gk_from, pki)
+    #[must_use]
+    fn verify_split2(gb: &GroupElement, gc: &GroupElement, pb: &Proof, pc: &Proof, rsk2_proof: &RSK2FactorsProof) -> bool {
+        verify_proof(&rsk2_proof.pski.n, gb, pb) && verify_proof(&rsk2_proof.gs, gc, pc)
     }
 }
 
 #[cfg(not(feature = "elgamal2"))]
-pub fn prove_rerandomize<R: RngCore + CryptoRng>(v: &ElGamal, r: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
-    ProvedRerandomize::new(v, r, rng)
+pub fn prove_rerandomize<R: RngCore + CryptoRng>(m: &ElGamal, r: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
+    ProvedRerandomize::new(m, r, rng)
 }
 
-pub fn prove_reshuffle<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffle {
-    ProvedReshuffle::new(v, s, rng)
+pub fn prove_reshuffle<R: RngCore + CryptoRng>(m: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
+    ProvedReshuffle::new(m, s, rng)
+}
+pub fn prove_rekey<R: RngCore + CryptoRng>(m: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> ProvedRekey {
+    ProvedRekey::new(m, k, rng)
+}
+pub fn prove_rsk<R: RngCore + CryptoRng>(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero, rng: &mut R) -> ProvedRSK {
+    ProvedRSK::new(m, s, k, rng)
+}
+pub fn prove_reshuffle2<R: RngCore + CryptoRng>(m: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
+    ProvedReshuffle::new2(m, from, to, rng)
 }
 
-pub fn prove_rekey<R: RngCore + CryptoRng>(v: &ElGamal, k: &RekeyFactor, rng: &mut R) -> ProvedRekey {
-    ProvedRekey::new(v, k, rng)
+pub fn prove_rekey2<R: RngCore + CryptoRng>(m: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> ProvedRekey {
+    ProvedRekey::new2(m, from, to, rng)
 }
 
-pub fn prove_reshuffle_from_to<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, rng: &mut R) -> ProvedReshuffleFromTo {
-    ProvedReshuffleFromTo::new(v, s_from, s_to, rng)
+pub fn prove_rsk2<R: RngCore + CryptoRng>(m: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero, k_from: &ScalarNonZero, k_to: &ScalarNonZero, rng: &mut R) -> ProvedRSK {
+    ProvedRSK::new2(m, s_from, s_to, k_from, k_to, rng)
 }
 
-pub fn prove_rekey_from_to<R: RngCore + CryptoRng>(v: &ElGamal, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> ProvedRekeyFromTo {
-    ProvedRekeyFromTo::new(v, k_from, k_to, rng)
-}
-
-pub fn prove_rsk<R: RngCore + CryptoRng>(v: &ElGamal, s: &ReshuffleFactor, k: &RekeyFactor, rng: &mut R) -> ProvedRSK {
-    ProvedRSK::new(v, s, k, rng)
-}
-
-pub fn prove_rsk_from_to<R: RngCore + CryptoRng>(v: &ElGamal, s_from: &ReshuffleFactor, s_to: &ReshuffleFactor, k_from: &RekeyFactor, k_to: &RekeyFactor, rng: &mut R) -> ProvedRSKFromTo {
-    ProvedRSKFromTo::new(v, s_from, s_to, k_from, k_to, rng)
-}

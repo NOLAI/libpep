@@ -117,7 +117,7 @@ fn pep_rekey_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
-    let rekeyed = rekey_from_to(&encrypted, &k_from, &k_to);
+    let rekeyed = rekey2(&encrypted, &k_from, &k_to);
 
     let decrypted = decrypt(&rekeyed, &(k_to * y));
 
@@ -142,7 +142,7 @@ fn pep_reshuffle_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
-    let reshuffled = reshuffle_from_to(&encrypted, &s_from, &s_to);
+    let reshuffled = reshuffle2(&encrypted, &s_from, &s_to);
 
     let decrypted = decrypt(&reshuffled, &y);
 
@@ -169,7 +169,7 @@ fn pep_rsk_from_to() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &(k_from * gy), &mut OsRng);
 
-    let rsked = rsk_from_to(&encrypted, &s_from, &s_to, &k_from, &k_to);
+    let rsked = rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
 
     let decrypted = decrypt(&rsked, &(k_to * y));
 

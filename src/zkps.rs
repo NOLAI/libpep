@@ -107,7 +107,7 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
     (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
-}
+}// TODO maybe we should use this one everywhere?
 
 pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Signature {
     create_proof_unlinkable(secret_key, message).1

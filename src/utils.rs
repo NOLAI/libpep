@@ -1,7 +1,15 @@
 use sha2::{Sha512, Digest};
 use crate::arithmetic::*;
-use crate::high_level::{Context, Secret};
+use crate::high_level::{Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret, RekeyFactor, ReshuffleFactor, Secret};
 
+pub fn make_pseudonymisation_factor(secret: &PseudonymizationSecret, context: &PseudonymizationContext) -> ReshuffleFactor {
+    ReshuffleFactor::from(make_factor("pseudonym", secret, context))
+}
+pub fn make_decryption_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
+    RekeyFactor::from(make_factor("decrypt", secret, context))
+}
+
+#[cfg(not(feature = "legacy-pep-repo-compatible"))]
 fn make_factor(typ: &str, secret: &Secret, context: &Context) -> ScalarNonZero {
     let mut hasher = Sha512::default();
     hasher.update(typ);
@@ -12,16 +20,6 @@ fn make_factor(typ: &str, secret: &Secret, context: &Context) -> ScalarNonZero {
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     ScalarNonZero::decode_from_hash(&bytes)
-}
-
-/// Generates a non-zero scalar.
-pub fn make_pseudonymisation_factor(secret: &Secret, context: &Context) -> ScalarNonZero {
-    make_factor("pseudonym", secret, context)
-}
-
-/// Generates a non-zero scalar.
-pub fn make_decryption_factor(secret: &Secret, context: &Context) -> ScalarNonZero {
-    make_factor("decrypt", secret, context)
 }
 
 // #[cfg(feature = "legacy-pep-repo-compatible")]

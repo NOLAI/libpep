@@ -1,130 +1,167 @@
 use std::ops::Deref;
-use rand_core::OsRng;
+use rand_core::{CryptoRng, RngCore};
 use crate::high_level::*;
 use crate::proved::*;
-use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
+use crate::utils::{make_pseudonymisation_factor, make_decryption_factor};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct ProvedEncryptedPseudonym(ProvedRSKFromTo);
+pub struct ProvedEncryptedPseudonym(ProvedRSK);
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct ProvedEncryptedDataPoint(ProvedRekeyFromTo);
+pub struct ProvedEncryptedDataPoint(ProvedRekey);
 
 impl Deref for ProvedEncryptedPseudonym {
-    type Target = ProvedRSKFromTo;
+    type Target = ProvedRSK;
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 impl Deref for ProvedEncryptedDataPoint {
-    type Target = ProvedRekeyFromTo;
+    type Target = ProvedRekey;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct PseudonymizationContextVerifiers(pub PseudonymizationFactorVerifiers);
+impl Deref for PseudonymizationContextVerifiers {
+    type Target = PseudonymizationFactorVerifiers;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct EncryptionContextVerifiers(pub RekeyFactorVerifiers);
+impl Deref for EncryptionContextVerifiers {
+    type Target = RekeyFactorVerifiers;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+impl PseudonymizationContextVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(context: &PseudonymizationContext, secret: &PseudonymizationSecret, rng: &mut R) -> (Self, PseudonymizationFactorVerifiersProof) {
+        let factor = make_pseudonymisation_factor(secret, context);
+        let (verifiers, proof) = PseudonymizationFactorVerifiers::new(&*factor, rng);
+        (PseudonymizationContextVerifiers(verifiers), proof)
+    }
+}
+impl EncryptionContextVerifiers {
+    pub fn new<R: RngCore + CryptoRng>(context: &EncryptionContext, secret: &EncryptionSecret, rng: &mut R) -> (Self, RekeyFactorVerifiersProof) {
+        let factor = make_decryption_factor(secret, context);
+        let (verifiers, proof) = RekeyFactorVerifiers::new(&*factor, rng);
+        (EncryptionContextVerifiers(verifiers), proof)
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct PseudonymizationInfoProof {
+    pub reshuffle_proof: Reshuffle2FactorsProof,
+    pub rekey_proof: Rekey2FactorsProof,
+    pub rsk_proof: RSK2FactorsProof
+}
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct RekeyInfoProof(pub Rekey2FactorsProof);
+impl Deref for RekeyInfoProof {
+    type Target = Rekey2FactorsProof;
     fn deref(&self) -> &Self::Target { &self.0 }
 }
 
+impl PseudonymizationInfoProof {
+    pub fn new<R: RngCore + CryptoRng>(factors: &PseudonymizationInfo, rng: &mut R) -> Self {
+        let reshuffle_proof = Reshuffle2FactorsProof::new(&factors.s.from, &factors.s.to, rng);
+        let rekey_proof = Rekey2FactorsProof::new(&factors.k.from, &factors.k.to, rng);
+        let rsk_proof = RSK2FactorsProof::new(&factors.s.from, &factors.s.to, &factors.k.from, &factors.k.to, rng);
+        PseudonymizationInfoProof {
+            reshuffle_proof,
+            rekey_proof,
+            rsk_proof,
+        }
+    }
+    #[must_use]
+    pub fn verify(&self, pseudo_verifiers_from: &PseudonymizationFactorVerifiers, pseudo_verifiers_to: &PseudonymizationFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+        self.reshuffle_proof.verify(pseudo_verifiers_from, pseudo_verifiers_to) && self.rekey_proof.verify(rekey_verifiers_from, rekey_verifiers_to) && self.rsk_proof.verify(&self.reshuffle_proof, &self.rekey_proof)
+    }
+}
+impl RekeyInfoProof {
+    pub fn new<R: RngCore + CryptoRng>(factors: &RekeyInfo, rng: &mut R) -> Self {
+        let rekey_proof = Rekey2FactorsProof::new(&factors.from, &factors.to, rng);
+        RekeyInfoProof(rekey_proof)
+    }
+    #[must_use]
+    pub fn verify(&self, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+        self.0.verify(verifiers_from, verifiers_to)
+    }
+}
+impl From<&PseudonymizationInfoProof> for RekeyInfoProof {
+    fn from(info: &PseudonymizationInfoProof) -> Self {
+        RekeyInfoProof(info.rekey_proof.clone())
+    }
+}
+
 impl ProvedEncryptedPseudonym {
-    pub fn new(value: ProvedRSKFromTo) -> Self {
+    pub fn new(value: ProvedRSK) -> Self {
         ProvedEncryptedPseudonym(value)
     }
 
-    pub fn reconstruct(&self, original: &EncryptedPseudonym, pseudo_verifiers_from: &FactorVerifiers, pseudo_verifiers_to: &FactorVerifiers, rekey_verifiers_from: &FactorVerifiers, rekey_verifiers_to: &FactorVerifiers,) -> Option<EncryptedPseudonym> {
-        let reconstructed = self.verified_reconstruct(&original, pseudo_verifiers_from, pseudo_verifiers_to, rekey_verifiers_from, rekey_verifiers_to);
+    pub fn reconstruct(&self, original: &EncryptedPseudonym, proof: &PseudonymizationInfoProof) -> Option<EncryptedPseudonym> {
+        let reconstructed = self.verified_reconstruct2(original, &proof.rsk_proof);
         if reconstructed.is_none() {
             return None;
         }
-        Some(EncryptedPseudonym::new(reconstructed.unwrap()))
+        Some(EncryptedPseudonym::new(reconstructed?))
     }
 }
 impl ProvedEncryptedDataPoint {
-    pub fn new(value: ProvedRekeyFromTo) -> Self {
+    pub fn new(value: ProvedRekey) -> Self {
         ProvedEncryptedDataPoint(value)
     }
-    pub fn reconstruct(&self, original: &EncryptedDataPoint, rekey_verifiers_from: &FactorVerifiers, rekey_verifiers_to: &FactorVerifiers) -> Option<EncryptedDataPoint> {
-        let reconstructed = self.verified_reconstruct(&original, rekey_verifiers_from, rekey_verifiers_to);
+    pub fn reconstruct(&self, original: &EncryptedDataPoint, proof: &RekeyInfoProof) -> Option<EncryptedDataPoint> {
+        let reconstructed = self.verified_reconstruct2(&original, &proof.0);
         if reconstructed.is_none() {
             return None;
         }
-        Some(EncryptedDataPoint::new(reconstructed.unwrap()))
+        Some(EncryptedDataPoint::new(reconstructed?))
     }
 }
 
 /// Proved pseudonymize an encrypted pseudonym, from one context to another context
-pub fn proved_pseudonymize(p: &EncryptedPseudonym, from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret) -> ProvedEncryptedPseudonym {
-    let mut rng = OsRng;
-
-    let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
-    let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
-    let k_from = make_decryption_factor(&encryption_secret, &from_session);
-    let k_to = make_decryption_factor(&encryption_secret, &to_session);
-
-    ProvedEncryptedPseudonym::new(prove_rsk_from_to(&p, &s_from, &s_to, &k_from, &k_to, &mut rng))
+pub fn proved_pseudonymize<R: RngCore + CryptoRng>(p: &EncryptedPseudonym, pseudonymization_info: &PseudonymizationInfo, rng: &mut R) -> ProvedEncryptedPseudonym {
+    ProvedEncryptedPseudonym::new(prove_rsk2(&p, &pseudonymization_info.s.from, &pseudonymization_info.s.to, &pseudonymization_info.k.from, &pseudonymization_info.k.to, rng))
 }
 
 /// Proved rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
-pub fn proved_rekey(p: &EncryptedDataPoint, from_session: &EncryptionContext, to_session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> ProvedEncryptedDataPoint {
-    let mut rng = OsRng;
-
-    let k_from = make_decryption_factor(&encryption_secret, &from_session);
-    let k_to = make_decryption_factor(&encryption_secret, &to_session);
-
-    ProvedEncryptedDataPoint::new(prove_rekey_from_to(&p, &k_from, &k_to, &mut rng))
+pub fn proved_rekey<R: RngCore + CryptoRng>(p: &EncryptedDataPoint, rekey_info: &RekeyInfo, rng: &mut R) -> ProvedEncryptedDataPoint {
+    ProvedEncryptedDataPoint::new(prove_rekey2(&p, &rekey_info.from, &rekey_info.to, rng))
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct RekeyVerifiers(pub FactorVerifiers);
-impl Deref for RekeyVerifiers {
-    type Target = FactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
+#[must_use]
+pub fn verify_pseudonymization_info(info: &PseudonymizationInfoProof, pseudo_verifiers_from: &PseudonymizationFactorVerifiers, pseudo_verifiers_to: &PseudonymizationFactorVerifiers, rekey_verifiers_from: &RekeyFactorVerifiers, rekey_verifiers_to: &RekeyFactorVerifiers) -> bool {
+    info.reshuffle_proof.verify(pseudo_verifiers_from, pseudo_verifiers_to) && info.rekey_proof.verify(rekey_verifiers_from, rekey_verifiers_to) && info.rsk_proof.verify(&info.reshuffle_proof, &info.rekey_proof)
 }
-impl RekeyVerifiers {
-    pub fn new(session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> (RekeyVerifiers, FactorVerifiersProof) {
-        let mut rng = OsRng;
-        let k = make_decryption_factor(&encryption_secret, &session);
-        let (v,p) = FactorVerifiers::new(&k, &mut rng);
-        (RekeyVerifiers(v), p)
-    }
+#[must_use]
+pub fn verify_rekey_info(info: &RekeyInfoProof, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
+    info.verify(verifiers_from, verifiers_to)
 }
 
-
-#[derive(Eq, PartialEq, Clone, Copy)]
-pub struct PseudonymizationVerifiers(pub FactorVerifiers);
-impl Deref for PseudonymizationVerifiers {
-    type Target = FactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl PseudonymizationVerifiers {
-    pub fn new(session: &PseudonymizationContext, pseudonymization_secret: &PseudonymizationSecret) -> (PseudonymizationVerifiers, FactorVerifiersProof) {
-        let mut rng = OsRng;
-        let k = make_pseudonymisation_factor(&pseudonymization_secret, &session);
-        let (v,p) = FactorVerifiers::new(&k, &mut rng);
-        (PseudonymizationVerifiers(v), p)
-    }
-}
-
-pub fn verify_pseudonymization(msg: &ProvedEncryptedPseudonym, original: &EncryptedPseudonym, pseudo_verifiers_from: &PseudonymizationVerifiers, pseudo_verifiers_to: &PseudonymizationVerifiers, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<EncryptedPseudonym> {
-    let reconstructed = msg.verified_reconstruct(&original, &pseudo_verifiers_from, &pseudo_verifiers_to, &rekey_verifiers_from, &rekey_verifiers_to);
+pub fn verify_pseudonymization(msg: &ProvedEncryptedPseudonym, original: &EncryptedPseudonym, proof: &PseudonymizationInfoProof) -> Option<EncryptedPseudonym> {
+    let reconstructed = msg.verified_reconstruct2(original, &proof.rsk_proof);
     if reconstructed.is_none() {
         return None;
     }
-    Some(EncryptedPseudonym::new(reconstructed.unwrap()))
+    Some(EncryptedPseudonym::new(reconstructed?))
 }
 
-pub fn verified_decrypt_pseudonym(x: &ProvedEncryptedPseudonym, original: &EncryptedPseudonym, sk: &SessionSecretKey, pseudo_verifiers_from: &PseudonymizationVerifiers, pseudo_verifiers_to: &PseudonymizationVerifiers, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<Pseudonym> {
-    let reconstructed = verify_pseudonymization(x, original, pseudo_verifiers_from, pseudo_verifiers_to, rekey_verifiers_from, rekey_verifiers_to);
+pub fn verified_decrypt_pseudonym(x: &ProvedEncryptedPseudonym, original: &EncryptedPseudonym, sk: &SessionSecretKey, proof: &PseudonymizationInfoProof) -> Option<Pseudonym> {
+    let reconstructed = verify_pseudonymization(x, original, proof);
     if reconstructed.is_none() {
         return None;
     }
-    Some(decrypt_pseudonym(&reconstructed.unwrap(), sk))
+    Some(decrypt_pseudonym(&reconstructed?, sk))
 }
 
-pub fn verify_rekey(msg: &ProvedEncryptedDataPoint, original: &EncryptedDataPoint, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<EncryptedDataPoint> {
-    let reconstructed = msg.verified_reconstruct(&original, &rekey_verifiers_from, &rekey_verifiers_to);
+pub fn verify_rekey(msg: &ProvedEncryptedDataPoint, original: &EncryptedDataPoint, proof: &RekeyInfoProof) -> Option<EncryptedDataPoint> {
+    let reconstructed = msg.verified_reconstruct2(original, &proof.0);
     if reconstructed.is_none() {
         return None;
     }
-    Some(EncryptedDataPoint::new(reconstructed.unwrap()))
+    Some(EncryptedDataPoint::new(reconstructed?))
 }
 
-pub fn verified_decrypt_data(x: &ProvedEncryptedDataPoint, original: &EncryptedDataPoint, sk: &SessionSecretKey, rekey_verifiers_from: &RekeyVerifiers, rekey_verifiers_to: &RekeyVerifiers) -> Option<DataPoint> {
-    let reconstructed = verify_rekey(x, original, rekey_verifiers_from, rekey_verifiers_to);
+pub fn verified_decrypt_data(x: &ProvedEncryptedDataPoint, original: &EncryptedDataPoint, sk: &SessionSecretKey, proof: &RekeyInfoProof) -> Option<DataPoint> {
+    let reconstructed = verify_rekey(x, original, proof);
     if reconstructed.is_none() {
         return None;
     }
-    Some(decrypt_data(&reconstructed.unwrap(), sk))
+    Some(decrypt_data(&reconstructed?, sk))
 }

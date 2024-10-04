@@ -18,12 +18,12 @@ pub fn wasm_reshuffle(v: &WASMElGamal, s: &WASMScalarNonZero) -> WASMElGamal {
 }
 #[wasm_bindgen(js_name = rekeyFromTo)]
 pub fn wasm_rekey_from_to(v: &WASMElGamal, k_from: &WASMScalarNonZero, k_to: &WASMScalarNonZero) -> WASMElGamal {
-    rekey_from_to(v, k_from, k_to).into()
+    rekey2(v, k_from, k_to).into()
 }
 
 #[wasm_bindgen(js_name = reshuffleFromTo)]
 pub fn wasm_reshuffle_from_to(v: &WASMElGamal, n_from: &WASMScalarNonZero, n_to: &WASMScalarNonZero) -> WASMElGamal {
-    reshuffle_from_to(v, n_from, n_to).into()
+    reshuffle2(v, n_from, n_to).into()
 }
 #[wasm_bindgen(js_name = rsk)]
 pub fn wasm_rsk(v: &WASMElGamal, s: &WASMScalarNonZero, k: &WASMScalarNonZero) -> WASMElGamal {
@@ -31,6 +31,6 @@ pub fn wasm_rsk(v: &WASMElGamal, s: &WASMScalarNonZero, k: &WASMScalarNonZero) -
 }
 #[wasm_bindgen(js_name = rskFromTo)]
 pub fn wasm_rsk_from_to(v: &WASMElGamal, s_from: &WASMScalarNonZero, s_to: &WASMScalarNonZero, k_from: &WASMScalarNonZero, k_to: &WASMScalarNonZero) -> WASMElGamal {
-    rsk_from_to(v, s_from, s_to, k_from, k_to).into()
+    rsk2(v, s_from, s_to, k_from, k_to).into()
 }
 
