@@ -1,6 +1,7 @@
 use rand_core::OsRng;
 use libpep::arithmetic::{GroupElement};
 use libpep::distributed::{BlindingFactor, make_blinded_global_secret_key, PEPClient, PEPSystem};
+use libpep::distributed_proved::{PEPVerifier, ProvedPEPClient, ProvedPEPSystem};
 use libpep::high_level::{DataPoint, EncryptionContext, EncryptionSecret, make_global_keys, Pseudonym, PseudonymizationContext, PseudonymizationSecret};
 use libpep::proved::{PseudonymizationFactorVerifiers, RekeyFactorVerifiers};
 use libpep::verifiers_cache::InMemoryVerifiersCache;
@@ -12,18 +13,15 @@ fn n_pep() {
 
     // Global config
     let (_global_public, global_secret) = make_global_keys(rng);
-    let blinding_factors = (0..n).map(|_| {BlindingFactor::random()}).collect::<Vec<_>>();
+    let blinding_factors = (0..n).map(|_| {BlindingFactor::random(rng)}).collect::<Vec<_>>();
     let blinded_global_secret_key = make_blinded_global_secret_key(&global_secret, &blinding_factors.clone());
 
     // Create systems
     let systems = (0..n).map(|i| {
-        let system_id = format!("system-{}", i);
         let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i));
         let encryption_secret = EncryptionSecret(format!("es-secret-{}", i));
         let blinding_factor = blinding_factors[i].clone();
-        let pseudo_cache = InMemoryVerifiersCache::<PseudonymizationContext, PseudonymizationFactorVerifiers>::new();
-        let rekey_cache = InMemoryVerifiersCache::<EncryptionContext, RekeyFactorVerifiers>::new();
-        PEPSystem::new(system_id, pseudonymization_secret, encryption_secret, blinding_factor, Box::new(pseudo_cache), Box::new(rekey_cache))
+        PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
     }).collect::<Vec<_>>();
 
     // Setup demo contexts
@@ -38,13 +36,8 @@ fn n_pep() {
     let sks_b1 = systems.iter().map(|system| system.session_key_share(&ec_b1)).collect::<Vec<_>>();
 
     // Create clients
-    let client_pseudo_cache_a = InMemoryVerifiersCache::new();
-    let client_rekey_cache_a = InMemoryVerifiersCache::new();
-    let client_pseudo_cache_b = InMemoryVerifiersCache::new();
-    let client_rekey_cache_b = InMemoryVerifiersCache::new();
-
-    let client_a = PEPClient::new(blinded_global_secret_key.clone(), sks_a1, Box::new(client_pseudo_cache_a), Box::new(client_rekey_cache_a));
-    let client_b = PEPClient::new(blinded_global_secret_key.clone(), sks_b1, Box::new(client_pseudo_cache_b), Box::new(client_rekey_cache_b));
+    let client_a = PEPClient::new(blinded_global_secret_key.clone(), sks_a1);
+    let client_b = PEPClient::new(blinded_global_secret_key.clone(), sks_b1);
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
@@ -84,7 +77,7 @@ fn n_pep_proved() {
     let rng = &mut OsRng;
 
     let (_global_public, global_secret) = make_global_keys(rng);
-    let blinding_factors = (0..n).map(|_| {BlindingFactor::random()}).collect::<Vec<_>>();
+    let blinding_factors = (0..n).map(|_| {BlindingFactor::random(rng)}).collect::<Vec<_>>();
     let blinded_global_secret_key = make_blinded_global_secret_key(&global_secret, &blinding_factors.clone());
 
     // Create systems
@@ -95,7 +88,7 @@ fn n_pep_proved() {
         let blinding_factor = blinding_factors[i].clone();
         let pseudo_cache = InMemoryVerifiersCache::<PseudonymizationContext, PseudonymizationFactorVerifiers>::new();
         let rekey_cache = InMemoryVerifiersCache::<EncryptionContext, RekeyFactorVerifiers>::new();
-        PEPSystem::new(system_id, pseudonymization_secret, encryption_secret, blinding_factor, Box::new(pseudo_cache), Box::new(rekey_cache))
+        ProvedPEPSystem::new(system_id, PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor), PEPVerifier::new(Box::new(pseudo_cache), Box::new(rekey_cache)))
     }).collect::<Vec<_>>();
 
     // Setup demo contexts
@@ -115,8 +108,8 @@ fn n_pep_proved() {
     let client_pseudo_cache_b = InMemoryVerifiersCache::new();
     let client_rekey_cache_b = InMemoryVerifiersCache::new();
 
-    let mut client_a = PEPClient::new(blinded_global_secret_key.clone(), sks_a1, Box::new(client_pseudo_cache_a), Box::new(client_rekey_cache_a));
-    let mut client_b = PEPClient::new(blinded_global_secret_key.clone(), sks_b1, Box::new(client_pseudo_cache_b), Box::new(client_rekey_cache_b));
+    let mut client_a = ProvedPEPClient::new(PEPClient::new(blinded_global_secret_key.clone(), sks_a1), PEPVerifier::new(Box::new(client_pseudo_cache_a), Box::new(client_rekey_cache_a)));
+    let mut client_b = ProvedPEPClient::new(PEPClient::new(blinded_global_secret_key.clone(), sks_b1), PEPVerifier::new(Box::new(client_pseudo_cache_b), Box::new(client_rekey_cache_b)));
 
     // Distribute verifiers (once per context)
     let pseudo_verifiers_a = systems.iter().map(|system| (system.system_id.clone(), system.pseudo_context_verifiers(&pc_a, rng))).collect::<Vec<_>>();
