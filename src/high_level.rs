@@ -120,17 +120,17 @@ pub fn rerandomize_encrypted<R: RngCore + CryptoRng>(encrypted: &EncryptedDataPo
     EncryptedDataPoint::new(rerandomize(&encrypted.value, &r))
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct Reshuffle2Factors {
     pub from: ReshuffleFactor,
     pub to: ReshuffleFactor,
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct Rekey2Factors {
     pub from: RekeyFactor,
     pub to: RekeyFactor,
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct RSK2Factors {
     pub s: Reshuffle2Factors,
     pub k: Rekey2Factors,
@@ -150,16 +150,16 @@ impl Rekey2Factors {
 pub type PseudonymizationInfo = RSK2Factors;
 pub type RekeyInfo = Rekey2Factors;
 impl PseudonymizationInfo {
-    pub fn new(from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
+    pub fn new(from_pseudo_context: &PseudonymizationContext, to_pseudo_context: &PseudonymizationContext, from_enc_context: &EncryptionContext, to_enc_context: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret) -> Self {
+        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
         let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
-        let rekey_factors = RekeyInfo::new(from_session, to_session, encryption_secret);
+        let rekey_factors = RekeyInfo::new(from_enc_context, to_enc_context, encryption_secret);
         RSK2Factors { s: reshuffle_factors, k: rekey_factors }
     }
-    pub fn new_from_rekey_info(from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, rekey_info: RekeyInfo, pseudonymization_secret: &PseudonymizationSecret) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
+    pub fn new_from_rekey_info(from_pseudo_context: &PseudonymizationContext, to_pseudo_context: &PseudonymizationContext, rekey_info: RekeyInfo, pseudonymization_secret: &PseudonymizationSecret) -> Self {
+        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
         let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
         RSK2Factors { s: reshuffle_factors, k: rekey_info }
     }
