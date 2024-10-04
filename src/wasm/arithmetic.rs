@@ -1,24 +1,11 @@
-use std::ops::Deref;
+use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 use rand::rngs::OsRng;
 use crate::arithmetic::*;
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = GroupElement)]
-pub struct WASMGroupElement (GroupElement);
-impl Deref for WASMGroupElement {
-    type Target = GroupElement;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-impl From<GroupElement> for WASMGroupElement {
-    fn from(x: GroupElement) -> Self {
-        WASMGroupElement(x)
-    }
-}
-impl From<WASMGroupElement> for GroupElement {
-    fn from(x: WASMGroupElement) -> Self { x.0 }
-}
+pub struct WASMGroupElement(pub GroupElement);
 
 #[wasm_bindgen(js_class = "GroupElement")]
 impl WASMGroupElement {
@@ -83,21 +70,9 @@ impl WASMGroupElement {
 }
 
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarNonZero)]
-pub struct WASMScalarNonZero (ScalarNonZero);
-impl Deref for WASMScalarNonZero {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl From<ScalarNonZero> for WASMScalarNonZero {
-    fn from(x: ScalarNonZero) -> Self {
-        WASMScalarNonZero(x)
-    }
-}
-impl From<WASMScalarNonZero> for ScalarNonZero {
-    fn from(x: WASMScalarNonZero) -> Self { x.0 }
-}
+pub struct WASMScalarNonZero (pub ScalarNonZero);
 
 #[wasm_bindgen(js_class = "ScalarNonZero")]
 impl WASMScalarNonZero {
@@ -146,22 +121,9 @@ impl WASMScalarNonZero {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarCanBeZero)]
-pub struct WASMScalarCanBeZero(ScalarCanBeZero);
-impl Deref for WASMScalarCanBeZero {
-    type Target = ScalarCanBeZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl From<ScalarCanBeZero> for WASMScalarCanBeZero {
-    fn from(x: ScalarCanBeZero) -> Self {
-        WASMScalarCanBeZero(x)
-    }
-}
-impl From<WASMScalarCanBeZero> for ScalarCanBeZero {
-    fn from(x: WASMScalarCanBeZero) -> Self { x.0 }
-}
-
+pub struct WASMScalarCanBeZero(pub ScalarCanBeZero);
 #[wasm_bindgen(js_class = "ScalarCanBeZero")]
 impl WASMScalarCanBeZero {
     #[wasm_bindgen]

@@ -1,26 +1,12 @@
-use std::ops::Deref;
+use derive_more::{Deref, From, Into};
 use rand_core::{OsRng};
 use wasm_bindgen::prelude::*;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use crate::elgamal::{decrypt, ElGamal, encrypt};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ElGamal)]
 pub struct WASMElGamal (ElGamal);
-impl Deref for WASMElGamal {
-    type Target = ElGamal;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl From<ElGamal> for WASMElGamal {
-    fn from(x: ElGamal) -> Self {
-        WASMElGamal(x)
-    }
-}
-impl From<WASMElGamal> for ElGamal {
-    fn from(x: WASMElGamal) -> Self {
-        x.0
-    }
-}
 #[wasm_bindgen(js_class = "ElGamal")]
 impl WASMElGamal {
 
