@@ -28,6 +28,7 @@ pub fn make_blinded_global_secret_key(global_secret_key: &GlobalSecretKey, blind
 }
 pub type PEPSystemID = String;
 
+#[derive(Clone)]
 pub struct PEPSystem {
     pub system_id: PEPSystemID,
     pseudonymisation_secret: PseudonymizationSecret,

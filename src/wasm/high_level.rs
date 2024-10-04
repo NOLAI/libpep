@@ -166,7 +166,13 @@ impl From<EncryptedDataPoint> for WASMEncryptedDataPoint {
         }
     }
 }
-
+#[wasm_bindgen(js_class = "EncryptedDataPoint")]
+impl WASMEncryptedDataPoint {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMElGamal) -> Self {WASMEncryptedDataPoint {
+        value: x
+    }}
+}
 
 
 // We cannot return a tuple from a wasm_bindgen function, so we return a struct instead
