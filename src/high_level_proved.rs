@@ -1,34 +1,18 @@
-use std::ops::Deref;
-use rand_core::{CryptoRng, RngCore};
 use crate::high_level::*;
 use crate::proved::*;
-use crate::utils::{make_pseudonymisation_factor, make_decryption_factor};
+use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
+use derive_more::Deref;
+use rand_core::{CryptoRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct ProvedEncryptedPseudonym(ProvedRSK);
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub struct ProvedEncryptedDataPoint(ProvedRekey);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+pub struct ProvedEncryptedPseudonym(pub ProvedRSK);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+pub struct ProvedEncryptedDataPoint(pub ProvedRekey);
 
-impl Deref for ProvedEncryptedPseudonym {
-    type Target = ProvedRSK;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for ProvedEncryptedDataPoint {
-    type Target = ProvedRekey;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct PseudonymizationContextVerifiers(pub PseudonymizationFactorVerifiers);
-impl Deref for PseudonymizationContextVerifiers {
-    type Target = PseudonymizationFactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct EncryptionContextVerifiers(pub RekeyFactorVerifiers);
-impl Deref for EncryptionContextVerifiers {
-    type Target = RekeyFactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
 impl PseudonymizationContextVerifiers {
     pub fn new<R: RngCore + CryptoRng>(context: &PseudonymizationContext, secret: &PseudonymizationSecret, rng: &mut R) -> (Self, PseudonymizationFactorVerifiersProof) {
         let factor = make_pseudonymisation_factor(secret, context);
@@ -48,15 +32,10 @@ impl EncryptionContextVerifiers {
 pub struct PseudonymizationInfoProof {
     pub reshuffle_proof: Reshuffle2FactorsProof,
     pub rekey_proof: Rekey2FactorsProof,
-    pub rsk_proof: RSK2FactorsProof
+    pub rsk_proof: RSK2FactorsProof,
 }
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct RekeyInfoProof(pub Rekey2FactorsProof);
-impl Deref for RekeyInfoProof {
-    type Target = Rekey2FactorsProof;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
 impl PseudonymizationInfoProof {
     pub fn new<R: RngCore + CryptoRng>(factors: &PseudonymizationInfo, rng: &mut R) -> Self {
         let reshuffle_proof = Reshuffle2FactorsProof::new(&factors.s.from, &factors.s.to, rng);

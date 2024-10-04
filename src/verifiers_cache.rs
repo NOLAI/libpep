@@ -1,12 +1,14 @@
+use crate::distributed::PEPSystemID;
 use std::collections::HashMap;
 use std::hash::Hash;
-use crate::distributed::PEPSystemID;
 
 pub trait VerifiersCache {
     type Key;
     type Verifiers;
 
-    fn new() -> Self where Self: Sized;
+    fn new() -> Self
+    where
+        Self: Sized;
     fn store(&mut self, system_id: PEPSystemID, context: Self::Key, verifiers: Self::Verifiers);
     fn retrieve(&self, system_id: &PEPSystemID, context: &Self::Key) -> Option<&Self::Verifiers>;
     fn has(&self, system_id: &PEPSystemID, context: &Self::Key) -> bool;
@@ -40,7 +42,8 @@ where
 
 impl<Context, FactorVerifiers> VerifiersCache for InMemoryVerifiersCache<Context, FactorVerifiers>
 where
-    Context: Eq + Hash + Clone, FactorVerifiers: PartialEq + Clone
+    Context: Eq + Hash + Clone,
+    FactorVerifiers: PartialEq + Clone,
 {
     type Key = Context;
     type Verifiers = FactorVerifiers;

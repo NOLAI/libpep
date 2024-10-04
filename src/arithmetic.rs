@@ -1,7 +1,7 @@
-use base64::Engine;
 use base64::engine::general_purpose;
-use curve25519_dalek::ristretto::RistrettoPoint;
+use base64::Engine;
 use curve25519_dalek::ristretto::CompressedRistretto;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 

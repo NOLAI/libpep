@@ -1,17 +1,17 @@
-use std::ops::Deref;
-use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::*;
 use crate::elgamal::*;
 use crate::zkps::*;
+use derive_more::Deref;
+use rand_core::{CryptoRng, RngCore};
 
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct FactorVerifiers {
-    pub reg: GroupElement,
-    pub inv: GroupElement
+    pub val: GroupElement,
+    pub inv: GroupElement,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct FactorVerifiersProof(Proof, ScalarNonZero, GroupElement);
 
 impl FactorVerifiers {
@@ -21,39 +21,25 @@ impl FactorVerifiers {
         let (gai, pai) = create_proof(&a.invert(), &gra, rng);
         // Checking pki.n == gr proves that a.invert()*a == 1.
         // Assume a'^-1 * (a*r*G) = r*G, then a = a' trivially holds for any a, a', r
-        (Self{reg: a * G, inv: gai}, FactorVerifiersProof(pai, r, gra))
+        (Self { val: a * G, inv: gai }, FactorVerifiersProof(pai, r, gra))
     }
 }
 
 impl FactorVerifiersProof {
     #[must_use]
     pub fn verify(&self, verifiers: &FactorVerifiers) -> bool {
-        let FactorVerifiers{reg: ga, inv: gai} = verifiers;
+        let FactorVerifiers { val: ga, inv: gai } = verifiers;
         verify_proof(gai, &self.2, &self.0) && self.0.n == self.1 * G && self.1 * ga == self.2
     }
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct RekeyFactorVerifiers(FactorVerifiers);
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct PseudonymizationFactorVerifiers(FactorVerifiers);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct RekeyFactorVerifiersProof(FactorVerifiersProof);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct PseudonymizationFactorVerifiersProof(FactorVerifiersProof);
-impl Deref for RekeyFactorVerifiers {
-    type Target = FactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for PseudonymizationFactorVerifiers {
-    type Target = FactorVerifiers;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for RekeyFactorVerifiersProof {
-    type Target = FactorVerifiersProof;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for PseudonymizationFactorVerifiersProof {
-    type Target = FactorVerifiersProof;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
 impl RekeyFactorVerifiers {
     pub fn new<R: RngCore + CryptoRng>(a: &ScalarNonZero, rng: &mut R) -> (Self, RekeyFactorVerifiersProof) {
         let (verifiers, proof) = FactorVerifiers::new(a, rng);
@@ -115,7 +101,8 @@ impl ProvedRerandomize {
 #[derive(Eq, PartialEq, Clone, Copy)]
 /// GroupElement is `n*G` if prove_reshuffle with `n` is called.
 pub struct ProvedReshuffle {
-    pub pb: Proof, pub pc: Proof
+    pub pb: Proof,
+    pub pc: Proof,
 }
 
 impl ProvedReshuffle {
@@ -124,7 +111,7 @@ impl ProvedReshuffle {
         // NOTE: can be optimised a bit, by fusing the two CreateProofs (because same s is used, saving one s*G operation)
         let (_gs, pb) = create_proof(s, &v.b, rng);
         let (_gs, pc) = create_proof(s, &v.c, rng);
-        Self{pb, pc}
+        Self { pb, pc }
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> Option<ElGamal> {
         if self.verify(original, verifiers) {
@@ -154,9 +141,9 @@ impl ProvedReshuffle {
     #[must_use]
     fn verify(&self, original: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> bool {
         #[cfg(not(feature = "elgamal2"))]
-        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.reg, &self.pb, &self.pc);
+        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.val, &self.pb, &self.pc);
         #[cfg(feature = "elgamal2")]
-        Self::verify_split(&original.b, &original.c, &verifiers.reg, &self.pb, &self.pc)
+        Self::verify_split(&original.b, &original.c, &verifiers.val, &self.pb, &self.pc)
     }
     #[must_use]
     pub fn verify_reshuffle(&self, original: &ElGamal, new: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> bool {
@@ -178,11 +165,11 @@ impl ProvedReshuffle {
 }
 
 /// Second GroupElement is `k*G` if prove_rekey with `k` is called.
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct ProvedRekey {
     pub pb: Proof,
     #[cfg(not(feature = "elgamal2"))]
-    pub py: Proof
+    pub py: Proof,
 }
 impl ProvedRekey {
     pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> Self {
@@ -193,7 +180,7 @@ impl ProvedRekey {
         Self {
             pb,
             #[cfg(not(feature = "elgamal2"))]
-            py
+            py,
         }
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
@@ -214,9 +201,9 @@ impl ProvedRekey {
     #[must_use]
     fn verify(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
         #[cfg(not(feature = "elgamal2"))]
-        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.reg, &verifiers.inv, &self.pb, &self.py);
+        return Self::verify_split(&original.b, &original.c, &original.y, &verifiers.val, &verifiers.inv, &self.pb, &self.py);
         #[cfg(feature = "elgamal2")]
-        Self::verify_split(&original.b, &original.c, &verifiers.reg, &verifiers.inv, &self.pb)
+        Self::verify_split(&original.b, &original.c, &verifiers.val, &verifiers.inv, &self.pb)
     }
     #[must_use]
     pub fn verify_rekey(&self, original: &ElGamal, new: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
@@ -236,7 +223,7 @@ impl ProvedRekey {
         verify_proof(gki, gb, pb)
     }
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct RSKFactorsProof {
     pub pski: Proof,
 }
@@ -245,10 +232,10 @@ impl RSKFactorsProof {
     pub fn new<R: RngCore + CryptoRng>(s: &ScalarNonZero, k: &ScalarNonZero, rng: &mut R) -> Self {
         let ki = k.invert();
         let (_gm, pski) = create_proof(&ki, &(s * G), rng);
-        Self{pski}
+        Self { pski }
     }
     pub fn from_proof(pski: &Proof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<Self> {
-        let x = Self{pski: *pski};
+        let x = Self { pski: *pski };
         if x.verify(reshuffle_verifiers, rekey_verifiers) {
             Some(x)
         } else {
@@ -257,16 +244,16 @@ impl RSKFactorsProof {
     }
     #[must_use]
     pub fn verify(&self, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.reg, &self.pski)
+        verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.val, &self.pski)
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct ProvedRSK {
     pub pb: Proof,
     pub pc: Proof,
     #[cfg(not(feature = "elgamal2"))]
-    pub py: Proof
+    pub py: Proof,
 }
 
 impl ProvedRSK {
@@ -282,7 +269,7 @@ impl ProvedRSK {
             pb,
             pc,
             #[cfg(not(feature = "elgamal2"))]
-            py
+            py,
         }
     }
     pub fn verified_reconstruct(&self, original: &ElGamal, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> Option<ElGamal> {
@@ -319,28 +306,28 @@ impl ProvedRSK {
     #[must_use]
     fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
         let check1 = verify_proof(&rsk_proof.pski, gb, pb);
-        let check2 = verify_proof(&reshuffle_verifiers.reg, gc, pc);
-        let check3 = verify_proof(&rekey_verifiers.reg, gy, py);
+        let check2 = verify_proof(&reshuffle_verifiers.val, gc, pc);
+        let check3 = verify_proof(&rekey_verifiers.val, gy, py);
         check1 && check2 && check3
     }
     #[cfg(feature = "elgamal2")]
     #[must_use]
     fn verify_split(gb: &GroupElement, gc: &GroupElement, pb: &Proof, pc: &Proof, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        verify_proof(&rsk_proof.pski, gb, pb) && verify_proof(&reshuffle_verifiers.reg, gc, pc) && verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.reg, &rsk_proof.pski)
+        verify_proof(&rsk_proof.pski, gb, pb) && verify_proof(&reshuffle_verifiers.val, gc, pc) && verify_proof(&rekey_verifiers.inv, &reshuffle_verifiers.val, &rsk_proof.pski)
     }
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct Reshuffle2FactorsProof {
-    pub ps: Proof
+    pub ps: Proof,
 }
 
 impl Reshuffle2FactorsProof {
     pub fn new<R: RngCore + CryptoRng>(from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
         let (_gs, ps) = create_proof(&from.invert(), &(to * G), rng);
-        Self{ps}
+        Self { ps }
     }
     pub fn from_proof(ps: &Proof, verifiers_from: &PseudonymizationFactorVerifiers, verifiers_to: &PseudonymizationFactorVerifiers) -> Option<Self> {
-        let x = Self{ps: *ps};
+        let x = Self { ps: *ps };
         if x.verify(&verifiers_from, &verifiers_to) {
             Some(x)
         } else {
@@ -349,9 +336,8 @@ impl Reshuffle2FactorsProof {
     }
     #[must_use]
     pub fn verify(&self, verifiers_from: &PseudonymizationFactorVerifiers, verifiers_to: &PseudonymizationFactorVerifiers) -> bool {
-        verify_proof(&verifiers_from.inv, &verifiers_to.reg, &self.ps)
+        verify_proof(&verifiers_from.inv, &verifiers_to.val, &self.ps)
     }
-
 }
 impl ProvedReshuffle {
     pub fn new2<R: RngCore + CryptoRng>(v: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
@@ -360,7 +346,7 @@ impl ProvedReshuffle {
         let s = from.invert() * to;
         let (_gs, pb) = create_proof(&s, &v.b, rng);
         let (_gs, pc) = create_proof(&s, &v.c, rng);
-        Self{pb, pc}
+        Self { pb, pc }
     }
     pub fn verified_reconstruct2(&self, original: &ElGamal, reshuffle2_proof: &Reshuffle2FactorsProof) -> Option<ElGamal> {
         if self.verify2(original, reshuffle2_proof) {
@@ -400,11 +386,11 @@ impl ProvedReshuffle {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct Rekey2FactorsProof {
     #[cfg(not(feature = "elgamal2"))]
     pub pk: Proof,
-    pub pki: Proof
+    pub pki: Proof,
 }
 impl Rekey2FactorsProof {
     pub fn new<R: RngCore + CryptoRng>(from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> Self {
@@ -414,12 +400,12 @@ impl Rekey2FactorsProof {
         Self {
             #[cfg(not(feature = "elgamal2"))]
             pk,
-            pki
+            pki,
         }
     }
     #[cfg(not(feature = "elgamal2"))]
     pub fn from_proof(pk: &Proof, pki: &Proof, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<Self> {
-        let x = Self{pk: *pk, pki: *pki};
+        let x = Self { pk: *pk, pki: *pki };
         if x.verify(verifiers_from, verifiers_to) {
             Some(x)
         } else {
@@ -428,7 +414,7 @@ impl Rekey2FactorsProof {
     }
     #[cfg(feature = "elgamal2")]
     pub fn from_proof(pki: &Proof, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> Option<Self> {
-        let x = Self{pki: *pki};
+        let x = Self { pki: *pki };
         if x.verify(&verifiers_from, &verifiers_to) {
             Some(x)
         } else {
@@ -438,9 +424,9 @@ impl Rekey2FactorsProof {
     #[must_use]
     pub fn verify(&self, verifiers_from: &RekeyFactorVerifiers, verifiers_to: &RekeyFactorVerifiers) -> bool {
         #[cfg(not(feature = "elgamal2"))]
-        return verify_proof(&verifiers_from.inv, &verifiers_to.reg, &self.pk) && verify_proof(&verifiers_from.reg, &verifiers_to.inv, &self.pki);
+        return verify_proof(&verifiers_from.inv, &verifiers_to.val, &self.pk) && verify_proof(&verifiers_from.val, &verifiers_to.inv, &self.pki);
         #[cfg(feature = "elgamal2")]
-        verify_proof(&verifiers_to.inv, &verifiers_from.reg, &self.pki)
+        verify_proof(&verifiers_to.inv, &verifiers_from.val, &self.pki)
     }
 }
 
@@ -455,7 +441,7 @@ impl ProvedRekey {
         Self {
             pb,
             #[cfg(not(feature = "elgamal2"))]
-            py
+            py,
         }
     }
     pub fn verified_reconstruct2(&self, original: &ElGamal, rekey2_proof: &Rekey2FactorsProof) -> Option<ElGamal> {
@@ -490,12 +476,12 @@ impl ProvedRekey {
         verify_proof(&rekey2_proof.pki, gb, pb)
     }
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub struct RSK2FactorsProof {
     pub pski: Proof,
     pub gs: GroupElement,
     #[cfg(not(feature = "elgamal2"))]
-    pub gk: GroupElement
+    pub gk: GroupElement,
 }
 
 impl RSK2FactorsProof {
@@ -509,12 +495,12 @@ impl RSK2FactorsProof {
             pski,
             gs,
             #[cfg(not(feature = "elgamal2"))]
-            gk
+            gk,
         }
     }
     #[cfg(not(feature = "elgamal2"))]
     pub fn from_proof(pski: &Proof, gs: &GroupElement, gk: &GroupElement, reshuffle2_proof: &Reshuffle2FactorsProof, rekey2_proof: &Rekey2FactorsProof) -> Option<Self> {
-        let x = Self{pski: *pski, gs: *gs, gk: *gk};
+        let x = Self { pski: *pski, gs: *gs, gk: *gk };
         if x.verify(&reshuffle2_proof, &rekey2_proof) {
             Some(x)
         } else {
@@ -523,7 +509,7 @@ impl RSK2FactorsProof {
     }
     #[cfg(feature = "elgamal2")]
     pub fn from_proof(pski: &Proof, gs: &GroupElement, reshuffle2_proof: &Reshuffle2FactorsProof, rekey2_proof: &Rekey2FactorsProof) -> Option<Self> {
-        let x = Self{pski: *pski, gs: *gs};
+        let x = Self { pski: *pski, gs: *gs };
         if x.verify(&reshuffle2_proof, &rekey2_proof) {
             Some(x)
         } else {
@@ -555,7 +541,7 @@ impl ProvedRSK {
             pb,
             pc,
             #[cfg(not(feature = "elgamal2"))]
-            py
+            py,
         }
     }
     #[cfg(not(feature = "elgamal2"))]

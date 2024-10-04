@@ -1,31 +1,18 @@
-use std::ops::Deref;
-use rand_core::{CryptoRng, OsRng, RngCore};
 use crate::arithmetic::*;
-use crate::utils::*;
 use crate::high_level::*;
 use crate::high_level_proved::*;
 use crate::proved::{PseudonymizationFactorVerifiers, PseudonymizationFactorVerifiersProof, RekeyFactorVerifiers, RekeyFactorVerifiersProof};
-use crate::verifiers_cache::{VerifiersCache};
+use crate::utils::*;
+use crate::verifiers_cache::VerifiersCache;
+use derive_more::Deref;
+use rand_core::{CryptoRng, OsRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct BlindingFactor(pub ScalarNonZero);
-impl Deref for BlindingFactor {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct BlindedGlobalSecretKey(pub ScalarNonZero);
-impl Deref for BlindedGlobalSecretKey {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct SessionKeyShare(pub ScalarNonZero);
-impl Deref for SessionKeyShare {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
 impl BlindingFactor {
     pub fn new(x: ScalarNonZero) -> Self {
         BlindingFactor(x)
@@ -109,14 +96,14 @@ impl PEPSystem {
     }
     pub fn proved_distributed_pseudonymize<R: RngCore + CryptoRng>(&self, messages: &Vec<(PEPSystemID, ProvedEncryptedPseudonym)>, pseudo_proofs: &Vec<(PEPSystemID, PseudonymizationInfoProof)>, original: &EncryptedPseudonym, pseudonymization_info: &PseudonymizationInfo, rng: &mut R) -> Option<ProvedEncryptedPseudonym> {
         if messages.len() == 0 {
-            return Some(self.proved_pseudonymize(original, pseudonymization_info, rng))
+            return Some(self.proved_pseudonymize(original, pseudonymization_info, rng));
         }
         let result = self.verifier.verify_pseudonym_transcryption(messages, pseudo_proofs, original);
         result.map(|x| proved_pseudonymize(&x, pseudonymization_info, rng))
     }
     pub fn proved_distributed_rekey<R: RngCore + CryptoRng>(&self, messages: &Vec<(PEPSystemID, ProvedEncryptedDataPoint)>, rekey_proofs: &Vec<(PEPSystemID, RekeyInfoProof)>, original: &EncryptedDataPoint, rekey_info: &RekeyInfo, rng: &mut R) -> Option<ProvedEncryptedDataPoint> {
         if messages.len() == 0 {
-            return Some(self.proved_rekey(original, rekey_info, rng))
+            return Some(self.proved_rekey(original, rekey_info, rng));
         }
         let result = self.verifier.verify_data_transcryption(messages, rekey_proofs, original);
         result.map(|x| proved_rekey(&x, rekey_info, rng))

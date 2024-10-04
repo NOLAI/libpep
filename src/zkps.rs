@@ -1,27 +1,20 @@
-use std::ops::Deref;
-use rand_core::{CryptoRng, RngCore};
-use sha2::{Sha512, Digest};
 use crate::arithmetic::*;
+use derive_more::Deref;
+use rand_core::{CryptoRng, RngCore};
+use sha2::{Digest, Sha512};
 
 // Offline Schnorr proof using Fiat-Shamir transform.
 // Proof that given a GroupElement `m` and a scalar `a`,
 // member `n` is equal to `a*m`. This can be verified using
 // this struct, the original `m` and `a*G`, so that the original
 // scalar `a` remains secret.
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug, Deref)]
 pub struct Proof {
+    #[deref]
     pub n: GroupElement,
     pub c1: GroupElement,
     pub c2: GroupElement,
     pub s: ScalarCanBeZero,
-}
-
-impl Deref for Proof {
-    type Target = GroupElement;
-
-    fn deref(&self) -> &Self::Target {
-        &self.n
-    }
 }
 
 // returns <A=a*G, Proof with a value N = a*M>
@@ -107,7 +100,7 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
     (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
-}// TODO maybe we should use this one everywhere?
+} // TODO maybe we should use this one everywhere?
 
 pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Signature {
     create_proof_unlinkable(secret_key, message).1

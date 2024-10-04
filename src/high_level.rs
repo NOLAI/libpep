@@ -1,69 +1,44 @@
-use std::ops::Deref;
-use rand_core::{CryptoRng, RngCore};
-use crate::arithmetic::{G, GroupElement, ScalarNonZero};
-use crate::elgamal::{ElGamal, encrypt, decrypt};
+use crate::arithmetic::{GroupElement, ScalarNonZero, G};
+use crate::elgamal::{decrypt, encrypt, ElGamal};
 use crate::primitives::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
+use derive_more::Deref;
+use rand_core::{CryptoRng, RngCore};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct SessionSecretKey(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct GlobalSecretKey(pub ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct SessionPublicKey(pub GroupElement);
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct GlobalPublicKey(pub GroupElement);
-impl Deref for SessionSecretKey {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for GlobalSecretKey {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for SessionPublicKey {
-    type Target = GroupElement;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for GlobalPublicKey {
-    type Target = GroupElement;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct Pseudonym {
-    pub value: GroupElement
+    pub value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct DataPoint{
-    pub value: GroupElement
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+pub struct DataPoint {
+    pub value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct EncryptedPseudonym{
-    pub value: ElGamal
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+pub struct EncryptedPseudonym {
+    pub value: ElGamal,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct EncryptedDataPoint{
-    pub value: ElGamal
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
+pub struct EncryptedDataPoint {
+    pub value: ElGamal,
 }
-
-impl Deref for Pseudonym {
-    type Target = GroupElement;
-    fn deref(&self) -> &Self::Target { &self.value }
-}
-impl Deref for DataPoint {
-    type Target = GroupElement;
-    fn deref(&self) -> &Self::Target { &self.value }
-}
-impl Deref for EncryptedPseudonym {
-    type Target = ElGamal;
-    fn deref(&self) -> &Self::Target { &self.value }
-}
-impl Deref for EncryptedDataPoint {
-    type Target = ElGamal;
-    fn deref(&self) -> &Self::Target { &self.value }
-}
-
+pub type Context = String;
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+pub struct PseudonymizationContext(pub Context);
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+pub struct EncryptionContext(pub Context);
+pub type Secret = String;
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+pub struct PseudonymizationSecret(pub Secret);
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+pub struct EncryptionSecret(pub Secret);
 impl Pseudonym {
     pub fn new(value: GroupElement) -> Self {
         Pseudonym { value }
@@ -89,39 +64,6 @@ impl EncryptedDataPoint {
     pub fn new(value: ElGamal) -> Self {
         EncryptedDataPoint { value }
     }
-}
-
-pub type Context = String;
-
-#[derive(Clone, Eq, Hash, PartialEq, Debug)]
-pub struct PseudonymizationContext(pub Context);
-#[derive(Clone, Eq, Hash, PartialEq, Debug)]
-pub struct EncryptionContext(pub Context);
-
-impl Deref for PseudonymizationContext {
-    type Target = Context;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for EncryptionContext {
-    type Target = Context;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-
-pub type Secret = String;
-
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct PseudonymizationSecret(pub Secret);
-#[derive(Clone, Eq, PartialEq, Debug)]
-pub struct EncryptionSecret(pub Secret);
-
-impl Deref for PseudonymizationSecret {
-    type Target = Secret;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl Deref for EncryptionSecret {
-    type Target = Secret;
-    fn deref(&self) -> &Self::Target { &self.0 }
 }
 
 /// Generate a new global key pair
@@ -158,34 +100,21 @@ pub fn encrypt_data<R: RngCore + CryptoRng>(data: &DataPoint, pk: &SessionPublic
 pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoint {
     DataPoint::new(decrypt(&data, &sk))
 }
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct RerandomizeFactor(ScalarNonZero);
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct ReshuffleFactor(ScalarNonZero);
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref)]
 pub struct RekeyFactor(ScalarNonZero);
-
-impl Deref for RerandomizeFactor {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
 impl From<ScalarNonZero> for RerandomizeFactor {
     fn from(x: ScalarNonZero) -> Self {
         RerandomizeFactor(x)
     }
 }
-impl Deref for ReshuffleFactor {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
 impl From<ScalarNonZero> for ReshuffleFactor {
     fn from(x: ScalarNonZero) -> Self {
         ReshuffleFactor(x)
     }
-}
-impl Deref for RekeyFactor {
-    type Target = ScalarNonZero;
-    fn deref(&self) -> &Self::Target { &self.0 }
 }
 impl From<ScalarNonZero> for RekeyFactor {
     fn from(x: ScalarNonZero) -> Self {
@@ -209,27 +138,27 @@ pub fn rerandomize_encrypted<R: RngCore + CryptoRng>(encrypted: &EncryptedDataPo
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct Reshuffle2Factors {
     pub from: ReshuffleFactor,
-    pub to: ReshuffleFactor
+    pub to: ReshuffleFactor,
 }
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct Rekey2Factors {
     pub from: RekeyFactor,
-    pub to: RekeyFactor
+    pub to: RekeyFactor,
 }
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub struct RSK2Factors {
     pub s: Reshuffle2Factors,
-    pub k: Rekey2Factors
+    pub k: Rekey2Factors,
 }
 
 impl Reshuffle2Factors {
     pub fn reverse(self) -> Self {
-        Reshuffle2Factors{from: self.to, to: self.from}
+        Reshuffle2Factors { from: self.to, to: self.from }
     }
 }
 impl Rekey2Factors {
     pub fn reverse(self) -> Self {
-        Rekey2Factors{from: self.to, to: self.from}
+        Rekey2Factors { from: self.to, to: self.from }
     }
 }
 
@@ -239,25 +168,25 @@ impl PseudonymizationInfo {
     pub fn new(from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, from_session: &EncryptionContext, to_session: &EncryptionContext, pseudonymization_secret: &PseudonymizationSecret, encryption_secret: &EncryptionSecret) -> Self {
         let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
         let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
-        let reshuffle_factors = Reshuffle2Factors{from: s_from, to: s_to};
+        let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
         let rekey_factors = RekeyInfo::new(from_session, to_session, encryption_secret);
-        RSK2Factors{s: reshuffle_factors, k: rekey_factors}
+        RSK2Factors { s: reshuffle_factors, k: rekey_factors }
     }
     pub fn new_from_rekey_info(from_user: &PseudonymizationContext, to_user: &PseudonymizationContext, rekey_info: RekeyInfo, pseudonymization_secret: &PseudonymizationSecret) -> Self {
         let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_user);
         let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_user);
-        let reshuffle_factors = Reshuffle2Factors{from: s_from, to: s_to};
-        RSK2Factors{s: reshuffle_factors, k: rekey_info}
+        let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
+        RSK2Factors { s: reshuffle_factors, k: rekey_info }
     }
     pub fn reverse(self) -> Self {
-        RSK2Factors{s: self.s.reverse(), k: self.k.reverse()}
+        RSK2Factors { s: self.s.reverse(), k: self.k.reverse() }
     }
 }
 impl RekeyInfo {
     pub fn new(from_session: &EncryptionContext, to_session: &EncryptionContext, encryption_secret: &EncryptionSecret) -> Self {
         let k_from = make_decryption_factor(&encryption_secret, &from_session);
         let k_to = make_decryption_factor(&encryption_secret, &to_session);
-        Rekey2Factors{from: k_from, to: k_to}
+        Rekey2Factors { from: k_from, to: k_to }
     }
 }
 impl From<PseudonymizationInfo> for RekeyInfo {

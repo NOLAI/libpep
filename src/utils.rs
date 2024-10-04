@@ -1,6 +1,6 @@
-use sha2::{Sha512, Digest};
 use crate::arithmetic::*;
 use crate::high_level::{Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret, RekeyFactor, ReshuffleFactor, Secret};
+use sha2::{Digest, Sha512};
 
 pub fn make_pseudonymisation_factor(secret: &PseudonymizationSecret, context: &PseudonymizationContext) -> ReshuffleFactor {
     ReshuffleFactor::from(make_factor("pseudonym", secret, context))
