@@ -21,6 +21,7 @@ build-binary = ["buildinfy","commandy","commandy_macros"]
 elgamal2 = []
 wasm = ["wasm-bindgen", "wasm-bindgen-test", "getrandom"]
 legacy-pep-repo-compatible = []
+unsafe-reconstruct = []
 
 [dependencies]
 curve25519-dalek = { version = "4", features = ["rand_core"] }

@@ -138,6 +138,17 @@ impl ProvedReshuffle {
             c: *self.pc,
         }
     }
+    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(not(feature = "elgamal2"))]
+    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+        self.reconstruct(original)
+    }
+    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(feature = "elgamal2")]
+    pub fn unverified_reconstruct(&self) -> ElGamal {
+        self.reconstruct()
+    }
+
     #[must_use]
     fn verify(&self, original: &ElGamal, verifiers: &PseudonymizationFactorVerifiers) -> bool {
         #[cfg(not(feature = "elgamal2"))]
@@ -197,6 +208,10 @@ impl ProvedRekey {
             #[cfg(not(feature = "elgamal2"))]
             y: *self.py,
         }
+    }
+    #[cfg(feature = "unsafe-reconstruct")]
+    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+        self.reconstruct(original)
     }
     #[must_use]
     fn verify(&self, original: &ElGamal, verifiers: &RekeyFactorVerifiers) -> bool {
@@ -286,6 +301,10 @@ impl ProvedRSK {
             #[cfg(not(feature = "elgamal2"))]
             y: *self.py,
         }
+    }
+    #[cfg(feature = "unsafe-reconstruct")]
+    pub fn unverified_reconstruct(&self) -> ElGamal {
+        self.reconstruct()
     }
     #[must_use]
     fn verify(&self, original: &ElGamal, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
@@ -552,7 +571,6 @@ impl ProvedRSK {
             None
         }
     }
-    // TODO maybe also create an UNSAFE unverified reconstruct? Maybe with a feature flag?
     #[cfg(not(feature = "elgamal2"))]
     #[must_use]
     fn verify2(&self, original: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> bool {
@@ -586,7 +604,6 @@ impl ProvedRSK {
 pub fn prove_rerandomize<R: RngCore + CryptoRng>(m: &ElGamal, r: &ScalarNonZero, rng: &mut R) -> ProvedRerandomize {
     ProvedRerandomize::new(m, r, rng)
 }
-
 pub fn prove_reshuffle<R: RngCore + CryptoRng>(m: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
     ProvedReshuffle::new(m, s, rng)
 }
@@ -599,12 +616,9 @@ pub fn prove_rsk<R: RngCore + CryptoRng>(m: &ElGamal, s: &ScalarNonZero, k: &Sca
 pub fn prove_reshuffle2<R: RngCore + CryptoRng>(m: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> ProvedReshuffle {
     ProvedReshuffle::new2(m, from, to, rng)
 }
-
 pub fn prove_rekey2<R: RngCore + CryptoRng>(m: &ElGamal, from: &ScalarNonZero, to: &ScalarNonZero, rng: &mut R) -> ProvedRekey {
     ProvedRekey::new2(m, from, to, rng)
 }
-
 pub fn prove_rsk2<R: RngCore + CryptoRng>(m: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero, k_from: &ScalarNonZero, k_to: &ScalarNonZero, rng: &mut R) -> ProvedRSK {
     ProvedRSK::new2(m, s_from, s_to, k_from, k_to, rng)
 }
-
