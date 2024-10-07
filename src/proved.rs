@@ -442,7 +442,7 @@ impl Rekey2FactorsProof {
         #[cfg(not(feature = "elgamal2"))]
         return verify_proof(&verifiers_from.inv, &verifiers_to.val, &self.pk) && verify_proof(&verifiers_from.val, &verifiers_to.inv, &self.pki);
         #[cfg(feature = "elgamal2")]
-        verify_proof(&verifiers_to.inv, &verifiers_from.val, &self.pki)
+        verify_proof(&verifiers_from.val, &verifiers_to.inv, &self.pki)
     }
 }
 
