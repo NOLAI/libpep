@@ -1,7 +1,7 @@
-use derive_more::{Deref, From, Into};
-use wasm_bindgen::prelude::*;
-use rand::rngs::OsRng;
 use crate::arithmetic::*;
+use derive_more::{Deref, From, Into};
+use rand::rngs::OsRng;
+use wasm_bindgen::prelude::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = GroupElement)]
@@ -72,7 +72,7 @@ impl WASMGroupElement {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarNonZero)]
-pub struct WASMScalarNonZero (ScalarNonZero);
+pub struct WASMScalarNonZero(ScalarNonZero);
 
 #[wasm_bindgen(js_class = "ScalarNonZero")]
 impl WASMScalarNonZero {

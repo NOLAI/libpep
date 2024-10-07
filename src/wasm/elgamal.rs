@@ -1,15 +1,14 @@
-use derive_more::{Deref, From, Into};
-use rand_core::{OsRng};
-use wasm_bindgen::prelude::*;
+use crate::elgamal::{decrypt, encrypt, ElGamal};
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
-use crate::elgamal::{decrypt, ElGamal, encrypt};
+use derive_more::{Deref, From, Into};
+use rand_core::OsRng;
+use wasm_bindgen::prelude::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ElGamal)]
-pub struct WASMElGamal (ElGamal);
+pub struct WASMElGamal(ElGamal);
 #[wasm_bindgen(js_class = "ElGamal")]
 impl WASMElGamal {
-
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()

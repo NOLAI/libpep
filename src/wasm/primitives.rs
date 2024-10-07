@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::wasm_bindgen;
+use crate::primitives::*;
 use crate::wasm::arithmetic::WASMScalarNonZero;
 use crate::wasm::elgamal::WASMElGamal;
-use crate::primitives::*;
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(not(feature = "elgamal2"))]
 #[wasm_bindgen(js_name = rerandomize)]

@@ -49,10 +49,10 @@ test('n_pep', async () => {
 
     // Transcrypt pseudonym and rekey data.
     const transcryptedPseudo = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, pcA, pcB, ecA1, ecB1), encPseudo);
+        system.pseudonymize(acc, system.pseudonymizationInfo(pcA, pcB, ecA1, ecB1)), encPseudo);
 
     const transcryptedData = systems.reduce((acc, system) =>
-        system.rekey(acc, ecA1, ecB1), encData);
+        system.rekey(acc, system.rekeyInfo(ecA1, ecB1)), encData);
 
     // Decrypt pseudonym and data.
     const decPseudo = clientB.decryptPseudonym(transcryptedPseudo);
@@ -64,7 +64,7 @@ test('n_pep', async () => {
 
     // Reverse pseudonymization.
     const revPseudonymized = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, pcB, pcA, ecB1, ecA1), transcryptedPseudo);
+        system.pseudonymize(acc, system.pseudonymizationInfo(pcA, pcB, ecA1, ecB1).rev()), transcryptedPseudo);
 
     const revDecPseudo = clientA.decryptPseudonym(revPseudonymized);
     expect(revDecPseudo.value.toHex()).toEqual(pseudonym.value.toHex());
