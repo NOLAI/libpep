@@ -101,11 +101,11 @@ pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoi
     DataPoint::new(decrypt(&data, &sk))
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct RerandomizeFactor(ScalarNonZero);
+pub struct RerandomizeFactor(pub ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct ReshuffleFactor(ScalarNonZero);
+pub struct ReshuffleFactor(pub ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct RekeyFactor(ScalarNonZero);
+pub struct RekeyFactor(pub ScalarNonZero);
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(encrypted: &EncryptedPseudonym, rng: &mut R) -> EncryptedPseudonym {
@@ -156,12 +156,6 @@ impl PseudonymizationInfo {
         let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
         let rekey_factors = RekeyInfo::new(from_enc_context, to_enc_context, encryption_secret);
         RSK2Factors { s: reshuffle_factors, k: rekey_factors }
-    }
-    pub fn new_from_rekey_info(from_pseudo_context: &PseudonymizationContext, to_pseudo_context: &PseudonymizationContext, rekey_info: RekeyInfo, pseudonymization_secret: &PseudonymizationSecret) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
-        let reshuffle_factors = Reshuffle2Factors { from: s_from, to: s_to };
-        RSK2Factors { s: reshuffle_factors, k: rekey_info }
     }
     pub fn reverse(self) -> Self {
         RSK2Factors { s: self.s.reverse(), k: self.k.reverse() }

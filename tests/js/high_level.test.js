@@ -4,7 +4,7 @@ const {
     GroupElement,
     makeGlobalKeys,
     makeSessionKeys,
-    pseudonymize, rekeyData, Pseudonym
+    pseudonymize, rekeyData, Pseudonym, PseudonymizationInfo, RekeyInfo,
 } = require("../../pkg");
 
 test('test high level', async () => {
@@ -36,19 +36,21 @@ test('test high level', async () => {
     expect(pseudo.value.toHex()).toEqual(decPseudo.value.toHex());
     expect(data.value.toHex()).toEqual(decData.value.toHex());
 
-    const rekeyed = rekeyData(encData, encContext1, encContext2, encSecret);
+    const pseudoInfo = new PseudonymizationInfo(pseudoContext1, pseudoContext2, encContext1, encContext2, pseudoSecret, encSecret);
+    const rekeyInfo = RekeyInfo.fromPseudoInfo(pseudoInfo);
+
+    const rekeyed = rekeyData(encData, rekeyInfo);
     const rekeyedDec = decryptData(rekeyed, session2Keys.secret);
 
     expect(data.value.toHex()).toEqual(rekeyedDec.value.toHex());
 
-    const pseudonymized = pseudonymize(encPseudo, pseudoContext1, pseudoContext2, encContext1, encContext2, pseudoSecret, encSecret);
+    const pseudonymized = pseudonymize(encPseudo, pseudoInfo);
     const pseudonymizedDec = decryptPseudonym(pseudonymized, session2Keys.secret);
 
     expect(pseudo.value.toHex()).not.toEqual(pseudonymizedDec.value.toHex());
 
-    const revPseudonymized = pseudonymize(pseudonymized, pseudoContext2, pseudoContext1, encContext2, encContext1, pseudoSecret, encSecret);
+    const revPseudonymized = pseudonymize(pseudonymized, pseudoInfo.rev());
     const revPseudonymizedDec = decryptPseudonym(revPseudonymized, session1Keys.secret);
 
     expect(pseudo.value.toHex()).toEqual(revPseudonymizedDec.value.toHex());
-
 })

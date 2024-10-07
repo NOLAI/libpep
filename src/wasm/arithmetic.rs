@@ -5,7 +5,7 @@ use crate::arithmetic::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = GroupElement)]
-pub struct WASMGroupElement(pub GroupElement);
+pub struct WASMGroupElement(GroupElement);
 
 #[wasm_bindgen(js_class = "GroupElement")]
 impl WASMGroupElement {
@@ -72,7 +72,7 @@ impl WASMGroupElement {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarNonZero)]
-pub struct WASMScalarNonZero (pub ScalarNonZero);
+pub struct WASMScalarNonZero (ScalarNonZero);
 
 #[wasm_bindgen(js_class = "ScalarNonZero")]
 impl WASMScalarNonZero {
@@ -123,7 +123,7 @@ impl WASMScalarNonZero {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarCanBeZero)]
-pub struct WASMScalarCanBeZero(pub ScalarCanBeZero);
+pub struct WASMScalarCanBeZero(ScalarCanBeZero);
 #[wasm_bindgen(js_class = "ScalarCanBeZero")]
 impl WASMScalarCanBeZero {
     #[wasm_bindgen]
