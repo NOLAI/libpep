@@ -324,10 +324,7 @@ impl ProvedRSK {
     #[cfg(not(feature = "elgamal2"))]
     #[must_use]
     fn verify_split(gb: &GroupElement, gc: &GroupElement, gy: &GroupElement, pb: &Proof, pc: &Proof, py: &Proof, rsk_proof: &RSKFactorsProof, reshuffle_verifiers: &PseudonymizationFactorVerifiers, rekey_verifiers: &RekeyFactorVerifiers) -> bool {
-        let check1 = verify_proof(&rsk_proof.pski, gb, pb);
-        let check2 = verify_proof(&reshuffle_verifiers.val, gc, pc);
-        let check3 = verify_proof(&rekey_verifiers.val, gy, py);
-        check1 && check2 && check3
+        verify_proof(&rsk_proof.pski, gb, pb) && verify_proof(&reshuffle_verifiers.val, gc, pc) && verify_proof(&rekey_verifiers.val, gy, py)
     }
     #[cfg(feature = "elgamal2")]
     #[must_use]
@@ -563,7 +560,6 @@ impl ProvedRSK {
             py,
         }
     }
-    #[cfg(not(feature = "elgamal2"))]
     pub fn verified_reconstruct2(&self, original: &ElGamal, rsk2_proof: &RSK2FactorsProof) -> Option<ElGamal> {
         if self.verify2(original, rsk2_proof) {
             Some(self.reconstruct())
