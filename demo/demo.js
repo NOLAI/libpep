@@ -39,7 +39,7 @@ async function wasmInit() {
         if (!sFrom) alert("Invalid user from");
         let sTo = libpep.ScalarNonZero.fromHex(userTo);
         if (!sTo) alert("Invalid user to");
-        let pseudonym = libpep.reshuffleFromTo(ciphertext, sFrom, sTo);
+        let pseudonym = libpep.reshuffle2(ciphertext, sFrom, sTo);
         const output = document.getElementById('new_encrypted_pseudonym');
         output.value = pseudonym.toBase64();
     });
