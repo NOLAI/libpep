@@ -487,7 +487,7 @@ impl ProvedRekey {
     #[cfg(not(feature = "elgamal2"))]
     #[must_use]
     fn verify_split2(gb: &GroupElement, _gc: &GroupElement, gy: &GroupElement, pb: &Proof, py: &Proof, rekey2_proof: &Rekey2FactorsProof) -> bool {
-        verify_proof(&rekey2_proof.pki, gb, pb) && verify_proof(&rekey2_proof.pk, gy, py) // TODO REMOVE ALL VERIFY_SPLITs
+        verify_proof(&rekey2_proof.pki, gb, pb) && verify_proof(&rekey2_proof.pk, gy, py)
     }
     #[cfg(feature = "elgamal2")]
     #[must_use]

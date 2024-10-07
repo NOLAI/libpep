@@ -15,8 +15,13 @@ pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
         y: m.y,
     }
 }
-// TODO: Rerandomization is in fact possible with the ElGamal2 scheme, but then public key `y` should be provided as an argument
-// When using one-directional encryption (towards a global public key), this is actually feasible, but not when using two-directional encryption (towards a session key)
+#[cfg(feature = "elgamal2")]
+pub fn rerandomize(m: &ElGamal, public: &GroupElement, r: &ScalarNonZero) -> ElGamal {
+    ElGamal {
+        b: r * G + m.b,
+        c: r * public + m.c,
+    }
+}
 
 /// Change encrypted representation using [ScalarNonZero] `s` so that it has different contents when decrypted equal to `s*msg`, if the original encrypted message was [GroupElement] `msg`.
 pub fn reshuffle(m: &ElGamal, s: &ScalarNonZero) -> ElGamal {
