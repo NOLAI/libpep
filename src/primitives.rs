@@ -16,10 +16,10 @@ pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
     }
 }
 #[cfg(feature = "elgamal2")]
-pub fn rerandomize(m: &ElGamal, public: &GroupElement, r: &ScalarNonZero) -> ElGamal {
+pub fn rerandomize(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: r * G + m.b,
-        c: r * public + m.c,
+        c: r * public_key + m.c,
     }
 }
 

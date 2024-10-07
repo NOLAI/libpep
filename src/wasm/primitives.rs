@@ -1,5 +1,7 @@
 use crate::primitives::*;
-use crate::wasm::arithmetic::WASMScalarNonZero;
+use crate::wasm::arithmetic::{WASMScalarNonZero};
+#[cfg(feature = "elgamal2")]
+use crate::wasm::arithmetic::{WASMGroupElement};
 use crate::wasm::elgamal::WASMElGamal;
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -7,6 +9,11 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen(js_name = rerandomize)]
 pub fn wasm_rerandomize(v: &WASMElGamal, r: &WASMScalarNonZero) -> WASMElGamal {
     rerandomize(v, r).into()
+}
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomize)]
+pub fn wasm_rerandomize(v: &WASMElGamal, public_key: &WASMGroupElement, r: &WASMScalarNonZero) -> WASMElGamal {
+    rerandomize(v, public_key, r).into()
 }
 #[wasm_bindgen(js_name = rekey)]
 pub fn wasm_rekey(v: &WASMElGamal, k: &WASMScalarNonZero) -> WASMElGamal {

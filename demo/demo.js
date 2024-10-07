@@ -24,7 +24,8 @@ async function wasmInit() {
         let ciphertext = libpep.ElGamal.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
         let r = libpep.ScalarNonZero.random();
-        let rerandomized = libpep.rerandomize(ciphertext, r);
+        // let rerandomized = libpep.rerandomize(ciphertext, r);
+        let rerandomized = libpep.rerandomize(ciphertext, publicKey, r);
         const output = document.getElementById('encrypted_pseudonym');
         output.value = rerandomized.toBase64();
     });
