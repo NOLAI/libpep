@@ -32,6 +32,17 @@ fn encode_decode_group_element() {
 }
 
 #[test]
+fn serialize_deserialize_group_element() {
+    let mut rng = OsRng;
+    let x = GroupElement::random(&mut rng);
+    let serialized = serde_json::to_string(&x);
+    assert!(serialized.is_ok());
+    let deserialized= serde_json::from_str(&serialized.unwrap());
+    assert!(deserialized.is_ok());
+    assert_eq!(x, deserialized.unwrap(), "Deserialized element does not match the original");
+}
+
+#[test]
 fn encode_decode_group_element_32_bytes() {
     let bytes = b"test data dsfdsdfsd wefwefew dfd";
     let element = GroupElement::decode(bytes);

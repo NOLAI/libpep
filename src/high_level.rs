@@ -4,6 +4,7 @@ use crate::primitives::*;
 use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionSecretKey(pub ScalarNonZero);
@@ -21,18 +22,18 @@ pub struct Pseudonym {
 pub struct DataPoint {
     pub value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
 pub type Context = String;
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct PseudonymizationContext(pub Context);
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptionContext(pub Context);
 pub type Secret = String;
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]

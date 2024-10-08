@@ -2,6 +2,7 @@ use crate::arithmetic::*;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "elgamal2")]
 const ELGAMAL_LENGTH: usize = 64;
@@ -9,7 +10,7 @@ const ELGAMAL_LENGTH: usize = 64;
 const ELGAMAL_LENGTH: usize = 96;
 
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
     pub b: GroupElement,
     pub c: GroupElement,
