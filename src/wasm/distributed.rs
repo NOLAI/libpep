@@ -11,12 +11,6 @@ use wasm_bindgen::prelude::*;
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = BlindingFactor)]
 pub struct WASMBlindingFactor(pub WASMScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = BlindedGlobalSecretKey)]
-pub struct WASMBlindedGlobalSecretKey(pub WASMScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = SessionKeyShare)]
-pub struct WASMSessionKeyShare(pub WASMScalarNonZero);
 
 #[wasm_bindgen(js_class = "BlindingFactor")]
 impl WASMBlindingFactor {
@@ -36,6 +30,30 @@ impl WASMBlindingFactor {
         WASMBlindingFactor(self.0.clone())
     }
 }
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[wasm_bindgen(js_name = BlindedGlobalSecretKey)]
+pub struct WASMBlindedGlobalSecretKey(pub WASMScalarNonZero);
+
+#[wasm_bindgen(js_class = "BlindedGlobalSecretKey")]
+impl WASMBlindedGlobalSecretKey {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {
+        WASMBlindedGlobalSecretKey(x)
+    }
+}
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[wasm_bindgen(js_name = SessionKeyShare)]
+pub struct WASMSessionKeyShare(pub WASMScalarNonZero);
+
+#[wasm_bindgen(js_class = "SessionKeyShare")]
+impl WASMSessionKeyShare {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {
+        WASMSessionKeyShare(x)
+    }
+}
+
 
 #[wasm_bindgen(js_name = makeBlindedGlobalSecretKey)]
 pub fn wasm_make_blinded_global_secret_key(global_secret_key: &WASMGlobalSecretKey, blinding_factors: Vec<WASMBlindingFactor>) -> WASMBlindedGlobalSecretKey {
