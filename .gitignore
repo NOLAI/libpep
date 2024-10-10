@@ -148,3 +148,4 @@ dist
 
 # WASM build
 .pkg-web/
+.aider*

@@ -33,15 +33,15 @@ commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
 hex = "0.4.3"
 derive_more = { version = "1.0.0", features = ["deref", "from", "into"] }
-
-# wasm
-wasm-bindgen = { version = "0.2", optional = true }
-wasm-bindgen-test = { version = "0.3", optional = true }
-getrandom = { version = "^0.2", features = ["js"], optional = true }
 serde = { version = "1.0.209", features = ["derive"] }
 base64 = "0.22.1"
 
 [dev-dependencies]
+# wasm
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-test = { version = "0.3", optional = true }
+getrandom = { version = "^0.2", features = ["js"], optional = true }
+
 # testing
 time = "0.3.36"
 log = "0.4.22"

@@ -1,4 +1,4 @@
-name: Rust
+name: Test
 
 on:
   push:
@@ -44,8 +44,8 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Install wasm-pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - name: Install deps
+      run: cargo install
 
     - name: Build WASM
       run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
