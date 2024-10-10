@@ -44,9 +44,6 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Install deps
-      run: cargo install
-
     - name: Build WASM
       run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
