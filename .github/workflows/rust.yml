@@ -1,0 +1,29 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        features: 
+          - ""
+          - "elgamal2"
+          - "legacy-pep-repo-compatible"
+          - "elgamal2,legacy-pep-repo-compatible"
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Run tests
+      run: cargo test --features "${{ matrix.features }}"
