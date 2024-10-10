@@ -7,20 +7,20 @@ We represent this encryption function as `EG(r, M, Y)`.
 
 The library supports three homomorphic operations on ciphertext `in` (= `EG(r, M, Y)`, encrypting message `M` for public key `Y` with random `r`):
 - `out = rekey(in, k)`: if `in` can be decrypted by secret key `y`, then `out` can be decrypted by secret key `k*y`.
-   Decryption will both result in message `M`. Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r, M, k*Y)`.
+   Decryption will both result in message `M`. Specifically, `in = EG(r, M, Y)` is transformed to `out = EG(r, M, k*Y)`.
 - `out = reshuffle(in, s)`: modifies a ciphertext `in` (an encrypted form of `M`), so that after decryption of `out` the decrypted message will be equal to `s*M`.
-  Spec: `in = EG(r, M, Y)` is transformed to `out = EG(r, n*M, Y)`.
+  Specifically, `in = EG(r, M, Y)` is transformed to `out = EG(r, n*M, Y)`.
 - `out = rerandomize(in, r)`: scrambles a ciphertext.
   Both `in` and `out` can be decrypted by the same secret key `y`, both resulting in the same decrypted message `M`.
   However, the binary form of `in` and `out` differs. Spec: `in = EG(r', M, Y)` is transformed to `out = EG(r+r', M, Y)`;
 
 The `reshuffle(in, n)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, k, n)`.
 
-Additionally, `reshuffle2(in, n_from, n_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk_2(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
+Additionally, `reshuffle2(in, n_from, n_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
 
-There are also zero knowledge proof version of these operations.
+There are also zero-knowledge-proved version of these operations.
 These are needed so that a party can prove to another party that it has consistently applied the operation on the input data with a specific secret factor, without revealing that factor (but only a public 'verifier' value related to that secret factor).
-When distributing trust over multiple central servers, these zero knowledge proofs are essential, so that a malfunctioning server can not violate security guarantees of the system.
+When distributing trust over multiple central servers, these zero-knowledge proofs (ZKPs) are essential, so that a malfunctioning server can not violate security guarantees of the system.
 
 The key idea behind this form of cryptography is that the pseudonymization and rekeying operations are applied on *encrypted* data.
 This means that during initial encryption, the ultimate receiver(s) do(es) not yet need to be known.
