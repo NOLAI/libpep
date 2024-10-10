@@ -1,14 +1,14 @@
-use std::fmt::Formatter;
-use base64::Engine;
 use base64::engine::general_purpose;
+use base64::Engine;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
+use std::fmt::Formatter;
 
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
@@ -34,21 +34,28 @@ impl GroupElement {
         if v.len() != 32 {
             None
         } else {
-            CompressedRistretto::from_slice(v).unwrap().decompress().map(Self)
+            CompressedRistretto::from_slice(v)
+                .unwrap()
+                .decompress()
+                .map(Self)
         }
     }
     pub fn decode_from_hash(v: &[u8; 64]) -> Self {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
     pub fn decode_from_hex(s: &str) -> Option<Self> {
-        if s.len() != 64 { // A valid hexadecimal string should be 64 characters long for 32 bytes
+        if s.len() != 64 {
+            // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
         }
         let bytes = match hex::decode(s) {
             Ok(v) => v,
             Err(_) => return None,
         };
-        CompressedRistretto::from_slice(&bytes).unwrap().decompress().map(Self)
+        CompressedRistretto::from_slice(&bytes)
+            .unwrap()
+            .decompress()
+            .map(Self)
     }
     pub fn encode(&self) -> [u8; 32] {
         self.0.compress().0
@@ -60,7 +67,10 @@ impl GroupElement {
         general_purpose::URL_SAFE.encode(&self.encode())
     }
     pub fn decode_from_base64(s: &str) -> Option<Self> {
-        general_purpose::URL_SAFE.decode(s).ok().and_then(|v| Self::decode_from_slice(&v))
+        general_purpose::URL_SAFE
+            .decode(s)
+            .ok()
+            .and_then(|v| Self::decode_from_slice(&v))
     }
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
@@ -68,8 +78,6 @@ impl GroupElement {
     pub fn raw(&self) -> &RistrettoPoint {
         &self.0
     }
-
-
 }
 
 impl Serialize for GroupElement {
@@ -84,25 +92,24 @@ impl Serialize for GroupElement {
 impl<'de> Deserialize<'de> for GroupElement {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         struct GroupElementVisitor;
         impl<'de> Visitor<'de> for GroupElementVisitor {
             type Value = GroupElement;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                formatter.write_str("a hex encoded string representing a GroupElement")            
+                formatter.write_str("a hex encoded string representing a GroupElement")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
                 E: Error,
             {
-                GroupElement::decode_from_hex(&v).ok_or(E::custom(
-                    format!("invalid hex encoded string: {}", v)
-                ))
+                GroupElement::decode_from_hex(&v)
+                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
-        
+
         deserializer.deserialize_str(GroupElementVisitor)
     }
 }
@@ -168,7 +175,8 @@ impl ScalarCanBeZero {
         }
     }
     pub fn decode_from_hex(s: &str) -> Option<Self> {
-        if s.len() != 64 { // A valid hexadecimal string should be 64 characters long for 32 bytes
+        if s.len() != 64 {
+            // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
         }
         let bytes = match hex::decode(s) {

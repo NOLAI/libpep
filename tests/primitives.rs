@@ -176,7 +176,6 @@ fn pep_rsk_from_to() {
     assert_eq!(s_from.invert() * s_to * m, decrypted);
 }
 
-
 #[test]
 fn pep_assumptions() {
     let mut rng = OsRng;

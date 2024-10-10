@@ -22,8 +22,7 @@ impl WASMGroupElement {
         GroupElement::random(&mut OsRng).into()
     }
     #[wasm_bindgen(js_name = fromHash)]
-    pub fn from_hash
-    (v: Vec<u8>) -> WASMGroupElement {
+    pub fn from_hash(v: Vec<u8>) -> WASMGroupElement {
         let mut arr = [0u8; 64];
         arr.copy_from_slice(&v);
         GroupElement::decode_from_hash(&arr).into()
@@ -51,9 +50,13 @@ impl WASMGroupElement {
         GroupElement::identity().into()
     }
     #[wasm_bindgen(js_name = G)]
-    pub fn g() -> WASMGroupElement { G.into() }
+    pub fn g() -> WASMGroupElement {
+        G.into()
+    }
     #[wasm_bindgen(js_name = generator)]
-    pub fn generator() -> WASMGroupElement { G.into() }
+    pub fn generator() -> WASMGroupElement {
+        G.into()
+    }
 
     #[wasm_bindgen]
     pub fn add(&self, other: &WASMGroupElement) -> WASMGroupElement {
@@ -68,7 +71,6 @@ impl WASMGroupElement {
         (&other.0 * self.0).into() // Only possible if the scalar is non-zero
     }
 }
-
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarNonZero)]

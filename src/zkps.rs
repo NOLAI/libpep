@@ -18,7 +18,11 @@ pub struct Proof {
 }
 
 // returns <A=a*G, Proof with a value N = a*M>
-pub fn create_proof<R: RngCore + CryptoRng>(a: &ScalarNonZero, gm: &GroupElement, rng: &mut R) -> (GroupElement, Proof) {
+pub fn create_proof<R: RngCore + CryptoRng>(
+    a: &ScalarNonZero,
+    gm: &GroupElement,
+    rng: &mut R,
+) -> (GroupElement, Proof) {
     let r = ScalarNonZero::random(rng);
 
     let ga = a * G;
@@ -36,11 +40,26 @@ pub fn create_proof<R: RngCore + CryptoRng>(a: &ScalarNonZero, gm: &GroupElement
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
-    (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
+    (
+        ga,
+        Proof {
+            n: gn,
+            c1: gc1,
+            c2: gc2,
+            s,
+        },
+    )
 }
 
 #[must_use]
-pub fn verify_proof_split(ga: &GroupElement, gm: &GroupElement, gn: &GroupElement, gc1: &GroupElement, gc2: &GroupElement, s: &ScalarCanBeZero) -> bool {
+pub fn verify_proof_split(
+    ga: &GroupElement,
+    gm: &GroupElement,
+    gn: &GroupElement,
+    gc1: &GroupElement,
+    gc2: &GroupElement,
+    s: &ScalarCanBeZero,
+) -> bool {
     let mut hasher = Sha512::default();
     hasher.update(ga.0.compress().as_bytes());
     hasher.update(gm.0.compress().as_bytes());
@@ -66,7 +85,11 @@ pub fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
 
 type Signature = Proof;
 
-pub fn sign<R: RngCore + CryptoRng>(message: &GroupElement, secret_key: &ScalarNonZero, rng: &mut R) -> Signature {
+pub fn sign<R: RngCore + CryptoRng>(
+    message: &GroupElement,
+    secret_key: &ScalarNonZero,
+    rng: &mut R,
+) -> Signature {
     create_proof(secret_key, message, rng).1
 }
 #[must_use]
@@ -99,10 +122,17 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);
     let s = ScalarCanBeZero::from(a * e) + ScalarCanBeZero::from(r);
-    (ga, Proof { n: gn, c1: gc1, c2: gc2, s })
+    (
+        ga,
+        Proof {
+            n: gn,
+            c1: gc1,
+            c2: gc2,
+            s,
+        },
+    )
 }
 
 pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Signature {
     create_proof_unlinkable(secret_key, message).1
 }
-

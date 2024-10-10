@@ -61,9 +61,14 @@ pub fn rekey2(m: &ElGamal, k_from: &ScalarNonZero, k_to: &ScalarNonZero) -> ElGa
     rekey(m, &k)
 }
 
-pub fn rsk2(m: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero, k_from: &ScalarNonZero, k_to: &ScalarNonZero) -> ElGamal {
+pub fn rsk2(
+    m: &ElGamal,
+    s_from: &ScalarNonZero,
+    s_to: &ScalarNonZero,
+    k_from: &ScalarNonZero,
+    k_to: &ScalarNonZero,
+) -> ElGamal {
     let s = s_from.invert() * s_to;
     let k = k_from.invert() * k_to;
     rsk(m, &s, &k)
 }
-

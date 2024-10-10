@@ -1,15 +1,24 @@
 use crate::arithmetic::*;
-use crate::high_level::{Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret, RekeyFactor, ReshuffleFactor, Secret};
+use crate::high_level::{
+    Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret,
+    RekeyFactor, ReshuffleFactor, Secret,
+};
 #[cfg(feature = "legacy-pep-repo-compatible")]
 use sha2::Sha256;
 use sha2::{Digest, Sha512};
 
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-pub fn make_pseudonymisation_factor(secret: &PseudonymizationSecret, context: &PseudonymizationContext) -> ReshuffleFactor {
+pub fn make_pseudonymisation_factor(
+    secret: &PseudonymizationSecret,
+    context: &PseudonymizationContext,
+) -> ReshuffleFactor {
     ReshuffleFactor::from(make_factor("pseudonym", secret, context))
 }
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-pub fn make_decryption_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
+pub fn make_decryption_factor(
+    secret: &EncryptionSecret,
+    context: &EncryptionContext,
+) -> RekeyFactor {
     RekeyFactor::from(make_factor("decrypt", secret, context))
 }
 
@@ -41,12 +50,28 @@ fn get_audience_type(context: &Context) -> u32 {
     }
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
-pub fn make_pseudonymisation_factor(secret: &PseudonymizationSecret, context: &PseudonymizationContext) -> ReshuffleFactor {
-    ReshuffleFactor::from(make_factor(secret, 0x01, get_audience_type(context), context))
+pub fn make_pseudonymisation_factor(
+    secret: &PseudonymizationSecret,
+    context: &PseudonymizationContext,
+) -> ReshuffleFactor {
+    ReshuffleFactor::from(make_factor(
+        secret,
+        0x01,
+        get_audience_type(context),
+        context,
+    ))
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
-pub fn make_decryption_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
-    RekeyFactor::from(make_factor(secret, 0x02, get_audience_type(context), context))
+pub fn make_decryption_factor(
+    secret: &EncryptionSecret,
+    context: &EncryptionContext,
+) -> RekeyFactor {
+    RekeyFactor::from(make_factor(
+        secret,
+        0x02,
+        get_audience_type(context),
+        context,
+    ))
 }
 
 #[cfg(feature = "legacy-pep-repo-compatible")]

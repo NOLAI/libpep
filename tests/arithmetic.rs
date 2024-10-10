@@ -1,5 +1,5 @@
-use rand_core::OsRng;
 use libpep::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use rand_core::OsRng;
 
 #[test]
 fn encode_decode_scalar_non_zero() {
@@ -37,9 +37,13 @@ fn serialize_deserialize_group_element() {
     let x = GroupElement::random(&mut rng);
     let serialized = serde_json::to_string(&x);
     assert!(serialized.is_ok());
-    let deserialized= serde_json::from_str(&serialized.unwrap());
+    let deserialized = serde_json::from_str(&serialized.unwrap());
     assert!(deserialized.is_ok());
-    assert_eq!(x, deserialized.unwrap(), "Deserialized element does not match the original");
+    assert_eq!(
+        x,
+        deserialized.unwrap(),
+        "Deserialized element does not match the original"
+    );
 }
 
 #[test]

@@ -1,6 +1,6 @@
+use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
+use libpep::elgamal::{decrypt, encrypt, ElGamal};
 use rand_core::OsRng;
-use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
-use libpep::elgamal::{decrypt, ElGamal, encrypt};
 
 #[test]
 fn encryption_decryption() {
@@ -29,7 +29,8 @@ fn decode_encode() {
     #[cfg(not(feature = "elgamal2"))]
     let original = "NESP1FCKkF7nWbqM9cvuUEUPgHaF8qnLeW9RLe_5FCMs-daoTGSyJKa5HRKxk0jFMHVuZ77pJMacNLmtRnlkZEpkKEPWnLzh_s8ievM3gTqeBYm20E23K6hExSxMOw8D";
     #[cfg(feature = "elgamal2")]
-    let original = "xGOnBZzbSrvKUQYBtww0vi8jZWzN9qkrm5OnI2pnEFJu4DkZP2jLLGT-yWa_qnkC_ScCwQwcQtZk_z_z7s_gVQ==";
+    let original =
+        "xGOnBZzbSrvKUQYBtww0vi8jZWzN9qkrm5OnI2pnEFJu4DkZP2jLLGT-yWa_qnkC_ScCwQwcQtZk_z_z7s_gVQ==";
 
     let decoded = ElGamal::decode_from_base64(original).unwrap();
     let encoded = decoded.encode_to_base64();

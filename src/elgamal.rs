@@ -9,7 +9,6 @@ const ELGAMAL_LENGTH: usize = 64;
 #[cfg(not(feature = "elgamal2"))]
 const ELGAMAL_LENGTH: usize = 96;
 
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
     pub b: GroupElement,
@@ -50,7 +49,10 @@ impl ElGamal {
         general_purpose::URL_SAFE.encode(&self.encode())
     }
     pub fn decode_from_base64(s: &str) -> Option<Self> {
-        general_purpose::URL_SAFE.decode(s).ok().and_then(|v| Self::decode_from_slice(&v))
+        general_purpose::URL_SAFE
+            .decode(s)
+            .ok()
+            .and_then(|v| Self::decode_from_slice(&v))
     }
 
     pub fn clone(&self) -> Self {
@@ -64,7 +66,11 @@ impl ElGamal {
 }
 
 /// Encrypt message [GroupElement] `msg` using public key [GroupElement] `public_key` to a ElGamal tuple.
-pub fn encrypt<R: RngCore + CryptoRng>(msg: &GroupElement, public_key: &GroupElement, rng: &mut R) -> ElGamal {
+pub fn encrypt<R: RngCore + CryptoRng>(
+    msg: &GroupElement,
+    public_key: &GroupElement,
+    rng: &mut R,
+) -> ElGamal {
     let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
     debug_assert!(public_key != &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text send over the line
     ElGamal {

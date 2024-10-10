@@ -49,7 +49,8 @@ where
     }
 
     fn store(&mut self, system_id: PEPSystemID, context: Self::Key, verifiers: Self::Verifiers) {
-        self.cache.insert((system_id.clone(), context.clone()), verifiers.clone());
+        self.cache
+            .insert((system_id.clone(), context.clone()), verifiers.clone());
     }
 
     fn retrieve(&self, system_id: &PEPSystemID, context: &Self::Key) -> Option<&Self::Verifiers> {
@@ -57,7 +58,8 @@ where
     }
 
     fn has(&self, system_id: &PEPSystemID, context: &Self::Key) -> bool {
-        self.cache.contains_key(&(system_id.clone(), context.clone()))
+        self.cache
+            .contains_key(&(system_id.clone(), context.clone()))
     }
 
     fn contains(&self, verifiers: &Self::Verifiers) -> bool {
@@ -65,6 +67,11 @@ where
     }
 
     fn dump(&self) -> Vec<(PEPSystemID, Self::Key, Self::Verifiers)> {
-        self.cache.iter().map(|((system_id, context), verifiers)| (system_id.clone(), context.clone(), verifiers.clone())).collect()
+        self.cache
+            .iter()
+            .map(|((system_id, context), verifiers)| {
+                (system_id.clone(), context.clone(), verifiers.clone())
+            })
+            .collect()
     }
 }

@@ -1,6 +1,6 @@
-use rand_core::OsRng;
-use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
+use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
 use libpep::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
+use rand_core::OsRng;
 
 #[test]
 fn elgamal_signature() {
@@ -35,7 +35,6 @@ fn pep_schnorr_basic_offline() {
     // verifier
     assert!(verify_proof(&ga, &gm, &p));
 }
-
 
 #[test]
 fn elgamal_signature_unlinkable() {

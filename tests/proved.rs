@@ -1,8 +1,8 @@
-use rand_core::OsRng;
-use libpep::arithmetic::{G, GroupElement, ScalarNonZero};
+use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
 use libpep::elgamal::{decrypt, encrypt};
 use libpep::primitives::*;
 use libpep::proved::*;
+use rand_core::OsRng;
 
 #[test]
 fn pep_factor_verifiers_proof() {
@@ -12,7 +12,6 @@ fn pep_factor_verifiers_proof() {
     let (verifiers, proof) = FactorVerifiers::new(&x, &mut rng);
     assert!(&proof.verify(&verifiers))
 }
-
 
 #[cfg(not(feature = "elgamal2"))]
 #[test]
@@ -120,7 +119,6 @@ fn pep_proved_rsk() {
     assert_eq!(&rsk(&msg, &s, &k), checked.as_ref().unwrap());
 }
 
-
 #[test]
 fn pep_proved_reshuffle2() {
     let mut rng = OsRng;
@@ -154,10 +152,7 @@ fn pep_proved_reshuffle2() {
         s_from.invert() * s_to * gm,
         decrypt(checked.as_ref().unwrap(), &y)
     );
-    assert_eq!(
-        &reshuffle2(&msg, &s_from, &s_to),
-        checked.as_ref().unwrap()
-    );
+    assert_eq!(&reshuffle2(&msg, &s_from, &s_to), checked.as_ref().unwrap());
 }
 #[test]
 fn pep_proved_rekey2() {
@@ -214,7 +209,6 @@ fn pep_proved_rsk2() {
     assert!(proved_s_to.verify(&verifiers_s_to));
     assert!(proved_k_from.verify(&verifiers_k_from));
     assert!(proved_k_to.verify(&verifiers_k_to));
-
 
     let reshuffle_proof = Reshuffle2FactorsProof::new(&s_from, &s_to, &mut rng);
     let rekey_proof = Rekey2FactorsProof::new(&k_from, &k_to, &mut rng);
