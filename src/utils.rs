@@ -37,7 +37,9 @@ fn make_factor(typ: &str, secret: &Secret, context: &Context) -> ScalarNonZero {
 
 #[cfg(feature = "legacy-pep-repo-compatible")]
 fn get_audience_type(context: &Context) -> u32 {
-    if context.starts_with("SF") {
+    if context.starts_with("USER") {
+        0x02
+    } else if context.starts_with("SF") {
         0x02
     } else if context.starts_with("AM") {
         0x03
@@ -46,7 +48,7 @@ fn get_audience_type(context: &Context) -> u32 {
     } else if context.starts_with("RS") {
         0x05
     } else {
-        0x01
+        0x00
     }
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
@@ -105,3 +107,12 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, context: &Context)
 //       PackUint32BE(audienceType) +
 //       payload)));
 // }
+
+// enum FacilityType {
+//   FACILITY_TYPE_UNKNOWN = 0,
+//   FACILITY_TYPE_USER = 1,
+//   FACILITY_TYPE_STORAGE_FACILITY = 2,
+//   FACILITY_TYPE_ACCESS_MANAGER = 3,
+//   FACILITY_TYPE_TRANSCRYPTOR = 4,
+//   FACILITY_TYPE_REGISTRATION_SERVER = 5
+// };
