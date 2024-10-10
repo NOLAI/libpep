@@ -18,7 +18,7 @@ jobs:
           - "elgamal2,legacy-pep-repo-compatible"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -37,7 +37,7 @@ jobs:
         features: [ "", "elgamal2" ]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Install Rust
       uses: actions-rs/toolchain@v1
@@ -51,7 +51,7 @@ jobs:
       run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
 
     - name: Upload WASM artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: wasm-${{ matrix.target }}-${{ matrix.features }}
         path: pkg/
