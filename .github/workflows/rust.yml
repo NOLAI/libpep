@@ -27,3 +27,31 @@ jobs:
 
     - name: Run tests
       run: cargo test --features "${{ matrix.features }}"
+
+  build-wasm:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        target: [ "wasm32-unknown-unknown", "wasm32-unknown-unknown" ]
+        features: [ "", "elgamal2" ]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Install wasm-pack
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+    - name: Build WASM
+      run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
+
+    - name: Upload WASM artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: wasm-${{ matrix.target }}-${{ matrix.features }}
+        path: pkg/
