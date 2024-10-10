@@ -19,7 +19,7 @@ crate-type = ["cdylib", "rlib"]
 default = ["build-binary"]
 build-binary = ["buildinfy","commandy","commandy_macros"]
 elgamal2 = []
-wasm = ["wasm-bindgen", "wasm-bindgen-test", "getrandom"]
+wasm = []
 legacy-pep-repo-compatible = []
 unsafe-reconstruct = []
 
