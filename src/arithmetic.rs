@@ -1,11 +1,14 @@
-use base64::engine::general_purpose;
+use std::fmt::Formatter;
 use base64::Engine;
+use base64::engine::general_purpose;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::Identity;
 
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{Error, Visitor};
 
 /// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
@@ -64,6 +67,43 @@ impl GroupElement {
     }
     pub fn raw(&self) -> &RistrettoPoint {
         &self.0
+    }
+
+
+}
+
+impl Serialize for GroupElement {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.encode_to_hex().as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for GroupElement {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        struct GroupElementVisitor;
+        impl<'de> Visitor<'de> for GroupElementVisitor {
+            type Value = GroupElement;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("a hex encoded string representing a GroupElement")            
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                GroupElement::decode_from_hex(&v).ok_or(E::custom(
+                    format!("invalid hex encoded string: {}", v)
+                ))
+            }
+        }
+        
+        deserializer.deserialize_str(GroupElementVisitor)
     }
 }
 
