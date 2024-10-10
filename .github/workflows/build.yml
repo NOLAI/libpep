@@ -15,15 +15,15 @@ jobs:
     strategy:
       matrix:
         target: [ "web", "nodejs" ]
-        features: [ "wasm", "wasm,elgamal2" ]
+        features: [ "", "elgamal2" ]
 
     name: wasm-pack build
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo install wasm-pack
-      - run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      - run: wasm-pack build --target ${{ matrix.target }} --features "wasm,${{ matrix.features }}"
       - uses: actions/upload-artifact@v4
         with:
-          name: wasm-${{ matrix.target }}-${{ matrix.features }}
+          name: libpep-wasm-${{ matrix.target }}-${{ matrix.features }}
           path: pkg/
