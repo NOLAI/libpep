@@ -12,15 +12,15 @@
         <div class="col-12">
             <h1><code>libpep</code> (wasm) demo</h1>
             <div class="mb-3">
-                <label for="user_from" class="form-label">User (from)</label>
-                <select class="form-select font-monospace" id="user_from" name="user_from">
-                    <option value="0000000000000000000000000000000000000000000000000000000000000001" selected>Alice</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000002">Bob</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Charlie</option>
+                <label for="context_from" class="form-label">Context (from)</label>
+                <select class="form-select font-monospace" id="context_from" name="context_from">
+                    <option value="0000000000000000000000000000000000000000000000000000000000000001" selected>Context A</option>
+                    <option value="0000000000000000000000000000000000000000000000000000000000000002">Context B</option>
+                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Context C</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="pseudonym" class="form-label">Pseudonym</label>
+                <label for="pseudonym" class="form-label">Pseudonym (data subject)</label>
                 <input type="text" class="form-control font-monospace" id="pseudonym" name="pseudonym" >
             </div>
             <button id="encrypt" type="submit" class="btn btn-primary mb-3">Encrypt</button>
@@ -30,11 +30,11 @@
             </div>
             <button id="rerandomize" type="submit" class="btn btn-warning mb-3">Rerandomize</button>
             <div class="mb-3">
-                <label for="user_to" class="form-label">User (to)</label>
-                <select class="form-select font-monospace" id="user_to" name="user_to">
-                    <option value="0000000000000000000000000000000000000000000000000000000000000001">Alice</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000002" selected>Bob</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Charlie</option>
+                <label for="context_to" class="form-label">Context (to)</label>
+                <select class="form-select font-monospace" id="context_to" name="context_to">
+                    <option value="0000000000000000000000000000000000000000000000000000000000000001" selected>Context A</option>
+                    <option value="0000000000000000000000000000000000000000000000000000000000000002" selected>Context B</option>
+                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Context C</option>
                 </select>
             </div>
             <button id="pseudonymize" type="submit" class="btn btn-primary mb-3">Pseudonymize</button>
@@ -44,7 +44,7 @@
             </div>
             <button id="decrypt" type="submit" class="btn btn-primary mb-3">Decrypt</button>
             <div class="mb-3">
-                <label for="pseudonym" class="form-label">New pseudonym</label>
+                <label for="pseudonym" class="form-label">New pseudonym (data subject)</label>
                 <input type="text" class="form-control font-monospace" id="new_pseudonym" name="new_pseudonym" disabled>
             </div>
             <button id="reverse" type="submit" class="btn btn-info mb-3">Reverse</button>

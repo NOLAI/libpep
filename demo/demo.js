@@ -24,8 +24,8 @@ async function wasmInit() {
         let ciphertext = libpep.ElGamal.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
         let r = libpep.ScalarNonZero.random();
-        // let rerandomized = libpep.rerandomize(ciphertext, r);
-        let rerandomized = libpep.rerandomize(ciphertext, publicKey, r);
+        let rerandomized = libpep.rerandomize(ciphertext, r);
+        // let rerandomized = libpep.rerandomize(ciphertext, publicKey, r);
         const output = document.getElementById('encrypted_pseudonym');
         output.value = rerandomized.toBase64();
     });
@@ -34,8 +34,8 @@ async function wasmInit() {
         const input = document.getElementById('encrypted_pseudonym').value;
         let ciphertext = libpep.ElGamal.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
-        const userFrom = document.getElementById('user_from').value;
-        const userTo = document.getElementById('user_to').value;
+        const userFrom = document.getElementById('context_from').value;
+        const userTo = document.getElementById('context_to').value;
         let sFrom = libpep.ScalarNonZero.fromHex(userFrom);
         if (!sFrom) alert("Invalid user from");
         let sTo = libpep.ScalarNonZero.fromHex(userTo);
@@ -56,9 +56,9 @@ async function wasmInit() {
 
     document.getElementById('reverse').addEventListener('click', function() {
         document.getElementById('pseudonym').value = document.getElementById('new_pseudonym').value;
-        const userTo = document.getElementById('user_to').value;
-        document.getElementById('user_to').value = document.getElementById('user_from').value;
-        document.getElementById('user_from').value = userTo;
+        const userTo = document.getElementById('context_to').value;
+        document.getElementById('context_to').value = document.getElementById('context_from').value;
+        document.getElementById('context_from').value = userTo;
         document.getElementById('encrypt').click();
         document.getElementById('pseudonymize').click();
         document.getElementById('decrypt').click();
