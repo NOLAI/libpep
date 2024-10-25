@@ -31,6 +31,13 @@ impl FactorVerifiers {
             FactorVerifiersProof(pai, r, gra),
         )
     }
+
+    pub fn reversed(&self) -> Self {
+        Self {
+            val: self.inv,
+            inv: self.val,
+        }
+    }
 }
 
 impl FactorVerifiersProof {

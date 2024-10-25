@@ -8,6 +8,7 @@ use crate::proved::{
 use crate::verifiers_cache::VerifiersCache;
 use derive_more::Deref;
 use rand_core::{CryptoRng, RngCore};
+use crate::arithmetic::{GroupElement, G};
 
 pub struct PEPVerifier {
     pseudo_verifiers_cache: Box<
@@ -57,7 +58,12 @@ impl PEPVerifier {
         verifiers: &PseudonymizationContextVerifiers,
         proof: &PseudonymizationFactorVerifiersProof,
     ) {
-        // TODO: check if the verifiers are not weak / invalid verifiers / edge cases
+
+        if verifiers.val == GroupElement::identity() || verifiers.val == G {
+            panic!("Weak verifiers are not allowed");
+        }
+
+        // TODO: check if the no other system uses the same or reversed verifiers
 
         if proof.verify(&verifiers) {
             self.pseudo_verifiers_cache
@@ -73,7 +79,12 @@ impl PEPVerifier {
         verifiers: &EncryptionContextVerifiers,
         proof: &RekeyFactorVerifiersProof,
     ) {
-        // TODO: check if the verifiers are not weak / invalid verifiers / edge cases
+
+        if verifiers.val == GroupElement::identity() || verifiers.val == G {
+            panic!("Weak verifiers are not allowed");
+        }
+
+        // TODO: check if the no other system uses the same or reversed verifiers
 
         if proof.verify(&verifiers) {
             self.session_verifiers_cache
