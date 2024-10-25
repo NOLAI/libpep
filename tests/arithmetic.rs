@@ -115,5 +115,5 @@ fn test_lizard2() {
 
     let element2 = s * element.unwrap();
     let encoded2 = element2.encode_lizard();
-    assert!(encoded2.is_some());
+    assert!(encoded2.is_none()); // This should fail because it is not a valid lizard encoding anymore
 }
