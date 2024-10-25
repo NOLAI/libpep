@@ -38,10 +38,10 @@ impl ElGamal {
 
     pub fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
         let mut retval = [0u8; ELGAMAL_LENGTH];
-        retval[0..32].clone_from_slice(self.b.0.compress().as_bytes());
-        retval[32..64].clone_from_slice(self.c.0.compress().as_bytes());
+        retval[0..32].clone_from_slice(self.b.encode().as_ref());
+        retval[32..64].clone_from_slice(self.c.encode().as_ref());
         #[cfg(not(feature = "elgamal2"))]
-        retval[64..96].clone_from_slice(self.y.0.compress().as_bytes());
+        retval[64..96].clone_from_slice(self.y.encode().as_ref());
         retval
     }
 

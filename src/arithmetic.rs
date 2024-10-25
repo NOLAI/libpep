@@ -9,26 +9,30 @@ use std::fmt::Formatter;
 use rand_core::{CryptoRng, RngCore};
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use sha2::Sha256;
 
 /// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
 
-/// Returned if a zero scalar is inverted (which is similar to why a division by zero is not
-/// possible).
+/// Returned if a zero scalar is inverted (which is similar to why a division by zero is not possible).
 #[derive(Debug)]
 pub struct ZeroArgumentError;
 
-/// Element on a group. Can not be converted to a scalar. Supports addition and substraction. Multiplication by a scalar is supported.
+/// Element on a group. Can not be converted to a scalar. Supports addition and subtraction. Multiplication by a scalar is supported.
+/// We use ristretto points to discard unsafe points and safely use the group operations in higher level protocols without any other cryptographic assumptions.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct GroupElement(pub(crate) RistrettoPoint);
+pub struct GroupElement(RistrettoPoint);
 
 impl GroupElement {
+    /// Generate a random GroupElement. This is the preferred way of generating pseudonyms.
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         Self(RistrettoPoint::random(rng))
     }
+
+    /// Decode a 32-byte compressed Ristretto point. Returns None if the point is not valid (only ~6.25% of all 32-byte strings are valid encodings).
+    /// Elligator mapping takes 253 bits, since there are 8 cofactors. Also, half of the points are negative, so each point has 16 equivalent encodings.
     pub fn decode(v: &[u8; 32]) -> Option<Self> {
         CompressedRistretto(*v).decompress().map(Self)
-        // TODO this will fail in specific cases! See https://ristretto.group/test_vectors/ristretto255.html bad_encodings which we include in our tests/arithmetic.rs. We need to create our own bijective encoding (for example, take 30 bytes and add 2 bytes of random padding, proofing that there's always a valid encoding)
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != 32 {
@@ -40,10 +44,29 @@ impl GroupElement {
                 .map(Self)
         }
     }
+    /// Encode to a 32-byte array. Any GroupElement can be encoded this way.
+    pub fn encode(&self) -> [u8; 32] {
+        self.0.compress().0
+    }
+
+    /// Decode a 64-byte hash into a Ristretto point. This is a one-way function. Multiple hashes can map to the same point.
     pub fn decode_from_hash(v: &[u8; 64]) -> Self {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
-    pub fn decode_from_hex(s: &str) -> Option<Self> {
+
+
+    /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach. There are practically no invalid lizard encodings! This is useful if we want to encode some existing main identifier.
+    pub fn decode_lizard(v: &[u8; 16]) -> Option<Self> {
+        let point = RistrettoPoint::lizard_encode::<Sha256>(v);
+        Some(Self(point))
+    }
+
+    /// Encode to a 16-byte string using the lizard approach. Notice that a Ristretto point is represented as 32 bytes and there are ~2^252 valid points, so only a very small fraction of points can be encoded this way.
+    pub fn encode_lizard(self) -> Option<[u8; 16]> {
+        Some(self.0.lizard_decode::<Sha256>()?)
+    }
+
+    pub fn decode_hex(s: &str) -> Option<Self> {
         if s.len() != 64 {
             // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
@@ -57,27 +80,23 @@ impl GroupElement {
             .decompress()
             .map(Self)
     }
-    pub fn encode(&self) -> [u8; 32] {
-        self.0.compress().0
-    }
-    pub fn encode_to_hex(&self) -> String {
+    pub fn encode_hex(&self) -> String {
         hex::encode(self.encode())
     }
-    pub fn encode_to_base64(&self) -> String {
-        general_purpose::URL_SAFE.encode(&self.encode())
-    }
-    pub fn decode_from_base64(s: &str) -> Option<Self> {
+
+    pub fn decode_base64(s: &str) -> Option<Self> {
         general_purpose::URL_SAFE
             .decode(s)
             .ok()
             .and_then(|v| Self::decode_from_slice(&v))
     }
+    pub fn encode_base64(&self) -> String {
+        general_purpose::URL_SAFE.encode(&self.encode())
+    }
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
     }
-    pub fn raw(&self) -> &RistrettoPoint {
-        &self.0
-    }
+
 }
 
 impl Serialize for GroupElement {
@@ -85,7 +104,7 @@ impl Serialize for GroupElement {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.encode_to_hex().as_str())
+        serializer.serialize_str(&self.encode_hex().as_str())
     }
 }
 
@@ -105,7 +124,7 @@ impl<'de> Deserialize<'de> for GroupElement {
             where
                 E: Error,
             {
-                GroupElement::decode_from_hex(&v)
+                GroupElement::decode_hex(&v)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -114,7 +133,7 @@ impl<'de> Deserialize<'de> for GroupElement {
     }
 }
 
-/// Scalar, always non-zero. Can be converted to a GroupElement. Supports multiplication, and inversion (so division is possible). For addition and substraction, use [ScalarCanBeZero].
+/// Scalar, always non-zero. Can be converted to a GroupElement. Supports multiplication, and inversion (so division is possible). For addition and subtraction, use [ScalarCanBeZero].
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ScalarNonZero(Scalar);
 

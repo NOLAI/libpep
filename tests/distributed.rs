@@ -25,8 +25,8 @@ fn n_pep() {
     // Create systems
     let systems = (0..n)
         .map(|i| {
-            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i));
-            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i));
+            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })
@@ -105,8 +105,8 @@ fn n_pep_proved() {
     let mut systems = (0..n)
         .map(|i| {
             let system_id = format!("system-{}", i);
-            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i));
-            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i));
+            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             let pseudo_cache = InMemoryVerifiersCache::<
                 PseudonymizationContext,

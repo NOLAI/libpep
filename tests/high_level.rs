@@ -7,8 +7,8 @@ use rand_core::OsRng;
 fn test_high_level_flow() {
     let rng = &mut OsRng;
     let (_global_public, global_secret) = make_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret("secret".to_string());
-    let enc_secret = EncryptionSecret("secret".to_string());
+    let pseudo_secret = PseudonymizationSecret("secret".as_bytes().into());
+    let enc_secret = EncryptionSecret("secret".as_bytes().into());
 
     let pseudo_context1 = PseudonymizationContext("context1".to_string());
     let enc_context1 = EncryptionContext("session1".to_string());
@@ -77,8 +77,8 @@ fn test_high_level_flow() {
 fn test_proved() {
     let rng = &mut OsRng;
     let (_global_public, global_secret) = make_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret("secret".to_string());
-    let enc_secret = EncryptionSecret("secret".to_string());
+    let pseudo_secret = PseudonymizationSecret("secret".as_bytes().into());
+    let enc_secret = EncryptionSecret("secret".as_bytes().into());
 
     let pseudo_context1 = PseudonymizationContext("context1".to_string());
     let enc_context1 = EncryptionContext("session1".to_string());

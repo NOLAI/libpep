@@ -33,9 +33,9 @@ pub fn create_proof<R: RngCore + CryptoRng>(
     let mut hasher = Sha512::default();
     hasher.update(ga.encode());
     hasher.update(gm.encode());
-    hasher.update(gn.0.compress().as_bytes());
-    hasher.update(gc1.0.compress().as_bytes());
-    hasher.update(gc2.0.compress().as_bytes());
+    hasher.update(gn.encode());
+    hasher.update(gc1.encode());
+    hasher.update(gc2.encode());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);
@@ -61,11 +61,11 @@ pub fn verify_proof_split(
     s: &ScalarCanBeZero,
 ) -> bool {
     let mut hasher = Sha512::default();
-    hasher.update(ga.0.compress().as_bytes());
-    hasher.update(gm.0.compress().as_bytes());
-    hasher.update(gn.0.compress().as_bytes());
-    hasher.update(gc1.0.compress().as_bytes());
-    hasher.update(gc2.0.compress().as_bytes());
+    hasher.update(ga.encode());
+    hasher.update(gm.encode());
+    hasher.update(gn.encode());
+    hasher.update(gc1.encode());
+    hasher.update(gc2.encode());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);
@@ -115,9 +115,9 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
     let mut hasher = Sha512::default();
     hasher.update(ga.encode());
     hasher.update(gm.encode());
-    hasher.update(gn.0.compress().as_bytes());
-    hasher.update(gc1.0.compress().as_bytes());
-    hasher.update(gc2.0.compress().as_bytes());
+    hasher.update(gn.encode());
+    hasher.update(gc1.encode());
+    hasher.update(gc2.encode());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);

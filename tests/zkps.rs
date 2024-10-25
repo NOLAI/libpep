@@ -50,5 +50,5 @@ fn elgamal_signature_unlinkable() {
 
     let sig2 = sign_unlinkable(&v, &s);
     assert!(verify(&v, &sig2, &gp));
-    assert_eq!(sig1.encode_to_hex(), sig2.encode_to_hex());
+    assert_eq!(sig1.encode_hex(), sig2.encode_hex());
 }

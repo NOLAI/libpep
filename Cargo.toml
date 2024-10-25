@@ -24,7 +24,7 @@ legacy-pep-repo-compatible = []
 unsafe-reconstruct = []
 
 [dependencies]
-curve25519-dalek = { version = "4", features = ["rand_core"] }
+curve25519-dalek = { git = "https://github.com/signalapp/curve25519-dalek.git", features = ["rand_core"] }
 rand = { version = "^0.8", features = ["std"] }
 rand_core = { version = "^0.6", features = ["std"] }
 wasm-bindgen = { version = "0.2", optional = true }

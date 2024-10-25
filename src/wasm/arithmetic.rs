@@ -29,7 +29,7 @@ impl WASMGroupElement {
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMGroupElement> {
-        GroupElement::decode_from_hex(hex).map(|x| WASMGroupElement(x))
+        GroupElement::decode_hex(hex).map(|x| WASMGroupElement(x))
     }
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {
@@ -42,7 +42,7 @@ impl WASMGroupElement {
     }
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base_64(s: &str) -> Option<WASMGroupElement> {
-        GroupElement::decode_from_base64(s).map(|x| WASMGroupElement(x))
+        GroupElement::decode_base64(s).map(|x| WASMGroupElement(x))
     }
 
     #[wasm_bindgen]
