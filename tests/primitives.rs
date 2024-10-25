@@ -83,8 +83,8 @@ fn pep_rsk() {
     // public key
     let gy = y * G;
 
-    let k = ScalarNonZero::random(&mut rng);
     let s = ScalarNonZero::random(&mut rng);
+    let k = ScalarNonZero::random(&mut rng);
 
     // choose a random value to encrypt
     let m = GroupElement::random(&mut rng);
@@ -94,9 +94,44 @@ fn pep_rsk() {
 
     let rsked = rsk(&encrypted, &s, &k);
 
+    assert_eq!(rsked, rekey(&reshuffle(&encrypted, &s), &k));
+
     let decrypted = decrypt(&rsked, &(k * y));
 
     assert_eq!((s * m), decrypted);
+
+}
+
+#[test]
+fn pep_rrsk() {
+    let mut rng = OsRng;
+
+    // secret key
+    let y = ScalarNonZero::random(&mut rng);
+    // public key
+    let gy = y * G;
+
+    let r = ScalarNonZero::random(&mut rng);
+    let s = ScalarNonZero::random(&mut rng);
+    let k = ScalarNonZero::random(&mut rng);
+
+    // choose a random value to encrypt
+    let m = GroupElement::random(&mut rng);
+
+    // encrypt/decrypt this value
+    let encrypted = encrypt(&m, &gy, &mut OsRng);
+
+    let rrsked = rrsk(&encrypted, &r, &s, &k);
+
+    #[cfg(not(feature = "elgamal2"))]
+    assert_eq!(rrsked, rekey(&reshuffle(&rerandomize(&encrypted, &r), &s), &k));
+    #[cfg(feature = "elgamal2")]
+    assert_eq!(rrsked, rekey(&reshuffle(&rerandomize(&encrypted, &gy, &r), &s), &k));
+
+    let decrypted = decrypt(&rrsked, &(k * y));
+
+    assert_eq!((s * m), decrypted);
+
 }
 
 #[test]

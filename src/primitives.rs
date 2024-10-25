@@ -5,7 +5,8 @@ use crate::elgamal::*;
 /// - [rerandomize]: change encrypted representation, same contents when decrypted;
 /// - [reshuffle]: change encrypted representation, different contents when decrypted;
 /// - [rekey]: change encrypted representation, can be decrypted by a different key.
-///
+
+
 /// Change encrypted representation using [ScalarNonZero] `r`, same contents when decrypted.
 #[cfg(not(feature = "elgamal2"))]
 pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
@@ -43,7 +44,7 @@ pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     }
 }
 
-/// Combination of `rekey(k)` and `reshuffle(s)`
+/// Combination of `reshuffle(s)` and `rekey(k)`
 pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: (s * k.invert()) * m.b,
@@ -52,6 +53,18 @@ pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
         y: k * m.y,
     }
 }
+
+/// Combination of `rerandomize(r)`, `reshuffle(s)` and `rekey(k)`
+pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
+    let ski = s * k.invert();
+    ElGamal {
+        b: ski * m.b + ski * r * G,
+        c: s * r * m.y + s * m.c,
+        #[cfg(not(feature = "elgamal2"))]
+        y: k * m.y,
+    }
+}
+
 pub fn reshuffle2(m: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero) -> ElGamal {
     let s = s_from.invert() * s_to;
     reshuffle(m, &s)
@@ -71,4 +84,17 @@ pub fn rsk2(
     let s = s_from.invert() * s_to;
     let k = k_from.invert() * k_to;
     rsk(m, &s, &k)
+}
+
+pub fn rrsk2(
+    m: &ElGamal,
+    r: &ScalarNonZero,
+    s_from: &ScalarNonZero,
+    s_to: &ScalarNonZero,
+    k_from: &ScalarNonZero,
+    k_to: &ScalarNonZero,
+) -> ElGamal {
+    let s = s_from.invert() * s_to;
+    let k = k_from.invert() * k_to;
+    rrsk(m, &r, &s, &k)
 }
