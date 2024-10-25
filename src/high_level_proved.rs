@@ -1,6 +1,6 @@
 use crate::high_level::*;
 use crate::proved::*;
-use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
+use crate::utils::{make_rekey_factor, make_pseudonymisation_factor};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 
@@ -30,7 +30,7 @@ impl EncryptionContextVerifiers {
         secret: &EncryptionSecret,
         rng: &mut R,
     ) -> (Self, RekeyFactorVerifiersProof) {
-        let factor = make_decryption_factor(secret, context);
+        let factor = make_rekey_factor(secret, context);
         let (verifiers, proof) = RekeyFactorVerifiers::new(&*factor, rng);
         (EncryptionContextVerifiers(verifiers), proof)
     }

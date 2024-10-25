@@ -1,4 +1,4 @@
-use crate::distributed::{PEPClient, PEPSystem, PEPSystemID};
+use crate::distributed::{PEPClient, PEPSystem};
 use crate::high_level::*;
 use crate::high_level_proved::*;
 use crate::proved::{
@@ -9,6 +9,8 @@ use crate::verifiers_cache::VerifiersCache;
 use derive_more::Deref;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::{GroupElement, G};
+
+pub type PEPSystemID = String;
 
 pub struct PEPVerifier {
     pseudo_verifiers_cache: Box<
@@ -63,7 +65,7 @@ impl PEPVerifier {
             panic!("Weak verifiers are not allowed");
         }
 
-        // TODO: check if the no other system uses the same or reversed verifiers
+        // TODO check if the no other system uses the same or reversed verifiers
 
         if proof.verify(&verifiers) {
             self.pseudo_verifiers_cache
@@ -84,7 +86,7 @@ impl PEPVerifier {
             panic!("Weak verifiers are not allowed");
         }
 
-        // TODO: check if the no other system uses the same or reversed verifiers
+        // TODO check if the no other system uses the same or reversed verifiers
 
         if proof.verify(&verifiers) {
             self.session_verifiers_cache

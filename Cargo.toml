@@ -30,6 +30,7 @@ rand_core = { version = "^0.6", features = ["std"] }
 wasm-bindgen = { version = "0.2", optional = true }
 getrandom = { version = "^0.2", features = ["js"], optional = true}
 sha2 = "0.10.5"
+hmac = "^0.12"
 buildinfy = { version = "^0.1", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }

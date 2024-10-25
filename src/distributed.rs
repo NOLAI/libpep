@@ -11,7 +11,7 @@ pub struct BlindedGlobalSecretKey(pub ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionKeyShare(pub ScalarNonZero);
 impl BlindingFactor {
-    pub fn new(x: ScalarNonZero) -> Self {
+    pub fn from(x: ScalarNonZero) -> Self {
         BlindingFactor(x)
     }
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
@@ -30,8 +30,8 @@ pub fn make_blinded_global_secret_key(
     Some(BlindedGlobalSecretKey(*y * k))
 }
 
-pub fn make_session_key_share(rekey_factor: &RekeyFactor, blinding_factor: &BlindingFactor) -> SessionKeyShare {
-    SessionKeyShare(rekey_factor.0 * blinding_factor.0)
+pub fn make_session_key_share(key_factor: &ScalarNonZero, blinding_factor: &ScalarNonZero) -> SessionKeyShare {
+    SessionKeyShare(key_factor * blinding_factor)
 }
 
 pub type PEPSystemID = String;

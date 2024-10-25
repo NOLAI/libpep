@@ -1,7 +1,7 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
 use crate::elgamal::{decrypt, encrypt, ElGamal};
 use crate::primitives::*;
-use crate::utils::{make_decryption_factor, make_pseudonymisation_factor};
+use crate::utils::{make_rekey_factor, make_pseudonymisation_factor};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -31,15 +31,57 @@ pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
 pub type Context = String;
+#[cfg(not(feature = "legacy-pep-repo-compatible"))]
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct PseudonymizationContext(pub Context);
+#[cfg(not(feature = "legacy-pep-repo-compatible"))]
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptionContext(pub Context);
-pub type Secret = String;
+
+#[cfg(feature = "legacy-pep-repo-compatible")]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct PseudonymizationContext {
+    #[deref]
+    pub payload: Context,
+    pub audience_type: AudienceType
+}
+
+#[cfg(feature = "legacy-pep-repo-compatible")]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptionContext {
+    #[deref]
+    pub payload: Context,
+    pub audience_type: AudienceType
+}
+#[cfg(feature = "legacy-pep-repo-compatible")]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[repr(u32)]
+pub enum AudienceType {
+    User = 0x01,
+    StorageFacility = 0x02,
+    AccessManager = 0x03,
+    Transcryptor = 0x04,
+    RegistrationServer = 0x05,
+    Unknown = 0x00,
+}
+
+pub type Secret = Box<[u8]>;
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationSecret(pub Secret);
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From)]
 pub struct EncryptionSecret(pub Secret);
+
+impl PseudonymizationSecret {
+    pub fn from(value: &[u8]) -> Self {
+        PseudonymizationSecret(value.into())
+    }
+}
+impl EncryptionSecret {
+    pub fn from(value: &[u8]) -> Self {
+        EncryptionSecret(value.into())
+    }
+}
+
 impl Pseudonym {
     pub fn new(value: GroupElement) -> Self {
         Pseudonym { value }
@@ -80,7 +122,7 @@ pub fn make_session_keys(
     context: &EncryptionContext,
     encryption_secret: &EncryptionSecret,
 ) -> (SessionPublicKey, SessionSecretKey) {
-    let k = make_decryption_factor(encryption_secret, context);
+    let k = make_rekey_factor(encryption_secret, context);
     let sk = *k * global.deref();
     let pk = sk * G;
     (SessionPublicKey(pk), SessionSecretKey(sk))
@@ -208,8 +250,8 @@ impl RekeyInfo {
         to_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_decryption_factor(&encryption_secret, &from_session);
-        let k_to = make_decryption_factor(&encryption_secret, &to_session);
+        let k_from = make_rekey_factor(&encryption_secret, &from_session);
+        let k_to = make_rekey_factor(&encryption_secret, &to_session);
         Rekey2Factors {
             from: k_from,
             to: k_to,

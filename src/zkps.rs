@@ -69,8 +69,8 @@ pub fn verify_proof_split(
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::decode_from_hash(&bytes);
-    // FIXME: speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
-    // FIXME: check if a faster non-constant time equality can be used
+    // FIXME speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
+    // FIXME check if a faster non-constant time equality can be used
     s * G == e * ga + gc1 && s * gm == e * gn + gc2
     // (a*e + r)*G = e*a*G + r*G
     // (a*e + r)*gm == e*a*gm + r*gm
