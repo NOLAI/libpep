@@ -1,4 +1,4 @@
-use libpep::arithmetic::GroupElement;
+use libpep::arithmetic::{GroupElement, ScalarNonZero};
 use libpep::distributed::{make_blinded_global_secret_key, BlindingFactor, PEPClient, PEPSystem};
 use libpep::distributed_proved::{PEPVerifier, ProvedPEPClient, ProvedPEPSystem};
 use libpep::high_level::{
@@ -20,7 +20,10 @@ fn n_pep() {
         .map(|_| BlindingFactor::random(rng))
         .collect::<Vec<_>>();
     let blinded_global_secret_key =
-        make_blinded_global_secret_key(&global_secret, &blinding_factors.clone());
+        make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
+
+
+    assert_eq!(blinded_global_secret_key.0, global_secret.0 * blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.invert()));
 
     // Create systems
     let systems = (0..n)
@@ -99,7 +102,7 @@ fn n_pep_proved() {
         .map(|_| BlindingFactor::random(rng))
         .collect::<Vec<_>>();
     let blinded_global_secret_key =
-        make_blinded_global_secret_key(&global_secret, &blinding_factors.clone());
+        make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
 
     // Create systems
     let mut systems = (0..n)

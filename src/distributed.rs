@@ -21,11 +21,19 @@ impl BlindingFactor {
 pub fn make_blinded_global_secret_key(
     global_secret_key: &GlobalSecretKey,
     blinding_factors: &Vec<BlindingFactor>,
-) -> BlindedGlobalSecretKey {
+) -> Option<BlindedGlobalSecretKey> {
     let y = global_secret_key.clone();
-    let x = blinding_factors.iter().fold(*y, |acc, x| acc * x.deref());
-    BlindedGlobalSecretKey(x)
+    let k = blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.deref().invert());
+    if k == ScalarNonZero::one() {
+        return None;
+    }
+    Some(BlindedGlobalSecretKey(*y * k))
 }
+
+pub fn make_session_key_share(rekey_factor: &RekeyFactor, blinding_factor: &BlindingFactor) -> SessionKeyShare {
+    SessionKeyShare(rekey_factor.0 * blinding_factor.0)
+}
+
 pub type PEPSystemID = String;
 
 #[derive(Clone)]
@@ -47,8 +55,8 @@ impl PEPSystem {
         }
     }
     pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
-        let k = make_decryption_factor(&self.rekeying_secret, &context);
-        SessionKeyShare(*k * &self.blinding_factor.invert())
+        let k = make_rekey_factor(&self.rekeying_secret, &context);
+        make_session_key_share(&k, &self.blinding_factor)
     }
     pub fn rekey_info(
         &self,
