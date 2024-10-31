@@ -1,13 +1,13 @@
-use std::fmt::Formatter;
 use crate::arithmetic::*;
 use derive_more::Deref;
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha512};
+use std::fmt::Formatter;
 
 use base64::engine::general_purpose;
 use base64::Engine;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 // Offline Schnorr proof using Fiat-Shamir transform.
 // Proof that given a GroupElement `m` and a scalar `a`,
@@ -96,7 +96,6 @@ impl<'de> Deserialize<'de> for Proof {
         deserializer.deserialize_str(ProofVisitor)
     }
 }
-
 
 // returns <A=a*G, Proof with a value N = a*M>
 pub fn create_proof<R: RngCore + CryptoRng>(

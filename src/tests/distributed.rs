@@ -18,14 +18,15 @@ fn n_pep() {
     let blinded_global_secret_key =
         make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
 
-
     // debug_assert_eq!(blinded_global_secret_key.0, global_secret.0 * blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert()));
 
     // Create systems
     let systems = (0..n)
         .map(|i| {
-            let pseudonymization_secret = PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
-            let encryption_secret = EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret =
+                EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })
@@ -116,8 +117,10 @@ fn n_pep_proved() {
     let mut systems = (0..n)
         .map(|i| {
             let system_id = format!("system-{}", i);
-            let pseudonymization_secret = PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
-            let encryption_secret = EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret =
+                EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             let pseudo_cache = InMemoryVerifiersCache::<
                 PseudonymizationContext,

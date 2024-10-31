@@ -54,7 +54,6 @@ impl GroupElement {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
 
-
     /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach. There are practically no invalid lizard encodings! This is useful to encode arbitrary data as group element.
     pub fn decode_lizard(v: &[u8; 16]) -> Option<Self> {
         let point = RistrettoPoint::lizard_encode::<Sha256>(v);
@@ -96,7 +95,6 @@ impl GroupElement {
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
     }
-
 }
 
 impl Serialize for GroupElement {

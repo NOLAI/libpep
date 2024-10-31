@@ -99,7 +99,6 @@ fn pep_rsk() {
     let decrypted = decrypt(&rsked, &(k * y));
 
     assert_eq!((s * m), decrypted);
-
 }
 
 #[test]
@@ -127,14 +126,19 @@ fn pep_rrsk() {
     let rrsked = rrsk(&encrypted, &gy, &r, &s, &k);
 
     #[cfg(not(feature = "elgamal2"))]
-    assert_eq!(rrsked, rekey(&reshuffle(&rerandomize(&encrypted, &r), &s), &k));
+    assert_eq!(
+        rrsked,
+        rekey(&reshuffle(&rerandomize(&encrypted, &r), &s), &k)
+    );
     #[cfg(feature = "elgamal2")]
-    assert_eq!(rrsked, rekey(&reshuffle(&rerandomize(&encrypted, &gy, &r), &s), &k));
+    assert_eq!(
+        rrsked,
+        rekey(&reshuffle(&rerandomize(&encrypted, &gy, &r), &s), &k)
+    );
 
     let decrypted = decrypt(&rrsked, &(k * y));
 
     assert_eq!((s * m), decrypted);
-
 }
 
 #[test]

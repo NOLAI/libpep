@@ -153,7 +153,8 @@ pub fn wasm_decrypt_pseudonym(
         decrypt_pseudonym(
             &EncryptedPseudonym::from(ElGamal::from(p.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
-        ).value,
+        )
+        .value,
     ))
 }
 
@@ -184,7 +185,8 @@ pub fn wasm_decrypt_data(
         decrypt_data(
             &EncryptedDataPoint::from(ElGamal::from(data.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
-        ).value,
+        )
+        .value,
     ))
 }
 

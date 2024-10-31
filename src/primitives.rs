@@ -6,7 +6,6 @@ use crate::elgamal::*;
 /// - [reshuffle]: change encrypted representation, different contents when decrypted;
 /// - [rekey]: change encrypted representation, can be decrypted by a different key.
 
-
 /// Change encrypted representation using [ScalarNonZero] `r`, same contents when decrypted.
 #[cfg(not(feature = "elgamal2"))]
 pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
@@ -66,7 +65,13 @@ pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero
 }
 
 #[cfg(feature = "elgamal2")]
-pub fn rrsk(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
+pub fn rrsk(
+    m: &ElGamal,
+    public_key: &GroupElement,
+    r: &ScalarNonZero,
+    s: &ScalarNonZero,
+    k: &ScalarNonZero,
+) -> ElGamal {
     let ski = s * k.invert();
     ElGamal {
         b: ski * m.b + ski * r * G,

@@ -1,11 +1,11 @@
-use std::fmt::Formatter;
 use crate::arithmetic::*;
 use crate::high_level::*;
 use crate::utils::*;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::Formatter;
 
 /// GLOBAL KEY BLINDING
 #[derive(Copy, Clone, Debug, From)]
@@ -28,7 +28,10 @@ impl BlindingFactor {
     pub fn from_hex(s: &str) -> Option<Self> {
         hex::decode(s).ok().and_then(|bytes| {
             if bytes.len() == 32 {
-                Some(BlindingFactor::decode(<&[u8; 32]>::try_from(bytes.as_slice()).unwrap()).unwrap())
+                Some(
+                    BlindingFactor::decode(<&[u8; 32]>::try_from(bytes.as_slice()).unwrap())
+                        .unwrap(),
+                )
             } else {
                 None
             }
@@ -65,7 +68,8 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
             where
                 E: Error,
             {
-                ScalarNonZero::decode_from_hex(&v).map(BlindedGlobalSecretKey)
+                ScalarNonZero::decode_from_hex(&v)
+                    .map(BlindedGlobalSecretKey)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -79,7 +83,9 @@ pub fn make_blinded_global_secret_key(
     blinding_factors: &Vec<BlindingFactor>,
 ) -> Option<BlindedGlobalSecretKey> {
     let y = global_secret_key.clone();
-    let k = blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert());
+    let k = blinding_factors
+        .iter()
+        .fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert());
     if k == ScalarNonZero::one() {
         return None;
     }
@@ -112,7 +118,8 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
             where
                 E: Error,
             {
-                ScalarNonZero::decode_from_hex(&v).map(SessionKeyShare)
+                ScalarNonZero::decode_from_hex(&v)
+                    .map(SessionKeyShare)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -121,10 +128,12 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
     }
 }
 
-pub fn make_session_key_share(key_factor: &ScalarNonZero, blinding_factor: &BlindingFactor) -> SessionKeyShare {
+pub fn make_session_key_share(
+    key_factor: &ScalarNonZero,
+    blinding_factor: &BlindingFactor,
+) -> SessionKeyShare {
     SessionKeyShare(key_factor * blinding_factor.0)
 }
-
 
 /// PEP SYSTEM
 #[derive(Clone)]

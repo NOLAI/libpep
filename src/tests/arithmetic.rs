@@ -1,5 +1,5 @@
-use rand::Rng;
 use crate::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use rand::Rng;
 use rand_core::OsRng;
 
 #[test]

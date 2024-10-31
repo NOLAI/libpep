@@ -1,3 +1,4 @@
+use crate::arithmetic::{GroupElement, G};
 use crate::distributed::{PEPClient, PEPSystem};
 use crate::high_level::*;
 use crate::high_level_proved::*;
@@ -8,7 +9,6 @@ use crate::proved::{
 use crate::verifiers_cache::VerifiersCache;
 use derive_more::Deref;
 use rand_core::{CryptoRng, RngCore};
-use crate::arithmetic::{GroupElement, G};
 
 pub type PEPSystemID = String;
 
@@ -60,7 +60,6 @@ impl PEPVerifier {
         verifiers: &PseudonymizationContextVerifiers,
         proof: &PseudonymizationFactorVerifiersProof,
     ) {
-
         if verifiers.val == GroupElement::identity() || verifiers.val == G {
             panic!("Weak verifiers are not allowed");
         }
@@ -81,7 +80,6 @@ impl PEPVerifier {
         verifiers: &EncryptionContextVerifiers,
         proof: &RekeyFactorVerifiersProof,
     ) {
-
         if verifiers.val == GroupElement::identity() || verifiers.val == G {
             panic!("Weak verifiers are not allowed");
         }

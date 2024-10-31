@@ -75,7 +75,9 @@ pub fn wasm_make_blinded_global_secret_key(
         make_blinded_global_secret_key(
             &GlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
-        ).unwrap().0,
+        )
+        .unwrap()
+        .0,
     ))
 }
 
@@ -204,7 +206,7 @@ impl WASMPEPSystem {
                 &public_key.0,
                 &mut rng,
             )
-                .value,
+            .value,
         ))
     }
 
@@ -222,10 +224,9 @@ impl WASMPEPSystem {
                 &public_key.0,
                 &mut rng,
             )
-                .value,
+            .value,
         ))
     }
-
 }
 #[derive(Clone, From, Into, Deref)]
 #[wasm_bindgen(js_name = PEPClient)]
@@ -331,7 +332,7 @@ impl WASMPEPClient {
                 &public_key.0,
                 &mut rng,
             )
-                .value,
+            .value,
         ))
     }
 
@@ -349,7 +350,7 @@ impl WASMPEPClient {
                 &public_key.0,
                 &mut rng,
             )
-                .value,
+            .value,
         ))
     }
 }

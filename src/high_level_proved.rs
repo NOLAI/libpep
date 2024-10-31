@@ -1,6 +1,6 @@
 use crate::high_level::*;
 use crate::proved::*;
-use crate::utils::{make_rekey_factor, make_pseudonymisation_factor};
+use crate::utils::{make_pseudonymisation_factor, make_rekey_factor};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 

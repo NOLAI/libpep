@@ -1,13 +1,16 @@
 use crate::arithmetic::*;
-use crate::high_level::{Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret, RekeyFactor, ReshuffleFactor, Secret};
+use crate::high_level::{
+    Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret,
+    RekeyFactor, ReshuffleFactor, Secret,
+};
 
 #[cfg(feature = "legacy-pep-repo-compatible")]
 use crate::high_level::AudienceType;
 
 use hmac::{Hmac, Mac};
-use sha2::{Sha512};
+use sha2::Sha512;
 #[cfg(feature = "legacy-pep-repo-compatible")]
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub fn make_pseudonymisation_factor(
@@ -17,10 +20,7 @@ pub fn make_pseudonymisation_factor(
     ReshuffleFactor::from(make_factor("pseudonym", &secret.0, context))
 }
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-pub fn make_rekey_factor(
-    secret: &EncryptionSecret,
-    context: &EncryptionContext,
-) -> RekeyFactor {
+pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
     RekeyFactor::from(make_factor("rekey", &secret.0, context))
 }
 
@@ -48,10 +48,7 @@ pub fn make_pseudonymisation_factor(
     ))
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
-pub fn make_rekey_factor(
-    secret: &EncryptionSecret,
-    context: &EncryptionContext,
-) -> RekeyFactor {
+pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
     RekeyFactor::from(make_factor(
         &secret.0,
         0x02,
@@ -60,9 +57,13 @@ pub fn make_rekey_factor(
     ))
 }
 
-
 #[cfg(feature = "legacy-pep-repo-compatible")]
-fn make_factor(secret: &Secret, typ: u32, audience_type: &AudienceType, context: &Context) -> ScalarNonZero {
+fn make_factor(
+    secret: &Secret,
+    typ: u32,
+    audience_type: &AudienceType,
+    context: &Context,
+) -> ScalarNonZero {
     let mut hasher_inner = Sha256::default(); // Use HMAC to prevent length extension attack
     hasher_inner.update(&typ.to_be_bytes());
     let audience_type_bytes = *audience_type as u32;

@@ -1,7 +1,7 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
 use crate::elgamal::{decrypt, encrypt, ElGamal};
 use crate::primitives::*;
-use crate::utils::{make_rekey_factor, make_pseudonymisation_factor};
+use crate::utils::{make_pseudonymisation_factor, make_rekey_factor};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -127,7 +127,9 @@ impl DataPoint {
         self.value.encode_lizard()
     }
     pub fn from_data_long(data: &[u8]) -> Vec<Self> {
-        data.chunks(16).map(|x| Self::from_bytes(x.try_into().unwrap()).unwrap()).collect()
+        data.chunks(16)
+            .map(|x| Self::from_bytes(x.try_into().unwrap()).unwrap())
+            .collect()
     }
 }
 
@@ -212,7 +214,6 @@ pub fn rerandomize_encrypted<R: RngCore + CryptoRng>(
     EncryptedDataPoint::from(rerandomize(&encrypted.value, public_key, &r))
 }
 
-
 /// CONTEXTS AND FACTORS
 pub type Context = String; // Contexts are described by simple strings of arbitrary length
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
@@ -226,14 +227,14 @@ pub struct EncryptionContext(pub Context);
 pub struct PseudonymizationContext {
     #[deref]
     pub payload: Context,
-    pub audience_type: AudienceType
+    pub audience_type: AudienceType,
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptionContext {
     #[deref]
     pub payload: Context,
-    pub audience_type: AudienceType
+    pub audience_type: AudienceType,
 }
 #[cfg(feature = "legacy-pep-repo-compatible")]
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
@@ -365,7 +366,6 @@ pub fn pseudonymize_from_global(
         &rekey_to.0,
     ))
 }
-
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
