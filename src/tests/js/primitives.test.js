@@ -1,4 +1,4 @@
-const {GroupElement, ScalarNonZero, encrypt, decrypt, rekey} = require("../../pkg");
+const {GroupElement, ScalarNonZero, encrypt, decrypt, rekey} = require("../../../pkg");
 
 test('rekey', async () => {
     const G = GroupElement.G();

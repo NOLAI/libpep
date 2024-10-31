@@ -1,6 +1,6 @@
-use libpep::arithmetic::GroupElement;
-use libpep::high_level::*;
-use libpep::high_level_proved::*;
+use crate::arithmetic::GroupElement;
+use crate::high_level::*;
+use crate::high_level_proved::*;
 use rand_core::OsRng;
 
 #[test]

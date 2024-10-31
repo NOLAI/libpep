@@ -1,6 +1,6 @@
-use libpep::arithmetic::*;
-use libpep::distributed::*;
-use libpep::high_level::*;
+use crate::arithmetic::*;
+use crate::distributed::*;
+use crate::high_level::*;
 #[cfg(feature = "legacy-pep-repo-compatible")]
 use libpep::utils::{make_pseudonymisation_factor};
 

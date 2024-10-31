@@ -1,5 +1,5 @@
-use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
-use libpep::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
+use crate::arithmetic::{GroupElement, ScalarNonZero, G};
+use crate::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
 use rand_core::OsRng;
 
 #[test]

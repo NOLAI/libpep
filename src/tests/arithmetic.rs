@@ -1,5 +1,5 @@
 use rand::Rng;
-use libpep::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use crate::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use rand_core::OsRng;
 
 #[test]

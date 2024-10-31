@@ -5,7 +5,7 @@ const {
     makeGlobalKeys,
     makeSessionKeys,
     pseudonymize, rekeyData, Pseudonym, PseudonymizationInfo, RekeyInfo,
-} = require("../../pkg");
+} = require("../../../pkg");
 
 test('test high level', async () => {
     const globalKeys = makeGlobalKeys();

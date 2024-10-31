@@ -1,6 +1,6 @@
-use libpep::arithmetic::*;
-use libpep::elgamal::*;
-use libpep::primitives::*;
+use crate::arithmetic::*;
+use crate::elgamal::*;
+use crate::primitives::*;
 use rand_core::OsRng;
 
 #[test]

@@ -2,7 +2,7 @@ const {
     DataPoint,
     GroupElement,
     makeGlobalKeys, makeBlindedGlobalSecretKey, PEPSystem, PEPClient, Pseudonym, BlindingFactor,
-} = require("../../pkg");
+} = require("../../../pkg");
 
 test('n_pep', async () => {
     const n = 3;

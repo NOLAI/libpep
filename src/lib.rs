@@ -18,3 +18,13 @@ mod wasm {
     mod high_level;
     mod primitives;
 }
+
+#[cfg(test)]
+mod tests {
+    mod arithmetic;
+    mod distributed;
+    mod elgamal;
+    mod high_level;
+    mod primitives;
+    mod proved;
+}

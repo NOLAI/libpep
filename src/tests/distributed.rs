@@ -1,8 +1,8 @@
-use libpep::distributed::{make_blinded_global_secret_key, BlindingFactor, PEPClient, PEPSystem};
-use libpep::distributed_proved::{PEPVerifier, ProvedPEPClient, ProvedPEPSystem};
-use libpep::high_level::{make_global_keys, AudienceType, DataPoint, EncryptionContext, EncryptionSecret, Pseudonym, PseudonymizationContext, PseudonymizationSecret};
-use libpep::proved::{PseudonymizationFactorVerifiers, RekeyFactorVerifiers};
-use libpep::verifiers_cache::InMemoryVerifiersCache;
+use crate::distributed::{make_blinded_global_secret_key, BlindingFactor, PEPClient, PEPSystem};
+use crate::distributed_proved::{PEPVerifier, ProvedPEPClient, ProvedPEPSystem};
+use crate::high_level::*;
+use crate::proved::{PseudonymizationFactorVerifiers, RekeyFactorVerifiers};
+use crate::verifiers_cache::InMemoryVerifiersCache;
 use rand_core::OsRng;
 
 #[test]
