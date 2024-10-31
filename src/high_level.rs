@@ -7,7 +7,7 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 /// GLOBAL KEYS
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct GlobalPublicKey(pub GroupElement);
 #[derive(Copy, Clone, Debug, From)]
 pub struct GlobalSecretKey(pub(crate) ScalarNonZero);
@@ -38,8 +38,8 @@ impl EncryptionSecret {
 }
 
 /// SESSION KEYS
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct SessionPublicKey(GroupElement);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct SessionPublicKey(pub GroupElement);
 #[derive(Copy, Clone, Debug, From)]
 pub struct SessionSecretKey(pub(crate) ScalarNonZero);
 /// Generate a subkey from a global secret key, a context, and an encryption secret
@@ -49,7 +49,7 @@ pub fn make_session_keys(
     encryption_secret: &EncryptionSecret,
 ) -> (SessionPublicKey, SessionSecretKey) {
     let k = make_rekey_factor(encryption_secret, context);
-    let sk = *k * global.0;
+    let sk = k.0 * global.0;
     let pk = sk * G;
     (SessionPublicKey(pk), SessionSecretKey(sk))
 }
@@ -57,11 +57,11 @@ pub fn make_session_keys(
 /// PSEUDONYMS AND DATA
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct Pseudonym {
-    value: GroupElement,
+    pub(crate) value: GroupElement,
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct DataPoint {
-    value: GroupElement,
+    pub(crate) value: GroupElement,
 }
 impl Pseudonym {
     pub fn from_point(value: GroupElement) -> Self {
@@ -168,7 +168,7 @@ pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoi
     DataPoint::from_point(decrypt(&data, &sk.0))
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RerandomizeFactor(ScalarNonZero);
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
@@ -247,10 +247,10 @@ pub enum AudienceType {
     Unknown = 0x00,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct ReshuffleFactor(ScalarNonZero);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct RekeyFactor(ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+pub struct RekeyFactor(pub(crate) ScalarNonZero);
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct Reshuffle2Factors {
@@ -344,10 +344,10 @@ pub fn pseudonymize(
 ) -> EncryptedPseudonym {
     EncryptedPseudonym::from(rsk2(
         &p.value,
-        &pseudonymization_info.s.from,
-        &pseudonymization_info.s.to,
-        &pseudonymization_info.k.from,
-        &pseudonymization_info.k.to,
+        &pseudonymization_info.s.from.0,
+        &pseudonymization_info.s.to.0,
+        &pseudonymization_info.k.from.0,
+        &pseudonymization_info.k.to.0,
     ))
 }
 
@@ -359,20 +359,20 @@ pub fn pseudonymize_from_global(
 ) -> EncryptedPseudonym {
     EncryptedPseudonym::from(rsk2(
         &p.value,
-        &reshuffle_factors.from,
-        &reshuffle_factors.to,
+        &reshuffle_factors.from.0,
+        &reshuffle_factors.to.0,
         &ScalarNonZero::one(),
-        &rekey_to,
+        &rekey_to.0,
     ))
 }
 
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(rekey2(&p.value, &rekey_info.from, &rekey_info.to))
+    EncryptedDataPoint::from(rekey2(&p.value, &rekey_info.from.0, &rekey_info.to.0))
 }
 
 /// Rekey an encrypted data point, encrypted for a global key, to be decrypted by a session key
 pub fn rekey_from_global(p: &EncryptedDataPoint, rekey_to: RekeyFactor) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(crate::primitives::rekey(&p.value, &rekey_to))
+    EncryptedDataPoint::from(crate::primitives::rekey(&p.value, &rekey_to.0))
 }

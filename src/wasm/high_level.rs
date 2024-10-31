@@ -117,8 +117,8 @@ pub fn wasm_make_session_keys(
 ) -> WASMSessionKeyPair {
     let (public, secret) = make_session_keys(
         &GlobalSecretKey(***global),
-        &EncryptionContext(context.to_string()),
-        &EncryptionSecret(encryption_secret.to_string()),
+        &EncryptionContext::from(context.to_string()),
+        &EncryptionSecret::from(encryption_secret.into()),
     );
     WASMSessionKeyPair {
         public: WASMSessionPublicKey::from(WASMGroupElement::from(public.0)),
@@ -153,8 +153,7 @@ pub fn wasm_decrypt_pseudonym(
         decrypt_pseudonym(
             &EncryptedPseudonym::from(ElGamal::from(p.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
-        )
-        .value,
+        ).value,
     ))
 }
 
@@ -185,8 +184,7 @@ pub fn wasm_decrypt_data(
         decrypt_data(
             &EncryptedDataPoint::from(ElGamal::from(data.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
-        )
-        .value,
+        ).value,
     ))
 }
 
@@ -287,12 +285,12 @@ impl WASMPseudonymizationInfo {
         encryption_secret: &str,
     ) -> Self {
         let x = PseudonymizationInfo::new(
-            &PseudonymizationContext(from_pseudo_context.to_string()),
-            &PseudonymizationContext(to_pseudo_context.to_string()),
-            &EncryptionContext(from_enc_context.to_string()),
-            &EncryptionContext(to_enc_context.to_string()),
-            &PseudonymizationSecret(pseudonymization_secret.to_string()),
-            &EncryptionSecret(encryption_secret.to_string()),
+            &PseudonymizationContext::from(from_pseudo_context.to_string()),
+            &PseudonymizationContext::from(to_pseudo_context.to_string()),
+            &EncryptionContext::from(from_enc_context.to_string()),
+            &EncryptionContext::from(to_enc_context.to_string()),
+            &PseudonymizationSecret::from(pseudonymization_secret.as_bytes().to_vec()),
+            &EncryptionSecret::from(encryption_secret.as_bytes().to_vec()),
         );
         let k = WASMRekey2Factors {
             from: WASMRekeyFactor(WASMScalarNonZero::from(x.k.from.0)),
@@ -319,9 +317,9 @@ impl WASMRekeyInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(from_enc_context: &str, to_enc_context: &str, encryption_secret: &str) -> Self {
         let x = RekeyInfo::new(
-            &EncryptionContext(from_enc_context.to_string()),
-            &EncryptionContext(to_enc_context.to_string()),
-            &EncryptionSecret(encryption_secret.to_string()),
+            &EncryptionContext::from(from_enc_context.to_string()),
+            &EncryptionContext::from(to_enc_context.to_string()),
+            &EncryptionSecret::from(encryption_secret.as_bytes().into()),
         );
         let k = WASMRekey2Factors {
             from: WASMRekeyFactor(WASMScalarNonZero::from(x.from.0)),

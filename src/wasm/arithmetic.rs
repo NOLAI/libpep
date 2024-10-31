@@ -33,12 +33,12 @@ impl WASMGroupElement {
     }
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+        self.0.encode_hex()
     }
 
     #[wasm_bindgen(js_name = toBase64)]
     pub fn to_base_64(&self) -> String {
-        self.0.encode_to_base64()
+        self.0.encode_base64()
     }
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base_64(s: &str) -> Option<WASMGroupElement> {

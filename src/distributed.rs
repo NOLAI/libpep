@@ -9,7 +9,7 @@ use serde::de::{Error, Visitor};
 
 /// GLOBAL KEY BLINDING
 #[derive(Copy, Clone, Debug, From)]
-pub struct BlindingFactor(ScalarNonZero);
+pub struct BlindingFactor(pub(crate) ScalarNonZero);
 impl BlindingFactor {
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let scalar = ScalarNonZero::random(rng);
@@ -40,7 +40,7 @@ impl BlindingFactor {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct BlindedGlobalSecretKey(ScalarNonZero);
+pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
 impl Serialize for BlindedGlobalSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -87,7 +87,7 @@ pub fn make_blinded_global_secret_key(
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
-pub struct SessionKeyShare(ScalarNonZero);
+pub struct SessionKeyShare(pub(crate) ScalarNonZero);
 impl Serialize for SessionKeyShare {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -147,7 +147,7 @@ impl PEPSystem {
     }
     pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
         let k = make_rekey_factor(&self.rekeying_secret, &context);
-        make_session_key_share(&k, &self.blinding_factor)
+        make_session_key_share(&k.0, &self.blinding_factor)
     }
     pub fn rekey_info(
         &self,

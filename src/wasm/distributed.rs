@@ -75,8 +75,7 @@ pub fn wasm_make_blinded_global_secret_key(
         make_blinded_global_secret_key(
             &GlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
-        )
-        .0,
+        ).unwrap().0,
     ))
 }
 
@@ -93,8 +92,8 @@ impl WASMPEPSystem {
         blinding_factor: &WASMBlindingFactor,
     ) -> Self {
         Self(PEPSystem::new(
-            PseudonymizationSecret(pseudonymisation_secret.to_string()),
-            EncryptionSecret(rekeying_secret.to_string()),
+            PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
+            EncryptionSecret::from(rekeying_secret.as_bytes().into()),
             BlindingFactor::from(ScalarNonZero::from(blinding_factor.0)),
         ))
     }
@@ -102,7 +101,7 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = sessionKeyShare)]
     pub fn wasm_session_key_share(&self, context: &str) -> WASMSessionKeyShare {
         WASMSessionKeyShare::from(WASMScalarNonZero::from(
-            self.session_key_share(&EncryptionContext(context.to_string()))
+            self.session_key_share(&EncryptionContext::from(context.to_string()))
                 .0,
         ))
     }
@@ -110,8 +109,8 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = rekeyInfo)]
     pub fn wasm_rekey_info(&self, from_enc: &str, to_enc: &str) -> WASMRekeyInfo {
         WASMRekeyInfo::from(self.rekey_info(
-            &EncryptionContext(from_enc.to_string()),
-            &EncryptionContext(to_enc.to_string()),
+            &EncryptionContext::from(from_enc.to_string()),
+            &EncryptionContext::from(to_enc.to_string()),
         ))
     }
 
@@ -124,10 +123,10 @@ impl WASMPEPSystem {
         to_enc: &str,
     ) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationContext(from_pseudo.to_string()),
-            &PseudonymizationContext(to_pseudo.to_string()),
-            &EncryptionContext(from_enc.to_string()),
-            &EncryptionContext(to_enc.to_string()),
+            &PseudonymizationContext::from(from_pseudo.to_string()),
+            &PseudonymizationContext::from(to_pseudo.to_string()),
+            &EncryptionContext::from(from_enc.to_string()),
+            &EncryptionContext::from(to_enc.to_string()),
         ))
     }
 

@@ -20,7 +20,7 @@ impl PseudonymizationContextVerifiers {
         rng: &mut R,
     ) -> (Self, PseudonymizationFactorVerifiersProof) {
         let factor = make_pseudonymisation_factor(secret, context);
-        let (verifiers, proof) = PseudonymizationFactorVerifiers::new(&*factor, rng);
+        let (verifiers, proof) = PseudonymizationFactorVerifiers::new(&factor.0, rng);
         (PseudonymizationContextVerifiers(verifiers), proof)
     }
 }
@@ -31,7 +31,7 @@ impl EncryptionContextVerifiers {
         rng: &mut R,
     ) -> (Self, RekeyFactorVerifiersProof) {
         let factor = make_rekey_factor(secret, context);
-        let (verifiers, proof) = RekeyFactorVerifiers::new(&*factor, rng);
+        let (verifiers, proof) = RekeyFactorVerifiers::new(&factor.0, rng);
         (EncryptionContextVerifiers(verifiers), proof)
     }
 }
@@ -46,13 +46,13 @@ pub struct PseudonymizationInfoProof {
 pub struct RekeyInfoProof(pub Rekey2FactorsProof);
 impl PseudonymizationInfoProof {
     pub fn new<R: RngCore + CryptoRng>(factors: &PseudonymizationInfo, rng: &mut R) -> Self {
-        let reshuffle_proof = Reshuffle2FactorsProof::new(&factors.s.from, &factors.s.to, rng);
-        let rekey_proof = Rekey2FactorsProof::new(&factors.k.from, &factors.k.to, rng);
+        let reshuffle_proof = Reshuffle2FactorsProof::new(&factors.s.from.0, &factors.s.to.0, rng);
+        let rekey_proof = Rekey2FactorsProof::new(&factors.k.from.0, &factors.k.to.0, rng);
         let rsk_proof = RSK2FactorsProof::new(
-            &factors.s.from,
-            &factors.s.to,
-            &factors.k.from,
-            &factors.k.to,
+            &factors.s.from.0,
+            &factors.s.to.0,
+            &factors.k.from.0,
+            &factors.k.to.0,
             rng,
         );
         PseudonymizationInfoProof {
@@ -81,7 +81,7 @@ impl PseudonymizationInfoProof {
 }
 impl RekeyInfoProof {
     pub fn new<R: RngCore + CryptoRng>(factors: &RekeyInfo, rng: &mut R) -> Self {
-        let rekey_proof = Rekey2FactorsProof::new(&factors.from, &factors.to, rng);
+        let rekey_proof = Rekey2FactorsProof::new(&factors.from.0, &factors.to.0, rng);
         RekeyInfoProof(rekey_proof)
     }
     #[must_use]
@@ -141,10 +141,10 @@ pub fn proved_pseudonymize<R: RngCore + CryptoRng>(
 ) -> ProvedEncryptedPseudonym {
     ProvedEncryptedPseudonym::new(prove_rsk2(
         &p,
-        &pseudonymization_info.s.from,
-        &pseudonymization_info.s.to,
-        &pseudonymization_info.k.from,
-        &pseudonymization_info.k.to,
+        &pseudonymization_info.s.from.0,
+        &pseudonymization_info.s.to.0,
+        &pseudonymization_info.k.from.0,
+        &pseudonymization_info.k.to.0,
         rng,
     ))
 }
@@ -155,7 +155,7 @@ pub fn proved_rekey<R: RngCore + CryptoRng>(
     rekey_info: &RekeyInfo,
     rng: &mut R,
 ) -> ProvedEncryptedDataPoint {
-    ProvedEncryptedDataPoint::new(prove_rekey2(&p, &rekey_info.from, &rekey_info.to, rng))
+    ProvedEncryptedDataPoint::new(prove_rekey2(&p, &rekey_info.from.0, &rekey_info.to.0, rng))
 }
 
 #[must_use]
