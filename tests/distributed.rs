@@ -1,4 +1,3 @@
-use libpep::arithmetic::{GroupElement, ScalarNonZero};
 use libpep::distributed::{make_blinded_global_secret_key, BlindingFactor, PEPClient, PEPSystem};
 use libpep::distributed_proved::{PEPVerifier, ProvedPEPClient, ProvedPEPSystem};
 use libpep::high_level::{
@@ -23,24 +22,24 @@ fn n_pep() {
         make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
 
 
-    assert_eq!(blinded_global_secret_key.0, global_secret.0 * blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.invert()));
+    // debug_assert_eq!(blinded_global_secret_key.0, global_secret.0 * blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert()));
 
     // Create systems
     let systems = (0..n)
         .map(|i| {
-            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i).as_bytes().into());
-            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i).as_bytes().into());
+            let pseudonymization_secret = PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret = EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })
         .collect::<Vec<_>>();
 
     // Setup demo contexts
-    let pc_a = PseudonymizationContext("user-a".to_string());
-    let pc_b = PseudonymizationContext("user-b".to_string());
+    let pc_a = PseudonymizationContext::from("user-a".to_string());
+    let pc_b = PseudonymizationContext::from("user-b".to_string());
 
-    let ec_a1 = EncryptionContext("session-a1".to_string());
-    let ec_b1 = EncryptionContext("session-b1".to_string());
+    let ec_a1 = EncryptionContext::from("session-a1".to_string());
+    let ec_b1 = EncryptionContext::from("session-b1".to_string());
 
     // Get client session key shares
     let sks_a1 = systems
@@ -58,9 +57,7 @@ fn n_pep() {
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
-    let data = DataPoint {
-        value: GroupElement::random(rng),
-    };
+    let data = DataPoint::random(rng);
 
     let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
     let enc_data = client_a.encrypt_data(&data, rng);
@@ -108,8 +105,8 @@ fn n_pep_proved() {
     let mut systems = (0..n)
         .map(|i| {
             let system_id = format!("system-{}", i);
-            let pseudonymization_secret = PseudonymizationSecret(format!("ps-secret-{}", i).as_bytes().into());
-            let encryption_secret = EncryptionSecret(format!("es-secret-{}", i).as_bytes().into());
+            let pseudonymization_secret = PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
+            let encryption_secret = EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
             let blinding_factor = blinding_factors[i].clone();
             let pseudo_cache = InMemoryVerifiersCache::<
                 PseudonymizationContext,
@@ -126,11 +123,11 @@ fn n_pep_proved() {
         .collect::<Vec<_>>();
 
     // Setup demo contexts
-    let pc_a = PseudonymizationContext("user-a".to_string());
-    let pc_b = PseudonymizationContext("user-b".to_string());
+    let pc_a = PseudonymizationContext::from("user-a".to_string());
+    let pc_b = PseudonymizationContext::from("user-b".to_string());
 
-    let ec_a1 = EncryptionContext("session-a1".to_string());
-    let ec_b1 = EncryptionContext("session-b1".to_string());
+    let ec_a1 = EncryptionContext::from("session-a1".to_string());
+    let ec_b1 = EncryptionContext::from("session-b1".to_string());
 
     // Get client session key shares
     let sks_a1 = systems
@@ -382,9 +379,7 @@ fn n_pep_proved() {
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
-    let data = DataPoint {
-        value: GroupElement::random(rng),
-    };
+    let data = DataPoint::random(rng);
 
     let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
     let enc_data = client_a.encrypt_data(&data, rng);

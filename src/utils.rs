@@ -14,14 +14,14 @@ pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
     context: &PseudonymizationContext,
 ) -> ReshuffleFactor {
-    ReshuffleFactor::from(make_factor("pseudonym", secret, context))
+    ReshuffleFactor::from(make_factor("pseudonym", &secret.0, context))
 }
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub fn make_rekey_factor(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> RekeyFactor {
-    RekeyFactor::from(make_factor("rekey", secret, context))
+    RekeyFactor::from(make_factor("rekey", &secret.0, context))
 }
 
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
@@ -41,7 +41,7 @@ pub fn make_pseudonymisation_factor(
     context: &PseudonymizationContext,
 ) -> ReshuffleFactor {
     ReshuffleFactor::from(make_factor(
-        secret,
+        &secret.0,
         0x01,
         &context.audience_type,
         &context.payload,
@@ -53,7 +53,7 @@ pub fn make_rekey_factor(
     context: &EncryptionContext,
 ) -> RekeyFactor {
     RekeyFactor::from(make_factor(
-        secret,
+        &secret.0,
         0x02,
         &context.audience_type,
         &context.payload,

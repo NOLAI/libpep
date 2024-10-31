@@ -7,13 +7,13 @@ use rand_core::OsRng;
 fn test_high_level_flow() {
     let rng = &mut OsRng;
     let (_global_public, global_secret) = make_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret("secret".as_bytes().into());
-    let enc_secret = EncryptionSecret("secret".as_bytes().into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
 
-    let pseudo_context1 = PseudonymizationContext("context1".to_string());
-    let enc_context1 = EncryptionContext("session1".to_string());
-    let pseudo_context2 = PseudonymizationContext("context2".to_string());
-    let enc_context2 = EncryptionContext("session2".to_string());
+    let pseudo_context1 = PseudonymizationContext::from("context1".to_string());
+    let enc_context1 = EncryptionContext::from("session1".to_string());
+    let pseudo_context2 = PseudonymizationContext::from("context2".to_string());
+    let enc_context2 = EncryptionContext::from("session2".to_string());
 
     let (session1_public, session1_secret) =
         make_session_keys(&global_secret, &enc_context1, &enc_secret);
@@ -23,7 +23,7 @@ fn test_high_level_flow() {
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt_pseudonym(&pseudo, &session1_public, rng);
 
-    let data = DataPoint::new(GroupElement::random(rng));
+    let data = DataPoint::from_point(GroupElement::random(rng));
     let enc_data = encrypt_data(&data, &session1_public, rng);
 
     let dec_pseudo = decrypt_pseudonym(&enc_pseudo, &session1_secret);
@@ -77,13 +77,13 @@ fn test_high_level_flow() {
 fn test_proved() {
     let rng = &mut OsRng;
     let (_global_public, global_secret) = make_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret("secret".as_bytes().into());
-    let enc_secret = EncryptionSecret("secret".as_bytes().into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
 
-    let pseudo_context1 = PseudonymizationContext("context1".to_string());
-    let enc_context1 = EncryptionContext("session1".to_string());
-    let pseudo_context2 = PseudonymizationContext("context2".to_string());
-    let enc_context2 = EncryptionContext("session2".to_string());
+    let pseudo_context1 = PseudonymizationContext::from("context1".to_string());
+    let enc_context1 = EncryptionContext::from("session1".to_string());
+    let pseudo_context2 = PseudonymizationContext::from("context2".to_string());
+    let enc_context2 = EncryptionContext::from("session2".to_string());
 
     let (rekey_verifiers1, pr1) = EncryptionContextVerifiers::new(&enc_context1, &enc_secret, rng);
     let (pseudo_verifiers1, pp1) =
@@ -105,7 +105,7 @@ fn test_proved() {
     let pseudo_1 = Pseudonym::random(rng);
     let enc_pseudo_1 = encrypt_pseudonym(&pseudo_1, &session1_public, rng);
 
-    let data = DataPoint::new(GroupElement::random(rng));
+    let data = DataPoint::from_point(GroupElement::random(rng));
     let enc_data = encrypt_data(&data, &session1_public, rng);
 
     let pseudo_info = PseudonymizationInfo::new(

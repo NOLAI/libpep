@@ -113,7 +113,7 @@ impl ProvedEncryptedPseudonym {
         if reconstructed.is_none() {
             return None;
         }
-        Some(EncryptedPseudonym::new(reconstructed?))
+        Some(EncryptedPseudonym::from(reconstructed?))
     }
 }
 impl ProvedEncryptedDataPoint {
@@ -129,7 +129,7 @@ impl ProvedEncryptedDataPoint {
         if reconstructed.is_none() {
             return None;
         }
-        Some(EncryptedDataPoint::new(reconstructed?))
+        Some(EncryptedDataPoint::from(reconstructed?))
     }
 }
 
@@ -193,7 +193,7 @@ pub fn verify_pseudonymization(
     if reconstructed.is_none() {
         return None;
     }
-    Some(EncryptedPseudonym::new(reconstructed?))
+    Some(EncryptedPseudonym::from(reconstructed?))
 }
 
 pub fn verified_decrypt_pseudonym(
@@ -218,7 +218,7 @@ pub fn verify_rekey(
     if reconstructed.is_none() {
         return None;
     }
-    Some(EncryptedDataPoint::new(reconstructed?))
+    Some(EncryptedDataPoint::from(reconstructed?))
 }
 
 pub fn verified_decrypt_data(
