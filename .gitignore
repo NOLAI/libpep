@@ -149,3 +149,4 @@ dist
 # WASM build
 .pkg-web/
 .aider*
+/package-lock.json
