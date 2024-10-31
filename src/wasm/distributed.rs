@@ -203,7 +203,7 @@ impl WASMPEPSystem {
         WASMEncryptedPseudonym::from(WASMElGamal::from(
             self.rerandomize_encrypted_pseudonym(
                 EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &public_key.0,
+                &public_key.deref(),
                 &mut rng,
             )
             .value,
@@ -221,7 +221,7 @@ impl WASMPEPSystem {
         WASMEncryptedDataPoint::from(WASMElGamal::from(
             self.rerandomize_encrypted_data_point(
                 EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &public_key.0,
+                &public_key.deref(),
                 &mut rng,
             )
             .value,
@@ -329,7 +329,7 @@ impl WASMPEPClient {
         WASMEncryptedPseudonym::from(WASMElGamal::from(
             self.rerandomize_encrypted_pseudonym(
                 EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &public_key.0,
+                &public_key.deref(),
                 &mut rng,
             )
             .value,
@@ -347,7 +347,7 @@ impl WASMPEPClient {
         WASMEncryptedDataPoint::from(WASMElGamal::from(
             self.rerandomize_encrypted_data_point(
                 EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &public_key.0,
+                &public_key.deref(),
                 &mut rng,
             )
             .value,
