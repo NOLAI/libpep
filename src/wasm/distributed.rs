@@ -190,6 +190,42 @@ impl WASMPEPSystem {
             .value,
         ))
     }
+    #[cfg(feature = "elgamal2")]
+    #[wasm_bindgen(js_name = rerandomizeEncryptedPseudonym)]
+    pub fn wasm_rerandomize_encrypted_pseudonym(
+        &self,
+        encrypted: &WASMEncryptedPseudonym,
+        public_key: &WASMGroupElement,
+    ) -> WASMEncryptedPseudonym {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedPseudonym::from(WASMElGamal::from(
+            self.rerandomize_encrypted_pseudonym(
+                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
+                &public_key.0,
+                &mut rng,
+            )
+                .value,
+        ))
+    }
+
+    #[cfg(feature = "elgamal2")]
+    #[wasm_bindgen(js_name = rerandomizeEncryptedDataPoint)]
+    pub fn wasm_rerandomize_encrypted_data_point(
+        &self,
+        encrypted: &WASMEncryptedDataPoint,
+        public_key: &WASMGroupElement,
+    ) -> WASMEncryptedDataPoint {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedDataPoint::from(WASMElGamal::from(
+            self.rerandomize_encrypted_data_point(
+                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
+                &public_key.0,
+                &mut rng,
+            )
+                .value,
+        ))
+    }
+
 }
 #[derive(Clone, From, Into, Deref)]
 #[wasm_bindgen(js_name = PEPClient)]
@@ -278,6 +314,42 @@ impl WASMPEPClient {
                 &mut rng,
             )
             .value,
+        ))
+    }
+
+    #[cfg(feature = "elgamal2")]
+    #[wasm_bindgen(js_name = rerandomizeEncryptedPseudonym)]
+    pub fn wasm_rerandomize_encrypted_pseudonym(
+        &self,
+        encrypted: &WASMEncryptedPseudonym,
+        public_key: &WASMGroupElement,
+    ) -> WASMEncryptedPseudonym {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedPseudonym::from(WASMElGamal::from(
+            self.rerandomize_encrypted_pseudonym(
+                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
+                &public_key.0,
+                &mut rng,
+            )
+                .value,
+        ))
+    }
+
+    #[cfg(feature = "elgamal2")]
+    #[wasm_bindgen(js_name = rerandomizeEncryptedDataPoint)]
+    pub fn wasm_rerandomize_encrypted_data_point(
+        &self,
+        encrypted: &WASMEncryptedDataPoint,
+        public_key: &WASMGroupElement,
+    ) -> WASMEncryptedDataPoint {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedDataPoint::from(WASMElGamal::from(
+            self.rerandomize_encrypted_data_point(
+                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
+                &public_key.0,
+                &mut rng,
+            )
+                .value,
         ))
     }
 }
