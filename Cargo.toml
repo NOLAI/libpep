@@ -16,8 +16,6 @@ name = "libpep"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["build-binary"]
-build-binary = ["buildinfy","commandy","commandy_macros"]
 elgamal2 = []
 wasm = ["wasm-bindgen", "getrandom"]
 legacy-pep-repo-compatible = []
