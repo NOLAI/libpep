@@ -1,8 +1,7 @@
-use std::ops::Mul;
-use libpep::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits};
-use libpep::distributed::{make_session_key_share, BlindingFactor, PEPSystem};
-use libpep::elgamal::encrypt;
+use libpep::arithmetic::*;
+use libpep::distributed::*;
 use libpep::high_level::*;
+#[cfg(feature = "legacy-pep-repo-compatible")]
 use libpep::utils::{make_pseudonymisation_factor};
 
 #[cfg(feature = "legacy-pep-repo-compatible")]
@@ -51,6 +50,6 @@ fn test_pseudonymization() {
     );
 
     let main_pseudonym = "PEP0".to_string();
-    let pseudo = GroupElement::decode_lizard(<&[u8; 16]>::try_from(main_pseudonym.as_bytes()).unwrap()).unwrap();
-    // TODO
+    // TODO implement the rest of the test
+    // let pseudo = GroupElement::decode_lizard(<&[u8; 16]>::try_from(main_pseudonym.as_bytes()).unwrap()).unwrap();
 }

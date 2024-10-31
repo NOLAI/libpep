@@ -29,8 +29,8 @@ impl GroupElement {
         Self(RistrettoPoint::random(rng))
     }
 
-    /// Decode a 32-byte compressed Ristretto point. Returns None if the point is not valid (only ~6.25% of all 32-byte strings are valid encodings).
-    /// Elligator mapping takes 253 bits, since there are 8 cofactors. Also, half of the points are negative, so each point has 16 equivalent encodings.
+    /// Decode a 32-byte compressed Ristretto point. Returns None if the point is not valid (only ~6.25% of all 32-byte strings are valid encodings, use lizard technique to decode arbitrary data).
+    /// Curve25519 has exactly 2^255 - 19 points. Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order 2^252 + 27742317777372353535851937790883648493 (the elligator mapping takes 253 bits).
     pub fn decode(v: &[u8; 32]) -> Option<Self> {
         CompressedRistretto(*v).decompress().map(Self)
     }
@@ -55,13 +55,13 @@ impl GroupElement {
     }
 
 
-    /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach. There are practically no invalid lizard encodings! This is useful if we want to encode some existing main identifier.
+    /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach. There are practically no invalid lizard encodings! This is useful to encode arbitrary data as group element.
     pub fn decode_lizard(v: &[u8; 16]) -> Option<Self> {
         let point = RistrettoPoint::lizard_encode::<Sha256>(v);
         Some(Self(point))
     }
 
-    /// Encode to a 16-byte string using the lizard approach. Notice that a Ristretto point is represented as 32 bytes and there are ~2^252 valid points, so only a very small fraction of points can be encoded this way.
+    /// Encode to a 16-byte string using the lizard approach. Notice that a Ristretto point is represented as 32 bytes with ~2^252 valid points, so only a very small fraction of points (only those decoded from lizard) can be encoded this way.
     pub fn encode_lizard(self) -> Option<[u8; 16]> {
         Some(self.0.lizard_decode::<Sha256>()?)
     }
