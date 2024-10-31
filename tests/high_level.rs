@@ -10,10 +10,23 @@ fn test_high_level_flow() {
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let pseudo_context1 = PseudonymizationContext::from("context1".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let enc_context1 = EncryptionContext::from("session1".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let pseudo_context2 = PseudonymizationContext::from("context2".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let enc_context2 = EncryptionContext::from("session2".to_string());
+
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let pseudo_context1 = PseudonymizationContext::from(("context1".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let enc_context1 = EncryptionContext::from(("session1".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let pseudo_context2 = PseudonymizationContext::from(("context2".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let enc_context2 = EncryptionContext::from(("session2".to_string(), AudienceType::Unknown));
 
     let (session1_public, session1_secret) =
         make_session_keys(&global_secret, &enc_context1, &enc_secret);
@@ -80,10 +93,23 @@ fn test_proved() {
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let pseudo_context1 = PseudonymizationContext::from("context1".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let enc_context1 = EncryptionContext::from("session1".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let pseudo_context2 = PseudonymizationContext::from("context2".to_string());
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     let enc_context2 = EncryptionContext::from("session2".to_string());
+
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let pseudo_context1 = PseudonymizationContext::from(("context1".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let enc_context1 = EncryptionContext::from(("session1".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let pseudo_context2 = PseudonymizationContext::from(("context2".to_string(), AudienceType::Unknown));
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    let enc_context2 = EncryptionContext::from(("session2".to_string(), AudienceType::Unknown));
 
     let (rekey_verifiers1, pr1) = EncryptionContextVerifiers::new(&enc_context1, &enc_secret, rng);
     let (pseudo_verifiers1, pp1) =

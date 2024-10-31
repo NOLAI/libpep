@@ -27,10 +27,10 @@ fn test_key_factor_component() {
         let pseudo_secret = PseudonymizationSecret::from(secret);
         let context = PseudonymizationContext::from((payload.to_string(), *audience_type));
         let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
-        assert_eq!(pseudo_factor.encode_to_hex().to_ascii_uppercase(), *expected_factor);
+        assert_eq!(pseudo_factor.0.encode_to_hex().to_ascii_uppercase(), *expected_factor);
 
         let blinding_factor = BlindingFactor::from(ScalarNonZero::decode_from_hex(blinding_hex).unwrap());
-        let session_key_share = make_session_key_share(&pseudo_factor, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
+        let session_key_share = make_session_key_share(&pseudo_factor.0, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
         assert_eq!(session_key_share.encode_to_hex().to_ascii_uppercase(), *expected_sks)
     }
 }
