@@ -55,13 +55,22 @@ pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
 }
 
 /// Combination of `rerandomize(r)`, `reshuffle(s)` and `rekey(k)`
+#[cfg(not(feature = "elgamal2"))]
 pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     let ski = s * k.invert();
     ElGamal {
         b: ski * m.b + ski * r * G,
-        c: s * r * m.y + s * m.c,
-        #[cfg(not(feature = "elgamal2"))]
+        c: (s * r) * m.y + s * m.c,
         y: k * m.y,
+    }
+}
+
+#[cfg(feature = "elgamal2")]
+pub fn rrsk(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
+    let ski = s * k.invert();
+    ElGamal {
+        b: ski * m.b + ski * r * G,
+        c: (s * r) * public_key + s * m.c,
     }
 }
 
@@ -86,6 +95,7 @@ pub fn rsk2(
     rsk(m, &s, &k)
 }
 
+#[cfg(not(feature = "elgamal2"))]
 pub fn rrsk2(
     m: &ElGamal,
     r: &ScalarNonZero,
@@ -97,4 +107,18 @@ pub fn rrsk2(
     let s = s_from.invert() * s_to;
     let k = k_from.invert() * k_to;
     rrsk(m, &r, &s, &k)
+}
+#[cfg(feature = "elgamal2")]
+pub fn rrsk2(
+    m: &ElGamal,
+    public_key: &GroupElement,
+    r: &ScalarNonZero,
+    s_from: &ScalarNonZero,
+    s_to: &ScalarNonZero,
+    k_from: &ScalarNonZero,
+    k_to: &ScalarNonZero,
+) -> ElGamal {
+    let s = s_from.invert() * s_to;
+    let k = k_from.invert() * k_to;
+    rrsk(m, public_key, &r, &s, &k)
 }
