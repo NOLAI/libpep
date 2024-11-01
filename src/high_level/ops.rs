@@ -1,5 +1,5 @@
 use rand_core::{CryptoRng, RngCore};
-use crate::arithmetic::ScalarNonZero;
+use crate::arithmetic::{ScalarNonZero};
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::contexts::*;
@@ -46,13 +46,13 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
 
 #[cfg(feature = "elgamal2")]
 /// Rerandomize the ciphertext of an encrypted pseudonym
-pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
+pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
     encrypted: &E,
-    public_key: &GroupElement,
+    public_key: &P,
     rng: &mut R,
 ) -> E {
     let r = ScalarNonZero::random(rng);
-    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key, &r))
+    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key.value(), &r))
 }
 
 

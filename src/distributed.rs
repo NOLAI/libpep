@@ -203,10 +203,10 @@ impl PEPSystem {
         rerandomize(&encrypted, rng)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
         &self,
         encrypted: &E,
-        public_key: &GroupElement,
+        public_key: &P,
         rng: &mut R,
     ) -> E {
         rerandomize(&encrypted, public_key, rng)
@@ -270,10 +270,10 @@ impl PEPClient {
         rerandomize(&encrypted, rng)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
         &self,
         encrypted: &E,
-        public_key: &GroupElement,
+        public_key: &P,
         rng: &mut R,
     ) -> E {
         rerandomize(&encrypted, public_key, rng)
@@ -303,10 +303,10 @@ impl PEPClientOffline {
         rerandomize(&encrypted, rng)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
         &self,
         encrypted: &E,
-        public_key: &GroupElement,
+        public_key: &P,
         rng: &mut R,
     ) -> E {
         rerandomize(&encrypted, public_key, rng)

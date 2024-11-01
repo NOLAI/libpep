@@ -24,11 +24,11 @@ fn test_key_factor_component() {
     for (secret_hex, blinding_hex, audience_type, payload, expected_factor, expected_sks) in test_cases.iter() {
         let secret = hex::decode(secret_hex).unwrap();
         let pseudo_secret = PseudonymizationSecret::from(secret);
-        let context = PseudonymizationContext::from((payload.to_string(), *audience_type as u32));
+        let context = PseudonymizationContext::from_audience(payload, *audience_type as u32);
         let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
         assert_eq!(pseudo_factor.0.encode_to_hex().to_ascii_uppercase(), *expected_factor);
 
-        let blinding_factor = BlindingFactor::from(ScalarNonZero::decode_from_hex(blinding_hex).unwrap());
+        let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
         let session_key_share = make_session_key_share(&pseudo_factor.0, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
         assert_eq!(session_key_share.encode_to_hex().to_ascii_uppercase(), *expected_sks)
     }
@@ -39,13 +39,13 @@ fn test_pseudonymization() {
     let transcryptor1 = PEPSystem::new(
         PseudonymizationSecret::from(hex::decode("D4E024E453EF835B9FF6806509CFDA5EDA182F6D5B72F2421879D4EEE2AA41386FA548F8D84EA985F91214FBD6A94937ED0F9CE10D9A37340BF301A1DA5594B6").unwrap()),
         EncryptionSecret::from(hex::decode("108966C6C8D36B65C583F6B7CA8E48F44ADAB81BC23594AB0C53CB2F92F005C1DABBE9E0F57B572BC666EDD2E091ED12D95A404CA49BC8E50D11453D8D7E6F0C").unwrap()),
-        BlindingFactor::from(ScalarNonZero::decode_from_hex("B8E69234C19D393F64ED46B5AC8613526C5929B086D15671E1EB590CC1A59B01").unwrap())
+        BlindingFactor::from_hex("B8E69234C19D393F64ED46B5AC8613526C5929B086D15671E1EB590CC1A59B01").unwrap()
     );
 
     let transcryptor2 = PEPSystem::new(
         PseudonymizationSecret::from(hex::decode("9D15F07EF643F04C9ECE22D2F4FE5F41D4D87ACF1E7B95839AEEA1C7E81B8B89BD0BA29468F4F2C9EFB639029AC7AF83BD7679F31866C033589E54B698169855").unwrap()),
         EncryptionSecret::from(hex::decode("DE124CA9AF1BE64C889AE79A30FEC031CDD019097CF023594976FEDA709D4ED99747CB079E6EABD6CF67A75EF625ACDD6787B5994ACC665EBECCC7C6071406D2").unwrap()),
-        BlindingFactor::from(ScalarNonZero::decode_from_hex("602F27166E7AF611C2D50E6C06C7FC4A16F74A29A28C1DFEBCDC245ECD34D308").unwrap())
+        BlindingFactor::from_hex("602F27166E7AF611C2D50E6C06C7FC4A16F74A29A28C1DFEBCDC245ECD34D308").unwrap()
     );
 
     let main_pseudonym = "PEP0".to_string();

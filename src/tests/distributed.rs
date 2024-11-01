@@ -36,25 +36,12 @@ fn n_pep() {
         .collect::<Vec<_>>();
 
     // Setup demo contexts
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let pc_a = PseudonymizationContext::from("user-a".to_string());
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let pc_b = PseudonymizationContext::from("user-b".to_string());
+    let pc_a = PseudonymizationContext::from("user-a");
+    let pc_b = PseudonymizationContext::from("user-b");
 
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let ec_a1 = EncryptionContext::from("session-a1".to_string());
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let ec_b1 = EncryptionContext::from("session-b1".to_string());
+    let ec_a1 = EncryptionContext::from("session-a1");
+    let ec_b1 = EncryptionContext::from("session-b1");
 
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let pc_a = PseudonymizationContext::from(("user-a".to_string(), 0x01));
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let pc_b = PseudonymizationContext::from(("user-b".to_string(), 0x01));
-
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let ec_a1 = EncryptionContext::from(("session-a1".to_string(), 0x01));
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let ec_b1 = EncryptionContext::from(("session-b1".to_string(), 0x01));
 
     // Get client session key shares
     let sks_a1 = systems
@@ -140,25 +127,12 @@ fn n_pep_proved() {
         .collect::<Vec<_>>();
 
     // Setup demo contexts
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let pc_a = PseudonymizationContext::from("user-a".to_string());
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let pc_b = PseudonymizationContext::from("user-b".to_string());
+    let pc_a = PseudonymizationContext::from("user-a");
+    let pc_b = PseudonymizationContext::from("user-b");
 
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let ec_a1 = EncryptionContext::from("session-a1".to_string());
-    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-    let ec_b1 = EncryptionContext::from("session-b1".to_string());
+    let ec_a1 = EncryptionContext::from("session-a1");
+    let ec_b1 = EncryptionContext::from("session-b1");
 
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let pc_a = PseudonymizationContext::from(("user-a".to_string(), 0x01));
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let pc_b = PseudonymizationContext::from(("user-b".to_string(), 0x01));
-
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let ec_a1 = EncryptionContext::from(("session-a1".to_string(), 0x01));
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    let ec_b1 = EncryptionContext::from(("session-b1".to_string(), 0x01));
 
     // Get client session key shares
     let sks_a1 = systems

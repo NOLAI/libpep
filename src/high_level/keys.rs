@@ -11,12 +11,37 @@ pub struct GlobalPublicKey(pub GroupElement);
 #[derive(Copy, Clone, Debug, From)]
 pub struct GlobalSecretKey(pub(crate) ScalarNonZero);
 
-/// Generate a new global key pair
-pub fn make_global_keys<R: RngCore + CryptoRng>(rng: &mut R) -> (GlobalPublicKey, GlobalSecretKey) {
-    let sk = ScalarNonZero::random(rng);
-    assert_ne!(sk, ScalarNonZero::one());
-    let pk = sk * G;
-    (GlobalPublicKey(pk), GlobalSecretKey(sk))
+/// SESSION KEYS
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct SessionPublicKey(pub GroupElement);
+#[derive(Copy, Clone, Debug, From)]
+pub struct SessionSecretKey(pub(crate) ScalarNonZero);
+
+pub trait PublicKey {
+    fn value(&self) -> &GroupElement;
+}
+pub trait SecretKey {
+    fn value(&self) -> &ScalarNonZero;
+}
+impl PublicKey for GlobalPublicKey {
+    fn value(&self) -> &GroupElement {
+        &self.0
+    }
+}
+impl SecretKey for GlobalSecretKey {
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+impl PublicKey for SessionPublicKey {
+    fn value(&self) -> &GroupElement {
+        &self.0
+    }
+}
+impl SecretKey for SessionSecretKey {
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
 }
 
 /// TRANSCRYPTION SECRETS
@@ -36,11 +61,15 @@ impl EncryptionSecret {
     }
 }
 
-/// SESSION KEYS
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct SessionPublicKey(pub GroupElement);
-#[derive(Copy, Clone, Debug, From)]
-pub struct SessionSecretKey(pub(crate) ScalarNonZero);
+
+/// Generate a new global key pair
+pub fn make_global_keys<R: RngCore + CryptoRng>(rng: &mut R) -> (GlobalPublicKey, GlobalSecretKey) {
+    let sk = ScalarNonZero::random(rng);
+    assert_ne!(sk, ScalarNonZero::one());
+    let pk = sk * G;
+    (GlobalPublicKey(pk), GlobalSecretKey(sk))
+}
+
 /// Generate a subkey from a global secret key, a context, and an encryption secret
 pub fn make_session_keys(
     global: &GlobalSecretKey,

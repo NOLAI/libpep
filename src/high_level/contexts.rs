@@ -5,26 +5,53 @@ use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
 
 pub type Context = String; // Contexts are described by simple strings of arbitrary length
-#[cfg(not(feature = "legacy-pep-repo-compatible"))]
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct PseudonymizationContext(pub Context);
-#[cfg(not(feature = "legacy-pep-repo-compatible"))]
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptionContext(pub Context);
-#[cfg(feature = "legacy-pep-repo-compatible")]
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 pub struct PseudonymizationContext {
     #[deref]
     pub payload: Context,
+    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub audience_type: u32,
 }
-#[cfg(feature = "legacy-pep-repo-compatible")]
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 pub struct EncryptionContext {
     #[deref]
     pub payload: Context,
+    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub audience_type: u32,
 }
+impl PseudonymizationContext {
+    pub fn from(payload: &str) -> Self {
+        PseudonymizationContext {
+            payload: payload.to_string(),
+            #[cfg(feature = "legacy-pep-repo-compatible")]
+            audience_type: 0,
+        }
+    }
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    pub fn from_audience(payload: &str, audience_type: u32) -> Self {
+        PseudonymizationContext {
+            payload: payload.to_string(),
+            audience_type,
+        }
+    }
+}
+impl EncryptionContext {
+    pub fn from(payload: &str) -> Self {
+        EncryptionContext {
+            payload: payload.to_string(),
+            #[cfg(feature = "legacy-pep-repo-compatible")]
+            audience_type: 0,
+        }
+    }
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    pub fn from_audience(payload: &str, audience_type: u32) -> Self {
+        EncryptionContext {
+            payload: payload.to_string(),
+            audience_type,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]

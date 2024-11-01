@@ -12,6 +12,19 @@ pub struct Pseudonym {
 pub struct DataPoint {
     pub(crate) value: GroupElement,
 }
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedPseudonym {
+    pub value: ElGamal,
+}
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedDataPoint {
+    pub value: ElGamal,
+}
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedPseudonymGlobal(pub EncryptedPseudonym);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedDataPointGlobal(pub EncryptedDataPoint);
+
 impl Pseudonym {
     pub fn from_point(value: GroupElement) -> Self {
         Self { value }
@@ -82,19 +95,6 @@ impl DataPoint {
             .collect()
     }
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedPseudonym {
-    pub value: ElGamal,
-}
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedDataPoint {
-    pub value: ElGamal,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedPseudonymGlobal(pub EncryptedPseudonym);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedDataPointGlobal(pub EncryptedDataPoint);
 pub trait Encrypted {
     type UnencryptedType: Encryptable;
     fn value(&self) -> &ElGamal;
