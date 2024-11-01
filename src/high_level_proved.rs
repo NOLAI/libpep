@@ -1,6 +1,9 @@
-use crate::high_level::*;
 use crate::proved::*;
-use crate::utils::{make_pseudonymisation_factor, make_rekey_factor};
+use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
+use crate::high_level::contexts::*;
+use crate::high_level::keys::*;
+use crate::high_level::ops::*;
+use crate::high_level::data_types::*;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 

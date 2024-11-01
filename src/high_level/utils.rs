@@ -1,11 +1,6 @@
 use crate::arithmetic::*;
-use crate::high_level::{
-    Context, EncryptionContext, EncryptionSecret, PseudonymizationContext, PseudonymizationSecret,
-    RekeyFactor, ReshuffleFactor, Secret,
-};
-
-#[cfg(feature = "legacy-pep-repo-compatible")]
-use crate::high_level::AudienceType;
+use crate::high_level::contexts::*;
+use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret, Secret};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha512;
@@ -43,7 +38,7 @@ pub fn make_pseudonymisation_factor(
     ReshuffleFactor::from(make_factor(
         &secret.0,
         0x01,
-        &context.audience_type,
+        context.audience_type,
         &context.payload,
     ))
 }
@@ -52,7 +47,7 @@ pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext)
     RekeyFactor::from(make_factor(
         &secret.0,
         0x02,
-        &context.audience_type,
+        context.audience_type,
         &context.payload,
     ))
 }
@@ -61,13 +56,12 @@ pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext)
 fn make_factor(
     secret: &Secret,
     typ: u32,
-    audience_type: &AudienceType,
+    audience_type: u32,
     context: &Context,
 ) -> ScalarNonZero {
     let mut hasher_inner = Sha256::default(); // Use HMAC to prevent length extension attack
     hasher_inner.update(&typ.to_be_bytes());
-    let audience_type_bytes = *audience_type as u32;
-    hasher_inner.update(audience_type_bytes.to_be_bytes());
+    hasher_inner.update(audience_type.to_be_bytes());
     hasher_inner.update(&context.as_bytes());
     let result_inner = hasher_inner.finalize();
 

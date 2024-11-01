@@ -1,8 +1,13 @@
 pub mod arithmetic;
 pub mod elgamal;
 pub mod primitives;
-pub mod utils;
-pub mod high_level;
+pub mod high_level {
+    pub mod keys;
+    pub mod data_types;
+    pub mod contexts;
+    pub mod ops;
+    pub mod utils;
+}
 pub mod distributed;
 
 pub mod zkps;

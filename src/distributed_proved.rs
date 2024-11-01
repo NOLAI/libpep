@@ -1,6 +1,8 @@
 use crate::arithmetic::{GroupElement, G};
 use crate::distributed::{PEPClient, PEPSystem};
-use crate::high_level::*;
+use crate::high_level::contexts::*;
+use crate::high_level::ops::*;
+use crate::high_level::data_types::*;
 use crate::high_level_proved::*;
 use crate::proved::{
     PseudonymizationFactorVerifiers, PseudonymizationFactorVerifiersProof, RekeyFactorVerifiers,
