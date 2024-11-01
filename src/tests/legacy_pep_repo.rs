@@ -1,10 +1,8 @@
 use crate::arithmetic::*;
 use crate::distributed::*;
 use crate::high_level::*;
-#[cfg(feature = "legacy-pep-repo-compatible")]
-use libpep::utils::{make_pseudonymisation_factor};
+use crate::utils::{make_pseudonymisation_factor};
 
-#[cfg(feature = "legacy-pep-repo-compatible")]
 #[test]
 fn test_key_factor_component() {
     let test_cases = [

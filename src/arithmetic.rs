@@ -1,5 +1,3 @@
-use base64::engine::general_purpose;
-use base64::Engine;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
@@ -35,14 +33,10 @@ impl GroupElement {
         CompressedRistretto(*v).decompress().map(Self)
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
-        if v.len() != 32 {
-            None
-        } else {
-            CompressedRistretto::from_slice(v)
-                .unwrap()
-                .decompress()
-                .map(Self)
-        }
+        CompressedRistretto::from_slice(v)
+            .ok()?
+            .decompress()
+            .map(Self)
     }
     /// Encode to a 32-byte array. Any GroupElement can be encoded this way.
     pub fn encode(&self) -> [u8; 32] {
@@ -65,7 +59,7 @@ impl GroupElement {
         Some(self.0.lizard_decode::<Sha256>()?)
     }
 
-    pub fn decode_hex(s: &str) -> Option<Self> {
+    pub fn decode_from_hex(s: &str) -> Option<Self> {
         if s.len() != 64 {
             // A valid hexadecimal string should be 64 characters long for 32 bytes
             return None;
@@ -79,19 +73,10 @@ impl GroupElement {
             .decompress()
             .map(Self)
     }
-    pub fn encode_hex(&self) -> String {
+    pub fn encode_to_hex(&self) -> String {
         hex::encode(self.encode())
     }
 
-    pub fn decode_base64(s: &str) -> Option<Self> {
-        general_purpose::URL_SAFE
-            .decode(s)
-            .ok()
-            .and_then(|v| Self::decode_from_slice(&v))
-    }
-    pub fn encode_base64(&self) -> String {
-        general_purpose::URL_SAFE.encode(&self.encode())
-    }
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
     }
@@ -102,7 +87,7 @@ impl Serialize for GroupElement {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.encode_hex().as_str())
+        serializer.serialize_str(&self.encode_to_hex().as_str())
     }
 }
 
@@ -122,7 +107,7 @@ impl<'de> Deserialize<'de> for GroupElement {
             where
                 E: Error,
             {
-                GroupElement::decode_hex(&v)
+                GroupElement::decode_from_hex(&v)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }

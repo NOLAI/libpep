@@ -9,6 +9,8 @@ pub struct ProvedEncryptedPseudonym(pub ProvedRSK);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct ProvedEncryptedDataPoint(pub ProvedRekey);
 
+// TODO: ProvedEncrypted trait
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct PseudonymizationContextVerifiers(pub PseudonymizationFactorVerifiers);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
@@ -206,7 +208,7 @@ pub fn verified_decrypt_pseudonym(
     if reconstructed.is_none() {
         return None;
     }
-    Some(decrypt_pseudonym(&reconstructed?, sk))
+    Some(decrypt(&reconstructed?, sk))
 }
 
 pub fn verify_rekey(
@@ -231,5 +233,5 @@ pub fn verified_decrypt_data(
     if reconstructed.is_none() {
         return None;
     }
-    Some(decrypt_data(&reconstructed?, sk))
+    Some(decrypt(&reconstructed?, sk))
 }

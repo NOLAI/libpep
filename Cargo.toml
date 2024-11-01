@@ -19,7 +19,7 @@ crate-type = ["cdylib", "rlib"]
 elgamal2 = []
 wasm = ["wasm-bindgen", "getrandom"]
 legacy-pep-repo-compatible = []
-unsafe-reconstruct = []
+insecure-methods = []
 
 [dependencies]
 curve25519-dalek = { git = "https://github.com/signalapp/curve25519-dalek.git", features = ["rand_core"] }

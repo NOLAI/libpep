@@ -1,5 +1,5 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
-use crate::elgamal::{decrypt, encrypt, ElGamal};
+use crate::elgamal::*;
 use crate::primitives::*;
 use crate::utils::{make_pseudonymisation_factor, make_rekey_factor};
 use derive_more::{Deref, From};
@@ -73,23 +73,24 @@ impl Pseudonym {
     pub fn encode(&self) -> [u8; 32] {
         self.value.encode()
     }
+    pub fn encode_to_hex(&self) -> String {
+        self.value.encode_to_hex()
+    }
     pub fn decode(bytes: &[u8; 32]) -> Option<Self> {
         GroupElement::decode(bytes).map(|x| Self::from_point(x))
+    }
+    pub fn decode_from_slice(slice: &[u8]) -> Option<Self> {
+        GroupElement::decode_from_slice(slice).map(|x| Self::from_point(x))
+    }
+    pub fn decode_from_hex(hex: &str) -> Option<Self> {
+        GroupElement::decode_from_hex(hex).map(|x| Self::from_point(x))
     }
     pub fn from_hash(hash: &[u8; 64]) -> Self {
         Self::from_point(GroupElement::decode_from_hash(hash))
     }
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::decode_from_slice(slice).map(|x| Self::from_point(x))
-    }
-    pub fn from_hex(hex: &str) -> Option<Self> {
-        GroupElement::decode_hex(hex).map(|x| Self::from_point(x))
-    }
     pub fn from_bytes(data: &[u8; 16]) -> Option<Self> {
         GroupElement::decode_lizard(data).map(|x| Self::from_point(x))
-    }
-    pub fn to_hex(&self) -> String {
-        self.value.encode_hex()
+        // TODO: verify this for ASCII space
     }
     pub fn to_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
@@ -105,34 +106,33 @@ impl DataPoint {
     pub fn encode(&self) -> [u8; 32] {
         self.value.encode()
     }
+    pub fn encode_to_hex(&self) -> String {
+        self.value.encode_to_hex()
+    }
     pub fn decode(bytes: &[u8; 32]) -> Option<Self> {
         GroupElement::decode(bytes).map(|x| Self::from_point(x))
+    }
+    pub fn decode_from_slice(slice: &[u8]) -> Option<Self> {
+        GroupElement::decode_from_slice(slice).map(|x| Self::from_point(x))
+    }
+    pub fn decode_from_hex(hex: &str) -> Option<Self> {
+        GroupElement::decode_from_hex(hex).map(|x| Self::from_point(x))
     }
     pub fn from_hash(hash: &[u8; 64]) -> Self {
         Self::from_point(GroupElement::decode_from_hash(hash))
     }
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::decode_from_slice(slice).map(|x| Self::from_point(x))
-    }
-    pub fn from_hex(hex: &str) -> Option<Self> {
-        GroupElement::decode_hex(hex).map(|x| Self::from_point(x))
-    }
     pub fn from_bytes(data: &[u8; 16]) -> Option<Self> {
         GroupElement::decode_lizard(data).map(|x| Self::from_point(x))
-    }
-    pub fn to_hex(&self) -> String {
-        self.value.encode_hex()
     }
     pub fn to_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
     }
-    pub fn from_data_long(data: &[u8]) -> Vec<Self> {
+    pub fn bytes_into_multiple_messages(data: &[u8]) -> Vec<Self> {
         data.chunks(16)
             .map(|x| Self::from_bytes(x.try_into().unwrap()).unwrap())
             .collect()
     }
 }
-
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
@@ -142,77 +142,134 @@ pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
 
-/// Encrypt a pseudonym
-pub fn encrypt_pseudonym<R: RngCore + CryptoRng>(
-    p: &Pseudonym,
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedPseudonymGlobal(pub EncryptedPseudonym);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+pub struct EncryptedDataPointGlobal(pub EncryptedDataPoint);
+pub trait Encrypted {
+    type UnencryptedType: Encryptable;
+    fn value(&self) -> &ElGamal;
+    fn from_value(value: ElGamal) -> Self;
+}
+pub trait Encryptable {
+    type EncryptedType: Encrypted;
+    type EncryptedTypeGlobal: Encrypted;
+    fn value(&self) -> &GroupElement;
+    fn from_value(value: GroupElement) -> Self;
+}
+impl Encryptable for Pseudonym {
+    type EncryptedType = EncryptedPseudonym;
+    type EncryptedTypeGlobal = EncryptedPseudonymGlobal;
+    fn value(&self) -> &GroupElement {
+        &self.value
+    }
+    fn from_value(value: GroupElement) -> Self {
+        Self::from_point(value)
+    }
+}
+impl Encryptable for DataPoint {
+    type EncryptedType = EncryptedDataPoint;
+    type EncryptedTypeGlobal = EncryptedDataPointGlobal;
+    fn value(&self) -> &GroupElement {
+        &self.value
+    }
+    fn from_value(value: GroupElement) -> Self {
+        Self::from_point(value)
+    }
+}
+impl Encrypted for EncryptedPseudonym {
+    type UnencryptedType = Pseudonym;
+    fn value(&self) -> &ElGamal {
+        &self.value
+    }
+    fn from_value(value: ElGamal) -> Self {
+        Self { value }
+    }
+
+}
+impl Encrypted for EncryptedDataPoint {
+    type UnencryptedType = DataPoint;
+    fn value(&self) -> &ElGamal {
+        &self.value
+    }
+    fn from_value(value: ElGamal) -> Self {
+        Self { value }
+    }
+}
+
+impl Encrypted for EncryptedPseudonymGlobal {
+    type UnencryptedType = Pseudonym;
+
+    fn value(&self) -> &ElGamal {
+        &self.0.value
+    }
+    fn from_value(value: ElGamal) -> Self {
+        Self(EncryptedPseudonym::from_value(value))
+    }
+}
+
+impl Encrypted for EncryptedDataPointGlobal {
+    type UnencryptedType = DataPoint;
+
+    fn value(&self) -> &ElGamal {
+        &self.0.value
+    }
+    fn from_value(value: ElGamal) -> Self {
+        Self(EncryptedDataPoint::from_value(value))
+    }
+}
+
+
+/// Encrypt using session keys
+pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
+    p: &E,
     pk: &SessionPublicKey,
     rng: &mut R,
-) -> EncryptedPseudonym {
-    EncryptedPseudonym::from(encrypt(p, pk, rng))
+) -> E::EncryptedType {
+    E::EncryptedType::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
 }
 
-/// Decrypt an encrypted pseudonym
-pub fn decrypt_pseudonym(p: &EncryptedPseudonym, sk: &SessionSecretKey) -> Pseudonym {
-    Pseudonym::from_point(decrypt(p, &sk.0))
+/// Decrypt using session keys
+pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretKey) -> E::UnencryptedType {
+    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
 }
 
-/// Encrypt a data point
-pub fn encrypt_data<R: RngCore + CryptoRng>(
-    data: &DataPoint,
-    pk: &SessionPublicKey,
+/// Encrypt for a global key
+pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
+    p: &E,
+    pk: &GlobalPublicKey,
     rng: &mut R,
-) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(encrypt(data, pk, rng))
+) -> E::EncryptedTypeGlobal {
+    E::EncryptedTypeGlobal::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
 }
 
-/// Decrypt an encrypted data point
-pub fn decrypt_data(data: &EncryptedDataPoint, sk: &SessionSecretKey) -> DataPoint {
-    DataPoint::from_point(decrypt(&data, &sk.0))
+/// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist)
+#[cfg(feature = "insecure-methods")]
+pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretKey) -> E::UnencryptedType {
+    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct RerandomizeFactor(ScalarNonZero);
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
-pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
-    encrypted: &EncryptedPseudonym,
+pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
+    encrypted: &E,
     rng: &mut R,
-) -> EncryptedPseudonym {
+) -> E {
     let r = ScalarNonZero::random(rng);
-    EncryptedPseudonym::from(rerandomize(&encrypted.value, &r))
-}
-
-#[cfg(not(feature = "elgamal2"))]
-/// Rerandomize the ciphertext of an encrypted data point
-pub fn rerandomize_encrypted<R: RngCore + CryptoRng>(
-    encrypted: &EncryptedDataPoint,
-    rng: &mut R,
-) -> EncryptedDataPoint {
-    let r = ScalarNonZero::random(rng);
-    EncryptedDataPoint::from(rerandomize(&encrypted.value, &r))
+    E::from_value(crate::primitives::rerandomize(&encrypted.value(), &r))
 }
 
 #[cfg(feature = "elgamal2")]
 /// Rerandomize the ciphertext of an encrypted pseudonym
-pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
-    encrypted: &EncryptedPseudonym,
+pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
+    encrypted: &E,
     public_key: &GroupElement,
     rng: &mut R,
-) -> EncryptedPseudonym {
+) -> E {
     let r = ScalarNonZero::random(rng);
-    EncryptedPseudonym::from(rerandomize(&encrypted.value, public_key, &r))
+    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key, &r))
 }
 
-#[cfg(feature = "elgamal2")]
-/// Rerandomize the ciphertext of an encrypted data point
-pub fn rerandomize_encrypted<R: RngCore + CryptoRng>(
-    encrypted: &EncryptedDataPoint,
-    public_key: &GroupElement,
-    rng: &mut R,
-) -> EncryptedDataPoint {
-    let r = ScalarNonZero::random(rng);
-    EncryptedDataPoint::from(rerandomize(&encrypted.value, public_key, &r))
-}
 
 /// CONTEXTS AND FACTORS
 pub type Context = String; // Contexts are described by simple strings of arbitrary length
@@ -352,9 +409,9 @@ pub fn pseudonymize(
     ))
 }
 
-/// Pseudonymize an encrypted pseudonym for a global key, from one context to another context, to be decrypted by a session key
+/// Pseudonymize a pseudonym encrypted for a global key, from one context to another context, to be decrypted by a session key
 pub fn pseudonymize_from_global(
-    p: &EncryptedPseudonym,
+    p: &EncryptedPseudonymGlobal,
     reshuffle_factors: Reshuffle2Factors,
     rekey_to: RekeyFactor,
 ) -> EncryptedPseudonym {
@@ -366,6 +423,21 @@ pub fn pseudonymize_from_global(
         &rekey_to.0,
     ))
 }
+/// Pseudonymize a pseudonym encrypted for a session key, from one context to another context, to the global encryption context
+pub fn pseudonymize_to_global(
+    p: &EncryptedPseudonym,
+    reshuffle_factors: Reshuffle2Factors,
+    rekey_from: RekeyFactor,
+) -> EncryptedPseudonymGlobal {
+    EncryptedPseudonymGlobal::from_value(rsk2(
+        &p.value,
+        &reshuffle_factors.from.0,
+        &reshuffle_factors.to.0,
+        &rekey_from.0,
+        &ScalarNonZero::one(),
+    ))
+}
+
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
@@ -373,6 +445,12 @@ pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoi
 }
 
 /// Rekey an encrypted data point, encrypted for a global key, to be decrypted by a session key
-pub fn rekey_from_global(p: &EncryptedDataPoint, rekey_to: RekeyFactor) -> EncryptedDataPoint {
+pub fn rekey_from_global(p: &EncryptedDataPointGlobal, rekey_to: RekeyFactor) -> EncryptedDataPoint {
     EncryptedDataPoint::from(crate::primitives::rekey(&p.value, &rekey_to.0))
 }
+/// Rekey an encrypted data point, encrypted for a session key, to the global encryption context
+pub fn rekey_to_global(p: &EncryptedDataPoint, rekey_from: RekeyFactor) -> EncryptedDataPointGlobal {
+    EncryptedDataPointGlobal::from_value(crate::primitives::rekey(&p.value, &rekey_from.0.invert()))
+}
+
+// TODO make a polymorphic `transcrypt` function that can handle both pseudonyms and data points

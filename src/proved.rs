@@ -172,12 +172,12 @@ impl ProvedReshuffle {
             c: *self.pc,
         }
     }
-    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(feature = "insecure-methods")]
     #[cfg(not(feature = "elgamal2"))]
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.reconstruct(original)
     }
-    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(feature = "insecure-methods")]
     #[cfg(feature = "elgamal2")]
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.reconstruct()
@@ -275,7 +275,7 @@ impl ProvedRekey {
             y: *self.py,
         }
     }
-    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(feature = "insecure-methods")]
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.reconstruct(original)
     }
@@ -423,7 +423,7 @@ impl ProvedRSK {
             y: *self.py,
         }
     }
-    #[cfg(feature = "unsafe-reconstruct")]
+    #[cfg(feature = "insecure-methods")]
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.reconstruct()
     }

@@ -307,7 +307,7 @@ impl ProvedPEPClient {
         let result =
             self.verifier
                 .verify_pseudonym_transcryption(messages, pseudo_proofs, original);
-        result.map(|x| (decrypt_pseudonym(&x, &self.session_secret_key), x))
+        result.map(|x| (decrypt(&x, &self.session_secret_key), x))
     }
     pub fn verified_decrypt_data(
         &self,
@@ -318,6 +318,6 @@ impl ProvedPEPClient {
         let result = self
             .verifier
             .verify_data_transcryption(messages, rekey_proofs, original);
-        result.map(|x| (decrypt_data(&x, &self.session_secret_key), x))
+        result.map(|x| (decrypt(&x, &self.session_secret_key), x))
     }
 }

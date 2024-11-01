@@ -192,45 +192,41 @@ impl PEPSystem {
         pseudonymize(p, pseudonymization_info)
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
         &self,
-        encrypted: EncryptedPseudonym,
+        encrypted: &E,
         rng: &mut R,
-    ) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(&encrypted, rng)
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize_encrypted_data_point<R: RngCore + CryptoRng>(
-        &self,
-        encrypted: EncryptedDataPoint,
-        rng: &mut R,
-    ) -> EncryptedDataPoint {
-        rerandomize_encrypted(&encrypted, rng)
+    ) -> E {
+        rerandomize(&encrypted, rng)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
         &self,
-        encrypted: EncryptedPseudonym,
+        encrypted: &E,
         public_key: &GroupElement,
         rng: &mut R,
-    ) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(&encrypted, public_key, rng)
+    ) -> E {
+        rerandomize(&encrypted, public_key, rng)
     }
-    #[cfg(feature = "elgamal2")]
-    pub fn rerandomize_encrypted_data_point<R: RngCore + CryptoRng>(
-        &self,
-        encrypted: EncryptedDataPoint,
-        public_key: &GroupElement,
-        rng: &mut R,
-    ) -> EncryptedDataPoint {
-        rerandomize_encrypted(&encrypted, public_key, rng)
-    }
+
+    // TODO: Implement these nicely
+    // pub fn rekey_from_global(&self, p: &EncryptedDataPointGlobal, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
+    //     rekey_from_global(p, rekey_info)
+    // }
+    // pub fn pseudonymize_from_global(
+    //     &self,
+    //     p: &EncryptedPseudonymGlobal,
+    //     pseudonymization_info: &PseudonymizationInfo,
+    // ) -> EncryptedPseudonym {
+    //     pseudonymize_from_global(p, pseudonymization_info)
+    // }
+
 }
 
 #[derive(Clone)]
 pub struct PEPClient {
+    pub session_public_key: SessionPublicKey,
     pub(crate) session_secret_key: SessionSecretKey,
-    session_public_key: SessionPublicKey,
 }
 impl PEPClient {
     pub fn new(
@@ -248,58 +244,64 @@ impl PEPClient {
             session_public_key: public_key,
         }
     }
-    pub fn decrypt_pseudonym(&self, p: &EncryptedPseudonym) -> Pseudonym {
-        decrypt_pseudonym(&p, &self.session_secret_key)
+    pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
+        decrypt(encrypted, &self.session_secret_key)
     }
-    pub fn decrypt_data(&self, data: &EncryptedDataPoint) -> DataPoint {
-        decrypt_data(&data, &self.session_secret_key)
-    }
-    pub fn encrypt_data<R: RngCore + CryptoRng>(
+    pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
-        data: &DataPoint,
+        val: &E,
         rng: &mut R,
-    ) -> EncryptedDataPoint {
-        encrypt_data(data, &(self.session_public_key), rng)
-    }
-    pub fn encrypt_pseudonym<R: RngCore + CryptoRng>(
-        &self,
-        p: &Pseudonym,
-        rng: &mut R,
-    ) -> EncryptedPseudonym {
-        encrypt_pseudonym(p, &(self.session_public_key), rng)
+    ) -> E::EncryptedType {
+        encrypt(val, &(self.session_public_key), rng)
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
         &self,
-        encrypted: EncryptedPseudonym,
+        encrypted: &E,
         rng: &mut R,
-    ) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(&encrypted, rng)
+    ) -> E {
+        rerandomize(&encrypted, rng)
+    }
+    #[cfg(feature = "elgamal2")]
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
+        &self,
+        encrypted: &E,
+        public_key: &GroupElement,
+        rng: &mut R,
+    ) -> E {
+        rerandomize(&encrypted, public_key, rng)
+    }
+}
+
+pub struct PEPClientOffline {
+    pub global_public_key: GlobalPublicKey,
+}
+impl PEPClientOffline {
+    pub fn new(global_public_key: GlobalPublicKey) -> Self {
+        Self { global_public_key }
+    }
+    pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
+        &self,
+        val: &E,
+        rng: &mut R,
+    ) -> E::EncryptedTypeGlobal {
+        encrypt_global(val, &(self.global_public_key), rng)
     }
     #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize_encrypted_data_point<R: RngCore + CryptoRng>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
         &self,
-        encrypted: EncryptedDataPoint,
+        encrypted: &E,
         rng: &mut R,
-    ) -> EncryptedDataPoint {
-        rerandomize_encrypted(&encrypted, rng)
+    ) -> E {
+        rerandomize(&encrypted, rng)
     }
     #[cfg(feature = "elgamal2")]
-    pub fn rerandomize_encrypted_pseudonym<R: RngCore + CryptoRng>(
+    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted>(
         &self,
-        encrypted: EncryptedPseudonym,
+        encrypted: &E,
         public_key: &GroupElement,
         rng: &mut R,
-    ) -> EncryptedPseudonym {
-        rerandomize_encrypted_pseudonym(&encrypted, public_key, rng)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn rerandomize_encrypted_data_point<R: RngCore + CryptoRng>(
-        &self,
-        encrypted: EncryptedDataPoint,
-        public_key: &GroupElement,
-        rng: &mut R,
-    ) -> EncryptedDataPoint {
-        rerandomize_encrypted(&encrypted, public_key, rng)
+    ) -> E {
+        rerandomize(&encrypted, public_key, rng)
     }
 }

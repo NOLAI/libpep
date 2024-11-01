@@ -71,8 +71,8 @@ fn n_pep() {
     let pseudonym = Pseudonym::random(rng);
     let data = DataPoint::random(rng);
 
-    let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
-    let enc_data = client_a.encrypt_data(&data, rng);
+    let enc_pseudo = client_a.encrypt(&pseudonym, rng);
+    let enc_data = client_a.encrypt(&data, rng);
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo.clone(), |acc, system| {
         let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
@@ -84,8 +84,8 @@ fn n_pep() {
         system.rekey(&acc, &rekey_info)
     });
 
-    let dec_pseudo = client_b.decrypt_pseudonym(&transcrypted_pseudo);
-    let dec_data = client_b.decrypt_data(&transcrypted_data);
+    let dec_pseudo = client_b.decrypt(&transcrypted_pseudo);
+    let dec_data = client_b.decrypt(&transcrypted_data);
 
     assert_eq!(data, dec_data);
     assert_ne!(pseudonym, dec_pseudo);
@@ -97,7 +97,7 @@ fn n_pep() {
             system.pseudonymize(&acc, &pseudo_info.reverse())
         });
 
-    let rev_dec_pseudo = client_a.decrypt_pseudonym(&rev_pseudonymized);
+    let rev_dec_pseudo = client_a.decrypt(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }
 
@@ -409,8 +409,8 @@ fn n_pep_proved() {
     let pseudonym = Pseudonym::random(rng);
     let data = DataPoint::random(rng);
 
-    let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
-    let enc_data = client_a.encrypt_data(&data, rng);
+    let enc_pseudo = client_a.encrypt(&pseudonym, rng);
+    let enc_data = client_a.encrypt(&data, rng);
 
     let mut messages_pseudo = Vec::new();
     let mut messages_pseudo_infos = Vec::new();

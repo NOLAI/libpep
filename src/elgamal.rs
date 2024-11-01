@@ -72,7 +72,7 @@ pub fn encrypt<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> ElGamal {
     let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
-    debug_assert!(public_key != &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
+    assert_ne!(public_key, &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
     ElGamal {
         b: r * G,
         c: msg + r * public_key,
