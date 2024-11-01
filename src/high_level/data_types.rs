@@ -50,9 +50,8 @@ impl Pseudonym {
     pub fn from_hash(hash: &[u8; 64]) -> Self {
         Self::from_point(GroupElement::decode_from_hash(hash))
     }
-    pub fn from_bytes(data: &[u8; 16]) -> Option<Self> {
-        GroupElement::decode_lizard(data).map(|x| Self::from_point(x))
-        // TODO: verify this for ASCII space
+    pub fn from_bytes(data: &[u8; 16]) -> Self {
+        Self::from_point(GroupElement::decode_lizard(data))
     }
     pub fn to_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
@@ -83,15 +82,15 @@ impl DataPoint {
     pub fn from_hash(hash: &[u8; 64]) -> Self {
         Self::from_point(GroupElement::decode_from_hash(hash))
     }
-    pub fn from_bytes(data: &[u8; 16]) -> Option<Self> {
-        GroupElement::decode_lizard(data).map(|x| Self::from_point(x))
+    pub fn from_bytes(data: &[u8; 16]) -> Self {
+        Self::from_point(GroupElement::decode_lizard(data))
     }
     pub fn to_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
     }
     pub fn bytes_into_multiple_messages(data: &[u8]) -> Vec<Self> {
         data.chunks(16)
-            .map(|x| Self::from_bytes(x.try_into().unwrap()).unwrap())
+            .map(|x| Self::from_bytes(x.try_into().unwrap()))
             .collect()
     }
 }

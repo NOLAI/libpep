@@ -95,8 +95,7 @@ fn test_lizard() {
         let case = hex::decode(encoding).unwrap();
         let bytes = <&[u8; 16]>::try_from(case.as_slice()).unwrap();
         let element = GroupElement::decode_lizard(bytes);
-        assert!(element.is_some());
-        let encoded = element.unwrap().encode_lizard().unwrap();
+        let encoded = element.encode_lizard().unwrap();
         assert_eq!(encoded, *bytes);
     }
 }
@@ -107,13 +106,12 @@ fn test_lizard2() {
 
     let random_bytes: [u8; 16] = rng.gen();
     let element = GroupElement::decode_lizard(&random_bytes);
-    assert!(element.is_some());
-    let encoded = element.unwrap().encode_lizard().unwrap();
+    let encoded = element.encode_lizard().unwrap();
     assert_eq!(encoded, random_bytes);
 
     let s = ScalarNonZero::random(&mut rng);
 
-    let element2 = s * element.unwrap();
+    let element2 = s * element;
     let encoded2 = element2.encode_lizard();
     assert!(encoded2.is_none()); // This should fail because it is not a valid lizard encoding anymore
 }
