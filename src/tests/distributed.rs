@@ -67,8 +67,8 @@ fn n_pep() {
         .collect::<Vec<_>>();
 
     // Create clients
-    let client_a = PEPClient::new(blinded_global_secret_key.clone(), sks_a1);
-    let client_b = PEPClient::new(blinded_global_secret_key.clone(), sks_b1);
+    let client_a = PEPClient::new(blinded_global_secret_key.clone(), &sks_a1);
+    let client_b = PEPClient::new(blinded_global_secret_key.clone(), &sks_b1);
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
@@ -177,14 +177,14 @@ fn n_pep_proved() {
     let client_rekey_cache_b = InMemoryVerifiersCache::new();
 
     let mut client_a = ProvedPEPClient::new(
-        PEPClient::new(blinded_global_secret_key.clone(), sks_a1),
+        PEPClient::new(blinded_global_secret_key.clone(), &sks_a1),
         PEPVerifier::new(
             Box::new(client_pseudo_cache_a),
             Box::new(client_rekey_cache_a),
         ),
     );
     let mut client_b = ProvedPEPClient::new(
-        PEPClient::new(blinded_global_secret_key.clone(), sks_b1),
+        PEPClient::new(blinded_global_secret_key.clone(), &sks_b1),
         PEPVerifier::new(
             Box::new(client_pseudo_cache_b),
             Box::new(client_rekey_cache_b),

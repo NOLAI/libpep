@@ -83,7 +83,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
 
 pub fn make_blinded_global_secret_key(
     global_secret_key: &GlobalSecretKey,
-    blinding_factors: &Vec<BlindingFactor>,
+    blinding_factors: &[BlindingFactor],
 ) -> Option<BlindedGlobalSecretKey> {
     let y = global_secret_key.clone();
     let k = blinding_factors
@@ -225,6 +225,15 @@ impl PEPSystem {
     // }
 
 }
+pub fn construct_session_key(blinded_global_secret_key: BlindedGlobalSecretKey, session_key_shares: &[SessionKeyShare]) -> (SessionPublicKey, SessionSecretKey) {
+    let secret = SessionSecretKey::from(
+        session_key_shares
+            .iter()
+            .fold(*blinded_global_secret_key, |acc, x| acc * x.deref())
+    );
+    let public = SessionPublicKey::from(secret.0 * &G);
+    (public, secret)
+}
 
 #[derive(Clone)]
 pub struct PEPClient {
@@ -234,17 +243,12 @@ pub struct PEPClient {
 impl PEPClient {
     pub fn new(
         blinded_global_private_key: BlindedGlobalSecretKey,
-        session_key_shares: Vec<SessionKeyShare>,
+        session_key_shares: &[SessionKeyShare],
     ) -> Self {
-        let secret_key = SessionSecretKey::from(
-            session_key_shares
-                .iter()
-                .fold(*blinded_global_private_key, |acc, x| acc * x.deref()),
-        );
-        let public_key = SessionPublicKey::from(secret_key.0 * &G);
+        let (public, secret) = construct_session_key(blinded_global_private_key, session_key_shares);
         Self {
-            session_secret_key: secret_key,
-            session_public_key: public_key,
+            session_public_key: public,
+            session_secret_key: secret,
         }
     }
     pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
