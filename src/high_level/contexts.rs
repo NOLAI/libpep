@@ -113,6 +113,44 @@ impl PseudonymizationInfo {
             k: rekey_factors,
         }
     }
+    pub fn new_from_global(
+        from_pseudo_context: &PseudonymizationContext,
+        to_pseudo_context: &PseudonymizationContext,
+        to_enc_context: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
+        let reshuffle_factors = Reshuffle2Factors {
+            from: s_from,
+            to: s_to,
+        };
+        let rekey_factors = RekeyInfo::new_from_global(to_enc_context, encryption_secret);
+        RSK2Factors {
+            s: reshuffle_factors,
+            k: rekey_factors,
+        }
+    }
+    pub fn new_to_global(
+        from_pseudo_context: &PseudonymizationContext,
+        to_pseudo_context: &PseudonymizationContext,
+        from_enc_context: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
+        let reshuffle_factors = Reshuffle2Factors {
+            from: s_from,
+            to: s_to,
+        };
+        let rekey_factors = RekeyInfo::new_to_global(from_enc_context, encryption_secret);
+        RSK2Factors {
+            s: reshuffle_factors,
+            k: rekey_factors,
+        }
+    }
     pub fn reverse(self) -> Self {
         RSK2Factors {
             s: self.s.reverse(),
@@ -131,6 +169,26 @@ impl RekeyInfo {
         Rekey2Factors {
             from: k_from,
             to: k_to,
+        }
+    }
+    pub fn new_from_global(
+        to_session: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_to = make_rekey_factor(&encryption_secret, &to_session);
+        Rekey2Factors {
+            from: RekeyFactor::from(ScalarNonZero::one()),
+            to: k_to,
+        }
+    }
+    pub fn new_to_global(
+        from_session: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_rekey_factor(&encryption_secret, &from_session);
+        Rekey2Factors {
+            from: k_from,
+            to: RekeyFactor::from(ScalarNonZero::one()),
         }
     }
 }

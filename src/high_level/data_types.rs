@@ -20,11 +20,6 @@ pub struct EncryptedPseudonym {
 pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedPseudonymGlobal(pub EncryptedPseudonym);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct EncryptedDataPointGlobal(pub EncryptedDataPoint);
-
 impl Pseudonym {
     pub fn from_point(value: GroupElement) -> Self {
         Self { value }
@@ -102,13 +97,11 @@ pub trait Encrypted {
 }
 pub trait Encryptable {
     type EncryptedType: Encrypted;
-    type EncryptedTypeGlobal: Encrypted;
     fn value(&self) -> &GroupElement;
     fn from_value(value: GroupElement) -> Self;
 }
 impl Encryptable for Pseudonym {
     type EncryptedType = EncryptedPseudonym;
-    type EncryptedTypeGlobal = EncryptedPseudonymGlobal;
     fn value(&self) -> &GroupElement {
         &self.value
     }
@@ -118,7 +111,6 @@ impl Encryptable for Pseudonym {
 }
 impl Encryptable for DataPoint {
     type EncryptedType = EncryptedDataPoint;
-    type EncryptedTypeGlobal = EncryptedDataPointGlobal;
     fn value(&self) -> &GroupElement {
         &self.value
     }
@@ -147,27 +139,3 @@ impl Encrypted for EncryptedDataPoint {
         Self { value }
     }
 }
-
-impl Encrypted for EncryptedPseudonymGlobal {
-    type UnencryptedType = Pseudonym;
-    const IS_PSEUDONYM: bool = true;
-    fn value(&self) -> &ElGamal {
-        &self.0.value
-    }
-    fn from_value(value: ElGamal) -> Self {
-        Self(EncryptedPseudonym::from_value(value))
-    }
-}
-
-impl Encrypted for EncryptedDataPointGlobal {
-    type UnencryptedType = DataPoint;
-    const IS_PSEUDONYM: bool = false;
-
-    fn value(&self) -> &ElGamal {
-        &self.0.value
-    }
-    fn from_value(value: ElGamal) -> Self {
-        Self(EncryptedDataPoint::from_value(value))
-    }
-}
-

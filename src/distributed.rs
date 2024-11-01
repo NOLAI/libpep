@@ -220,19 +220,6 @@ impl PEPSystem {
     ) -> E {
         rerandomize(&encrypted, public_key, rng)
     }
-
-    // TODO: Implement these nicely
-    // pub fn rekey_from_global(&self, p: &EncryptedDataPointGlobal, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-    //     rekey_from_global(p, rekey_info)
-    // }
-    // pub fn pseudonymize_from_global(
-    //     &self,
-    //     p: &EncryptedPseudonymGlobal,
-    //     pseudonymization_info: &PseudonymizationInfo,
-    // ) -> EncryptedPseudonym {
-    //     pseudonymize_from_global(p, pseudonymization_info)
-    // }
-
 }
 pub fn construct_session_key(blinded_global_secret_key: BlindedGlobalSecretKey, session_key_shares: &[SessionKeyShare]) -> (SessionPublicKey, SessionSecretKey) {
     let secret = SessionSecretKey::from(
@@ -300,7 +287,7 @@ impl PEPClientOffline {
         &self,
         val: &E,
         rng: &mut R,
-    ) -> E::EncryptedTypeGlobal {
+    ) -> E::EncryptedType {
         encrypt_global(val, &(self.global_public_key), rng)
     }
     #[cfg(not(feature = "elgamal2"))]
