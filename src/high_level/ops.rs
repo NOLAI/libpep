@@ -115,5 +115,16 @@ pub fn rekey_from_global(p: &EncryptedDataPointGlobal, rekey_to: RekeyFactor) ->
 pub fn rekey_to_global(p: &EncryptedDataPoint, rekey_from: RekeyFactor) -> EncryptedDataPointGlobal {
     EncryptedDataPointGlobal::from_value(crate::primitives::rekey(&p.value, &rekey_from.0.invert()))
 }
-
-// TODO make a polymorphic `transcrypt` function that can handle both pseudonyms and data points
+pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
+    if E::IS_PSEUDONYM {
+        E::from_value(rsk2(
+            &encrypted.value(),
+            &transcryption_info.s.from.0,
+            &transcryption_info.s.to.0,
+            &transcryption_info.k.from.0,
+            &transcryption_info.k.to.0,
+        ))
+    } else {
+        E::from_value(rekey2(&encrypted.value(), &transcryption_info.k.from.0, &transcryption_info.k.to.0))
+    }
+}

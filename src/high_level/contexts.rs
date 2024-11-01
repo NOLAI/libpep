@@ -140,3 +140,4 @@ impl From<PseudonymizationInfo> for RekeyInfo {
     }
 }
 
+pub type TranscryptionInfo = PseudonymizationInfo;

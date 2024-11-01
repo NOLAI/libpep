@@ -194,6 +194,15 @@ impl PEPSystem {
     ) -> EncryptedPseudonym {
         pseudonymize(p, pseudonymization_info)
     }
+
+    pub fn transcrypt<E: Encrypted>(
+        &self,
+        encrypted: &E,
+        transcryption_info: &PseudonymizationInfo,
+    ) -> E {
+        transcrypt(encrypted, transcryption_info)
+    }
+
     #[cfg(not(feature = "elgamal2"))]
     pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
         &self,

@@ -97,6 +97,7 @@ impl DataPoint {
 }
 pub trait Encrypted {
     type UnencryptedType: Encryptable;
+    const IS_PSEUDONYM: bool;
     fn value(&self) -> &ElGamal;
     fn from_value(value: ElGamal) -> Self;
 }
@@ -128,6 +129,7 @@ impl Encryptable for DataPoint {
 }
 impl Encrypted for EncryptedPseudonym {
     type UnencryptedType = Pseudonym;
+    const IS_PSEUDONYM: bool = true;
     fn value(&self) -> &ElGamal {
         &self.value
     }
@@ -138,6 +140,7 @@ impl Encrypted for EncryptedPseudonym {
 }
 impl Encrypted for EncryptedDataPoint {
     type UnencryptedType = DataPoint;
+    const IS_PSEUDONYM: bool = false;
     fn value(&self) -> &ElGamal {
         &self.value
     }
@@ -148,7 +151,7 @@ impl Encrypted for EncryptedDataPoint {
 
 impl Encrypted for EncryptedPseudonymGlobal {
     type UnencryptedType = Pseudonym;
-
+    const IS_PSEUDONYM: bool = true;
     fn value(&self) -> &ElGamal {
         &self.0.value
     }
@@ -159,6 +162,7 @@ impl Encrypted for EncryptedPseudonymGlobal {
 
 impl Encrypted for EncryptedDataPointGlobal {
     type UnencryptedType = DataPoint;
+    const IS_PSEUDONYM: bool = false;
 
     fn value(&self) -> &ElGamal {
         &self.0.value
