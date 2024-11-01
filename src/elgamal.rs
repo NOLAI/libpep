@@ -4,17 +4,12 @@ use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "elgamal2")]
 const ELGAMAL_LENGTH: usize = 64;
-#[cfg(not(feature = "elgamal2"))]
-const ELGAMAL_LENGTH: usize = 96;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
     pub b: GroupElement,
     pub c: GroupElement,
-    #[cfg(not(feature = "elgamal2"))]
-    pub y: GroupElement,
 }
 
 impl ElGamal {
@@ -22,8 +17,6 @@ impl ElGamal {
         Some(Self {
             b: GroupElement::decode_from_slice(&v[0..32])?,
             c: GroupElement::decode_from_slice(&v[32..64])?,
-            #[cfg(not(feature = "elgamal2"))]
-            y: GroupElement::decode_from_slice(&v[64..96])?,
         })
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
@@ -40,8 +33,8 @@ impl ElGamal {
         let mut retval = [0u8; ELGAMAL_LENGTH];
         retval[0..32].clone_from_slice(self.b.encode().as_ref());
         retval[32..64].clone_from_slice(self.c.encode().as_ref());
-        #[cfg(not(feature = "elgamal2"))]
         retval[64..96].clone_from_slice(self.y.encode().as_ref());
+        retval[96..128].clone_from_slice(self.z.encode().as_ref());
         retval
     }
 
@@ -59,8 +52,6 @@ impl ElGamal {
         Self {
             b: self.b,
             c: self.c,
-            #[cfg(not(feature = "elgamal2"))]
-            y: self.y,
         }
     }
 }
@@ -76,8 +67,6 @@ pub fn encrypt<R: RngCore + CryptoRng>(
     ElGamal {
         b: r * G,
         c: msg + r * public_key,
-        #[cfg(not(feature = "elgamal2"))]
-        y: *public_key,
     }
 }
 

@@ -3,26 +3,54 @@ use crate::arithmetic::{ScalarNonZero};
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::contexts::*;
-use crate::primitives::{rekey2, rsk2};
+use crate::primitives::{rekey2, rsk, rsk2};
 
 /// Encrypt using session keys
-pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
-    p: &E,
-    pk: &SessionPublicKey,
+pub fn encrypt_pseudo<R: RngCore + CryptoRng>(
+    p: &Pseudonym,
+    pk: &SessionPublicEncryptionKey,
     rng: &mut R,
-) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
+) -> EncryptedPseudonym {
+    EncryptedPseudonym {
+        value: crate::elgamal::encrypt(p.value(), pk, rng),
+        pc_key: p.context_key.clone(),
+        ec_check: pk.clone(),
+    }
 }
 
 /// Decrypt using session keys
-pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
+pub fn decrypt_pseudo(p: &EncryptedPseudonym, sk: &SessionSecretEncryptionKey) -> Pseudonym {
+    Pseudonym {
+        value: crate::elgamal::decrypt(p.value(), &sk.0),
+        context_key: p.pc_key.clone(),
+    }
 }
+
+
+
+/// Decrypt using session keys
+pub fn decrypt_data(p: &EncryptedPseudonym, sk: &SessionSecretEncryptionKey) -> DataPoint {
+    DataPoint {
+        value: crate::elgamal::decrypt(p.value(), &sk.0),
+    }
+}
+
+pub fn encrypt_data<R: RngCore + CryptoRng>(
+    p: &DataPoint,
+    pk: &SessionPublicEncryptionKey,
+    rng: &mut R,
+) -> EncryptedDataPoint {
+    EncryptedDataPoint {
+        value: crate::elgamal::encrypt(p.value(), pk, rng),
+        ec_check: pk.clone(),
+    }
+}
+
 
 /// Encrypt for a global key
 pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
     p: &E,
-    pk: &GlobalPublicKey,
+    pk: &GlobalPublicEncryptionKey,
     rng: &mut R,
 ) -> E::EncryptedTypeGlobal {
     E::EncryptedTypeGlobal::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
@@ -30,7 +58,7 @@ pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
 
 /// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist)
 #[cfg(feature = "insecure-methods")]
-pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretKey) -> E::UnencryptedType {
+pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretEncryptionKey) -> E::UnencryptedType {
     E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
 }
 
@@ -63,13 +91,17 @@ pub fn pseudonymize(
     p: &EncryptedPseudonym,
     pseudonymization_info: &PseudonymizationInfo,
 ) -> EncryptedPseudonym {
-    EncryptedPseudonym::from(rsk2(
-        &p.value,
-        &pseudonymization_info.s.from.0,
-        &pseudonymization_info.s.to.0,
-        &pseudonymization_info.k.from.0,
-        &pseudonymization_info.k.to.0,
-    ))
+    let s = &pseudonymization_info.s.from.0.invert() * &pseudonymization_info.s.to.0;
+    let k = &pseudonymization_info.k.from.0.invert() * &pseudonymization_info.k.to.0;
+    EncryptedPseudonym {
+        value: rsk(
+            &p.value,
+            &s,
+            &k,
+        ),
+        pc_key: SessionPublicPseudonymizationKey::from(s * p.pc_key.0),
+        ec_check: SessionPublicEncryptionKey::from(k * p.ec_check.0),
+    }
 }
 
 /// Pseudonymize a pseudonym encrypted for a global key, from one context to another context, to be decrypted by a session key

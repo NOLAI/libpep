@@ -19,6 +19,11 @@ pub struct EncryptionContext {
     #[cfg(feature = "legacy-pep-repo-compatible")]
     pub audience_type: u32,
 }
+const GLOBAL_ENCRYPTION_CONTEXT: EncryptionContext = EncryptionContext {
+    payload: "".to_string(),
+    #[cfg(feature = "legacy-pep-repo-compatible")]
+    audience_type: 0,
+};
 impl PseudonymizationContext {
     pub fn from(payload: &str) -> Self {
         PseudonymizationContext {
@@ -56,6 +61,7 @@ impl EncryptionContext {
 pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RekeyFactor(pub(crate) ScalarNonZero);
+const REKEY_FACTOR_GLOBAL: RekeyFactor = RekeyFactor(ScalarNonZero::one());
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct Reshuffle2Factors {
@@ -126,8 +132,9 @@ impl RekeyInfo {
         to_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_rekey_factor(&encryption_secret, &from_session);
-        let k_to = make_rekey_factor(&encryption_secret, &to_session);
+        let k_from = if from_session == &GLOBAL_ENCRYPTION_CONTEXT { make_rekey_factor(&encryption_secret, &from_session) } else { REKEY_FACTOR_GLOBAL };
+        let k_to = if to_session == &GLOBAL_ENCRYPTION_CONTEXT { make_rekey_factor(&encryption_secret, &to_session) } else { REKEY_FACTOR_GLOBAL };
+
         Rekey2Factors {
             from: k_from,
             to: k_to,

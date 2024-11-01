@@ -1,3 +1,4 @@
+use hmac::digest::typenum::Gr;
 use crate::arithmetic::*;
 use crate::elgamal::*;
 
@@ -7,15 +8,6 @@ use crate::elgamal::*;
 /// - [rekey]: change encrypted representation, can be decrypted by a different key.
 
 /// Change encrypted representation using [ScalarNonZero] `r`, same contents when decrypted.
-#[cfg(not(feature = "elgamal2"))]
-pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
-    ElGamal {
-        b: r * G + m.b,
-        c: r * m.y + m.c,
-        y: m.y,
-    }
-}
-#[cfg(feature = "elgamal2")]
 pub fn rerandomize(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: r * G + m.b,
@@ -28,8 +20,6 @@ pub fn reshuffle(m: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: s * m.b,
         c: s * m.c,
-        #[cfg(not(feature = "elgamal2"))]
-        y: m.y,
     }
 }
 
@@ -38,8 +28,6 @@ pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: k.invert() * m.b,
         c: m.c,
-        #[cfg(not(feature = "elgamal2"))]
-        y: k * m.y,
     }
 }
 
@@ -48,30 +36,11 @@ pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
         b: (s * k.invert()) * m.b,
         c: s * m.c,
-        #[cfg(not(feature = "elgamal2"))]
-        y: k * m.y,
     }
 }
 
 /// Combination of `rerandomize(r)`, `reshuffle(s)` and `rekey(k)`
-#[cfg(not(feature = "elgamal2"))]
-pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
-    let ski = s * k.invert();
-    ElGamal {
-        b: ski * m.b + ski * r * G,
-        c: (s * r) * m.y + s * m.c,
-        y: k * m.y,
-    }
-}
-
-#[cfg(feature = "elgamal2")]
-pub fn rrsk(
-    m: &ElGamal,
-    public_key: &GroupElement,
-    r: &ScalarNonZero,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-) -> ElGamal {
+pub fn rrsk(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     let ski = s * k.invert();
     ElGamal {
         b: ski * m.b + ski * r * G,
@@ -100,20 +69,6 @@ pub fn rsk2(
     rsk(m, &s, &k)
 }
 
-#[cfg(not(feature = "elgamal2"))]
-pub fn rrsk2(
-    m: &ElGamal,
-    r: &ScalarNonZero,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-) -> ElGamal {
-    let s = s_from.invert() * s_to;
-    let k = k_from.invert() * k_to;
-    rrsk(m, &r, &s, &k)
-}
-#[cfg(feature = "elgamal2")]
 pub fn rrsk2(
     m: &ElGamal,
     public_key: &GroupElement,

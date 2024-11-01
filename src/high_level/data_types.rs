@@ -3,26 +3,34 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use crate::arithmetic::GroupElement;
 use crate::elgamal::ElGamal;
+use crate::high_level::keys::{SessionPublicEncryptionKey, SessionPublicPseudonymizationKey};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct Pseudonym {
-    pub(crate) value: GroupElement,
+    #[deref]
+    pub value: GroupElement,
+    pub context_key: SessionPublicPseudonymizationKey,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct DataPoint {
     pub(crate) value: GroupElement,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedPseudonym {
+    #[deref]
     pub value: ElGamal,
+    pub pc_key: SessionPublicPseudonymizationKey,
+    pub ec_check: SessionPublicEncryptionKey,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedDataPoint {
+    #[deref]
     pub value: ElGamal,
+    pub ec_check: SessionPublicEncryptionKey,
 }
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedPseudonymGlobal(pub EncryptedPseudonym);
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct EncryptedDataPointGlobal(pub EncryptedDataPoint);
 
 impl Pseudonym {

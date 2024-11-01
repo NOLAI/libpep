@@ -204,7 +204,7 @@ pub fn verify_pseudonymization(
 pub fn verified_decrypt_pseudonym(
     x: &ProvedEncryptedPseudonym,
     original: &EncryptedPseudonym,
-    sk: &SessionSecretKey,
+    sk: &SessionSecretEncryptionKey,
     proof: &PseudonymizationInfoProof,
 ) -> Option<Pseudonym> {
     let reconstructed = verify_pseudonymization(x, original, proof);
@@ -229,7 +229,7 @@ pub fn verify_rekey(
 pub fn verified_decrypt_data(
     x: &ProvedEncryptedDataPoint,
     original: &EncryptedDataPoint,
-    sk: &SessionSecretKey,
+    sk: &SessionSecretEncryptionKey,
     proof: &RekeyInfoProof,
 ) -> Option<DataPoint> {
     let reconstructed = verify_rekey(x, original, proof);
