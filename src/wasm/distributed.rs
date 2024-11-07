@@ -1,11 +1,9 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero};
 use crate::distributed::*;
 use crate::elgamal::ElGamal;
-use crate::high_level::{
-    DataPoint, EncryptedDataPoint, EncryptedPseudonym, EncryptionContext, EncryptionSecret,
-    GlobalSecretKey, Pseudonym, PseudonymizationContext, PseudonymizationInfo,
-    PseudonymizationSecret, RekeyInfo,
-};
+use crate::high_level::contexts::*;
+use crate::high_level::data_types::*;
+use crate::high_level::keys::*;
 use crate::wasm::arithmetic::*;
 use crate::wasm::elgamal::WASMElGamal;
 use crate::wasm::high_level::*;
@@ -66,8 +64,7 @@ pub fn wasm_make_blinded_global_secret_key(
     // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
     // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
     // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-    let bs = blinding_factors
-        .as_slice()
+    let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
         .map(|x| BlindingFactor::from(ScalarNonZero::from(x.0)))
         .collect();
@@ -103,7 +100,7 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = sessionKeyShare)]
     pub fn wasm_session_key_share(&self, context: &str) -> WASMSessionKeyShare {
         WASMSessionKeyShare::from(WASMScalarNonZero::from(
-            self.session_key_share(&EncryptionContext::from(context.to_string()))
+            self.session_key_share(&EncryptionContext::from(context))
                 .0,
         ))
     }
@@ -111,8 +108,8 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = rekeyInfo)]
     pub fn wasm_rekey_info(&self, from_enc: &str, to_enc: &str) -> WASMRekeyInfo {
         WASMRekeyInfo::from(self.rekey_info(
-            &EncryptionContext::from(from_enc.to_string()),
-            &EncryptionContext::from(to_enc.to_string()),
+            &EncryptionContext::from(from_enc),
+            &EncryptionContext::from(to_enc),
         ))
     }
 
@@ -125,10 +122,10 @@ impl WASMPEPSystem {
         to_enc: &str,
     ) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationContext::from(from_pseudo.to_string()),
-            &PseudonymizationContext::from(to_pseudo.to_string()),
-            &EncryptionContext::from(from_enc.to_string()),
-            &EncryptionContext::from(to_enc.to_string()),
+            &PseudonymizationContext::from(from_pseudo),
+            &PseudonymizationContext::from(to_pseudo),
+            &EncryptionContext::from(from_enc),
+            &EncryptionContext::from(to_enc),
         ))
     }
 
@@ -161,72 +158,6 @@ impl WASMPEPSystem {
             .value,
         ))
     }
-    #[cfg(not(feature = "elgamal2"))]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedPseudonym)]
-    pub fn wasm_rerandomize_encrypted_pseudonym(
-        &self,
-        encrypted: &WASMEncryptedPseudonym,
-    ) -> WASMEncryptedPseudonym {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedPseudonym::from(WASMElGamal::from(
-            self.rerandomize_encrypted_pseudonym(
-                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-
-    #[cfg(not(feature = "elgamal2"))]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedDataPoint)]
-    pub fn wasm_rerandomize_encrypted_data_point(
-        &self,
-        encrypted: &WASMEncryptedDataPoint,
-    ) -> WASMEncryptedDataPoint {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedDataPoint::from(WASMElGamal::from(
-            self.rerandomize_encrypted_data_point(
-                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-    #[cfg(feature = "elgamal2")]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedPseudonym)]
-    pub fn wasm_rerandomize_encrypted_pseudonym(
-        &self,
-        encrypted: &WASMEncryptedPseudonym,
-        public_key: &WASMGroupElement,
-    ) -> WASMEncryptedPseudonym {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedPseudonym::from(WASMElGamal::from(
-            self.rerandomize_encrypted_pseudonym(
-                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &public_key.deref(),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-
-    #[cfg(feature = "elgamal2")]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedDataPoint)]
-    pub fn wasm_rerandomize_encrypted_data_point(
-        &self,
-        encrypted: &WASMEncryptedDataPoint,
-        public_key: &WASMGroupElement,
-    ) -> WASMEncryptedDataPoint {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedDataPoint::from(WASMElGamal::from(
-            self.rerandomize_encrypted_data_point(
-                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &public_key.deref(),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
 }
 #[derive(Clone, From, Into, Deref)]
 #[wasm_bindgen(js_name = PEPClient)]
@@ -241,21 +172,20 @@ impl WASMPEPClient {
         // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
         // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
         // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-        let session_key_shares = session_key_shares
-            .as_slice()
+        let session_key_shares: Vec<SessionKeyShare> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShare::from(ScalarNonZero::from(x.0)))
             .collect();
         let blinded_key = blinded_global_private_key.0.clone();
         Self(PEPClient::new(
             BlindedGlobalSecretKey::from(ScalarNonZero::from(blinded_key)),
-            session_key_shares,
+            &*session_key_shares,
         ))
     }
     #[wasm_bindgen(js_name = decryptPseudonym)]
     pub fn wasm_decrypt_pseudonym(&self, p: &WASMEncryptedPseudonym) -> WASMPseudonym {
         WASMPseudonym::from(WASMGroupElement::from(
-            self.decrypt_pseudonym(&EncryptedPseudonym::from(ElGamal::from(p.value)))
+            self.decrypt(&EncryptedPseudonym::from(ElGamal::from(p.value)))
                 .value,
         ))
     }
@@ -263,7 +193,7 @@ impl WASMPEPClient {
     #[wasm_bindgen(js_name = decryptData)]
     pub fn wasm_decrypt_data(&self, data: &WASMEncryptedDataPoint) -> WASMDataPoint {
         WASMDataPoint::from(WASMGroupElement::from(
-            self.decrypt_data(&EncryptedDataPoint::from(ElGamal::from(data.value)))
+            self.decrypt(&EncryptedDataPoint::from(ElGamal::from(data.value)))
                 .value,
         ))
     }
@@ -272,7 +202,7 @@ impl WASMPEPClient {
     pub fn wasm_encrypt_data(&self, data: &WASMDataPoint) -> WASMEncryptedDataPoint {
         let mut rng = rand::thread_rng();
         WASMEncryptedDataPoint::from(WASMElGamal::from(
-            self.encrypt_data(&DataPoint::from(GroupElement::from(data.value)), &mut rng)
+            self.encrypt(&DataPoint::from(GroupElement::from(data.value)), &mut rng)
                 .value,
         ))
     }
@@ -281,76 +211,8 @@ impl WASMPEPClient {
     pub fn wasm_encrypt_pseudonym(&self, p: &WASMPseudonym) -> WASMEncryptedPseudonym {
         let mut rng = rand::thread_rng();
         WASMEncryptedPseudonym::from(WASMElGamal::from(
-            self.encrypt_pseudonym(&Pseudonym::from(GroupElement::from(p.value)), &mut rng)
+            self.encrypt(&Pseudonym::from(GroupElement::from(p.value)), &mut rng)
                 .value,
-        ))
-    }
-
-    #[cfg(not(feature = "elgamal2"))]
-    #[wasm_bindgen(js_name = rerandomizePseudonym)]
-    pub fn wasm_rerandomize_encrypted_pseudonym(
-        &self,
-        encrypted: &WASMEncryptedPseudonym,
-    ) -> WASMEncryptedPseudonym {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedPseudonym::from(WASMElGamal::from(
-            self.rerandomize_encrypted_pseudonym(
-                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-
-    #[cfg(not(feature = "elgamal2"))]
-    #[wasm_bindgen(js_name = rerandomizeData)]
-    pub fn wasm_rerandomize_encrypted_data_point(
-        &self,
-        encrypted: &WASMEncryptedDataPoint,
-    ) -> WASMEncryptedDataPoint {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedDataPoint::from(WASMElGamal::from(
-            self.rerandomize_encrypted_data_point(
-                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-
-    #[cfg(feature = "elgamal2")]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedPseudonym)]
-    pub fn wasm_rerandomize_encrypted_pseudonym(
-        &self,
-        encrypted: &WASMEncryptedPseudonym,
-        public_key: &WASMGroupElement,
-    ) -> WASMEncryptedPseudonym {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedPseudonym::from(WASMElGamal::from(
-            self.rerandomize_encrypted_pseudonym(
-                EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-                &public_key.deref(),
-                &mut rng,
-            )
-            .value,
-        ))
-    }
-
-    #[cfg(feature = "elgamal2")]
-    #[wasm_bindgen(js_name = rerandomizeEncryptedDataPoint)]
-    pub fn wasm_rerandomize_encrypted_data_point(
-        &self,
-        encrypted: &WASMEncryptedDataPoint,
-        public_key: &WASMGroupElement,
-    ) -> WASMEncryptedDataPoint {
-        let mut rng = rand::thread_rng();
-        WASMEncryptedDataPoint::from(WASMElGamal::from(
-            self.rerandomize_encrypted_data_point(
-                EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-                &public_key.deref(),
-                &mut rng,
-            )
-            .value,
         ))
     }
 }

@@ -36,15 +36,6 @@ impl WASMGroupElement {
         self.0.encode_to_hex()
     }
 
-    #[wasm_bindgen(js_name = toBase64)]
-    pub fn to_base_64(&self) -> String {
-        self.0.encode_base64()
-    }
-    #[wasm_bindgen(js_name = fromBase64)]
-    pub fn from_base_64(s: &str) -> Option<WASMGroupElement> {
-        GroupElement::decode_base64(s).map(|x| WASMGroupElement(x))
-    }
-
     #[wasm_bindgen]
     pub fn identity() -> WASMGroupElement {
         GroupElement::identity().into()

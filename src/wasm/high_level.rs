@@ -1,10 +1,13 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero};
 use crate::elgamal::ElGamal;
-use crate::high_level::*;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use crate::wasm::elgamal::WASMElGamal;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::wasm_bindgen;
+use crate::high_level::contexts::*;
+use crate::high_level::data_types::*;
+use crate::high_level::keys::*;
+use crate::high_level::ops::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionSecretKey)]
@@ -113,12 +116,12 @@ pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
 pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKey,
     context: &str,
-    encryption_secret: &str,
+    encryption_secret: Vec<u8>,
 ) -> WASMSessionKeyPair {
     let (public, secret) = make_session_keys(
         &GlobalSecretKey(***global),
-        &EncryptionContext::from(context.to_string()),
-        &EncryptionSecret::from(encryption_secret.into()),
+        &EncryptionContext::from(context),
+        &EncryptionSecret::from(encryption_secret),
     );
     WASMSessionKeyPair {
         public: WASMSessionPublicKey::from(WASMGroupElement::from(public.0)),
@@ -134,7 +137,7 @@ pub fn wasm_encrypt_pseudonym(
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::thread_rng();
     WASMEncryptedPseudonym::from(WASMElGamal::from(
-        encrypt_pseudonym(
+        encrypt(
             &Pseudonym::from(GroupElement::from(p.value)),
             &SessionPublicKey::from(GroupElement::from(pk.0)),
             &mut rng,
@@ -150,7 +153,7 @@ pub fn wasm_decrypt_pseudonym(
     sk: &WASMSessionSecretKey,
 ) -> WASMPseudonym {
     WASMPseudonym::from(WASMGroupElement::from(
-        decrypt_pseudonym(
+        decrypt(
             &EncryptedPseudonym::from(ElGamal::from(p.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
         )
@@ -166,7 +169,7 @@ pub fn wasm_encrypt_data(
 ) -> WASMEncryptedDataPoint {
     let mut rng = rand::thread_rng();
     WASMEncryptedDataPoint::from(WASMElGamal::from(
-        encrypt_data(
+        encrypt(
             &DataPoint::from(GroupElement::from(data.value)),
             &SessionPublicKey::from(GroupElement::from(pk.0)),
             &mut rng,
@@ -182,7 +185,7 @@ pub fn wasm_decrypt_data(
     sk: &WASMSessionSecretKey,
 ) -> WASMDataPoint {
     WASMDataPoint::from(WASMGroupElement::from(
-        decrypt_data(
+        decrypt(
             &EncryptedDataPoint::from(ElGamal::from(data.value)),
             &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
         )
@@ -287,10 +290,10 @@ impl WASMPseudonymizationInfo {
         encryption_secret: &str,
     ) -> Self {
         let x = PseudonymizationInfo::new(
-            &PseudonymizationContext::from(from_pseudo_context.to_string()),
-            &PseudonymizationContext::from(to_pseudo_context.to_string()),
-            &EncryptionContext::from(from_enc_context.to_string()),
-            &EncryptionContext::from(to_enc_context.to_string()),
+            &PseudonymizationContext::from(from_pseudo_context),
+            &PseudonymizationContext::from(to_pseudo_context),
+            &EncryptionContext::from(from_enc_context),
+            &EncryptionContext::from(to_enc_context),
             &PseudonymizationSecret::from(pseudonymization_secret.as_bytes().to_vec()),
             &EncryptionSecret::from(encryption_secret.as_bytes().to_vec()),
         );
@@ -319,8 +322,8 @@ impl WASMRekeyInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(from_enc_context: &str, to_enc_context: &str, encryption_secret: &str) -> Self {
         let x = RekeyInfo::new(
-            &EncryptionContext::from(from_enc_context.to_string()),
-            &EncryptionContext::from(to_enc_context.to_string()),
+            &EncryptionContext::from(from_enc_context),
+            &EncryptionContext::from(to_enc_context),
             &EncryptionSecret::from(encryption_secret.as_bytes().into()),
         );
         let k = WASMRekey2Factors {
