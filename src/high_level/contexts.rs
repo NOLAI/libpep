@@ -53,6 +53,8 @@ impl EncryptionContext {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RekeyFactor(pub(crate) ScalarNonZero);

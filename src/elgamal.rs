@@ -83,5 +83,7 @@ pub fn encrypt<R: RngCore + CryptoRng>(
 
 /// Decrypt ElGamal tuple (encrypted using `secret_key * G`) using secret key [ScalarNonZero] `secret_key`.
 pub fn decrypt(s: &ElGamal, secret_key: &ScalarNonZero) -> GroupElement {
+    #[cfg(not(feature = "elgamal2"))]
+    assert_eq!(secret_key * G, s.y); // the secret key should be the same as the public key used to encrypt the message
     s.c - secret_key * s.b
 }

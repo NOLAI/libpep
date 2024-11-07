@@ -203,23 +203,6 @@ impl PEPSystem {
         transcrypt(encrypted, transcryption_info)
     }
 
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
-        &self,
-        encrypted: &E,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, rng)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
-        &self,
-        encrypted: &E,
-        public_key: &P,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, public_key, rng)
-    }
 }
 pub fn construct_session_key(blinded_global_secret_key: BlindedGlobalSecretKey, session_key_shares: &[SessionKeyShare]) -> (SessionPublicKey, SessionSecretKey) {
     let secret = SessionSecretKey::from(
@@ -257,23 +240,6 @@ impl PEPClient {
     ) -> E::EncryptedType {
         encrypt(val, &(self.session_public_key), rng)
     }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
-        &self,
-        encrypted: &E,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, rng)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
-        &self,
-        encrypted: &E,
-        public_key: &P,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, public_key, rng)
-    }
 }
 
 pub struct PEPClientOffline {
@@ -289,22 +255,5 @@ impl PEPClientOffline {
         rng: &mut R,
     ) -> E::EncryptedType {
         encrypt_global(val, &(self.global_public_key), rng)
-    }
-    #[cfg(not(feature = "elgamal2"))]
-    pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
-        &self,
-        encrypted: &E,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, rng)
-    }
-    #[cfg(feature = "elgamal2")]
-    pub fn rerandomize<R: RngCore + CryptoRng, E:Encrypted, P: PublicKey>(
-        &self,
-        encrypted: &E,
-        public_key: &P,
-        rng: &mut R,
-    ) -> E {
-        rerandomize(&encrypted, public_key, rng)
     }
 }

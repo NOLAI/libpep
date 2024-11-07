@@ -1,3 +1,4 @@
+use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 use crate::arithmetic::{ScalarNonZero};
 use crate::high_level::data_types::*;
@@ -41,7 +42,7 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
     rng: &mut R,
 ) -> E {
     let r = ScalarNonZero::random(rng);
-    E::from_value(crate::primitives::rerandomize(&encrypted.value(), &r))
+    rerandomize_known(encrypted, &RerandomizeFactor(r))
 }
 
 #[cfg(feature = "elgamal2")]
@@ -52,9 +53,28 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
     rng: &mut R,
 ) -> E {
     let r = ScalarNonZero::random(rng);
-    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key.value(), &r))
+    rerandomize_known(encrypted, public_key, &RerandomizeFactor(r))
 }
 
+
+#[cfg(not(feature = "elgamal2"))]
+/// Rerandomize the ciphertext of an encrypted pseudonym
+pub fn rerandomize_known<E: Encrypted>(
+    encrypted: &E,
+    r: &RerandomizeFactor,
+) -> E {
+    E::from_value(crate::primitives::rerandomize(&encrypted.value(), r))
+}
+
+#[cfg(feature = "elgamal2")]
+/// Rerandomize the ciphertext of an encrypted pseudonym
+pub fn rerandomize_known<E: Encrypted, P: PublicKey>(
+    encrypted: &E,
+    public_key: &P,
+    r: &RerandomizeFactor,
+) -> E {
+    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key.value(), &r.0))
+}
 
 /// TRANSCRYPTION
 
