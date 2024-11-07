@@ -61,11 +61,13 @@ pub struct RekeyFactor(pub(crate) ScalarNonZero);
 pub struct Reshuffle2Factors {
     pub from: ReshuffleFactor,
     pub to: ReshuffleFactor,
+    // TODO: optimization is possible by computing from^-1 * to once and use it all the time
 }
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct Rekey2Factors {
     pub from: RekeyFactor,
     pub to: RekeyFactor,
+    // TODO: optimization is possible by computing from^-1 * to once and use it all the time
 }
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct RSK2Factors {
