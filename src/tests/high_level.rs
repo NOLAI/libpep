@@ -1,4 +1,3 @@
-use std::any::Any;
 use crate::arithmetic::GroupElement;
 use crate::high_level::contexts::*;
 use crate::high_level::keys::*;
@@ -185,20 +184,11 @@ fn test_batch() {
     let (_session2_public, session2_secret) =
         make_session_keys(&global_secret, &enc_context2, &enc_secret);
 
-
-    let mut ciphertexts = Vec::new();
-
+    let mut data = vec![];
+    let mut pseudonyms = vec![];
     for _ in 0..10 {
-        let mut entity_data: [dyn Encrypted<UnencryptedType=dyn Any>] = *[];
-        let pseudonym = Pseudonym::random(rng);
-        let enc_pseudonym = encrypt(&pseudonym, &session1_public, rng);
-        entity_data.push(enc_pseudonym);
-        for _ in 0..5 {
-            let data = DataPoint::random(rng);
-            let enc_data = encrypt(&data, &session1_public, rng);
-            entity_data.push(enc_data);
-        }
-        ciphertexts.push(entity_data);
+        data.push(encrypt(&DataPoint::random(rng), &session1_public, rng));
+        pseudonyms.push(encrypt(&Pseudonym::random(rng), &session1_public, rng));
     }
 
     let transcryption_info = TranscryptionInfo::new(
@@ -209,5 +199,11 @@ fn test_batch() {
         &pseudo_secret,
         &enc_secret,
     );
-    let mut new_ciphertexts = transcrypt_batch(&mut ciphertexts, &transcryption_info, rng);
+
+    let rekey_info = RekeyInfo::from(transcryption_info);
+
+    let rekeyed = rekey_batch(&data, &rekey_info, rng);
+    let pseudonymized = pseudonymize_batch(&pseudonyms, &transcryption_info, rng);
+
+    // TODO check that the batch is indeed shuffled
 }

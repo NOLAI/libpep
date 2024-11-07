@@ -97,6 +97,25 @@ pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoi
     EncryptedDataPoint::from(rekey2(&p.value, &rekey_info.from.0, &rekey_info.to.0))
 }
 
+pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
+    encrypted: &[EncryptedPseudonym],
+    pseudonymization_info: &PseudonymizationInfo,
+    rng: &mut R,
+) -> Box<[EncryptedPseudonym]> {
+    let mut encrypted_copy = encrypted.to_vec();
+    encrypted_copy.shuffle(rng);
+    encrypted_copy.iter()
+        .map(|x| pseudonymize(x, pseudonymization_info))
+        .collect()
+}
+pub fn rekey_batch<R: RngCore + CryptoRng>(encrypted: &[EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
+    let mut encrypted_copy = encrypted.to_vec();
+    encrypted_copy.shuffle(rng);
+    encrypted_copy.iter()
+        .map(|x| rekey(x, rekey_info))
+        .collect()
+}
+
 pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
     if E::IS_PSEUDONYM {
         E::from_value(rsk2(
@@ -110,3 +129,5 @@ pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &Transcryptio
         E::from_value(rekey2(&encrypted.value(), &transcryption_info.k.from.0, &transcryption_info.k.to.0))
     }
 }
+
+// TODO: batch transcrypt

@@ -195,6 +195,14 @@ impl PEPSystem {
         pseudonymize(p, pseudonymization_info)
     }
 
+    pub fn rekey_batch<R: RngCore + CryptoRng>(&self, encrypted: &[EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
+        rekey_batch(encrypted, rekey_info, rng)
+    }
+
+    pub fn pseudonymize_batch<R: RngCore + CryptoRng>(&self, encrypted: &[EncryptedPseudonym], pseudonymization_info: &PseudonymizationInfo, rng: &mut R) -> Box<[EncryptedPseudonym]> {
+        pseudonymize_batch(encrypted, pseudonymization_info, rng)
+    }
+
     pub fn transcrypt<E: Encrypted>(
         &self,
         encrypted: &E,
