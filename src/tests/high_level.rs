@@ -1,3 +1,4 @@
+use std::any::Any;
 use crate::arithmetic::GroupElement;
 use crate::high_level::contexts::*;
 use crate::high_level::keys::*;
@@ -164,4 +165,49 @@ fn test_proved() {
     );
 
     assert_eq!(pseudo_1, rev_pseudonymized_dec.unwrap());
+}
+
+#[test]
+fn test_batch() {
+    let rng = &mut OsRng;
+    let (_global_public, global_secret) = make_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let pseudo_context1 = PseudonymizationContext::from("context1");
+    let enc_context1 = EncryptionContext::from("session1");
+    let pseudo_context2 = PseudonymizationContext::from("context2");
+    let enc_context2 = EncryptionContext::from("session2");
+
+
+    let (session1_public, session1_secret) =
+        make_session_keys(&global_secret, &enc_context1, &enc_secret);
+    let (_session2_public, session2_secret) =
+        make_session_keys(&global_secret, &enc_context2, &enc_secret);
+
+
+    let mut ciphertexts = Vec::new();
+
+    for _ in 0..10 {
+        let mut entity_data: [dyn Encrypted<UnencryptedType=dyn Any>] = *[];
+        let pseudonym = Pseudonym::random(rng);
+        let enc_pseudonym = encrypt(&pseudonym, &session1_public, rng);
+        entity_data.push(enc_pseudonym);
+        for _ in 0..5 {
+            let data = DataPoint::random(rng);
+            let enc_data = encrypt(&data, &session1_public, rng);
+            entity_data.push(enc_data);
+        }
+        ciphertexts.push(entity_data);
+    }
+
+    let transcryption_info = TranscryptionInfo::new(
+        &pseudo_context1,
+        &pseudo_context2,
+        &enc_context1,
+        &enc_context2,
+        &pseudo_secret,
+        &enc_secret,
+    );
+    let mut new_ciphertexts = transcrypt_batch(&mut ciphertexts, &transcryption_info, rng);
 }
