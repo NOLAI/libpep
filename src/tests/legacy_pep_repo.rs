@@ -36,19 +36,19 @@ fn test_key_factor_component() {
 
 #[test]
 fn test_pseudonymization() {
-    let transcryptor1 = PEPSystem::new(
+    let _transcryptor1 = PEPSystem::new(
         PseudonymizationSecret::from(hex::decode("D4E024E453EF835B9FF6806509CFDA5EDA182F6D5B72F2421879D4EEE2AA41386FA548F8D84EA985F91214FBD6A94937ED0F9CE10D9A37340BF301A1DA5594B6").unwrap()),
         EncryptionSecret::from(hex::decode("108966C6C8D36B65C583F6B7CA8E48F44ADAB81BC23594AB0C53CB2F92F005C1DABBE9E0F57B572BC666EDD2E091ED12D95A404CA49BC8E50D11453D8D7E6F0C").unwrap()),
         BlindingFactor::from_hex("B8E69234C19D393F64ED46B5AC8613526C5929B086D15671E1EB590CC1A59B01").unwrap()
     );
 
-    let transcryptor2 = PEPSystem::new(
+    let _transcryptor2 = PEPSystem::new(
         PseudonymizationSecret::from(hex::decode("9D15F07EF643F04C9ECE22D2F4FE5F41D4D87ACF1E7B95839AEEA1C7E81B8B89BD0BA29468F4F2C9EFB639029AC7AF83BD7679F31866C033589E54B698169855").unwrap()),
         EncryptionSecret::from(hex::decode("DE124CA9AF1BE64C889AE79A30FEC031CDD019097CF023594976FEDA709D4ED99747CB079E6EABD6CF67A75EF625ACDD6787B5994ACC665EBECCC7C6071406D2").unwrap()),
         BlindingFactor::from_hex("602F27166E7AF611C2D50E6C06C7FC4A16F74A29A28C1DFEBCDC245ECD34D308").unwrap()
     );
 
-    let main_pseudonym = "PEP0".to_string();
+    let _main_pseudonym = "PEP0".to_string();
     // TODO implement the rest of the test
     // let pseudo = GroupElement::decode_lizard(<&[u8; 16]>::try_from(main_pseudonym.as_bytes()).unwrap()).unwrap();
 }

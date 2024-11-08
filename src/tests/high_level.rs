@@ -88,9 +88,9 @@ fn test_batch() {
     let enc_context2 = EncryptionContext::from("session2");
 
 
-    let (session1_public, session1_secret) =
+    let (session1_public, _session1_secret) =
         make_session_keys(&global_secret, &enc_context1, &enc_secret);
-    let (_session2_public, session2_secret) =
+    let (_session2_public, _session2_secret) =
         make_session_keys(&global_secret, &enc_context2, &enc_secret);
 
     let mut data = vec![];
@@ -111,8 +111,8 @@ fn test_batch() {
 
     let rekey_info = RekeyInfo::from(transcryption_info);
 
-    let rekeyed = rekey_batch(&data, &rekey_info, rng);
-    let pseudonymized = pseudonymize_batch(&pseudonyms, &transcryption_info, rng);
+    let _rekeyed = rekey_batch(&data, &rekey_info, rng);
+    let _pseudonymized = pseudonymize_batch(&pseudonyms, &transcryption_info, rng);
 
     // TODO check that the batch is indeed shuffled
 }
