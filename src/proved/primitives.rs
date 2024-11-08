@@ -1,6 +1,6 @@
 use crate::arithmetic::*;
 use crate::elgamal::*;
-use crate::zkps::*;
+use crate::proved::zkps::*;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 

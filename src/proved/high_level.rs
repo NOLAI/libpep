@@ -1,4 +1,4 @@
-use crate::proved::*;
+use crate::proved::primitives::*;
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
 use crate::high_level::contexts::*;
 use crate::high_level::keys::*;

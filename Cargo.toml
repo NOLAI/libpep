@@ -16,9 +16,10 @@ name = "libpep"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["elgamal2"]
+default = ["elgamal2", "proved", "wasm"]
 elgamal2 = []
 wasm = ["wasm-bindgen", "getrandom"]
+proved = []
 legacy-pep-repo-compatible = []
 insecure-methods = []
 

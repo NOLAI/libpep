@@ -81,8 +81,9 @@ To build the WASM library, use either `npm run build:nodejs` or `npm run build:w
 The wasm library can be tested using the Node.js `jest` framework, after compiling the wasm library for Node.js: `npm run test`.
 
 The following features are available:
-- `wasm`: enables the WASM library.
 - `elgamal2`: enables shorter ElGamal messages, disabling proved rerandomization (which has very limited practical use cases).
+- `proved`: enables the proved versions of PEP operations on all API levels.
+- `wasm`: enables the WASM library.
 - `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from contexts and secrets.
 - `insecure-methods`: enables insecure methods, to be used with care, like the unverified reconstruction of ciphertexts from proved transcryption operations (so without actually verifying the zero knowledge proof).
 

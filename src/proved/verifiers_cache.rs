@@ -1,4 +1,4 @@
-use crate::distributed_proved::PEPSystemID;
+use crate::proved::distributed::PEPSystemID;
 use std::collections::HashMap;
 use std::hash::Hash;
 

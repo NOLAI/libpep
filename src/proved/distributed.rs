@@ -3,14 +3,11 @@ use crate::distributed::{PEPClient, PEPSystem};
 use crate::high_level::contexts::*;
 use crate::high_level::ops::*;
 use crate::high_level::data_types::*;
-use crate::high_level_proved::*;
-use crate::proved::{
-    PseudonymizationFactorVerifiers, PseudonymizationFactorVerifiersProof, RekeyFactorVerifiers,
-    RekeyFactorVerifiersProof,
-};
-use crate::verifiers_cache::VerifiersCache;
 use derive_more::Deref;
 use rand_core::{CryptoRng, RngCore};
+use crate::proved::high_level::*;
+use crate::proved::primitives::*;
+use crate::proved::verifiers_cache::VerifiersCache;
 
 pub type PEPSystemID = String;
 

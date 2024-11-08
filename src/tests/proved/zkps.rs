@@ -1,5 +1,5 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
-use crate::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
+use crate::proved::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
 use rand_core::OsRng;
 
 #[test]
@@ -50,5 +50,5 @@ fn elgamal_signature_unlinkable() {
 
     let sig2 = sign_unlinkable(&v, &s);
     assert!(verify(&v, &sig2, &gp));
-    assert_eq!(sig1.encode_hex(), sig2.encode_hex());
+    assert_eq!(sig1.encode_to_hex(), sig2.encode_to_hex());
 }

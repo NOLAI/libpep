@@ -1,8 +1,8 @@
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
 use crate::elgamal::{decrypt, encrypt};
 use crate::primitives::*;
-use crate::proved::*;
 use rand_core::OsRng;
+use crate::proved::primitives::*;
 
 #[test]
 fn pep_factor_verifiers_proof() {
