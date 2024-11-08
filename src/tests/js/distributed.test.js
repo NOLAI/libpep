@@ -59,7 +59,7 @@ test('n_pep', async () => {
     const decData = clientB.decryptData(transcryptedData);
 
     // Assert equality and inequality.
-    expect(decData.value.toHex()).toEqual(data.value.toHex());
+    expect(decData.toHex()).toEqual(data.toHex());
     expect(decPseudo).not.toEqual(pseudonym);
 
     // Reverse pseudonymization.
@@ -67,5 +67,5 @@ test('n_pep', async () => {
         system.pseudonymize(acc, system.pseudonymizationInfo(pcA, pcB, ecA1, ecB1).rev()), transcryptedPseudo);
 
     const revDecPseudo = clientA.decryptPseudonym(revPseudonymized);
-    expect(revDecPseudo.value.toHex()).toEqual(pseudonym.value.toHex());
+    expect(revDecPseudo.toHex()).toEqual(pseudonym.toHex());
 });
