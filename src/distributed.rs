@@ -213,10 +213,10 @@ impl PEPSystem {
 
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
-        encrypted: &mut Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)>,
+        encrypted: &mut Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]>,
         transcryption_info: &PseudonymizationInfo,
         rng: &mut R,
-    ) -> Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)> {
+    ) -> Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]> {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 

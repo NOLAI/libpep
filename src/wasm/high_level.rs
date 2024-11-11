@@ -45,18 +45,18 @@ impl WASMEncryptionSecret {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = Pseudonym)]
-pub struct WASMPseudonym(pub(crate) Pseudonym);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+pub struct WASMPseudonym(pub(crate) Pseudonym);
 #[wasm_bindgen(js_name = DataPoint)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMDataPoint(pub(crate) DataPoint);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = EncryptedPseudonym)]
-pub struct WASMEncryptedPseudonym(pub(crate) EncryptedPseudonym);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+pub struct WASMEncryptedPseudonym(pub(crate) EncryptedPseudonym);
 #[wasm_bindgen(js_name = EncryptedDataPoint)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMEncryptedDataPoint(pub(crate) EncryptedDataPoint);
 
 #[wasm_bindgen(js_class = "Pseudonym")]
@@ -427,3 +427,63 @@ pub fn wasm_rekey_data(
     );
     WASMEncryptedDataPoint(x)
 }
+
+#[wasm_bindgen(js_name = pseudonymizeBatch)]
+pub fn wasm_pseudonymize_batch(
+    encrypted: Vec<WASMEncryptedPseudonym>,
+    pseudonymization_info: &WASMPseudonymizationInfo,
+) -> Box<[WASMEncryptedPseudonym]> {
+    let mut rng = rand::thread_rng();
+    let mut encrypted = encrypted.iter().map(|x| x.0).collect::<Vec<_>>();
+    pseudonymize_batch(&mut encrypted, &PseudonymizationInfo::from(pseudonymization_info), &mut rng)
+        .iter()
+        .map(|x| WASMEncryptedPseudonym(*x))
+        .collect()
+}
+
+#[wasm_bindgen(js_name = rekeyBatch)]
+pub fn wasm_rekey_batch(
+    encrypted: Vec<WASMEncryptedDataPoint>,
+    rekey_info: &WASMRekeyInfo,
+) -> Box<[WASMEncryptedDataPoint]> {
+    let mut rng = rand::thread_rng();
+    let mut encrypted = encrypted.iter().map(|x| x.0).collect::<Vec<_>>();
+    rekey_batch(&mut encrypted, &RekeyInfo::from(rekey_info), &mut rng)
+        .iter()
+        .map(|x| WASMEncryptedDataPoint(*x))
+        .collect()
+}
+
+// TODO implement WASM batch transcryption (data types are inconvenient)
+//
+// #[wasm_bindgen]
+// #[derive(Clone)]
+// pub struct TranscryptionData {
+//     pub pseudonyms: Box<[WASMEncryptedPseudonym]>,
+//     pub data_points: Box<[WASMEncryptedDataPoint]>
+// }
+// #[wasm_bindgen(js_name = transcryptBatch)]
+// pub fn wasm_transcrypt_batch(
+//     data: Box<[TranscryptionData]>,
+//     transcryption_info: &WASMPseudonymizationInfo,
+// ) -> Box<[TranscryptionData]> {
+//     let mut rng = rand::thread_rng();
+//
+//     let mut transcryption_data = data.iter().map(|x| {
+//         let pseudonyms = x.pseudonyms.iter().map(|x| x.0).collect();
+//         let data_points = x.data_points.iter().map(|x| x.0).collect();
+//         (pseudonyms, data_points)
+//     }).collect();
+//
+//     let transcrypted = transcrypt_batch(
+//         &mut transcryption_data,
+//         &transcryption_info.into(),
+//         &mut rng,
+//     );
+//
+//     transcrypted.iter().map(|(pseudonyms, data_points)| {
+//         let pseudonyms = pseudonyms.iter().map(|x| WASMEncryptedPseudonym(*x)).collect();
+//         let data_points = data_points.iter().map(|x| WASMEncryptedDataPoint(*x)).collect();
+//         TranscryptionData { pseudonyms, data_points }
+//     }).collect()
+// }

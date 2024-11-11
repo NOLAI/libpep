@@ -93,10 +93,10 @@ fn test_batch() {
     let (_session2_public, _session2_secret) =
         make_session_keys(&global_secret, &enc_context2, &enc_secret);
 
-    let mut data = vec![];
+    let mut data_points = vec![];
     let mut pseudonyms = vec![];
     for _ in 0..10 {
-        data.push(encrypt(&DataPoint::random(rng), &session1_public, rng));
+        data_points.push(encrypt(&DataPoint::random(rng), &session1_public, rng));
         pseudonyms.push(encrypt(&Pseudonym::random(rng), &session1_public, rng));
     }
 
@@ -111,7 +111,7 @@ fn test_batch() {
 
     let rekey_info = RekeyInfo::from(transcryption_info);
 
-    let _rekeyed = rekey_batch(&mut data, &rekey_info, rng);
+    let _rekeyed = rekey_batch(&mut data_points, &rekey_info, rng);
     let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info, rng);
 
     let mut data = vec![];
@@ -121,7 +121,7 @@ fn test_batch() {
         data.push((pseudonyms, data_points));
     }
 
-    let _transcrypted = transcrypt_batch(&mut data, &transcryption_info, rng);
+    let _transcrypted = transcrypt_batch(&mut data.into_boxed_slice(), &transcryption_info, rng);
 
     // TODO check that the batch is indeed shuffled
 }

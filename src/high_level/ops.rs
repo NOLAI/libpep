@@ -125,10 +125,10 @@ pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &Transcryptio
 }
 
 pub fn transcrypt_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)>,
+    encrypted: &mut Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)> {
+) -> Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
     encrypted.iter_mut()
         .map(|(pseudonyms, data_points)| {
