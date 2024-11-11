@@ -1,13 +1,13 @@
-use crate::arithmetic::{GroupElement, ScalarNonZero};
-use crate::elgamal::ElGamal;
-use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
-use crate::wasm::elgamal::WASMElGamal;
-use derive_more::{Deref, From, Into};
-use wasm_bindgen::prelude::wasm_bindgen;
 use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
+use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
+use crate::low_level::elgamal::ElGamal;
+use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
+use crate::wasm::elgamal::WASMElGamal;
+use derive_more::{Deref, From, Into};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionSecretKey)]
@@ -21,7 +21,6 @@ pub struct WASMSessionPublicKey(pub WASMGroupElement);
 #[derive(Copy, Clone, Debug, From)]
 #[wasm_bindgen(js_name = GlobalPublicKey)]
 pub struct WASMGlobalPublicKey(pub WASMGroupElement);
-
 
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
@@ -112,7 +111,7 @@ impl WASMPseudonym {
 impl WASMDataPoint {
     #[wasm_bindgen(constructor)]
     pub fn from_point(x: WASMGroupElement) -> Self {
-        Self (DataPoint::from_point(GroupElement::from(x)))
+        Self(DataPoint::from_point(GroupElement::from(x)))
     }
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(&self) -> WASMGroupElement {
@@ -224,9 +223,11 @@ pub fn wasm_encrypt_pseudonym(
     pk: &WASMSessionPublicKey,
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::thread_rng();
-    WASMEncryptedPseudonym(
-        encrypt(&p.0, &SessionPublicKey::from(GroupElement::from(pk.0)), &mut rng)
-    )
+    WASMEncryptedPseudonym(encrypt(
+        &p.0,
+        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &mut rng,
+    ))
 }
 
 /// Decrypt an encrypted pseudonym
@@ -235,9 +236,10 @@ pub fn wasm_decrypt_pseudonym(
     p: &WASMEncryptedPseudonym,
     sk: &WASMSessionSecretKey,
 ) -> WASMPseudonym {
-    WASMPseudonym(
-        decrypt(&p.0, &SessionSecretKey::from(ScalarNonZero::from(sk.0)), )
-    )
+    WASMPseudonym(decrypt(
+        &p.0,
+        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+    ))
 }
 
 /// Encrypt a data point
@@ -247,12 +249,11 @@ pub fn wasm_encrypt_data(
     pk: &WASMSessionPublicKey,
 ) -> WASMEncryptedDataPoint {
     let mut rng = rand::thread_rng();
-    WASMEncryptedDataPoint(
-        encrypt(&data.0,
-            &SessionPublicKey::from(GroupElement::from(pk.0)),
-            &mut rng,
-        )
-    )
+    WASMEncryptedDataPoint(encrypt(
+        &data.0,
+        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &mut rng,
+    ))
 }
 
 /// Decrypt an encrypted data point
@@ -261,12 +262,10 @@ pub fn wasm_decrypt_data(
     data: &WASMEncryptedDataPoint,
     sk: &WASMSessionSecretKey,
 ) -> WASMDataPoint {
-    WASMDataPoint(
-        decrypt(
-            &EncryptedDataPoint::from(ElGamal::from(data.value)),
-            &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
-        )
-    )
+    WASMDataPoint(decrypt(
+        &EncryptedDataPoint::from(ElGamal::from(data.value)),
+        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+    ))
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
@@ -346,8 +345,8 @@ impl WASMPseudonymizationInfo {
     #[wasm_bindgen]
     pub fn rev(&self) -> Self {
         WASMPseudonymizationInfo(WASMRSKFactors {
-            s: WASMReshuffleFactor(ReshuffleFactor(self.0.s.0.0.invert())),
-            k: WASMRekeyFactor(RekeyFactor(self.0.k.0.0.invert())),
+            s: WASMReshuffleFactor(ReshuffleFactor(self.0.s.0 .0.invert())),
+            k: WASMRekeyFactor(RekeyFactor(self.0.k.0 .0.invert())),
         })
     }
 }
@@ -355,18 +354,22 @@ impl WASMPseudonymizationInfo {
 #[wasm_bindgen(js_class = RekeyInfo)]
 impl WASMRekeyInfo {
     #[wasm_bindgen(constructor)]
-    pub fn new(from_enc_context: &str, to_enc_context: &str, encryption_secret: &WASMEncryptionSecret) -> Self {
+    pub fn new(
+        from_enc_context: &str,
+        to_enc_context: &str,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
         let x = RekeyInfo::new(
             &EncryptionContext::from(from_enc_context),
             &EncryptionContext::from(to_enc_context),
-            &encryption_secret.0
+            &encryption_secret.0,
         );
         WASMRekeyInfo(WASMRekeyFactor(x))
     }
 
     #[wasm_bindgen]
     pub fn rev(&self) -> Self {
-        WASMRekeyInfo(WASMRekeyFactor(RekeyFactor(self.0.0.0.invert())))
+        WASMRekeyInfo(WASMRekeyFactor(RekeyFactor(self.0 .0 .0.invert())))
     }
     #[wasm_bindgen(js_name = fromPseudoInfo)]
     pub fn from_pseudo_info(x: &WASMPseudonymizationInfo) -> Self {
@@ -398,7 +401,7 @@ impl From<RekeyInfo> for WASMRekeyInfo {
 
 impl From<&WASMRekeyInfo> for RekeyInfo {
     fn from(x: &WASMRekeyInfo) -> Self {
-        Self(x.0.0.0)
+        Self(x.0 .0 .0)
     }
 }
 
@@ -435,10 +438,14 @@ pub fn wasm_pseudonymize_batch(
 ) -> Box<[WASMEncryptedPseudonym]> {
     let mut rng = rand::thread_rng();
     let mut encrypted = encrypted.iter().map(|x| x.0).collect::<Vec<_>>();
-    pseudonymize_batch(&mut encrypted, &PseudonymizationInfo::from(pseudonymization_info), &mut rng)
-        .iter()
-        .map(|x| WASMEncryptedPseudonym(*x))
-        .collect()
+    pseudonymize_batch(
+        &mut encrypted,
+        &PseudonymizationInfo::from(pseudonymization_info),
+        &mut rng,
+    )
+    .iter()
+    .map(|x| WASMEncryptedPseudonym(*x))
+    .collect()
 }
 
 #[wasm_bindgen(js_name = rekeyBatch)]

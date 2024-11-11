@@ -1,4 +1,4 @@
-use crate::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use crate::internal::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use rand::Rng;
 use rand_core::OsRng;
 

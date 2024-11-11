@@ -1,5 +1,5 @@
-use crate::arithmetic::*;
-use crate::elgamal::*;
+use crate::internal::arithmetic::*;
+use crate::low_level::elgamal::*;
 
 /// ElGamal ciphertext on which the three PEP operations can be performed:
 /// - [rerandomize]: change encrypted representation, same contents when decrypted;

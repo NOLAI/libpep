@@ -1,9 +1,9 @@
+use crate::high_level::contexts::EncryptionContext;
+use crate::high_level::utils::make_rekey_factor;
+use crate::internal::arithmetic::{GroupElement, ScalarNonZero, G};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use crate::arithmetic::{GroupElement, ScalarNonZero, G};
-use crate::high_level::contexts::EncryptionContext;
-use crate::high_level::utils::make_rekey_factor;
 
 /// GLOBAL KEYS
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
@@ -60,7 +60,6 @@ impl EncryptionSecret {
         Self(secret.into_boxed_slice())
     }
 }
-
 
 /// Generate a new global key pair
 pub fn make_global_keys<R: RngCore + CryptoRng>(rng: &mut R) -> (GlobalPublicKey, GlobalSecretKey) {

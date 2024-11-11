@@ -1,8 +1,8 @@
+use crate::internal::arithmetic::GroupElement;
+use crate::low_level::elgamal::ElGamal;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-use crate::arithmetic::GroupElement;
-use crate::elgamal::ElGamal;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct Pseudonym {
@@ -127,7 +127,6 @@ impl Encrypted for EncryptedPseudonym {
     fn from_value(value: ElGamal) -> Self {
         Self { value }
     }
-
 }
 impl Encrypted for EncryptedDataPoint {
     type UnencryptedType = DataPoint;

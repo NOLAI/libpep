@@ -1,10 +1,10 @@
-use rand::seq::SliceRandom;
-use rand_core::{CryptoRng, RngCore};
-use crate::arithmetic::{ScalarNonZero};
+use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
-use crate::high_level::contexts::*;
-use crate::primitives::{rsk};
+use crate::internal::arithmetic::ScalarNonZero;
+use crate::low_level::primitives::rsk;
+use rand::seq::SliceRandom;
+use rand_core::{CryptoRng, RngCore};
 
 /// Encrypt using session keys
 pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
@@ -12,12 +12,12 @@ pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
     pk: &SessionPublicKey,
     rng: &mut R,
 ) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
 }
 
 /// Decrypt using session keys
 pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(p.value(), &sk.0))
 }
 
 /// Encrypt for a global key
@@ -26,7 +26,7 @@ pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
     pk: &GlobalPublicKey,
     rng: &mut R,
 ) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::elgamal::encrypt(p.value(), pk, rng))
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
 }
 
 /// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist)
@@ -37,10 +37,7 @@ pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretKey) -> E::Unencrypt
 
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
-pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(
-    encrypted: &E,
-    rng: &mut R,
-) -> E {
+pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(encrypted: &E, rng: &mut R) -> E {
     let r = ScalarNonZero::random(rng);
     rerandomize_known(encrypted, &RerandomizeFactor(r))
 }
@@ -56,14 +53,13 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
     rerandomize_known(encrypted, public_key, &RerandomizeFactor(r))
 }
 
-
 #[cfg(not(feature = "elgamal2"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
-pub fn rerandomize_known<E: Encrypted>(
-    encrypted: &E,
-    r: &RerandomizeFactor,
-) -> E {
-    E::from_value(crate::primitives::rerandomize(&encrypted.value(), r))
+pub fn rerandomize_known<E: Encrypted>(encrypted: &E, r: &RerandomizeFactor) -> E {
+    E::from_value(crate::low_level::primitives::rerandomize(
+        &encrypted.value(),
+        &r.0,
+    ))
 }
 
 #[cfg(feature = "elgamal2")]
@@ -73,7 +69,11 @@ pub fn rerandomize_known<E: Encrypted, P: PublicKey>(
     public_key: &P,
     r: &RerandomizeFactor,
 ) -> E {
-    E::from_value(crate::primitives::rerandomize(&encrypted.value(), public_key.value(), &r.0))
+    E::from_value(crate::low_level::primitives::rerandomize(
+        &encrypted.value(),
+        public_key.value(),
+        &r.0,
+    ))
 }
 
 /// TRANSCRYPTION
@@ -92,7 +92,7 @@ pub fn pseudonymize(
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(crate::primitives::rekey(&p.value, &rekey_info.0))
+    EncryptedDataPoint::from(crate::low_level::primitives::rekey(&p.value, &rekey_info.0))
 }
 
 pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
@@ -101,15 +101,18 @@ pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Box<[EncryptedPseudonym]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
-    encrypted.iter()
+    encrypted
+        .iter()
         .map(|x| pseudonymize(x, pseudonymization_info))
         .collect()
 }
-pub fn rekey_batch<R: RngCore + CryptoRng>(encrypted: &mut [EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
+pub fn rekey_batch<R: RngCore + CryptoRng>(
+    encrypted: &mut [EncryptedDataPoint],
+    rekey_info: &RekeyInfo,
+    rng: &mut R,
+) -> Box<[EncryptedDataPoint]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
-    encrypted.iter()
-        .map(|x| rekey(x, rekey_info))
-        .collect()
+    encrypted.iter().map(|x| rekey(x, rekey_info)).collect()
 }
 
 pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
@@ -120,7 +123,10 @@ pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &Transcryptio
             &transcryption_info.k.0,
         ))
     } else {
-        E::from_value(crate::primitives::rekey(&encrypted.value(), &transcryption_info.k.0))
+        E::from_value(crate::low_level::primitives::rekey(
+            &encrypted.value(),
+            &transcryption_info.k.0,
+        ))
     }
 }
 
@@ -130,10 +136,18 @@ pub fn transcrypt_batch<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
-    encrypted.iter_mut()
+    encrypted
+        .iter_mut()
         .map(|(pseudonyms, data_points)| {
-            let pseudonyms = pseudonyms.iter().map(|x| pseudonymize(x, &transcryption_info)).collect();
-            let data_points = data_points.iter().map(|x| rekey(x, &(*transcryption_info).into())).collect();
+            let pseudonyms = pseudonyms
+                .iter()
+                .map(|x| pseudonymize(x, &transcryption_info))
+                .collect();
+            let data_points = data_points
+                .iter()
+                .map(|x| rekey(x, &(*transcryption_info).into()))
+                .collect();
             (pseudonyms, data_points)
-        }).collect()
+        })
+        .collect()
 }

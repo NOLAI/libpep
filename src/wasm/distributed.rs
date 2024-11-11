@@ -1,8 +1,9 @@
-use crate::arithmetic::{ScalarNonZero};
-use crate::distributed::*;
+use crate::distributed::key_blinding::*;
+use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
+use crate::internal::arithmetic::ScalarNonZero;
 use crate::wasm::arithmetic::*;
 use crate::wasm::high_level::*;
 use derive_more::{Deref, From, Into};
@@ -98,8 +99,7 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = sessionKeyShare)]
     pub fn wasm_session_key_share(&self, context: &str) -> WASMSessionKeyShare {
         WASMSessionKeyShare::from(WASMScalarNonZero::from(
-            self.session_key_share(&EncryptionContext::from(context))
-                .0,
+            self.session_key_share(&EncryptionContext::from(context)).0,
         ))
     }
 
@@ -133,9 +133,7 @@ impl WASMPEPSystem {
         p: &WASMEncryptedDataPoint,
         rekey_info: &WASMRekeyInfo,
     ) -> WASMEncryptedDataPoint {
-        WASMEncryptedDataPoint::from(
-            self.rekey(&p.0, &RekeyInfo::from(rekey_info),
-            ))
+        WASMEncryptedDataPoint::from(self.rekey(&p.0, &RekeyInfo::from(rekey_info)))
     }
 
     #[wasm_bindgen(js_name = pseudonymize)]
@@ -145,8 +143,8 @@ impl WASMPEPSystem {
         pseudonymization_info: &WASMPseudonymizationInfo,
     ) -> WASMEncryptedPseudonym {
         WASMEncryptedPseudonym::from(
-            self.pseudonymize(&p.0, &PseudonymizationInfo::from(pseudonymization_info),
-        ))
+            self.pseudonymize(&p.0, &PseudonymizationInfo::from(pseudonymization_info)),
+        )
     }
 }
 #[derive(Clone, From, Into, Deref)]

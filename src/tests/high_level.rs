@@ -1,8 +1,7 @@
-use crate::arithmetic::GroupElement;
 use crate::high_level::contexts::*;
+use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::data_types::*;
 use rand_core::OsRng;
 
 #[test]
@@ -17,7 +16,6 @@ fn test_high_level_flow() {
     let pseudo_context2 = PseudonymizationContext::from("context2");
     let enc_context2 = EncryptionContext::from("session2");
 
-
     let (session1_public, session1_secret) =
         make_session_keys(&global_secret, &enc_context1, &enc_secret);
     let (_session2_public, session2_secret) =
@@ -26,7 +24,7 @@ fn test_high_level_flow() {
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &session1_public, rng);
 
-    let data = DataPoint::from_point(GroupElement::random(rng));
+    let data = DataPoint::random(rng);
     let enc_data = encrypt(&data, &session1_public, rng);
 
     let dec_pseudo = decrypt(&enc_pseudo, &session1_secret);
@@ -87,7 +85,6 @@ fn test_batch() {
     let pseudo_context2 = PseudonymizationContext::from("context2");
     let enc_context2 = EncryptionContext::from("session2");
 
-
     let (session1_public, _session1_secret) =
         make_session_keys(&global_secret, &enc_context1, &enc_secret);
     let (_session2_public, _session2_secret) =
@@ -116,8 +113,12 @@ fn test_batch() {
 
     let mut data = vec![];
     for _ in 0..10 {
-        let pseudonyms = (0..10).map(|_| encrypt(&Pseudonym::random(rng), &session1_public, rng)).collect();
-        let data_points = (0..10).map(|_| encrypt(&DataPoint::random(rng), &session1_public, rng)).collect();
+        let pseudonyms = (0..10)
+            .map(|_| encrypt(&Pseudonym::random(rng), &session1_public, rng))
+            .collect();
+        let data_points = (0..10)
+            .map(|_| encrypt(&DataPoint::random(rng), &session1_public, rng))
+            .collect();
         data.push((pseudonyms, data_points));
     }
 

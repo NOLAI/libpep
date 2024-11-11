@@ -1,4 +1,4 @@
-use crate::primitives::*;
+use crate::low_level::primitives::*;
 #[cfg(feature = "elgamal2")]
 use crate::wasm::arithmetic::WASMGroupElement;
 use crate::wasm::arithmetic::WASMScalarNonZero;
@@ -37,7 +37,7 @@ pub fn wasm_rekey2(
 }
 
 #[wasm_bindgen(js_name = reshuffle2)]
-pub fn wasm_reshuffle2o(
+pub fn wasm_reshuffle2(
     v: &WASMElGamal,
     n_from: &WASMScalarNonZero,
     n_to: &WASMScalarNonZero,

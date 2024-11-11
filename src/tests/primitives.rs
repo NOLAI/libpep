@@ -1,6 +1,6 @@
-use crate::arithmetic::*;
-use crate::elgamal::*;
-use crate::primitives::*;
+use crate::internal::arithmetic::*;
+use crate::low_level::elgamal::*;
+use crate::low_level::primitives::*;
 use rand_core::OsRng;
 
 #[test]
@@ -71,7 +71,7 @@ fn pep_reshuffle() {
 
     let decrypted = decrypt(&reshuffled, &y);
 
-    assert_eq!((s * m), decrypted);
+    assert_eq!(s * m, decrypted);
 }
 
 #[test]
@@ -98,7 +98,7 @@ fn pep_rsk() {
 
     let decrypted = decrypt(&rsked, &(k * y));
 
-    assert_eq!((s * m), decrypted);
+    assert_eq!(s * m, decrypted);
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn pep_rrsk() {
 
     let decrypted = decrypt(&rrsked, &(k * y));
 
-    assert_eq!((s * m), decrypted);
+    assert_eq!(s * m, decrypted);
 }
 
 #[test]

@@ -1,8 +1,9 @@
-use crate::arithmetic::*;
-use crate::distributed::*;
+use crate::distributed::key_blinding::{make_session_key_share, BlindingFactor};
+use crate::distributed::systems::*;
 use crate::high_level::contexts::PseudonymizationContext;
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
-use crate::high_level::utils::{make_pseudonymisation_factor};
+use crate::high_level::utils::make_pseudonymisation_factor;
+use crate::internal::arithmetic::*;
 
 #[test]
 fn test_key_factor_component() {
@@ -21,16 +22,24 @@ fn test_key_factor_component() {
         ("A850D20B8D4648F0AA2C5FC6D495B3AD7E9F79458BB21AD9375E40FC9B594DE084B5764638CA07E835162E38BFA23CA24F43387D35AB629CED8BA619246BFF0A", "5E12739128335B72727F892079A043F12153845C707E1B05FC810165AF259703", 0x01, "User group 10", "736D138B64518A0E2351CD064EF7E50CD580B0C463BE54938973E8773F3C1B09",  "F37CD6A9A065B3C3CCD19A8FD48619B1E19FFEE86FD7D5490B46255A3645A708"),
     ];
 
-    for (secret_hex, blinding_hex, audience_type, payload, expected_factor, expected_sks) in test_cases.iter() {
+    for (secret_hex, blinding_hex, audience_type, payload, expected_factor, expected_sks) in
+        test_cases.iter()
+    {
         let secret = hex::decode(secret_hex).unwrap();
         let pseudo_secret = PseudonymizationSecret::from(secret);
         let context = PseudonymizationContext::from_audience(payload, *audience_type as u32);
         let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
-        assert_eq!(pseudo_factor.0.encode_to_hex().to_ascii_uppercase(), *expected_factor);
+        assert_eq!(
+            pseudo_factor.0.encode_to_hex().to_ascii_uppercase(),
+            *expected_factor
+        );
 
         let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
         let session_key_share = make_session_key_share(&pseudo_factor.0, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
-        assert_eq!(session_key_share.encode_to_hex().to_ascii_uppercase(), *expected_sks)
+        assert_eq!(
+            session_key_share.encode_to_hex().to_ascii_uppercase(),
+            *expected_sks
+        )
     }
 }
 

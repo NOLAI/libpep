@@ -1,4 +1,4 @@
-use crate::elgamal::{decrypt, encrypt, ElGamal};
+use crate::low_level::elgamal::{decrypt, encrypt, ElGamal};
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use derive_more::{Deref, From, Into};
 use rand_core::OsRng;

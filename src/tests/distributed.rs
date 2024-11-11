@@ -1,9 +1,10 @@
-use crate::distributed::{make_blinded_global_secret_key, BlindingFactor, PEPClient, PEPSystem};
+use crate::distributed::key_blinding::{make_blinded_global_secret_key, BlindingFactor};
+use crate::distributed::systems::{PEPClient, PEPSystem};
 use crate::high_level::contexts::*;
-use crate::high_level::keys::*;
 use crate::high_level::data_types::*;
+use crate::high_level::keys::*;
+use crate::internal::arithmetic::ScalarNonZero;
 use rand_core::OsRng;
-use crate::arithmetic::ScalarNonZero;
 
 #[test]
 fn n_pep() {
@@ -18,7 +19,13 @@ fn n_pep() {
     let blinded_global_secret_key =
         make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
 
-    assert_eq!(blinded_global_secret_key.0, global_secret.0 * blinding_factors.iter().fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert()));
+    assert_eq!(
+        blinded_global_secret_key.0,
+        global_secret.0
+            * blinding_factors
+                .iter()
+                .fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert())
+    );
 
     // Create systems
     let systems = (0..n)
@@ -38,7 +45,6 @@ fn n_pep() {
 
     let ec_a1 = EncryptionContext::from("session-a1");
     let ec_b1 = EncryptionContext::from("session-b1");
-
 
     // Get client session key shares
     let sks_a1 = systems

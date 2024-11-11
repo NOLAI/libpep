@@ -1,8 +1,8 @@
-use derive_more::{Deref, From};
-use serde::{Deserialize, Serialize};
-use crate::arithmetic::ScalarNonZero;
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
+use crate::internal::arithmetic::ScalarNonZero;
+use derive_more::{Deref, From};
+use serde::{Deserialize, Serialize};
 
 pub type Context = String; // Contexts are described by simple strings of arbitrary length
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
@@ -144,7 +144,11 @@ impl RekeyInfo {
         from_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        Self::from(make_rekey_factor(&encryption_secret, &from_session).0.invert())
+        Self::from(
+            make_rekey_factor(&encryption_secret, &from_session)
+                .0
+                .invert(),
+        )
     }
     pub fn reverse(&self) -> Self {
         Self::from(self.0.invert())

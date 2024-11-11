@@ -1,4 +1,4 @@
-use crate::arithmetic::*;
+use crate::internal::arithmetic::*;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
