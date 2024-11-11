@@ -111,8 +111,17 @@ fn test_batch() {
 
     let rekey_info = RekeyInfo::from(transcryption_info);
 
-    let _rekeyed = rekey_batch(&data, &rekey_info, rng);
-    let _pseudonymized = pseudonymize_batch(&pseudonyms, &transcryption_info, rng);
+    let _rekeyed = rekey_batch(&mut data, &rekey_info, rng);
+    let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info, rng);
+
+    let mut data = vec![];
+    for _ in 0..10 {
+        let pseudonyms = (0..10).map(|_| encrypt(&Pseudonym::random(rng), &session1_public, rng)).collect();
+        let data_points = (0..10).map(|_| encrypt(&DataPoint::random(rng), &session1_public, rng)).collect();
+        data.push((pseudonyms, data_points));
+    }
+
+    let _transcrypted = transcrypt_batch(&mut data, &transcryption_info, rng);
 
     // TODO check that the batch is indeed shuffled
 }

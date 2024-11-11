@@ -96,20 +96,18 @@ pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoi
 }
 
 pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
-    encrypted: &[EncryptedPseudonym],
+    encrypted: &mut [EncryptedPseudonym],
     pseudonymization_info: &PseudonymizationInfo,
     rng: &mut R,
 ) -> Box<[EncryptedPseudonym]> {
-    let mut encrypted_copy = encrypted.to_vec();
-    encrypted_copy.shuffle(rng);
-    encrypted_copy.iter()
+    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    encrypted.iter()
         .map(|x| pseudonymize(x, pseudonymization_info))
         .collect()
 }
-pub fn rekey_batch<R: RngCore + CryptoRng>(encrypted: &[EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
-    let mut encrypted_copy = encrypted.to_vec();
-    encrypted_copy.shuffle(rng);
-    encrypted_copy.iter()
+pub fn rekey_batch<R: RngCore + CryptoRng>(encrypted: &mut [EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
+    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    encrypted.iter()
         .map(|x| rekey(x, rekey_info))
         .collect()
 }
@@ -126,4 +124,16 @@ pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &Transcryptio
     }
 }
 
-// TODO: batch transcrypt
+pub fn transcrypt_batch<R: RngCore + CryptoRng>(
+    encrypted: &mut Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)>,
+    transcryption_info: &TranscryptionInfo,
+    rng: &mut R,
+) -> Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)> {
+    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    encrypted.iter_mut()
+        .map(|(pseudonyms, data_points)| {
+            let pseudonyms = pseudonyms.iter().map(|x| pseudonymize(x, &transcryption_info)).collect();
+            let data_points = data_points.iter().map(|x| rekey(x, &(*transcryption_info).into())).collect();
+            (pseudonyms, data_points)
+        }).collect()
+}

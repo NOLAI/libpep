@@ -195,11 +195,11 @@ impl PEPSystem {
         pseudonymize(p, pseudonymization_info)
     }
 
-    pub fn rekey_batch<R: RngCore + CryptoRng>(&self, encrypted: &[EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
+    pub fn rekey_batch<R: RngCore + CryptoRng>(&self, encrypted: &mut [EncryptedDataPoint], rekey_info: &RekeyInfo, rng: &mut R) -> Box<[EncryptedDataPoint]> {
         rekey_batch(encrypted, rekey_info, rng)
     }
 
-    pub fn pseudonymize_batch<R: RngCore + CryptoRng>(&self, encrypted: &[EncryptedPseudonym], pseudonymization_info: &PseudonymizationInfo, rng: &mut R) -> Box<[EncryptedPseudonym]> {
+    pub fn pseudonymize_batch<R: RngCore + CryptoRng>(&self, encrypted: &mut [EncryptedPseudonym], pseudonymization_info: &PseudonymizationInfo, rng: &mut R) -> Box<[EncryptedPseudonym]> {
         pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
@@ -209,6 +209,15 @@ impl PEPSystem {
         transcryption_info: &PseudonymizationInfo,
     ) -> E {
         transcrypt(encrypted, transcryption_info)
+    }
+
+    pub fn transcrypt_batch<R: RngCore + CryptoRng>(
+        &self,
+        encrypted: &mut Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)>,
+        transcryption_info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>)> {
+        transcrypt_batch(encrypted, transcryption_info, rng)
     }
 
 }
