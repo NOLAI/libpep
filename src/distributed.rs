@@ -203,12 +203,21 @@ impl PEPSystem {
         pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
-    pub fn transcrypt<E: Encrypted>(
+    pub fn transcrypt(
         &self,
-        encrypted: &E,
+        encrypted: &EncryptedType,
         transcryption_info: &PseudonymizationInfo,
-    ) -> E {
+    ) -> EncryptedType {
         transcrypt(encrypted, transcryption_info)
+    }
+
+    pub fn transcrypt_batch<R: RngCore + CryptoRng>(
+        &self,
+        encrypted: &mut [EncryptedType],
+        transcryption_info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Box<[EncryptedType]> {
+        transcrypt_batch(encrypted, transcryption_info, rng)
     }
 
 }

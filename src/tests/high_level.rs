@@ -65,15 +65,31 @@ fn test_high_level_flow() {
 
     assert_eq!(data, rekeyed_dec);
 
-    let pseudonymized = transcrypt(&enc_pseudo, &pseudo_info);
+    let pseudonymized = pseudonymize(&enc_pseudo, &pseudo_info);
     let pseudonymized_dec = decrypt(&pseudonymized, &session2_secret);
 
     assert_ne!(pseudo, pseudonymized_dec);
 
-    let rev_pseudonymized = transcrypt(&pseudonymized, &pseudo_info.reverse());
+    let rev_pseudonymized = pseudonymize(&pseudonymized, &pseudo_info.reverse());
     let rev_pseudonymized_dec = decrypt(&rev_pseudonymized, &session1_secret);
 
     assert_eq!(pseudo, rev_pseudonymized_dec);
+
+    let rekeyed_transcrypt = transcrypt(&enc_data.into(), &pseudo_info);
+    let rekeyed_dec_transcrypt = decrypt(&EncryptedDataPoint::try_from(rekeyed_transcrypt).unwrap(), &session2_secret);
+
+    assert_eq!(data, rekeyed_dec_transcrypt);
+
+    let pseudonymized_transcrypt = transcrypt(&enc_pseudo.into(), &pseudo_info);
+    let pseudonymized_dec_transcrypt = decrypt(&EncryptedPseudonym::try_from(pseudonymized_transcrypt).unwrap(), &session2_secret);
+
+    assert_ne!(pseudo, pseudonymized_dec_transcrypt);
+    assert_eq!(pseudonymized_dec, pseudonymized_dec_transcrypt);
+
+    let rev_pseudonymized_transcrypt = transcrypt(&pseudonymized_transcrypt, &pseudo_info.reverse());
+    let rev_pseudonymized_dec_transcrypt = decrypt(&EncryptedPseudonym::try_from(rev_pseudonymized_transcrypt).unwrap(), &session1_secret);
+
+    assert_eq!(pseudo, rev_pseudonymized_dec_transcrypt);
 }
 #[test]
 fn test_batch() {

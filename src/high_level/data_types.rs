@@ -91,7 +91,6 @@ impl DataPoint {
 }
 pub trait Encrypted {
     type UnencryptedType: Encryptable;
-    const IS_PSEUDONYM: bool;
     fn value(&self) -> &ElGamal;
     fn from_value(value: ElGamal) -> Self;
 }
@@ -120,7 +119,6 @@ impl Encryptable for DataPoint {
 }
 impl Encrypted for EncryptedPseudonym {
     type UnencryptedType = Pseudonym;
-    const IS_PSEUDONYM: bool = true;
     fn value(&self) -> &ElGamal {
         &self.value
     }
@@ -131,11 +129,50 @@ impl Encrypted for EncryptedPseudonym {
 }
 impl Encrypted for EncryptedDataPoint {
     type UnencryptedType = DataPoint;
-    const IS_PSEUDONYM: bool = false;
     fn value(&self) -> &ElGamal {
         &self.value
     }
     fn from_value(value: ElGamal) -> Self {
         Self { value }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub enum EncryptedType {
+    Pseudonym(EncryptedPseudonym),
+    DataPoint(EncryptedDataPoint),
+}
+
+impl From<EncryptedPseudonym> for EncryptedType {
+    fn from(pseudo: EncryptedPseudonym) -> Self {
+        EncryptedType::Pseudonym(pseudo)
+    }
+}
+
+impl From<EncryptedDataPoint> for EncryptedType {
+    fn from(data: EncryptedDataPoint) -> Self {
+        EncryptedType::DataPoint(data)
+    }
+}
+
+impl TryFrom<EncryptedType> for EncryptedPseudonym {
+    type Error = &'static str;
+
+    fn try_from(value: EncryptedType) -> Result<Self, Self::Error> {
+        match value {
+            EncryptedType::Pseudonym(pseudo) => Ok(pseudo),
+            _ => Err("EncryptedType is not an EncryptedPseudonym"),
+        }
+    }
+}
+
+impl TryFrom<EncryptedType> for EncryptedDataPoint {
+    type Error = &'static str;
+
+    fn try_from(value: EncryptedType) -> Result<Self, Self::Error> {
+        match value {
+            EncryptedType::DataPoint(data) => Ok(data),
+            _ => Err("EncryptedType is not an EncryptedDataPoint"),
+        }
     }
 }

@@ -63,7 +63,7 @@ fn n_pep() {
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo.clone(), |acc, system| {
         let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
-        system.transcrypt(&acc, &pseudo_info)
+        system.pseudonymize(&acc, &pseudo_info)
     });
 
     let transcrypted_data = systems.iter().fold(enc_data.clone(), |acc, system| {

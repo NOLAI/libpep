@@ -114,16 +114,30 @@ pub fn rekey_batch<R: RngCore + CryptoRng>(encrypted: &[EncryptedDataPoint], rek
         .collect()
 }
 
-pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
-    if E::IS_PSEUDONYM {
-        E::from_value(rsk(
-            &encrypted.value(),
-            &transcryption_info.s.0,
-            &transcryption_info.k.0,
-        ))
-    } else {
-        E::from_value(crate::primitives::rekey(&encrypted.value(), &transcryption_info.k.0))
+pub fn transcrypt(encrypted: &EncryptedType, transcryption_info: &TranscryptionInfo) -> EncryptedType {
+    match encrypted {
+        EncryptedType::Pseudonym(pseudo) => {
+            EncryptedType::Pseudonym(pseudonymize(
+                pseudo,
+                transcryption_info,
+            ))
+        }
+        EncryptedType::DataPoint(datapoint) => {
+            EncryptedType::DataPoint(rekey(
+                datapoint,
+                &RekeyInfo::from(transcryption_info.clone()),
+            ))
+        }
     }
 }
 
-// TODO: batch transcrypt
+pub fn transcrypt_batch<R: RngCore + CryptoRng>(
+    encrypted: &mut [EncryptedType],
+    transcryption_info: &TranscryptionInfo,
+    rng: &mut R,
+) -> Box<[EncryptedType]> {
+    encrypted.shuffle(rng);
+    encrypted.iter()
+        .map(|x| transcrypt(x, transcryption_info))
+        .collect()
+}
