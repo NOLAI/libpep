@@ -7,32 +7,44 @@ use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 
 /// Encrypt using session keys
+#[cfg(not(feature = "elgamal2"))]
 pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
     p: &E,
-    pk: &SessionPublicKey,
+    pek: &SessionPublicEncryptionKey,
+    ppk: &SessionPublicPseudonymizationKey,
+    rng: &mut R,
+) -> E::EncryptedType {
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pek, ppk, rng))
+}
+
+#[cfg(feature = "elgamal2")]
+pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
+    p: &E,
+    pk: &SessionPublicEncryptionKey,
     rng: &mut R,
 ) -> E::EncryptedType {
     E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
 }
 
 /// Decrypt using session keys
-pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretKey) -> E::UnencryptedType {
+pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretEncryptionKey) -> E::UnencryptedType {
     E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(p.value(), &sk.0))
 }
 
 /// Encrypt for a global key
 pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
     p: &E,
-    pk: &GlobalPublicKey,
+    pek: &GlobalPublicEncryptionKey,
+    ppk: &SessionPublicPseudonymizationKey,
     rng: &mut R,
 ) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pek, ppk, rng))
 }
 
 /// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist)
 #[cfg(feature = "insecure-methods")]
-pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
+pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretEncryptionKey) -> E::UnencryptedType {
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(p.value(), &sk.0))
 }
 
 #[cfg(not(feature = "elgamal2"))]

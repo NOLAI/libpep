@@ -13,6 +13,7 @@ pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
         b: r * G + m.b,
         c: r * m.y + m.c,
         y: m.y,
+        z: m.z,
     }
 }
 #[cfg(feature = "elgamal2")]
@@ -30,6 +31,8 @@ pub fn reshuffle(m: &ElGamal, s: &ScalarNonZero) -> ElGamal {
         c: s * m.c,
         #[cfg(not(feature = "elgamal2"))]
         y: m.y,
+        #[cfg(not(feature = "elgamal2"))]
+        z: s * m.z,
     }
 }
 
@@ -40,6 +43,8 @@ pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
         c: m.c,
         #[cfg(not(feature = "elgamal2"))]
         y: k * m.y,
+        #[cfg(not(feature = "elgamal2"))]
+        z: m.z,
     }
 }
 
@@ -50,6 +55,8 @@ pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
         c: s * m.c,
         #[cfg(not(feature = "elgamal2"))]
         y: k * m.y,
+        #[cfg(not(feature = "elgamal2"))]
+        z: s * m.z,
     }
 }
 
@@ -61,6 +68,7 @@ pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero
         b: ski * m.b + ski * r * G,
         c: (s * r) * m.y + s * m.c,
         y: k * m.y,
+        z: s * m.z,
     }
 }
 

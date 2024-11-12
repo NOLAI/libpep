@@ -50,13 +50,13 @@ impl WASMBlindingFactor {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = BlindedGlobalSecretKey)]
-pub struct WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey);
+pub struct WASMBlindedGlobalSecretKey(BlindedGlobalSecretEncryptionKey);
 
 #[wasm_bindgen(js_class = "BlindedGlobalSecretKey")]
 impl WASMBlindedGlobalSecretKey {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey(x.0))
+        WASMBlindedGlobalSecretKey(BlindedGlobalSecretEncryptionKey(x.0))
     }
 
     #[wasm_bindgen]
@@ -65,7 +65,7 @@ impl WASMBlindedGlobalSecretKey {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_slice(&bytes.as_slice())
+        BlindedGlobalSecretEncryptionKey::decode_from_slice(&bytes.as_slice())
             .map(|x| WASMBlindedGlobalSecretKey(x))
     }
     #[wasm_bindgen(js_name = toHex)]
@@ -74,18 +74,18 @@ impl WASMBlindedGlobalSecretKey {
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_hex(hex).map(|x| WASMBlindedGlobalSecretKey(x))
+        BlindedGlobalSecretEncryptionKey::decode_from_hex(hex).map(|x| WASMBlindedGlobalSecretKey(x))
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionKeyShare)]
-pub struct WASMSessionKeyShare(SessionKeyShare);
+pub struct WASMSessionKeyShare(SessionEncryptionKeyShare);
 
 #[wasm_bindgen(js_class = "SessionKeyShare")]
 impl WASMSessionKeyShare {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMSessionKeyShare(SessionKeyShare(x.0))
+        WASMSessionKeyShare(SessionEncryptionKeyShare(x.0))
     }
 
     #[wasm_bindgen]
@@ -94,7 +94,7 @@ impl WASMSessionKeyShare {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_slice(&bytes.as_slice()).map(|x| WASMSessionKeyShare(x))
+        SessionEncryptionKeyShare::decode_from_slice(&bytes.as_slice()).map(|x| WASMSessionKeyShare(x))
     }
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {
@@ -102,7 +102,7 @@ impl WASMSessionKeyShare {
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_hex(hex).map(|x| WASMSessionKeyShare(x))
+        SessionEncryptionKeyShare::decode_from_hex(hex).map(|x| WASMSessionKeyShare(x))
     }
 }
 
@@ -120,7 +120,7 @@ pub fn wasm_make_blinded_global_secret_key(
         .collect();
     WASMBlindedGlobalSecretKey(
         make_blinded_global_secret_key(
-            &GlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
+            &GlobalSecretEncryptionKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
         )
         .unwrap(),
@@ -208,13 +208,13 @@ impl WASMPEPClient {
         // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
         // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
         // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-        let session_key_shares: Vec<SessionKeyShare> = session_key_shares
+        let session_key_shares: Vec<SessionEncryptionKeyShare> = session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare(x.0 .0))
+            .map(|x| SessionEncryptionKeyShare(x.0 .0))
             .collect();
         let blinded_key = blinded_global_private_key.0.clone();
         Self(PEPClient::new(
-            BlindedGlobalSecretKey(blinded_key.0),
+            BlindedGlobalSecretEncryptionKey(blinded_key.0),
             &*session_key_shares,
         ))
     }

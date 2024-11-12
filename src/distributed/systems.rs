@@ -25,7 +25,7 @@ impl PEPSystem {
             blinding_factor,
         }
     }
-    pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
+    pub fn session_key_share(&self, context: &EncryptionContext) -> SessionEncryptionKeyShare {
         let k = make_rekey_factor(&self.rekeying_secret, &context);
         make_session_key_share(&k.0, &self.blinding_factor)
     }
@@ -100,44 +100,49 @@ impl PEPSystem {
 }
 #[derive(Clone)]
 pub struct PEPClient {
-    pub session_public_key: SessionPublicKey,
-    pub(crate) session_secret_key: SessionSecretKey,
+    pub session_public_encryption_key: SessionPublicEncryptionKey,
+    pub(crate) session_secret_encryption_key: SessionSecretEncryptionKey,
+    pub session_public_pseudonymization_key: SessionPublicPseudonymizationKey,
 }
 impl PEPClient {
     pub fn new(
-        blinded_global_private_key: BlindedGlobalSecretKey,
-        session_key_shares: &[SessionKeyShare],
+        blinded_global_private_key: BlindedGlobalSecretEncryptionKey,
+        session_encryption_key_shares: &[SessionEncryptionKeyShare],
+        session_pseudonymization_key_shares: &[SessionPseudonymizationKeyShare],
     ) -> Self {
-        let (public, secret) = make_session_key(blinded_global_private_key, session_key_shares);
+        let (public, secret) = make_session_encryption_key(blinded_global_private_key, session_encryption_key_shares);
+        let public_pseudonymization_key = make_session_pseudonymization_key(blinded_global_private_key, session_encryption_key_shares);
         Self {
-            session_public_key: public,
-            session_secret_key: secret,
+            session_public_encryption_key: public,
+            session_secret_encryption_key: secret,
+            session_public_pseudonymization_key: public_pseudonymization_key,
         }
     }
     pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
-        decrypt(encrypted, &self.session_secret_key)
+        decrypt(encrypted, &self.session_secret_encryption_key)
     }
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
         val: &E,
         rng: &mut R,
     ) -> E::EncryptedType {
-        encrypt(val, &(self.session_public_key), rng)
+        encrypt(val, &(self.session_public_encryption_key), &(self.session_public_pseudonymization_key), rng)
     }
 }
 
 pub struct OfflinePEPClient {
-    pub global_public_key: GlobalPublicKey,
+    pub global_public_key: GlobalPublicEncryptionKey,
+    pub local_pseudonymization_key: SessionPublicPseudonymizationKey,
 }
 impl OfflinePEPClient {
-    pub fn new(global_public_key: GlobalPublicKey) -> Self {
-        Self { global_public_key }
+    pub fn new(global_public_key: GlobalPublicEncryptionKey, local_pseudonymization_key: SessionPublicPseudonymizationKey) -> Self {
+        Self { global_public_key, local_pseudonymization_key }
     }
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
         val: &E,
         rng: &mut R,
     ) -> E::EncryptedType {
-        encrypt_global(val, &(self.global_public_key), rng)
+        encrypt_global(val, &(self.global_public_key), &(self.local_pseudonymization_key), rng)
     }
 }

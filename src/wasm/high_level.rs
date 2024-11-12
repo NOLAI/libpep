@@ -229,7 +229,7 @@ pub struct WASMSessionKeyPair {
 #[wasm_bindgen(js_name = makeGlobalKeys)]
 pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
     let mut rng = rand::thread_rng();
-    let (public, secret) = make_global_keys(&mut rng);
+    let (public, secret) = make_global_encryption_keys(&mut rng);
     WASMGlobalKeyPair {
         public: WASMGlobalPublicKey::from(WASMGroupElement::from(public.0)),
         secret: WASMGlobalSecretKey::from(WASMScalarNonZero::from(secret.0)),
@@ -243,8 +243,8 @@ pub fn wasm_make_session_keys(
     context: &str,
     encryption_secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeyPair {
-    let (public, secret) = make_session_keys(
-        &GlobalSecretKey(*global.0),
+    let (public, secret) = make_session_encryption_keys(
+        &GlobalSecretEncryptionKey(*global.0),
         &EncryptionContext::from(context),
         &encryption_secret.0,
     );
@@ -263,7 +263,7 @@ pub fn wasm_encrypt_pseudonym(
     let mut rng = rand::thread_rng();
     WASMEncryptedPseudonym(encrypt(
         &p.0,
-        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &SessionPublicEncryptionKey::from(GroupElement::from(pk.0)),
         &mut rng,
     ))
 }
@@ -276,7 +276,7 @@ pub fn wasm_decrypt_pseudonym(
 ) -> WASMPseudonym {
     WASMPseudonym(decrypt(
         &p.0,
-        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+        &SessionSecretEncryptionKey::from(ScalarNonZero::from(sk.0)),
     ))
 }
 
@@ -289,7 +289,7 @@ pub fn wasm_encrypt_data(
     let mut rng = rand::thread_rng();
     WASMEncryptedDataPoint(encrypt(
         &data.0,
-        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &SessionPublicEncryptionKey::from(GroupElement::from(pk.0)),
         &mut rng,
     ))
 }
@@ -302,7 +302,7 @@ pub fn wasm_decrypt_data(
 ) -> WASMDataPoint {
     WASMDataPoint(decrypt(
         &EncryptedDataPoint::from(ElGamal::from(data.value)),
-        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+        &SessionSecretEncryptionKey::from(ScalarNonZero::from(sk.0)),
     ))
 }
 

@@ -9,10 +9,10 @@ use std::fmt::Formatter;
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
+pub struct BlindedGlobalSecretEncryptionKey(pub(crate) ScalarNonZero);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct SessionKeyShare(pub(crate) ScalarNonZero);
+pub struct SessionEncryptionKeyShare(pub(crate) ScalarNonZero);
 pub trait SafeScalar {
     fn from(x: ScalarNonZero) -> Self;
     fn value(&self) -> &ScalarNonZero;
@@ -50,9 +50,9 @@ impl SafeScalar for BlindingFactor {
         &self.0
     }
 }
-impl SafeScalar for BlindedGlobalSecretKey {
+impl SafeScalar for BlindedGlobalSecretEncryptionKey {
     fn from(x: ScalarNonZero) -> Self {
-        BlindedGlobalSecretKey(x)
+        BlindedGlobalSecretEncryptionKey(x)
     }
 
     fn value(&self) -> &ScalarNonZero {
@@ -60,9 +60,9 @@ impl SafeScalar for BlindedGlobalSecretKey {
     }
 }
 
-impl SafeScalar for SessionKeyShare {
+impl SafeScalar for SessionEncryptionKeyShare {
     fn from(x: ScalarNonZero) -> Self {
-        SessionKeyShare(x)
+        SessionEncryptionKeyShare(x)
     }
 
     fn value(&self) -> &ScalarNonZero {
@@ -77,7 +77,7 @@ impl BlindingFactor {
     }
 }
 
-impl Serialize for BlindedGlobalSecretKey {
+impl Serialize for BlindedGlobalSecretEncryptionKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -85,14 +85,14 @@ impl Serialize for BlindedGlobalSecretKey {
         serializer.serialize_str(&self.encode_to_hex().as_str())
     }
 }
-impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
+impl<'de> Deserialize<'de> for BlindedGlobalSecretEncryptionKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         struct BlindedGlobalSecretKeyVisitor;
         impl<'de> Visitor<'de> for BlindedGlobalSecretKeyVisitor {
-            type Value = BlindedGlobalSecretKey;
+            type Value = BlindedGlobalSecretEncryptionKey;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a hex encoded string representing a BlindedGlobalSecretKey")
             }
@@ -102,7 +102,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
                 E: Error,
             {
                 ScalarNonZero::decode_from_hex(&v)
-                    .map(BlindedGlobalSecretKey)
+                    .map(BlindedGlobalSecretEncryptionKey)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -110,7 +110,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
         deserializer.deserialize_str(BlindedGlobalSecretKeyVisitor)
     }
 }
-impl Serialize for SessionKeyShare {
+impl Serialize for SessionEncryptionKeyShare {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -118,14 +118,14 @@ impl Serialize for SessionKeyShare {
         serializer.serialize_str(&self.encode_to_hex().as_str())
     }
 }
-impl<'de> Deserialize<'de> for SessionKeyShare {
+impl<'de> Deserialize<'de> for SessionEncryptionKeyShare {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         struct SessionKeyShareVisitor;
         impl<'de> Visitor<'de> for SessionKeyShareVisitor {
-            type Value = SessionKeyShare;
+            type Value = SessionEncryptionKeyShare;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a hex encoded string representing a SessionKeyShare")
             }
@@ -135,7 +135,7 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
                 E: Error,
             {
                 ScalarNonZero::decode_from_hex(&v)
-                    .map(SessionKeyShare)
+                    .map(SessionEncryptionKeyShare)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -145,9 +145,9 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
 }
 
 pub fn make_blinded_global_secret_key(
-    global_secret_key: &GlobalSecretKey,
+    global_secret_key: &GlobalSecretEncryptionKey,
     blinding_factors: &[BlindingFactor],
-) -> Option<BlindedGlobalSecretKey> {
+) -> Option<BlindedGlobalSecretEncryptionKey> {
     let y = global_secret_key.clone();
     let k = blinding_factors
         .iter()
@@ -155,25 +155,25 @@ pub fn make_blinded_global_secret_key(
     if k == ScalarNonZero::one() {
         return None;
     }
-    Some(BlindedGlobalSecretKey(y.0 * k))
+    Some(BlindedGlobalSecretEncryptionKey(y.0 * k))
 }
 
 pub fn make_session_key_share(
     key_factor: &ScalarNonZero,
     blinding_factor: &BlindingFactor,
-) -> SessionKeyShare {
-    SessionKeyShare(key_factor * blinding_factor.0)
+) -> SessionEncryptionKeyShare {
+    SessionEncryptionKeyShare(key_factor * blinding_factor.0)
 }
 
-pub fn make_session_key(
-    blinded_global_secret_key: BlindedGlobalSecretKey,
-    session_key_shares: &[SessionKeyShare],
-) -> (SessionPublicKey, SessionSecretKey) {
-    let secret = SessionSecretKey::from(
+pub fn make_session_encryption_key(
+    blinded_global_secret_key: BlindedGlobalSecretEncryptionKey,
+    session_key_shares: &[SessionEncryptionKeyShare],
+) -> (SessionPublicEncryptionKey, SessionSecretEncryptionKey) {
+    let secret = SessionSecretEncryptionKey::from(
         session_key_shares
             .iter()
             .fold(blinded_global_secret_key.0, |acc, x| acc * x.0),
     );
-    let public = SessionPublicKey::from(secret.0 * &G);
+    let public = SessionPublicEncryptionKey::from(secret.0 * &G);
     (public, secret)
 }

@@ -7,7 +7,7 @@ use rand_core::OsRng;
 #[test]
 fn test_high_level_flow() {
     let rng = &mut OsRng;
-    let (_global_public, global_secret) = make_global_keys(rng);
+    let (_global_public, global_secret) = make_global_encryption_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
@@ -17,9 +17,9 @@ fn test_high_level_flow() {
     let enc_context2 = EncryptionContext::from("session2");
 
     let (session1_public, session1_secret) =
-        make_session_keys(&global_secret, &enc_context1, &enc_secret);
+        make_session_encryption_keys(&global_secret, &enc_context1, &enc_secret);
     let (_session2_public, session2_secret) =
-        make_session_keys(&global_secret, &enc_context2, &enc_secret);
+        make_session_encryption_keys(&global_secret, &enc_context2, &enc_secret);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &session1_public, rng);
@@ -76,7 +76,7 @@ fn test_high_level_flow() {
 #[test]
 fn test_batch() {
     let rng = &mut OsRng;
-    let (_global_public, global_secret) = make_global_keys(rng);
+    let (_global_public, global_secret) = make_global_encryption_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
@@ -86,9 +86,9 @@ fn test_batch() {
     let enc_context2 = EncryptionContext::from("session2");
 
     let (session1_public, _session1_secret) =
-        make_session_keys(&global_secret, &enc_context1, &enc_secret);
+        make_session_encryption_keys(&global_secret, &enc_context1, &enc_secret);
     let (_session2_public, _session2_secret) =
-        make_session_keys(&global_secret, &enc_context2, &enc_secret);
+        make_session_encryption_keys(&global_secret, &enc_context2, &enc_secret);
 
     let mut data_points = vec![];
     let mut pseudonyms = vec![];

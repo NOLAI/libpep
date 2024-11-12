@@ -12,7 +12,7 @@ fn n_pep() {
     let rng = &mut OsRng;
 
     // Global config
-    let (_global_public, global_secret) = make_global_keys(rng);
+    let (_global_public, global_secret) = make_global_encryption_keys(rng);
     let blinding_factors = (0..n)
         .map(|_| BlindingFactor::random(rng))
         .collect::<Vec<_>>();
