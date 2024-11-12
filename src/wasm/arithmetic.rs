@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = GroupElement)]
-pub struct WASMGroupElement(GroupElement);
+pub struct WASMGroupElement(pub(crate) GroupElement);
 
 #[wasm_bindgen(js_class = "GroupElement")]
 impl WASMGroupElement {
@@ -65,7 +65,7 @@ impl WASMGroupElement {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarNonZero)]
-pub struct WASMScalarNonZero(ScalarNonZero);
+pub struct WASMScalarNonZero(pub(crate) ScalarNonZero);
 
 #[wasm_bindgen(js_class = "ScalarNonZero")]
 impl WASMScalarNonZero {
@@ -116,7 +116,7 @@ impl WASMScalarNonZero {
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = ScalarCanBeZero)]
-pub struct WASMScalarCanBeZero(ScalarCanBeZero);
+pub struct WASMScalarCanBeZero(pub(crate) ScalarCanBeZero);
 #[wasm_bindgen(js_class = "ScalarCanBeZero")]
 impl WASMScalarCanBeZero {
     #[wasm_bindgen]

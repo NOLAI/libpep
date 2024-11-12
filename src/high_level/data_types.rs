@@ -93,7 +93,9 @@ pub trait Encrypted {
     type UnencryptedType: Encryptable;
     const IS_PSEUDONYM: bool = false;
     fn value(&self) -> &ElGamal;
-    fn from_value(value: ElGamal) -> Self where Self: Sized;
+    fn from_value(value: ElGamal) -> Self
+    where
+        Self: Sized;
     fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
         self.value().encode()
     }

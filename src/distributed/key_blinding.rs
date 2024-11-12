@@ -14,37 +14,61 @@ pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct SessionKeyShare(pub(crate) ScalarNonZero);
+pub trait SafeScalar {
+    fn from(x: ScalarNonZero) -> Self;
+    fn value(&self) -> &ScalarNonZero;
+    fn decode(bytes: &[u8; 32]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ScalarNonZero::decode(bytes).map(Self::from)
+    }
+    fn from_hex(s: &str) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ScalarNonZero::decode_from_hex(s).map(Self::from)
+    }
+    fn to_hex(&self) -> String {
+        self.value().encode_to_hex()
+    }
+}
+impl SafeScalar for BlindingFactor {
+    fn from(x: ScalarNonZero) -> Self {
+        BlindingFactor(x)
+    }
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+impl SafeScalar for BlindedGlobalSecretKey {
+    fn from(x: ScalarNonZero) -> Self {
+        BlindedGlobalSecretKey(x)
+    }
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+
+impl SafeScalar for SessionKeyShare {
+    fn from(x: ScalarNonZero) -> Self {
+        SessionKeyShare(x)
+    }
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
 impl BlindingFactor {
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let scalar = ScalarNonZero::random(rng);
         assert_ne!(scalar, ScalarNonZero::one());
-        BlindingFactor(scalar)
-    }
-    pub fn from(x: ScalarNonZero) -> Self {
-        BlindingFactor(x)
-    }
-    pub fn encode(&self) -> [u8; 32] {
-        self.0.encode()
-    }
-    pub fn decode(bytes: &[u8; 32]) -> Option<Self> {
-        ScalarNonZero::decode(bytes).map(BlindingFactor)
-    }
-    pub fn from_hex(s: &str) -> Option<Self> {
-        hex::decode(s).ok().and_then(|bytes| {
-            if bytes.len() == 32 {
-                Some(
-                    BlindingFactor::decode(<&[u8; 32]>::try_from(bytes.as_slice()).unwrap())
-                        .unwrap(),
-                )
-            } else {
-                None
-            }
-        })
-    }
-    pub fn to_hex(&self) -> String {
-        hex::encode(self.encode())
+        Self(scalar)
     }
 }
+
 impl Serialize for BlindedGlobalSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

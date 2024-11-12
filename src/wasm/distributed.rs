@@ -65,7 +65,7 @@ pub fn wasm_make_blinded_global_secret_key(
     // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(ScalarNonZero::from(x.0)))
+        .map(|x| BlindingFactor::from(x.0 .0))
         .collect();
     WASMBlindedGlobalSecretKey::from(WASMScalarNonZero::from(
         make_blinded_global_secret_key(
@@ -92,7 +92,7 @@ impl WASMPEPSystem {
         Self(PEPSystem::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
             EncryptionSecret::from(rekeying_secret.as_bytes().into()),
-            BlindingFactor::from(ScalarNonZero::from(blinding_factor.0)),
+            BlindingFactor::from(blinding_factor.0 .0),
         ))
     }
 
@@ -162,11 +162,11 @@ impl WASMPEPClient {
         // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
         let session_key_shares: Vec<SessionKeyShare> = session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare::from(ScalarNonZero::from(x.0)))
+            .map(|x| SessionKeyShare::from(x.0 .0))
             .collect();
         let blinded_key = blinded_global_private_key.0.clone();
         Self(PEPClient::new(
-            BlindedGlobalSecretKey::from(ScalarNonZero::from(blinded_key)),
+            BlindedGlobalSecretKey::from(blinded_key.0),
             &*session_key_shares,
         ))
     }
