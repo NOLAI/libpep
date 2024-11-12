@@ -73,9 +73,9 @@ pub fn make_global_keys<R: RngCore + CryptoRng>(rng: &mut R) -> (GlobalPublicKey
 pub fn make_session_keys(
     global: &GlobalSecretKey,
     context: &EncryptionContext,
-    encryption_secret: &EncryptionSecret,
+    secret: &EncryptionSecret,
 ) -> (SessionPublicKey, SessionSecretKey) {
-    let k = make_rekey_factor(encryption_secret, context);
+    let k = make_rekey_factor(secret, context);
     let sk = k.0 * global.0;
     let pk = sk * G;
     (SessionPublicKey(pk), SessionSecretKey(sk))

@@ -30,11 +30,11 @@ impl WASMElGamal {
     }
 }
 #[wasm_bindgen(js_name = encrypt)]
-pub fn encrypt_wasm(msg: &WASMGroupElement, public_key: &WASMGroupElement) -> WASMElGamal {
+pub fn encrypt_wasm(gm: &WASMGroupElement, gy: &WASMGroupElement) -> WASMElGamal {
     let mut rng = OsRng;
-    encrypt(&msg, &public_key, &mut rng).into()
+    encrypt(gm, gy, &mut rng).into()
 }
 #[wasm_bindgen(js_name = decrypt)]
-pub fn decrypt_wasm(s: &WASMElGamal, secret_key: &WASMScalarNonZero) -> WASMGroupElement {
-    decrypt(&s, &secret_key).into()
+pub fn decrypt_wasm(encrypted: &WASMElGamal, y: &WASMScalarNonZero) -> WASMGroupElement {
+    decrypt(encrypted, y).into()
 }

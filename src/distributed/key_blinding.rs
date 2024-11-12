@@ -159,10 +159,10 @@ pub fn make_blinded_global_secret_key(
 }
 
 pub fn make_session_key_share(
-    key_factor: &ScalarNonZero,
+    rekey_factor: &ScalarNonZero,
     blinding_factor: &BlindingFactor,
 ) -> SessionKeyShare {
-    SessionKeyShare(key_factor * blinding_factor.0)
+    SessionKeyShare(rekey_factor * blinding_factor.0)
 }
 
 pub fn make_session_key(

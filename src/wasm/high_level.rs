@@ -241,12 +241,12 @@ pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
 pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKey,
     context: &str,
-    encryption_secret: &WASMEncryptionSecret,
+    secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeyPair {
     let (public, secret) = make_session_keys(
         &GlobalSecretKey(*global.0),
         &EncryptionContext::from(context),
-        &encryption_secret.0,
+        &secret.0,
     );
     WASMSessionKeyPair {
         public: WASMSessionPublicKey::from(WASMGroupElement::from(public.0)),
@@ -257,13 +257,13 @@ pub fn wasm_make_session_keys(
 /// Encrypt a pseudonym
 #[wasm_bindgen(js_name = encryptPseudonym)]
 pub fn wasm_encrypt_pseudonym(
-    p: &WASMPseudonym,
-    pk: &WASMSessionPublicKey,
+    message: &WASMPseudonym,
+    public_key: &WASMSessionPublicKey,
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::thread_rng();
     WASMEncryptedPseudonym(encrypt(
-        &p.0,
-        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &message.0,
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
         &mut rng,
     ))
 }
@@ -271,25 +271,25 @@ pub fn wasm_encrypt_pseudonym(
 /// Decrypt an encrypted pseudonym
 #[wasm_bindgen(js_name = decryptPseudonym)]
 pub fn wasm_decrypt_pseudonym(
-    p: &WASMEncryptedPseudonym,
-    sk: &WASMSessionSecretKey,
+    encrypted: &WASMEncryptedPseudonym,
+    secret_key: &WASMSessionSecretKey,
 ) -> WASMPseudonym {
     WASMPseudonym(decrypt(
-        &p.0,
-        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+        &encrypted.0,
+        &SessionSecretKey::from(ScalarNonZero::from(secret_key.0)),
     ))
 }
 
 /// Encrypt a data point
 #[wasm_bindgen(js_name = encryptData)]
 pub fn wasm_encrypt_data(
-    data: &WASMDataPoint,
-    pk: &WASMSessionPublicKey,
+    message: &WASMDataPoint,
+    public_key: &WASMSessionPublicKey,
 ) -> WASMEncryptedDataPoint {
     let mut rng = rand::thread_rng();
     WASMEncryptedDataPoint(encrypt(
-        &data.0,
-        &SessionPublicKey::from(GroupElement::from(pk.0)),
+        &message.0,
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
         &mut rng,
     ))
 }
@@ -297,12 +297,12 @@ pub fn wasm_encrypt_data(
 /// Decrypt an encrypted data point
 #[wasm_bindgen(js_name = decryptData)]
 pub fn wasm_decrypt_data(
-    data: &WASMEncryptedDataPoint,
-    sk: &WASMSessionSecretKey,
+    encrypted: &WASMEncryptedDataPoint,
+    secret_key: &WASMSessionSecretKey,
 ) -> WASMDataPoint {
     WASMDataPoint(decrypt(
-        &EncryptedDataPoint::from(ElGamal::from(data.value)),
-        &SessionSecretKey::from(ScalarNonZero::from(sk.0)),
+        &EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
+        &SessionSecretKey::from(ScalarNonZero::from(secret_key.0)),
     ))
 }
 
@@ -322,12 +322,9 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::thread_rng();
-    WASMEncryptedPseudonym::from(WASMElGamal::from(
-        rerandomize(
-            &EncryptedPseudonym::from(ElGamal::from(encrypted.value)),
-            &mut rng,
-        )
-        .value,
+    WASMEncryptedPseudonym::from(rerandomize(
+        &EncryptedPseudonym::from(encrypted.value),
+        &mut rng,
     ))
 }
 
@@ -335,14 +332,148 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
 #[wasm_bindgen(js_name = rerandomizeData)]
 pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEncryptedDataPoint {
     let mut rng = rand::thread_rng();
-    WASMEncryptedDataPoint::from(WASMElGamal::from(
-        rerandomize(
-            &EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
-            &mut rng,
-        )
-        .value,
+    WASMEncryptedDataPoint::from(rerandomize(
+        &EncryptedDataPoint::from(encrypted.value),
+        &mut rng,
     ))
 }
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizePseudonym)]
+pub fn wasm_rerandomize_encrypted_pseudonym(
+    encrypted: &WASMEncryptedPseudonym,
+    public_key: &WASMSessionPublicKey,
+) -> WASMEncryptedPseudonym {
+    let mut rng = rand::thread_rng();
+    WASMEncryptedPseudonym::from(rerandomize(
+        &EncryptedPseudonym::from(encrypted.value),
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizeData)]
+pub fn wasm_rerandomize_encrypted(
+    encrypted: &WASMEncryptedDataPoint,
+    public_key: &WASMSessionPublicKey,
+) -> WASMEncryptedDataPoint {
+    let mut rng = rand::thread_rng();
+    WASMEncryptedDataPoint::from(rerandomize(
+        &EncryptedDataPoint::from(encrypted.value),
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizePseudonymGlobal)]
+pub fn wasm_rerandomize_encrypted_pseudonym_global(
+    encrypted: &WASMEncryptedPseudonym,
+    public_key: &WASMGlobalPublicKey,
+) -> WASMEncryptedPseudonym {
+    let mut rng = rand::thread_rng();
+    WASMEncryptedPseudonym::from(rerandomize(
+        &EncryptedPseudonym::from(encrypted.value),
+        &GlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizeDataGlobal)]
+pub fn wasm_rerandomize_encrypted_global(
+    encrypted: &WASMEncryptedDataPoint,
+    public_key: &WASMGlobalPublicKey,
+) -> WASMEncryptedDataPoint {
+    let mut rng = rand::thread_rng();
+    WASMEncryptedDataPoint::from(rerandomize(
+        &EncryptedDataPoint::from(encrypted.value),
+        &GlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+#[cfg(not(feature = "elgamal2"))]
+#[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
+pub fn wasm_rerandomize_encrypted_pseudonym_known(
+    encrypted: &WASMEncryptedPseudonym,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedPseudonym {
+    WASMEncryptedPseudonym::from(rerandomize_known(
+        &EncryptedPseudonym::from(encrypted.value),
+        &r.0,
+    ))
+}
+
+#[cfg(not(feature = "elgamal2"))]
+#[wasm_bindgen(js_name = rerandomizeDataKnown)]
+pub fn wasm_rerandomize_encrypted_known(
+    encrypted: &WASMEncryptedDataPoint,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedDataPoint {
+    WASMEncryptedDataPoint::from(rerandomize_known(
+        &EncryptedDataPoint::from(encrypted.value),
+        &r.0,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
+pub fn wasm_rerandomize_encrypted_pseudonym_known(
+    encrypted: &WASMEncryptedPseudonym,
+    public_key: &WASMSessionPublicKey,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedPseudonym {
+    WASMEncryptedPseudonym::from(rerandomize_known(
+        &EncryptedPseudonym::from(encrypted.value),
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
+        &r.0,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizeDataKnown)]
+pub fn wasm_rerandomize_encrypted_known(
+    encrypted: &WASMEncryptedDataPoint,
+    public_key: &WASMSessionPublicKey,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedDataPoint {
+    WASMEncryptedDataPoint::from(rerandomize_known(
+        &EncryptedDataPoint::from(encrypted.value),
+        &SessionPublicKey::from(GroupElement::from(public_key.0)),
+        &r.0,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizePseudonymGlobalKnown)]
+pub fn wasm_rerandomize_encrypted_pseudonym_global_known(
+    encrypted: &WASMEncryptedPseudonym,
+    public_key: &WASMGlobalPublicKey,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedPseudonym {
+    WASMEncryptedPseudonym::from(rerandomize_known(
+        &EncryptedPseudonym::from(encrypted.value),
+        &GlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &r.0,
+    ))
+}
+
+#[cfg(feature = "elgamal2")]
+#[wasm_bindgen(js_name = rerandomizeDataGlobalKnown)]
+pub fn wasm_rerandomize_encrypted_global_known(
+    encrypted: &WASMEncryptedDataPoint,
+    public_key: &WASMGlobalPublicKey,
+    r: &WASMRerandomizeFactor,
+) -> WASMEncryptedDataPoint {
+    WASMEncryptedDataPoint::from(rerandomize_known(
+        &EncryptedDataPoint::from(encrypted.value),
+        &GlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &r.0,
+    ))
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
 #[wasm_bindgen(js_name = RSKFactors)]
 pub struct WASMRSKFactors {
@@ -446,11 +577,11 @@ impl From<&WASMRekeyInfo> for RekeyInfo {
 /// Pseudonymize an encrypted pseudonym, from one context to another context
 #[wasm_bindgen(js_name = pseudonymize)]
 pub fn wasm_pseudonymize(
-    p: &WASMEncryptedPseudonym,
+    encrypted: &WASMEncryptedPseudonym,
     pseudo_info: &WASMPseudonymizationInfo,
 ) -> WASMEncryptedPseudonym {
     let x = pseudonymize(
-        &EncryptedPseudonym::from(p.value),
+        &EncryptedPseudonym::from(encrypted.value),
         &PseudonymizationInfo::from(pseudo_info),
     );
     WASMEncryptedPseudonym(x)
@@ -459,11 +590,11 @@ pub fn wasm_pseudonymize(
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
 #[wasm_bindgen(js_name = rekeyData)]
 pub fn wasm_rekey_data(
-    p: &WASMEncryptedDataPoint,
+    encrypted: &WASMEncryptedDataPoint,
     rekey_info: &WASMRekeyInfo,
 ) -> WASMEncryptedDataPoint {
     let x = rekey(
-        &EncryptedDataPoint::from(p.value),
+        &EncryptedDataPoint::from(encrypted.value),
         &RekeyInfo::from(rekey_info),
     );
     WASMEncryptedDataPoint(x)
@@ -472,13 +603,13 @@ pub fn wasm_rekey_data(
 #[wasm_bindgen(js_name = pseudonymizeBatch)]
 pub fn wasm_pseudonymize_batch(
     encrypted: Vec<WASMEncryptedPseudonym>,
-    pseudonymization_info: &WASMPseudonymizationInfo,
+    pseudo_info: &WASMPseudonymizationInfo,
 ) -> Box<[WASMEncryptedPseudonym]> {
     let mut rng = rand::thread_rng();
     let mut encrypted = encrypted.iter().map(|x| x.0).collect::<Vec<_>>();
     pseudonymize_batch(
         &mut encrypted,
-        &PseudonymizationInfo::from(pseudonymization_info),
+        &PseudonymizationInfo::from(pseudo_info),
         &mut rng,
     )
     .iter()

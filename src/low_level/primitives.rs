@@ -10,46 +10,46 @@ use crate::low_level::elgamal::*;
 #[cfg(not(feature = "elgamal2"))]
 pub fn rerandomize(m: &ElGamal, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        b: r * G + m.b,
-        c: r * m.y + m.c,
-        y: m.y,
+        gb: r * G + m.gb,
+        gc: r * m.gy + m.gc,
+        gy: m.gy,
     }
 }
 #[cfg(feature = "elgamal2")]
-pub fn rerandomize(m: &ElGamal, public_key: &GroupElement, r: &ScalarNonZero) -> ElGamal {
+pub fn rerandomize(m: &ElGamal, gy: &GroupElement, r: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        b: r * G + m.b,
-        c: r * public_key + m.c,
+        gb: r * G + m.gb,
+        gc: r * gy + m.gc,
     }
 }
 
 /// Change encrypted representation using [ScalarNonZero] `s` so that it has different contents when decrypted equal to `s*msg`, if the original encrypted message was [GroupElement] `msg`.
 pub fn reshuffle(m: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        b: s * m.b,
-        c: s * m.c,
+        gb: s * m.gb,
+        gc: s * m.gc,
         #[cfg(not(feature = "elgamal2"))]
-        y: m.y,
+        gy: m.gy,
     }
 }
 
 /// Change encrypted representation using [ScalarNonZero] `k`, so it can be decrypted by a different key `k*y` if the input can be decrypted by [ScalarNonZero] `y`.
 pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        b: k.invert() * m.b,
-        c: m.c,
+        gb: k.invert() * m.gb,
+        gc: m.gc,
         #[cfg(not(feature = "elgamal2"))]
-        y: k * m.y,
+        gy: k * m.gy,
     }
 }
 
 /// Combination of `reshuffle(s)` and `rekey(k)`
 pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        b: (s * k.invert()) * m.b,
-        c: s * m.c,
+        gb: (s * k.invert()) * m.gb,
+        gc: s * m.gc,
         #[cfg(not(feature = "elgamal2"))]
-        y: k * m.y,
+        gy: k * m.gy,
     }
 }
 
@@ -58,24 +58,24 @@ pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
 pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     let ski = s * k.invert();
     ElGamal {
-        b: ski * m.b + ski * r * G,
-        c: (s * r) * m.y + s * m.c,
-        y: k * m.y,
+        gb: ski * m.gb + ski * r * G,
+        gc: (s * r) * m.gy + s * m.gc,
+        gy: k * m.gy,
     }
 }
 
 #[cfg(feature = "elgamal2")]
 pub fn rrsk(
     m: &ElGamal,
-    public_key: &GroupElement,
+    gy: &GroupElement,
     r: &ScalarNonZero,
     s: &ScalarNonZero,
     k: &ScalarNonZero,
 ) -> ElGamal {
     let ski = s * k.invert();
     ElGamal {
-        b: ski * m.b + ski * r * G,
-        c: (s * r) * public_key + s * m.c,
+        gb: ski * m.gb + ski * r * G,
+        gc: (s * r) * gy + s * m.gc,
     }
 }
 
@@ -116,7 +116,7 @@ pub fn rrsk2(
 #[cfg(feature = "elgamal2")]
 pub fn rrsk2(
     m: &ElGamal,
-    public_key: &GroupElement,
+    gy: &GroupElement,
     r: &ScalarNonZero,
     s_from: &ScalarNonZero,
     s_to: &ScalarNonZero,
@@ -125,5 +125,5 @@ pub fn rrsk2(
 ) -> ElGamal {
     let s = s_from.invert() * s_to;
     let k = k_from.invert() * k_to;
-    rrsk(m, public_key, &r, &s, &k)
+    rrsk(m, gy, &r, &s, &k)
 }

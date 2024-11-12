@@ -52,15 +52,19 @@ impl PEPSystem {
             &self.rekeying_secret,
         )
     }
-    pub fn rekey(&self, p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-        rekey(p, rekey_info)
+    pub fn rekey(
+        &self,
+        encrypted: &EncryptedDataPoint,
+        rekey_info: &RekeyInfo,
+    ) -> EncryptedDataPoint {
+        rekey(encrypted, rekey_info)
     }
     pub fn pseudonymize(
         &self,
-        p: &EncryptedPseudonym,
+        encrypted: &EncryptedPseudonym,
         pseudonymization_info: &PseudonymizationInfo,
     ) -> EncryptedPseudonym {
-        pseudonymize(p, pseudonymization_info)
+        pseudonymize(encrypted, pseudonymization_info)
     }
 
     pub fn rekey_batch<R: RngCore + CryptoRng>(
@@ -119,10 +123,10 @@ impl PEPClient {
     }
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
-        val: &E,
+        message: &E,
         rng: &mut R,
     ) -> E::EncryptedType {
-        encrypt(val, &(self.session_public_key), rng)
+        encrypt(message, &(self.session_public_key), rng)
     }
 }
 
@@ -135,9 +139,9 @@ impl OfflinePEPClient {
     }
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
-        val: &E,
+        message: &E,
         rng: &mut R,
     ) -> E::EncryptedType {
-        encrypt_global(val, &(self.global_public_key), rng)
+        encrypt_global(message, &(self.global_public_key), rng)
     }
 }

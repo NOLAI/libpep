@@ -11,19 +11,19 @@ pub const ELGAMAL_LENGTH: usize = 96;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
-    pub b: GroupElement,
-    pub c: GroupElement,
+    pub gb: GroupElement,
+    pub gc: GroupElement,
     #[cfg(not(feature = "elgamal2"))]
-    pub y: GroupElement,
+    pub gy: GroupElement,
 }
 
 impl ElGamal {
     pub fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self> {
         Some(Self {
-            b: GroupElement::decode_from_slice(&v[0..32])?,
-            c: GroupElement::decode_from_slice(&v[32..64])?,
+            gb: GroupElement::decode_from_slice(&v[0..32])?,
+            gc: GroupElement::decode_from_slice(&v[32..64])?,
             #[cfg(not(feature = "elgamal2"))]
-            y: GroupElement::decode_from_slice(&v[64..96])?,
+            gy: GroupElement::decode_from_slice(&v[64..96])?,
         })
     }
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
@@ -38,10 +38,10 @@ impl ElGamal {
 
     pub fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
         let mut retval = [0u8; ELGAMAL_LENGTH];
-        retval[0..32].clone_from_slice(self.b.encode().as_ref());
-        retval[32..64].clone_from_slice(self.c.encode().as_ref());
+        retval[0..32].clone_from_slice(self.gb.encode().as_ref());
+        retval[32..64].clone_from_slice(self.gc.encode().as_ref());
         #[cfg(not(feature = "elgamal2"))]
-        retval[64..96].clone_from_slice(self.y.encode().as_ref());
+        retval[64..96].clone_from_slice(self.gy.encode().as_ref());
         retval
     }
 
@@ -57,33 +57,33 @@ impl ElGamal {
 
     pub fn clone(&self) -> Self {
         Self {
-            b: self.b,
-            c: self.c,
+            gb: self.gb,
+            gc: self.gc,
             #[cfg(not(feature = "elgamal2"))]
-            y: self.y,
+            gy: self.gy,
         }
     }
 }
 
 /// Encrypt message [GroupElement] `msg` using public key [GroupElement] `public_key` to a ElGamal tuple.
 pub fn encrypt<R: RngCore + CryptoRng>(
-    msg: &GroupElement,
-    public_key: &GroupElement,
+    gm: &GroupElement,
+    gy: &GroupElement,
     rng: &mut R,
 ) -> ElGamal {
     let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
-    assert_ne!(public_key, &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
+    assert_ne!(gy, &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
     ElGamal {
-        b: r * G,
-        c: msg + r * public_key,
+        gb: r * G,
+        gc: gm + r * gy,
         #[cfg(not(feature = "elgamal2"))]
-        y: *public_key,
+        gy: *gy,
     }
 }
 
 /// Decrypt ElGamal tuple (encrypted using `secret_key * G`) using secret key [ScalarNonZero] `secret_key`.
-pub fn decrypt(s: &ElGamal, secret_key: &ScalarNonZero) -> GroupElement {
+pub fn decrypt(encrypted: &ElGamal, y: &ScalarNonZero) -> GroupElement {
     #[cfg(not(feature = "elgamal2"))]
-    assert_eq!(secret_key * G, s.y); // the secret key should be the same as the public key used to encrypt the message
-    s.c - secret_key * s.b
+    assert_eq!(y * G, encrypted.gy); // the secret key should be the same as the public key used to encrypt the message
+    encrypted.gc - y * encrypted.gb
 }

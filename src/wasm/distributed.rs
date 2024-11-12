@@ -178,20 +178,20 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = rekey)]
     pub fn wasm_rekey(
         &self,
-        p: &WASMEncryptedDataPoint,
+        encrypted: &WASMEncryptedDataPoint,
         rekey_info: &WASMRekeyInfo,
     ) -> WASMEncryptedDataPoint {
-        WASMEncryptedDataPoint::from(self.rekey(&p.0, &RekeyInfo::from(rekey_info)))
+        WASMEncryptedDataPoint::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
     }
 
     #[wasm_bindgen(js_name = pseudonymize)]
     pub fn wasm_pseudonymize(
         &self,
-        p: &WASMEncryptedPseudonym,
-        pseudonymization_info: &WASMPseudonymizationInfo,
+        encrypted: &WASMEncryptedPseudonym,
+        pseudo_info: &WASMPseudonymizationInfo,
     ) -> WASMEncryptedPseudonym {
         WASMEncryptedPseudonym::from(
-            self.pseudonymize(&p.0, &PseudonymizationInfo::from(pseudonymization_info)),
+            self.pseudonymize(&encrypted.0, &PseudonymizationInfo::from(pseudo_info)),
         )
     }
 }
@@ -219,24 +219,26 @@ impl WASMPEPClient {
         ))
     }
     #[wasm_bindgen(js_name = decryptPseudonym)]
-    pub fn wasm_decrypt_pseudonym(&self, p: &WASMEncryptedPseudonym) -> WASMPseudonym {
-        WASMPseudonym::from(self.decrypt(&p.0))
+    pub fn wasm_decrypt_pseudonym(&self, encrypted: &WASMEncryptedPseudonym) -> WASMPseudonym {
+        WASMPseudonym::from(self.decrypt(&encrypted.0))
     }
 
     #[wasm_bindgen(js_name = decryptData)]
-    pub fn wasm_decrypt_data(&self, data: &WASMEncryptedDataPoint) -> WASMDataPoint {
-        WASMDataPoint::from(self.decrypt(&data.0))
+    pub fn wasm_decrypt_data(&self, encrypted: &WASMEncryptedDataPoint) -> WASMDataPoint {
+        WASMDataPoint::from(self.decrypt(&encrypted.0))
     }
 
     #[wasm_bindgen(js_name = encryptData)]
-    pub fn wasm_encrypt_data(&self, data: &WASMDataPoint) -> WASMEncryptedDataPoint {
+    pub fn wasm_encrypt_data(&self, message: &WASMDataPoint) -> WASMEncryptedDataPoint {
         let mut rng = rand::thread_rng();
-        WASMEncryptedDataPoint::from(self.encrypt(&data.0, &mut rng))
+        WASMEncryptedDataPoint::from(self.encrypt(&message.0, &mut rng))
     }
 
     #[wasm_bindgen(js_name = encryptPseudonym)]
-    pub fn wasm_encrypt_pseudonym(&self, p: &WASMPseudonym) -> WASMEncryptedPseudonym {
+    pub fn wasm_encrypt_pseudonym(&self, message: &WASMPseudonym) -> WASMEncryptedPseudonym {
         let mut rng = rand::thread_rng();
-        WASMEncryptedPseudonym(EncryptedPseudonym::from(self.encrypt(&p.0, &mut rng).value))
+        WASMEncryptedPseudonym(EncryptedPseudonym::from(
+            self.encrypt(&message.0, &mut rng).value,
+        ))
     }
 }

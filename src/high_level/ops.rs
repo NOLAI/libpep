@@ -8,31 +8,48 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Encrypt using session keys
 pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
-    p: &E,
-    pk: &SessionPublicKey,
+    message: &E,
+    public_key: &SessionPublicKey,
     rng: &mut R,
 ) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key,
+        rng,
+    ))
 }
 
 /// Decrypt using session keys
-pub fn decrypt<E: Encrypted>(p: &E, sk: &SessionSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(p.value(), &sk.0))
+pub fn decrypt<E: Encrypted>(encrypted: &E, secret_key: &SessionSecretKey) -> E::UnencryptedType {
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
 }
 
 /// Encrypt for a global key
 pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
-    p: &E,
-    pk: &GlobalPublicKey,
+    message: &E,
+    public_key: &GlobalPublicKey,
     rng: &mut R,
 ) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(p.value(), pk, rng))
+    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key,
+        rng,
+    ))
 }
 
 /// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist)
 #[cfg(feature = "insecure-methods")]
-pub fn decrypt_global<E: Encrypted>(p: &E, sk: &GlobalSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::elgamal::decrypt(p.value(), &sk.0))
+pub fn decrypt_global<E: Encrypted>(
+    encrypted: &E,
+    secret_key: &GlobalSecretKey,
+) -> E::UnencryptedType {
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
 }
 
 #[cfg(not(feature = "elgamal2"))]
@@ -80,19 +97,22 @@ pub fn rerandomize_known<E: Encrypted, P: PublicKey>(
 
 /// Pseudonymize an encrypted pseudonym, from one context to another context
 pub fn pseudonymize(
-    p: &EncryptedPseudonym,
+    encrypted: &EncryptedPseudonym,
     pseudonymization_info: &PseudonymizationInfo,
 ) -> EncryptedPseudonym {
     EncryptedPseudonym::from(rsk(
-        &p.value,
+        &encrypted.value,
         &pseudonymization_info.s.0,
         &pseudonymization_info.k.0,
     ))
 }
 
 /// Rekey an encrypted data point, encrypted with one session key, to be decrypted by another session key
-pub fn rekey(p: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(crate::low_level::primitives::rekey(&p.value, &rekey_info.0))
+pub fn rekey(encrypted: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
+    EncryptedDataPoint::from(crate::low_level::primitives::rekey(
+        &encrypted.value,
+        &rekey_info.0,
+    ))
 }
 
 pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
