@@ -9,49 +9,100 @@ use crate::wasm::high_level::*;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[derive(Copy, Clone, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = BlindingFactor)]
-pub struct WASMBlindingFactor(pub WASMScalarNonZero);
+pub struct WASMBlindingFactor(BlindingFactor);
 
 #[wasm_bindgen(js_class = "BlindingFactor")]
 impl WASMBlindingFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindingFactor(x)
+        WASMBlindingFactor(BlindingFactor(x.0))
     }
     #[wasm_bindgen]
     pub fn random() -> Self {
         let mut rng = rand::thread_rng();
         let x = BlindingFactor::random(&mut rng);
-        WASMBlindingFactor(WASMScalarNonZero::from(x.0))
+        WASMBlindingFactor(x)
     }
-
     #[wasm_bindgen(js_name = clone)]
     pub fn clone(&self) -> Self {
         WASMBlindingFactor(self.0.clone())
+    }
+
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode().to_vec()
+    }
+    #[wasm_bindgen]
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindingFactor> {
+        BlindingFactor::decode_from_slice(&bytes.as_slice()).map(|x| WASMBlindingFactor(x))
+    }
+    #[wasm_bindgen(js_name = toHex)]
+    pub fn to_hex(&self) -> String {
+        self.0.encode_to_hex()
+    }
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<WASMBlindingFactor> {
+        BlindingFactor::decode_from_hex(hex).map(|x| WASMBlindingFactor(x))
     }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = BlindedGlobalSecretKey)]
-pub struct WASMBlindedGlobalSecretKey(pub WASMScalarNonZero);
+pub struct WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey);
 
 #[wasm_bindgen(js_class = "BlindedGlobalSecretKey")]
 impl WASMBlindedGlobalSecretKey {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedGlobalSecretKey(x)
+        WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey(x.0))
+    }
+
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode().to_vec()
+    }
+    #[wasm_bindgen]
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedGlobalSecretKey> {
+        BlindedGlobalSecretKey::decode_from_slice(&bytes.as_slice())
+            .map(|x| WASMBlindedGlobalSecretKey(x))
+    }
+    #[wasm_bindgen(js_name = toHex)]
+    pub fn to_hex(&self) -> String {
+        self.0.encode_to_hex()
+    }
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<WASMBlindedGlobalSecretKey> {
+        BlindedGlobalSecretKey::decode_from_hex(hex).map(|x| WASMBlindedGlobalSecretKey(x))
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionKeyShare)]
-pub struct WASMSessionKeyShare(pub WASMScalarNonZero);
+pub struct WASMSessionKeyShare(SessionKeyShare);
 
 #[wasm_bindgen(js_class = "SessionKeyShare")]
 impl WASMSessionKeyShare {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMSessionKeyShare(x)
+        WASMSessionKeyShare(SessionKeyShare(x.0))
+    }
+
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode().to_vec()
+    }
+    #[wasm_bindgen]
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMSessionKeyShare> {
+        SessionKeyShare::decode_from_slice(&bytes.as_slice()).map(|x| WASMSessionKeyShare(x))
+    }
+    #[wasm_bindgen(js_name = toHex)]
+    pub fn to_hex(&self) -> String {
+        self.0.encode_to_hex()
+    }
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<WASMSessionKeyShare> {
+        SessionKeyShare::decode_from_hex(hex).map(|x| WASMSessionKeyShare(x))
     }
 }
 
@@ -67,14 +118,13 @@ pub fn wasm_make_blinded_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    WASMBlindedGlobalSecretKey::from(WASMScalarNonZero::from(
+    WASMBlindedGlobalSecretKey(
         make_blinded_global_secret_key(
             &GlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
         )
-        .unwrap()
-        .0,
-    ))
+        .unwrap(),
+    )
 }
 
 #[derive(Clone, From, Into, Deref)]
@@ -98,9 +148,7 @@ impl WASMPEPSystem {
 
     #[wasm_bindgen(js_name = sessionKeyShare)]
     pub fn wasm_session_key_share(&self, context: &str) -> WASMSessionKeyShare {
-        WASMSessionKeyShare::from(WASMScalarNonZero::from(
-            self.session_key_share(&EncryptionContext::from(context)).0,
-        ))
+        WASMSessionKeyShare(self.session_key_share(&EncryptionContext::from(context)))
     }
 
     #[wasm_bindgen(js_name = rekeyInfo)]

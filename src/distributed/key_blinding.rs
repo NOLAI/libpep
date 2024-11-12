@@ -16,13 +16,22 @@ pub struct SessionKeyShare(pub(crate) ScalarNonZero);
 pub trait SafeScalar {
     fn from(x: ScalarNonZero) -> Self;
     fn value(&self) -> &ScalarNonZero;
+    fn encode(&self) -> [u8; 32] {
+        self.value().encode()
+    }
     fn decode(bytes: &[u8; 32]) -> Option<Self>
     where
         Self: Sized,
     {
         ScalarNonZero::decode(bytes).map(Self::from)
     }
-    fn from_hex(s: &str) -> Option<Self>
+    fn decode_from_slice(slice: &[u8]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ScalarNonZero::decode_from_slice(slice).map(Self::from)
+    }
+    fn decode_from_hex(s: &str) -> Option<Self>
     where
         Self: Sized,
     {
