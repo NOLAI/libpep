@@ -81,7 +81,12 @@ fn n_pep() {
     let dec_data = client_b.decrypt(&transcrypted_data);
 
     assert_eq!(data, dec_data);
-    assert_ne!(pseudonym, dec_pseudo);
+
+    if pc_a == pc_b {
+        assert_eq!(pseudonym, dec_pseudo);
+    } else {
+        assert_ne!(pseudonym, dec_pseudo);
+    }
 
     let rev_pseudonymized = systems
         .iter()
