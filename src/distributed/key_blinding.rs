@@ -1,18 +1,17 @@
 use crate::high_level::keys::*;
 use crate::internal::arithmetic::*;
-use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SessionKeyShare(pub(crate) ScalarNonZero);
 pub trait SafeScalar {
     fn from(x: ScalarNonZero) -> Self;
@@ -29,7 +28,7 @@ pub trait SafeScalar {
     {
         ScalarNonZero::decode_from_hex(s).map(Self::from)
     }
-    fn to_hex(&self) -> String {
+    fn encode_to_hex(&self) -> String {
         self.value().encode_to_hex()
     }
 }
@@ -164,7 +163,7 @@ pub fn make_session_key(
     let secret = SessionSecretKey::from(
         session_key_shares
             .iter()
-            .fold(*blinded_global_secret_key, |acc, x| acc * x.deref()),
+            .fold(blinded_global_secret_key.0, |acc, x| acc * x.0),
     );
     let public = SessionPublicKey::from(secret.0 * &G);
     (public, secret)
