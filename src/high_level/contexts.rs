@@ -6,27 +6,39 @@ use serde::{Deserialize, Serialize};
 
 pub type Context = String; // Contexts are described by simple strings of arbitrary length
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[cfg(feature = "legacy-pep-repo-compatible")]
 pub struct PseudonymizationContext {
     #[deref]
     pub payload: Context,
-    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub audience_type: u32,
 }
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[cfg(feature = "legacy-pep-repo-compatible")]
 pub struct EncryptionContext {
     #[deref]
     pub payload: Context,
-    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub audience_type: u32,
 }
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[cfg(not(feature = "legacy-pep-repo-compatible"))]
+pub struct PseudonymizationContext(pub Context);
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[cfg(not(feature = "legacy-pep-repo-compatible"))]
+pub struct EncryptionContext(pub Context);
+
 impl PseudonymizationContext {
+    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from(payload: &str) -> Self {
         PseudonymizationContext {
             payload: payload.to_string(),
-            #[cfg(feature = "legacy-pep-repo-compatible")]
             audience_type: 0,
         }
     }
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
+    pub fn from(payload: &str) -> Self {
+        PseudonymizationContext(payload.to_string())
+    }
+
     #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from_audience(payload: &str, audience_type: u32) -> Self {
         PseudonymizationContext {
@@ -36,13 +48,18 @@ impl PseudonymizationContext {
     }
 }
 impl EncryptionContext {
+    #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from(payload: &str) -> Self {
         EncryptionContext {
             payload: payload.to_string(),
-            #[cfg(feature = "legacy-pep-repo-compatible")]
             audience_type: 0,
         }
     }
+    #[cfg(not(feature = "legacy-pep-repo-compatible"))]
+    pub fn from(payload: &str) -> Self {
+        EncryptionContext(payload.to_string())
+    }
+
     #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from_audience(payload: &str, audience_type: u32) -> Self {
         EncryptionContext {
