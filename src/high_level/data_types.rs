@@ -1,5 +1,5 @@
 use crate::internal::arithmetic::GroupElement;
-use crate::low_level::elgamal::ElGamal;
+use crate::low_level::elgamal::{ElGamal, ELGAMAL_LENGTH};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -94,6 +94,24 @@ pub trait Encrypted {
     const IS_PSEUDONYM: bool;
     fn value(&self) -> &ElGamal;
     fn from_value(value: ElGamal) -> Self;
+    fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
+        self.value().encode()
+    }
+    fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ElGamal::decode(v).map(|x| Self::from_value(x))
+    }
+    fn to_base64(&self) -> String {
+        self.value().encode_to_base64()
+    }
+    fn from_base64(s: &str) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ElGamal::decode_from_base64(s).map(|x| Self::from_value(x))
+    }
 }
 pub trait Encryptable {
     type EncryptedType: Encrypted;

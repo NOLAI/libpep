@@ -162,6 +162,25 @@ impl WASMEncryptedPseudonym {
     pub fn new(x: WASMElGamal) -> Self {
         WASMEncryptedPseudonym(EncryptedPseudonym::from(ElGamal::from(x)))
     }
+
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.value.encode().to_vec()
+    }
+    #[wasm_bindgen]
+    pub fn decode(v: Vec<u8>) -> Option<WASMEncryptedPseudonym> {
+        ElGamal::decode_from_slice(&v).map(|x| WASMEncryptedPseudonym(EncryptedPseudonym::from(x)))
+    }
+
+    #[wasm_bindgen(js_name = toBase64)]
+    pub fn to_base64(&self) -> String {
+        self.0.value.encode_to_base64()
+    }
+
+    #[wasm_bindgen(js_name = fromBase64)]
+    pub fn from_base64(s: &str) -> Option<WASMEncryptedPseudonym> {
+        ElGamal::decode_from_base64(s).map(|x| WASMEncryptedPseudonym(EncryptedPseudonym::from(x)))
+    }
 }
 
 #[wasm_bindgen(js_class = "EncryptedDataPoint")]
@@ -169,6 +188,25 @@ impl WASMEncryptedDataPoint {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMElGamal) -> Self {
         WASMEncryptedDataPoint(EncryptedDataPoint::from(ElGamal::from(x)))
+    }
+
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.value.encode().to_vec()
+    }
+    #[wasm_bindgen]
+    pub fn decode(v: Vec<u8>) -> Option<WASMEncryptedDataPoint> {
+        ElGamal::decode_from_slice(&v).map(|x| WASMEncryptedDataPoint(EncryptedDataPoint::from(x)))
+    }
+
+    #[wasm_bindgen(js_name = toBase64)]
+    pub fn to_base64(&self) -> String {
+        self.0.value.encode_to_base64()
+    }
+
+    #[wasm_bindgen(js_name = fromBase64)]
+    pub fn from_base64(s: &str) -> Option<WASMEncryptedDataPoint> {
+        ElGamal::decode_from_base64(s).map(|x| WASMEncryptedDataPoint(EncryptedDataPoint::from(x)))
     }
 }
 

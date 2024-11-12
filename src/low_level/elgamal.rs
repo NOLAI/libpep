@@ -5,9 +5,9 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "elgamal2")]
-const ELGAMAL_LENGTH: usize = 64;
+pub const ELGAMAL_LENGTH: usize = 64;
 #[cfg(not(feature = "elgamal2"))]
-const ELGAMAL_LENGTH: usize = 96;
+pub const ELGAMAL_LENGTH: usize = 96;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
