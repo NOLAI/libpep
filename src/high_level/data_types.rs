@@ -103,6 +103,13 @@ pub trait Encrypted {
     {
         ElGamal::decode(v).map(|x| Self::from_value(x))
     }
+
+    fn decode_from_slice(v: &[u8]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        ElGamal::decode_from_slice(v).map(|x| Self::from_value(x))
+    }
     fn to_base64(&self) -> String {
         self.value().encode_to_base64()
     }
