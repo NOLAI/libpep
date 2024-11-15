@@ -120,17 +120,17 @@ fn pep_rrsk() {
     // encrypt/decrypt this value
     let encrypted = encrypt(&m, &gy, &mut OsRng);
 
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     let rrsked = rrsk(&encrypted, &r, &s, &k);
-    #[cfg(feature = "elgamal2")]
+    #[cfg(not(feature = "elgamal3"))]
     let rrsked = rrsk(&encrypted, &gy, &r, &s, &k);
 
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     assert_eq!(
         rrsked,
         rekey(&reshuffle(&rerandomize(&encrypted, &r), &s), &k)
     );
-    #[cfg(feature = "elgamal2")]
+    #[cfg(not(feature = "elgamal3"))]
     assert_eq!(
         rrsked,
         rekey(&reshuffle(&rerandomize(&encrypted, &gy, &r), &s), &k)

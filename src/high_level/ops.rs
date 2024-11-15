@@ -52,14 +52,14 @@ pub fn decrypt_global<E: Encrypted>(
     ))
 }
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted>(encrypted: &E, rng: &mut R) -> E {
     let r = ScalarNonZero::random(rng);
     rerandomize_known(encrypted, &RerandomizeFactor(r))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
     encrypted: &E,
@@ -70,7 +70,7 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
     rerandomize_known(encrypted, public_key, &RerandomizeFactor(r))
 }
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_known<E: Encrypted>(encrypted: &E, r: &RerandomizeFactor) -> E {
     E::from_value(crate::low_level::primitives::rerandomize(
@@ -79,7 +79,7 @@ pub fn rerandomize_known<E: Encrypted>(encrypted: &E, r: &RerandomizeFactor) -> 
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_known<E: Encrypted, P: PublicKey>(
     encrypted: &E,

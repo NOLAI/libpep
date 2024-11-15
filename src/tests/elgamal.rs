@@ -26,9 +26,9 @@ fn encoding() {
 
 #[test]
 fn decode_encode() {
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     let original = "NESP1FCKkF7nWbqM9cvuUEUPgHaF8qnLeW9RLe_5FCMs-daoTGSyJKa5HRKxk0jFMHVuZ77pJMacNLmtRnlkZEpkKEPWnLzh_s8ievM3gTqeBYm20E23K6hExSxMOw8D";
-    #[cfg(feature = "elgamal2")]
+    #[cfg(not(feature = "elgamal3"))]
     let original =
         "xGOnBZzbSrvKUQYBtww0vi8jZWzN9qkrm5OnI2pnEFJu4DkZP2jLLGT-yWa_qnkC_ScCwQwcQtZk_z_z7s_gVQ==";
 

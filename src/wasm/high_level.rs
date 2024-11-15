@@ -316,7 +316,7 @@ pub struct WASMReshuffleFactor(ReshuffleFactor);
 #[wasm_bindgen(js_name = RekeyFactor)]
 pub struct WASMRekeyFactor(RekeyFactor);
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizePseudonym)]
 pub fn wasm_rerandomize_encrypted_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
@@ -328,7 +328,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     ))
 }
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizeData)]
 pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEncryptedDataPoint {
     let mut rng = rand::thread_rng();
@@ -338,7 +338,7 @@ pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEnc
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonym)]
 pub fn wasm_rerandomize_encrypted_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
@@ -352,7 +352,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeData)]
 pub fn wasm_rerandomize_encrypted(
     encrypted: &WASMEncryptedDataPoint,
@@ -366,7 +366,7 @@ pub fn wasm_rerandomize_encrypted(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymGlobal)]
 pub fn wasm_rerandomize_encrypted_pseudonym_global(
     encrypted: &WASMEncryptedPseudonym,
@@ -380,7 +380,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_global(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataGlobal)]
 pub fn wasm_rerandomize_encrypted_global(
     encrypted: &WASMEncryptedDataPoint,
@@ -394,7 +394,7 @@ pub fn wasm_rerandomize_encrypted_global(
     ))
 }
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_known(
     encrypted: &WASMEncryptedPseudonym,
@@ -406,7 +406,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     ))
 }
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizeDataKnown)]
 pub fn wasm_rerandomize_encrypted_known(
     encrypted: &WASMEncryptedDataPoint,
@@ -418,7 +418,7 @@ pub fn wasm_rerandomize_encrypted_known(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_known(
     encrypted: &WASMEncryptedPseudonym,
@@ -432,7 +432,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataKnown)]
 pub fn wasm_rerandomize_encrypted_known(
     encrypted: &WASMEncryptedDataPoint,
@@ -446,7 +446,7 @@ pub fn wasm_rerandomize_encrypted_known(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymGlobalKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_global_known(
     encrypted: &WASMEncryptedPseudonym,
@@ -460,7 +460,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_global_known(
     ))
 }
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataGlobalKnown)]
 pub fn wasm_rerandomize_encrypted_global_known(
     encrypted: &WASMEncryptedDataPoint,

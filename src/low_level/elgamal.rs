@@ -4,16 +4,16 @@ use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 pub const ELGAMAL_LENGTH: usize = 64;
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 pub const ELGAMAL_LENGTH: usize = 96;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
     pub gb: GroupElement,
     pub gc: GroupElement,
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     pub gy: GroupElement,
 }
 
@@ -22,7 +22,7 @@ impl ElGamal {
         Some(Self {
             gb: GroupElement::decode_from_slice(&v[0..32])?,
             gc: GroupElement::decode_from_slice(&v[32..64])?,
-            #[cfg(not(feature = "elgamal2"))]
+            #[cfg(feature = "elgamal3")]
             gy: GroupElement::decode_from_slice(&v[64..96])?,
         })
     }
@@ -40,7 +40,7 @@ impl ElGamal {
         let mut retval = [0u8; ELGAMAL_LENGTH];
         retval[0..32].clone_from_slice(self.gb.encode().as_ref());
         retval[32..64].clone_from_slice(self.gc.encode().as_ref());
-        #[cfg(not(feature = "elgamal2"))]
+        #[cfg(feature = "elgamal3")]
         retval[64..96].clone_from_slice(self.gy.encode().as_ref());
         retval
     }
@@ -59,7 +59,7 @@ impl ElGamal {
         Self {
             gb: self.gb,
             gc: self.gc,
-            #[cfg(not(feature = "elgamal2"))]
+            #[cfg(feature = "elgamal3")]
             gy: self.gy,
         }
     }
@@ -76,14 +76,14 @@ pub fn encrypt<R: RngCore + CryptoRng>(
     ElGamal {
         gb: r * G,
         gc: gm + r * gy,
-        #[cfg(not(feature = "elgamal2"))]
+        #[cfg(feature = "elgamal3")]
         gy: *gy,
     }
 }
 
 /// Decrypt ElGamal tuple (encrypted using `secret_key * G`) using secret key [ScalarNonZero] `secret_key`.
 pub fn decrypt(encrypted: &ElGamal, y: &ScalarNonZero) -> GroupElement {
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     assert_eq!(y * G, encrypted.gy); // the secret key should be the same as the public key used to encrypt the message
     encrypted.gc - y * encrypted.gb
 }

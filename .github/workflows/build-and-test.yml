@@ -12,9 +12,9 @@ jobs:
       matrix:
         features: 
           - ""
-          - "elgamal2"
+          - "elgamal3"
           - "legacy-pep-repo-compatible"
-          - "elgamal2,legacy-pep-repo-compatible"
+          - "elgamal3,legacy-pep-repo-compatible"
 
     name: cargo test
     steps:
@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         target: [ "web", "nodejs" ]
-        features: [ "", "elgamal2" ]
+        features: [ "", "elgamal3" ]
 
     name: wasm-pack build
     steps:

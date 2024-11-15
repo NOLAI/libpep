@@ -75,7 +75,7 @@ The wasm library can be tested using the Node.js `jest` framework, after compili
 
 The following features are available:
 - `wasm`: enables the WASM library.
-- `elgamal2`: enables shorter ElGamal messages.
+- `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
 - `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from contexts and secrets.
 - `insecure-methods`: enables insecure methods, to be used with care.
 

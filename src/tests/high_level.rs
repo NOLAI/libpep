@@ -33,7 +33,7 @@ fn test_high_level_flow() {
     assert_eq!(pseudo, dec_pseudo);
     assert_eq!(data, dec_data);
 
-    #[cfg(not(feature = "elgamal2"))]
+    #[cfg(feature = "elgamal3")]
     {
         let rr_pseudo = rerandomize(&enc_pseudo, rng);
         let rr_data = rerandomize(&enc_data, rng);

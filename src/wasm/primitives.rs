@@ -1,16 +1,16 @@
 use crate::low_level::primitives::*;
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 use crate::wasm::arithmetic::WASMGroupElement;
 use crate::wasm::arithmetic::WASMScalarNonZero;
 use crate::wasm::elgamal::WASMElGamal;
 use wasm_bindgen::prelude::wasm_bindgen;
 
-#[cfg(not(feature = "elgamal2"))]
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomize)]
 pub fn wasm_rerandomize(v: &WASMElGamal, r: &WASMScalarNonZero) -> WASMElGamal {
     rerandomize(v, r).into()
 }
-#[cfg(feature = "elgamal2")]
+#[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomize)]
 pub fn wasm_rerandomize(
     v: &WASMElGamal,
