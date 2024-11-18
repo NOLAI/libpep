@@ -23,10 +23,18 @@
                 <label for="pseudonym" class="form-label">Pseudonym (data subject)</label>
                 <input type="text" class="form-control font-monospace" id="pseudonym" name="pseudonym" >
             </div>
+            <div class="mb-3">
+                <label for="data_point" class="form-label">Data point</label>
+                <input type="text" class="form-control font-monospace" id="data_point" name="data_point" >
+            </div>
             <button id="encrypt" type="submit" class="btn btn-primary mb-3">Encrypt</button>
             <div class="mb-3">
                 <label for="encrypted_pseudonym" class="form-label">Encrypted pseudonym</label>
                 <textarea class="form-control font-monospace" id="encrypted_pseudonym" name="encrypted_pseudonym" rows="3" disabled></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="encrypted_data_point" class="form-label">Encrypted data point</label>
+                <textarea class="form-control font-monospace" id="encrypted_data_point" name="encrypted_data_point" rows="3" disabled></textarea>
             </div>
             <button id="rerandomize" type="submit" class="btn btn-warning mb-3">Rerandomize</button>
             <div class="mb-3">
@@ -37,15 +45,23 @@
                     <option value="C">Context C</option>
                 </select>
             </div>
-            <button id="pseudonymize" type="submit" class="btn btn-primary mb-3">Pseudonymize</button>
+            <button id="transcrypt" type="submit" class="btn btn-primary mb-3">Transcrypt</button>
             <div class="mb-3">
                 <label for="new_encrypted_pseudonym" class="form-label">New encrypted pseudonym</label>
                 <textarea class="form-control font-monospace" id="new_encrypted_pseudonym" name="new_encrypted_pseudonym" rows="3" disabled></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="new_encrypted_data_point" class="form-label">New encrypted data point</label>
+                <textarea class="form-control font-monospace" id="new_encrypted_data_point" name="new_encrypted_data_point" rows="3" disabled></textarea>
             </div>
             <button id="decrypt" type="submit" class="btn btn-primary mb-3">Decrypt</button>
             <div class="mb-3">
                 <label for="new_pseudonym" class="form-label">New pseudonym (data subject)</label>
                 <input type="text" class="form-control font-monospace" id="new_pseudonym" name="new_pseudonym" disabled>
+            </div>
+            <div class="mb-3">
+                <label for="new_data_point" class="form-label">New pseudonym (data subject)</label>
+                <input type="text" class="form-control font-monospace" id="new_data_point" name="new_data_point" disabled>
             </div>
             <button id="reverse" type="submit" class="btn btn-info mb-3">Reverse</button>
         </div>
