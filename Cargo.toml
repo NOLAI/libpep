@@ -1,6 +1,6 @@
 [package]
 name = "libpep"
-version = "0.5.0"
+version = "1.0.0-alpha.1"
 edition = "2021"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://www.bitpowder.com/libs/libpep-rust/"
