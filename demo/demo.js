@@ -3,17 +3,21 @@ import * as libpep from "../pkg-web/libpep.js";
 async function wasmInit() {
     await libpep.default();
 
-    let secretKey = libpep.ScalarNonZero.fromHex("044214715d782745a36ededee498b31d882f5e6239db9f9443f6bfef04944906");
-    // let publicKey = libpep.GroupElement.G().mul(secretKey);
-    let publicKey = libpep.GroupElement.fromBase64("SmQoQ9acvOH-zyJ68zeBOp4FibbQTbcrqETFLEw7DwM=");
+    let globalKeys = libpep.makeGlobalKeys();
+    let pseudoSecret = new libpep.PseudonymizationSecret(new Uint8Array(32));
+    let encSecret = new libpep.EncryptionSecret(new Uint8Array(32));
+    let encContext = "context";
+    let sessionKeys = libpep.makeSessionKeys(globalKeys.secret, encContext, encSecret);
+    let secretKey = sessionKeys.secret;
+    let publicKey = sessionKeys.public;
 
-    document.getElementById('pseudonym').value = libpep.GroupElement.random().toHex();
+    document.getElementById('pseudonym').value = libpep.Pseudonym.random().toHex();
 
     document.getElementById('encrypt').addEventListener('click', function() {
         const input = document.getElementById('pseudonym').value;
-        let pseudonym = libpep.GroupElement.fromHex(input);
+        let pseudonym = libpep.Pseudonym.fromHex(input);
         if (!pseudonym) alert("Invalid pseudonym");
-        let ciphertext = libpep.encrypt(pseudonym, publicKey);
+        let ciphertext = libpep.encryptPseudonym(pseudonym, publicKey);
 
         const output = document.getElementById('encrypted_pseudonym');
         output.value = ciphertext.toBase64();
@@ -21,35 +25,30 @@ async function wasmInit() {
 
     document.getElementById('rerandomize').addEventListener('click', function() {
         const input = document.getElementById('encrypted_pseudonym').value;
-        let ciphertext = libpep.ElGamal.fromBase64(input);
+        let ciphertext = libpep.EncryptedPseudonym.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
-        let r = libpep.ScalarNonZero.random();
-        let rerandomized = libpep.rerandomize(ciphertext, r);
-        // let rerandomized = libpep.rerandomize(ciphertext, publicKey, r);
+        let rerandomized = libpep.rerandomizePseudonym(ciphertext, publicKey);
         const output = document.getElementById('encrypted_pseudonym');
         output.value = rerandomized.toBase64();
     });
 
     document.getElementById('pseudonymize').addEventListener('click', function() {
         const input = document.getElementById('encrypted_pseudonym').value;
-        let ciphertext = libpep.ElGamal.fromBase64(input);
+        let ciphertext = libpep.EncryptedPseudonym.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
         const userFrom = document.getElementById('context_from').value;
         const userTo = document.getElementById('context_to').value;
-        let sFrom = libpep.ScalarNonZero.fromHex(userFrom);
-        if (!sFrom) alert("Invalid user from");
-        let sTo = libpep.ScalarNonZero.fromHex(userTo);
-        if (!sTo) alert("Invalid user to");
-        let pseudonym = libpep.reshuffle2(ciphertext, sFrom, sTo);
+        let info = new libpep.PseudonymizationInfo(userFrom, userTo, encContext, encContext, pseudoSecret, encSecret);
+        let pseudonym = libpep.pseudonymize(ciphertext, info);
         const output = document.getElementById('new_encrypted_pseudonym');
         output.value = pseudonym.toBase64();
     });
 
     document.getElementById('decrypt').addEventListener('click', function() {
         const input = document.getElementById('new_encrypted_pseudonym').value;
-        let ciphertext = libpep.ElGamal.fromBase64(input);
+        let ciphertext = libpep.EncryptedPseudonym.fromBase64(input);
         if (!ciphertext) alert("Invalid ciphertext");
-        let plaintext = libpep.decrypt(ciphertext, secretKey);
+        let plaintext = libpep.decryptPseudonym(ciphertext, secretKey);
         const output = document.getElementById('new_pseudonym');
         output.value = plaintext.toHex();
     });

@@ -14,9 +14,9 @@
             <div class="mb-3">
                 <label for="context_from" class="form-label">Context (from)</label>
                 <select class="form-select font-monospace" id="context_from" name="context_from">
-                    <option value="0000000000000000000000000000000000000000000000000000000000000001" selected>Context A</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000002">Context B</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Context C</option>
+                    <option value="A" selected>Context A</option>
+                    <option value="B">Context B</option>
+                    <option value="C">Context C</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -32,9 +32,9 @@
             <div class="mb-3">
                 <label for="context_to" class="form-label">Context (to)</label>
                 <select class="form-select font-monospace" id="context_to" name="context_to">
-                    <option value="0000000000000000000000000000000000000000000000000000000000000001" selected>Context A</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000002" selected>Context B</option>
-                    <option value="0000000000000000000000000000000000000000000000000000000000000003">Context C</option>
+                    <option value="A" selected>Context A</option>
+                    <option value="B" selected>Context B</option>
+                    <option value="C">Context C</option>
                 </select>
             </div>
             <button id="pseudonymize" type="submit" class="btn btn-primary mb-3">Pseudonymize</button>
@@ -44,7 +44,7 @@
             </div>
             <button id="decrypt" type="submit" class="btn btn-primary mb-3">Decrypt</button>
             <div class="mb-3">
-                <label for="pseudonym" class="form-label">New pseudonym (data subject)</label>
+                <label for="new_pseudonym" class="form-label">New pseudonym (data subject)</label>
                 <input type="text" class="form-control font-monospace" id="new_pseudonym" name="new_pseudonym" disabled>
             </div>
             <button id="reverse" type="submit" class="btn btn-info mb-3">Reverse</button>
