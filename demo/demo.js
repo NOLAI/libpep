@@ -4,19 +4,29 @@ async function wasmInit() {
     await libpep.default();
 
     let globalKeys = libpep.makeGlobalKeys();
-    let pseudoSecret = new libpep.PseudonymizationSecret(new Uint8Array(32));
-    let encSecret = new libpep.EncryptionSecret(new Uint8Array(32));
+    let pseudoSecret = new libpep.PseudonymizationSecret(new TextEncoder().encode("pseudoSecret"));
+    let encSecret = new libpep.EncryptionSecret(new TextEncoder().encode("encSecret"));
     let encContext = "context";
     let sessionKeys = libpep.makeSessionKeys(globalKeys.secret, encContext, encSecret);
     let secretKey = sessionKeys.secret;
     let publicKey = sessionKeys.public;
 
-    document.getElementById('pseudonym').value = libpep.Pseudonym.random().toHex();
-
     document.getElementById('encrypt').addEventListener('click', function() {
         const input = document.getElementById('pseudonym').value;
-        let pseudonym = libpep.Pseudonym.fromHex(input);
-        if (!pseudonym) alert("Invalid pseudonym");
+        let inputBytes = new TextEncoder().encode(input);
+        let pseudonym;
+        if (input.length === 64) {
+            pseudonym = libpep.Pseudonym.fromHex(input);
+        } else if (inputBytes.length === 16) {
+            pseudonym = libpep.Pseudonym.fromBytes(inputBytes);
+        } else if (inputBytes.length < 16) {
+            let paddingNeeded = 16 - (inputBytes.length % 16);
+            let paddedBytes = new Uint8Array(inputBytes.length + paddingNeeded);
+            paddedBytes.set(inputBytes);
+            pseudonym = libpep.Pseudonym.fromBytes(paddedBytes);
+        }  else {
+            alert("Invalid pseudonym");
+        }
         let ciphertext = libpep.encryptPseudonym(pseudonym, publicKey);
 
         const output = document.getElementById('encrypted_pseudonym');
@@ -50,7 +60,11 @@ async function wasmInit() {
         if (!ciphertext) alert("Invalid ciphertext");
         let plaintext = libpep.decryptPseudonym(ciphertext, secretKey);
         const output = document.getElementById('new_pseudonym');
-        output.value = plaintext.toHex();
+        if (plaintext.toBytes()) {
+            output.value = new TextDecoder().decode(plaintext.toBytes());
+        } else {
+            output.value = plaintext.toHex();
+        }
     });
 
     document.getElementById('reverse').addEventListener('click', function() {
