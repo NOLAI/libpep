@@ -36,7 +36,7 @@ pub fn reshuffle(m: &ElGamal, s: &ScalarNonZero) -> ElGamal {
 /// Change encrypted representation using [ScalarNonZero] `k`, so it can be decrypted by a different key `k*y` if the input can be decrypted by [ScalarNonZero] `y`.
 pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        gb: k.invert() * m.gb,
+        gb: k.invert() * m.gb, // TODO k.invert can be precomputed
         gc: m.gc,
         #[cfg(feature = "elgamal3")]
         gy: k * m.gy,
@@ -46,7 +46,7 @@ pub fn rekey(m: &ElGamal, k: &ScalarNonZero) -> ElGamal {
 /// Combination of `reshuffle(s)` and `rekey(k)`
 pub fn rsk(m: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        gb: (s * k.invert()) * m.gb,
+        gb: (s * k.invert()) * m.gb, // TODO s * k.invert can be precomputed
         gc: s * m.gc,
         #[cfg(feature = "elgamal3")]
         gy: k * m.gy,
