@@ -21,6 +21,7 @@ elgamal3 = []
 wasm = ["wasm-bindgen", "getrandom"]
 legacy-pep-repo-compatible = []
 insecure-methods = []
+energy-measurements = ['buildinfy']
 
 [dependencies]
 curve25519-dalek = { git = "https://github.com/signalapp/curve25519-dalek.git", features = ["rand_core"] }
@@ -43,3 +44,17 @@ wasm-bindgen-test = "0.3"
 time = "0.3.36"
 log = "0.4.22"
 serde_json = "1.0.128"
+ureq = { version = "2.9.6", features = ["tls"] }
+libaes = { version =  "0.7.0" }
+hyper = { version = "^1.0", features = ["client","http1","http2","server"] }
+hyper-util = { version = "^0.1", features = ["client-legacy","server-auto","server","http1","http2","tokio"] }
+http-body-util = { version = "^0.1" }
+tokio = { version = "^1", features = ["signal","rt-multi-thread","macros","io-util","parking_lot","time","test-util"]  }
+tokio-util = { version = "^0.7", features = ["codec"] }
+tokio-stream = { version = "^0.1" }
+bytes = { version = "^1" }
+futures = { version = "^0.3" }
+rustls-pemfile = "2.2.0"
+tokio-rustls = "0.26.0"
+
+

@@ -35,4 +35,14 @@ mod tests {
     #[cfg(feature = "legacy-pep-repo-compatible")]
     mod legacy_pep_repo;
     mod primitives;
+
+    #[cfg(feature = "energy-measurements")]
+    mod energy {
+        mod utils {
+            pub(crate) mod ina;
+            pub(crate) mod tls;
+        }
+        mod individual;
+        mod network;
+    }
 }
