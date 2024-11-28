@@ -1,4 +1,11 @@
 {
+  "name": "libpep-wasm",
+  "version": "0.1.0",
+  "description": "The WebAssembly version of the libpep library",
+  "main": "pkg/libpep.js",
+  "types": "pkg/libpep.d.ts",
+  "authors": "Job Doesburg",
+  "license": "Apache-2.0",
   "devDependencies": {
     "jest": "^29.7.0"
   },
