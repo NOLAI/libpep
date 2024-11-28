@@ -150,3 +150,6 @@ dist
 .pkg-web/
 .aider*
 /package-lock.json
+
+# Code editors
+.idea/
