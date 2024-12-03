@@ -1,17 +1,27 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "The WebAssembly version of the libpep library",
   "main": "pkg/libpep.js",
+  "module": "pkg/libpep.js",
   "types": "pkg/libpep.d.ts",
   "authors": "Job Doesburg",
   "license": "Apache-2.0",
   "devDependencies": {
     "jest": "^29.7.0"
   },
+  "files": [
+    "pkg/libpep_bg.wasm",
+    "pkg/libpep_bg.wasm.d.ts",
+    "pkg/libpep.d.ts",
+    "pkg/libpep.js",
+    "pkg/package.json",
+    "README.md"
+  ],
   "scripts": {
     "build:nodejs": "wasm-pack build --target nodejs --features wasm",
     "build:web": "wasm-pack build --target web --out-dir ./pkg-web --features wasm",
-    "test": "npm run build:nodejs && jest"
+    "test": "npm run build:nodejs && jest",
+    "prepublishOnly": "npm run build:nodejs"
   }
 }
