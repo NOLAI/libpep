@@ -1,5 +1,5 @@
 {
-  "name": "libpep-wasm",
+  "name": "@nolai/libpep-wasm",
   "version": "0.1.0",
   "description": "The WebAssembly version of the libpep library",
   "main": "pkg/libpep.js",
