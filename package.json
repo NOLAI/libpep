@@ -2,6 +2,10 @@
   "name": "@nolai/libpep-wasm",
   "version": "1.0.0-alpha.2",
   "description": "The WebAssembly version of the libpep library",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NOLAI/libpep.git"
+  },
   "authors": [
     {
       "name": "Bernard van Gastel",
