@@ -1,6 +1,6 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "The WebAssembly version of the libpep library",
   "authors": [
     {

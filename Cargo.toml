@@ -1,6 +1,6 @@
 [package]
 name = "libpep"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 edition = "2021"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
