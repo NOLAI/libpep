@@ -4,7 +4,7 @@
   "description": "The WebAssembly version of the libpep library",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NOLAI/libpep.git"
+    "url": "git+https://github.com/NOLAI/libpep.git"
   },
   "authors": [
     {
