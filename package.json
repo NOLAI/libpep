@@ -1,15 +1,26 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.1.2",
+  "version": "1.0.0-alpha.1",
   "description": "The WebAssembly version of the libpep library",
-  "main": "pkg/libpep.js",
-  "module": "pkg/libpep.js",
-  "types": "pkg/libpep.d.ts",
-  "authors": "Job Doesburg",
+  "authors": [
+    {
+      "name": "Bernard van Gastel",
+      "email": "bvgastel@bitpowder.com",
+      "url": "https://www.sustainablesoftware.info"
+    },
+    {
+      "name": "Job Doesburg",
+      "email": "job@jobdoesburg.nl",
+      "url": "https://jobdoesburg.nl"
+    }
+  ],
   "license": "Apache-2.0",
   "devDependencies": {
     "jest": "^29.7.0"
   },
+  "main": "pkg/libpep.js",
+  "module": "pkg/libpep.js",
+  "types": "pkg/libpep.d.ts",
   "files": [
     "pkg/libpep_bg.wasm",
     "pkg/libpep_bg.wasm.d.ts",
