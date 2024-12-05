@@ -242,3 +242,30 @@ impl WASMPEPClient {
         ))
     }
 }
+
+#[derive(Clone, From, Into, Deref)]
+#[wasm_bindgen(js_name = OfflinePEPClient)]
+pub struct WASMOfflinePEPClient(OfflinePEPClient);
+
+#[wasm_bindgen(js_class = OfflinePEPClient)]
+impl WASMOfflinePEPClient {
+    #[wasm_bindgen(constructor)]
+    pub fn new(global_public_key: WASMGlobalPublicKey) -> Self {
+        Self(OfflinePEPClient::new(GlobalPublicKey(
+            *global_public_key.0.clone(),
+        )))
+    }
+    #[wasm_bindgen(js_name = encryptData)]
+    pub fn wasm_encrypt_data(&self, message: &WASMDataPoint) -> WASMEncryptedDataPoint {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedDataPoint::from(self.encrypt(&message.0, &mut rng))
+    }
+
+    #[wasm_bindgen(js_name = encryptPseudonym)]
+    pub fn wasm_encrypt_pseudonym(&self, message: &WASMPseudonym) -> WASMEncryptedPseudonym {
+        let mut rng = rand::thread_rng();
+        WASMEncryptedPseudonym(EncryptedPseudonym::from(
+            self.encrypt(&message.0, &mut rng).value,
+        ))
+    }
+}

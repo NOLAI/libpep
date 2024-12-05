@@ -130,6 +130,7 @@ impl PEPClient {
     }
 }
 
+#[derive(Clone)]
 pub struct OfflinePEPClient {
     pub global_public_key: GlobalPublicKey,
 }
