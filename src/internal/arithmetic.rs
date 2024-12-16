@@ -1,7 +1,7 @@
-use curve25519_dalek::ristretto::CompressedRistretto;
-use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
+use curve25519_dalek_libpep::ristretto::CompressedRistretto;
+use curve25519_dalek_libpep::ristretto::RistrettoPoint;
+use curve25519_dalek_libpep::scalar::Scalar;
+use curve25519_dalek_libpep::traits::Identity;
 use std::fmt::Formatter;
 
 use rand_core::{CryptoRng, RngCore};
@@ -10,7 +10,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::Sha256;
 
 /// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
-pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
+pub const G: GroupElement =
+    GroupElement(curve25519_dalek_libpep::constants::RISTRETTO_BASEPOINT_POINT);
 
 /// Returned if a zero scalar is inverted (which is similar to why a division by zero is not possible).
 #[derive(Debug)]

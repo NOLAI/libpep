@@ -1,6 +1,6 @@
 [package]
 name = "libpep"
-version = "1.0.0-alpha.2"
+version = "0.4.0"
 edition = "2021"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
@@ -23,23 +23,17 @@ legacy-pep-repo-compatible = []
 insecure-methods = []
 
 [dependencies]
-curve25519-dalek = { git = "https://github.com/signalapp/curve25519-dalek.git", features = ["rand_core"] }
+curve25519-dalek-libpep = { version = "^4.0", features = ["rand_core"] }
 rand = { version = "^0.8", features = ["std"] }
 rand_core = { version = "^0.6", features = ["std"] }
 wasm-bindgen = { version = "0.2", optional = true }
 getrandom = { version = "^0.2", features = ["js"], optional = true}
 sha2 = "0.10.5"
 hmac = "^0.12"
-buildinfy = { version = "^0.1", optional = true }
-commandy = { version = "^0.2", optional = true }
-commandy_macros = { version = "^0.2", optional = true }
 hex = "0.4.3"
 derive_more = { version = "1.0.0", features = ["deref", "from", "into"] }
 serde = { version = "1.0.209", features = ["derive"] }
 base64 = "0.22.1"
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3"
-time = "0.3.36"
-log = "0.4.22"
 serde_json = "1.0.128"
