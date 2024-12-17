@@ -76,12 +76,18 @@ The following features are available:
 - `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
 - `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from contexts and secrets.
 - `insecure-methods`: enables insecure methods, to be used with care.
+- `build-binary`: builds the `peppy` command-line tool to interact with the library (not recommended for production use).
 
 ## Install
 
 Install using
 ```
 cargo install libpep
+```
+
+Run `peppy` using cargo:
+```
+cargo run --bin peppy
 ```
 
 ## License

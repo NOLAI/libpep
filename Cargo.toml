@@ -16,11 +16,16 @@ name = "libpep"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = []
+default = ["build-binary"]
 elgamal3 = []
 wasm = ["wasm-bindgen", "getrandom"]
 legacy-pep-repo-compatible = []
 insecure-methods = []
+build-binary = ["buildinfy","commandy","commandy_macros"]
+
+[[bin]]
+name = "peppy"
+required-features = ["build-binary"]
 
 [dependencies]
 curve25519-dalek-libpep = { version = "^4.0", features = ["rand_core"] }
@@ -34,6 +39,23 @@ hex = "0.4.3"
 derive_more = { version = "1.0.0", features = ["deref", "from", "into"] }
 serde = { version = "1.0.209", features = ["derive"] }
 base64 = "0.22.1"
+buildinfy = { version = "^0.1", optional = true }
+commandy = { version = "^0.2", optional = true }
+commandy_macros = { version = "^0.2", optional = true }
 
 [dev-dependencies]
 serde_json = "1.0.128"
+
+[package.metadata.deb]
+name = "peppy"
+depends = ""
+assets = [
+    ["peppy.1", "usr/man/man1/", "444"],
+    ["target/release/peppy", "usr/bin/peppy", "555"],
+]
+
+[package.metadata.freebsd]
+assets = [
+    ["peppy.1", "man/man1/", "444"],
+    ["target/release/peppy", "bin/peppy", "555"],
+]

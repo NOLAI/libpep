@@ -19,13 +19,47 @@ pub struct SessionSecretKey(pub(crate) ScalarNonZero);
 
 pub trait PublicKey {
     fn value(&self) -> &GroupElement;
+    fn encode(&self) -> [u8; 32] {
+        self.value().encode()
+    }
+    fn to_hex(&self) -> String {
+        self.value().encode_to_hex()
+    }
+    fn decode(bytes: &[u8; 32]) -> Option<Self>
+    where
+        Self: Sized;
+    fn decode_from_slice(slice: &[u8]) -> Option<Self>
+    where
+        Self: Sized;
+    fn from_hex(s: &str) -> Option<Self>
+    where
+        Self: Sized;
 }
 pub trait SecretKey {
-    fn value(&self) -> &ScalarNonZero;
+    fn value(&self) -> &ScalarNonZero; // TODO should this be public (or only under the `insecure-methods` feature)?
 }
 impl PublicKey for GlobalPublicKey {
     fn value(&self) -> &GroupElement {
         &self.0
+    }
+
+    fn decode(bytes: &[u8; 32]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode(bytes).map(Self::from)
+    }
+    fn decode_from_slice(slice: &[u8]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode_from_slice(slice).map(GlobalPublicKey::from)
+    }
+    fn from_hex(s: &str) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode_from_hex(s).map(GlobalPublicKey::from)
     }
 }
 impl SecretKey for GlobalSecretKey {
@@ -36,6 +70,24 @@ impl SecretKey for GlobalSecretKey {
 impl PublicKey for SessionPublicKey {
     fn value(&self) -> &GroupElement {
         &self.0
+    }
+    fn decode(bytes: &[u8; 32]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode(bytes).map(Self::from)
+    }
+    fn decode_from_slice(slice: &[u8]) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode_from_slice(slice).map(SessionPublicKey::from)
+    }
+    fn from_hex(s: &str) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        GroupElement::decode_from_hex(s).map(SessionPublicKey::from)
     }
 }
 impl SecretKey for SessionSecretKey {
