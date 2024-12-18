@@ -5,7 +5,7 @@ on:
     types: [created, published]
 
 jobs:
-  sevmer-checks:
+  semver-checks:
     runs-on: ubuntu-latest
 
     name: cargo semver-checks
@@ -15,7 +15,7 @@ jobs:
 
   publish-crate:
     runs-on: ubuntu-latest
-    needs: sevmer-checks
+    needs: semver-checks
     if: github.event.release.action == 'published'
 
     name: Build and publish to crates.io
@@ -26,7 +26,7 @@ jobs:
 
   publish-npm:
     runs-on: ubuntu-latest
-    needs: sevmer-checks
+    needs: semver-checks
     if: github.event.release.action == 'published'
     permissions:
       contents: read
