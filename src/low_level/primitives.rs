@@ -1,3 +1,5 @@
+//! (n)-PEP primitives for rekeying, reshuffling, rerandomization and combined versions.
+
 use crate::internal::arithmetic::*;
 use crate::low_level::elgamal::*;
 

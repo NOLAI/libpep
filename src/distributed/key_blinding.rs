@@ -1,3 +1,5 @@
+//! Key blinding, session key share generation and session key retrieval for distributed trust.
+
 use crate::high_level::keys::*;
 use crate::internal::arithmetic::*;
 use rand_core::{CryptoRng, RngCore};

@@ -1,3 +1,19 @@
+//! Implementation of arithmetic operations on Curve25519 with Ristretto, using the
+//! `curve25519-dalek` library.
+//!
+//! We use the [`signalapp/curve25519-dalek`](https://github.com/signalapp/curve25519-dalek)
+//! fork of the well-known [`curve25519-dalek`](https://crates.io/crates/curve25519-dalek)
+//! crate (which we published as [`curve25519-dalek-libpep`](https://crates.io/crates/curve25519-dalek-libpep)),
+//! to use lizard encoding and decoding for [`GroupElement`]s.
+//!
+//! Scalars can be converted into [`GroupElement`]s by multiplying them with the base point [`G`].
+//!
+//! We define two types of scalars: [`ScalarNonZero`] and [`ScalarCanBeZero`] to nicely handle edge
+//! cases in the rest of the code where a zero scalar is not allowed.
+//! Moreover, we overload the arithmetic operators for addition, subtraction, and multiplication,
+//! so that the code is more readable and easier to understand, so it matches the notation in the
+//! mathematical papers.
+
 use curve25519_dalek_libpep::ristretto::CompressedRistretto;
 use curve25519_dalek_libpep::ristretto::RistrettoPoint;
 use curve25519_dalek_libpep::scalar::Scalar;
@@ -9,7 +25,7 @@ use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::Sha256;
 
-/// Constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
+/// The base point constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 pub const G: GroupElement =
     GroupElement(curve25519_dalek_libpep::constants::RISTRETTO_BASEPOINT_POINT);
 
@@ -28,8 +44,13 @@ impl GroupElement {
         Self(RistrettoPoint::random(rng))
     }
 
-    /// Decode a 32-byte compressed Ristretto point. Returns None if the point is not valid (only ~6.25% of all 32-byte strings are valid encodings, use lizard technique to decode arbitrary data).
-    /// Curve25519 has exactly 2^255 - 19 points. Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order 2^252 + 27742317777372353535851937790883648493 (the elligator mapping takes 253 bits).
+    /// Decode a 32-byte compressed Ristretto point.
+    /// Returns None if the point is not valid (only ~6.25% of all 32-byte strings are valid
+    /// encodings, use lizard technique to decode arbitrary data).
+    ///
+    /// Curve25519 has exactly 2^255 - 19 points.
+    /// Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order
+    /// 2^252 + 27742317777372353535851937790883648493 (the Elligator mapping takes 253 bits).
     pub fn decode(v: &[u8; 32]) -> Option<Self> {
         CompressedRistretto(*v).decompress().map(Self)
     }
@@ -39,26 +60,34 @@ impl GroupElement {
             .decompress()
             .map(Self)
     }
-    /// Encode to a 32-byte array. Any GroupElement can be encoded this way.
+    /// Encode to a 32-byte array.
+    /// Any GroupElement can be encoded this way.
     pub fn encode(&self) -> [u8; 32] {
         self.0.compress().0
     }
 
-    /// Decode a 64-byte hash into a Ristretto point. This is a one-way function. Multiple hashes can map to the same point.
+    /// Decode a 64-byte hash into a Ristretto point.
+    /// This is a one-way function. Multiple hashes can map to the same point.
     pub fn decode_from_hash(v: &[u8; 64]) -> Self {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
 
-    /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach. There are practically no invalid lizard encodings! This is useful to encode arbitrary data as group element.
+    /// Decode any 16-byte string into a Ristretto point bijectively, using the lizard approach.
+    /// There are practically no invalid lizard encodings!
+    /// This is useful to encode arbitrary data as group element.
     pub fn decode_lizard(v: &[u8; 16]) -> Self {
         Self(RistrettoPoint::lizard_encode::<Sha256>(v))
     }
 
-    /// Encode to a 16-byte string using the lizard approach. Notice that a Ristretto point is represented as 32 bytes with ~2^252 valid points, so only a very small fraction of points (only those decoded from lizard) can be encoded this way.
+    /// Encode to a 16-byte string using the lizard approach.
+    /// Notice that a Ristretto point is represented as 32 bytes with ~2^252 valid points, so only
+    /// a very small fraction of points (only those decoded from lizard) can be encoded this way.
     pub fn encode_lizard(self) -> Option<[u8; 16]> {
         Some(self.0.lizard_decode::<Sha256>()?)
     }
 
+    /// Decode a hexadecimal string into a Ristretto point of 32 bytes or 64 characters.
+    /// Returns None if the string is not a valid hexadecimal encoding of a Ristretto point.
     pub fn decode_from_hex(s: &str) -> Option<Self> {
         if s.len() != 64 {
             // A valid hexadecimal string should be 64 characters long for 32 bytes
@@ -73,10 +102,12 @@ impl GroupElement {
             .decompress()
             .map(Self)
     }
+    /// Encode to a hexadecimal string.
     pub fn encode_to_hex(&self) -> String {
         hex::encode(self.encode())
     }
 
+    /// Return the identity element of the group.
     pub fn identity() -> Self {
         Self(RistrettoPoint::identity())
     }
@@ -116,12 +147,15 @@ impl<'de> Deserialize<'de> for GroupElement {
     }
 }
 
-/// Scalar, always non-zero. Can be converted to a GroupElement. Supports multiplication, and inversion (so division is possible). For addition and subtraction, use [ScalarCanBeZero].
+/// Scalar, always non-zero.
+/// Can be converted to a GroupElement.
+/// Supports multiplication, and inversion (so division is possible).
+/// For addition and subtraction, use [ScalarCanBeZero].
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ScalarNonZero(Scalar);
 
 impl ScalarNonZero {
-    /// Always return a non-zero scalar.
+    /// Always return a random non-zero scalar.
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         loop {
             let r = ScalarCanBeZero::random(rng);
@@ -156,7 +190,9 @@ impl ScalarNonZero {
     }
 }
 
-/// Scalar, can be zero. Can be converted to a GroupElement. Supports multiplication, inversion (so division is possible), addition and substraction.
+/// Scalar, can be zero.
+/// Can be converted to a GroupElement.
+/// Supports multiplication, inversion (so division is possible), addition and subtraction.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ScalarCanBeZero(Scalar);
 
@@ -220,12 +256,18 @@ impl TryFrom<ScalarCanBeZero> for ScalarNonZero {
     }
 }
 
+/// Trait for encoding of scalars.
+///
+/// Since scalars are typically secret values, we do not implement a way to serialize them, and
+/// encoding methods are not public.
 pub trait ScalarTraits {
+    /// Encode the scalar to a 32-byte array.
     fn encode(&self) -> [u8; 32] {
         let mut retval = [0u8; 32];
         retval[0..32].clone_from_slice(self.raw().as_bytes());
         retval
     }
+    /// Encode the scalar to a 32-byte (or 64 character) hexadecimal string.
     fn encode_to_hex(&self) -> String {
         hex::encode(self.encode())
     }

@@ -1,10 +1,11 @@
 [package]
 name = "libpep"
-version = "0.4.0"
 edition = "2021"
+version = "0.4.0"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
 repository = "https://github.com/NOLAI/libpep"
+documentation = "https://docs.rs/libpep"
 license = "Apache-2.0"
 keywords = ["crypto", "pep", "pseudonimization"]
 categories = ["command-line-interface"]
@@ -28,23 +29,23 @@ name = "peppy"
 required-features = ["build-binary"]
 
 [dependencies]
-curve25519-dalek-libpep = { version = "^4.0", features = ["rand_core"] }
+curve25519-dalek-libpep = { version = "^4.0", features = ["rand_core"] } # This is a published fork of signalapp/curve25519-dalek, which is a fork of popular dalek-cryptography/curve25519-dalek implementing lizard support
 rand = { version = "^0.8", features = ["std"] }
 rand_core = { version = "^0.6", features = ["std"] }
+sha2 = "^0.10"
+hmac = "^0.12"
+derive_more = { version = "^1.0", features = ["deref", "from", "into"] }
+hex = "^0.4"
+base64 = "^0.22"
+serde = { version = "^1.0", features = ["derive"] }
 wasm-bindgen = { version = "0.2", optional = true }
 getrandom = { version = "^0.2", features = ["js"], optional = true}
-sha2 = "0.10.5"
-hmac = "^0.12"
-hex = "0.4.3"
-derive_more = { version = "1.0.0", features = ["deref", "from", "into"] }
-serde = { version = "1.0.209", features = ["derive"] }
-base64 = "0.22.1"
 buildinfy = { version = "^0.1", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
 
 [dev-dependencies]
-serde_json = "1.0.128"
+serde_json = "^1.0"
 
 [package.metadata.deb]
 name = "peppy"

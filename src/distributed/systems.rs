@@ -1,3 +1,5 @@
+//! High-level `PEPSystem`s and `PEPClient`s.
+
 use crate::distributed::key_blinding::*;
 use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
@@ -6,7 +8,6 @@ use crate::high_level::ops::*;
 use crate::high_level::utils::make_rekey_factor;
 use rand_core::{CryptoRng, RngCore};
 
-/// PEP SYSTEM
 #[derive(Clone)]
 pub struct PEPSystem {
     pub(crate) pseudonymisation_secret: PseudonymizationSecret,

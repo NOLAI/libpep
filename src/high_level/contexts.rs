@@ -1,3 +1,5 @@
+//! Specification of pseudonymization and encryption contexts and transcryption between them.
+
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
 use crate::internal::arithmetic::ScalarNonZero;

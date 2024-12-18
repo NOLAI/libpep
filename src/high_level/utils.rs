@@ -1,3 +1,5 @@
+//! Utilities for deriving factors from contexts and secrets.
+
 use crate::high_level::contexts::*;
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret, Secret};
 use crate::internal::arithmetic::*;

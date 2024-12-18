@@ -1,3 +1,6 @@
+//! Generation of global keys (only for system configuration) and session keys (only for 1-PEP),
+//! and pseudonymization and rekeying secrets to be used for transcryption.
+
 use crate::high_level::contexts::EncryptionContext;
 use crate::high_level::utils::make_rekey_factor;
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero, G};
@@ -5,7 +8,6 @@ use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-/// GLOBAL KEYS
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct GlobalPublicKey(pub GroupElement);
 #[derive(Copy, Clone, Debug, From)]

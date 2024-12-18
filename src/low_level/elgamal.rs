@@ -1,14 +1,19 @@
+//! ElGamal encryption and decryption.
+
 use crate::internal::arithmetic::*;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
+/// Length of an ElGamal encrypted ciphertext in bytes.
+/// Normally, this is 64 bytes, but in the case of the `elgamal3` feature, it is 96 bytes.
 #[cfg(not(feature = "elgamal3"))]
 pub const ELGAMAL_LENGTH: usize = 64;
 #[cfg(feature = "elgamal3")]
 pub const ELGAMAL_LENGTH: usize = 96;
 
+/// An ElGamal ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElGamal {
     pub gb: GroupElement,
@@ -65,7 +70,11 @@ impl ElGamal {
     }
 }
 
-/// Encrypt message [GroupElement] `msg` using public key [GroupElement] `public_key` to a ElGamal tuple.
+/// Encrypt message [`GroupElement`] `gm` using public key [`GroupElement`] `gy` to an [`ElGamal`]
+/// ciphertext tuple.
+/// The randomness is generated using the provided random number generator `rng`.
+///
+/// Encryption may **not** be done with public key [`GroupElement::identity`], which is checked with an assertion.
 pub fn encrypt<R: RngCore + CryptoRng>(
     gm: &GroupElement,
     gy: &GroupElement,
@@ -81,7 +90,8 @@ pub fn encrypt<R: RngCore + CryptoRng>(
     }
 }
 
-/// Decrypt ElGamal tuple (encrypted using `secret_key * G`) using secret key [ScalarNonZero] `secret_key`.
+/// Decrypt ElGamal ciphertext (encrypted using `y * G`) using secret key [`ScalarNonZero`] `y`.
+/// With the `elgamal3` feature, the secret key is checked against the public key used for encryption.
 pub fn decrypt(encrypted: &ElGamal, y: &ScalarNonZero) -> GroupElement {
     #[cfg(feature = "elgamal3")]
     assert_eq!(y * G, encrypted.gy); // the secret key should be the same as the public key used to encrypt the message

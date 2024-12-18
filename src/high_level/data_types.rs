@@ -1,3 +1,6 @@
+//! High-level data types for pseudonyms and data points, and their encrypted versions,
+//! Including several ways to encode and decode them.
+
 use crate::internal::arithmetic::GroupElement;
 use crate::low_level::elgamal::{ElGamal, ELGAMAL_LENGTH};
 use derive_more::{Deref, From};
