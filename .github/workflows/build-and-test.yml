@@ -3,7 +3,8 @@ name: Build and Test
 on:
   push:
     branches:
-      - '**'
+      - 'dev'
+      - 'main'
 
 jobs:
   semver-checks:
