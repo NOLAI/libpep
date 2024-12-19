@@ -34,7 +34,7 @@ fn n_pep() {
                 PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
             let encryption_secret =
                 EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
-            let blinding_factor = blinding_factors[i].clone();
+            let blinding_factor = blinding_factors[i];
             PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })
         .collect::<Vec<_>>();
@@ -57,8 +57,8 @@ fn n_pep() {
         .collect::<Vec<_>>();
 
     // Create clients
-    let client_a = PEPClient::new(blinded_global_secret_key.clone(), &sks_a1);
-    let client_b = PEPClient::new(blinded_global_secret_key.clone(), &sks_b1);
+    let client_a = PEPClient::new(blinded_global_secret_key, &sks_a1);
+    let client_b = PEPClient::new(blinded_global_secret_key, &sks_b1);
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
@@ -67,12 +67,12 @@ fn n_pep() {
     let enc_pseudo = client_a.encrypt(&pseudonym, rng);
     let enc_data = client_a.encrypt(&data, rng);
 
-    let transcrypted_pseudo = systems.iter().fold(enc_pseudo.clone(), |acc, system| {
+    let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
         system.transcrypt(&acc, &pseudo_info)
     });
 
-    let transcrypted_data = systems.iter().fold(enc_data.clone(), |acc, system| {
+    let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
         let rekey_info = system.rekey_info(&ec_a1, &ec_b1);
         system.rekey(&acc, &rekey_info)
     });
@@ -88,12 +88,10 @@ fn n_pep() {
         assert_ne!(pseudonym, dec_pseudo);
     }
 
-    let rev_pseudonymized = systems
-        .iter()
-        .fold(transcrypted_pseudo.clone(), |acc, system| {
-            let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
-            system.pseudonymize(&acc, &pseudo_info.reverse())
-        });
+    let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
+        let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
+        system.pseudonymize(&acc, &pseudo_info.reverse())
+    });
 
     let rev_dec_pseudo = client_a.decrypt(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);

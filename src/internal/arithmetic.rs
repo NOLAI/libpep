@@ -82,8 +82,8 @@ impl GroupElement {
     /// Encode to a 16-byte string using the lizard approach.
     /// Notice that a Ristretto point is represented as 32 bytes with ~2^252 valid points, so only
     /// a very small fraction of points (only those decoded from lizard) can be encoded this way.
-    pub fn encode_lizard(self) -> Option<[u8; 16]> {
-        Some(self.0.lizard_decode::<Sha256>()?)
+    pub fn encode_lizard(&self) -> Option<[u8; 16]> {
+        self.0.lizard_decode::<Sha256>()
     }
 
     /// Decode a hexadecimal string into a Ristretto point of 32 bytes or 64 characters.
@@ -118,7 +118,7 @@ impl Serialize for GroupElement {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_to_hex().as_str())
     }
 }
 
@@ -128,7 +128,7 @@ impl<'de> Deserialize<'de> for GroupElement {
         D: Deserializer<'de>,
     {
         struct GroupElementVisitor;
-        impl<'de> Visitor<'de> for GroupElementVisitor {
+        impl Visitor<'_> for GroupElementVisitor {
             type Value = GroupElement;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a hex encoded string representing a GroupElement")
@@ -138,7 +138,7 @@ impl<'de> Deserialize<'de> for GroupElement {
             where
                 E: Error,
             {
-                GroupElement::decode_from_hex(&v)
+                GroupElement::decode_from_hex(v)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
         }
@@ -286,7 +286,7 @@ impl ScalarTraits for ScalarNonZero {
     }
 }
 
-impl<'a, 'b> std::ops::Add<&'b ScalarCanBeZero> for &'a ScalarCanBeZero {
+impl<'b> std::ops::Add<&'b ScalarCanBeZero> for &ScalarCanBeZero {
     type Output = ScalarCanBeZero;
 
     fn add(self, rhs: &'b ScalarCanBeZero) -> Self::Output {
@@ -303,7 +303,7 @@ impl<'b> std::ops::Add<&'b ScalarCanBeZero> for ScalarCanBeZero {
     }
 }
 
-impl<'a> std::ops::Add<ScalarCanBeZero> for &'a ScalarCanBeZero {
+impl std::ops::Add<ScalarCanBeZero> for &ScalarCanBeZero {
     type Output = ScalarCanBeZero;
 
     fn add(self, mut rhs: ScalarCanBeZero) -> Self::Output {
@@ -321,7 +321,7 @@ impl std::ops::Add<ScalarCanBeZero> for ScalarCanBeZero {
     }
 }
 
-impl<'a, 'b> std::ops::Sub<&'b ScalarCanBeZero> for &'a ScalarCanBeZero {
+impl<'b> std::ops::Sub<&'b ScalarCanBeZero> for &ScalarCanBeZero {
     type Output = ScalarCanBeZero;
 
     fn sub(self, rhs: &'b ScalarCanBeZero) -> Self::Output {
@@ -338,7 +338,7 @@ impl<'b> std::ops::Sub<&'b ScalarCanBeZero> for ScalarCanBeZero {
     }
 }
 
-impl<'a> std::ops::Sub<ScalarCanBeZero> for &'a ScalarCanBeZero {
+impl std::ops::Sub<ScalarCanBeZero> for &ScalarCanBeZero {
     type Output = ScalarCanBeZero;
 
     fn sub(self, rhs: ScalarCanBeZero) -> Self::Output {
@@ -355,7 +355,7 @@ impl std::ops::Sub<ScalarCanBeZero> for ScalarCanBeZero {
     }
 }
 
-impl<'a, 'b> std::ops::Mul<&'b ScalarNonZero> for &'a ScalarNonZero {
+impl<'b> std::ops::Mul<&'b ScalarNonZero> for &ScalarNonZero {
     type Output = ScalarNonZero;
 
     fn mul(self, rhs: &'b ScalarNonZero) -> Self::Output {
@@ -372,7 +372,7 @@ impl<'b> std::ops::Mul<&'b ScalarNonZero> for ScalarNonZero {
     }
 }
 
-impl<'a> std::ops::Mul<ScalarNonZero> for &'a ScalarNonZero {
+impl std::ops::Mul<ScalarNonZero> for &ScalarNonZero {
     type Output = ScalarNonZero;
 
     fn mul(self, mut rhs: ScalarNonZero) -> Self::Output {
@@ -390,7 +390,7 @@ impl std::ops::Mul<ScalarNonZero> for ScalarNonZero {
     }
 }
 
-impl<'a, 'b> std::ops::Add<&'b GroupElement> for &'a GroupElement {
+impl<'b> std::ops::Add<&'b GroupElement> for &GroupElement {
     type Output = GroupElement;
 
     fn add(self, rhs: &'b GroupElement) -> Self::Output {
@@ -407,7 +407,7 @@ impl<'b> std::ops::Add<&'b GroupElement> for GroupElement {
     }
 }
 
-impl<'a> std::ops::Add<GroupElement> for &'a GroupElement {
+impl std::ops::Add<GroupElement> for &GroupElement {
     type Output = GroupElement;
 
     fn add(self, mut rhs: GroupElement) -> Self::Output {
@@ -425,7 +425,7 @@ impl std::ops::Add<GroupElement> for GroupElement {
     }
 }
 
-impl<'a, 'b> std::ops::Sub<&'b GroupElement> for &'a GroupElement {
+impl<'b> std::ops::Sub<&'b GroupElement> for &GroupElement {
     type Output = GroupElement;
 
     fn sub(self, rhs: &'b GroupElement) -> Self::Output {
@@ -442,7 +442,7 @@ impl<'b> std::ops::Sub<&'b GroupElement> for GroupElement {
     }
 }
 
-impl<'a> std::ops::Sub<GroupElement> for &'a GroupElement {
+impl std::ops::Sub<GroupElement> for &GroupElement {
     type Output = GroupElement;
 
     fn sub(self, rhs: GroupElement) -> Self::Output {
@@ -459,7 +459,7 @@ impl std::ops::Sub<GroupElement> for GroupElement {
     }
 }
 
-impl<'a, 'b> std::ops::Mul<&'b GroupElement> for &'a ScalarNonZero {
+impl<'b> std::ops::Mul<&'b GroupElement> for &ScalarNonZero {
     type Output = GroupElement;
 
     fn mul(self, rhs: &'b GroupElement) -> Self::Output {
@@ -475,7 +475,7 @@ impl<'b> std::ops::Mul<&'b GroupElement> for ScalarNonZero {
     }
 }
 
-impl<'a> std::ops::Mul<GroupElement> for &'a ScalarNonZero {
+impl std::ops::Mul<GroupElement> for &ScalarNonZero {
     type Output = GroupElement;
 
     fn mul(self, mut rhs: GroupElement) -> Self::Output {
@@ -493,7 +493,7 @@ impl std::ops::Mul<GroupElement> for ScalarNonZero {
     }
 }
 
-impl<'a, 'b> std::ops::Mul<&'b GroupElement> for &'a ScalarCanBeZero {
+impl<'b> std::ops::Mul<&'b GroupElement> for &ScalarCanBeZero {
     type Output = GroupElement;
 
     fn mul(self, rhs: &'b GroupElement) -> Self::Output {
@@ -509,7 +509,7 @@ impl<'b> std::ops::Mul<&'b GroupElement> for ScalarCanBeZero {
     }
 }
 
-impl<'a> std::ops::Mul<GroupElement> for &'a ScalarCanBeZero {
+impl std::ops::Mul<GroupElement> for &ScalarCanBeZero {
     type Output = GroupElement;
 
     fn mul(self, mut rhs: GroupElement) -> Self::Output {

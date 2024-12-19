@@ -77,7 +77,7 @@ pub fn rerandomize<R: RngCore + CryptoRng, E: Encrypted, P: PublicKey>(
 /// Rerandomize the ciphertext of an encrypted pseudonym
 pub fn rerandomize_known<E: Encrypted>(encrypted: &E, r: &RerandomizeFactor) -> E {
     E::from_value(crate::low_level::primitives::rerandomize(
-        &encrypted.value(),
+        encrypted.value(),
         &r.0,
     ))
 }
@@ -90,13 +90,11 @@ pub fn rerandomize_known<E: Encrypted, P: PublicKey>(
     r: &RerandomizeFactor,
 ) -> E {
     E::from_value(crate::low_level::primitives::rerandomize(
-        &encrypted.value(),
+        encrypted.value(),
         public_key.value(),
         &r.0,
     ))
 }
-
-/// TRANSCRYPTION
 
 /// Pseudonymize an encrypted pseudonym, from one context to another context
 pub fn pseudonymize(
@@ -141,30 +139,31 @@ pub fn rekey_batch<R: RngCore + CryptoRng>(
 pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
     if E::IS_PSEUDONYM {
         E::from_value(rsk(
-            &encrypted.value(),
+            encrypted.value(),
             &transcryption_info.s.0,
             &transcryption_info.k.0,
         ))
     } else {
         E::from_value(crate::low_level::primitives::rekey(
-            &encrypted.value(),
+            encrypted.value(),
             &transcryption_info.k.0,
         ))
     }
 }
 
+pub type EncryptedEntityDataPair = (Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>);
 pub fn transcrypt_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]>,
+    encrypted: &mut Box<[EncryptedEntityDataPair]>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]> {
+) -> Box<[EncryptedEntityDataPair]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
     encrypted
         .iter_mut()
         .map(|(pseudonyms, data_points)| {
             let pseudonyms = pseudonyms
                 .iter()
-                .map(|x| pseudonymize(x, &transcryption_info))
+                .map(|x| pseudonymize(x, transcryption_info))
                 .collect();
             let data_points = data_points
                 .iter()

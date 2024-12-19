@@ -84,7 +84,7 @@ impl Serialize for BlindedGlobalSecretKey {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_to_hex().as_str())
     }
 }
 impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
@@ -93,7 +93,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
         D: Deserializer<'de>,
     {
         struct BlindedGlobalSecretKeyVisitor;
-        impl<'de> Visitor<'de> for BlindedGlobalSecretKeyVisitor {
+        impl Visitor<'_> for BlindedGlobalSecretKeyVisitor {
             type Value = BlindedGlobalSecretKey;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a hex encoded string representing a BlindedGlobalSecretKey")
@@ -103,7 +103,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
             where
                 E: Error,
             {
-                ScalarNonZero::decode_from_hex(&v)
+                ScalarNonZero::decode_from_hex(v)
                     .map(BlindedGlobalSecretKey)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
@@ -117,7 +117,7 @@ impl Serialize for SessionKeyShare {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_to_hex().as_str())
     }
 }
 impl<'de> Deserialize<'de> for SessionKeyShare {
@@ -126,7 +126,7 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
         D: Deserializer<'de>,
     {
         struct SessionKeyShareVisitor;
-        impl<'de> Visitor<'de> for SessionKeyShareVisitor {
+        impl Visitor<'_> for SessionKeyShareVisitor {
             type Value = SessionKeyShare;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 formatter.write_str("a hex encoded string representing a SessionKeyShare")
@@ -136,7 +136,7 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
             where
                 E: Error,
             {
-                ScalarNonZero::decode_from_hex(&v)
+                ScalarNonZero::decode_from_hex(v)
                     .map(SessionKeyShare)
                     .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
             }
@@ -150,7 +150,7 @@ pub fn make_blinded_global_secret_key(
     global_secret_key: &GlobalSecretKey,
     blinding_factors: &[BlindingFactor],
 ) -> Option<BlindedGlobalSecretKey> {
-    let y = global_secret_key.clone();
+    let y = *global_secret_key;
     let k = blinding_factors
         .iter()
         .fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert());
@@ -176,7 +176,7 @@ pub fn make_session_key(
             .iter()
             .fold(blinded_global_secret_key.0, |acc, x| acc * x.0),
     );
-    let public = SessionPublicKey::from(secret.0 * &G);
+    let public = SessionPublicKey::from(secret.0 * G);
     (public, secret)
 }
 

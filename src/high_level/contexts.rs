@@ -95,9 +95,9 @@ impl PseudonymizationInfo {
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * &s_to.0);
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
+        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
         let rekey_factor = RekeyInfo::new(from_enc_context, to_enc_context, encryption_secret);
         Self {
             s: reshuffle_factor,
@@ -111,9 +111,9 @@ impl PseudonymizationInfo {
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * &s_to.0);
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
+        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
         let rekey_factor = RekeyInfo::new_from_global(to_enc_context, encryption_secret);
         Self {
             s: reshuffle_factor,
@@ -127,9 +127,9 @@ impl PseudonymizationInfo {
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor(&pseudonymization_secret, &from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(&pseudonymization_secret, &to_pseudo_context);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * &s_to.0);
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
+        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
         let rekey_factor = RekeyInfo::new_to_global(from_enc_context, encryption_secret);
         Self {
             s: reshuffle_factor,
@@ -149,22 +149,22 @@ impl RekeyInfo {
         to_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_rekey_factor(&encryption_secret, &from_session);
-        let k_to = make_rekey_factor(&encryption_secret, &to_session);
-        Self::from(k_from.0.invert() * &k_to.0)
+        let k_from = make_rekey_factor(encryption_secret, from_session);
+        let k_to = make_rekey_factor(encryption_secret, to_session);
+        Self::from(k_from.0.invert() * k_to.0)
     }
     pub fn new_from_global(
         to_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        Self::from(make_rekey_factor(&encryption_secret, &to_session))
+        make_rekey_factor(encryption_secret, to_session)
     }
     pub fn new_to_global(
         from_session: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
         Self::from(
-            make_rekey_factor(&encryption_secret, &from_session)
+            make_rekey_factor(encryption_secret, from_session)
                 .0
                 .invert(),
         )

@@ -9,6 +9,7 @@ use libpep::high_level::keys::{
 use libpep::high_level::ops::{decrypt, encrypt, encrypt_global, rerandomize, transcrypt};
 use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
 use rand_core::OsRng;
+use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]
 #[command("generate-global-keys")]
@@ -174,17 +175,18 @@ fn main() {
         }
         Some(Sub::PseudonymFromOrigin(arg)) => {
             let origin = arg.args[0].as_bytes();
-            let pseudonym: Pseudonym;
-            if origin.len() > 16 {
-                eprintln!("Origin identifier must be 16 bytes long.");
-                std::process::exit(1);
-            } else if origin.len() < 16 {
-                let mut padded = [0u8; 16];
-                padded[..origin.len()].copy_from_slice(origin);
-                pseudonym = Pseudonym::from_bytes(&padded);
-            } else {
-                pseudonym = Pseudonym::from_bytes(origin.try_into().unwrap());
-            }
+            let pseudonym: Pseudonym = match origin.len().cmp(&16) {
+                Ordering::Greater => {
+                    eprintln!("Origin identifier must be 16 bytes long.");
+                    std::process::exit(1);
+                }
+                Ordering::Less => {
+                    let mut padded = [0u8; 16];
+                    padded[..origin.len()].copy_from_slice(origin);
+                    Pseudonym::from_bytes(&padded)
+                }
+                Ordering::Equal => Pseudonym::from_bytes(origin.try_into().unwrap()),
+            };
             eprint!("Pseudonym: ");
             println!("{}", &pseudonym.encode_to_hex());
         }

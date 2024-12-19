@@ -27,7 +27,7 @@ impl WASMBlindingFactor {
     }
     #[wasm_bindgen(js_name = clone)]
     pub fn clone(&self) -> Self {
-        WASMBlindingFactor(self.0.clone())
+        WASMBlindingFactor(self.0)
     }
 
     #[wasm_bindgen]
@@ -36,15 +36,15 @@ impl WASMBlindingFactor {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindingFactor> {
-        BlindingFactor::decode_from_slice(&bytes.as_slice()).map(|x| WASMBlindingFactor(x))
+        BlindingFactor::decode_from_slice(bytes.as_slice()).map(WASMBlindingFactor)
     }
     #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
+    pub fn to_hex(self) -> String {
         self.0.encode_to_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMBlindingFactor> {
-        BlindingFactor::decode_from_hex(hex).map(|x| WASMBlindingFactor(x))
+        BlindingFactor::decode_from_hex(hex).map(WASMBlindingFactor)
     }
 }
 
@@ -65,16 +65,15 @@ impl WASMBlindedGlobalSecretKey {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_slice(&bytes.as_slice())
-            .map(|x| WASMBlindedGlobalSecretKey(x))
+        BlindedGlobalSecretKey::decode_from_slice(bytes.as_slice()).map(WASMBlindedGlobalSecretKey)
     }
     #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
+    pub fn to_hex(self) -> String {
         self.0.encode_to_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_hex(hex).map(|x| WASMBlindedGlobalSecretKey(x))
+        BlindedGlobalSecretKey::decode_from_hex(hex).map(WASMBlindedGlobalSecretKey)
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
@@ -94,15 +93,15 @@ impl WASMSessionKeyShare {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_slice(&bytes.as_slice()).map(|x| WASMSessionKeyShare(x))
+        SessionKeyShare::decode_from_slice(bytes.as_slice()).map(WASMSessionKeyShare)
     }
     #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
+    pub fn to_hex(self) -> String {
         self.0.encode_to_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_hex(hex).map(|x| WASMSessionKeyShare(x))
+        SessionKeyShare::decode_from_hex(hex).map(WASMSessionKeyShare)
     }
 }
 
@@ -212,10 +211,10 @@ impl WASMPEPClient {
             .into_iter()
             .map(|x| SessionKeyShare(x.0 .0))
             .collect();
-        let blinded_key = blinded_global_private_key.0.clone();
+        let blinded_key = blinded_global_private_key.0;
         Self(PEPClient::new(
             BlindedGlobalSecretKey(blinded_key.0),
-            &*session_key_shares,
+            &session_key_shares,
         ))
     }
     #[wasm_bindgen(js_name = decryptPseudonym)]
@@ -251,9 +250,7 @@ pub struct WASMOfflinePEPClient(OfflinePEPClient);
 impl WASMOfflinePEPClient {
     #[wasm_bindgen(constructor)]
     pub fn new(global_public_key: WASMGlobalPublicKey) -> Self {
-        Self(OfflinePEPClient::new(GlobalPublicKey(
-            *global_public_key.0.clone(),
-        )))
+        Self(OfflinePEPClient::new(GlobalPublicKey(*global_public_key.0)))
     }
     #[wasm_bindgen(js_name = encryptData)]
     pub fn wasm_encrypt_data(&self, message: &WASMDataPoint) -> WASMEncryptedDataPoint {

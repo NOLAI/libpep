@@ -51,22 +51,13 @@ impl ElGamal {
     }
 
     pub fn encode_to_base64(&self) -> String {
-        general_purpose::URL_SAFE.encode(&self.encode())
+        general_purpose::URL_SAFE.encode(self.encode())
     }
     pub fn decode_from_base64(s: &str) -> Option<Self> {
         general_purpose::URL_SAFE
             .decode(s)
             .ok()
             .and_then(|v| Self::decode_from_slice(&v))
-    }
-
-    pub fn clone(&self) -> Self {
-        Self {
-            gb: self.gb,
-            gc: self.gc,
-            #[cfg(feature = "elgamal3")]
-            gy: self.gy,
-        }
     }
 }
 

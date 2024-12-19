@@ -27,7 +27,7 @@ impl PEPSystem {
         }
     }
     pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
-        let k = make_rekey_factor(&self.rekeying_secret, &context);
+        let k = make_rekey_factor(&self.rekeying_secret, context);
         make_session_key_share(&k.0, &self.blinding_factor)
     }
     pub fn rekey_info(
@@ -96,10 +96,10 @@ impl PEPSystem {
 
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
-        encrypted: &mut Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]>,
+        encrypted: &mut Box<[EncryptedEntityDataPair]>,
         transcryption_info: &PseudonymizationInfo,
         rng: &mut R,
-    ) -> Box<[(Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>)]> {
+    ) -> Box<[EncryptedEntityDataPair]> {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 }

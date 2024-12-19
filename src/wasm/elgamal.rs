@@ -16,17 +16,17 @@ impl WASMElGamal {
 
     #[wasm_bindgen]
     pub fn decode(v: Vec<u8>) -> Option<WASMElGamal> {
-        ElGamal::decode_from_slice(&v.as_slice()).map(|x| WASMElGamal(x))
+        ElGamal::decode_from_slice(v.as_slice()).map(WASMElGamal)
     }
 
     #[wasm_bindgen(js_name = toBase64)]
-    pub fn to_base64(&self) -> String {
+    pub fn to_base64(self) -> String {
         self.0.encode_to_base64()
     }
 
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<WASMElGamal> {
-        ElGamal::decode_from_base64(s).map(|x| WASMElGamal(x))
+        ElGamal::decode_from_base64(s).map(WASMElGamal)
     }
 }
 #[wasm_bindgen(js_name = encrypt)]

@@ -65,7 +65,7 @@ impl WASMPseudonym {
         Self(Pseudonym::from_point(GroupElement::from(x)))
     }
     #[wasm_bindgen(js_name = toPoint)]
-    pub fn to_point(&self) -> WASMGroupElement {
+    pub fn to_point(self) -> WASMGroupElement {
         self.0.value.into()
     }
     #[wasm_bindgen]
@@ -83,11 +83,11 @@ impl WASMPseudonym {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
-        Pseudonym::decode_from_slice(&bytes.as_slice()).map(|x| Self(x))
+        Pseudonym::decode_from_slice(bytes.as_slice()).map(Self)
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        Pseudonym::decode_from_hex(hex).map(|x| Self(x))
+        Pseudonym::decode_from_hex(hex).map(Self)
     }
     #[wasm_bindgen(js_name = fromHash)]
     pub fn from_hash(v: Vec<u8>) -> Self {
@@ -114,7 +114,7 @@ impl WASMDataPoint {
         Self(DataPoint::from_point(GroupElement::from(x)))
     }
     #[wasm_bindgen(js_name = toPoint)]
-    pub fn to_point(&self) -> WASMGroupElement {
+    pub fn to_point(self) -> WASMGroupElement {
         self.0.value.into()
     }
     #[wasm_bindgen]
@@ -132,11 +132,11 @@ impl WASMDataPoint {
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
-        DataPoint::decode_from_slice(&bytes.as_slice()).map(|x| Self(x))
+        DataPoint::decode_from_slice(bytes.as_slice()).map(Self)
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        DataPoint::decode_from_hex(hex).map(|x| Self(x))
+        DataPoint::decode_from_hex(hex).map(Self)
     }
     #[wasm_bindgen(js_name = fromHash)]
     pub fn from_hash(v: Vec<u8>) -> Self {
@@ -169,7 +169,7 @@ impl WASMEncryptedPseudonym {
     }
     #[wasm_bindgen]
     pub fn decode(v: Vec<u8>) -> Option<Self> {
-        EncryptedPseudonym::decode_from_slice(v.as_slice()).map(|x| Self(x))
+        EncryptedPseudonym::decode_from_slice(v.as_slice()).map(Self)
     }
 
     #[wasm_bindgen(js_name = toBase64)]
@@ -179,7 +179,7 @@ impl WASMEncryptedPseudonym {
 
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<Self> {
-        EncryptedPseudonym::from_base64(s).map(|x| Self(x))
+        EncryptedPseudonym::from_base64(s).map(Self)
     }
 }
 
@@ -196,7 +196,7 @@ impl WASMEncryptedDataPoint {
     }
     #[wasm_bindgen]
     pub fn decode(v: Vec<u8>) -> Option<Self> {
-        EncryptedDataPoint::decode_from_slice(v.as_slice()).map(|x| Self(x))
+        EncryptedDataPoint::decode_from_slice(v.as_slice()).map(Self)
     }
 
     #[wasm_bindgen(js_name = toBase64)]
@@ -206,7 +206,7 @@ impl WASMEncryptedDataPoint {
 
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<Self> {
-        EncryptedDataPoint::from_base64(s).map(|x| Self(x))
+        EncryptedDataPoint::from_base64(s).map(Self)
     }
 }
 
@@ -301,7 +301,7 @@ pub fn wasm_decrypt_data(
     secret_key: &WASMSessionSecretKey,
 ) -> WASMDataPoint {
     WASMDataPoint(decrypt(
-        &EncryptedDataPoint::from(ElGamal::from(encrypted.value)),
+        &EncryptedDataPoint::from(encrypted.value),
         &SessionSecretKey::from(ScalarNonZero::from(secret_key.0)),
     ))
 }
