@@ -21,6 +21,27 @@ pub struct WASMSessionPublicKey(pub WASMGroupElement);
 #[derive(Copy, Clone, Debug, From)]
 #[wasm_bindgen(js_name = GlobalPublicKey)]
 pub struct WASMGlobalPublicKey(pub WASMGroupElement);
+#[wasm_bindgen(js_class = "GlobalPublicKey")]
+impl WASMGlobalPublicKey {
+    #[wasm_bindgen(constructor)]
+    pub fn from_point(x: WASMGroupElement) -> Self {
+        Self(GroupElement::from(x).into())
+    }
+    #[wasm_bindgen(js_name = toPoint)]
+    pub fn to_point(self) -> WASMGroupElement {
+        self.0
+    }
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
+    }
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<Self> {
+        let x = GroupElement::decode_from_hex(hex)?;
+        Some(Self(x.into()))
+    }
+}
+// TODO: more methods required for keys?
 
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
