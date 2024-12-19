@@ -179,3 +179,14 @@ pub fn make_session_key(
     let public = SessionPublicKey::from(secret.0 * &G);
     (public, secret)
 }
+
+pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
+    n: usize,
+    rng: &mut R,
+) -> (GlobalPublicKey, BlindedGlobalSecretKey, Vec<BlindingFactor>) {
+    let (pk, sk) = make_global_keys(rng);
+    let blinding_factors: Vec<BlindingFactor> =
+        (0..n).map(|_| BlindingFactor::random(rng)).collect();
+    let bsk = make_blinded_global_secret_key(&sk, &blinding_factors).unwrap();
+    (pk, bsk, blinding_factors)
+}

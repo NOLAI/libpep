@@ -1,6 +1,5 @@
 use commandy_macros::*;
-use rand_core::OsRng;
-
+use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationContext, TranscryptionInfo};
 use libpep::high_level::data_types::{Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
@@ -9,6 +8,7 @@ use libpep::high_level::keys::{
 };
 use libpep::high_level::ops::{decrypt, encrypt, encrypt_global, rerandomize, transcrypt};
 use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
+use rand_core::OsRng;
 
 #[derive(Command, Debug, Default)]
 #[command("generate-global-keys")]
@@ -110,6 +110,14 @@ struct TranscryptToGlobal {
     args: Vec<String>,
 }
 
+#[derive(Command, Debug, Default)]
+#[command("setup-distributed")]
+#[description("Creates the secrets needed for distributed systems.")]
+struct SetupDistributedSystems {
+    #[positional("n", 1, 1)]
+    args: Vec<String>,
+}
+
 #[derive(Command, Debug)]
 enum Sub {
     GenerateGlobalKeys(GenerateGlobalKeys),
@@ -124,6 +132,7 @@ enum Sub {
     Transcrypt(Transcrypt),
     TranscryptFromGlobal(TranscryptFromGlobal),
     TranscryptToGlobal(TranscryptToGlobal),
+    SetupDistributedSystems(SetupDistributedSystems),
 }
 
 #[derive(Command, Debug, Default)]
@@ -284,6 +293,19 @@ fn main() {
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.encode_to_base64());
+        }
+        Some(Sub::SetupDistributedSystems(arg)) => {
+            let n = arg.args[0].parse::<usize>().unwrap();
+            let (global_public_key, blinded_secret, blinding_factors) =
+                make_distributed_global_keys(n, &mut rng);
+            eprint!("Public global key: ");
+            println!("{}", &global_public_key.encode_to_hex());
+            eprint!("Blinded secret key: ");
+            println!("{}", &blinded_secret.encode_to_hex());
+            eprintln!("Blinding factors (KEEP SECRET): ");
+            for factor in blinding_factors.iter() {
+                println!("{} ", factor.encode_to_hex());
+            }
         }
         None => {
             eprintln!("No subcommand given.");
