@@ -35,8 +35,8 @@ test('test high level', async () => {
     const decPseudo = decryptPseudonym(encPseudo, session1Keys.secret);
     const decData = decryptData(encData, session1Keys.secret);
 
-    expect(pseudo.toHex()).toEqual(decPseudo.toHex());
-    expect(data.toHex()).toEqual(decData.toHex());
+    expect(pseudo.asHex()).toEqual(decPseudo.asHex());
+    expect(data.asHex()).toEqual(decData.asHex());
 
     const pseudoInfo = new PseudonymizationInfo(pseudoContext1, pseudoContext2, encContext1, encContext2, pseudoSecret, encSecret);
     const rekeyInfo = new RekeyInfo(encContext1, encContext2, encSecret);
@@ -44,15 +44,15 @@ test('test high level', async () => {
     const rekeyed = rekeyData(encData, rekeyInfo);
     const rekeyedDec = decryptData(rekeyed, session2Keys.secret);
 
-    expect(data.toHex()).toEqual(rekeyedDec.toHex());
+    expect(data.asHex()).toEqual(rekeyedDec.asHex());
 
     const pseudonymized = pseudonymize(encPseudo, pseudoInfo);
     const pseudonymizedDec = decryptPseudonym(pseudonymized, session2Keys.secret);
 
-    expect(pseudo.toHex()).not.toEqual(pseudonymizedDec.toHex());
+    expect(pseudo.asHex()).not.toEqual(pseudonymizedDec.asHex());
 
     const revPseudonymized = pseudonymize(pseudonymized, pseudoInfo.rev());
     const revPseudonymizedDec = decryptPseudonym(revPseudonymized, session1Keys.secret);
 
-    expect(pseudo.toHex()).toEqual(revPseudonymizedDec.toHex());
+    expect(pseudo.asHex()).toEqual(revPseudonymizedDec.asHex());
 })

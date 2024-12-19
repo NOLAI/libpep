@@ -30,14 +30,14 @@ fn test_key_factor_component() {
         let context = PseudonymizationContext::from_audience(payload, *audience_type as u32);
         let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
         assert_eq!(
-            pseudo_factor.0.encode_to_hex().to_ascii_uppercase(),
+            pseudo_factor.0.encode_as_hex().to_ascii_uppercase(),
             *expected_factor
         );
 
         let blinding_factor = BlindingFactor::decode_from_hex(blinding_hex).unwrap();
         let session_key_share = make_session_key_share(&pseudo_factor.0, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
         assert_eq!(
-            session_key_share.encode_to_hex().to_ascii_uppercase(),
+            session_key_share.encode_as_hex().to_ascii_uppercase(),
             *expected_sks
         )
     }

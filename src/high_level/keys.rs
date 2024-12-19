@@ -24,8 +24,8 @@ pub trait PublicKey {
     fn encode(&self) -> [u8; 32] {
         self.value().encode()
     }
-    fn to_hex(&self) -> String {
-        self.value().encode_to_hex()
+    fn as_hex(&self) -> String {
+        self.value().encode_as_hex()
     }
     fn decode(bytes: &[u8; 32]) -> Option<Self>
     where

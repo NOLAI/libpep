@@ -151,9 +151,9 @@ fn main() {
         Some(Sub::GenerateGlobalKeys(_)) => {
             let (pk, sk) = make_global_keys(&mut rng);
             eprint!("Public global key: ");
-            println!("{}", &pk.encode_to_hex());
+            println!("{}", &pk.encode_as_hex());
             eprint!("Secret global key: ");
-            println!("{}", &sk.value().encode_to_hex());
+            println!("{}", &sk.value().encode_as_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
             let global_secret_key =
@@ -164,14 +164,14 @@ fn main() {
             let (session_pk, session_sk) =
                 make_session_keys(&global_secret_key, &session_context, &encryption_secret);
             eprint!("Public session key: ");
-            println!("{}", &session_pk.encode_to_hex());
+            println!("{}", &session_pk.encode_as_hex());
             eprint!("Secret session key: ");
-            println!("{}", &session_sk.value().encode_to_hex());
+            println!("{}", &session_sk.value().encode_as_hex());
         }
         Some(Sub::RandomPseudonym(_)) => {
             let pseudonym = Pseudonym::random(&mut rng);
             eprint!("Random pseudonym: ");
-            println!("{}", &pseudonym.encode_to_hex());
+            println!("{}", &pseudonym.encode_as_hex());
         }
         Some(Sub::PseudonymFromOrigin(arg)) => {
             let origin = arg.args[0].as_bytes();
@@ -188,11 +188,11 @@ fn main() {
                 Ordering::Equal => Pseudonym::from_bytes(origin.try_into().unwrap()),
             };
             eprint!("Pseudonym: ");
-            println!("{}", &pseudonym.encode_to_hex());
+            println!("{}", &pseudonym.encode_as_hex());
         }
         Some(Sub::PseudonymToOrigin(arg)) => {
             let pseudonym = Pseudonym::decode_from_hex(&arg.args[0]).unwrap();
-            let origin = pseudonym.to_bytes();
+            let origin = pseudonym.as_bytes();
             if origin.is_none() {
                 eprintln!("Invalid pseudonym.");
                 std::process::exit(1);
@@ -205,14 +205,14 @@ fn main() {
             let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).unwrap();
             let ciphertext = encrypt(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.encode_to_base64());
+            println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::EncryptGlobal(arg)) => {
             let public_key = GlobalPublicKey::from_hex(&arg.args[0]).unwrap();
             let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).unwrap();
             let ciphertext = encrypt_global(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.encode_to_base64());
+            println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::Decrypt(arg)) => {
             let secret_key =
@@ -220,7 +220,7 @@ fn main() {
             let ciphertext = EncryptedPseudonym::from_base64(&arg.args[1]).unwrap();
             let plaintext = decrypt(&ciphertext, &secret_key);
             eprint!("Plaintext: ");
-            println!("{}", &plaintext.encode_to_hex());
+            println!("{}", &plaintext.encode_as_hex());
         }
         Some(Sub::Rerandomize(arg)) => {
             let ciphertext = EncryptedPseudonym::from_base64(&arg.args[0]).unwrap();
@@ -235,7 +235,7 @@ fn main() {
                 rerandomized = rerandomize(&ciphertext, &mut rng);
             }
             eprint!("Rerandomized ciphertext: ");
-            println!("{}", &rerandomized.encode_to_base64());
+            println!("{}", &rerandomized.encode_as_base64());
         }
         Some(Sub::Transcrypt(arg)) => {
             let pseudonymization_secret =
@@ -256,7 +256,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_to_base64());
+            println!("{}", &transcrypted.encode_as_base64());
         }
         Some(Sub::TranscryptFromGlobal(arg)) => {
             let pseudonymization_secret =
@@ -275,7 +275,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_to_base64());
+            println!("{}", &transcrypted.encode_as_base64());
         }
         Some(Sub::TranscryptToGlobal(arg)) => {
             let pseudonymization_secret =
@@ -294,19 +294,19 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_to_base64());
+            println!("{}", &transcrypted.encode_as_base64());
         }
         Some(Sub::SetupDistributedSystems(arg)) => {
             let n = arg.args[0].parse::<usize>().unwrap();
             let (global_public_key, blinded_secret, blinding_factors) =
                 make_distributed_global_keys(n, &mut rng);
             eprint!("Public global key: ");
-            println!("{}", &global_public_key.encode_to_hex());
+            println!("{}", &global_public_key.encode_as_hex());
             eprint!("Blinded secret key: ");
-            println!("{}", &blinded_secret.encode_to_hex());
+            println!("{}", &blinded_secret.encode_as_hex());
             eprintln!("Blinding factors (KEEP SECRET): ");
             for factor in blinding_factors.iter() {
-                println!("{} ", factor.encode_to_hex());
+                println!("{} ", factor.encode_as_hex());
             }
         }
         None => {

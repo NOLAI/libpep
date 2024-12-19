@@ -31,9 +31,9 @@ impl WASMGroupElement {
     pub fn from_hex(hex: &str) -> Option<WASMGroupElement> {
         GroupElement::decode_from_hex(hex).map(WASMGroupElement)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
     }
 
     #[wasm_bindgen]
@@ -81,9 +81,9 @@ impl WASMScalarNonZero {
     pub fn from_hex(hex: &str) -> Option<WASMScalarNonZero> {
         ScalarNonZero::decode_from_hex(hex).map(WASMScalarNonZero)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen]
     pub fn random() -> WASMScalarNonZero {
@@ -131,9 +131,9 @@ impl WASMScalarCanBeZero {
     pub fn from_hex(hex: &str) -> Option<WASMScalarCanBeZero> {
         ScalarCanBeZero::decode_from_hex(hex).map(WASMScalarCanBeZero)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen]
     pub fn one() -> WASMScalarCanBeZero {

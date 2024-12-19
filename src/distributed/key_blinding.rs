@@ -39,8 +39,8 @@ pub trait SafeScalar {
     {
         ScalarNonZero::decode_from_hex(s).map(Self::from)
     }
-    fn encode_to_hex(&self) -> String {
-        self.value().encode_to_hex()
+    fn encode_as_hex(&self) -> String {
+        self.value().encode_as_hex()
     }
 }
 impl SafeScalar for BlindingFactor {
@@ -84,7 +84,7 @@ impl Serialize for BlindedGlobalSecretKey {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_as_hex().as_str())
     }
 }
 impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
@@ -117,7 +117,7 @@ impl Serialize for SessionKeyShare {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_as_hex().as_str())
     }
 }
 impl<'de> Deserialize<'de> for SessionKeyShare {

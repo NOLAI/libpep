@@ -19,9 +19,9 @@ impl WASMElGamal {
         ElGamal::decode_from_slice(v.as_slice()).map(WASMElGamal)
     }
 
-    #[wasm_bindgen(js_name = toBase64)]
-    pub fn to_base64(self) -> String {
-        self.0.encode_to_base64()
+    #[wasm_bindgen(js_name = asBase64)]
+    pub fn as_base64(self) -> String {
+        self.0.encode_as_base64()
     }
 
     #[wasm_bindgen(js_name = fromBase64)]

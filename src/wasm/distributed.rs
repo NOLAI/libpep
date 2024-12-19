@@ -38,9 +38,9 @@ impl WASMBlindingFactor {
     pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindingFactor> {
         BlindingFactor::decode_from_slice(bytes.as_slice()).map(WASMBlindingFactor)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMBlindingFactor> {
@@ -67,9 +67,9 @@ impl WASMBlindedGlobalSecretKey {
     pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedGlobalSecretKey> {
         BlindedGlobalSecretKey::decode_from_slice(bytes.as_slice()).map(WASMBlindedGlobalSecretKey)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMBlindedGlobalSecretKey> {
@@ -95,9 +95,9 @@ impl WASMSessionKeyShare {
     pub fn decode(bytes: Vec<u8>) -> Option<WASMSessionKeyShare> {
         SessionKeyShare::decode_from_slice(bytes.as_slice()).map(WASMSessionKeyShare)
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<WASMSessionKeyShare> {

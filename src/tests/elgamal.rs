@@ -19,7 +19,7 @@ fn encoding() {
     let x = GroupElement::random(&mut rng);
     let y = GroupElement::random(&mut rng);
     let msg = encrypt(&x, &y, &mut rng);
-    let encoded = msg.encode_to_base64();
+    let encoded = msg.encode_as_base64();
     let decoded = ElGamal::decode_from_base64(&encoded).unwrap();
     assert_eq!(msg, decoded);
 }
@@ -33,6 +33,6 @@ fn decode_encode() {
         "xGOnBZzbSrvKUQYBtww0vi8jZWzN9qkrm5OnI2pnEFJu4DkZP2jLLGT-yWa_qnkC_ScCwQwcQtZk_z_z7s_gVQ==";
 
     let decoded = ElGamal::decode_from_base64(original).unwrap();
-    let encoded = decoded.encode_to_base64();
+    let encoded = decoded.encode_as_base64();
     assert_eq!(original, encoded);
 }

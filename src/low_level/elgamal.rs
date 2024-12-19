@@ -50,7 +50,7 @@ impl ElGamal {
         retval
     }
 
-    pub fn encode_to_base64(&self) -> String {
+    pub fn encode_as_base64(&self) -> String {
         general_purpose::URL_SAFE.encode(self.encode())
     }
     pub fn decode_from_base64(s: &str) -> Option<Self> {

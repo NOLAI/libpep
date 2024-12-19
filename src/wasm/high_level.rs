@@ -77,9 +77,9 @@ impl WASMPseudonym {
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
@@ -101,9 +101,9 @@ impl WASMPseudonym {
         arr.copy_from_slice(&data);
         Self(Pseudonym::from_bytes(&arr))
     }
-    #[wasm_bindgen(js_name = toBytes)]
-    pub fn to_bytes(&self) -> Option<Vec<u8>> {
-        self.0.to_bytes().map(|x| x.to_vec())
+    #[wasm_bindgen(js_name = asBytes)]
+    pub fn as_bytes(&self) -> Option<Vec<u8>> {
+        self.0.as_bytes().map(|x| x.to_vec())
     }
 }
 
@@ -126,9 +126,9 @@ impl WASMDataPoint {
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(&self) -> String {
-        self.0.encode_to_hex()
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
     }
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
@@ -150,9 +150,9 @@ impl WASMDataPoint {
         arr.copy_from_slice(&data);
         Self(DataPoint::from_bytes(&arr))
     }
-    #[wasm_bindgen(js_name = toBytes)]
-    pub fn to_bytes(&self) -> Option<Vec<u8>> {
-        self.0.to_bytes().map(|x| x.to_vec())
+    #[wasm_bindgen(js_name = asBytes)]
+    pub fn as_bytes(&self) -> Option<Vec<u8>> {
+        self.0.as_bytes().map(|x| x.to_vec())
     }
 }
 
@@ -172,9 +172,9 @@ impl WASMEncryptedPseudonym {
         EncryptedPseudonym::decode_from_slice(v.as_slice()).map(Self)
     }
 
-    #[wasm_bindgen(js_name = toBase64)]
-    pub fn to_base64(&self) -> String {
-        self.encode_to_base64()
+    #[wasm_bindgen(js_name = asBase64)]
+    pub fn as_base64(&self) -> String {
+        self.encode_as_base64()
     }
 
     #[wasm_bindgen(js_name = fromBase64)]
@@ -199,9 +199,9 @@ impl WASMEncryptedDataPoint {
         EncryptedDataPoint::decode_from_slice(v.as_slice()).map(Self)
     }
 
-    #[wasm_bindgen(js_name = toBase64)]
-    pub fn to_base64(&self) -> String {
-        self.encode_to_base64()
+    #[wasm_bindgen(js_name = asBase64)]
+    pub fn as_base64(&self) -> String {
+        self.encode_as_base64()
     }
 
     #[wasm_bindgen(js_name = fromBase64)]

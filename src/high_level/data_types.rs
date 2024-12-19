@@ -33,8 +33,8 @@ impl Pseudonym {
     pub fn encode(&self) -> [u8; 32] {
         self.value.encode()
     }
-    pub fn encode_to_hex(&self) -> String {
-        self.value.encode_to_hex()
+    pub fn encode_as_hex(&self) -> String {
+        self.value.encode_as_hex()
     }
     pub fn decode(bytes: &[u8; 32]) -> Option<Self> {
         GroupElement::decode(bytes).map(Self::from_point)
@@ -51,7 +51,7 @@ impl Pseudonym {
     pub fn from_bytes(data: &[u8; 16]) -> Self {
         Self::from_point(GroupElement::decode_lizard(data))
     }
-    pub fn to_bytes(&self) -> Option<[u8; 16]> {
+    pub fn as_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
     }
 }
@@ -65,8 +65,8 @@ impl DataPoint {
     pub fn encode(&self) -> [u8; 32] {
         self.value.encode()
     }
-    pub fn encode_to_hex(&self) -> String {
-        self.value.encode_to_hex()
+    pub fn encode_as_hex(&self) -> String {
+        self.value.encode_as_hex()
     }
     pub fn decode(bytes: &[u8; 32]) -> Option<Self> {
         GroupElement::decode(bytes).map(Self::from_point)
@@ -83,7 +83,7 @@ impl DataPoint {
     pub fn from_bytes(data: &[u8; 16]) -> Self {
         Self::from_point(GroupElement::decode_lizard(data))
     }
-    pub fn to_bytes(&self) -> Option<[u8; 16]> {
+    pub fn as_bytes(&self) -> Option<[u8; 16]> {
         self.value.encode_lizard()
     }
     pub fn bytes_into_multiple_messages(data: &[u8]) -> Vec<Self> {
@@ -115,8 +115,8 @@ pub trait Encrypted {
     {
         ElGamal::decode_from_slice(v).map(|x| Self::from_value(x))
     }
-    fn to_base64(&self) -> String {
-        self.value().encode_to_base64()
+    fn as_base64(&self) -> String {
+        self.value().encode_as_base64()
     }
     fn from_base64(s: &str) -> Option<Self>
     where

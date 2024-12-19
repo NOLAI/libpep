@@ -47,8 +47,8 @@ async function wasmInit() {
 
         const outputPseudo = document.getElementById('encrypted_pseudonym');
         const outputData = document.getElementById('encrypted_data_point');
-        outputPseudo.value = ciphertextPseudo.toBase64();
-        outputData.value = ciphertextData.toBase64();
+        outputPseudo.value = ciphertextPseudo.asBase64();
+        outputData.value = ciphertextData.asBase64();
     });
 
     document.getElementById('rerandomize').addEventListener('click', function() {
@@ -61,11 +61,11 @@ async function wasmInit() {
 
         let rerandomizedPseudo = libpep.rerandomizePseudonym(ciphertextPseudo, publicKey);
         const outputPseudo = document.getElementById('encrypted_pseudonym');
-        outputPseudo.value = rerandomizedPseudo.toBase64();
+        outputPseudo.value = rerandomizedPseudo.asBase64();
 
         let rerandomizedData = libpep.rerandomizeData(ciphertextData, publicKey);
         const outputData = document.getElementById('encrypted_data_point');
-        outputData.value = rerandomizedData.toBase64();
+        outputData.value = rerandomizedData.asBase64();
     });
 
     document.getElementById('transcrypt').addEventListener('click', function() {
@@ -84,11 +84,11 @@ async function wasmInit() {
 
         let pseudonym = libpep.pseudonymize(ciphertextPseudo, pseudoInfo);
         const outputPseudo = document.getElementById('new_encrypted_pseudonym');
-        outputPseudo.value = pseudonym.toBase64();
+        outputPseudo.value = pseudonym.asBase64();
 
         let dataPoint = libpep.rekeyData(ciphertextData, rekeyInfo);
         const outputData = document.getElementById('new_encrypted_data_point');
-        outputData.value = dataPoint.toBase64();
+        outputData.value = dataPoint.asBase64();
     });
 
     document.getElementById('decrypt').addEventListener('click', function() {
@@ -97,10 +97,10 @@ async function wasmInit() {
         if (!ciphertextPseudo) alert("Invalid ciphertext");
         let plaintext = libpep.decryptPseudonym(ciphertextPseudo, secretKey);
         const outputPseudo = document.getElementById('new_pseudonym');
-        if (plaintext.toBytes()) {
-            outputPseudo.value = new TextDecoder().decode(plaintext.toBytes());
+        if (plaintext.asBytes()) {
+            outputPseudo.value = new TextDecoder().decode(plaintext.asBytes());
         } else {
-            outputPseudo.value = plaintext.toHex();
+            outputPseudo.value = plaintext.asHex();
         }
 
         const inputData = document.getElementById('new_encrypted_data_point').value;
@@ -108,7 +108,7 @@ async function wasmInit() {
         if (!ciphertextData) alert("Invalid data ciphertext");
         let dataPoint = libpep.decryptData(ciphertextData, secretKey);
         const outputData = document.getElementById('new_data_point');
-        outputData.value = new TextDecoder().decode(dataPoint.toBytes());
+        outputData.value = new TextDecoder().decode(dataPoint.asBytes());
     });
 
     document.getElementById('reverse').addEventListener('click', function() {

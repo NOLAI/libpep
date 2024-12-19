@@ -103,7 +103,7 @@ impl GroupElement {
             .map(Self)
     }
     /// Encode to a hexadecimal string.
-    pub fn encode_to_hex(&self) -> String {
+    pub fn encode_as_hex(&self) -> String {
         hex::encode(self.encode())
     }
 
@@ -118,7 +118,7 @@ impl Serialize for GroupElement {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.encode_to_hex().as_str())
+        serializer.serialize_str(self.encode_as_hex().as_str())
     }
 }
 
@@ -268,7 +268,7 @@ pub trait ScalarTraits {
         retval
     }
     /// Encode the scalar to a 32-byte (or 64 character) hexadecimal string.
-    fn encode_to_hex(&self) -> String {
+    fn encode_as_hex(&self) -> String {
         hex::encode(self.encode())
     }
     fn raw(&self) -> &Scalar;
