@@ -9,32 +9,45 @@ use crate::wasm::elgamal::WASMElGamal;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::wasm_bindgen;
 
+/// A session secret key used to decrypt messages with.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionSecretKey)]
 pub struct WASMSessionSecretKey(pub WASMScalarNonZero);
+
+/// A global secret key from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 #[wasm_bindgen(js_name = GlobalSecretKey)]
 pub struct WASMGlobalSecretKey(pub WASMScalarNonZero);
+
+/// A session public key used to encrypt messages against, associated with a [`WASMSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = SessionPublicKey)]
 pub struct WASMSessionPublicKey(pub WASMGroupElement);
+
+/// A global public key associated with the [`WASMGlobalSecretKey`] from which session keys are derived.
+/// Can also be used to encrypt messages against, if no session key is available or using a session
+/// key may leak information.
 #[derive(Copy, Clone, Debug, From)]
 #[wasm_bindgen(js_name = GlobalPublicKey)]
 pub struct WASMGlobalPublicKey(pub WASMGroupElement);
 #[wasm_bindgen(js_class = "GlobalPublicKey")]
 impl WASMGlobalPublicKey {
+    /// Creates a new global public key from a group element.
     #[wasm_bindgen(constructor)]
     pub fn from_point(x: WASMGroupElement) -> Self {
         Self(GroupElement::from(x).into())
     }
+    /// Returns the group element associated with this public key.
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(self) -> WASMGroupElement {
         self.0
     }
+    /// Encodes the public key as a hexadecimal string.
     #[wasm_bindgen(js_name = asHex)]
     pub fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
+    /// Decodes a public key from a hexadecimal string.
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
         let x = GroupElement::decode_from_hex(hex)?;
@@ -43,9 +56,14 @@ impl WASMGlobalPublicKey {
 }
 // TODO: more methods required for keys?
 
+/// Pseudonymization secret used to derive a [`WASMReshuffleFactor`] from an pseudonymization context (see [`WASMPseudonymizationInfo`]).
+/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(PseudonymizationSecret);
+
+/// Pseudonymization secret used to derive a [`WASMRekeyFactor`] from an encryption context (see [`WASMRekeyInfo`]).
+/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = EncryptionSecret)]
 pub struct WASMEncryptionSecret(EncryptionSecret);
@@ -65,63 +83,86 @@ impl WASMEncryptionSecret {
     }
 }
 
+/// A pseudonym that can be used to identify a user
+/// within a specific context, which can be encrypted, rekeyed and reshuffled.
 #[wasm_bindgen(js_name = Pseudonym)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMPseudonym(pub(crate) Pseudonym);
+
+/// A data point which should not be identifiable
+/// and can be encrypted and rekeyed, but not reshuffled.
 #[wasm_bindgen(js_name = DataPoint)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMDataPoint(pub(crate) DataPoint);
 
+/// An encrypted pseudonym, which is an [`WASMElGamal`] encryption of a [`WASMPseudonym`].
 #[wasm_bindgen(js_name = EncryptedPseudonym)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMEncryptedPseudonym(pub(crate) EncryptedPseudonym);
+
+/// An encrypted data point, which is an [`WASMElGamal`] encryption of a [`WASMDataPoint`].
 #[wasm_bindgen(js_name = EncryptedDataPoint)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMEncryptedDataPoint(pub(crate) EncryptedDataPoint);
 
 #[wasm_bindgen(js_class = "Pseudonym")]
 impl WASMPseudonym {
+    /// Create from a [`WASMGroupElement`].
     #[wasm_bindgen(constructor)]
     pub fn from_point(x: WASMGroupElement) -> Self {
         Self(Pseudonym::from_point(GroupElement::from(x)))
     }
+    /// Convert to a [`WASMGroupElement`].
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(self) -> WASMGroupElement {
         self.0.value.into()
     }
+    /// Generate a random pseudonym.
     #[wasm_bindgen]
     pub fn random() -> Self {
         let mut rng = rand::thread_rng();
         Self(Pseudonym::random(&mut rng))
     }
+    /// Encode the pseudonym as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
+    /// Encode the pseudonym as a hexadecimal string.
     #[wasm_bindgen(js_name = asHex)]
     pub fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
+    /// Decode a pseudonym from a byte array.
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
         Pseudonym::decode_from_slice(bytes.as_slice()).map(Self)
     }
+    /// Decode a pseudonym from a hexadecimal string.
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
         Pseudonym::decode_from_hex(hex).map(Self)
     }
+    /// Decode a pseudonym from a 64-byte hash value
     #[wasm_bindgen(js_name = fromHash)]
     pub fn from_hash(v: Vec<u8>) -> Self {
         let mut arr = [0u8; 64];
         arr.copy_from_slice(&v);
         Pseudonym::from_hash(&arr).into()
     }
+    /// Decode from a byte array of length 16.
+    /// This is useful for creating a pseudonym from an existing identifier,
+    /// as it accepts any 16-byte value.
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let mut arr = [0u8; 16];
         arr.copy_from_slice(&data);
         Self(Pseudonym::from_bytes(&arr))
     }
+    /// Encode as a byte array of length 16.
+    /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
+    /// If the value was created using [`WASMPseudonym::from_bytes`], this will return a valid value,
+    /// but otherwise it will most likely return `None`.
     #[wasm_bindgen(js_name = asBytes)]
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
@@ -130,47 +171,63 @@ impl WASMPseudonym {
 
 #[wasm_bindgen(js_class = "DataPoint")]
 impl WASMDataPoint {
+    /// Create from a [`WASMGroupElement`].
     #[wasm_bindgen(constructor)]
     pub fn from_point(x: WASMGroupElement) -> Self {
         Self(DataPoint::from_point(GroupElement::from(x)))
     }
+    /// Convert to a [`WASMGroupElement`].
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(self) -> WASMGroupElement {
         self.0.value.into()
     }
+    /// Generate a random data point.
     #[wasm_bindgen]
     pub fn random() -> Self {
         let mut rng = rand::thread_rng();
         Self(DataPoint::random(&mut rng))
     }
+    /// Encode the data point as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
+    /// Encode the data point as a hexadecimal string.
     #[wasm_bindgen(js_name = asHex)]
     pub fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
+    /// Decode a data point from a byte array.
     #[wasm_bindgen]
     pub fn decode(bytes: Vec<u8>) -> Option<Self> {
         DataPoint::decode_from_slice(bytes.as_slice()).map(Self)
     }
+    /// Decode a data point from a hexadecimal string.
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
         DataPoint::decode_from_hex(hex).map(Self)
     }
+    /// Decode a data point from a 64-byte hash value
     #[wasm_bindgen(js_name = fromHash)]
     pub fn from_hash(v: Vec<u8>) -> Self {
         let mut arr = [0u8; 64];
         arr.copy_from_slice(&v);
         DataPoint::from_hash(&arr).into()
     }
+    /// Decode from a byte array of length 16.
+    /// This is useful for encoding data points,
+    /// as it accepts any 16-byte value.
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let mut arr = [0u8; 16];
         arr.copy_from_slice(&data);
         Self(DataPoint::from_bytes(&arr))
     }
+
+    /// Encode as a byte array of length 16.
+    /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
+    /// If the value was created using [`WASMDataPoint::from_bytes`], this will return a valid value,
+    /// but otherwise it will most likely return `None`.
     #[wasm_bindgen(js_name = asBytes)]
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
@@ -179,25 +236,27 @@ impl WASMDataPoint {
 
 #[wasm_bindgen(js_class = "EncryptedPseudonym")]
 impl WASMEncryptedPseudonym {
+    /// Create from an [`WASMElGamal`].
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMElGamal) -> Self {
         Self(EncryptedPseudonym::from(ElGamal::from(x)))
     }
-
+    /// Encode the encrypted pseudonym as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
+    /// Decode an encrypted pseudonym from a byte array.
     #[wasm_bindgen]
     pub fn decode(v: Vec<u8>) -> Option<Self> {
         EncryptedPseudonym::decode_from_slice(v.as_slice()).map(Self)
     }
-
+    /// Encode the encrypted pseudonym as a base64 string.
     #[wasm_bindgen(js_name = asBase64)]
     pub fn as_base64(&self) -> String {
         self.encode_as_base64()
     }
-
+    /// Decode an encrypted pseudonym from a base64 string.
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<Self> {
         EncryptedPseudonym::from_base64(s).map(Self)
@@ -206,31 +265,34 @@ impl WASMEncryptedPseudonym {
 
 #[wasm_bindgen(js_class = "EncryptedDataPoint")]
 impl WASMEncryptedDataPoint {
+    /// Create from an [`WASMElGamal`].
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMElGamal) -> Self {
         Self(EncryptedDataPoint::from(ElGamal::from(x)))
     }
-
+    /// Encode the encrypted data point as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
+    /// Decode an encrypted data point from a byte array.
     #[wasm_bindgen]
     pub fn decode(v: Vec<u8>) -> Option<Self> {
         EncryptedDataPoint::decode_from_slice(v.as_slice()).map(Self)
     }
-
+    /// Encode the encrypted data point as a base64 string.
     #[wasm_bindgen(js_name = asBase64)]
     pub fn as_base64(&self) -> String {
         self.encode_as_base64()
     }
-
+    /// Decode an encrypted data point from a base64 string.
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<Self> {
         EncryptedDataPoint::from_base64(s).map(Self)
     }
 }
 
+/// A global key pair consisting of a public key and a secret key.
 // We cannot return a tuple from a wasm_bindgen function, so we return a struct instead
 #[derive(Copy, Clone, Debug)]
 #[wasm_bindgen(js_name = GlobalKeyPair)]
@@ -239,6 +301,7 @@ pub struct WASMGlobalKeyPair {
     pub secret: WASMGlobalSecretKey,
 }
 
+/// A session key pair consisting of a public key and a secret key.
 #[derive(Copy, Clone, Debug)]
 #[wasm_bindgen(js_name = SessionKeyPair)]
 pub struct WASMSessionKeyPair {
@@ -246,7 +309,7 @@ pub struct WASMSessionKeyPair {
     pub secret: WASMSessionSecretKey,
 }
 
-/// Generate a new global key pair
+/// Generate a new global key pair.
 #[wasm_bindgen(js_name = makeGlobalKeys)]
 pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
     let mut rng = rand::thread_rng();
@@ -257,7 +320,7 @@ pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
     }
 }
 
-/// Generate a subkey from a global secret key, a context, and an encryption secret
+/// Generate session keys from a [`WASMGlobalSecretKey`], an encryption context and an [`WASMEncryptionSecret`].
 #[wasm_bindgen(js_name = makeSessionKeys)]
 pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKey,
@@ -275,7 +338,7 @@ pub fn wasm_make_session_keys(
     }
 }
 
-/// Encrypt a pseudonym
+/// Encrypt a pseudonym using a session public key.
 #[wasm_bindgen(js_name = encryptPseudonym)]
 pub fn wasm_encrypt_pseudonym(
     message: &WASMPseudonym,
@@ -289,7 +352,7 @@ pub fn wasm_encrypt_pseudonym(
     ))
 }
 
-/// Decrypt an encrypted pseudonym
+/// Decrypt an encrypted pseudonym using a session secret key.
 #[wasm_bindgen(js_name = decryptPseudonym)]
 pub fn wasm_decrypt_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
@@ -301,7 +364,7 @@ pub fn wasm_decrypt_pseudonym(
     ))
 }
 
-/// Encrypt a data point
+/// Encrypt a data point using a session public key.
 #[wasm_bindgen(js_name = encryptData)]
 pub fn wasm_encrypt_data(
     message: &WASMDataPoint,
@@ -315,7 +378,7 @@ pub fn wasm_encrypt_data(
     ))
 }
 
-/// Decrypt an encrypted data point
+/// Decrypt an encrypted data point using a session secret key.
 #[wasm_bindgen(js_name = decryptData)]
 pub fn wasm_decrypt_data(
     encrypted: &WASMEncryptedDataPoint,
@@ -327,16 +390,20 @@ pub fn wasm_decrypt_data(
     ))
 }
 
+/// High-level type for the factor used to [`wasm_rerandomize`](crate::wasm::primitives::wasm_rerandomize) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[wasm_bindgen(js_name = RerandomizeFactor)]
 pub struct WASMRerandomizeFactor(RerandomizeFactor);
+/// High-level type for the factor used to [`wasm_reshuffle`](crate::wasm::primitives::wasm_reshuffle) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[wasm_bindgen(js_name = ReshuffleFactor)]
 pub struct WASMReshuffleFactor(ReshuffleFactor);
+/// High-level type for the factor used to [`wasm_rekey`](crate::wasm::primitives::wasm_rekey) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[wasm_bindgen(js_name = RekeyFactor)]
 pub struct WASMRekeyFactor(RekeyFactor);
 
+/// Rerandomize an encrypted pseudonym using a random factor.
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizePseudonym)]
 pub fn wasm_rerandomize_encrypted_pseudonym(
@@ -349,6 +416,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     ))
 }
 
+/// Rerandomize an encrypted data point using a random factor.
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizeData)]
 pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEncryptedDataPoint {
@@ -359,6 +427,7 @@ pub fn wasm_rerandomize_encrypted(encrypted: &WASMEncryptedDataPoint) -> WASMEnc
     ))
 }
 
+/// Rerandomize an encrypted pseudonym using a random factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonym)]
 pub fn wasm_rerandomize_encrypted_pseudonym(
@@ -373,6 +442,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     ))
 }
 
+/// Rerandomize an encrypted data point using a random factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeData)]
 pub fn wasm_rerandomize_encrypted(
@@ -387,6 +457,7 @@ pub fn wasm_rerandomize_encrypted(
     ))
 }
 
+/// Rerandomize a global encrypted pseudonym using a random factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymGlobal)]
 pub fn wasm_rerandomize_encrypted_pseudonym_global(
@@ -401,6 +472,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_global(
     ))
 }
 
+/// Rerandomize a global encrypted data point using a random factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataGlobal)]
 pub fn wasm_rerandomize_encrypted_global(
@@ -415,6 +487,7 @@ pub fn wasm_rerandomize_encrypted_global(
     ))
 }
 
+/// Rerandomize an encrypted pseudonym using a known factor.
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_known(
@@ -427,6 +500,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     ))
 }
 
+/// Rerandomize an encrypted data point using a known factor.
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = rerandomizeDataKnown)]
 pub fn wasm_rerandomize_encrypted_known(
@@ -439,6 +513,7 @@ pub fn wasm_rerandomize_encrypted_known(
     ))
 }
 
+/// Rerandomize an encrypted pseudonym using a known factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_known(
@@ -453,6 +528,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     ))
 }
 
+/// Rerandomize an encrypted data point using a known factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataKnown)]
 pub fn wasm_rerandomize_encrypted_known(
@@ -467,6 +543,7 @@ pub fn wasm_rerandomize_encrypted_known(
     ))
 }
 
+/// Rerandomize a global encrypted pseudonym using a known factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizePseudonymGlobalKnown)]
 pub fn wasm_rerandomize_encrypted_pseudonym_global_known(
@@ -481,6 +558,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_global_known(
     ))
 }
 
+/// Rerandomize a global encrypted data point using a known factor.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rerandomizeDataGlobalKnown)]
 pub fn wasm_rerandomize_encrypted_global_known(
@@ -495,6 +573,7 @@ pub fn wasm_rerandomize_encrypted_global_known(
     ))
 }
 
+/// High-level type for the factors used to [`rsk`](crate::wasm::primitives::rsk) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
 #[wasm_bindgen(js_name = RSKFactors)]
 pub struct WASMRSKFactors {

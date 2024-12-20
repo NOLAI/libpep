@@ -8,7 +8,7 @@ use crate::high_level::ops::*;
 use crate::high_level::utils::make_rekey_factor;
 use rand_core::{CryptoRng, RngCore};
 
-/// A PEP transcryptor system that can [transcrypt] and [rekey] data, based on
+/// A PEP transcryptor system that can [pseudonymize] and [rekey] data, based on
 /// a pseudonymisation secret, a rekeying secret and a blinding factor.
 #[derive(Clone)]
 pub struct PEPSystem {

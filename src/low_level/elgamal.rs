@@ -23,6 +23,7 @@ pub struct ElGamal {
 }
 
 impl ElGamal {
+    /// Decode an ElGamal ciphertext from a byte array.
     pub fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self> {
         Some(Self {
             gb: GroupElement::decode_from_slice(&v[0..32])?,
@@ -31,6 +32,7 @@ impl ElGamal {
             gy: GroupElement::decode_from_slice(&v[64..96])?,
         })
     }
+    /// Decode an ElGamal ciphertext from a slice of bytes.
     pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != ELGAMAL_LENGTH {
             None
@@ -41,6 +43,7 @@ impl ElGamal {
         }
     }
 
+    /// Encode an ElGamal ciphertext as a byte array.
     pub fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
         let mut retval = [0u8; ELGAMAL_LENGTH];
         retval[0..32].clone_from_slice(self.gb.encode().as_ref());
@@ -50,9 +53,11 @@ impl ElGamal {
         retval
     }
 
+    /// Encode an ElGamal ciphertext as a base64 string.
     pub fn encode_as_base64(&self) -> String {
         general_purpose::URL_SAFE.encode(self.encode())
     }
+    /// Decode an ElGamal ciphertext from a base64 string.
     pub fn decode_from_base64(s: &str) -> Option<Self> {
         general_purpose::URL_SAFE
             .decode(s)
