@@ -1,6 +1,6 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "The WebAssembly version of the libpep library",
   "repository": {
     "type": "git",
@@ -35,10 +35,12 @@
   },
   "type": "module",
   "module": "pkg/libpep.js",
+
   "files": [
     "pkg/libpep_bg.wasm",
     "pkg/libpep_bg.wasm.d.ts",
     "pkg/libpep.d.ts",
+    "pkg/libpep_bg.js",
     "pkg/libpep.js",
     "pkg/package.json",
     "pkg-web/libpep_bg.wasm",
