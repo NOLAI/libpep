@@ -1,4 +1,4 @@
-//! High-level `PEPSystem`s and `PEPClient`s.
+//! High-level [`PEPSystem`]s and [`PEPClient`]s.
 
 use crate::distributed::key_blinding::*;
 use crate::high_level::contexts::*;
@@ -8,7 +8,7 @@ use crate::high_level::ops::*;
 use crate::high_level::utils::make_rekey_factor;
 use rand_core::{CryptoRng, RngCore};
 
-/// A PEP transcryptor system that can [transcrypt](transcrypt) and [rekey](rekey) data, based on
+/// A PEP transcryptor system that can [transcrypt] and [rekey] data, based on
 /// a pseudonymisation secret, a rekeying secret and a blinding factor.
 #[derive(Clone)]
 pub struct PEPSystem {

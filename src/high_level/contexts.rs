@@ -1,6 +1,6 @@
-//! Specification of pseudonymization and encryption contexts and transcryption between them.
-//! Based on a simple string representation of pseudonymization and encryption contexts, this module
-//! provides the necessary types to describe transcryption between different contexts.
+//! Specification of [PseudonymizationContext]s and [EncryptionContext]s and transcryption between them.
+//! Based on a simple string representations, this module provides the necessary types to describe
+//! transcryption between different contexts.
 
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
@@ -88,17 +88,17 @@ impl EncryptionContext {
     }
 }
 
-/// High-level type for the factor used to [`rerandomize`] an [ElGamal] ciphertext.
+/// High-level type for the factor used to [`rerandomize`](crate::low_level::primitives::rerandomize) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
-/// High-level type for the factor used to [`reshuffle`] an [ElGamal] ciphertext.
+/// High-level type for the factor used to [`reshuffle`](crate::low_level::primitives::reshuffle) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
-/// High-level type for the factor used to [`rekey`] an [ElGamal] ciphertext.
+/// High-level type for the factor used to [`rekey`](crate::low_level::primitives::rekey) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RekeyFactor(pub(crate) ScalarNonZero);
 
-/// High-level type for the factors used to [`rsk`] an [ElGamal] ciphertext.
+/// High-level type for the factors used to [`rsk`](crate::low_level::primitives::rsk) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct RSKFactors {
     pub s: ReshuffleFactor,
@@ -108,12 +108,12 @@ pub struct RSKFactors {
 /// The information required to perform n-PEP pseudonymization from one encryption and pseudonymization
 /// context to another.
 /// The pseudonymization info consists of a reshuffle and rekey factor.
-/// For efficiency, we do not actually use the [`rsk2`] operation, but instead use the regular [`rsk`] operation
+/// For efficiency, we do not actually use the [`rsk2`](crate::low_level::primitives::rsk2) operation, but instead use the regular [`rsk`](crate::low_level::primitives::rsk) operation
 /// with precomputed reshuffle and rekey factors, which is equivalent but more efficient.
 pub type PseudonymizationInfo = RSKFactors;
 
 /// The information required to perform n-PEP rekeying from one encryption to another.
-/// For efficiency, we do not actually use the [`rekey2`] operation, but instead use the regular [`rekey`] operation
+/// For efficiency, we do not actually use the [`rekey2`](crate::low_level::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::low_level::primitives::rekey) operation
 /// with a precomputed rekey factor, which is equivalent but more efficient.
 pub type RekeyInfo = RekeyFactor;
 impl PseudonymizationInfo {

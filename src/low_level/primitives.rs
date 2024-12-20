@@ -1,4 +1,4 @@
-//! PEP primitives for rekeying, reshuffling, rerandomization of [ElGamal] ciphertexts, their
+//! PEP primitives for [rekey]ing, [reshuffle]ing, [rerandomize]ation of [ElGamal] ciphertexts, their
 //! transitive and reversible n-PEP extensions, and combined versions.
 
 use crate::internal::arithmetic::*;

@@ -1,4 +1,4 @@
-//! High-level n-PEP operations for encryption, decryption and transcryption, including batch
+//! High-level n-PEP operations for [encrypt]ion, [decrypt]ion and [transcrypt]ion, including batch
 //! transcryption and rerandomization.
 
 use crate::high_level::contexts::*;

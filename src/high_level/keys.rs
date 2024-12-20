@@ -107,10 +107,10 @@ impl SecretKey for SessionSecretKey {
 
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 pub type Secret = Box<[u8]>;
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationContext`] (see [`PseudonymizationInfo`]).
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`](crate::high_level::contexts::ReshuffleFactor) from a [`PseudonymizationContext`](crate::high_level::contexts::PseudonymizationContext) (see [`PseudonymizationInfo`](crate::high_level::contexts::PseudonymizationInfo)).
 #[derive(Clone, Debug, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
-/// Encryption secret used to derive a [`RekeyFactor`] from an [`EncryptionContext`] (see [`RekeyInfo`]).
+/// Encryption secret used to derive a [`RekeyFactor`](crate::high_level::contexts::RekeyFactor) from an [`EncryptionContext`] (see [`RekeyInfo`](crate::high_level::contexts::RekeyInfo)).
 #[derive(Clone, Debug, From)]
 pub struct EncryptionSecret(pub(crate) Secret);
 impl PseudonymizationSecret {

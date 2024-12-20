@@ -152,10 +152,21 @@ pub trait Encryptable {
     /// Encode as a byte array of length 16.
     /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
     /// See [`GroupElement::encode_lizard`].
-    /// If the value was created using [`Encoding::from_bytes`], this will return a valid value,
+    /// If the value was created using [`Encryptable::from_bytes`], this will return a valid value,
     /// but otherwise it will most likely return `None`.
     fn as_bytes(&self) -> Option<[u8; 16]> {
         self.value().encode_lizard()
+    }
+    /// Create multiple messages from a byte array.
+    /// TODO: remove this method, as it cannot handle data that is not a multiple of 16 bytes and padding should generally not belong in this library.
+    #[deprecated]
+    fn bytes_into_multiple_messages(data: &[u8]) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        data.chunks(16)
+            .map(|x| Self::from_bytes(x.try_into().unwrap()))
+            .collect()
     }
 }
 impl Encryptable for Pseudonym {

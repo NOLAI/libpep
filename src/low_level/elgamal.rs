@@ -1,4 +1,4 @@
-//! ElGamal encryption and decryption.
+//! ElGamal [encrypt]ion and [decrypt]ion.
 
 use crate::internal::arithmetic::*;
 use base64::engine::general_purpose;

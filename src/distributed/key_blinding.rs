@@ -211,8 +211,8 @@ pub fn make_session_key(
 
 /// Setup a distributed system with a global public key, a blinded global secret key and a list of
 /// blinding factors.
-/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`]s), the global public key
-/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`]s.
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
+/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
 pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
