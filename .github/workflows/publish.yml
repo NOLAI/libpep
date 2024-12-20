@@ -2,7 +2,7 @@ name: Publish new version
 
 on:
   release:
-    types: [created, published]
+    types: [created]
 
 jobs:
   semver-checks:
@@ -16,7 +16,6 @@ jobs:
   publish-crate:
     runs-on: ubuntu-latest
     needs: semver-checks
-    if: github.event.release.action == 'published'
 
     name: Build and publish to crates.io
     steps:
@@ -27,7 +26,6 @@ jobs:
   publish-npm:
     runs-on: ubuntu-latest
     needs: semver-checks
-    if: github.event.release.action == 'published'
     permissions:
       contents: read
       id-token: write
