@@ -8,6 +8,8 @@ use crate::high_level::ops::*;
 use crate::high_level::utils::make_rekey_factor;
 use rand_core::{CryptoRng, RngCore};
 
+/// A PEP transcryptor system that can [transcrypt](transcrypt) and [rekey](rekey) data, based on
+/// a pseudonymisation secret, a rekeying secret and a blinding factor.
 #[derive(Clone)]
 pub struct PEPSystem {
     pub(crate) pseudonymisation_secret: PseudonymizationSecret,
@@ -15,6 +17,7 @@ pub struct PEPSystem {
     blinding_factor: BlindingFactor,
 }
 impl PEPSystem {
+    /// Create a new PEP system with the given secrets and blinding factor.
     pub fn new(
         pseudonymisation_secret: PseudonymizationSecret,
         rekeying_secret: EncryptionSecret,
@@ -26,10 +29,12 @@ impl PEPSystem {
             blinding_factor,
         }
     }
+    /// Generate a session key share for the given encryption context.
     pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
         let k = make_rekey_factor(&self.rekeying_secret, context);
         make_session_key_share(&k.0, &self.blinding_factor)
     }
+    /// Generate a rekey info to rekey from a given [`EncryptionContext`] to another.
     pub fn rekey_info(
         &self,
         from_enc: &EncryptionContext,
@@ -37,6 +42,8 @@ impl PEPSystem {
     ) -> RekeyInfo {
         RekeyInfo::new(from_enc, to_enc, &self.rekeying_secret)
     }
+    /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationContext`]
+    /// and [`EncryptionContext`] to another.
     pub fn pseudonymization_info(
         &self,
         from_pseudo: &PseudonymizationContext,
@@ -53,6 +60,7 @@ impl PEPSystem {
             &self.rekeying_secret,
         )
     }
+    /// Rekey an [`EncryptedDataPoint`] from one encryption context to another, using [`RekeyInfo`].
     pub fn rekey(
         &self,
         encrypted: &EncryptedDataPoint,
@@ -60,6 +68,8 @@ impl PEPSystem {
     ) -> EncryptedDataPoint {
         rekey(encrypted, rekey_info)
     }
+    /// Pseudonymize an [`EncryptedPseudonym`] from one pseudonymization and encryption context to
+    /// another, using [`PseudonymizationInfo`].
     pub fn pseudonymize(
         &self,
         encrypted: &EncryptedPseudonym,
@@ -68,6 +78,8 @@ impl PEPSystem {
         pseudonymize(encrypted, pseudonymization_info)
     }
 
+    /// Rekey a batch of [`EncryptedDataPoint`]s from one encryption context to another, using
+    /// [`RekeyInfo`].
     pub fn rekey_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut [EncryptedDataPoint],
@@ -77,6 +89,8 @@ impl PEPSystem {
         rekey_batch(encrypted, rekey_info, rng)
     }
 
+    /// Pseudonymize a batch of [`EncryptedPseudonym`]s from one pseudonymization and encryption
+    /// context to another, using [`PseudonymizationInfo`].
     pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut [EncryptedPseudonym],
@@ -86,6 +100,8 @@ impl PEPSystem {
         pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
+    /// Transcrypt (rekey or pseudonymize) an encrypted message from one pseudonymization and
+    /// encryption context to another, using [`TranscryptionInfo`].
     pub fn transcrypt<E: Encrypted>(
         &self,
         encrypted: &E,
@@ -94,6 +110,8 @@ impl PEPSystem {
         transcrypt(encrypted, transcryption_info)
     }
 
+    /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedEntityDataPair`],
+    /// from one pseudonymization and encryption context to another, using [`TranscryptionInfo`].
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut Box<[EncryptedEntityDataPair]>,
@@ -103,12 +121,14 @@ impl PEPSystem {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 }
+/// A PEP client that can encrypt and decrypt data, based on a session key pair.
 #[derive(Clone)]
 pub struct PEPClient {
     pub session_public_key: SessionPublicKey,
     pub(crate) session_secret_key: SessionSecretKey,
 }
 impl PEPClient {
+    /// Create a new PEP client from the given session key shares.
     pub fn new(
         blinded_global_private_key: BlindedGlobalSecretKey,
         session_key_shares: &[SessionKeyShare],
@@ -119,9 +139,11 @@ impl PEPClient {
             session_secret_key: secret,
         }
     }
+    /// Decrypt an encrypted message.
     pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
         decrypt(encrypted, &self.session_secret_key)
     }
+    /// Encrypt a message with the session public key.
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
         message: &E,
@@ -131,14 +153,20 @@ impl PEPClient {
     }
 }
 
+/// An offline PEP client that can encrypt data, based on a global public key.
+/// This client is used for encryption only, and does not have a session key pair.
+/// This can be useful when encryption is done offline and no session key pair is available,
+/// or when using a session key would leak information.
 #[derive(Clone)]
 pub struct OfflinePEPClient {
     pub global_public_key: GlobalPublicKey,
 }
 impl OfflinePEPClient {
+    /// Create a new offline PEP client from the given global public key.
     pub fn new(global_public_key: GlobalPublicKey) -> Self {
         Self { global_public_key }
     }
+    /// Encrypt a message with the global public key.
     pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
         &self,
         message: &E,

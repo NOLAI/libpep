@@ -8,17 +8,23 @@ use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
+/// A global public key associated with the [`GlobalSecretKey`] from which session keys are derived.
+/// Can also be used to encrypt messages against, if no session key is available or using a session
+/// key may leak information.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct GlobalPublicKey(pub GroupElement);
+/// A global secret key from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 pub struct GlobalSecretKey(pub(crate) ScalarNonZero);
 
-/// SESSION KEYS
+/// A session public key used to encrypt messages against, associated with a [`SessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct SessionPublicKey(pub GroupElement);
+/// A session secret key used to decrypt messages with.
 #[derive(Copy, Clone, Debug, From)]
 pub struct SessionSecretKey(pub(crate) ScalarNonZero);
 
+/// A trait for public keys, which can be encoded and decoded from byte arrays and hex strings.
 pub trait PublicKey {
     fn value(&self) -> &GroupElement;
     fn encode(&self) -> [u8; 32] {
@@ -37,6 +43,7 @@ pub trait PublicKey {
     where
         Self: Sized;
 }
+/// A trait for secret keys, for which we do not allow encoding as secret keys should not be shared.
 pub trait SecretKey {
     fn value(&self) -> &ScalarNonZero; // TODO should this be public (or only under the `insecure-methods` feature)?
 }
@@ -98,10 +105,12 @@ impl SecretKey for SessionSecretKey {
     }
 }
 
-/// TRANSCRYPTION SECRETS
-pub type Secret = Box<[u8]>; // Secrets are byte arrays of arbitrary length
+/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
+pub type Secret = Box<[u8]>;
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationContext`] (see [`PseudonymizationInfo`]).
 #[derive(Clone, Debug, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
+/// Encryption secret used to derive a [`RekeyFactor`] from an [`EncryptionContext`] (see [`RekeyInfo`]).
 #[derive(Clone, Debug, From)]
 pub struct EncryptionSecret(pub(crate) Secret);
 impl PseudonymizationSecret {
@@ -115,15 +124,19 @@ impl EncryptionSecret {
     }
 }
 
-/// Generate a new global key pair
+/// Generate a new global key pair.
 pub fn make_global_keys<R: RngCore + CryptoRng>(rng: &mut R) -> (GlobalPublicKey, GlobalSecretKey) {
-    let sk = ScalarNonZero::random(rng);
-    assert_ne!(sk, ScalarNonZero::one());
+    let sk = loop {
+        let sk = ScalarNonZero::random(rng);
+        if sk != ScalarNonZero::one() {
+            break sk;
+        }
+    };
     let pk = sk * G;
     (GlobalPublicKey(pk), GlobalSecretKey(sk))
 }
 
-/// Generate a subkey from a global secret key, a context, and an encryption secret
+/// Generate session keys from a [`GlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
 pub fn make_session_keys(
     global: &GlobalSecretKey,
     context: &EncryptionContext,

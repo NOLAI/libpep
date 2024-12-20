@@ -7,38 +7,61 @@ use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 
+/// A blinding factor used to blind a global secret key during system setup.
 #[derive(Copy, Clone, Debug)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
 
+/// A blinded global secret key, which is the global secret key blinded by the blinding factors from
+/// all transcryptors, making it impossible to see or derive other keys from it without cooperation
+/// of the transcryptors.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
 
+/// A session key share, which a part a session key provided by one transcryptor.
+/// By combining all session key shares and the [`BlindedGlobalSecretKey`], a session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct SessionKeyShare(pub(crate) ScalarNonZero);
+
+/// A trait for scalars that are safe to encode and decode since they do not need to remain absolutely secret.
 pub trait SafeScalar {
+    /// Create from a scalar.
     fn from(x: ScalarNonZero) -> Self;
+    /// Get the scalar value.
     fn value(&self) -> &ScalarNonZero;
+    /// Encode as a byte array.
+    /// See [`ScalarNonZero::encode`] for more information.
     fn encode(&self) -> [u8; 32] {
         self.value().encode()
     }
+    /// Decode from a byte array.
+    /// Returns `None` if the array is not 32 bytes long.
+    /// See [`ScalarNonZero::decode`] for more information.
     fn decode(bytes: &[u8; 32]) -> Option<Self>
     where
         Self: Sized,
     {
         ScalarNonZero::decode(bytes).map(Self::from)
     }
+    /// Decode from a slice of bytes.
+    /// Returns `None` if the slice is not 32 bytes long.
+    /// See [`ScalarNonZero::decode_from_slice`] for more information.
     fn decode_from_slice(slice: &[u8]) -> Option<Self>
     where
         Self: Sized,
     {
         ScalarNonZero::decode_from_slice(slice).map(Self::from)
     }
+    /// Decode from a hexadecimal string of 64 characters.
+    /// Returns `None` if the string is not 64 characters long.
+    /// See [`ScalarNonZero::decode_from_hex`] for more information.
     fn decode_from_hex(s: &str) -> Option<Self>
     where
         Self: Sized,
     {
         ScalarNonZero::decode_from_hex(s).map(Self::from)
     }
+    /// Encode as a hexadecimal string of 64 characters.
+    /// See [`ScalarNonZero::encode_as_hex`] for more information.
     fn encode_as_hex(&self) -> String {
         self.value().encode_as_hex()
     }
@@ -72,6 +95,7 @@ impl SafeScalar for SessionKeyShare {
     }
 }
 impl BlindingFactor {
+    /// Create a random blinding factor.
     pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
         let scalar = ScalarNonZero::random(rng);
         assert_ne!(scalar, ScalarNonZero::one());
@@ -146,6 +170,9 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
     }
 }
 
+/// Create a [`BlindedGlobalSecretKey`] from a [`GlobalSecretKey`] and a list of [`BlindingFactor`]s.
+/// Used during system setup to blind the global secret key.
+/// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 pub fn make_blinded_global_secret_key(
     global_secret_key: &GlobalSecretKey,
     blinding_factors: &[BlindingFactor],
@@ -160,6 +187,7 @@ pub fn make_blinded_global_secret_key(
     Some(BlindedGlobalSecretKey(y.0 * k))
 }
 
+/// Create a [`SessionKeyShare`] from a [`ScalarNonZero`] rekey factor and a [`BlindingFactor`].
 pub fn make_session_key_share(
     rekey_factor: &ScalarNonZero,
     blinding_factor: &BlindingFactor,
@@ -167,6 +195,7 @@ pub fn make_session_key_share(
     SessionKeyShare(rekey_factor * blinding_factor.0)
 }
 
+/// Reconstruct a session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
 pub fn make_session_key(
     blinded_global_secret_key: BlindedGlobalSecretKey,
     session_key_shares: &[SessionKeyShare],
@@ -180,6 +209,10 @@ pub fn make_session_key(
     (public, secret)
 }
 
+/// Setup a distributed system with a global public key, a blinded global secret key and a list of
+/// blinding factors.
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`]s), the global public key
+/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`]s.
 pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,

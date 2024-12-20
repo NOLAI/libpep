@@ -1,7 +1,7 @@
 use commandy_macros::*;
 use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationContext, TranscryptionInfo};
-use libpep::high_level::data_types::{Encrypted, EncryptedPseudonym, Pseudonym};
+use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
     make_global_keys, make_session_keys, EncryptionSecret, GlobalPublicKey, GlobalSecretKey,
     PseudonymizationSecret, PublicKey, SecretKey, SessionPublicKey, SessionSecretKey,

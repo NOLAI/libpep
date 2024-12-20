@@ -8,6 +8,7 @@ use sha2::Sha512;
 #[cfg(feature = "legacy-pep-repo-compatible")]
 use sha2::{Digest, Sha256};
 
+/// Derive a pseudonymisation factor from a secret and a context.
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
@@ -15,11 +16,13 @@ pub fn make_pseudonymisation_factor(
 ) -> ReshuffleFactor {
     ReshuffleFactor::from(make_factor("pseudonym", &secret.0, context))
 }
+/// Derive a rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
     RekeyFactor::from(make_factor("rekey", &secret.0, context))
 }
 
+/// Derive a factor from a secret and a context.
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 fn make_factor(typ: &str, secret: &Secret, context: &Context) -> ScalarNonZero {
     let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap(); // Use HMAC to prevent length extension attack
@@ -31,6 +34,7 @@ fn make_factor(typ: &str, secret: &Secret, context: &Context) -> ScalarNonZero {
     ScalarNonZero::decode_from_hash(&bytes)
 }
 
+/// Derive a pseudonymisation factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy-pep-repo-compatible")]
 pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
@@ -43,6 +47,7 @@ pub fn make_pseudonymisation_factor(
         &context.payload,
     ))
 }
+/// Derive a rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy-pep-repo-compatible")]
 pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext) -> RekeyFactor {
     RekeyFactor::from(make_factor(
@@ -53,6 +58,7 @@ pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext)
     ))
 }
 
+/// Derive a factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy-pep-repo-compatible")]
 fn make_factor(secret: &Secret, typ: u32, audience_type: u32, context: &Context) -> ScalarNonZero {
     let mut hasher_inner = Sha256::default(); // Use HMAC to prevent length extension attack
