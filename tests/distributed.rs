@@ -1,9 +1,11 @@
-use crate::distributed::key_blinding::{make_blinded_global_secret_key, BlindingFactor};
-use crate::distributed::systems::{PEPClient, PEPSystem};
-use crate::high_level::contexts::*;
-use crate::high_level::data_types::*;
-use crate::high_level::keys::*;
-use crate::internal::arithmetic::ScalarNonZero;
+use libpep::distributed::key_blinding::{
+    make_blinded_global_secret_key, BlindingFactor, SafeScalar,
+};
+use libpep::distributed::systems::{PEPClient, PEPSystem};
+use libpep::high_level::contexts::*;
+use libpep::high_level::data_types::*;
+use libpep::high_level::keys::*;
+use libpep::internal::arithmetic::ScalarNonZero;
 use rand_core::OsRng;
 
 #[test]
@@ -20,11 +22,11 @@ fn n_pep() {
         make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
 
     assert_eq!(
-        blinded_global_secret_key.0,
-        global_secret.0
+        *blinded_global_secret_key.value(),
+        global_secret.value()
             * blinding_factors
                 .iter()
-                .fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert())
+                .fold(ScalarNonZero::one(), |acc, x| acc * x.value().invert())
     );
 
     // Create systems

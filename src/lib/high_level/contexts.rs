@@ -93,7 +93,7 @@ impl EncryptionContext {
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 /// High-level type for the factor used to [`reshuffle`](crate::low_level::primitives::reshuffle) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
+pub struct ReshuffleFactor(pub ScalarNonZero);
 /// High-level type for the factor used to [`rekey`](crate::low_level::primitives::rekey) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RekeyFactor(pub(crate) ScalarNonZero);

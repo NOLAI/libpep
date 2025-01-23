@@ -1,4 +1,4 @@
-const {GroupElement, ScalarNonZero, ScalarCanBeZero} = require("../../../pkg");
+const {GroupElement, ScalarNonZero, ScalarCanBeZero} = require("../../pkg/libpep.js");
 
 test('GroupElement arithmetic', async () => {
     const a = GroupElement.fromHex("503f0bbed01007ad413d665131c48c4f92ad506704305873a2128f29430c2674");

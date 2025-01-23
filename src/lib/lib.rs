@@ -79,14 +79,3 @@ mod wasm {
     mod high_level;
     mod primitives;
 }
-
-#[cfg(test)]
-mod tests {
-    mod arithmetic;
-    mod distributed;
-    mod elgamal;
-    mod high_level;
-    #[cfg(feature = "legacy-pep-repo-compatible")]
-    mod legacy_pep_repo;
-    mod primitives;
-}

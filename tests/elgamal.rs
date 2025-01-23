@@ -1,5 +1,5 @@
-use crate::internal::arithmetic::{GroupElement, ScalarNonZero, G};
-use crate::low_level::elgamal::{decrypt, encrypt, ElGamal};
+use libpep::internal::arithmetic::{GroupElement, ScalarNonZero, G};
+use libpep::low_level::elgamal::{decrypt, encrypt, ElGamal};
 use rand_core::OsRng;
 
 #[test]

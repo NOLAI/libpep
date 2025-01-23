@@ -1,4 +1,4 @@
-const {GroupElement, ScalarNonZero, encrypt, decrypt} = require("../../../pkg");
+const {GroupElement, ScalarNonZero, encrypt, decrypt} = require("../../pkg/libpep.js");
 
 test('encryption decryption', async () => {
     const G = GroupElement.G();

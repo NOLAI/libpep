@@ -5,7 +5,7 @@ const {
     makeGlobalKeys,
     makeSessionKeys,
     pseudonymize, rekeyData, Pseudonym, PseudonymizationInfo, RekeyInfo, PseudonymizationSecret, EncryptionSecret
-} = require("../../../pkg");
+} = require("../../pkg/libpep.js");
 
 test('test high level', async () => {
     const globalKeys = makeGlobalKeys();

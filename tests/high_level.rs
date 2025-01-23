@@ -1,7 +1,7 @@
-use crate::high_level::contexts::*;
-use crate::high_level::data_types::*;
-use crate::high_level::keys::*;
-use crate::high_level::ops::*;
+use libpep::high_level::contexts::*;
+use libpep::high_level::data_types::*;
+use libpep::high_level::keys::*;
+use libpep::high_level::ops::*;
 use rand_core::OsRng;
 
 #[test]
