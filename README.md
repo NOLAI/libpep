@@ -29,11 +29,11 @@ Apart from a Rust crate, this library also contains a WASM library for usage in 
 For pseudonymization, the core operation is *reshuffle* with `s`.
 It modifies a main pseudonym with a factor `s` that is specific to a user (or user group) receiving the pseudonym.
 After applying a user specific factor `s`, a pseudonym is called a *local pseudonym*.
-The factor `s` is typically tied to the *access group* or *domain of a user*, which we call the *pseudonymization context*.
+The factor `s` is typically tied to the *access group* or *domain of a user*, which we call the *pseudonymization domain*.
 
 Using only a reshuffle is insufficient, as the pseudonym is still encrypted for a key the user does not possess.
 To allow a user to decrypt the encrypted pseudonym, a *rekey* with `k` is needed, in combination with a protocol to hand the user the secret key `k*y`.
-The factor `k` is typically tied to the *current session of a user*, which we call the *decryption context*.
+The factor `k` is typically tied to the *current session of a user*, which we call the *encryption context*.
 
 When the same encrypted pseudonym is used multiple times, rerandomize is applied every time.
 This way a binary compare of the encrypted pseudonym will not leak any information.
@@ -74,7 +74,7 @@ The wasm library can be tested using the Node.js `jest` framework, after compili
 The following features are available:
 - `wasm`: enables the WASM library.
 - `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
-- `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from contexts and secrets.
+- `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from domains, contexts and secrets.
 - `insecure-methods`: enables insecure methods, to be used with care.
 - `build-binary`: builds the `peppy` command-line tool to interact with the library (not recommended for production use).
 
