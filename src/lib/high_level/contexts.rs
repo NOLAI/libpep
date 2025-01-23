@@ -147,13 +147,13 @@ impl RekeyInfo {
         session_to: Option<&EncryptionContext>,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = if session_from.is_some() {
-            make_rekey_factor(encryption_secret, session_from.unwrap())
+        let k_from = if let Some(session_from) = session_from {
+            make_rekey_factor(encryption_secret, session_from)
         } else {
             RekeyFactor(ScalarNonZero::one())
         };
-        let k_to = if session_to.is_some() {
-            make_rekey_factor(encryption_secret, session_to.unwrap())
+        let k_to = if let Some(session_to) = session_to {
+            make_rekey_factor(encryption_secret, session_to)
         } else {
             RekeyFactor(ScalarNonZero::one())
         };
