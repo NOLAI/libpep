@@ -17,13 +17,13 @@ test('test high level', async () => {
     const pseudoSecret = new PseudonymizationSecret(secret);
     const encSecret = new EncryptionSecret(secret);
 
-    const pseudoContext1 = "context1";
-    const encContext1 = "session1";
-    const pseudoContext2 = "context2";
-    const encContext2 = "session2";
+    const domain1 = "domain1";
+    const session1 = "session1";
+    const domain2 = "domain2";
+    const session2 = "session2";
 
-    const session1Keys = makeSessionKeys(globalPrivateKey, encContext1, encSecret);
-    const session2Keys = makeSessionKeys(globalPrivateKey, encContext2, encSecret);
+    const session1Keys = makeSessionKeys(globalPrivateKey, session1, encSecret);
+    const session2Keys = makeSessionKeys(globalPrivateKey, session2, encSecret);
 
     const pseudo = Pseudonym.random();
     const encPseudo = encryptPseudonym(pseudo, session1Keys.public);
@@ -38,8 +38,8 @@ test('test high level', async () => {
     expect(pseudo.asHex()).toEqual(decPseudo.asHex());
     expect(data.asHex()).toEqual(decData.asHex());
 
-    const pseudoInfo = new PseudonymizationInfo(pseudoContext1, pseudoContext2, encContext1, encContext2, pseudoSecret, encSecret);
-    const rekeyInfo = new RekeyInfo(encContext1, encContext2, encSecret);
+    const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
+    const rekeyInfo = new RekeyInfo(session1, session2, encSecret);
 
     const rekeyed = rekeyData(encData, rekeyInfo);
     const rekeyedDec = decryptData(rekeyed, session2Keys.secret);

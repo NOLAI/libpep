@@ -2,7 +2,7 @@
 mod legacy_pep_repo_tests {
     use libpep::distributed::key_blinding::{make_session_key_share, BlindingFactor, SafeScalar};
     use libpep::distributed::systems::*;
-    use libpep::high_level::contexts::PseudonymizationContext;
+    use libpep::high_level::contexts::PseudonymizationDomain;
     use libpep::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
     use libpep::high_level::utils::make_pseudonymisation_factor;
     use libpep::internal::arithmetic::*;
@@ -29,7 +29,7 @@ mod legacy_pep_repo_tests {
         {
             let secret = hex::decode(secret_hex).unwrap();
             let pseudo_secret = PseudonymizationSecret::from(secret);
-            let context = PseudonymizationContext::from_audience(payload, *audience_type as u32);
+            let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
             let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
             assert_eq!(
                 pseudo_factor.0.encode_as_hex().to_ascii_uppercase(),

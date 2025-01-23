@@ -42,20 +42,20 @@ fn n_pep() {
         .collect::<Vec<_>>();
 
     // Setup demo contexts
-    let pc_a = PseudonymizationContext::from("user-a");
-    let pc_b = PseudonymizationContext::from("user-b");
+    let domain_a = PseudonymizationDomain::from("user-a");
+    let domain_b = PseudonymizationDomain::from("user-b");
 
-    let ec_a1 = EncryptionContext::from("session-a1");
-    let ec_b1 = EncryptionContext::from("session-b1");
+    let session_a1 = EncryptionContext::from("session-a1");
+    let session_b1 = EncryptionContext::from("session-b1");
 
     // Get client session key shares
     let sks_a1 = systems
         .iter()
-        .map(|system| system.session_key_share(&ec_a1))
+        .map(|system| system.session_key_share(&session_a1))
         .collect::<Vec<_>>();
     let sks_b1 = systems
         .iter()
-        .map(|system| system.session_key_share(&ec_b1))
+        .map(|system| system.session_key_share(&session_b1))
         .collect::<Vec<_>>();
 
     // Create clients
@@ -70,12 +70,17 @@ fn n_pep() {
     let enc_data = client_a.encrypt(&data, rng);
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
-        let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
+        let pseudo_info = system.pseudonymization_info(
+            &domain_a,
+            &domain_b,
+            Some(&session_a1),
+            Some(&session_b1),
+        );
         system.transcrypt(&acc, &pseudo_info)
     });
 
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
-        let rekey_info = system.rekey_info(&ec_a1, &ec_b1);
+        let rekey_info = system.rekey_info(Some(&session_a1), Some(&session_b1));
         system.rekey(&acc, &rekey_info)
     });
 
@@ -84,14 +89,19 @@ fn n_pep() {
 
     assert_eq!(data, dec_data);
 
-    if pc_a == pc_b {
+    if domain_a == domain_b {
         assert_eq!(pseudonym, dec_pseudo);
     } else {
         assert_ne!(pseudonym, dec_pseudo);
     }
 
     let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
-        let pseudo_info = system.pseudonymization_info(&pc_a, &pc_b, &ec_a1, &ec_b1);
+        let pseudo_info = system.pseudonymization_info(
+            &domain_a,
+            &domain_b,
+            Some(&session_a1),
+            Some(&session_b1),
+        );
         system.pseudonymize(&acc, &pseudo_info.reverse())
     });
 

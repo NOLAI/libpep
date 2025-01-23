@@ -1,7 +1,7 @@
 [package]
 name = "libpep"
 edition = "2021"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
 repository = "https://github.com/NOLAI/libpep"
@@ -12,10 +12,6 @@ categories = ["command-line-interface"]
 description = "implementation of PEP primitives, offering pseudonimization and encryption interfaces"
 readme = "README.md"
 
-[lib]
-name = "libpep"
-crate-type = ["cdylib", "rlib"]
-
 [features]
 default = ["build-binary"]
 elgamal3 = []
@@ -23,6 +19,11 @@ wasm = ["wasm-bindgen", "getrandom"]
 legacy-pep-repo-compatible = []
 insecure-methods = []
 build-binary = ["buildinfy","commandy","commandy_macros"]
+
+[lib]
+name = "libpep"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib/lib.rs"
 
 [[bin]]
 name = "peppy"

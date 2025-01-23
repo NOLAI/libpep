@@ -11,15 +11,15 @@ fn test_high_level_flow() {
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
-    let pseudo_context1 = PseudonymizationContext::from("context1");
-    let enc_context1 = EncryptionContext::from("session1");
-    let pseudo_context2 = PseudonymizationContext::from("context2");
-    let enc_context2 = EncryptionContext::from("session2");
+    let domain1 = PseudonymizationDomain::from("domain1");
+    let session1 = EncryptionContext::from("session1");
+    let domain2 = PseudonymizationDomain::from("context2");
+    let session2 = EncryptionContext::from("session2");
 
     let (session1_public, session1_secret) =
-        make_session_keys(&global_secret, &enc_context1, &enc_secret);
+        make_session_keys(&global_secret, &session1, &enc_secret);
     let (_session2_public, session2_secret) =
-        make_session_keys(&global_secret, &enc_context2, &enc_secret);
+        make_session_keys(&global_secret, &session2, &enc_secret);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &session1_public, rng);
@@ -49,10 +49,10 @@ fn test_high_level_flow() {
     }
 
     let pseudo_info = PseudonymizationInfo::new(
-        &pseudo_context1,
-        &pseudo_context2,
-        &enc_context1,
-        &enc_context2,
+        &domain1,
+        &domain2,
+        Some(&session1),
+        Some(&session2),
         &pseudo_secret,
         &enc_secret,
     );
@@ -80,15 +80,15 @@ fn test_batch() {
     let pseudo_secret = PseudonymizationSecret::from("secret".into());
     let enc_secret = EncryptionSecret::from("secret".into());
 
-    let pseudo_context1 = PseudonymizationContext::from("context1");
-    let enc_context1 = EncryptionContext::from("session1");
-    let pseudo_context2 = PseudonymizationContext::from("context2");
-    let enc_context2 = EncryptionContext::from("session2");
+    let domain1 = PseudonymizationDomain::from("domain1");
+    let session1 = EncryptionContext::from("session1");
+    let domain2 = PseudonymizationDomain::from("domain2");
+    let session2 = EncryptionContext::from("session2");
 
     let (session1_public, _session1_secret) =
-        make_session_keys(&global_secret, &enc_context1, &enc_secret);
+        make_session_keys(&global_secret, &session1, &enc_secret);
     let (_session2_public, _session2_secret) =
-        make_session_keys(&global_secret, &enc_context2, &enc_secret);
+        make_session_keys(&global_secret, &session2, &enc_secret);
 
     let mut data_points = vec![];
     let mut pseudonyms = vec![];
@@ -98,10 +98,10 @@ fn test_batch() {
     }
 
     let transcryption_info = TranscryptionInfo::new(
-        &pseudo_context1,
-        &pseudo_context2,
-        &enc_context1,
-        &enc_context2,
+        &domain1,
+        &domain2,
+        Some(&session1),
+        Some(&session2),
         &pseudo_secret,
         &enc_secret,
     );

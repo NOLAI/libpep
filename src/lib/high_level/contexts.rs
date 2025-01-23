@@ -1,6 +1,6 @@
-//! Specification of [PseudonymizationContext]s and [EncryptionContext]s and transcryption between them.
+//! Specification of [PseudonymizationDomain]s and [EncryptionContext]s and transcryption between them.
 //! Based on a simple string representations, this module provides the necessary types to describe
-//! transcryption between different contexts.
+//! transcryption between different domains and sessions.
 
 use crate::high_level::keys::{EncryptionSecret, PseudonymizationSecret};
 use crate::high_level::utils::{make_pseudonymisation_factor, make_rekey_factor};
@@ -8,59 +8,56 @@ use crate::internal::arithmetic::ScalarNonZero;
 use derive_more::{Deref, From};
 use serde::{Deserialize, Serialize};
 
-/// Contexts are described by simple strings of arbitrary length.
-pub type Context = String;
-
-/// Pseudonymization contexts are used to describe the domain in which pseudonyms exist (typically,
+/// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
 /// a user's role or usergroup).
-/// With the `legacy-pep-repo-compatible` feature enabled, pseudonymization contexts also include
+/// With the `legacy-pep-repo-compatible` feature enabled, pseudonymization domains also include
 /// an `audience_type` field, which is used to distinguish between different types of audiences.
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 #[cfg(feature = "legacy-pep-repo-compatible")]
-pub struct PseudonymizationContext {
+pub struct PseudonymizationDomain {
     #[deref]
-    pub payload: Context,
+    pub payload: String,
     pub audience_type: u32,
 }
-/// Encryption contexts are used to describe the domain in which ciphertexts exist (typically, a
-/// user's  session).
+/// Encryption contexts are used to describe the context in which ciphertexts exist (typically, a
+/// user's session).
 /// With the `legacy-pep-repo-compatible` feature enabled, encryption contexts also include
 /// an `audience_type` field, which is used to distinguish between different types of audiences.
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 #[cfg(feature = "legacy-pep-repo-compatible")]
 pub struct EncryptionContext {
     #[deref]
-    pub payload: Context,
+    pub payload: String,
     pub audience_type: u32,
 }
 
-/// Pseudonymization contexts are used to describe the domain in which pseudonyms exist (typically,
+/// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
 /// a user's role or usergroup).
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-pub struct PseudonymizationContext(pub Context);
+pub struct PseudonymizationDomain(pub String);
 /// Encryption contexts are used to describe the domain in which ciphertexts exist (typically, a
 /// user's  session).
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
-pub struct EncryptionContext(pub Context);
+pub struct EncryptionContext(pub String);
 
-impl PseudonymizationContext {
+impl PseudonymizationDomain {
     #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from(payload: &str) -> Self {
-        PseudonymizationContext {
+        PseudonymizationDomain {
             payload: payload.to_string(),
             audience_type: 0,
         }
     }
     #[cfg(not(feature = "legacy-pep-repo-compatible"))]
     pub fn from(payload: &str) -> Self {
-        PseudonymizationContext(payload.to_string())
+        PseudonymizationDomain(payload.to_string())
     }
 
     #[cfg(feature = "legacy-pep-repo-compatible")]
     pub fn from_audience(payload: &str, audience_type: u32) -> Self {
-        PseudonymizationContext {
+        PseudonymizationDomain {
             payload: payload.to_string(),
             audience_type,
         }
@@ -105,72 +102,36 @@ pub struct RSKFactors {
     pub k: RekeyFactor,
 }
 
-/// The information required to perform n-PEP pseudonymization from one encryption and pseudonymization
-/// context to another.
+/// The information required to perform n-PEP pseudonymization from one domain and session to another.
 /// The pseudonymization info consists of a reshuffle and rekey factor.
 /// For efficiency, we do not actually use the [`rsk2`](crate::low_level::primitives::rsk2) operation, but instead use the regular [`rsk`](crate::low_level::primitives::rsk) operation
 /// with precomputed reshuffle and rekey factors, which is equivalent but more efficient.
 pub type PseudonymizationInfo = RSKFactors;
 
-/// The information required to perform n-PEP rekeying from one encryption to another.
+/// The information required to perform n-PEP rekeying from one session to another.
 /// For efficiency, we do not actually use the [`rekey2`](crate::low_level::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::low_level::primitives::rekey) operation
 /// with a precomputed rekey factor, which is equivalent but more efficient.
 pub type RekeyInfo = RekeyFactor;
 impl PseudonymizationInfo {
-    /// Compute the pseudonymization info given pseudonymization and encryption contexts and secrets.
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
     pub fn new(
-        from_pseudo_context: &PseudonymizationContext,
-        to_pseudo_context: &PseudonymizationContext,
-        from_enc_context: &EncryptionContext,
-        to_enc_context: &EncryptionContext,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
         let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
-        let rekey_factor = RekeyInfo::new(from_enc_context, to_enc_context, encryption_secret);
+        let rekey_factor = RekeyInfo::new(session_from, session_to, encryption_secret);
         Self {
             s: reshuffle_factor,
             k: rekey_factor,
         }
     }
-    /// Compute the pseudonymization info given pseudonymization and encryption contexts and secrets,
-    /// assuming pseudonymization from a global encryption context.
-    pub fn new_from_global(
-        from_pseudo_context: &PseudonymizationContext,
-        to_pseudo_context: &PseudonymizationContext,
-        to_enc_context: &EncryptionContext,
-        pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
-        let rekey_factor = RekeyInfo::new_from_global(to_enc_context, encryption_secret);
-        Self {
-            s: reshuffle_factor,
-            k: rekey_factor,
-        }
-    }
-    /// Compute the pseudonymization info given pseudonymization and encryption contexts and secrets,
-    /// assuming pseudonymization to a global encryption context.
-    pub fn new_to_global(
-        from_pseudo_context: &PseudonymizationContext,
-        to_pseudo_context: &PseudonymizationContext,
-        from_enc_context: &EncryptionContext,
-        pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, from_pseudo_context);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, to_pseudo_context);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
-        let rekey_factor = RekeyInfo::new_to_global(from_enc_context, encryption_secret);
-        Self {
-            s: reshuffle_factor,
-            k: rekey_factor,
-        }
-    }
+
     /// Reverse the pseudonymization info (i.e., switch the direction of the pseudonymization).
     pub fn reverse(&self) -> Self {
         Self {
@@ -180,33 +141,23 @@ impl PseudonymizationInfo {
     }
 }
 impl RekeyInfo {
-    /// Compute the rekey info given encryption contexts and secrets.
+    /// Compute the rekey info given sessions and secrets.
     pub fn new(
-        from_session: &EncryptionContext,
-        to_session: &EncryptionContext,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_rekey_factor(encryption_secret, from_session);
-        let k_to = make_rekey_factor(encryption_secret, to_session);
+        let k_from = if session_from.is_some() {
+            make_rekey_factor(encryption_secret, session_from.unwrap())
+        } else {
+            RekeyFactor(ScalarNonZero::one())
+        };
+        let k_to = if session_to.is_some() {
+            make_rekey_factor(encryption_secret, session_to.unwrap())
+        } else {
+            RekeyFactor(ScalarNonZero::one())
+        };
         Self::from(k_from.0.invert() * k_to.0)
-    }
-    /// Compute the rekey info given encryption contexts and secrets, assuming rekeying from a global encryption context.
-    pub fn new_from_global(
-        to_session: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        make_rekey_factor(encryption_secret, to_session)
-    }
-    /// Compute the rekey info given encryption contexts and secrets, assuming rekeying to a global encryption context.
-    pub fn new_to_global(
-        from_session: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        Self::from(
-            make_rekey_factor(encryption_secret, from_session)
-                .0
-                .invert(),
-        )
     }
     /// Reverse the rekey info (i.e., switch the direction of the rekeying).
     pub fn reverse(&self) -> Self {

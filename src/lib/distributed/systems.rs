@@ -29,38 +29,38 @@ impl PEPSystem {
             blinding_factor,
         }
     }
-    /// Generate a session key share for the given encryption context.
-    pub fn session_key_share(&self, context: &EncryptionContext) -> SessionKeyShare {
-        let k = make_rekey_factor(&self.rekeying_secret, context);
+    /// Generate a session key share for the given session.
+    pub fn session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
+        let k = make_rekey_factor(&self.rekeying_secret, session);
         make_session_key_share(&k.0, &self.blinding_factor)
     }
     /// Generate a rekey info to rekey from a given [`EncryptionContext`] to another.
     pub fn rekey_info(
         &self,
-        from_enc: &EncryptionContext,
-        to_enc: &EncryptionContext,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
     ) -> RekeyInfo {
-        RekeyInfo::new(from_enc, to_enc, &self.rekeying_secret)
+        RekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
-    /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationContext`]
+    /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
     pub fn pseudonymization_info(
         &self,
-        from_pseudo: &PseudonymizationContext,
-        to_pseudo: &PseudonymizationContext,
-        from_enc: &EncryptionContext,
-        to_enc: &EncryptionContext,
+        domain_form: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
     ) -> PseudonymizationInfo {
         PseudonymizationInfo::new(
-            from_pseudo,
-            to_pseudo,
-            from_enc,
-            to_enc,
+            domain_form,
+            domain_to,
+            session_from,
+            session_to,
             &self.pseudonymisation_secret,
             &self.rekeying_secret,
         )
     }
-    /// Rekey an [`EncryptedDataPoint`] from one encryption context to another, using [`RekeyInfo`].
+    /// Rekey an [`EncryptedDataPoint`] from one session to another, using [`RekeyInfo`].
     pub fn rekey(
         &self,
         encrypted: &EncryptedDataPoint,
@@ -68,7 +68,7 @@ impl PEPSystem {
     ) -> EncryptedDataPoint {
         rekey(encrypted, rekey_info)
     }
-    /// Pseudonymize an [`EncryptedPseudonym`] from one pseudonymization and encryption context to
+    /// Pseudonymize an [`EncryptedPseudonym`] from one pseudonymization domain and session to
     /// another, using [`PseudonymizationInfo`].
     pub fn pseudonymize(
         &self,
@@ -78,7 +78,7 @@ impl PEPSystem {
         pseudonymize(encrypted, pseudonymization_info)
     }
 
-    /// Rekey a batch of [`EncryptedDataPoint`]s from one encryption context to another, using
+    /// Rekey a batch of [`EncryptedDataPoint`]s from one session to another, using
     /// [`RekeyInfo`].
     pub fn rekey_batch<R: RngCore + CryptoRng>(
         &self,
@@ -89,8 +89,8 @@ impl PEPSystem {
         rekey_batch(encrypted, rekey_info, rng)
     }
 
-    /// Pseudonymize a batch of [`EncryptedPseudonym`]s from one pseudonymization and encryption
-    /// context to another, using [`PseudonymizationInfo`].
+    /// Pseudonymize a batch of [`EncryptedPseudonym`]s from one pseudonymization domain and
+    /// session to another, using [`PseudonymizationInfo`].
     pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut [EncryptedPseudonym],
@@ -100,8 +100,8 @@ impl PEPSystem {
         pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
-    /// Transcrypt (rekey or pseudonymize) an encrypted message from one pseudonymization and
-    /// encryption context to another, using [`TranscryptionInfo`].
+    /// Transcrypt (rekey or pseudonymize) an encrypted message from one pseudonymization domain and
+    /// session to another, using [`TranscryptionInfo`].
     pub fn transcrypt<E: Encrypted>(
         &self,
         encrypted: &E,
@@ -110,8 +110,8 @@ impl PEPSystem {
         transcrypt(encrypted, transcryption_info)
     }
 
-    /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedEntityDataPair`],
-    /// from one pseudonymization and encryption context to another, using [`TranscryptionInfo`].
+    /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedEntityDataPair`]),
+    /// from one pseudonymization domain and session to another, using [`TranscryptionInfo`].
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut Box<[EncryptedEntityDataPair]>,

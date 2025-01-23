@@ -1,6 +1,6 @@
 use commandy_macros::*;
 use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
-use libpep::high_level::contexts::{EncryptionContext, PseudonymizationContext, TranscryptionInfo};
+use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
     make_global_keys, make_session_keys, EncryptionSecret, GlobalPublicKey, GlobalSecretKey,
@@ -89,9 +89,9 @@ struct Rerandomize {
 
 #[derive(Command, Debug, Default)]
 #[command("transcrypt")]
-#[description("Transcrypt a ciphertext from one context to another.")]
+#[description("Transcrypt a ciphertext from one domain and session to another.")]
 struct Transcrypt {
-    #[positional("pseudonymization-secret encryption-secret pseudo-context-from pseudo-context-to session-from session-to ciphertext",7,7)]
+    #[positional("pseudonymization-secret encryption-secret domain-from domain-to session-from session-to ciphertext",7,7)]
     args: Vec<String>,
 }
 
@@ -99,7 +99,11 @@ struct Transcrypt {
 #[command("transcrypt-from-global")]
 #[description("Transcrypt a ciphertext from global to a session encryption context.")]
 struct TranscryptFromGlobal {
-    #[positional("pseudonymization-secret encryption-secret pseudo-context-from pseudo-context-to session-to ciphertext",6,6)]
+    #[positional(
+        "pseudonymization-secret encryption-secret domain-from domain-to session-to ciphertext",
+        6,
+        6
+    )]
     args: Vec<String>,
 }
 
@@ -107,7 +111,11 @@ struct TranscryptFromGlobal {
 #[command("transcrypt-to-global")]
 #[description("Transcrypt a ciphertext from a session to a global encryption context.")]
 struct TranscryptToGlobal {
-    #[positional("pseudonymization-secret encryption-secret pseudo-context-from pseudo-context-to session-from ciphertext",6,6)]
+    #[positional(
+        "pseudonymization-secret encryption-secret domain-from domain-to session-from ciphertext",
+        6,
+        6
+    )]
     args: Vec<String>,
 }
 
@@ -156,8 +164,9 @@ fn main() {
             println!("{}", &sk.value().encode_as_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
-            let global_secret_key =
-                GlobalSecretKey::from(ScalarNonZero::decode_from_hex(&arg.args[0]).unwrap());
+            let global_secret_key = GlobalSecretKey::from(
+                ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid global secret key."),
+            );
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
             let session_context = EncryptionContext::from(arg.args[2].as_str());
 
@@ -191,43 +200,52 @@ fn main() {
             println!("{}", &pseudonym.encode_as_hex());
         }
         Some(Sub::PseudonymToOrigin(arg)) => {
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[0]).unwrap();
+            let pseudonym = Pseudonym::decode_from_hex(&arg.args[0]).expect("Invalid pseudonym.");
             let origin = pseudonym.as_bytes();
             if origin.is_none() {
-                eprintln!("Invalid pseudonym.");
+                eprintln!("Pseudonym does not have a lizard representation.");
                 std::process::exit(1);
             }
             eprint!("Origin: ");
-            println!("{}", String::from_utf8_lossy(&origin.unwrap()));
+            println!(
+                "{}",
+                String::from_utf8_lossy(
+                    &origin.expect("Lizard representation cannot be displayed.")
+                )
+            );
         }
         Some(Sub::Encrypt(arg)) => {
-            let public_key = SessionPublicKey::from_hex(&arg.args[0]).unwrap();
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).unwrap();
+            let public_key = SessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = encrypt(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::EncryptGlobal(arg)) => {
-            let public_key = GlobalPublicKey::from_hex(&arg.args[0]).unwrap();
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).unwrap();
+            let public_key = GlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = encrypt_global(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::Decrypt(arg)) => {
-            let secret_key =
-                SessionSecretKey::from(ScalarNonZero::decode_from_hex(&arg.args[0]).unwrap());
-            let ciphertext = EncryptedPseudonym::from_base64(&arg.args[1]).unwrap();
+            let secret_key = SessionSecretKey::from(
+                ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid secret key."),
+            );
+            let ciphertext =
+                EncryptedPseudonym::from_base64(&arg.args[1]).expect("Invalid ciphertext.");
             let plaintext = decrypt(&ciphertext, &secret_key);
             eprint!("Plaintext: ");
             println!("{}", &plaintext.encode_as_hex());
         }
         Some(Sub::Rerandomize(arg)) => {
-            let ciphertext = EncryptedPseudonym::from_base64(&arg.args[0]).unwrap();
+            let ciphertext =
+                EncryptedPseudonym::from_base64(&arg.args[0]).expect("Invalid ciphertext.");
             let rerandomized;
             #[cfg(not(feature = "elgamal3"))]
             {
-                let public_key = SessionPublicKey::from_hex(&arg.args[1]).unwrap();
+                let public_key =
+                    SessionPublicKey::from_hex(&arg.args[1]).expect("Invalid public key.");
                 rerandomized = rerandomize(&ciphertext, &public_key, &mut rng);
             }
             #[cfg(feature = "elgamal3")]
@@ -241,16 +259,17 @@ fn main() {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
-            let pseudo_context_from = PseudonymizationContext::from(arg.args[2].as_str());
-            let pseudo_context_to = PseudonymizationContext::from(arg.args[3].as_str());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
             let session_from = EncryptionContext::from(arg.args[4].as_str());
             let session_to = EncryptionContext::from(arg.args[5].as_str());
-            let ciphertext = EncryptedPseudonym::from_base64(&arg.args[6]).unwrap();
+            let ciphertext =
+                EncryptedPseudonym::from_base64(&arg.args[6]).expect("Invalid ciphertext.");
             let transcryption_info = TranscryptionInfo::new(
-                &pseudo_context_from,
-                &pseudo_context_to,
-                &session_from,
-                &session_to,
+                &domain_from,
+                &domain_to,
+                Some(&session_from),
+                Some(&session_to),
                 &pseudonymization_secret,
                 &encryption_secret,
             );
@@ -262,14 +281,16 @@ fn main() {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
-            let pseudo_context_from = PseudonymizationContext::from(arg.args[2].as_str());
-            let pseudo_context_to = PseudonymizationContext::from(arg.args[3].as_str());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
             let session_to = EncryptionContext::from(arg.args[5].as_str());
-            let ciphertext = EncryptedPseudonym::from_base64(&arg.args[6]).unwrap();
-            let transcryption_info = TranscryptionInfo::new_from_global(
-                &pseudo_context_from,
-                &pseudo_context_to,
-                &session_to,
+            let ciphertext =
+                EncryptedPseudonym::from_base64(&arg.args[6]).expect("Invalid ciphertext.");
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                None,
+                Some(&session_to),
                 &pseudonymization_secret,
                 &encryption_secret,
             );
@@ -281,14 +302,16 @@ fn main() {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
-            let pseudo_context_from = PseudonymizationContext::from(arg.args[2].as_str());
-            let pseudo_context_to = PseudonymizationContext::from(arg.args[3].as_str());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
             let session_from = EncryptionContext::from(arg.args[5].as_str());
-            let ciphertext = EncryptedPseudonym::from_base64(&arg.args[6]).unwrap();
-            let transcryption_info = TranscryptionInfo::new_to_global(
-                &pseudo_context_from,
-                &pseudo_context_to,
-                &session_from,
+            let ciphertext =
+                EncryptedPseudonym::from_base64(&arg.args[6]).expect("Invalid ciphertext.");
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                Some(&session_from),
+                None,
                 &pseudonymization_secret,
                 &encryption_secret,
             );
@@ -297,7 +320,9 @@ fn main() {
             println!("{}", &transcrypted.encode_as_base64());
         }
         Some(Sub::SetupDistributedSystems(arg)) => {
-            let n = arg.args[0].parse::<usize>().unwrap();
+            let n = arg.args[0]
+                .parse::<usize>()
+                .expect("Invalid number of nodes.");
             let (global_public_key, blinded_secret, blinding_factors) =
                 make_distributed_global_keys(n, &mut rng);
             eprint!("Public global key: ");

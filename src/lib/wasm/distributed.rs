@@ -172,38 +172,38 @@ impl WASMPEPSystem {
             BlindingFactor(blinding_factor.0 .0),
         ))
     }
-    /// Generate a session key share for the given encryption context.
+    /// Generate a session key share for the given session.
     #[wasm_bindgen(js_name = sessionKeyShare)]
-    pub fn wasm_session_key_share(&self, context: &str) -> WASMSessionKeyShare {
-        WASMSessionKeyShare(self.session_key_share(&EncryptionContext::from(context)))
+    pub fn wasm_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
+        WASMSessionKeyShare(self.session_key_share(&EncryptionContext::from(session)))
     }
-    /// Generate a rekey info to rekey from a given encryption context to another.
+    /// Generate a rekey info to rekey from a given session to another.
     #[wasm_bindgen(js_name = rekeyInfo)]
-    pub fn wasm_rekey_info(&self, from_enc: &str, to_enc: &str) -> WASMRekeyInfo {
+    pub fn wasm_rekey_info(&self, session_from: &str, session_to: &str) -> WASMRekeyInfo {
         WASMRekeyInfo::from(self.rekey_info(
-            &EncryptionContext::from(from_enc),
-            &EncryptionContext::from(to_enc),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
         ))
     }
-    /// Generate a pseudonymization info to pseudonymize from a given an pseudonymization context
-    /// and encryption context to another.
+    /// Generate a pseudonymization info to pseudonymize from a given pseudonymization domain
+    /// and session to another.
     #[wasm_bindgen(js_name = pseudonymizationInfo)]
     pub fn wasm_pseudonymization_info(
         &self,
-        from_pseudo: &str,
-        to_pseudo: &str,
-        from_enc: &str,
-        to_enc: &str,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
     ) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationContext::from(from_pseudo),
-            &PseudonymizationContext::from(to_pseudo),
-            &EncryptionContext::from(from_enc),
-            &EncryptionContext::from(to_enc),
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
         ))
     }
 
-    /// Rekey an [`WASMEncryptedDataPoint`] from one encryption context to another, using [`WASMRekeyInfo`].
+    /// Rekey an [`WASMEncryptedDataPoint`] from one session to another, using [`WASMRekeyInfo`].
     #[wasm_bindgen(js_name = rekey)]
     pub fn wasm_rekey(
         &self,
@@ -213,7 +213,7 @@ impl WASMPEPSystem {
         WASMEncryptedDataPoint::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
     }
 
-    /// Pseudonymize an [`WASMEncryptedPseudonym`] from one pseudonymization and encryption context to
+    /// Pseudonymize an [`WASMEncryptedPseudonym`] from one pseudonymization domain and session to
     /// another, using [`WASMPseudonymizationInfo`].
     #[wasm_bindgen(js_name = pseudonymize)]
     pub fn wasm_pseudonymize(

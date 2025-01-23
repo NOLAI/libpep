@@ -56,14 +56,14 @@ impl WASMGlobalPublicKey {
 }
 // TODO: more methods required for keys?
 
-/// Pseudonymization secret used to derive a [`WASMReshuffleFactor`] from an pseudonymization context (see [`WASMPseudonymizationInfo`]).
-/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
+/// Pseudonymization secret used to derive a [`WASMReshuffleFactor`] from a pseudonymization domain (see [`WASMPseudonymizationInfo`]).
+/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(PseudonymizationSecret);
 
-/// Pseudonymization secret used to derive a [`WASMRekeyFactor`] from an encryption context (see [`WASMRekeyInfo`]).
-/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
+/// Encryption secret used to derive a [`WASMRekeyFactor`] from an encryption context (see [`WASMRekeyInfo`]).
+/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = EncryptionSecret)]
 pub struct WASMEncryptionSecret(EncryptionSecret);
@@ -84,7 +84,7 @@ impl WASMEncryptionSecret {
 }
 
 /// A pseudonym that can be used to identify a user
-/// within a specific context, which can be encrypted, rekeyed and reshuffled.
+/// within a specific domain, which can be encrypted, rekeyed and reshuffled.
 #[wasm_bindgen(js_name = Pseudonym)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct WASMPseudonym(pub(crate) Pseudonym);
@@ -320,16 +320,16 @@ pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
     }
 }
 
-/// Generate session keys from a [`WASMGlobalSecretKey`], an encryption context and an [`WASMEncryptionSecret`].
+/// Generate session keys from a [`WASMGlobalSecretKey`], a session and an [`WASMEncryptionSecret`].
 #[wasm_bindgen(js_name = makeSessionKeys)]
 pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKey,
-    context: &str,
+    session: &str,
     secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeyPair {
     let (public, secret) = make_session_keys(
         &GlobalSecretKey(*global.0),
-        &EncryptionContext::from(context),
+        &EncryptionContext::from(session),
         &secret.0,
     );
     WASMSessionKeyPair {
@@ -591,18 +591,18 @@ pub struct WASMRekeyInfo(pub WASMRekeyFactor);
 impl WASMPseudonymizationInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        from_pseudo_context: &str,
-        to_pseudo_context: &str,
-        from_enc_context: &str,
-        to_enc_context: &str,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
         let x = PseudonymizationInfo::new(
-            &PseudonymizationContext::from(from_pseudo_context),
-            &PseudonymizationContext::from(to_pseudo_context),
-            &EncryptionContext::from(from_enc_context),
-            &EncryptionContext::from(to_enc_context),
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
             &pseudonymization_secret.0,
             &encryption_secret.0,
         );
@@ -624,13 +624,13 @@ impl WASMPseudonymizationInfo {
 impl WASMRekeyInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        from_enc_context: &str,
-        to_enc_context: &str,
+        session_from: &str,
+        session_to: &str,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
         let x = RekeyInfo::new(
-            &EncryptionContext::from(from_enc_context),
-            &EncryptionContext::from(to_enc_context),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
             &encryption_secret.0,
         );
         WASMRekeyInfo(WASMRekeyFactor(x))
@@ -674,7 +674,7 @@ impl From<&WASMRekeyInfo> for RekeyInfo {
     }
 }
 
-/// Pseudonymize an encrypted pseudonym, from one context to another context
+/// Pseudonymize an encrypted pseudonym, from one domain and session to another
 #[wasm_bindgen(js_name = pseudonymize)]
 pub fn wasm_pseudonymize(
     encrypted: &WASMEncryptedPseudonym,

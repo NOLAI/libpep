@@ -25,15 +25,15 @@ test('n_pep', async () => {
         return new PEPSystem(pseudonymizationSecret, encryptionSecret, blindingFactor);
     });
 
-    // Create pseudonymization and encryption contexts.
-    const pcA = "user-a";
-    const pcB = "user-b";
-    const ecA1 = "session-a1";
-    const ecB1 = "session-b1";
+    // Create pseudonymization domains and encryption contexts.
+    const domainA = "user-a";
+    const domainB = "user-b";
+    const sessionA1 = "session-a1";
+    const sessionB1 = "session-b1";
 
     // Generate session key shares.
-    const sksA1 = systems.map(system => system.sessionKeyShare(ecA1));
-    const sksB1 = systems.map(system => system.sessionKeyShare(ecB1));
+    const sksA1 = systems.map(system => system.sessionKeyShare(sessionA1));
+    const sksB1 = systems.map(system => system.sessionKeyShare(sessionB1));
 
     // Create PEP clients.
     const clientA = new PEPClient(blindedGlobalSecretKey, sksA1);
@@ -49,10 +49,10 @@ test('n_pep', async () => {
 
     // Transcrypt pseudonym and rekey data.
     const transcryptedPseudo = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, system.pseudonymizationInfo(pcA, pcB, ecA1, ecB1)), encPseudo);
+        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1)), encPseudo);
 
     const transcryptedData = systems.reduce((acc, system) =>
-        system.rekey(acc, system.rekeyInfo(ecA1, ecB1)), encData);
+        system.rekey(acc, system.rekeyInfo(sessionA1, sessionB1)), encData);
 
     // Decrypt pseudonym and data.
     const decPseudo = clientB.decryptPseudonym(transcryptedPseudo);
@@ -64,7 +64,7 @@ test('n_pep', async () => {
 
     // Reverse pseudonymization.
     const revPseudonymized = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, system.pseudonymizationInfo(pcA, pcB, ecA1, ecB1).rev()), transcryptedPseudo);
+        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1).rev()), transcryptedPseudo);
 
     const revDecPseudo = clientA.decryptPseudonym(revPseudonymized);
     expect(revDecPseudo.asHex()).toEqual(pseudonym.asHex());
