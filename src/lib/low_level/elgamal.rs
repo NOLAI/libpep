@@ -4,7 +4,9 @@ use crate::internal::arithmetic::*;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
+use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::Formatter;
 
 /// Length of an ElGamal encrypted ciphertext in bytes.
 /// Normally, this is 64 bytes, but in the case of the `elgamal3` feature, it is 96 bytes.
@@ -14,7 +16,7 @@ pub const ELGAMAL_LENGTH: usize = 64;
 pub const ELGAMAL_LENGTH: usize = 96;
 
 /// An ElGamal ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ElGamal {
     pub gb: GroupElement,
     pub gc: GroupElement,
@@ -63,6 +65,40 @@ impl ElGamal {
             .decode(s)
             .ok()
             .and_then(|v| Self::decode_from_slice(&v))
+    }
+}
+
+impl Serialize for ElGamal {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.encode_as_base64().as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ElGamal {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ElGamalVisitor;
+        impl Visitor<'_> for ElGamalVisitor {
+            type Value = ElGamal;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("a base64 encoded string representing an ElGamal ciphertext")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                ElGamal::decode_from_base64(v)
+                    .ok_or(E::custom(format!("invalid base64 encoded string: {}", v)))
+            }
+        }
+
+        deserializer.deserialize_str(ElGamalVisitor)
     }
 }
 
