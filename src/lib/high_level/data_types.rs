@@ -5,7 +5,7 @@ use crate::internal::arithmetic::GroupElement;
 use crate::low_level::elgamal::{ElGamal, ELGAMAL_LENGTH};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A pseudonym (in the background, this is a [`GroupElement`]) that can be used to identify a user
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
@@ -20,15 +20,54 @@ pub struct DataPoint {
     pub(crate) value: GroupElement,
 }
 /// An encrypted pseudonym, which is an [`ElGamal`] encryption of a [`Pseudonym`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
 }
 /// An encrypted data point, which is an [`ElGamal`] encryption of a [`DataPoint`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
+
+impl Serialize for EncryptedDataPoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for EncryptedDataPoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = ElGamal::deserialize(deserializer)?;
+        Ok(Self { value })
+    }
+}
+
+impl Serialize for EncryptedPseudonym {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for EncryptedPseudonym {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = ElGamal::deserialize(deserializer)?;
+        Ok(Self { value })
+    }
+}
+
 /// A trait for encrypted data types, that can be encrypted and decrypted from and into [`Encryptable`] types.
 pub trait Encrypted {
     type UnencryptedType: Encryptable;
