@@ -21,7 +21,7 @@ pub struct GlobalSecretKey(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct SessionPublicKey(pub GroupElement);
 /// A session secret key used to decrypt messages with.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug, From, Serialize, Deserialize)]
 pub struct SessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A trait for public keys, which can be encoded and decoded from byte arrays and hex strings.
