@@ -3,10 +3,12 @@
 
 use crate::high_level::contexts::EncryptionContext;
 use crate::high_level::utils::make_rekey_factor;
-use crate::internal::arithmetic::{GroupElement, ScalarNonZero, G};
+use crate::internal::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits, G};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
+use serde::de::{Error, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::fmt::Formatter;
 
 /// A global public key associated with the [`GlobalSecretKey`] from which session keys are derived.
 /// Can also be used to encrypt messages against, if no session key is available or using a session
@@ -21,8 +23,42 @@ pub struct GlobalSecretKey(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct SessionPublicKey(pub GroupElement);
 /// A session secret key used to decrypt messages with.
-#[derive(Copy, Clone, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, From)]
 pub struct SessionSecretKey(pub(crate) ScalarNonZero);
+
+impl Serialize for SessionSecretKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.encode_as_hex().as_str())
+    }
+}
+impl<'de> Deserialize<'de> for SessionSecretKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SessionSecretKeyVisitor;
+        impl Visitor<'_> for SessionSecretKeyVisitor {
+            type Value = SessionSecretKey;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("a hex encoded string representing a SessionSecretKey")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                ScalarNonZero::decode_from_hex(v)
+                    .map(SessionSecretKey)
+                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
+            }
+        }
+
+        deserializer.deserialize_str(SessionSecretKeyVisitor)
+    }
+}
 
 /// A trait for public keys, which can be encoded and decoded from byte arrays and hex strings.
 pub trait PublicKey {
