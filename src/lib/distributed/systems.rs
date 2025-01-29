@@ -139,6 +139,23 @@ impl PEPClient {
             session_secret_key: secret,
         }
     }
+
+    /// Create a new PEP client from the given session key pair.
+    pub fn restore(
+        session_public_key: SessionPublicKey,
+        session_secret_key: SessionSecretKey,
+    ) -> Self {
+        Self {
+            session_public_key,
+            session_secret_key,
+        }
+    }
+
+    /// Dump the session key pair.
+    pub fn dump(&self) -> (SessionPublicKey, SessionSecretKey) {
+        (self.session_public_key, self.session_secret_key)
+    }
+
     /// Decrypt an encrypted message.
     pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
         decrypt(encrypted, &self.session_secret_key)

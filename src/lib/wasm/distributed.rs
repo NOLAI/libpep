@@ -251,6 +251,25 @@ impl WASMPEPClient {
             &session_key_shares,
         ))
     }
+
+    /// Restore a PEP client from the given session keys.
+    #[wasm_bindgen(js_name = restore)]
+    pub fn wasm_restore(&self, session_keys: &WASMSessionKeyPair) -> Self {
+        Self(PEPClient::restore(
+            SessionPublicKey(**session_keys.public),
+            SessionSecretKey(**session_keys.secret),
+        ))
+    }
+
+    /// Dump the session key pair.
+    #[wasm_bindgen(js_name = dump)]
+    pub fn wasm_dump(&self) -> WASMSessionKeyPair {
+        WASMSessionKeyPair {
+            public: WASMSessionPublicKey::from(WASMGroupElement::from(self.session_public_key.0)),
+            secret: WASMSessionSecretKey::from(WASMScalarNonZero::from(self.session_secret_key.0)),
+        }
+    }
+
     /// Decrypt an encrypted pseudonym.
     #[wasm_bindgen(js_name = decryptPseudonym)]
     pub fn wasm_decrypt_pseudonym(&self, encrypted: &WASMEncryptedPseudonym) -> WASMPseudonym {
