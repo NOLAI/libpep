@@ -16,6 +16,7 @@ readme = "README.md"
 default = ["build-binary"]
 elgamal3 = []
 wasm = ["wasm-bindgen", "getrandom"]
+python = ["pyo3"]
 legacy-pep-repo-compatible = []
 insecure-methods = []
 build-binary = ["buildinfy","commandy","commandy_macros"]
@@ -44,6 +45,7 @@ getrandom = { version = "^0.2", features = ["js"], optional = true}
 buildinfy = { version = "^0.1", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
+pyo3 = { version = "0.23.4", features = ["extension-module"], optional = true }
 
 [dev-dependencies]
 serde_json = "^1.0"

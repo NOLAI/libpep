@@ -79,3 +79,27 @@ mod wasm {
     mod high_level;
     mod primitives;
 }
+
+#[cfg(feature = "python")]
+mod python {
+    //! Wrappers for Python bindings.
+    //! This module is only available when the `python` feature is enabled.
+    use pyo3::prelude::*;
+
+    mod arithmetic;
+    mod distributed;
+    mod elgamal;
+    mod high_level;
+    mod primitives;
+
+    #[pymodule]
+    fn libpep(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+        // Register submodules
+        m.add_submodule(arithmetic::create_submodule(_py)?)?;
+        m.add_submodule(distributed::create_submodule(_py)?)?;
+        m.add_submodule(elgamal::create_submodule(_py)?)?;
+        m.add_submodule(high_level::create_submodule(_py)?)?;
+        m.add_submodule(primitives::create_submodule(_py)?)?;
+        Ok(())
+    }
+}
