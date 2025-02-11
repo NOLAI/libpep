@@ -1,4 +1,11 @@
 # `libpep`: Library for polymorphic pseudonymization and encryption
+[![Crates.io](https://img.shields.io/crates/v/libpep.svg)](https://crates.io/crates/libpep)
+[![Downloads](https://img.shields.io/crates/d/libpep.svg)](https://crates.io/crates/libpep)
+[![npm](https://img.shields.io/npm/v/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
+[![Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
+[![License](https://img.shields.io/crates/l/libpep.svg)](https://crates.io/crates/libpep)
+[![Documentation](https://docs.rs/libpep/badge.svg)](https://docs.rs/libpep)
+[![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
 
 This library implements PEP cryptography based on ElGamal encrypted messages.
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 

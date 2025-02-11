@@ -1,0 +1,52 @@
+name: Check versions
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  semver-checks:
+    runs-on: ubuntu-latest
+
+    name: cargo semver-checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+
+  check-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Check versions
+        run: |
+          # Get package.json version
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          
+          # Get Cargo.toml version
+          CARGO_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+          
+          echo "package.json version: $PKG_VERSION"
+          echo "Cargo.toml version: $CARGO_VERSION"
+          
+          if [ "$PKG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "Version mismatch:"
+            echo "package.json: $PKG_VERSION"
+            echo "Cargo.toml: $CARGO_VERSION"
+            exit 1
+          fi
+          
+          echo "Versions match: $PKG_VERSION"
