@@ -165,16 +165,16 @@ pub fn rekey_batch<R: RngCore + CryptoRng>(
 }
 
 /// A pair of encrypted pseudonyms and data points that relate to the same entity, used for batch transcryption.
-pub type EncryptedEntityDataPair = (Box<[EncryptedPseudonym]>, Box<[EncryptedDataPoint]>);
+pub type EncryptedEntityData = (Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>);
 
-/// Batch transcryption of a slice of [`EncryptedEntityDataPair`]s, using [`TranscryptionInfo`].
+/// Batch transcryption of a slice of [`EncryptedEntityMessages`]s, using [`TranscryptionInfo`].
 /// The order of the pairs (entities) is randomly shuffled to avoid linking them, but the internal
 /// order of pseudonyms and data points for the same entity is preserved.
 pub fn transcrypt_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut Box<[EncryptedEntityDataPair]>,
+    encrypted: &mut Box<[EncryptedEntityData]>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Box<[EncryptedEntityDataPair]> {
+) -> Box<[EncryptedEntityData]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
     encrypted
         .iter_mut()

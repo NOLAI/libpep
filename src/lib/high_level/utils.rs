@@ -61,13 +61,13 @@ pub fn make_rekey_factor(secret: &EncryptionSecret, context: &EncryptionContext)
 /// Derive a factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy-pep-repo-compatible")]
 fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) -> ScalarNonZero {
-    let mut hasher_inner = Sha256::default(); // Use HMAC to prevent length extension attack
+    let mut hasher_inner = Sha256::default();
     hasher_inner.update(typ.to_be_bytes());
     hasher_inner.update(audience_type.to_be_bytes());
     hasher_inner.update(payload.as_bytes());
     let result_inner = hasher_inner.finalize();
 
-    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
+    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap(); // Use HMAC to prevent length extension attack
     hmac.update(result_inner.as_slice());
     let result_outer = hmac.finalize().into_bytes();
 
