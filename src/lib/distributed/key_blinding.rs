@@ -209,6 +209,19 @@ pub fn make_session_key(
     (public, secret)
 }
 
+/// Update a session key share from one session to the other
+pub fn update_session_key(
+    session_secret_key: SessionSecretKey,
+    old_session_key_share: SessionKeyShare,
+    new_session_key_share: SessionKeyShare,
+) -> (SessionPublicKey, SessionSecretKey) {
+    let secret = SessionSecretKey::from(
+        session_secret_key.0 * old_session_key_share.0.invert() * new_session_key_share.0,
+    );
+    let public = SessionPublicKey::from(secret.0 * G);
+    (public, secret)
+}
+
 /// Setup a distributed system with a global public key, a blinded global secret key and a list of
 /// blinding factors.
 /// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key

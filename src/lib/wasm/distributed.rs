@@ -269,6 +269,16 @@ impl WASMPEPClient {
             secret: WASMSessionSecretKey::from(WASMScalarNonZero::from(self.session_secret_key.0)),
         }
     }
+    /// Update a session key share from one session to the other
+    #[wasm_bindgen(js_name = updateSessionSecretKey)]
+    pub fn wasm_update_session_secret_key(
+        &mut self,
+        old_key_share: WASMSessionKeyShare,
+        new_key_share: WASMSessionKeyShare,
+    ) {
+        self.0
+            .update_session_secret_key(old_key_share.0, new_key_share.0);
+    }
 
     /// Decrypt an encrypted pseudonym.
     #[wasm_bindgen(js_name = decryptPseudonym)]

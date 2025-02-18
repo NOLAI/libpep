@@ -156,6 +156,16 @@ impl PEPClient {
         (self.session_public_key, self.session_secret_key)
     }
 
+    /// Update a session key share from one session to the other
+    pub fn update_session_secret_key(
+        &mut self,
+        old_key_share: SessionKeyShare,
+        new_key_share: SessionKeyShare,
+    ) {
+        (self.session_public_key, self.session_secret_key) =
+            update_session_key(self.session_secret_key, old_key_share, new_key_share)
+    }
+
     /// Decrypt an encrypted message.
     pub fn decrypt<E: Encrypted>(&self, encrypted: &E) -> E::UnencryptedType {
         decrypt(encrypted, &self.session_secret_key)
