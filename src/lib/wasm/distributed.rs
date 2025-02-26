@@ -254,7 +254,7 @@ impl WASMPEPClient {
 
     /// Restore a PEP client from the given session keys.
     #[wasm_bindgen(js_name = restore)]
-    pub fn wasm_restore(&self, session_keys: &WASMSessionKeyPair) -> Self {
+    pub fn wasm_restore(session_keys: &WASMSessionKeyPair) -> Self {
         Self(PEPClient::restore(
             SessionPublicKey(**session_keys.public),
             SessionSecretKey(**session_keys.secret),

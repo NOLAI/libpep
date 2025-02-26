@@ -1,7 +1,7 @@
 [package]
 name = "libpep"
 edition = "2021"
-version = "0.6.6"
+version = "0.6.7"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
 repository = "https://github.com/NOLAI/libpep"
