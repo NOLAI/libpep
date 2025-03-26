@@ -198,7 +198,7 @@ pub trait Encryptable {
         self.value().encode_lizard()
     }
 
-    /// Encodes an arbitrary byte array into one or more Encryptables
+    /// Encodes an arbitrary byte array into one or more encryptables
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     fn from_bytes_padded(data: &[u8]) -> Vec<Self>
     where
@@ -235,7 +235,7 @@ pub trait Encryptable {
         result
     }
 
-    /// Encodes an arbitrary string into one or more Encrtypb
+    /// Encodes an arbitrary string into one or more encryptables
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     fn from_string_padded(text: &str) -> Vec<Self>
     where
