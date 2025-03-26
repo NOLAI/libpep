@@ -56,10 +56,10 @@ fn test_from_bytes_padded_multiple_blocks() {
     assert_eq!(expected_blocks, result.len());
 
     // Check the content of each full block
-    for i in 0..(data.len() / 16) {
+    for (i, block) in result.iter().enumerate().take(data.len() / 16) {
         let start = i * 16;
-        let expected = &data[start..start + 16];
-        assert_eq!(expected, &result[i].as_bytes().unwrap()[..16]);
+        let expected = data[start..start + 16].to_vec();
+        assert_eq!(expected, block.as_bytes().unwrap()[..16]);
     }
 
     // Check the last block's padding
@@ -71,8 +71,8 @@ fn test_from_bytes_padded_multiple_blocks() {
     assert_eq!(&data[data.len() - remaining..], &last_block[..remaining]);
 
     // Verify padding portion
-    for i in remaining..16 {
-        assert_eq!(padding_byte, last_block[i]);
+    for byte in last_block.iter().skip(remaining) {
+        assert_eq!(&padding_byte, byte);
     }
 }
 
