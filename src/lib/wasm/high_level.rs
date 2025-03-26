@@ -167,6 +167,42 @@ impl WASMPseudonym {
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
     }
+
+    /// Create a collection of pseudonyms from an arbitrary-length string
+    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+    #[wasm_bindgen(js_name = fromStringPadded)]
+    pub fn from_string_padded(text: &str) -> Vec<WASMPseudonym> {
+        Pseudonym::from_string_padded(text)
+            .into_iter()
+            .map(WASMPseudonym::from)
+            .collect()
+    }
+
+    /// Create a collection of pseudonyms from an arbitrary-length byte array
+    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+    #[wasm_bindgen(js_name = fromBytesPadded)]
+    pub fn from_bytes_padded(data: Vec<u8>) -> Vec<WASMPseudonym> {
+        Pseudonym::from_bytes_padded(&data)
+            .into_iter()
+            .map(WASMPseudonym::from)
+            .collect()
+    }
+
+    /// Convert a collection of pseudonyms back to the original string
+    /// Returns null if the decoding fails (e.g., invalid padding or UTF-8)
+    #[wasm_bindgen(js_name = toStringPadded)]
+    pub fn to_string_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<String> {
+        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
+        Pseudonym::to_string_padded(&rust_pseudonyms).ok()
+    }
+
+    /// Convert a collection of pseudonyms back to the original byte array
+    /// Returns null if the decoding fails (e.g., invalid padding)
+    #[wasm_bindgen(js_name = toBytesPadded)]
+    pub fn to_bytes_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<Vec<u8>> {
+        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
+        Pseudonym::to_bytes_padded(&rust_pseudonyms).ok()
+    }
 }
 
 #[wasm_bindgen(js_class = "DataPoint")]
@@ -231,6 +267,42 @@ impl WASMDataPoint {
     #[wasm_bindgen(js_name = asBytes)]
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
+    }
+
+    /// Create a collection of data points from an arbitrary-length string
+    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+    #[wasm_bindgen(js_name = fromStringPadded)]
+    pub fn from_string_padded(text: &str) -> Vec<WASMDataPoint> {
+        DataPoint::from_string_padded(text)
+            .into_iter()
+            .map(WASMDataPoint::from)
+            .collect()
+    }
+
+    /// Create a collection of data points from an arbitrary-length byte array
+    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+    #[wasm_bindgen(js_name = fromBytesPadded)]
+    pub fn from_bytes_padded(data: Vec<u8>) -> Vec<WASMDataPoint> {
+        DataPoint::from_bytes_padded(&data)
+            .into_iter()
+            .map(WASMDataPoint::from)
+            .collect()
+    }
+
+    /// Convert a collection of data points back to the original string
+    /// Returns null if the decoding fails (e.g., invalid padding or UTF-8)
+    #[wasm_bindgen(js_name = toStringPadded)]
+    pub fn to_string_padded(data_points: Vec<WASMDataPoint>) -> Option<String> {
+        let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
+        DataPoint::to_string_padded(&rust_data_points).ok()
+    }
+
+    /// Convert a collection of data points back to the original byte array
+    /// Returns null if the decoding fails (e.g., invalid padding)
+    #[wasm_bindgen(js_name = toBytesPadded)]
+    pub fn to_bytes_padded(data_points: Vec<WASMDataPoint>) -> Option<Vec<u8>> {
+        let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
+        DataPoint::to_bytes_padded(&rust_data_points).ok()
     }
 }
 
