@@ -16,7 +16,7 @@ pub const ELGAMAL_LENGTH: usize = 64;
 pub const ELGAMAL_LENGTH: usize = 96;
 
 /// An ElGamal ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ElGamal {
     pub gb: GroupElement,
     pub gc: GroupElement,

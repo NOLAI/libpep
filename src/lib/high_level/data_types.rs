@@ -10,23 +10,23 @@ use std::io::{Error, ErrorKind};
 
 /// A pseudonym (in the background, this is a [`GroupElement`]) that can be used to identify a user
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
 pub struct Pseudonym {
     pub(crate) value: GroupElement,
 }
 /// A data point (in the background, this is a [`GroupElement`]), which should not be identifiable
 /// and can be encrypted and rekeyed, but not reshuffled.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
 pub struct DataPoint {
     pub(crate) value: GroupElement,
 }
 /// An encrypted pseudonym, which is an [`ElGamal`] encryption of a [`Pseudonym`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
 }
 /// An encrypted data point, which is an [`ElGamal`] encryption of a [`DataPoint`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
 pub struct EncryptedDataPoint {
     pub value: ElGamal,
 }
