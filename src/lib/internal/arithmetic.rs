@@ -18,12 +18,12 @@ use curve25519_dalek_libpep::ristretto::CompressedRistretto;
 use curve25519_dalek_libpep::ristretto::RistrettoPoint;
 use curve25519_dalek_libpep::scalar::Scalar;
 use curve25519_dalek_libpep::traits::Identity;
-use std::fmt::Formatter;
-
 use rand_core::{CryptoRng, RngCore};
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::Sha256;
+use std::fmt::Formatter;
+use std::hash::Hash;
 
 /// The base point constant so that a [ScalarNonZero]/[ScalarCanBeZero] s can be converted to a [GroupElement] by performing `s * G`.
 pub const G: GroupElement =
@@ -144,6 +144,12 @@ impl<'de> Deserialize<'de> for GroupElement {
         }
 
         deserializer.deserialize_str(GroupElementVisitor)
+    }
+}
+
+impl Hash for GroupElement {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.encode().hash(state);
     }
 }
 
