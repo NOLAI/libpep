@@ -1,8 +1,8 @@
 # `libpep`: Library for polymorphic pseudonymization and encryption
 [![Crates.io](https://img.shields.io/crates/v/libpep.svg)](https://crates.io/crates/libpep)
 [![Downloads](https://img.shields.io/crates/d/libpep.svg)](https://crates.io/crates/libpep)
-[![PyPI](https://img.shields.io/pypi/v/libpep.svg)](https://pypi.org/project/libpep/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/libpep.svg)](https://pypi.org/project/libpep/)
+[![PyPI](https://img.shields.io/pypi/v/libpep-py.svg)](https://pypi.org/project/libpep-py/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/libpep-py.svg)](https://pypi.org/project/libpep-py/)
 [![npm](https://img.shields.io/npm/v/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
 [![npm Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
 [![License](https://img.shields.io/crates/l/libpep.svg)](https://crates.io/crates/libpep)
