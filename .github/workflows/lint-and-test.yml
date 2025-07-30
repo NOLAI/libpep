@@ -40,11 +40,17 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: pip install maturin pytest
-      - name: Build Python extension
-        run: maturin develop --features python
+      - name: Create virtual environment
+        run: python -m venv .venv
+      - name: Install dependencies and build Python extension
+        run: |
+          source .venv/bin/activate
+          pip install maturin pytest
+          maturin develop --features python
       - name: Run Python tests
-        run: python -m unittest discover tests/python/ -v
+        run: |
+          source .venv/bin/activate
+          python -m unittest discover tests/python/ -v
 
   test-wasm:
     runs-on: ubuntu-latest
