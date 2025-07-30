@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "libpep"
+name = "libpep-py"
 description = "Python bindings for libpep - implementation of PEP primitives, offering pseudonymization and encryption interfaces"
 authors = [
     {name = "Bernard van Gastel", email = "bvgastel@bitpowder.com"},

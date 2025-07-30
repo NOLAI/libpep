@@ -39,7 +39,7 @@ Apart from a Rust crate, this library provides bindings for multiple platforms:
 
 Install from PyPI:
 ```bash
-pip install libpep
+pip install libpep-py
 ```
 
 Use with direct imports from submodules:
