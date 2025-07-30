@@ -126,7 +126,7 @@ impl WASMScalarNonZero {
     pub fn invert(&self) -> WASMScalarNonZero {
         self.0.invert().into()
     }
-    /// Adds two scalars.
+    /// Multiplies two scalars.
     #[wasm_bindgen]
     pub fn mul(&self, other: &WASMScalarNonZero) -> WASMScalarNonZero {
         (self.0 * other.0).into() // Guaranteed to be non-zero

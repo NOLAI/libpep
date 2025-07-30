@@ -79,3 +79,9 @@ mod wasm {
     mod high_level;
     mod primitives;
 }
+
+#[cfg(feature = "python")]
+mod python;
+
+#[cfg(feature = "python")]
+pub use python::libpep;

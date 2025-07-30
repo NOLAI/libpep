@@ -30,3 +30,34 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test --all-features
       - run: cargo doc --no-deps
+
+  test-python:
+    runs-on: ubuntu-latest
+    name: test python bindings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - run: pip install maturin pytest
+      - name: Build Python extension
+        run: maturin develop --features python
+      - name: Run Python tests
+        run: python -m unittest discover tests/python/ -v
+
+  test-wasm:
+    runs-on: ubuntu-latest
+    name: test wasm bindings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - run: cargo install wasm-pack
+      - run: npm install
+      - name: Build WASM package
+        run: npm run build
+      - name: Run WASM tests
+        run: npm test

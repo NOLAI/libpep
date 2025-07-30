@@ -70,7 +70,7 @@ impl WASMBlindedGlobalSecretKey {
         WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey(x.0))
     }
 
-    /// Generate a random [`WASMBlindedGlobalSecretKey`].
+    /// Encode the [`WASMBlindedGlobalSecretKey`] as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
@@ -105,7 +105,7 @@ impl WASMSessionKeyShare {
     pub fn new(x: WASMScalarNonZero) -> Self {
         WASMSessionKeyShare(SessionKeyShare(x.0))
     }
-    /// Generate a random [`WASMSessionKeyShare`].
+    /// Encode the [`WASMSessionKeyShare`] as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
