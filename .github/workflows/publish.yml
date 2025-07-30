@@ -123,5 +123,3 @@ jobs:
           path: dist
       - name: Publish to PyPI
         uses: PyPA/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
