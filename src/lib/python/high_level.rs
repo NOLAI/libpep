@@ -2,8 +2,7 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
-use crate::low_level::elgamal::ElGamal;
+use crate::internal::arithmetic::GroupElement;
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::python::elgamal::PyElGamal;
 use derive_more::{Deref, From, Into};
@@ -52,7 +51,7 @@ impl PyGlobalPublicKey {
     /// Creates a new global public key from a group element.
     #[new]
     fn new(x: PyGroupElement) -> Self {
-        Self(GroupElement::from(x.0).into())
+        Self(x.0.into())
     }
 
     /// Returns the group element associated with this public key.
@@ -123,7 +122,7 @@ impl PyPseudonym {
     /// Create from a [`PyGroupElement`].
     #[new]
     fn new(x: PyGroupElement) -> Self {
-        Self(Pseudonym::from_point(GroupElement::from(x.0)))
+        Self(Pseudonym::from_point(x.0))
     }
 
     /// Convert to a [`PyGroupElement`].
@@ -273,7 +272,7 @@ impl PyDataPoint {
     /// Create from a [`PyGroupElement`].
     #[new]
     fn new(x: PyGroupElement) -> Self {
-        Self(DataPoint::from_point(GroupElement::from(x.0)))
+        Self(DataPoint::from_point(x.0))
     }
 
     /// Convert to a [`PyGroupElement`].
@@ -422,7 +421,7 @@ impl PyEncryptedPseudonym {
     /// Create from an [`PyElGamal`].
     #[new]
     fn new(x: PyElGamal) -> Self {
-        Self(EncryptedPseudonym::from(ElGamal::from(x.0)))
+        Self(EncryptedPseudonym::from(x.0))
     }
 
     /// Encode the encrypted pseudonym as a byte array.
@@ -474,7 +473,7 @@ impl PyEncryptedDataPoint {
     /// Create from an [`PyElGamal`].
     #[new]
     fn new(x: PyElGamal) -> Self {
-        Self(EncryptedDataPoint::from(ElGamal::from(x.0)))
+        Self(EncryptedDataPoint::from(x.0))
     }
 
     /// Encode the encrypted data point as a byte array.
@@ -577,7 +576,7 @@ pub fn py_encrypt_pseudonym(
     let mut rng = rand::thread_rng();
     PyEncryptedPseudonym(encrypt(
         &message.0,
-        &SessionPublicKey::from(GroupElement::from(public_key.0 .0)),
+        &SessionPublicKey::from(public_key.0 .0),
         &mut rng,
     ))
 }
@@ -591,7 +590,7 @@ pub fn py_decrypt_pseudonym(
 ) -> PyPseudonym {
     PyPseudonym(decrypt(
         &encrypted.0,
-        &SessionSecretKey::from(ScalarNonZero::from(secret_key.0 .0)),
+        &SessionSecretKey::from(secret_key.0 .0),
     ))
 }
 
@@ -605,7 +604,7 @@ pub fn py_encrypt_data(
     let mut rng = rand::thread_rng();
     PyEncryptedDataPoint(encrypt(
         &message.0,
-        &SessionPublicKey::from(GroupElement::from(public_key.0 .0)),
+        &SessionPublicKey::from(public_key.0 .0),
         &mut rng,
     ))
 }
@@ -619,7 +618,7 @@ pub fn py_decrypt_data(
 ) -> PyDataPoint {
     PyDataPoint(decrypt(
         &EncryptedDataPoint::from(encrypted.value),
-        &SessionSecretKey::from(ScalarNonZero::from(secret_key.0 .0)),
+        &SessionSecretKey::from(secret_key.0 .0),
     ))
 }
 

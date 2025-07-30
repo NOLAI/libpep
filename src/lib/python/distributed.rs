@@ -3,7 +3,6 @@ use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
-use crate::internal::arithmetic::ScalarNonZero;
 use crate::python::arithmetic::*;
 use crate::python::high_level::*;
 use derive_more::{Deref, From, Into};
@@ -191,11 +190,11 @@ pub fn py_make_blinded_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    let result = make_blinded_global_secret_key(
-        &GlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0 .0)),
-        &bs,
-    )
-    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
+    let result =
+        make_blinded_global_secret_key(&GlobalSecretKey::from(global_secret_key.0 .0), &bs)
+            .ok_or_else(|| {
+                pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1")
+            })?;
     Ok(PyBlindedGlobalSecretKey(result))
 }
 

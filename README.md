@@ -1,8 +1,10 @@
 # `libpep`: Library for polymorphic pseudonymization and encryption
 [![Crates.io](https://img.shields.io/crates/v/libpep.svg)](https://crates.io/crates/libpep)
 [![Downloads](https://img.shields.io/crates/d/libpep.svg)](https://crates.io/crates/libpep)
+[![PyPI](https://img.shields.io/pypi/v/libpep.svg)](https://pypi.org/project/libpep/)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/libpep.svg)](https://pypi.org/project/libpep/)
 [![npm](https://img.shields.io/npm/v/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
-[![Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
+[![npm Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
 [![License](https://img.shields.io/crates/l/libpep.svg)](https://crates.io/crates/libpep)
 [![Documentation](https://docs.rs/libpep/badge.svg)](https://docs.rs/libpep)
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
@@ -17,7 +19,7 @@ The library supports three homomorphic operations on ciphertext `in` (= `Enc(b, 
    Decryption will both result in message `M`. Specifically, `in = Enc(r, M, Y)` is transformed to `out = Enc(r, M, k*Y)`.
 - `out = reshuffle(in, s)`: modifies a ciphertext `in` (an encrypted form of `M`), so that after decryption of `out` the decrypted message will be equal to `s*M`.
   Specifically, `in = Enc(r, M, Y)` is transformed to `out = Enc(r, n*M, Y)`.
-- `out = rerandomize(in, r)`: scrambles a ciphertext.
+- `o = rerandomize(in, r)`: scrambles a ciphertext.
   Both `in` and `out` can be decrypted by the same secret key `y`, both resulting in the same decrypted message `M`.
   However, the binary form of `in` and `out` differs. Spec: `in = Enc(b, M, Y)` is transformed to `out = Enc(r+b, M, Y)`;
 
@@ -29,7 +31,65 @@ The key idea behind this form of cryptography is that the pseudonymization and r
 This means that during initial encryption, the ultimate receiver(s) do(es) not yet need to be known.
 Data can initially be encrypted for one key, and later rekeyed and potentially reshuffled (in case of identifiers) for another key, leading to asynchronous end-to-end encryption with built-in pseudonymisation.
 
-Apart from a Rust crate, this library also contains a WASM library for usage in the browser or web applications with a similar API, enabled with the `wasm` feature.
+Apart from a Rust crate, this library provides bindings for multiple platforms:
+
+## Language Bindings
+
+### Python
+
+Install from PyPI:
+```bash
+pip install libpep
+```
+
+Use with direct imports from submodules:
+```python
+from libpep.high_level import Pseudonym, DataPoint, make_global_keys
+from libpep.arithmetic import GroupElement, ScalarNonZero
+
+# Generate keys
+keys = make_global_keys()
+
+# Create and work with pseudonyms
+pseudonym = Pseudonym.random()
+print(f"Pseudonym: {pseudonym.as_hex()}")
+
+# Create data points
+data = DataPoint.random()
+print(f"Data point: {data.as_hex()}")
+```
+
+### WebAssembly (WASM)
+
+Install from npm:
+```bash
+npm install @nolai/libpep-wasm
+```
+
+Use in Node.js or browser applications:
+```javascript
+import * as libpep from '@nolai/libpep-wasm';
+
+// Generate keys
+const keys = libpep.make_global_keys();
+
+// Create and work with pseudonyms
+const pseudonym = libpep.Pseudonym.random();
+console.log(`Pseudonym: ${pseudonym.as_hex()}`);
+
+// Create data points
+const data = libpep.DataPoint.random();
+console.log(`Data point: ${data.as_hex()}`);
+```
+
+### API Structure
+
+Both Python and WASM bindings mirror the Rust API structure with the same modules:
+- `arithmetic` - Basic arithmetic operations on scalars and group elements
+- `elgamal` - ElGamal encryption and decryption
+- `primitives` - Core PEP operations (`rekey`, `reshuffle`, `rerandomize`)
+- `high_level` - User-friendly API with `Pseudonym` and `DataPoint` classes
+- `distributed` - Distributed n-PEP operations with multiple servers
 
 ## Applications
 
@@ -70,15 +130,39 @@ We offer APIs at different abstraction levels.
 
 Depending on the use case, you can choose the appropriate level of abstraction.
 
-## Building and running
+## Development
 
-Build using cargo: `cargo build` and test using `cargo test`.
+Build and test the core Rust library:
+```bash
+cargo build
+cargo test
+cargo doc --no-deps
+```
 
-To build the WASM library, use either `npm run build:nodejs` or `npm run build:web` (which will call `wasm-pack build --features wasm` for the preferred target).
+## Building Bindings
 
-The wasm library can be tested using the Node.js `jest` framework, after compiling the wasm library for Node.js: `npm run test`.
+### Python
+
+To build Python bindings for testing:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+maturin develop --features python
+python -m pytest tests/python/ -v
+```
+
+### WASM
+
+To build WASM bindings for testing:
+```bash
+npm install
+npm run build  # Builds both Node.js and web targets
+npm test
+```
 
 The following features are available:
+- `python`: enables the Python bindings.
 - `wasm`: enables the WASM library.
 - `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
 - `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from domains, contexts and secrets.

@@ -60,7 +60,11 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: pip install maturin
+      - name: Create virtual environment and install maturin
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install maturin
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -87,7 +91,11 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: pip install maturin
+      - name: Create virtual environment and install maturin
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install maturin
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:

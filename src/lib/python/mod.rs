@@ -9,6 +9,11 @@
 //!
 //! This module is only available when the `python` feature is enabled.
 
+// PyO3 code triggers clippy warnings that don't apply to Python bindings:
+// - PyResult<T> type aliases appear as "useless conversions" to clippy
+// - Methods like to_point(&self) appear to have "wrong self convention" but PyO3 objects can't be moved
+#![allow(clippy::useless_conversion, clippy::wrong_self_convention)]
+
 pub mod arithmetic;
 pub mod distributed;
 pub mod elgamal;
