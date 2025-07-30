@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for SessionSecretKey {
             {
                 ScalarNonZero::decode_from_hex(v)
                     .map(SessionSecretKey)
-                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 

@@ -129,7 +129,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
             {
                 ScalarNonZero::decode_from_hex(v)
                     .map(BlindedGlobalSecretKey)
-                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 
@@ -162,7 +162,7 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
             {
                 ScalarNonZero::decode_from_hex(v)
                     .map(SessionKeyShare)
-                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 

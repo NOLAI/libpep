@@ -33,9 +33,9 @@ fn n_pep() {
     let systems = (0..n)
         .map(|i| {
             let pseudonymization_secret =
-                PseudonymizationSecret::from(format!("ps-secret-{}", i).as_bytes().into());
+                PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes().into());
             let encryption_secret =
-                EncryptionSecret::from(format!("es-secret-{}", i).as_bytes().into());
+                EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
             let blinding_factor = blinding_factors[i];
             PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })

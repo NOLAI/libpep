@@ -94,7 +94,7 @@ impl<'de> Deserialize<'de> for ElGamal {
                 E: Error,
             {
                 ElGamal::decode_from_base64(v)
-                    .ok_or(E::custom(format!("invalid base64 encoded string: {}", v)))
+                    .ok_or(E::custom(format!("invalid base64 encoded string: {v}")))
             }
         }
 

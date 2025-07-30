@@ -233,7 +233,7 @@ impl PyPseudonym {
     fn to_string_padded(pseudonyms: Vec<PyPseudonym>) -> PyResult<String> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
         Pseudonym::to_string_padded(&rust_pseudonyms)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {}", e)))
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
     }
 
     /// Convert a collection of pseudonyms back to the original byte array
@@ -243,7 +243,7 @@ impl PyPseudonym {
     fn to_bytes_padded(pseudonyms: Vec<PyPseudonym>, py: Python) -> PyResult<PyObject> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
         let result = Pseudonym::to_bytes_padded(&rust_pseudonyms).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {}", e))
+            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
         Ok(PyBytes::new_bound(py, &result).into())
     }
@@ -383,7 +383,7 @@ impl PyDataPoint {
     fn to_string_padded(data_points: Vec<PyDataPoint>) -> PyResult<String> {
         let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
         DataPoint::to_string_padded(&rust_data_points)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {}", e)))
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
     }
 
     /// Convert a collection of data points back to the original byte array
@@ -393,7 +393,7 @@ impl PyDataPoint {
     fn to_bytes_padded(data_points: Vec<PyDataPoint>, py: Python) -> PyResult<PyObject> {
         let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
         let result = DataPoint::to_bytes_padded(&rust_data_points).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {}", e))
+            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
         Ok(PyBytes::new_bound(py, &result).into())
     }

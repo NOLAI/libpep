@@ -139,7 +139,7 @@ impl<'de> Deserialize<'de> for GroupElement {
                 E: Error,
             {
                 GroupElement::decode_from_hex(v)
-                    .ok_or(E::custom(format!("invalid hex encoded string: {}", v)))
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 
