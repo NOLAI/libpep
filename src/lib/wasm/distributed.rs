@@ -30,7 +30,7 @@ impl WASMBlindingFactor {
     }
     /// Clone the [`WASMBlindingFactor`].
     #[wasm_bindgen(js_name = clone)]
-    pub fn clone(&self) -> Self {
+    pub fn clone_js(&self) -> Self {
         WASMBlindingFactor(self.0)
     }
     /// Encode the [`WASMBlindingFactor`] as a byte array.
