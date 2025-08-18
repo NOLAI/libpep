@@ -66,7 +66,7 @@ jobs:
           manylinux: auto
           python-version: '3.8-3.13'
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.target }}
           path: dist
@@ -95,7 +95,7 @@ jobs:
           command: sdist
           args: --out dist --features python
       - name: Upload sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: sdist
           path: dist
@@ -110,7 +110,7 @@ jobs:
     name: Release Python package to PyPI
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
       - name: Move files to dist
