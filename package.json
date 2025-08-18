@@ -1,6 +1,6 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.6.9",
+  "version": "0.6.10",
   "description": "The WebAssembly version of the libpep library",
   "repository": {
     "type": "git",

@@ -68,17 +68,7 @@ pub mod distributed {
     pub mod systems;
 }
 #[cfg(feature = "wasm")]
-mod wasm {
-    //! Wrappers for WebAssembly bindings.
-    //! Since WebAssembly does not support the polymorphic properties we use in the rest of the
-    //! library, we need to provide wrappers around all structs and functions.
-    //! This module is only available when the `wasm` feature is enabled.
-    mod arithmetic;
-    mod distributed;
-    mod elgamal;
-    mod high_level;
-    mod primitives;
-}
+pub mod wasm;
 
 #[cfg(feature = "python")]
 mod python;

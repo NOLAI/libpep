@@ -110,7 +110,7 @@ impl PEPSystem {
         transcrypt(encrypted, transcryption_info)
     }
 
-    /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedEntityMessages`]),
+    /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedEntityData`]),
     /// from one pseudonymization domain and session to another, using [`TranscryptionInfo`].
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,

@@ -1,15 +1,15 @@
 [package]
 name = "libpep"
 edition = "2021"
-version = "0.6.9"
+version = "0.6.10"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
 repository = "https://github.com/NOLAI/libpep"
 documentation = "https://docs.rs/libpep"
 license = "Apache-2.0"
-keywords = ["crypto", "pep", "pseudonimization"]
-categories = ["command-line-interface"]
-description = "implementation of PEP primitives, offering pseudonimization and encryption interfaces"
+keywords = ["crypto", "pep", "pseudonymization"]
+categories = ["cryptography", "algorithms"]
+description = "Implementation of PEP primitives, offering pseudonymization and encryption interfaces"
 readme = "README.md"
 
 [features]

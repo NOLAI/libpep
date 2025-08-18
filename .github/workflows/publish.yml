@@ -57,14 +57,6 @@ jobs:
     name: Build and publish Python wheels
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-      - name: Create virtual environment and install maturin
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install maturin
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -72,10 +64,11 @@ jobs:
           args: --release --out dist --features python
           sccache: 'true'
           manylinux: auto
+          python-version: '3.8-3.13'
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: dist
 
   publish-python-sdist:
@@ -104,7 +97,7 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v3
         with:
-          name: wheels
+          name: sdist
           path: dist
 
   release-python:
@@ -119,7 +112,11 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v3
         with:
-          name: wheels
-          path: dist
+          path: artifacts
+      - name: Move files to dist
+        run: |
+          mkdir -p dist
+          find artifacts -name "*.whl" -exec cp {} dist/ \;
+          find artifacts -name "*.tar.gz" -exec cp {} dist/ \;
       - name: Publish to PyPI
         uses: PyPA/gh-action-pypi-publish@release/v1

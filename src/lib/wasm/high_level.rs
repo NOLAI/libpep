@@ -385,7 +385,7 @@ pub struct WASMSessionKeyPair {
 #[wasm_bindgen(js_name = makeGlobalKeys)]
 pub fn wasm_make_global_keys() -> WASMGlobalKeyPair {
     let mut rng = rand::thread_rng();
-    let (public, secret) = make_global_keys(&mut rng);
+    let (public, secret) = crate::high_level::keys::make_global_keys(&mut rng);
     WASMGlobalKeyPair {
         public: WASMGlobalPublicKey::from(WASMGroupElement::from(public.0)),
         secret: WASMGlobalSecretKey::from(WASMScalarNonZero::from(secret.0)),
@@ -399,14 +399,14 @@ pub fn wasm_make_session_keys(
     session: &str,
     secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeyPair {
-    let (public, secret) = make_session_keys(
-        &GlobalSecretKey(*global.0),
+    let (public, secret_key) = crate::high_level::keys::make_session_keys(
+        &GlobalSecretKey(global.0 .0),
         &EncryptionContext::from(session),
         &secret.0,
     );
     WASMSessionKeyPair {
         public: WASMSessionPublicKey::from(WASMGroupElement::from(public.0)),
-        secret: WASMSessionSecretKey::from(WASMScalarNonZero::from(secret.0)),
+        secret: WASMSessionSecretKey::from(WASMScalarNonZero::from(secret_key.0)),
     }
 }
 

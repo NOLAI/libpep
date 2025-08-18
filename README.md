@@ -1,10 +1,10 @@
 # `libpep`: Library for polymorphic pseudonymization and encryption
 [![Crates.io](https://img.shields.io/crates/v/libpep.svg)](https://crates.io/crates/libpep)
-[![Downloads](https://img.shields.io/crates/d/libpep.svg)](https://crates.io/crates/libpep)
-[![PyPI](https://img.shields.io/pypi/v/libpep-py.svg)](https://pypi.org/project/libpep-py/)
-[![PyPI Downloads](https://img.shields.io/pypi/dm/libpep-py.svg)](https://pypi.org/project/libpep-py/)
-[![npm](https://img.shields.io/npm/v/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
-[![npm Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
+[![Downloads](https://img.shields.io/crates/d/libpep)](https://crates.io/crates/libpep)
+[![PyPI](https://img.shields.io/pypi/v/libpep-py)](https://pypi.org/project/libpep-py/)
+[![Downloads](https://img.shields.io/pypi/dm/libpep-py)](https://pypi.org/project/libpep-py/)
+[![npm](https://img.shields.io/npm/v/@nolai/libpep-wasm)](https://www.npmjs.com/package/@nolai/libpep-wasm)
+[![Downloads](https://img.shields.io/npm/dm/@nolai/libpep-wasm.svg)](https://www.npmjs.com/package/@nolai/libpep-wasm)
 [![License](https://img.shields.io/crates/l/libpep.svg)](https://crates.io/crates/libpep)
 [![Documentation](https://docs.rs/libpep/badge.svg)](https://docs.rs/libpep)
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
@@ -85,11 +85,16 @@ console.log(`Data point: ${data.as_hex()}`);
 ### API Structure
 
 Both Python and WASM bindings mirror the Rust API structure with the same modules:
-- `arithmetic` - Basic arithmetic operations on scalars and group elements
-- `elgamal` - ElGamal encryption and decryption
-- `primitives` - Core PEP operations (`rekey`, `reshuffle`, `rerandomize`)
-- `high_level` - User-friendly API with `Pseudonym` and `DataPoint` classes
-- `distributed` - Distributed n-PEP operations with multiple servers
+
+| Module | Description |
+|--------|-------------|
+| `arithmetic` | Basic arithmetic operations on scalars and group elements |
+| `elgamal` | ElGamal encryption and decryption primitives |
+| `primitives` | Core PEP operations (`rekey`, `reshuffle`, `rerandomize`) |
+| `high_level` | User-friendly API with `Pseudonym` and `DataPoint` classes |
+| `distributed` | Distributed n-PEP operations with multiple servers |
+
+For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep).
 
 ## Applications
 
@@ -105,9 +110,17 @@ The factor `k` is typically tied to the *current session of a user*, which we ca
 When the same encrypted pseudonym is used multiple times, rerandomize is applied every time.
 This way a binary compare of the encrypted pseudonym will not leak any information.
 
-## Implementation
+## Security and Implementation
 
-This library is using the Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), but with [patches by Signal](https://github.com/signalapp/curve25519-dalek) for _lizard_ encoding of arbitrary 16 byte values into ristretto points. 
+This library uses the Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), with [patches by Signal](https://github.com/signalapp/curve25519-dalek) for _lizard_ encoding of arbitrary 16 byte values into ristretto points.
+
+### Security Considerations
+- All cryptographic operations use constant-time algorithms to prevent timing attacks
+- Random number generation uses cryptographically secure sources
+- The library has been designed for production use but hasn't yet undergone formal security auditing
+- Users should properly secure private keys and avoid exposing sensitive cryptographic material
+
+### Arithmetic Rules
 There are a number of arithmetic rules for scalars and group elements: group elements can be added and subtracted from each other.
 Scalars support addition, subtraction, and multiplication.
 Division can be done by multiplying with the inverse (using `s.invert()` for non-zero scalar `s`).
@@ -132,11 +145,25 @@ Depending on the use case, you can choose the appropriate level of abstraction.
 
 ## Development
 
+### Prerequisites
+- Rust 1.70+ (MSRV)
+- Node.js 18+ (for WASM bindings)
+- Python 3.8+ (for Python bindings)
+
+### Building and Testing
+
 Build and test the core Rust library:
 ```bash
 cargo build
 cargo test
+cargo clippy
 cargo doc --no-deps
+```
+
+Run tests with different feature combinations:
+```bash
+cargo test --features elgamal3
+cargo test --features legacy-pep-repo-compatible
 ```
 
 ## Building Bindings
