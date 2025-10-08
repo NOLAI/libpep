@@ -1,12 +1,15 @@
 use commandy_macros::*;
-use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
+use libpep::distributed::key_blinding::{make_distributed_global_pseudonym_keys, SafeScalar};
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
-    make_global_keys, make_session_keys, EncryptionSecret, GlobalPublicKey, GlobalSecretKey,
-    PseudonymizationSecret, PublicKey, SecretKey, SessionPublicKey, SessionSecretKey,
+    make_pseudonym_global_keys, make_pseudonym_session_keys, EncryptionSecret,
+    PseudonymGlobalPublicKey, PseudonymGlobalSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, PseudonymizationSecret, PublicKey, SecretKey,
 };
-use libpep::high_level::ops::{decrypt, encrypt, encrypt_global, rerandomize, transcrypt};
+use libpep::high_level::ops::{
+    decrypt_pseudonym, encrypt_pseudonym, encrypt_pseudonym_global, rerandomize, transcrypt,
+};
 use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
 use rand_core::OsRng;
 use std::cmp::Ordering;
@@ -157,21 +160,24 @@ fn main() {
     let options: Options = commandy::parse_args();
     match options.subcommand {
         Some(Sub::GenerateGlobalKeys(_)) => {
-            let (pk, sk) = make_global_keys(&mut rng);
+            let (pk, sk) = make_pseudonym_global_keys(&mut rng);
             eprint!("Public global key: ");
             println!("{}", &pk.encode_as_hex());
             eprint!("Secret global key: ");
             println!("{}", &sk.value().encode_as_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
-            let global_secret_key = GlobalSecretKey::from(
+            let global_secret_key = PseudonymGlobalSecretKey::from(
                 ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid global secret key."),
             );
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
             let session_context = EncryptionContext::from(arg.args[2].as_str());
 
-            let (session_pk, session_sk) =
-                make_session_keys(&global_secret_key, &session_context, &encryption_secret);
+            let (session_pk, session_sk) = make_pseudonym_session_keys(
+                &global_secret_key,
+                &session_context,
+                &encryption_secret,
+            );
             eprint!("Public session key: ");
             println!("{}", &session_pk.encode_as_hex());
             eprint!("Secret session key: ");
@@ -215,26 +221,28 @@ fn main() {
             );
         }
         Some(Sub::Encrypt(arg)) => {
-            let public_key = SessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let public_key =
+                PseudonymSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
             let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
-            let ciphertext = encrypt(&pseudonym, &public_key, &mut rng);
+            let ciphertext = encrypt_pseudonym(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::EncryptGlobal(arg)) => {
-            let public_key = GlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let public_key =
+                PseudonymGlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
             let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
-            let ciphertext = encrypt_global(&pseudonym, &public_key, &mut rng);
+            let ciphertext = encrypt_pseudonym_global(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.encode_as_base64());
         }
         Some(Sub::Decrypt(arg)) => {
-            let secret_key = SessionSecretKey::from(
+            let secret_key = PseudonymSessionSecretKey::from(
                 ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
                 EncryptedPseudonym::from_base64(&arg.args[1]).expect("Invalid ciphertext.");
-            let plaintext = decrypt(&ciphertext, &secret_key);
+            let plaintext = decrypt_pseudonym(&ciphertext, &secret_key);
             eprint!("Plaintext: ");
             println!("{}", &plaintext.encode_as_hex());
         }
@@ -245,7 +253,7 @@ fn main() {
             #[cfg(not(feature = "elgamal3"))]
             {
                 let public_key =
-                    SessionPublicKey::from_hex(&arg.args[1]).expect("Invalid public key.");
+                    PseudonymSessionPublicKey::from_hex(&arg.args[1]).expect("Invalid public key.");
                 rerandomized = rerandomize(&ciphertext, &public_key, &mut rng);
             }
             #[cfg(feature = "elgamal3")]
@@ -324,7 +332,7 @@ fn main() {
                 .parse::<usize>()
                 .expect("Invalid number of nodes.");
             let (global_public_key, blinded_secret, blinding_factors) =
-                make_distributed_global_keys(n, &mut rng);
+                make_distributed_global_pseudonym_keys(n, &mut rng);
             eprint!("Public global key: ");
             println!("{}", &global_public_key.encode_as_hex());
             eprint!("Blinded secret key: ");

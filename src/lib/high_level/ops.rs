@@ -1,5 +1,7 @@
 //! High-level n-PEP operations for [encrypt]ion, [decrypt]ion and [transcrypt]ion, including batch
 //! transcryption and rerandomization.
+//!
+//! Encryption and decryption operations use separate keys for pseudonyms and attributes.
 
 use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
@@ -9,49 +11,196 @@ use crate::low_level::primitives::rsk;
 use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 
-/// Encrypt an [`Encryptable] message (a [Pseudonym] or [DataPoint]) using a [`SessionPublicKey`].
-pub fn encrypt<R: RngCore + CryptoRng, E: Encryptable>(
-    message: &E,
-    public_key: &SessionPublicKey,
+/// Trait that associates an encryptable type with its corresponding session key types.
+pub trait HasSessionKeys: Encryptable {
+    type SessionPublicKey: PublicKey;
+    type SessionSecretKey: SecretKey;
+}
+
+/// Trait that associates an encryptable type with its corresponding global key types.
+pub trait HasGlobalKeys: Encryptable {
+    type GlobalPublicKey: PublicKey;
+    type GlobalSecretKey: SecretKey;
+}
+
+impl HasSessionKeys for Pseudonym {
+    type SessionPublicKey = PseudonymSessionPublicKey;
+    type SessionSecretKey = PseudonymSessionSecretKey;
+}
+
+impl HasSessionKeys for Attribute {
+    type SessionPublicKey = AttributeSessionPublicKey;
+    type SessionSecretKey = AttributeSessionSecretKey;
+}
+
+impl HasGlobalKeys for Pseudonym {
+    type GlobalPublicKey = PseudonymGlobalPublicKey;
+    type GlobalSecretKey = PseudonymGlobalSecretKey;
+}
+
+impl HasGlobalKeys for Attribute {
+    type GlobalPublicKey = AttributeGlobalPublicKey;
+    type GlobalSecretKey = AttributeGlobalSecretKey;
+}
+
+/// Polymorphic encrypt function that works for both pseudonyms and attributes.
+/// Uses the appropriate session key type based on the message type.
+pub fn encrypt<M, R>(message: &M, public_key: &M::SessionPublicKey, rng: &mut R) -> M::EncryptedType
+where
+    M: HasSessionKeys,
+    R: RngCore + CryptoRng,
+{
+    M::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key.value(),
+        rng,
+    ))
+}
+
+/// Polymorphic decrypt function that works for both pseudonyms and attributes.
+/// Uses the appropriate session key type based on the encrypted message type.
+pub fn decrypt<E, S>(encrypted: &E, secret_key: &S) -> E::UnencryptedType
+where
+    E: Encrypted,
+    E::UnencryptedType: HasSessionKeys<SessionSecretKey = S>,
+    S: SecretKey,
+{
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        secret_key.value(),
+    ))
+}
+
+/// Polymorphic global encrypt function that works for both pseudonyms and attributes.
+/// Uses the appropriate global key type based on the message type.
+pub fn encrypt_global<M, R>(
+    message: &M,
+    public_key: &M::GlobalPublicKey,
     rng: &mut R,
-) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+) -> M::EncryptedType
+where
+    M: HasGlobalKeys,
+    R: RngCore + CryptoRng,
+{
+    M::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key.value(),
+        rng,
+    ))
+}
+
+/// Polymorphic global decrypt function that works for both pseudonyms and attributes.
+/// Uses the appropriate global key type based on the encrypted message type.
+#[cfg(feature = "insecure-methods")]
+pub fn decrypt_global<E, S>(encrypted: &E, secret_key: &S) -> E::UnencryptedType
+where
+    E: Encrypted,
+    E::UnencryptedType: HasGlobalKeys<GlobalSecretKey = S>,
+    S: SecretKey,
+{
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        secret_key.value(),
+    ))
+}
+
+/// Encrypt a pseudonym using a [`PseudonymSessionPublicKey`].
+pub fn encrypt_pseudonym<R: RngCore + CryptoRng>(
+    message: &Pseudonym,
+    public_key: &PseudonymSessionPublicKey,
+    rng: &mut R,
+) -> EncryptedPseudonym {
+    EncryptedPseudonym::from_value(crate::low_level::elgamal::encrypt(
         message.value(),
         public_key,
         rng,
     ))
 }
 
-/// Decrypt an encrypted message using a [`SessionSecretKey`].
-pub fn decrypt<E: Encrypted>(encrypted: &E, secret_key: &SessionSecretKey) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+/// Encrypt an attribute using a [`AttributeSessionPublicKey`].
+pub fn encrypt_attribute<R: RngCore + CryptoRng>(
+    message: &Attribute,
+    public_key: &AttributeSessionPublicKey,
+    rng: &mut R,
+) -> EncryptedAttribute {
+    EncryptedAttribute::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key,
+        rng,
+    ))
+}
+
+/// Decrypt an encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+pub fn decrypt_pseudonym(
+    encrypted: &EncryptedPseudonym,
+    secret_key: &PseudonymSessionSecretKey,
+) -> Pseudonym {
+    Pseudonym::from_value(crate::low_level::elgamal::decrypt(
         encrypted.value(),
         &secret_key.0,
     ))
 }
 
-/// Encrypt a message using a global key.
+/// Decrypt an encrypted attribute using a [`AttributeSessionSecretKey`].
+pub fn decrypt_attribute(
+    encrypted: &EncryptedAttribute,
+    secret_key: &AttributeSessionSecretKey,
+) -> Attribute {
+    Attribute::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
+}
+
+/// Encrypt a pseudonym using a global key.
 /// Can be used when encryption happens offline and no session key is available, or when using
 /// a session key may leak information.
-pub fn encrypt_global<R: RngCore + CryptoRng, E: Encryptable>(
-    message: &E,
-    public_key: &GlobalPublicKey,
+pub fn encrypt_pseudonym_global<R: RngCore + CryptoRng>(
+    message: &Pseudonym,
+    public_key: &PseudonymGlobalPublicKey,
     rng: &mut R,
-) -> E::EncryptedType {
-    E::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+) -> EncryptedPseudonym {
+    EncryptedPseudonym::from_value(crate::low_level::elgamal::encrypt(
         message.value(),
         public_key,
         rng,
     ))
 }
 
-/// Decrypt using a global key (notice that for most applications, this key should be discarded and thus never exist).
+/// Encrypt an attribute using a global key.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+pub fn encrypt_attribute_global<R: RngCore + CryptoRng>(
+    message: &Attribute,
+    public_key: &AttributeGlobalPublicKey,
+    rng: &mut R,
+) -> EncryptedAttribute {
+    EncryptedAttribute::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key,
+        rng,
+    ))
+}
+
+/// Decrypt a pseudonym using a global key (notice that for most applications, this key should be discarded and thus never exist).
 #[cfg(feature = "insecure-methods")]
-pub fn decrypt_global<E: Encrypted>(
-    encrypted: &E,
-    secret_key: &GlobalSecretKey,
-) -> E::UnencryptedType {
-    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+pub fn decrypt_pseudonym_global(
+    encrypted: &EncryptedPseudonym,
+    secret_key: &PseudonymGlobalSecretKey,
+) -> Pseudonym {
+    Pseudonym::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
+}
+
+/// Decrypt an attribute using a global key (notice that for most applications, this key should be discarded and thus never exist).
+#[cfg(feature = "insecure-methods")]
+pub fn decrypt_attribute_global(
+    encrypted: &EncryptedAttribute,
+    secret_key: &AttributeGlobalSecretKey,
+) -> Attribute {
+    Attribute::from_value(crate::low_level::elgamal::decrypt(
         encrypted.value(),
         &secret_key.0,
     ))
@@ -113,31 +262,61 @@ pub fn pseudonymize(
     ))
 }
 
-/// Rekey an [`EncryptedDataPoint`] from one encryption context to another, using [`RekeyInfo`].
-pub fn rekey(encrypted: &EncryptedDataPoint, rekey_info: &RekeyInfo) -> EncryptedDataPoint {
-    EncryptedDataPoint::from(crate::low_level::primitives::rekey(
+/// Rekey an [`EncryptedAttribute`] from one encryption context to another, using [`RekeyInfo`].
+pub fn rekey(encrypted: &EncryptedAttribute, rekey_info: &RekeyInfo) -> EncryptedAttribute {
+    EncryptedAttribute::from(crate::low_level::primitives::rekey(
         &encrypted.value,
         &rekey_info.0,
     ))
 }
 
+/// Trait for types that can be transcrypted.
+/// This trait is implemented separately for pseudonyms and attributes to provide
+/// type-specific transcryption behavior without runtime dispatch.
+pub trait Transcryptable: Encrypted {
+    /// Apply the transcryption operation specific to this type.
+    fn transcrypt_impl(
+        value: &crate::low_level::elgamal::ElGamal,
+        s: &ScalarNonZero,
+        k: &ScalarNonZero,
+    ) -> crate::low_level::elgamal::ElGamal;
+}
+
+impl Transcryptable for EncryptedPseudonym {
+    #[inline]
+    fn transcrypt_impl(
+        value: &crate::low_level::elgamal::ElGamal,
+        s: &ScalarNonZero,
+        k: &ScalarNonZero,
+    ) -> crate::low_level::elgamal::ElGamal {
+        rsk(value, s, k)
+    }
+}
+
+impl Transcryptable for EncryptedAttribute {
+    #[inline]
+    fn transcrypt_impl(
+        value: &crate::low_level::elgamal::ElGamal,
+        _s: &ScalarNonZero,
+        k: &ScalarNonZero,
+    ) -> crate::low_level::elgamal::ElGamal {
+        crate::low_level::primitives::rekey(value, k)
+    }
+}
+
 /// Transcrypt an encrypted message from one pseudonymization and encryption context to another,
 /// using [`TranscryptionInfo`].
-/// When an [`EncryptedPseudonym`] is transcrypted, the result is a pseudonymized pseudonym,
-/// and when an [`EncryptedDataPoint`] is transcrypted, the result is a rekeyed data point.
-pub fn transcrypt<E: Encrypted>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
-    if E::IS_PSEUDONYM {
-        E::from_value(rsk(
-            encrypted.value(),
-            &transcryption_info.s.0,
-            &transcryption_info.k.0,
-        ))
-    } else {
-        E::from_value(crate::low_level::primitives::rekey(
-            encrypted.value(),
-            &transcryption_info.k.0,
-        ))
-    }
+///
+/// When an [`EncryptedPseudonym`] is transcrypted, the result is a pseudonymized pseudonym
+/// (applying both reshuffle and rekey operations).
+/// When an [`EncryptedAttribute`] is transcrypted, the result is a rekeyed attribute
+/// (applying only the rekey operation, as attributes cannot be reshuffled).
+pub fn transcrypt<E: Transcryptable>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
+    E::from_value(E::transcrypt_impl(
+        encrypted.value(),
+        &transcryption_info.s.0,
+        &transcryption_info.k.0,
+    ))
 }
 
 /// Batch pseudonymization of a slice of [`EncryptedPseudonym`]s, using [`PseudonymizationInfo`].
@@ -153,41 +332,41 @@ pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
         .map(|x| pseudonymize(x, pseudonymization_info))
         .collect()
 }
-/// Batch rekeying of a slice of [`EncryptedDataPoint`]s, using [`RekeyInfo`].
-/// The order of the data points is randomly shuffled to avoid linking them.
+/// Batch rekeying of a slice of [`EncryptedAttribute`]s, using [`RekeyInfo`].
+/// The order of the attributes is randomly shuffled to avoid linking them.
 pub fn rekey_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut [EncryptedDataPoint],
+    encrypted: &mut [EncryptedAttribute],
     rekey_info: &RekeyInfo,
     rng: &mut R,
-) -> Box<[EncryptedDataPoint]> {
+) -> Box<[EncryptedAttribute]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
     encrypted.iter().map(|x| rekey(x, rekey_info)).collect()
 }
 
-/// A pair of encrypted pseudonyms and data points that relate to the same entity, used for batch transcryption.
-pub type EncryptedEntityData = (Vec<EncryptedPseudonym>, Vec<EncryptedDataPoint>);
+/// A pair of encrypted pseudonyms and attributes that relate to the same entity, used for batch transcryption.
+pub type EncryptedData = (Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>);
 
-/// Batch transcryption of a slice of [`EncryptedEntityData`]s, using [`TranscryptionInfo`].
+/// Batch transcryption of a slice of [`EncryptedData`]s, using [`TranscryptionInfo`].
 /// The order of the pairs (entities) is randomly shuffled to avoid linking them, but the internal
-/// order of pseudonyms and data points for the same entity is preserved.
+/// order of pseudonyms and attributes for the same entity is preserved.
 pub fn transcrypt_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut Box<[EncryptedEntityData]>,
+    encrypted: &mut Box<[EncryptedData]>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Box<[EncryptedEntityData]> {
+) -> Box<[EncryptedData]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
     encrypted
         .iter_mut()
-        .map(|(pseudonyms, data_points)| {
+        .map(|(pseudonyms, attributes)| {
             let pseudonyms = pseudonyms
                 .iter()
                 .map(|x| pseudonymize(x, transcryption_info))
                 .collect();
-            let data_points = data_points
+            let attributes = attributes
                 .iter()
                 .map(|x| rekey(x, &(*transcryption_info).into()))
                 .collect();
-            (pseudonyms, data_points)
+            (pseudonyms, attributes)
         })
         .collect()
 }

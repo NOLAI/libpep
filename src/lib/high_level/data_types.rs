@@ -1,4 +1,4 @@
-//! High-level data types for pseudonyms and data points, and their encrypted versions,
+//! High-level data types for pseudonyms and attributes, and their encrypted versions,
 //! Including several ways to encode and decode them.
 
 use crate::internal::arithmetic::GroupElement;
@@ -14,10 +14,10 @@ use std::io::{Error, ErrorKind};
 pub struct Pseudonym {
     pub(crate) value: GroupElement,
 }
-/// A data point (in the background, this is a [`GroupElement`]), which should not be identifiable
+/// An attribute (in the background, this is a [`GroupElement`]), which should not be identifiable
 /// and can be encrypted and rekeyed, but not reshuffled.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct DataPoint {
+pub struct Attribute {
     pub(crate) value: GroupElement,
 }
 /// An encrypted pseudonym, which is an [`ElGamal`] encryption of a [`Pseudonym`].
@@ -25,13 +25,13 @@ pub struct DataPoint {
 pub struct EncryptedPseudonym {
     pub value: ElGamal,
 }
-/// An encrypted data point, which is an [`ElGamal`] encryption of a [`DataPoint`].
+/// An encrypted attribute, which is an [`ElGamal`] encryption of an [`Attribute`].
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct EncryptedDataPoint {
+pub struct EncryptedAttribute {
     pub value: ElGamal,
 }
 
-impl Serialize for EncryptedDataPoint {
+impl Serialize for EncryptedAttribute {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -40,7 +40,7 @@ impl Serialize for EncryptedDataPoint {
     }
 }
 
-impl<'de> Deserialize<'de> for EncryptedDataPoint {
+impl<'de> Deserialize<'de> for EncryptedAttribute {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -72,7 +72,6 @@ impl<'de> Deserialize<'de> for EncryptedPseudonym {
 /// A trait for encrypted data types, that can be encrypted and decrypted from and into [`Encryptable`] types.
 pub trait Encrypted {
     type UnencryptedType: Encryptable;
-    const IS_PSEUDONYM: bool = false;
     /// Get the [ElGamal] ciphertext value.
     fn value(&self) -> &ElGamal;
     /// Create from an [ElGamal] ciphertext.
@@ -180,7 +179,7 @@ pub trait Encryptable {
         Self::from_point(GroupElement::decode_from_hash(hash))
     }
     /// Create from a byte array of length 16.
-    /// This is useful for creating a pseudonym from an existing identifier or encoding data points,
+    /// This is useful for creating a pseudonym from an existing identifier or encoding attributes,
     /// as it accepts any 16-byte value.
     /// See [`GroupElement::decode_lizard`].
     fn from_bytes(data: &[u8; 16]) -> Self
@@ -272,8 +271,8 @@ pub trait Encryptable {
         // Copy over all blocks except the last one
         // Validate padding and copy the data part of the last block
         // Copy over all blocks except the last one
-        for data_point in &encryptables[..encryptables.len() - 1] {
-            let block = data_point.as_bytes().ok_or(Error::new(
+        for encryptable in &encryptables[..encryptables.len() - 1] {
+            let block = encryptable.as_bytes().ok_or(Error::new(
                 ErrorKind::InvalidData,
                 "Encryptable conversion to bytes failed",
             ))?;
@@ -330,8 +329,8 @@ impl Encryptable for Pseudonym {
         Self { value }
     }
 }
-impl Encryptable for DataPoint {
-    type EncryptedType = EncryptedDataPoint;
+impl Encryptable for Attribute {
+    type EncryptedType = EncryptedAttribute;
     fn value(&self) -> &GroupElement {
         &self.value
     }
@@ -344,7 +343,6 @@ impl Encryptable for DataPoint {
 }
 impl Encrypted for EncryptedPseudonym {
     type UnencryptedType = Pseudonym;
-    const IS_PSEUDONYM: bool = true;
     fn value(&self) -> &ElGamal {
         &self.value
     }
@@ -355,9 +353,8 @@ impl Encrypted for EncryptedPseudonym {
         Self { value }
     }
 }
-impl Encrypted for EncryptedDataPoint {
-    type UnencryptedType = DataPoint;
-    const IS_PSEUDONYM: bool = false;
+impl Encrypted for EncryptedAttribute {
+    type UnencryptedType = Attribute;
     fn value(&self) -> &ElGamal {
         &self.value
     }

@@ -44,7 +44,7 @@ pip install libpep-py
 
 Use with direct imports from submodules:
 ```python
-from libpep.high_level import Pseudonym, DataPoint, make_global_keys
+from libpep.high_level import Pseudonym, Attribute, make_global_keys
 from libpep.arithmetic import GroupElement, ScalarNonZero
 
 # Generate keys
@@ -55,7 +55,7 @@ pseudonym = Pseudonym.random()
 print(f"Pseudonym: {pseudonym.as_hex()}")
 
 # Create data points
-data = DataPoint.random()
+data = Attribute.random()
 print(f"Data point: {data.as_hex()}")
 ```
 
@@ -78,7 +78,7 @@ const pseudonym = libpep.Pseudonym.random();
 console.log(`Pseudonym: ${pseudonym.as_hex()}`);
 
 // Create data points
-const data = libpep.DataPoint.random();
+const data = libpep.Attribute.random();
 console.log(`Data point: ${data.as_hex()}`);
 ```
 
@@ -91,7 +91,7 @@ Both Python and WASM bindings mirror the Rust API structure with the same module
 | `arithmetic` | Basic arithmetic operations on scalars and group elements |
 | `elgamal` | ElGamal encryption and decryption primitives |
 | `primitives` | Core PEP operations (`rekey`, `reshuffle`, `rerandomize`) |
-| `high_level` | User-friendly API with `Pseudonym` and `DataPoint` classes |
+| `high_level` | User-friendly API with `Pseudonym` and `Attribute` classes |
 | `distributed` | Distributed n-PEP operations with multiple servers |
 
 For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep).
@@ -138,7 +138,7 @@ We offer APIs at different abstraction levels.
 
 0. The `arithmetic` module (internal API) offers the basic arithmetic operations on scalars and group elements and the `elgamal` module offers the ElGamal encryption and decryption operations.
 1. The `primitives` module implements the basic PEP operations such as `rekey`, `reshuffle`, and `rerandomize` and the extended `rekey2` and `reshuffle2` variants, as well as a combined `rsk` and `rsk2` operation.
-2. The `high_level` module offer a more user-friendly API with many high level data types such as `Pseudonyms` and `DataPoints`.
+2. The `high_level` module offer a more user-friendly API with many high level data types such as `Pseudonyms` and `Attributes`.
 3. The `distributed` module additionally provides a high-level API for distributed scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple master keys.
 
 Depending on the use case, you can choose the appropriate level of abstraction.

@@ -179,7 +179,7 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(pseudo.as_hex(), dec_pseudo.as_hex())
         
         # Test data encryption/decryption
-        data = high_level.DataPoint.random()
+        data = high_level.Attribute.random()
         enc_data = client.encrypt_data(data)
         dec_data = client.decrypt_data(enc_data)
         
@@ -194,7 +194,7 @@ class TestDistributed(unittest.TestCase):
         pseudo = high_level.Pseudonym.random()
         enc_pseudo = offline_client.encrypt_pseudonym(pseudo)
         
-        data = high_level.DataPoint.random()
+        data = high_level.Attribute.random()
         enc_data = offline_client.encrypt_data(data)
         
         # These should be valid encrypted values

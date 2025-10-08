@@ -1,5 +1,6 @@
 use libpep::distributed::key_blinding::{
-    make_blinded_global_secret_key, BlindingFactor, SafeScalar,
+    make_blinded_global_attribute_secret_key, make_blinded_global_pseudonym_secret_key,
+    BlindingFactor, SafeScalar,
 };
 use libpep::distributed::systems::{PEPClient, PEPSystem};
 use libpep::high_level::contexts::*;
@@ -14,16 +15,32 @@ fn n_pep() {
     let rng = &mut OsRng;
 
     // Global config
-    let (_global_public, global_secret) = make_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
     let blinding_factors = (0..n)
         .map(|_| BlindingFactor::random(rng))
         .collect::<Vec<_>>();
-    let blinded_global_secret_key =
-        make_blinded_global_secret_key(&global_secret, &blinding_factors.clone()).unwrap();
+    let blinded_pseudonym_global_secret_key = make_blinded_global_pseudonym_secret_key(
+        &pseudonym_global_secret,
+        &blinding_factors.clone(),
+    )
+    .unwrap();
+    let blinded_attribute_global_secret_key = make_blinded_global_attribute_secret_key(
+        &attribute_global_secret,
+        &blinding_factors.clone(),
+    )
+    .unwrap();
 
     assert_eq!(
-        *blinded_global_secret_key.value(),
-        global_secret.value()
+        *blinded_pseudonym_global_secret_key.value(),
+        pseudonym_global_secret.value()
+            * blinding_factors
+                .iter()
+                .fold(ScalarNonZero::one(), |acc, x| acc * x.value().invert())
+    );
+    assert_eq!(
+        *blinded_attribute_global_secret_key.value(),
+        attribute_global_secret.value()
             * blinding_factors
                 .iter()
                 .fold(ScalarNonZero::one(), |acc, x| acc * x.value().invert())
@@ -49,25 +66,43 @@ fn n_pep() {
     let session_b1 = EncryptionContext::from("session-b1");
 
     // Get client session key shares
-    let sks_a1 = systems
+    let pseudonym_sks_a1 = systems
         .iter()
         .map(|system| system.session_key_share(&session_a1))
         .collect::<Vec<_>>();
-    let sks_b1 = systems
+    let pseudonym_sks_b1 = systems
+        .iter()
+        .map(|system| system.session_key_share(&session_b1))
+        .collect::<Vec<_>>();
+    let attribute_sks_a1 = systems
+        .iter()
+        .map(|system| system.session_key_share(&session_a1))
+        .collect::<Vec<_>>();
+    let attribute_sks_b1 = systems
         .iter()
         .map(|system| system.session_key_share(&session_b1))
         .collect::<Vec<_>>();
 
     // Create clients
-    let client_a = PEPClient::new(blinded_global_secret_key, &sks_a1);
-    let client_b = PEPClient::new(blinded_global_secret_key, &sks_b1);
+    let client_a = PEPClient::new(
+        blinded_pseudonym_global_secret_key,
+        &pseudonym_sks_a1,
+        blinded_attribute_global_secret_key,
+        &attribute_sks_a1,
+    );
+    let client_b = PEPClient::new(
+        blinded_pseudonym_global_secret_key,
+        &pseudonym_sks_b1,
+        blinded_attribute_global_secret_key,
+        &attribute_sks_b1,
+    );
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
-    let data = DataPoint::random(rng);
+    let data = Attribute::random(rng);
 
-    let enc_pseudo = client_a.encrypt(&pseudonym, rng);
-    let enc_data = client_a.encrypt(&data, rng);
+    let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
+    let enc_data = client_a.encrypt_attribute(&data, rng);
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let pseudo_info = system.pseudonymization_info(
@@ -84,8 +119,8 @@ fn n_pep() {
         system.rekey(&acc, &rekey_info)
     });
 
-    let dec_pseudo = client_b.decrypt(&transcrypted_pseudo);
-    let dec_data = client_b.decrypt(&transcrypted_data);
+    let dec_pseudo = client_b.decrypt_pseudonym(&transcrypted_pseudo);
+    let dec_data = client_b.decrypt_attribute(&transcrypted_data);
 
     assert_eq!(data, dec_data);
 
@@ -105,6 +140,6 @@ fn n_pep() {
         system.pseudonymize(&acc, &pseudo_info.reverse())
     });
 
-    let rev_dec_pseudo = client_a.decrypt(&rev_pseudonymized);
+    let rev_dec_pseudo = client_a.decrypt_pseudonym(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }

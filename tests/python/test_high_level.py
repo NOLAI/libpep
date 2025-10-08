@@ -7,8 +7,8 @@ Tests high-level API for pseudonyms, data points, and session management.
 import unittest
 from libpep.arithmetic import GroupElement
 from libpep.high_level import (
-    Pseudonym, DataPoint, PseudonymizationSecret, EncryptionSecret,
-    EncryptedPseudonym, EncryptedDataPoint, GlobalPublicKey,
+    Pseudonym, Attribute, PseudonymizationSecret, EncryptionSecret,
+    EncryptedPseudonym, EncryptedAttribute, GlobalPublicKey,
     make_global_keys, make_session_keys,
     encrypt_pseudonym, decrypt_pseudonym, encrypt_data, decrypt_data
 )
@@ -44,7 +44,7 @@ class TestHighLevel(unittest.TestCase):
         
         # Create and encrypt data point
         random_point = GroupElement.random()
-        data = DataPoint(random_point)
+        data = Attribute(random_point)
         enc_data = encrypt_data(data, session1_keys.public)
         
         # Decrypt and verify
@@ -78,21 +78,21 @@ class TestHighLevel(unittest.TestCase):
         self.assertIsNotNone(decoded_hex)
         self.assertEqual(pseudo1.as_hex(), decoded_hex.as_hex())
     
-    def test_data_point_operations(self):
+    def test_attribute_operations(self):
         """Test data point creation and manipulation"""
         # Test random data point
-        data1 = DataPoint.random()
-        data2 = DataPoint.random()
+        data1 = Attribute.random()
+        data2 = Attribute.random()
         self.assertNotEqual(data1.as_hex(), data2.as_hex())
         
         # Test from group element
         g = GroupElement.random()
-        data3 = DataPoint(g)
+        data3 = Attribute(g)
         self.assertEqual(g.as_hex(), data3.to_point().as_hex())
         
         # Test encoding/decoding
         encoded = data1.encode()
-        decoded = DataPoint.decode(encoded)
+        decoded = Attribute.decode(encoded)
         self.assertIsNotNone(decoded)
         self.assertEqual(data1.as_hex(), decoded.as_hex())
     
@@ -109,11 +109,11 @@ class TestHighLevel(unittest.TestCase):
         self.assertEqual(test_string, reconstructed)
         
         # Test data point string padding
-        data_list = DataPoint.from_string_padded(test_string)
+        data_list = Attribute.from_string_padded(test_string)
         self.assertGreater(len(data_list), 0)
         
         # Reconstruct string
-        reconstructed_data = DataPoint.to_string_padded(data_list)
+        reconstructed_data = Attribute.to_string_padded(data_list)
         self.assertEqual(test_string, reconstructed_data)
     
     def test_bytes_padding_operations(self):
@@ -129,11 +129,11 @@ class TestHighLevel(unittest.TestCase):
         self.assertEqual(test_bytes, reconstructed)
         
         # Test data point bytes padding
-        data_list = DataPoint.from_bytes_padded(test_bytes)
+        data_list = Attribute.from_bytes_padded(test_bytes)
         self.assertGreater(len(data_list), 0)
         
         # Reconstruct bytes
-        reconstructed_data = DataPoint.to_bytes_padded(data_list)
+        reconstructed_data = Attribute.to_bytes_padded(data_list)
         self.assertEqual(test_bytes, reconstructed_data)
     
     def test_fixed_size_bytes_operations(self):
@@ -148,7 +148,7 @@ class TestHighLevel(unittest.TestCase):
         self.assertEqual(test_bytes, reconstructed)
         
         # Test data point from/as bytes
-        data = DataPoint.from_bytes(test_bytes)
+        data = Attribute.from_bytes(test_bytes)
         reconstructed_data = data.as_bytes()
         self.assertIsNotNone(reconstructed_data)
         self.assertEqual(test_bytes, reconstructed_data)
@@ -182,11 +182,11 @@ class TestHighLevel(unittest.TestCase):
         self.assertEqual(pseudo.as_hex(), dec2.as_hex())
         
         # Test same for encrypted data point
-        data = DataPoint.random()
+        data = Attribute.random()
         enc_data = encrypt_data(data, session_keys.public)
         
         encoded_data = enc_data.encode()
-        decoded_data = EncryptedDataPoint.decode(encoded_data)
+        decoded_data = EncryptedAttribute.decode(encoded_data)
         self.assertIsNotNone(decoded_data)
         
         dec_data = decrypt_data(decoded_data, session_keys.secret)
