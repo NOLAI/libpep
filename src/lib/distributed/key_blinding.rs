@@ -170,11 +170,28 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
     }
 }
 
-/// Create a [`BlindedGlobalSecretKey`] from a [`GlobalSecretKey`] and a list of [`BlindingFactor`]s.
-/// Used during system setup to blind the global secret key.
+/// Create a [`BlindedGlobalSecretKey`] from a [`PseudonymGlobalSecretKey`] and a list of [`BlindingFactor`]s.
+/// Used during system setup to blind the global secret key for pseudonyms.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
-pub fn make_blinded_global_secret_key(
-    global_secret_key: &GlobalSecretKey,
+pub fn make_blinded_global_pseudonym_secret_key(
+    global_secret_key: &PseudonymGlobalSecretKey,
+    blinding_factors: &[BlindingFactor],
+) -> Option<BlindedGlobalSecretKey> {
+    let y = *global_secret_key;
+    let k = blinding_factors
+        .iter()
+        .fold(ScalarNonZero::one(), |acc, x| acc * x.0.invert());
+    if k == ScalarNonZero::one() {
+        return None;
+    }
+    Some(BlindedGlobalSecretKey(y.0 * k))
+}
+
+/// Create a [`BlindedGlobalSecretKey`] from a [`AttributeGlobalSecretKey`] and a list of [`BlindingFactor`]s.
+/// Used during system setup to blind the global secret key for attributes.
+/// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
+pub fn make_blinded_global_attribute_secret_key(
+    global_secret_key: &AttributeGlobalSecretKey,
     blinding_factors: &[BlindingFactor],
 ) -> Option<BlindedGlobalSecretKey> {
     let y = *global_secret_key;
@@ -195,44 +212,94 @@ pub fn make_session_key_share(
     SessionKeyShare(rekey_factor * blinding_factor.0)
 }
 
-/// Reconstruct a session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
-pub fn make_session_key(
+/// Reconstruct a pseudonym session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
+pub fn make_pseudonym_session_key(
     blinded_global_secret_key: BlindedGlobalSecretKey,
     session_key_shares: &[SessionKeyShare],
-) -> (SessionPublicKey, SessionSecretKey) {
-    let secret = SessionSecretKey::from(
+) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
+    let secret = PseudonymSessionSecretKey::from(
         session_key_shares
             .iter()
             .fold(blinded_global_secret_key.0, |acc, x| acc * x.0),
     );
-    let public = SessionPublicKey::from(secret.0 * G);
+    let public = PseudonymSessionPublicKey::from(secret.0 * G);
     (public, secret)
 }
 
-/// Update a session key share from one session to the other
-pub fn update_session_key(
-    session_secret_key: SessionSecretKey,
+/// Reconstruct an attribute session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
+pub fn make_attribute_session_key(
+    blinded_global_secret_key: BlindedGlobalSecretKey,
+    session_key_shares: &[SessionKeyShare],
+) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
+    let secret = AttributeSessionSecretKey::from(
+        session_key_shares
+            .iter()
+            .fold(blinded_global_secret_key.0, |acc, x| acc * x.0),
+    );
+    let public = AttributeSessionPublicKey::from(secret.0 * G);
+    (public, secret)
+}
+
+/// Update a pseudonym session key share from one session to the other
+pub fn update_pseudonym_session_key(
+    session_secret_key: PseudonymSessionSecretKey,
     old_session_key_share: SessionKeyShare,
     new_session_key_share: SessionKeyShare,
-) -> (SessionPublicKey, SessionSecretKey) {
-    let secret = SessionSecretKey::from(
+) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
+    let secret = PseudonymSessionSecretKey::from(
         session_secret_key.0 * old_session_key_share.0.invert() * new_session_key_share.0,
     );
-    let public = SessionPublicKey::from(secret.0 * G);
+    let public = PseudonymSessionPublicKey::from(secret.0 * G);
     (public, secret)
 }
 
-/// Setup a distributed system with a global public key, a blinded global secret key and a list of
-/// blinding factors.
+/// Update an attribute session key share from one session to the other
+pub fn update_attribute_session_key(
+    session_secret_key: AttributeSessionSecretKey,
+    old_session_key_share: SessionKeyShare,
+    new_session_key_share: SessionKeyShare,
+) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
+    let secret = AttributeSessionSecretKey::from(
+        session_secret_key.0 * old_session_key_share.0.invert() * new_session_key_share.0,
+    );
+    let public = AttributeSessionPublicKey::from(secret.0 * G);
+    (public, secret)
+}
+
+/// Setup a distributed system with pseudonym global keys, a blinded global secret key and a list of
+/// blinding factors for pseudonyms.
 /// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
-pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_global_pseudonym_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
-) -> (GlobalPublicKey, BlindedGlobalSecretKey, Vec<BlindingFactor>) {
-    let (pk, sk) = make_global_keys(rng);
+) -> (
+    PseudonymGlobalPublicKey,
+    BlindedGlobalSecretKey,
+    Vec<BlindingFactor>,
+) {
+    let (pk, sk) = make_pseudonym_global_keys(rng);
     let blinding_factors: Vec<BlindingFactor> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
-    let bsk = make_blinded_global_secret_key(&sk, &blinding_factors).unwrap();
+    let bsk = make_blinded_global_pseudonym_secret_key(&sk, &blinding_factors).unwrap();
+    (pk, bsk, blinding_factors)
+}
+
+/// Setup a distributed system with attribute global keys, a blinded global secret key and a list of
+/// blinding factors for attributes.
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
+/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
+pub fn make_distributed_global_attribute_keys<R: RngCore + CryptoRng>(
+    n: usize,
+    rng: &mut R,
+) -> (
+    AttributeGlobalPublicKey,
+    BlindedGlobalSecretKey,
+    Vec<BlindingFactor>,
+) {
+    let (pk, sk) = make_attribute_global_keys(rng);
+    let blinding_factors: Vec<BlindingFactor> =
+        (0..n).map(|_| BlindingFactor::random(rng)).collect();
+    let bsk = make_blinded_global_attribute_secret_key(&sk, &blinding_factors).unwrap();
     (pk, bsk, blinding_factors)
 }

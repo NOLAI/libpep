@@ -1,11 +1,11 @@
 const {
-    DataPoint, decryptData, decryptPseudonym, encryptData,
+    Attribute, decryptData, decryptPseudonym, encryptData,
     encryptPseudonym,
     GroupElement,
     makeGlobalKeys,
     makeSessionKeys,
     pseudonymize, rekeyData, Pseudonym, PseudonymizationInfo, RekeyInfo, PseudonymizationSecret, EncryptionSecret,
-    transcryptBatch, EncryptedEntityData, GlobalPublicKey, EncryptedPseudonym, EncryptedDataPoint
+    transcryptBatch, EncryptedEntityData, GlobalPublicKey, EncryptedPseudonym, EncryptedAttribute
 } = require("../../pkg/libpep.js");
 
 test('test high level', async () => {
@@ -30,7 +30,7 @@ test('test high level', async () => {
     const encPseudo = encryptPseudonym(pseudo, session1Keys.public);
 
     const random = GroupElement.random();
-    const data = new DataPoint(random);
+    const data = new Attribute(random);
     const encData = encryptData(data, session1Keys.public);
 
     const decPseudo = decryptPseudonym(encPseudo, session1Keys.secret);
@@ -79,13 +79,13 @@ test('test pseudonym operations', async () => {
 
 test('test data point operations', async () => {
     // Test random data point
-    const data1 = DataPoint.random();
-    const data2 = DataPoint.random();
+    const data1 = Attribute.random();
+    const data2 = Attribute.random();
     expect(data1.asHex()).not.toEqual(data2.asHex());
     
     // Test encoding/decoding
     const encoded = data1.encode();
-    const decoded = DataPoint.decode(encoded);
+    const decoded = Attribute.decode(encoded);
     expect(decoded).not.toBeNull();
     expect(data1.asHex()).toEqual(decoded.asHex());
 });
@@ -102,11 +102,11 @@ test('test string padding operations', async () => {
     expect(testString).toEqual(reconstructed);
     
     // Test data point string padding
-    const dataList = DataPoint.fromStringPadded(testString);
+    const dataList = Attribute.fromStringPadded(testString);
     expect(dataList.length).toBeGreaterThan(0);
     
     // Reconstruct string
-    const reconstructedData = DataPoint.toStringPadded(dataList);
+    const reconstructedData = Attribute.toStringPadded(dataList);
     expect(testString).toEqual(reconstructedData);
 });
 
@@ -122,11 +122,11 @@ test('test bytes padding operations', async () => {
     expect(new Uint8Array(reconstructed)).toEqual(testBytes);
     
     // Test data point bytes padding
-    const dataList = DataPoint.fromBytesPadded(testBytes);
+    const dataList = Attribute.fromBytesPadded(testBytes);
     expect(dataList.length).toBeGreaterThan(0);
     
     // Reconstruct bytes
-    const reconstructedData = DataPoint.toBytesPadded(dataList);
+    const reconstructedData = Attribute.toBytesPadded(dataList);
     expect(new Uint8Array(reconstructedData)).toEqual(testBytes);
 });
 
@@ -141,7 +141,7 @@ test('test fixed size bytes operations', async () => {
     expect(new Uint8Array(reconstructed)).toEqual(testBytes);
     
     // Test data point from/as bytes
-    const data = DataPoint.fromBytes(testBytes);
+    const data = Attribute.fromBytes(testBytes);
     const reconstructedData = data.asBytes();
     expect(reconstructedData).not.toBeNull();
     expect(new Uint8Array(reconstructedData)).toEqual(testBytes);
@@ -175,11 +175,11 @@ test('test encrypted types encoding', async () => {
     expect(pseudo.asHex()).toEqual(dec2.asHex());
     
     // Test same for encrypted data point
-    const data = DataPoint.random();
+    const data = Attribute.random();
     const encData = encryptData(data, sessionKeys.public);
     
     const encodedData = encData.encode();
-    const decodedData = EncryptedDataPoint.decode(encodedData);
+    const decodedData = EncryptedAttribute.decode(encodedData);
     expect(decodedData).not.toBeNull();
     
     const decData = decryptData(decodedData, sessionKeys.secret);
@@ -248,7 +248,7 @@ test('test batch transcrypt', async () => {
 
         for (let j = 0; j < 3; j++) {
             dataPoints.push(encryptData(
-                new DataPoint(GroupElement.random()),
+                new Attribute(GroupElement.random()),
                 session1Keys.public,
             ));
 
@@ -267,6 +267,6 @@ test('test batch transcrypt', async () => {
     // Verify structure is maintained
     for (let i = 0; i < transcrypted.length; i++) {
         expect(transcrypted[i].pseudonyms.length).toEqual(3);
-        expect(transcrypted[i].data_points.length).toEqual(3);
+        expect(transcrypted[i].attributes.length).toEqual(3);
     }
 })

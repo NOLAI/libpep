@@ -1,5 +1,5 @@
 const {
-    DataPoint,
+    Attribute,
     GroupElement,
     makeGlobalKeys, makeBlindedGlobalSecretKey, PEPSystem, PEPClient, Pseudonym, BlindingFactor,
 } = require("../../pkg/libpep.js");
@@ -41,7 +41,7 @@ test('n_pep', async () => {
 
     // Generate random pseudonym and data point.
     const pseudonym = Pseudonym.random();
-    const data = new DataPoint(GroupElement.random());
+    const data = new Attribute(GroupElement.random());
 
     // Encrypt pseudonym and data.
     const encPseudo = clientA.encryptPseudonym(pseudonym);

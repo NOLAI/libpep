@@ -7,7 +7,7 @@ of libpep, covering all modules:
 - test_arithmetic: Basic arithmetic operations (GroupElement, ScalarNonZero, ScalarCanBeZero)
 - test_elgamal: ElGamal encryption and decryption
 - test_primitives: PEP primitives (rekey, reshuffle, rsk operations)
-- test_high_level: High-level API (Pseudonym, DataPoint, session management)
+- test_high_level: High-level API (Pseudonym, Attribute, session management)
 - test_distributed: Distributed n-PEP systems (PEPSystem, PEPClient, key blinding)
 
 Run all tests with:

@@ -1,7 +1,6 @@
 use crate::distributed::key_blinding::*;
 use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
-use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::python::arithmetic::*;
 use crate::python::high_level::*;
@@ -177,24 +176,45 @@ impl PySessionKeyShare {
     }
 }
 
-/// Create a [`PyBlindedGlobalSecretKey`] from a [`PyGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
-/// Used during system setup to blind the global secret key.
-/// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
+/// Create a [`PyBlindedGlobalSecretKey`] from a [`PyPseudonymGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
+/// Used during system setup to blind the pseudonym global secret key.
+/// Returns an error if the product of all blinding factors accidentally turns out to be 1.
 #[pyfunction]
-#[pyo3(name = "make_blinded_global_secret_key")]
-pub fn py_make_blinded_global_secret_key(
-    global_secret_key: &PyGlobalSecretKey,
+#[pyo3(name = "make_blinded_pseudonym_global_secret_key")]
+pub fn py_make_blinded_pseudonym_global_secret_key(
+    global_secret_key: &PyPseudonymGlobalSecretKey,
     blinding_factors: Vec<PyBlindingFactor>,
 ) -> PyResult<PyBlindedGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    let result =
-        make_blinded_global_secret_key(&GlobalSecretKey::from(global_secret_key.0 .0), &bs)
-            .ok_or_else(|| {
-                pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1")
-            })?;
+    let result = make_blinded_global_pseudonym_secret_key(
+        &PseudonymGlobalSecretKey::from(global_secret_key.0 .0),
+        &bs,
+    )
+    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
+    Ok(PyBlindedGlobalSecretKey(result))
+}
+
+/// Create a [`PyBlindedGlobalSecretKey`] from a [`PyAttributeGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
+/// Used during system setup to blind the attribute global secret key.
+/// Returns an error if the product of all blinding factors accidentally turns out to be 1.
+#[pyfunction]
+#[pyo3(name = "make_blinded_attribute_global_secret_key")]
+pub fn py_make_blinded_attribute_global_secret_key(
+    global_secret_key: &PyAttributeGlobalSecretKey,
+    blinding_factors: Vec<PyBlindingFactor>,
+) -> PyResult<PyBlindedGlobalSecretKey> {
+    let bs: Vec<BlindingFactor> = blinding_factors
+        .into_iter()
+        .map(|x| BlindingFactor(x.0 .0))
+        .collect();
+    let result = make_blinded_global_attribute_secret_key(
+        &AttributeGlobalSecretKey::from(global_secret_key.0 .0),
+        &bs,
+    )
+    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
     Ok(PyBlindedGlobalSecretKey(result))
 }
 
@@ -253,14 +273,14 @@ impl PyPEPSystem {
         ))
     }
 
-    /// Rekey an [`PyEncryptedDataPoint`] from one session to another, using [`PyRekeyInfo`].
+    /// Rekey an [`PyEncryptedAttribute`] from one session to another, using [`PyRekeyInfo`].
     #[pyo3(name = "rekey")]
     fn py_rekey(
         &self,
-        encrypted: &PyEncryptedDataPoint,
+        encrypted: &PyEncryptedAttribute,
         rekey_info: &PyRekeyInfo,
-    ) -> PyEncryptedDataPoint {
-        PyEncryptedDataPoint::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
+    ) -> PyEncryptedAttribute {
+        PyEncryptedAttribute::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
     }
 
     /// Pseudonymize an [`PyEncryptedPseudonym`] from one pseudonymization domain and session to
@@ -277,92 +297,130 @@ impl PyPEPSystem {
     }
 }
 
-/// A PEP client that can encrypt and decrypt data, based on a session key pair.
+/// A PEP client that can encrypt and decrypt data, based on separate session key pairs for pseudonyms and attributes.
 #[derive(Clone, From, Into, Deref)]
 #[pyclass(name = "PEPClient")]
 pub struct PyPEPClient(PEPClient);
 
 #[pymethods]
 impl PyPEPClient {
-    /// Create a new PEP client from the given session key shares.
+    /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
     #[new]
     fn new(
-        blinded_global_private_key: &PyBlindedGlobalSecretKey,
-        session_key_shares: Vec<PySessionKeyShare>,
+        blinded_global_pseudonym_key: &PyBlindedGlobalSecretKey,
+        pseudonym_session_key_shares: Vec<PySessionKeyShare>,
+        blinded_global_attribute_key: &PyBlindedGlobalSecretKey,
+        attribute_session_key_shares: Vec<PySessionKeyShare>,
     ) -> Self {
-        let session_key_shares: Vec<SessionKeyShare> = session_key_shares
+        let pseudonym_shares: Vec<SessionKeyShare> = pseudonym_session_key_shares
             .into_iter()
             .map(|x| SessionKeyShare(x.0 .0))
             .collect();
-        let blinded_key = blinded_global_private_key.0;
+        let attribute_shares: Vec<SessionKeyShare> = attribute_session_key_shares
+            .into_iter()
+            .map(|x| SessionKeyShare(x.0 .0))
+            .collect();
         Self(PEPClient::new(
-            BlindedGlobalSecretKey(blinded_key.0),
-            &session_key_shares,
+            blinded_global_pseudonym_key.0,
+            &pseudonym_shares,
+            blinded_global_attribute_key.0,
+            &attribute_shares,
         ))
     }
 
     /// Restore a PEP client from the given session keys.
     #[staticmethod]
     #[pyo3(name = "restore")]
-    fn py_restore(session_keys: &PySessionKeyPair) -> Self {
+    fn py_restore(
+        pseudonym_session_keys: &PyPseudonymSessionKeyPair,
+        attribute_session_keys: &PyAttributeSessionKeyPair,
+    ) -> Self {
         Self(PEPClient::restore(
-            SessionPublicKey(session_keys.public.0 .0),
-            SessionSecretKey(session_keys.secret.0 .0),
+            PseudonymSessionPublicKey(pseudonym_session_keys.public.0 .0),
+            PseudonymSessionSecretKey(pseudonym_session_keys.secret.0 .0),
+            AttributeSessionPublicKey(attribute_session_keys.public.0 .0),
+            AttributeSessionSecretKey(attribute_session_keys.secret.0 .0),
         ))
     }
 
-    /// Dump the session key pair.
-    #[pyo3(name = "dump")]
-    fn py_dump(&self) -> PySessionKeyPair {
-        PySessionKeyPair {
-            public: PySessionPublicKey::from(PyGroupElement::from(self.session_public_key.0)),
-            secret: PySessionSecretKey::from(PyScalarNonZero::from(self.session_secret_key.0)),
+    /// Dump the pseudonym session key pair.
+    #[pyo3(name = "dump_pseudonym_keys")]
+    fn py_dump_pseudonym_keys(&self) -> PyPseudonymSessionKeyPair {
+        PyPseudonymSessionKeyPair {
+            public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(
+                self.pseudonym_session_public_key.0,
+            )),
+            secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(
+                self.pseudonym_session_secret_key.0,
+            )),
         }
     }
 
-    /// Update a session key share from one session to the other
-    #[pyo3(name = "update_session_secret_key")]
-    fn py_update_session_secret_key(
+    /// Dump the attribute session key pair.
+    #[pyo3(name = "dump_attribute_keys")]
+    fn py_dump_attribute_keys(&self) -> PyAttributeSessionKeyPair {
+        PyAttributeSessionKeyPair {
+            public: PyAttributeSessionPublicKey::from(PyGroupElement::from(
+                self.attribute_session_public_key.0,
+            )),
+            secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(
+                self.attribute_session_secret_key.0,
+            )),
+        }
+    }
+
+    /// Update a pseudonym session key share from one session to the other
+    #[pyo3(name = "update_pseudonym_session_secret_key")]
+    fn py_update_pseudonym_session_secret_key(
         &mut self,
         old_key_share: PySessionKeyShare,
         new_key_share: PySessionKeyShare,
     ) {
         self.0
-            .update_session_secret_key(old_key_share.0, new_key_share.0);
+            .update_pseudonym_session_secret_key(old_key_share.0, new_key_share.0);
+    }
+
+    /// Update an attribute session key share from one session to the other
+    #[pyo3(name = "update_attribute_session_secret_key")]
+    fn py_update_attribute_session_secret_key(
+        &mut self,
+        old_key_share: PySessionKeyShare,
+        new_key_share: PySessionKeyShare,
+    ) {
+        self.0
+            .update_attribute_session_secret_key(old_key_share.0, new_key_share.0);
     }
 
     /// Decrypt an encrypted pseudonym.
     #[pyo3(name = "decrypt_pseudonym")]
     fn py_decrypt_pseudonym(&self, encrypted: &PyEncryptedPseudonym) -> PyPseudonym {
-        PyPseudonym::from(self.decrypt(&encrypted.0))
+        PyPseudonym::from(self.decrypt_pseudonym(&encrypted.0))
     }
 
-    /// Decrypt an encrypted data point.
+    /// Decrypt an encrypted attribute.
     #[pyo3(name = "decrypt_data")]
-    fn py_decrypt_data(&self, encrypted: &PyEncryptedDataPoint) -> PyDataPoint {
-        PyDataPoint::from(self.decrypt(&encrypted.0))
+    fn py_decrypt_data(&self, encrypted: &PyEncryptedAttribute) -> PyAttribute {
+        PyAttribute::from(self.decrypt_attribute(&encrypted.0))
     }
 
-    /// Encrypt a data point with the session public key.
+    /// Encrypt an attribute with the session public key.
     #[pyo3(name = "encrypt_data")]
-    fn py_encrypt_data(&self, message: &PyDataPoint) -> PyEncryptedDataPoint {
+    fn py_encrypt_data(&self, message: &PyAttribute) -> PyEncryptedAttribute {
         let mut rng = rand::thread_rng();
-        PyEncryptedDataPoint::from(self.encrypt(&message.0, &mut rng))
+        PyEncryptedAttribute::from(self.encrypt_attribute(&message.0, &mut rng))
     }
 
     /// Encrypt a pseudonym with the session public key.
     #[pyo3(name = "encrypt_pseudonym")]
     fn py_encrypt_pseudonym(&self, message: &PyPseudonym) -> PyEncryptedPseudonym {
         let mut rng = rand::thread_rng();
-        PyEncryptedPseudonym(EncryptedPseudonym::from(
-            self.encrypt(&message.0, &mut rng).value,
-        ))
+        PyEncryptedPseudonym(self.encrypt_pseudonym(&message.0, &mut rng))
     }
 }
 
-/// An offline PEP client that can encrypt data, based on a global public key.
-/// This client is used for encryption only, and does not have a session key pair.
-/// This can be useful when encryption is done offline and no session key pair is available,
+/// An offline PEP client that can encrypt data, based on global public keys for pseudonyms and attributes.
+/// This client is used for encryption only, and does not have session key pairs.
+/// This can be useful when encryption is done offline and no session key pairs are available,
 /// or when using a session key would leak information.
 #[derive(Clone, From, Into, Deref)]
 #[pyclass(name = "OfflinePEPClient")]
@@ -370,28 +428,30 @@ pub struct PyOfflinePEPClient(OfflinePEPClient);
 
 #[pymethods]
 impl PyOfflinePEPClient {
-    /// Create a new offline PEP client from the given global public key.
+    /// Create a new offline PEP client from the given global public keys.
     #[new]
-    fn new(global_public_key: PyGlobalPublicKey) -> Self {
-        Self(OfflinePEPClient::new(GlobalPublicKey(
-            global_public_key.0 .0,
-        )))
+    fn new(
+        global_pseudonym_public_key: PyPseudonymGlobalPublicKey,
+        global_attribute_public_key: PyAttributeGlobalPublicKey,
+    ) -> Self {
+        Self(OfflinePEPClient::new(
+            PseudonymGlobalPublicKey(global_pseudonym_public_key.0 .0),
+            AttributeGlobalPublicKey(global_attribute_public_key.0 .0),
+        ))
     }
 
-    /// Encrypt a data point with the global public key.
+    /// Encrypt an attribute with the global public key.
     #[pyo3(name = "encrypt_data")]
-    fn py_encrypt_data(&self, message: &PyDataPoint) -> PyEncryptedDataPoint {
+    fn py_encrypt_data(&self, message: &PyAttribute) -> PyEncryptedAttribute {
         let mut rng = rand::thread_rng();
-        PyEncryptedDataPoint::from(self.encrypt(&message.0, &mut rng))
+        PyEncryptedAttribute::from(self.encrypt_attribute(&message.0, &mut rng))
     }
 
     /// Encrypt a pseudonym with the global public key.
     #[pyo3(name = "encrypt_pseudonym")]
     fn py_encrypt_pseudonym(&self, message: &PyPseudonym) -> PyEncryptedPseudonym {
         let mut rng = rand::thread_rng();
-        PyEncryptedPseudonym(EncryptedPseudonym::from(
-            self.encrypt(&message.0, &mut rng).value,
-        ))
+        PyEncryptedPseudonym(self.encrypt_pseudonym(&message.0, &mut rng))
     }
 }
 
@@ -518,6 +578,13 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyRSKFactors>()?;
     m.add_class::<PyPseudonymizationInfo>()?;
     m.add_class::<PyRekeyInfo>()?;
-    m.add_function(wrap_pyfunction!(py_make_blinded_global_secret_key, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_pseudonym_global_secret_key,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_attribute_global_secret_key,
+        m
+    )?)?;
     Ok(())
 }

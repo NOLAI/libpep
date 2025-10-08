@@ -37,19 +37,25 @@ pub use high_level::{WASMRekeyFactor, WASMReshuffleFactor};
 
 // High-level types and functions
 pub use high_level::{
-    wasm_make_global_keys as make_global_keys, wasm_make_session_keys as make_session_keys,
+    wasm_make_attribute_global_keys as make_attribute_global_keys,
+    wasm_make_attribute_session_keys as make_attribute_session_keys,
+    wasm_make_pseudonym_global_keys as make_pseudonym_global_keys,
+    wasm_make_pseudonym_session_keys as make_pseudonym_session_keys,
     wasm_pseudonymize as pseudonymize, wasm_pseudonymize_batch as pseudonymize_batch,
     wasm_rekey_batch as rekey_batch, wasm_rekey_data as rekey_data,
-    wasm_transcrypt_batch as transcrypt_batch, WASMDataPoint, WASMEncryptedDataPoint,
-    WASMEncryptedEntityData, WASMEncryptedPseudonym, WASMEncryptionSecret, WASMGlobalKeyPair,
-    WASMGlobalPublicKey, WASMGlobalSecretKey, WASMPseudonym, WASMPseudonymizationInfo,
-    WASMPseudonymizationSecret, WASMRSKFactors, WASMRekeyInfo, WASMSessionKeyPair,
-    WASMSessionPublicKey, WASMSessionSecretKey,
+    wasm_transcrypt_batch as transcrypt_batch, WASMAttribute, WASMAttributeGlobalKeyPair,
+    WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMAttributeSessionKeyPair,
+    WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMEncryptedAttribute,
+    WASMEncryptedData, WASMEncryptedPseudonym, WASMEncryptionSecret, WASMPseudonym,
+    WASMPseudonymGlobalKeyPair, WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
+    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
+    WASMPseudonymizationInfo, WASMPseudonymizationSecret, WASMRSKFactors, WASMRekeyInfo,
 };
 
 // Distributed types
 pub use distributed::{
-    wasm_make_blinded_global_secret_key as make_blinded_global_secret_key,
+    wasm_make_blinded_attribute_global_secret_key as make_blinded_attribute_global_secret_key,
+    wasm_make_blinded_pseudonym_global_secret_key as make_blinded_pseudonym_global_secret_key,
     WASMBlindedGlobalSecretKey, WASMBlindingFactor, WASMOfflinePEPClient, WASMPEPClient,
     WASMPEPSystem, WASMSessionKeyShare,
 };

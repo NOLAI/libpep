@@ -1,9 +1,10 @@
 use libpep::high_level::contexts::{
     EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
 };
-use libpep::high_level::data_types::{DataPoint, Encryptable, EncryptedPseudonym, Pseudonym};
+use libpep::high_level::data_types::{Attribute, Encryptable, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
-    make_global_keys, make_session_keys, EncryptionSecret, PseudonymizationSecret,
+    make_pseudonym_global_keys, make_pseudonym_session_keys, EncryptionSecret,
+    PseudonymizationSecret,
 };
 use libpep::high_level::ops::{decrypt, encrypt, pseudonymize};
 use std::io::{Error, ErrorKind};
@@ -11,7 +12,7 @@ use std::io::{Error, ErrorKind};
 #[test]
 fn test_from_bytes_padded_empty() {
     let data: &[u8] = &[];
-    let result = DataPoint::from_bytes_padded(data);
+    let result = Attribute::from_bytes_padded(data);
     assert!(result.is_empty());
 }
 
@@ -19,7 +20,7 @@ fn test_from_bytes_padded_empty() {
 fn test_from_bytes_padded_single_block() {
     // Test with less than 16 bytes
     let data = b"Hello, world!";
-    let result = DataPoint::from_bytes_padded(data);
+    let result = Attribute::from_bytes_padded(data);
 
     assert_eq!(1, result.len());
 
@@ -32,7 +33,7 @@ fn test_from_bytes_padded_single_block() {
 fn test_from_bytes_padded_exact_block() {
     // Test with exactly 16 bytes
     let data = b"0123456789ABCDEF";
-    let result = DataPoint::from_bytes_padded(data);
+    let result = Attribute::from_bytes_padded(data);
 
     // Should have 2 blocks: the 16 bytes of data and one full block of padding
     assert_eq!(2, result.len());
@@ -49,7 +50,7 @@ fn test_from_bytes_padded_exact_block() {
 fn test_from_bytes_padded_multiple_blocks() {
     // Test with more than 16 bytes
     let data = b"This is a longer string that spans multiple blocks";
-    let result = DataPoint::from_bytes_padded(data);
+    let result = Attribute::from_bytes_padded(data);
 
     // Calculate expected number of blocks (47 bytes -> 3 blocks)
     let expected_blocks = (data.len() / 16) + 1;
@@ -82,10 +83,10 @@ fn test_to_bytes_padded() -> Result<(), Error> {
     let original = b"This is some test data for padding";
 
     // Encode it
-    let data_points = DataPoint::from_bytes_padded(original);
+    let attributes = Attribute::from_bytes_padded(original);
 
     // Decode it
-    let decoded = DataPoint::to_bytes_padded(&data_points)?;
+    let decoded = Attribute::to_bytes_padded(&attributes)?;
 
     // Verify it matches the original
     assert_eq!(original, decoded.as_slice());
@@ -96,8 +97,8 @@ fn test_to_bytes_padded() -> Result<(), Error> {
 #[test]
 fn test_to_bytes_padded_empty() {
     // Test with empty vec
-    let data_points = vec![];
-    let result = DataPoint::to_bytes_padded(&data_points);
+    let attributes = vec![];
+    let result = Attribute::to_bytes_padded(&attributes);
 
     // Should be an error
     assert!(result.is_err());
@@ -111,12 +112,12 @@ fn test_to_bytes_padded_empty() {
 
 #[test]
 fn test_to_bytes_padded_invalid_padding() {
-    // Create a DataPoint with invalid padding (padding byte = 0)
+    // Create a Attribute with invalid padding (padding byte = 0)
     let invalid_block = [0u8; 16];
-    let data_point = DataPoint::from_bytes(&invalid_block);
+    let attribute = Attribute::from_bytes(&invalid_block);
 
     // Attempt to decode
-    let result = DataPoint::to_bytes_padded(&[data_point]);
+    let result = Attribute::to_bytes_padded(&[attribute]);
 
     // Should be an error
     assert!(result.is_err());
@@ -130,10 +131,10 @@ fn test_to_bytes_padded_invalid_padding() {
     // Try with inconsistent padding (some bytes have different values)
     let mut inconsistent_block = [5u8; 16]; // padding of 5
     inconsistent_block[15] = 6; // but one byte is wrong
-    let data_point = DataPoint::from_bytes(&inconsistent_block);
+    let attribute = Attribute::from_bytes(&inconsistent_block);
 
     // Attempt to decode
-    let result = DataPoint::to_bytes_padded(&[data_point]);
+    let result = Attribute::to_bytes_padded(&[attribute]);
 
     // Should be an error
     assert!(result.is_err());
@@ -145,10 +146,10 @@ fn test_to_string_padded() -> Result<(), Error> {
     let original = "This is a UTF-8 string with special chars: ñáéíóú 你好";
 
     // Encode it
-    let data_points = DataPoint::from_string_padded(original);
+    let attributes = Attribute::from_string_padded(original);
 
     // Decode it
-    let decoded = DataPoint::to_string_padded(&data_points)?;
+    let decoded = Attribute::to_string_padded(&attributes)?;
 
     // Verify it matches the original
     assert_eq!(original, decoded);
@@ -164,10 +165,10 @@ fn test_to_string_padded_invalid_utf8() {
     block[..3].copy_from_slice(&invalid_utf8);
     block[3..].fill(13); // Padding
 
-    let data_point = DataPoint::from_bytes(&block);
+    let attribute = Attribute::from_bytes(&block);
 
     // Attempt to decode to string
-    let result = DataPoint::to_string_padded(&[data_point]);
+    let result = Attribute::to_string_padded(&[attribute]);
 
     // Should be an error
     assert!(result.is_err());
@@ -181,10 +182,10 @@ fn test_roundtrip_all_padding_sizes() -> Result<(), Error> {
         let data = vec![b'X'; size];
 
         // Encode
-        let data_points = DataPoint::from_bytes_padded(&data);
+        let attributes = Attribute::from_bytes_padded(&data);
 
         // Decode
-        let decoded = DataPoint::to_bytes_padded(&data_points)?;
+        let decoded = Attribute::to_bytes_padded(&attributes)?;
 
         // Verify
         assert_eq!(data, decoded);
@@ -244,7 +245,7 @@ fn test_pseudonym_string_roundtrip() -> Result<(), Error> {
 fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Initialize test environment
     let mut rng = rand::thread_rng();
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("test-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
 
@@ -254,7 +255,8 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     let session = EncryptionContext::from("session-1");
 
     // Create session keys
-    let (session_public, session_secret) = make_session_keys(&global_secret, &session, &enc_secret);
+    let (session_public, session_secret) =
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
     // Original string to encrypt and pseudonymize
     let original_string = "This is a very long id that will be pseudonymized";

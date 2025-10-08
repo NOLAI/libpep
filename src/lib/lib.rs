@@ -17,7 +17,7 @@
 //! [primitives](low_level::primitives), and a [high-level] API for
 //! [pseudonymization](high_level::ops::pseudonymize) and [rekeying](high_level::ops::rekey)
 //! (i.e. [transcryption](high_level::ops::transcrypt)) of [Pseudonyms](high_level::data_types::Pseudonym)
-//! and [DataPoints](high_level::data_types::DataPoint) using this cryptographic concept.
+//! and [Attributes](high_level::data_types::Attribute) using this cryptographic concept.
 //!
 //! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
@@ -28,45 +28,10 @@
 //! article by [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
 //! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/) (to be published).
 
-pub mod internal {
-    //! Internal API that provides useful wrappers around dependencies, simplifying [arithmetic] operations.
-    //! This module is not intended to be used by the end user, except for advanced use cases.
-    pub mod arithmetic;
-}
-
-pub mod low_level {
-    //! Low-level cryptographic [primitives] for [ElGamal](elgamal) encryption and (n)-PEP operations.
-    //! This module is intended for non-standard uses cases where the individual (n)-PEP primitives are
-    //! needed.
-    //!
-    //! For most use cases, the [high-level](crate::high_level) API should be used, which provides
-    //! a more user-friendly and safer interface.
-    pub mod elgamal;
-    pub mod primitives;
-}
-pub mod high_level {
-    //! High-level API specifying [Pseudonyms](data_types::Pseudonym) and [DataPoints](data_types::DataPoint),
-    //! and [transcryption](ops::transcrypt) ([pseudonymization](ops::pseudonymize) or [rekeying](ops::rekey))
-    //! of their encrypted versions between different contexts.
-    //! This module is intended for most use cases where a *single* trusted party (transcryptor) is
-    //! responsible for pseudonymization and rekeying.
-    //! The API is designed to be user-friendly and safe.
-
-    pub mod contexts;
-    pub mod data_types;
-    pub mod keys;
-    pub mod ops;
-    pub mod utils;
-}
-pub mod distributed {
-    //! Distributed n-PEP with wrappers for high-level [`PEPSystems`](systems::PEPSystem) (*transcryptors*) and [`PEPClients`](systems::PEPClient).
-    //! This module is intended for use cases where transcryption is performed by *n* parties and
-    //! trust is distributed among them (i.e. no single party is trusted but the system remains secure
-    //! as long as at least 1 party remains honest).
-
-    pub mod key_blinding;
-    pub mod systems;
-}
+pub mod distributed;
+pub mod high_level;
+pub mod internal;
+pub mod low_level;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 

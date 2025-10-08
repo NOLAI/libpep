@@ -9,23 +9,33 @@ use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
-/// A session secret key used to decrypt messages with.
+/// A pseudonym session secret key used to decrypt pseudonyms with.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "SessionSecretKey")]
-pub struct PySessionSecretKey(pub PyScalarNonZero);
+#[pyclass(name = "PseudonymSessionSecretKey")]
+pub struct PyPseudonymSessionSecretKey(pub PyScalarNonZero);
 
-/// A global secret key from which session keys are derived.
+/// An attribute session secret key used to decrypt attributes with.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[pyclass(name = "AttributeSessionSecretKey")]
+pub struct PyAttributeSessionSecretKey(pub PyScalarNonZero);
+
+/// A pseudonym global secret key from which pseudonym session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
-#[pyclass(name = "GlobalSecretKey")]
-pub struct PyGlobalSecretKey(pub PyScalarNonZero);
+#[pyclass(name = "PseudonymGlobalSecretKey")]
+pub struct PyPseudonymGlobalSecretKey(pub PyScalarNonZero);
 
-/// A session public key used to encrypt messages against, associated with a [`PySessionSecretKey`].
+/// An attribute global secret key from which attribute session keys are derived.
+#[derive(Copy, Clone, Debug, From)]
+#[pyclass(name = "AttributeGlobalSecretKey")]
+pub struct PyAttributeGlobalSecretKey(pub PyScalarNonZero);
+
+/// A pseudonym session public key used to encrypt pseudonyms against.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "SessionPublicKey")]
-pub struct PySessionPublicKey(pub PyGroupElement);
+#[pyclass(name = "PseudonymSessionPublicKey")]
+pub struct PyPseudonymSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
-impl PySessionPublicKey {
+impl PyPseudonymSessionPublicKey {
     /// Returns the group element associated with this public key.
     #[pyo3(name = "to_point")]
     fn to_point(&self) -> PyGroupElement {
@@ -39,16 +49,36 @@ impl PySessionPublicKey {
     }
 }
 
-/// A global public key associated with the [`PyGlobalSecretKey`] from which session keys are derived.
-/// Can also be used to encrypt messages against, if no session key is available or using a session
-/// key may leak information.
-#[derive(Copy, Clone, Debug, From)]
-#[pyclass(name = "GlobalPublicKey")]
-pub struct PyGlobalPublicKey(pub PyGroupElement);
+/// An attribute session public key used to encrypt attributes against.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[pyclass(name = "AttributeSessionPublicKey")]
+pub struct PyAttributeSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
-impl PyGlobalPublicKey {
-    /// Creates a new global public key from a group element.
+impl PyAttributeSessionPublicKey {
+    /// Returns the group element associated with this public key.
+    #[pyo3(name = "to_point")]
+    fn to_point(&self) -> PyGroupElement {
+        self.0
+    }
+
+    /// Encodes the public key as a hexadecimal string.
+    #[pyo3(name = "as_hex")]
+    fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
+    }
+}
+
+/// A pseudonym global public key from which pseudonym session keys are derived.
+/// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
+/// key may leak information.
+#[derive(Copy, Clone, Debug, From)]
+#[pyclass(name = "PseudonymGlobalPublicKey")]
+pub struct PyPseudonymGlobalPublicKey(pub PyGroupElement);
+
+#[pymethods]
+impl PyPseudonymGlobalPublicKey {
+    /// Creates a new pseudonym global public key from a group element.
     #[new]
     fn new(x: PyGroupElement) -> Self {
         Self(x.0.into())
@@ -75,7 +105,51 @@ impl PyGlobalPublicKey {
     }
 
     fn __repr__(&self) -> String {
-        format!("GlobalPublicKey({})", self.as_hex())
+        format!("PseudonymGlobalPublicKey({})", self.as_hex())
+    }
+
+    fn __str__(&self) -> String {
+        self.as_hex()
+    }
+}
+
+/// An attribute global public key from which attribute session keys are derived.
+/// Can also be used to encrypt attributes against, if no session key is available or using a session
+/// key may leak information.
+#[derive(Copy, Clone, Debug, From)]
+#[pyclass(name = "AttributeGlobalPublicKey")]
+pub struct PyAttributeGlobalPublicKey(pub PyGroupElement);
+
+#[pymethods]
+impl PyAttributeGlobalPublicKey {
+    /// Creates a new attribute global public key from a group element.
+    #[new]
+    fn new(x: PyGroupElement) -> Self {
+        Self(x.0.into())
+    }
+
+    /// Returns the group element associated with this public key.
+    #[pyo3(name = "to_point")]
+    fn to_point(&self) -> PyGroupElement {
+        self.0
+    }
+
+    /// Encodes the public key as a hexadecimal string.
+    #[pyo3(name = "as_hex")]
+    fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
+    }
+
+    /// Decodes a public key from a hexadecimal string.
+    #[staticmethod]
+    #[pyo3(name = "from_hex")]
+    fn from_hex(hex: &str) -> Option<Self> {
+        let x = GroupElement::decode_from_hex(hex)?;
+        Some(Self(x.into()))
+    }
+
+    fn __repr__(&self) -> String {
+        format!("AttributeGlobalPublicKey({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -261,18 +335,18 @@ impl PyPseudonym {
     }
 }
 
-/// A data point which should not be identifiable
+/// An attribute which should not be identifiable
 /// and can be encrypted and rekeyed, but not reshuffled.
-#[pyclass(name = "DataPoint")]
+#[pyclass(name = "Attribute")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-pub struct PyDataPoint(pub(crate) DataPoint);
+pub struct PyAttribute(pub(crate) Attribute);
 
 #[pymethods]
-impl PyDataPoint {
+impl PyAttribute {
     /// Create from a [`PyGroupElement`].
     #[new]
     fn new(x: PyGroupElement) -> Self {
-        Self(DataPoint::from_point(x.0))
+        Self(Attribute::from_point(x.0))
     }
 
     /// Convert to a [`PyGroupElement`].
@@ -281,41 +355,41 @@ impl PyDataPoint {
         self.0.value.into()
     }
 
-    /// Generate a random data point.
+    /// Generate a random attribute.
     #[staticmethod]
     #[pyo3(name = "random")]
     fn random() -> Self {
         let mut rng = rand::thread_rng();
-        Self(DataPoint::random(&mut rng))
+        Self(Attribute::random(&mut rng))
     }
 
-    /// Encode the data point as a byte array.
+    /// Encode the attribute as a byte array.
     #[pyo3(name = "encode")]
     fn encode(&self, py: Python) -> PyObject {
         PyBytes::new_bound(py, &self.0.encode()).into()
     }
 
-    /// Encode the data point as a hexadecimal string.
+    /// Encode the attribute as a hexadecimal string.
     #[pyo3(name = "as_hex")]
     fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
 
-    /// Decode a data point from a byte array.
+    /// Decode an attribute from a byte array.
     #[staticmethod]
     #[pyo3(name = "decode")]
     fn decode(bytes: &[u8]) -> Option<Self> {
-        DataPoint::decode_from_slice(bytes).map(Self)
+        Attribute::decode_from_slice(bytes).map(Self)
     }
 
-    /// Decode a data point from a hexadecimal string.
+    /// Decode an attribute from a hexadecimal string.
     #[staticmethod]
     #[pyo3(name = "from_hex")]
     fn from_hex(hex: &str) -> Option<Self> {
-        DataPoint::decode_from_hex(hex).map(Self)
+        Attribute::decode_from_hex(hex).map(Self)
     }
 
-    /// Decode a data point from a 64-byte hash value
+    /// Decode an attribute from a 64-byte hash value
     #[staticmethod]
     #[pyo3(name = "from_hash")]
     fn from_hash(v: &[u8]) -> PyResult<Self> {
@@ -326,11 +400,11 @@ impl PyDataPoint {
         }
         let mut arr = [0u8; 64];
         arr.copy_from_slice(v);
-        Ok(DataPoint::from_hash(&arr).into())
+        Ok(Attribute::from_hash(&arr).into())
     }
 
     /// Decode from a byte array of length 16.
-    /// This is useful for encoding data points,
+    /// This is useful for encoding attributes,
     /// as it accepts any 16-byte value.
     #[staticmethod]
     #[pyo3(name = "from_bytes")]
@@ -342,71 +416,71 @@ impl PyDataPoint {
         }
         let mut arr = [0u8; 16];
         arr.copy_from_slice(data);
-        Ok(Self(DataPoint::from_bytes(&arr)))
+        Ok(Self(Attribute::from_bytes(&arr)))
     }
 
     /// Encode as a byte array of length 16.
     /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
-    /// If the value was created using [`PyDataPoint::from_bytes`], this will return a valid value,
+    /// If the value was created using [`PyAttribute::from_bytes`], this will return a valid value,
     /// but otherwise it will most likely return `None`.
     #[pyo3(name = "as_bytes")]
     fn as_bytes(&self, py: Python) -> Option<PyObject> {
         self.0.as_bytes().map(|x| PyBytes::new_bound(py, &x).into())
     }
 
-    /// Create a collection of data points from an arbitrary-length string
+    /// Create a collection of attributes from an arbitrary-length string
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_string_padded")]
-    fn from_string_padded(text: &str) -> Vec<PyDataPoint> {
-        DataPoint::from_string_padded(text)
+    fn from_string_padded(text: &str) -> Vec<PyAttribute> {
+        Attribute::from_string_padded(text)
             .into_iter()
-            .map(PyDataPoint::from)
+            .map(PyAttribute::from)
             .collect()
     }
 
-    /// Create a collection of data points from an arbitrary-length byte array
+    /// Create a collection of attributes from an arbitrary-length byte array
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_bytes_padded")]
-    fn from_bytes_padded(data: &[u8]) -> Vec<PyDataPoint> {
-        DataPoint::from_bytes_padded(data)
+    fn from_bytes_padded(data: &[u8]) -> Vec<PyAttribute> {
+        Attribute::from_bytes_padded(data)
             .into_iter()
-            .map(PyDataPoint::from)
+            .map(PyAttribute::from)
             .collect()
     }
 
-    /// Convert a collection of data points back to the original string
+    /// Convert a collection of attributes back to the original string
     /// Returns null if the decoding fails (e.g., invalid padding or UTF-8)
     #[staticmethod]
     #[pyo3(name = "to_string_padded")]
-    fn to_string_padded(data_points: Vec<PyDataPoint>) -> PyResult<String> {
-        let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
-        DataPoint::to_string_padded(&rust_data_points)
+    fn to_string_padded(attributes: Vec<PyAttribute>) -> PyResult<String> {
+        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
+        Attribute::to_string_padded(&rust_attributes)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
     }
 
-    /// Convert a collection of data points back to the original byte array
+    /// Convert a collection of attributes back to the original byte array
     /// Returns null if the decoding fails (e.g., invalid padding)
     #[staticmethod]
     #[pyo3(name = "to_bytes_padded")]
-    fn to_bytes_padded(data_points: Vec<PyDataPoint>, py: Python) -> PyResult<PyObject> {
-        let rust_data_points: Vec<DataPoint> = data_points.into_iter().map(|p| p.0).collect();
-        let result = DataPoint::to_bytes_padded(&rust_data_points).map_err(|e| {
+    fn to_bytes_padded(attributes: Vec<PyAttribute>, py: Python) -> PyResult<PyObject> {
+        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
+        let result = Attribute::to_bytes_padded(&rust_attributes).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
         Ok(PyBytes::new_bound(py, &result).into())
     }
 
     fn __repr__(&self) -> String {
-        format!("DataPoint({})", self.as_hex())
+        format!("Attribute({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
         self.as_hex()
     }
 
-    fn __eq__(&self, other: &PyDataPoint) -> bool {
+    fn __eq__(&self, other: &PyAttribute) -> bool {
         self.0 == other.0
     }
 }
@@ -463,180 +537,239 @@ impl PyEncryptedPseudonym {
     }
 }
 
-/// An encrypted data point, which is an [`PyElGamal`] encryption of a [`PyDataPoint`].
-#[pyclass(name = "EncryptedDataPoint")]
+/// An encrypted attribute, which is an [`PyElGamal`] encryption of a [`PyAttribute`].
+#[pyclass(name = "EncryptedAttribute")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-pub struct PyEncryptedDataPoint(pub(crate) EncryptedDataPoint);
+pub struct PyEncryptedAttribute(pub(crate) EncryptedAttribute);
 
 #[pymethods]
-impl PyEncryptedDataPoint {
+impl PyEncryptedAttribute {
     /// Create from an [`PyElGamal`].
     #[new]
     fn new(x: PyElGamal) -> Self {
-        Self(EncryptedDataPoint::from(x.0))
+        Self(EncryptedAttribute::from(x.0))
     }
 
-    /// Encode the encrypted data point as a byte array.
+    /// Encode the encrypted attribute as a byte array.
     #[pyo3(name = "encode")]
     fn encode(&self, py: Python) -> PyObject {
         PyBytes::new_bound(py, &self.0.encode()).into()
     }
 
-    /// Decode an encrypted data point from a byte array.
+    /// Decode an encrypted attribute from a byte array.
     #[staticmethod]
     #[pyo3(name = "decode")]
     fn decode(v: &[u8]) -> Option<Self> {
-        EncryptedDataPoint::decode_from_slice(v).map(Self)
+        EncryptedAttribute::decode_from_slice(v).map(Self)
     }
 
-    /// Encode the encrypted data point as a base64 string.
+    /// Encode the encrypted attribute as a base64 string.
     #[pyo3(name = "as_base64")]
     fn as_base64(&self) -> String {
         self.encode_as_base64()
     }
 
-    /// Decode an encrypted data point from a base64 string.
+    /// Decode an encrypted attribute from a base64 string.
     #[staticmethod]
     #[pyo3(name = "from_base64")]
     fn from_base64(s: &str) -> Option<Self> {
-        EncryptedDataPoint::from_base64(s).map(Self)
+        EncryptedAttribute::from_base64(s).map(Self)
     }
 
     fn __repr__(&self) -> String {
-        format!("EncryptedDataPoint({})", self.as_base64())
+        format!("EncryptedAttribute({})", self.as_base64())
     }
 
     fn __str__(&self) -> String {
         self.as_base64()
     }
 
-    fn __eq__(&self, other: &PyEncryptedDataPoint) -> bool {
+    fn __eq__(&self, other: &PyEncryptedAttribute) -> bool {
         self.0 == other.0
     }
 }
 
-// Global key pair
-#[pyclass(name = "GlobalKeyPair")]
+// Pseudonym global key pair
+#[pyclass(name = "PseudonymGlobalKeyPair")]
 #[derive(Copy, Clone, Debug)]
-pub struct PyGlobalKeyPair {
+pub struct PyPseudonymGlobalKeyPair {
     #[pyo3(get)]
-    pub public: PyGlobalPublicKey,
+    pub public: PyPseudonymGlobalPublicKey,
     #[pyo3(get)]
-    pub secret: PyGlobalSecretKey,
+    pub secret: PyPseudonymGlobalSecretKey,
 }
 
-// Session key pair
-#[pyclass(name = "SessionKeyPair")]
+// Attribute global key pair
+#[pyclass(name = "AttributeGlobalKeyPair")]
 #[derive(Copy, Clone, Debug)]
-pub struct PySessionKeyPair {
+pub struct PyAttributeGlobalKeyPair {
     #[pyo3(get)]
-    pub public: PySessionPublicKey,
+    pub public: PyAttributeGlobalPublicKey,
     #[pyo3(get)]
-    pub secret: PySessionSecretKey,
+    pub secret: PyAttributeGlobalSecretKey,
 }
 
-/// Generate a new global key pair.
+// Pseudonym session key pair
+#[pyclass(name = "PseudonymSessionKeyPair")]
+#[derive(Copy, Clone, Debug)]
+pub struct PyPseudonymSessionKeyPair {
+    #[pyo3(get)]
+    pub public: PyPseudonymSessionPublicKey,
+    #[pyo3(get)]
+    pub secret: PyPseudonymSessionSecretKey,
+}
+
+// Attribute session key pair
+#[pyclass(name = "AttributeSessionKeyPair")]
+#[derive(Copy, Clone, Debug)]
+pub struct PyAttributeSessionKeyPair {
+    #[pyo3(get)]
+    pub public: PyAttributeSessionPublicKey,
+    #[pyo3(get)]
+    pub secret: PyAttributeSessionSecretKey,
+}
+
+/// Generate a new pseudonym global key pair.
 #[pyfunction]
-#[pyo3(name = "make_global_keys")]
-pub fn py_make_global_keys() -> PyGlobalKeyPair {
+#[pyo3(name = "make_pseudonym_global_keys")]
+pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
     let mut rng = rand::thread_rng();
-    let (public, secret) = make_global_keys(&mut rng);
-    PyGlobalKeyPair {
-        public: PyGlobalPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyGlobalSecretKey::from(PyScalarNonZero::from(secret.0)),
+    let (public, secret) = make_pseudonym_global_keys(&mut rng);
+    PyPseudonymGlobalKeyPair {
+        public: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(public.0)),
+        secret: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(secret.0)),
     }
 }
 
-/// Generate session keys from a [`PyGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
+/// Generate a new attribute global key pair.
 #[pyfunction]
-#[pyo3(name = "make_session_keys")]
-pub fn py_make_session_keys(
-    global: &PyGlobalSecretKey,
+#[pyo3(name = "make_attribute_global_keys")]
+pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
+    let mut rng = rand::thread_rng();
+    let (public, secret) = make_attribute_global_keys(&mut rng);
+    PyAttributeGlobalKeyPair {
+        public: PyAttributeGlobalPublicKey::from(PyGroupElement::from(public.0)),
+        secret: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(secret.0)),
+    }
+}
+
+/// Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
+#[pyfunction]
+#[pyo3(name = "make_pseudonym_session_keys")]
+pub fn py_make_pseudonym_session_keys(
+    global: &PyPseudonymGlobalSecretKey,
     session: &str,
     secret: &PyEncryptionSecret,
-) -> PySessionKeyPair {
-    let (public, secret) = make_session_keys(
-        &GlobalSecretKey(global.0 .0),
+) -> PyPseudonymSessionKeyPair {
+    let (public, secret_key) = make_pseudonym_session_keys(
+        &PseudonymGlobalSecretKey(global.0 .0),
         &EncryptionContext::from(session),
         &secret.0,
     );
-    PySessionKeyPair {
-        public: PySessionPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PySessionSecretKey::from(PyScalarNonZero::from(secret.0)),
+    PyPseudonymSessionKeyPair {
+        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(public.0)),
+        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
     }
 }
 
-/// Encrypt a pseudonym using a session public key.
+/// Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
+#[pyfunction]
+#[pyo3(name = "make_attribute_session_keys")]
+pub fn py_make_attribute_session_keys(
+    global: &PyAttributeGlobalSecretKey,
+    session: &str,
+    secret: &PyEncryptionSecret,
+) -> PyAttributeSessionKeyPair {
+    let (public, secret_key) = make_attribute_session_keys(
+        &AttributeGlobalSecretKey(global.0 .0),
+        &EncryptionContext::from(session),
+        &secret.0,
+    );
+    PyAttributeSessionKeyPair {
+        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(public.0)),
+        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
+    }
+}
+
+/// Encrypt a pseudonym using a pseudonym session public key.
 #[pyfunction]
 #[pyo3(name = "encrypt_pseudonym")]
 pub fn py_encrypt_pseudonym(
     message: &PyPseudonym,
-    public_key: &PySessionPublicKey,
+    public_key: &PyPseudonymSessionPublicKey,
 ) -> PyEncryptedPseudonym {
     let mut rng = rand::thread_rng();
-    PyEncryptedPseudonym(encrypt(
+    PyEncryptedPseudonym(encrypt_pseudonym(
         &message.0,
-        &SessionPublicKey::from(public_key.0 .0),
+        &PseudonymSessionPublicKey::from(public_key.0 .0),
         &mut rng,
     ))
 }
 
-/// Decrypt an encrypted pseudonym using a session secret key.
+/// Decrypt an encrypted pseudonym using a pseudonym session secret key.
 #[pyfunction]
 #[pyo3(name = "decrypt_pseudonym")]
 pub fn py_decrypt_pseudonym(
     encrypted: &PyEncryptedPseudonym,
-    secret_key: &PySessionSecretKey,
+    secret_key: &PyPseudonymSessionSecretKey,
 ) -> PyPseudonym {
-    PyPseudonym(decrypt(
+    PyPseudonym(decrypt_pseudonym(
         &encrypted.0,
-        &SessionSecretKey::from(secret_key.0 .0),
+        &PseudonymSessionSecretKey::from(secret_key.0 .0),
     ))
 }
 
-/// Encrypt a data point using a session public key.
+/// Encrypt an attribute using an attribute session public key.
 #[pyfunction]
 #[pyo3(name = "encrypt_data")]
 pub fn py_encrypt_data(
-    message: &PyDataPoint,
-    public_key: &PySessionPublicKey,
-) -> PyEncryptedDataPoint {
+    message: &PyAttribute,
+    public_key: &PyAttributeSessionPublicKey,
+) -> PyEncryptedAttribute {
     let mut rng = rand::thread_rng();
-    PyEncryptedDataPoint(encrypt(
+    PyEncryptedAttribute(encrypt_attribute(
         &message.0,
-        &SessionPublicKey::from(public_key.0 .0),
+        &AttributeSessionPublicKey::from(public_key.0 .0),
         &mut rng,
     ))
 }
 
-/// Decrypt an encrypted data point using a session secret key.
+/// Decrypt an encrypted attribute using an attribute session secret key.
 #[pyfunction]
 #[pyo3(name = "decrypt_data")]
 pub fn py_decrypt_data(
-    encrypted: &PyEncryptedDataPoint,
-    secret_key: &PySessionSecretKey,
-) -> PyDataPoint {
-    PyDataPoint(decrypt(
-        &EncryptedDataPoint::from(encrypted.value),
-        &SessionSecretKey::from(secret_key.0 .0),
+    encrypted: &PyEncryptedAttribute,
+    secret_key: &PyAttributeSessionSecretKey,
+) -> PyAttribute {
+    PyAttribute(decrypt_attribute(
+        &EncryptedAttribute::from(encrypted.value),
+        &AttributeSessionSecretKey::from(secret_key.0 .0),
     ))
 }
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PySessionSecretKey>()?;
-    m.add_class::<PyGlobalSecretKey>()?;
-    m.add_class::<PySessionPublicKey>()?;
-    m.add_class::<PyGlobalPublicKey>()?;
+    m.add_class::<PyPseudonymSessionSecretKey>()?;
+    m.add_class::<PyAttributeSessionSecretKey>()?;
+    m.add_class::<PyPseudonymGlobalSecretKey>()?;
+    m.add_class::<PyAttributeGlobalSecretKey>()?;
+    m.add_class::<PyPseudonymSessionPublicKey>()?;
+    m.add_class::<PyAttributeSessionPublicKey>()?;
+    m.add_class::<PyPseudonymGlobalPublicKey>()?;
+    m.add_class::<PyAttributeGlobalPublicKey>()?;
     m.add_class::<PyPseudonymizationSecret>()?;
     m.add_class::<PyEncryptionSecret>()?;
     m.add_class::<PyPseudonym>()?;
-    m.add_class::<PyDataPoint>()?;
+    m.add_class::<PyAttribute>()?;
     m.add_class::<PyEncryptedPseudonym>()?;
-    m.add_class::<PyEncryptedDataPoint>()?;
-    m.add_class::<PyGlobalKeyPair>()?;
-    m.add_class::<PySessionKeyPair>()?;
-    m.add_function(wrap_pyfunction!(py_make_global_keys, m)?)?;
-    m.add_function(wrap_pyfunction!(py_make_session_keys, m)?)?;
+    m.add_class::<PyEncryptedAttribute>()?;
+    m.add_class::<PyPseudonymGlobalKeyPair>()?;
+    m.add_class::<PyAttributeGlobalKeyPair>()?;
+    m.add_class::<PyPseudonymSessionKeyPair>()?;
+    m.add_class::<PyAttributeSessionKeyPair>()?;
+    m.add_function(wrap_pyfunction!(py_make_pseudonym_global_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_attribute_global_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_pseudonym_session_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_attribute_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_encrypt_pseudonym, m)?)?;
     m.add_function(wrap_pyfunction!(py_decrypt_pseudonym, m)?)?;
     m.add_function(wrap_pyfunction!(py_encrypt_data, m)?)?;
