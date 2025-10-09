@@ -2,6 +2,7 @@ use libpep::high_level::contexts::*;
 use libpep::high_level::data_types::*;
 use libpep::high_level::keys::*;
 use libpep::high_level::ops::*;
+use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use rand_core::OsRng;
 
 #[test]
@@ -53,7 +54,7 @@ fn test_high_level_flow() {
         assert_eq!(data, rr_dec_data);
     }
 
-    let pseudo_info = PseudonymizationInfo::new(
+    let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
         Some(&session1),
@@ -61,19 +62,19 @@ fn test_high_level_flow() {
         &pseudo_secret,
         &enc_secret,
     );
-    let rekey_info = RekeyInfo::from(pseudo_info);
+    let attribute_rekey_info = transcryption_info.attribute;
 
-    let rekeyed = rekey(&enc_data, &rekey_info);
+    let rekeyed = rekey(&enc_data, &attribute_rekey_info);
     let rekeyed_dec = decrypt(&rekeyed, &attribute_session2_secret);
 
     assert_eq!(data, rekeyed_dec);
 
-    let pseudonymized = transcrypt(&enc_pseudo, &pseudo_info);
+    let pseudonymized = transcrypt(&enc_pseudo, &transcryption_info);
     let pseudonymized_dec = decrypt(&pseudonymized, &pseudonym_session2_secret);
 
     assert_ne!(pseudo, pseudonymized_dec);
 
-    let rev_pseudonymized = transcrypt(&pseudonymized, &pseudo_info.reverse());
+    let rev_pseudonymized = transcrypt(&pseudonymized, &transcryption_info.reverse());
     let rev_pseudonymized_dec = decrypt(&rev_pseudonymized, &pseudonym_session1_secret);
 
     assert_eq!(pseudo, rev_pseudonymized_dec);
@@ -124,10 +125,10 @@ fn test_batch() {
         &enc_secret,
     );
 
-    let rekey_info = RekeyInfo::from(transcryption_info);
+    let attribute_rekey_info = transcryption_info.attribute;
 
-    let _rekeyed = rekey_batch(&mut attributes, &rekey_info, rng);
-    let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info, rng);
+    let _rekeyed = rekey_batch(&mut attributes, &attribute_rekey_info, rng);
+    let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info.pseudonym, rng);
 
     let mut data = vec![];
     for _ in 0..10 {

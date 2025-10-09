@@ -5,7 +5,10 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::utils::make_rekey_factor;
+use crate::high_level::secrets::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
+    PseudonymizationSecret,
+};
 use rand_core::{CryptoRng, RngCore};
 
 /// A PEP transcryptor system that can [pseudonymize] and [rekey] data, based on
@@ -29,18 +32,31 @@ impl PEPSystem {
             blinding_factor,
         }
     }
-    /// Generate a session key share for the given session.
-    pub fn session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
-        let k = make_rekey_factor(&self.rekeying_secret, session);
+    /// Generate a pseudonym session key share for the given session.
+    pub fn pseudonym_session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
+        let k = make_pseudonym_rekey_factor(&self.rekeying_secret, session);
         make_session_key_share(&k.0, &self.blinding_factor)
     }
-    /// Generate a rekey info to rekey from a given [`EncryptionContext`] to another.
-    pub fn rekey_info(
+    /// Generate an attribute session key share for the given session.
+    pub fn attribute_session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
+        let k = make_attribute_rekey_factor(&self.rekeying_secret, session);
+        make_session_key_share(&k.0, &self.blinding_factor)
+    }
+    /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
+    pub fn attribute_rekey_info(
         &self,
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
-    ) -> RekeyInfo {
-        RekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+    ) -> AttributeRekeyInfo {
+        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+    }
+    /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
+    pub fn pseudonym_rekey_info(
+        &self,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
+    ) -> PseudonymRekeyInfo {
+        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
@@ -60,11 +76,11 @@ impl PEPSystem {
             &self.rekeying_secret,
         )
     }
-    /// Rekey an [`EncryptedAttribute`] from one session to another, using [`RekeyInfo`].
+    /// Rekey an [`EncryptedAttribute`] from one session to another, using [`AttributeRekeyInfo`].
     pub fn rekey(
         &self,
         encrypted: &EncryptedAttribute,
-        rekey_info: &RekeyInfo,
+        rekey_info: &AttributeRekeyInfo,
     ) -> EncryptedAttribute {
         rekey(encrypted, rekey_info)
     }
@@ -79,11 +95,11 @@ impl PEPSystem {
     }
 
     /// Rekey a batch of [`EncryptedAttribute`]s from one session to another, using
-    /// [`RekeyInfo`].
+    /// [`AttributeRekeyInfo`].
     pub fn rekey_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut [EncryptedAttribute],
-        rekey_info: &RekeyInfo,
+        rekey_info: &AttributeRekeyInfo,
         rng: &mut R,
     ) -> Box<[EncryptedAttribute]> {
         rekey_batch(encrypted, rekey_info, rng)
@@ -100,12 +116,31 @@ impl PEPSystem {
         pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
+    /// Generate transcryption info to transcrypt from a given [`PseudonymizationDomain`]
+    /// and [`EncryptionContext`] to another.
+    pub fn transcryption_info(
+        &self,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: Option<&EncryptionContext>,
+        session_to: Option<&EncryptionContext>,
+    ) -> TranscryptionInfo {
+        TranscryptionInfo::new(
+            domain_from,
+            domain_to,
+            session_from,
+            session_to,
+            &self.pseudonymisation_secret,
+            &self.rekeying_secret,
+        )
+    }
+
     /// Transcrypt (rekey or pseudonymize) an encrypted message from one pseudonymization domain and
     /// session to another, using [`TranscryptionInfo`].
     pub fn transcrypt<E: Transcryptable>(
         &self,
         encrypted: &E,
-        transcryption_info: &PseudonymizationInfo,
+        transcryption_info: &TranscryptionInfo,
     ) -> E {
         transcrypt(encrypted, transcryption_info)
     }
@@ -115,7 +150,7 @@ impl PEPSystem {
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
         encrypted: &mut Box<[EncryptedData]>,
-        transcryption_info: &PseudonymizationInfo,
+        transcryption_info: &TranscryptionInfo,
         rng: &mut R,
     ) -> Box<[EncryptedData]> {
         transcrypt_batch(encrypted, transcryption_info, rng)

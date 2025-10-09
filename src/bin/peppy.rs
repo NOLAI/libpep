@@ -3,13 +3,14 @@ use libpep::distributed::key_blinding::{make_distributed_global_pseudonym_keys, 
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
-    make_pseudonym_global_keys, make_pseudonym_session_keys, EncryptionSecret,
-    PseudonymGlobalPublicKey, PseudonymGlobalSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, PseudonymizationSecret, PublicKey, SecretKey,
+    make_pseudonym_global_keys, make_pseudonym_session_keys, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
+    SecretKey,
 };
 use libpep::high_level::ops::{
     decrypt_pseudonym, encrypt_pseudonym, encrypt_pseudonym_global, rerandomize, transcrypt,
 };
+use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
 use rand_core::OsRng;
 use std::cmp::Ordering;

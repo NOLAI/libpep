@@ -4,7 +4,9 @@
 //! Keys are split into separate Attribute and Pseudonym encryption keys for enhanced security.
 
 use crate::high_level::contexts::EncryptionContext;
-use crate::high_level::utils::make_rekey_factor;
+use crate::high_level::secrets::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
+};
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits, G};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
@@ -250,25 +252,6 @@ impl SecretKey for AttributeSessionSecretKey {
     }
 }
 
-/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
-pub type Secret = Box<[u8]>;
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`](crate::high_level::contexts::ReshuffleFactor) from a [`PseudonymizationContext`](crate::high_level::contexts::PseudonymizationDomain) (see [`PseudonymizationInfo`](crate::high_level::contexts::PseudonymizationInfo)).
-#[derive(Clone, Debug, From)]
-pub struct PseudonymizationSecret(pub(crate) Secret);
-/// Encryption secret used to derive a [`RekeyFactor`](crate::high_level::contexts::RekeyFactor) from an [`EncryptionContext`] (see [`RekeyInfo`](crate::high_level::contexts::RekeyInfo)).
-#[derive(Clone, Debug, From)]
-pub struct EncryptionSecret(pub(crate) Secret);
-impl PseudonymizationSecret {
-    pub fn from(secret: Vec<u8>) -> Self {
-        Self(secret.into_boxed_slice())
-    }
-}
-impl EncryptionSecret {
-    pub fn from(secret: Vec<u8>) -> Self {
-        Self(secret.into_boxed_slice())
-    }
-}
-
 /// Generate a new global key pair for pseudonyms.
 pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
     rng: &mut R,
@@ -303,7 +286,7 @@ pub fn make_pseudonym_session_keys(
     context: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
-    let k = make_rekey_factor(secret, context);
+    let k = make_pseudonym_rekey_factor(secret, context);
     let sk = k.0 * global.0;
     let pk = sk * G;
     (PseudonymSessionPublicKey(pk), PseudonymSessionSecretKey(sk))
@@ -315,7 +298,7 @@ pub fn make_attribute_session_keys(
     context: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
-    let k = make_rekey_factor(secret, context);
+    let k = make_attribute_rekey_factor(secret, context);
     let sk = k.0 * global.0;
     let pk = sk * G;
     (AttributeSessionPublicKey(pk), AttributeSessionSecretKey(sk))

@@ -262,46 +262,69 @@ pub fn pseudonymize(
     ))
 }
 
-/// Rekey an [`EncryptedAttribute`] from one encryption context to another, using [`RekeyInfo`].
-pub fn rekey(encrypted: &EncryptedAttribute, rekey_info: &RekeyInfo) -> EncryptedAttribute {
+/// Rekey an [`EncryptedAttribute`] from one encryption context to another, using [`AttributeRekeyInfo`].
+pub fn rekey(
+    encrypted: &EncryptedAttribute,
+    rekey_info: &AttributeRekeyInfo,
+) -> EncryptedAttribute {
     EncryptedAttribute::from(crate::low_level::primitives::rekey(
         &encrypted.value,
         &rekey_info.0,
     ))
 }
 
-/// Trait for types that can be transcrypted.
+/// Trait for types that can be transcrypted using TranscryptionInfo.
 /// This trait is implemented separately for pseudonyms and attributes to provide
 /// type-specific transcryption behavior without runtime dispatch.
 pub trait Transcryptable: Encrypted {
     /// Apply the transcryption operation specific to this type.
-    fn transcrypt_impl(
-        value: &crate::low_level::elgamal::ElGamal,
-        s: &ScalarNonZero,
-        k: &ScalarNonZero,
-    ) -> crate::low_level::elgamal::ElGamal;
+    fn transcrypt_impl(encrypted: &Self, transcryption_info: &TranscryptionInfo) -> Self;
 }
 
 impl Transcryptable for EncryptedPseudonym {
     #[inline]
-    fn transcrypt_impl(
-        value: &crate::low_level::elgamal::ElGamal,
-        s: &ScalarNonZero,
-        k: &ScalarNonZero,
-    ) -> crate::low_level::elgamal::ElGamal {
-        rsk(value, s, k)
+    fn transcrypt_impl(encrypted: &Self, transcryption_info: &TranscryptionInfo) -> Self {
+        EncryptedPseudonym::from_value(rsk(
+            encrypted.value(),
+            &transcryption_info.pseudonym.s.0,
+            &transcryption_info.pseudonym.k.0,
+        ))
     }
 }
 
 impl Transcryptable for EncryptedAttribute {
     #[inline]
-    fn transcrypt_impl(
-        value: &crate::low_level::elgamal::ElGamal,
-        _s: &ScalarNonZero,
-        k: &ScalarNonZero,
-    ) -> crate::low_level::elgamal::ElGamal {
-        crate::low_level::primitives::rekey(value, k)
+    fn transcrypt_impl(encrypted: &Self, transcryption_info: &TranscryptionInfo) -> Self {
+        EncryptedAttribute::from_value(crate::low_level::primitives::rekey(
+            encrypted.value(),
+            &transcryption_info.attribute.0,
+        ))
     }
+}
+
+/// Transcrypt an [`EncryptedPseudonym`] from one pseudonymization and encryption context to another,
+/// using [`TranscryptionInfo`].
+pub fn transcrypt_pseudonym(
+    encrypted: &EncryptedPseudonym,
+    transcryption_info: &TranscryptionInfo,
+) -> EncryptedPseudonym {
+    EncryptedPseudonym::from_value(rsk(
+        encrypted.value(),
+        &transcryption_info.pseudonym.s.0,
+        &transcryption_info.pseudonym.k.0,
+    ))
+}
+
+/// Transcrypt an [`EncryptedAttribute`] from one encryption context to another,
+/// using [`TranscryptionInfo`].
+pub fn transcrypt_attribute(
+    encrypted: &EncryptedAttribute,
+    transcryption_info: &TranscryptionInfo,
+) -> EncryptedAttribute {
+    EncryptedAttribute::from_value(crate::low_level::primitives::rekey(
+        encrypted.value(),
+        &transcryption_info.attribute.0,
+    ))
 }
 
 /// Transcrypt an encrypted message from one pseudonymization and encryption context to another,
@@ -312,11 +335,7 @@ impl Transcryptable for EncryptedAttribute {
 /// When an [`EncryptedAttribute`] is transcrypted, the result is a rekeyed attribute
 /// (applying only the rekey operation, as attributes cannot be reshuffled).
 pub fn transcrypt<E: Transcryptable>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
-    E::from_value(E::transcrypt_impl(
-        encrypted.value(),
-        &transcryption_info.s.0,
-        &transcryption_info.k.0,
-    ))
+    E::transcrypt_impl(encrypted, transcryption_info)
 }
 
 /// Batch pseudonymization of a slice of [`EncryptedPseudonym`]s, using [`PseudonymizationInfo`].
@@ -332,11 +351,11 @@ pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
         .map(|x| pseudonymize(x, pseudonymization_info))
         .collect()
 }
-/// Batch rekeying of a slice of [`EncryptedAttribute`]s, using [`RekeyInfo`].
+/// Batch rekeying of a slice of [`EncryptedAttribute`]s, using [`AttributeRekeyInfo`].
 /// The order of the attributes is randomly shuffled to avoid linking them.
 pub fn rekey_batch<R: RngCore + CryptoRng>(
     encrypted: &mut [EncryptedAttribute],
-    rekey_info: &RekeyInfo,
+    rekey_info: &AttributeRekeyInfo,
     rng: &mut R,
 ) -> Box<[EncryptedAttribute]> {
     encrypted.shuffle(rng); // Shuffle the order to avoid linking
@@ -360,11 +379,11 @@ pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         .map(|(pseudonyms, attributes)| {
             let pseudonyms = pseudonyms
                 .iter()
-                .map(|x| pseudonymize(x, transcryption_info))
+                .map(|x| pseudonymize(x, &transcryption_info.pseudonym))
                 .collect();
             let attributes = attributes
                 .iter()
-                .map(|x| rekey(x, &(*transcryption_info).into()))
+                .map(|x| rekey(x, &transcryption_info.attribute))
                 .collect();
             (pseudonyms, attributes)
         })
