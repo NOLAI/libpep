@@ -124,55 +124,108 @@ impl PyBlindedGlobalSecretKey {
     }
 }
 
-/// A session key share, which a part a session key provided by one transcryptor.
-/// By combining all session key shares and the [`PyBlindedGlobalSecretKey`], a session key can be derived.
+/// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
+/// By combining all pseudonym session key shares and the [`PyBlindedGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "SessionKeyShare")]
-pub struct PySessionKeyShare(SessionKeyShare);
+#[pyclass(name = "PseudonymSessionKeyShare")]
+pub struct PyPseudonymSessionKeyShare(PseudonymSessionKeyShare);
 
 #[pymethods]
-impl PySessionKeyShare {
-    /// Create a new [`PySessionKeyShare`] from a [`PyScalarNonZero`].
+impl PyPseudonymSessionKeyShare {
+    /// Create a new [`PyPseudonymSessionKeyShare`] from a [`PyScalarNonZero`].
     #[new]
     fn new(x: PyScalarNonZero) -> Self {
-        PySessionKeyShare(SessionKeyShare(x.0))
+        PyPseudonymSessionKeyShare(PseudonymSessionKeyShare(x.0))
     }
 
-    /// Encode the [`PySessionKeyShare`] as a byte array.
+    /// Encode the [`PyPseudonymSessionKeyShare`] as a byte array.
     #[pyo3(name = "encode")]
     fn encode(&self, py: Python) -> PyObject {
         PyBytes::new_bound(py, &self.0.encode()).into()
     }
 
-    /// Decode a [`PySessionKeyShare`] from a byte array.
+    /// Decode a [`PyPseudonymSessionKeyShare`] from a byte array.
     #[staticmethod]
     #[pyo3(name = "decode")]
-    fn decode(bytes: &[u8]) -> Option<PySessionKeyShare> {
-        SessionKeyShare::decode_from_slice(bytes).map(PySessionKeyShare)
+    fn decode(bytes: &[u8]) -> Option<PyPseudonymSessionKeyShare> {
+        PseudonymSessionKeyShare::decode_from_slice(bytes).map(PyPseudonymSessionKeyShare)
     }
 
-    /// Encode the [`PySessionKeyShare`] as a hexadecimal string.
+    /// Encode the [`PyPseudonymSessionKeyShare`] as a hexadecimal string.
     #[pyo3(name = "as_hex")]
     fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
 
-    /// Decode a [`PySessionKeyShare`] from a hexadecimal string.
+    /// Decode a [`PyPseudonymSessionKeyShare`] from a hexadecimal string.
     #[staticmethod]
     #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<PySessionKeyShare> {
-        SessionKeyShare::decode_from_hex(hex).map(PySessionKeyShare)
+    fn from_hex(hex: &str) -> Option<PyPseudonymSessionKeyShare> {
+        PseudonymSessionKeyShare::decode_from_hex(hex).map(PyPseudonymSessionKeyShare)
     }
 
     fn __repr__(&self) -> String {
-        format!("SessionKeyShare({})", self.as_hex())
+        format!("PseudonymSessionKeyShare({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
         self.as_hex()
     }
 
-    fn __eq__(&self, other: &PySessionKeyShare) -> bool {
+    fn __eq__(&self, other: &PyPseudonymSessionKeyShare) -> bool {
+        self.0 == other.0
+    }
+}
+
+/// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
+/// By combining all attribute session key shares and the [`PyBlindedGlobalSecretKey`], an attribute session key can be derived.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[pyclass(name = "AttributeSessionKeyShare")]
+pub struct PyAttributeSessionKeyShare(AttributeSessionKeyShare);
+
+#[pymethods]
+impl PyAttributeSessionKeyShare {
+    /// Create a new [`PyAttributeSessionKeyShare`] from a [`PyScalarNonZero`].
+    #[new]
+    fn new(x: PyScalarNonZero) -> Self {
+        PyAttributeSessionKeyShare(AttributeSessionKeyShare(x.0))
+    }
+
+    /// Encode the [`PyAttributeSessionKeyShare`] as a byte array.
+    #[pyo3(name = "encode")]
+    fn encode(&self, py: Python) -> PyObject {
+        PyBytes::new_bound(py, &self.0.encode()).into()
+    }
+
+    /// Decode a [`PyAttributeSessionKeyShare`] from a byte array.
+    #[staticmethod]
+    #[pyo3(name = "decode")]
+    fn decode(bytes: &[u8]) -> Option<PyAttributeSessionKeyShare> {
+        AttributeSessionKeyShare::decode_from_slice(bytes).map(PyAttributeSessionKeyShare)
+    }
+
+    /// Encode the [`PyAttributeSessionKeyShare`] as a hexadecimal string.
+    #[pyo3(name = "as_hex")]
+    fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
+    }
+
+    /// Decode a [`PyAttributeSessionKeyShare`] from a hexadecimal string.
+    #[staticmethod]
+    #[pyo3(name = "from_hex")]
+    fn from_hex(hex: &str) -> Option<PyAttributeSessionKeyShare> {
+        AttributeSessionKeyShare::decode_from_hex(hex).map(PyAttributeSessionKeyShare)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("AttributeSessionKeyShare({})", self.as_hex())
+    }
+
+    fn __str__(&self) -> String {
+        self.as_hex()
+    }
+
+    fn __eq__(&self, other: &PyAttributeSessionKeyShare) -> bool {
         self.0 == other.0
     }
 }
@@ -190,7 +243,7 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    let result = make_blinded_global_pseudonym_secret_key(
+    let result = make_blinded_pseudonym_global_secret_key(
         &PseudonymGlobalSecretKey::from(global_secret_key.0 .0),
         &bs,
     )
@@ -211,7 +264,7 @@ pub fn py_make_blinded_attribute_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    let result = make_blinded_global_attribute_secret_key(
+    let result = make_blinded_attribute_global_secret_key(
         &AttributeGlobalSecretKey::from(global_secret_key.0 .0),
         &bs,
     )
@@ -243,14 +296,18 @@ impl PyPEPSystem {
 
     /// Generate a pseudonym session key share for the given session.
     #[pyo3(name = "pseudonym_session_key_share")]
-    fn py_pseudonym_session_key_share(&self, session: &str) -> PySessionKeyShare {
-        PySessionKeyShare(self.pseudonym_session_key_share(&EncryptionContext::from(session)))
+    fn py_pseudonym_session_key_share(&self, session: &str) -> PyPseudonymSessionKeyShare {
+        PyPseudonymSessionKeyShare(
+            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
+        )
     }
 
     /// Generate an attribute session key share for the given session.
     #[pyo3(name = "attribute_session_key_share")]
-    fn py_attribute_session_key_share(&self, session: &str) -> PySessionKeyShare {
-        PySessionKeyShare(self.attribute_session_key_share(&EncryptionContext::from(session)))
+    fn py_attribute_session_key_share(&self, session: &str) -> PyAttributeSessionKeyShare {
+        PyAttributeSessionKeyShare(
+            self.attribute_session_key_share(&EncryptionContext::from(session)),
+        )
     }
 
     /// Generate attribute rekey info to rekey from a given session to another.
@@ -319,17 +376,17 @@ impl PyPEPClient {
     #[new]
     fn new(
         blinded_global_pseudonym_key: &PyBlindedGlobalSecretKey,
-        pseudonym_session_key_shares: Vec<PySessionKeyShare>,
+        pseudonym_session_key_shares: Vec<PyPseudonymSessionKeyShare>,
         blinded_global_attribute_key: &PyBlindedGlobalSecretKey,
-        attribute_session_key_shares: Vec<PySessionKeyShare>,
+        attribute_session_key_shares: Vec<PyAttributeSessionKeyShare>,
     ) -> Self {
-        let pseudonym_shares: Vec<SessionKeyShare> = pseudonym_session_key_shares
+        let pseudonym_shares: Vec<PseudonymSessionKeyShare> = pseudonym_session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare(x.0 .0))
+            .map(|x| PseudonymSessionKeyShare(x.0 .0))
             .collect();
-        let attribute_shares: Vec<SessionKeyShare> = attribute_session_key_shares
+        let attribute_shares: Vec<AttributeSessionKeyShare> = attribute_session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare(x.0 .0))
+            .map(|x| AttributeSessionKeyShare(x.0 .0))
             .collect();
         Self(PEPClient::new(
             blinded_global_pseudonym_key.0,
@@ -384,8 +441,8 @@ impl PyPEPClient {
     #[pyo3(name = "update_pseudonym_session_secret_key")]
     fn py_update_pseudonym_session_secret_key(
         &mut self,
-        old_key_share: PySessionKeyShare,
-        new_key_share: PySessionKeyShare,
+        old_key_share: PyPseudonymSessionKeyShare,
+        new_key_share: PyPseudonymSessionKeyShare,
     ) {
         self.0
             .update_pseudonym_session_secret_key(old_key_share.0, new_key_share.0);
@@ -395,8 +452,8 @@ impl PyPEPClient {
     #[pyo3(name = "update_attribute_session_secret_key")]
     fn py_update_attribute_session_secret_key(
         &mut self,
-        old_key_share: PySessionKeyShare,
-        new_key_share: PySessionKeyShare,
+        old_key_share: PyAttributeSessionKeyShare,
+        new_key_share: PyAttributeSessionKeyShare,
     ) {
         self.0
             .update_attribute_session_secret_key(old_key_share.0, new_key_share.0);
@@ -641,7 +698,8 @@ impl From<&PyTranscryptionInfo> for TranscryptionInfo {
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindingFactor>()?;
     m.add_class::<PyBlindedGlobalSecretKey>()?;
-    m.add_class::<PySessionKeyShare>()?;
+    m.add_class::<PyPseudonymSessionKeyShare>()?;
+    m.add_class::<PyAttributeSessionKeyShare>()?;
     m.add_class::<PyPEPSystem>()?;
     m.add_class::<PyPEPClient>()?;
     m.add_class::<PyOfflinePEPClient>()?;

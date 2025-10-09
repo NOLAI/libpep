@@ -92,38 +92,75 @@ impl WASMBlindedGlobalSecretKey {
     }
 }
 
-/// A session key share, which a part a session key provided by one transcryptor.
-/// By combining all session key shares and the [`WASMBlindedGlobalSecretKey`], a session key can be derived.
+/// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
+/// By combining all pseudonym session key shares and the [`WASMBlindedGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = SessionKeyShare)]
-pub struct WASMSessionKeyShare(SessionKeyShare);
+#[wasm_bindgen(js_name = PseudonymSessionKeyShare)]
+pub struct WASMPseudonymSessionKeyShare(PseudonymSessionKeyShare);
 
-#[wasm_bindgen(js_class = "SessionKeyShare")]
-impl WASMSessionKeyShare {
-    /// Create a new [`WASMSessionKeyShare`] from a [`WASMScalarNonZero`].
+#[wasm_bindgen(js_class = "PseudonymSessionKeyShare")]
+impl WASMPseudonymSessionKeyShare {
+    /// Create a new [`WASMPseudonymSessionKeyShare`] from a [`WASMScalarNonZero`].
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMSessionKeyShare(SessionKeyShare(x.0))
+        WASMPseudonymSessionKeyShare(PseudonymSessionKeyShare(x.0))
     }
-    /// Encode the [`WASMSessionKeyShare`] as a byte array.
+    /// Encode the [`WASMPseudonymSessionKeyShare`] as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
-    /// Decode a [`WASMSessionKeyShare`] from a byte array.
+    /// Decode a [`WASMPseudonymSessionKeyShare`] from a byte array.
     #[wasm_bindgen]
-    pub fn decode(bytes: Vec<u8>) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_slice(bytes.as_slice()).map(WASMSessionKeyShare)
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMPseudonymSessionKeyShare> {
+        PseudonymSessionKeyShare::decode_from_slice(bytes.as_slice())
+            .map(WASMPseudonymSessionKeyShare)
     }
-    /// Encode the [`WASMSessionKeyShare`] as a hexadecimal string.
+    /// Encode the [`WASMPseudonymSessionKeyShare`] as a hexadecimal string.
     #[wasm_bindgen(js_name = asHex)]
     pub fn as_hex(self) -> String {
         self.0.encode_as_hex()
     }
-    /// Decode a [`WASMSessionKeyShare`] from a hexadecimal string.
+    /// Decode a [`WASMPseudonymSessionKeyShare`] from a hexadecimal string.
     #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Option<WASMSessionKeyShare> {
-        SessionKeyShare::decode_from_hex(hex).map(WASMSessionKeyShare)
+    pub fn from_hex(hex: &str) -> Option<WASMPseudonymSessionKeyShare> {
+        PseudonymSessionKeyShare::decode_from_hex(hex).map(WASMPseudonymSessionKeyShare)
+    }
+}
+
+/// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
+/// By combining all attribute session key shares and the [`WASMBlindedGlobalSecretKey`], an attribute session key can be derived.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[wasm_bindgen(js_name = AttributeSessionKeyShare)]
+pub struct WASMAttributeSessionKeyShare(AttributeSessionKeyShare);
+
+#[wasm_bindgen(js_class = "AttributeSessionKeyShare")]
+impl WASMAttributeSessionKeyShare {
+    /// Create a new [`WASMAttributeSessionKeyShare`] from a [`WASMScalarNonZero`].
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {
+        WASMAttributeSessionKeyShare(AttributeSessionKeyShare(x.0))
+    }
+    /// Encode the [`WASMAttributeSessionKeyShare`] as a byte array.
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode().to_vec()
+    }
+    /// Decode a [`WASMAttributeSessionKeyShare`] from a byte array.
+    #[wasm_bindgen]
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMAttributeSessionKeyShare> {
+        AttributeSessionKeyShare::decode_from_slice(bytes.as_slice())
+            .map(WASMAttributeSessionKeyShare)
+    }
+    /// Encode the [`WASMAttributeSessionKeyShare`] as a hexadecimal string.
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(self) -> String {
+        self.0.encode_as_hex()
+    }
+    /// Decode a [`WASMAttributeSessionKeyShare`] from a hexadecimal string.
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<WASMAttributeSessionKeyShare> {
+        AttributeSessionKeyShare::decode_from_hex(hex).map(WASMAttributeSessionKeyShare)
     }
 }
 
@@ -143,7 +180,7 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
     WASMBlindedGlobalSecretKey(
-        make_blinded_global_pseudonym_secret_key(
+        make_blinded_pseudonym_global_secret_key(
             &PseudonymGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
         )
@@ -167,7 +204,7 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
     WASMBlindedGlobalSecretKey(
-        make_blinded_global_attribute_secret_key(
+        make_blinded_attribute_global_secret_key(
             &AttributeGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
         )
@@ -196,14 +233,19 @@ impl WASMPEPSystem {
             BlindingFactor(blinding_factor.0 .0),
         ))
     }
-    /// Generate a session key share for the given session.
+    /// Generate a pseudonym session key share for the given session.
     #[wasm_bindgen(js_name = pseudonymSessionKeyShare)]
-    pub fn wasm_pseudonym_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
-        WASMSessionKeyShare(self.pseudonym_session_key_share(&EncryptionContext::from(session)))
+    pub fn wasm_pseudonym_session_key_share(&self, session: &str) -> WASMPseudonymSessionKeyShare {
+        WASMPseudonymSessionKeyShare(
+            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
+        )
     }
+    /// Generate an attribute session key share for the given session.
     #[wasm_bindgen(js_name = attributeSessionKeyShare)]
-    pub fn wasm_attribute_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
-        WASMSessionKeyShare(self.attribute_session_key_share(&EncryptionContext::from(session)))
+    pub fn wasm_attribute_session_key_share(&self, session: &str) -> WASMAttributeSessionKeyShare {
+        WASMAttributeSessionKeyShare(
+            self.attribute_session_key_share(&EncryptionContext::from(session)),
+        )
     }
     /// Generate attribute rekey info to rekey from a given session to another.
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
@@ -270,20 +312,20 @@ impl WASMPEPClient {
     #[wasm_bindgen(constructor)]
     pub fn new(
         blinded_global_pseudonym_key: &WASMBlindedGlobalSecretKey,
-        pseudonym_session_key_shares: Vec<WASMSessionKeyShare>,
+        pseudonym_session_key_shares: Vec<WASMPseudonymSessionKeyShare>,
         blinded_global_attribute_key: &WASMBlindedGlobalSecretKey,
-        attribute_session_key_shares: Vec<WASMSessionKeyShare>,
+        attribute_session_key_shares: Vec<WASMAttributeSessionKeyShare>,
     ) -> Self {
         // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
         // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
         // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-        let pseudonym_shares: Vec<SessionKeyShare> = pseudonym_session_key_shares
+        let pseudonym_shares: Vec<PseudonymSessionKeyShare> = pseudonym_session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare(x.0 .0))
+            .map(|x| PseudonymSessionKeyShare(x.0 .0))
             .collect();
-        let attribute_shares: Vec<SessionKeyShare> = attribute_session_key_shares
+        let attribute_shares: Vec<AttributeSessionKeyShare> = attribute_session_key_shares
             .into_iter()
-            .map(|x| SessionKeyShare(x.0 .0))
+            .map(|x| AttributeSessionKeyShare(x.0 .0))
             .collect();
         Self(PEPClient::new(
             blinded_global_pseudonym_key.0,
@@ -337,8 +379,8 @@ impl WASMPEPClient {
     #[wasm_bindgen(js_name = updatePseudonymSessionSecretKey)]
     pub fn wasm_update_pseudonym_session_secret_key(
         &mut self,
-        old_key_share: WASMSessionKeyShare,
-        new_key_share: WASMSessionKeyShare,
+        old_key_share: WASMPseudonymSessionKeyShare,
+        new_key_share: WASMPseudonymSessionKeyShare,
     ) {
         self.0
             .update_pseudonym_session_secret_key(old_key_share.0, new_key_share.0);
@@ -348,8 +390,8 @@ impl WASMPEPClient {
     #[wasm_bindgen(js_name = updateAttributeSessionSecretKey)]
     pub fn wasm_update_attribute_session_secret_key(
         &mut self,
-        old_key_share: WASMSessionKeyShare,
-        new_key_share: WASMSessionKeyShare,
+        old_key_share: WASMAttributeSessionKeyShare,
+        new_key_share: WASMAttributeSessionKeyShare,
     ) {
         self.0
             .update_attribute_session_secret_key(old_key_share.0, new_key_share.0);

@@ -1,5 +1,5 @@
 use libpep::distributed::key_blinding::{
-    make_blinded_global_attribute_secret_key, make_blinded_global_pseudonym_secret_key,
+    make_blinded_attribute_global_secret_key, make_blinded_pseudonym_global_secret_key,
     BlindingFactor, SafeScalar,
 };
 use libpep::distributed::systems::{PEPClient, PEPSystem};
@@ -21,12 +21,12 @@ fn n_pep() {
     let blinding_factors = (0..n)
         .map(|_| BlindingFactor::random(rng))
         .collect::<Vec<_>>();
-    let blinded_pseudonym_global_secret_key = make_blinded_global_pseudonym_secret_key(
+    let blinded_pseudonym_global_secret_key = make_blinded_pseudonym_global_secret_key(
         &pseudonym_global_secret,
         &blinding_factors.clone(),
     )
     .unwrap();
-    let blinded_attribute_global_secret_key = make_blinded_global_attribute_secret_key(
+    let blinded_attribute_global_secret_key = make_blinded_attribute_global_secret_key(
         &attribute_global_secret,
         &blinding_factors.clone(),
     )

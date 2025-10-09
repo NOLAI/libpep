@@ -1,5 +1,5 @@
 use commandy_macros::*;
-use libpep::distributed::key_blinding::{make_distributed_global_pseudonym_keys, SafeScalar};
+use libpep::distributed::key_blinding::{make_distributed_pseudonym_global_keys, SafeScalar};
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
@@ -333,7 +333,7 @@ fn main() {
                 .parse::<usize>()
                 .expect("Invalid number of nodes.");
             let (global_public_key, blinded_secret, blinding_factors) =
-                make_distributed_global_pseudonym_keys(n, &mut rng);
+                make_distributed_pseudonym_global_keys(n, &mut rng);
             eprint!("Public global key: ");
             println!("{}", &global_public_key.encode_as_hex());
             eprint!("Blinded secret key: ");
