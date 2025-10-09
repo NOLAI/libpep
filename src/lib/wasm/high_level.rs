@@ -2,6 +2,8 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
+use crate::high_level::padding::{LongAttribute, LongPseudonym};
+use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
 use crate::low_level::elgamal::ElGamal;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
@@ -109,7 +111,7 @@ impl WASMAttributeGlobalPublicKey {
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(PseudonymizationSecret);
 
-/// Encryption secret used to derive a [`WASMRekeyFactor`] from an encryption context (see [`WASMRekeyInfo`]).
+/// Encryption secret used to derive rekey factors from an encryption context (see [`WASMPseudonymRekeyInfo`] and [`WASMAttributeRekeyInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[wasm_bindgen(js_name = EncryptionSecret)]
@@ -218,21 +220,19 @@ impl WASMPseudonym {
     /// Create a collection of pseudonyms from an arbitrary-length string
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Vec<WASMPseudonym> {
-        Pseudonym::from_string_padded(text)
-            .into_iter()
-            .map(WASMPseudonym::from)
-            .collect()
+    pub fn from_string_padded(text: &str) -> Option<Vec<WASMPseudonym>> {
+        LongPseudonym::from_string_padded(text)
+            .ok()
+            .map(|long| long.0.into_iter().map(WASMPseudonym::from).collect())
     }
 
     /// Create a collection of pseudonyms from an arbitrary-length byte array
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: Vec<u8>) -> Vec<WASMPseudonym> {
-        Pseudonym::from_bytes_padded(&data)
-            .into_iter()
-            .map(WASMPseudonym::from)
-            .collect()
+    pub fn from_bytes_padded(data: &[u8]) -> Option<Vec<WASMPseudonym>> {
+        LongPseudonym::from_bytes_padded(data)
+            .ok()
+            .map(|long| long.0.into_iter().map(WASMPseudonym::from).collect())
     }
 
     /// Convert a collection of pseudonyms back to the original string
@@ -240,7 +240,7 @@ impl WASMPseudonym {
     #[wasm_bindgen(js_name = toStringPadded)]
     pub fn to_string_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<String> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        Pseudonym::to_string_padded(&rust_pseudonyms).ok()
+        LongPseudonym(rust_pseudonyms).to_string_padded().ok()
     }
 
     /// Convert a collection of pseudonyms back to the original byte array
@@ -248,7 +248,7 @@ impl WASMPseudonym {
     #[wasm_bindgen(js_name = toBytesPadded)]
     pub fn to_bytes_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<Vec<u8>> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        Pseudonym::to_bytes_padded(&rust_pseudonyms).ok()
+        LongPseudonym(rust_pseudonyms).to_bytes_padded().ok()
     }
 }
 
@@ -319,21 +319,19 @@ impl WASMAttribute {
     /// Create a collection of attributes from an arbitrary-length string
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Vec<WASMAttribute> {
-        Attribute::from_string_padded(text)
-            .into_iter()
-            .map(WASMAttribute::from)
-            .collect()
+    pub fn from_string_padded(text: &str) -> Option<Vec<WASMAttribute>> {
+        LongAttribute::from_string_padded(text)
+            .ok()
+            .map(|long| long.0.into_iter().map(WASMAttribute::from).collect())
     }
 
     /// Create a collection of attributes from an arbitrary-length byte array
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: Vec<u8>) -> Vec<WASMAttribute> {
-        Attribute::from_bytes_padded(&data)
-            .into_iter()
-            .map(WASMAttribute::from)
-            .collect()
+    pub fn from_bytes_padded(data: &[u8]) -> Option<Vec<WASMAttribute>> {
+        LongAttribute::from_bytes_padded(data)
+            .ok()
+            .map(|long| long.0.into_iter().map(WASMAttribute::from).collect())
     }
 
     /// Convert a collection of attributes back to the original string
@@ -341,7 +339,7 @@ impl WASMAttribute {
     #[wasm_bindgen(js_name = toStringPadded)]
     pub fn to_string_padded(attributes: Vec<WASMAttribute>) -> Option<String> {
         let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        Attribute::to_string_padded(&rust_attributes).ok()
+        LongAttribute(rust_attributes).to_string_padded().ok()
     }
 
     /// Convert a collection of attributes back to the original byte array
@@ -349,7 +347,7 @@ impl WASMAttribute {
     #[wasm_bindgen(js_name = toBytesPadded)]
     pub fn to_bytes_padded(attributes: Vec<WASMAttribute>) -> Option<Vec<u8>> {
         let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        Attribute::to_bytes_padded(&rust_attributes).ok()
+        LongAttribute(rust_attributes).to_bytes_padded().ok()
     }
 }
 
@@ -562,10 +560,14 @@ pub struct WASMRerandomizeFactor(RerandomizeFactor);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[wasm_bindgen(js_name = ReshuffleFactor)]
 pub struct WASMReshuffleFactor(ReshuffleFactor);
-/// High-level type for the factor used to [`wasm_rekey`](crate::wasm::primitives::wasm_rekey) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
+/// High-level type for the factor used to rekey pseudonyms.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-#[wasm_bindgen(js_name = RekeyFactor)]
-pub struct WASMRekeyFactor(RekeyFactor);
+#[wasm_bindgen(js_name = PseudonymRekeyFactor)]
+pub struct WASMPseudonymRekeyFactor(PseudonymRekeyFactor);
+/// High-level type for the factor used to rekey attributes.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[wasm_bindgen(js_name = AttributeRekeyFactor)]
+pub struct WASMAttributeRekeyFactor(AttributeRekeyFactor);
 
 /// Rerandomize an encrypted pseudonym using a random factor.
 #[cfg(feature = "elgamal3")]
@@ -737,19 +739,25 @@ pub fn wasm_rerandomize_encrypted_global_known(
     ))
 }
 
-/// High-level type for the factors used to [`rsk`](crate::wasm::primitives::rsk) an [WASMElGamal](crate::wasm::elgamal::WASMElGamal) ciphertext.
+/// High-level type for the factors used to pseudonymize (RSK) pseudonyms.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[wasm_bindgen(js_name = RSKFactors)]
-pub struct WASMRSKFactors {
+#[wasm_bindgen(js_name = PseudonymRSKFactors)]
+pub struct WASMPseudonymRSKFactors {
     pub s: WASMReshuffleFactor,
-    pub k: WASMRekeyFactor,
+    pub k: WASMPseudonymRekeyFactor,
 }
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = PseudonymizationInfo)]
-pub struct WASMPseudonymizationInfo(pub WASMRSKFactors);
+pub struct WASMPseudonymizationInfo(pub WASMPseudonymRSKFactors);
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = RekeyInfo)]
-pub struct WASMRekeyInfo(pub WASMRekeyFactor);
+#[wasm_bindgen(js_name = AttributeRekeyInfo)]
+pub struct WASMAttributeRekeyInfo(pub WASMAttributeRekeyFactor);
+#[derive(Copy, Clone, Debug)]
+#[wasm_bindgen(js_name = TranscryptionInfo)]
+pub struct WASMTranscryptionInfo {
+    pub pseudonym: WASMPseudonymizationInfo,
+    pub attribute: WASMAttributeRekeyInfo,
+}
 
 #[wasm_bindgen(js_class = PseudonymizationInfo)]
 impl WASMPseudonymizationInfo {
@@ -771,50 +779,82 @@ impl WASMPseudonymizationInfo {
             &encryption_secret.0,
         );
         let s = WASMReshuffleFactor(x.s);
-        let k = WASMRekeyFactor(x.k);
-        WASMPseudonymizationInfo(WASMRSKFactors { s, k })
+        let k = WASMPseudonymRekeyFactor(x.k);
+        WASMPseudonymizationInfo(WASMPseudonymRSKFactors { s, k })
     }
 
     #[wasm_bindgen]
     pub fn rev(&self) -> Self {
-        WASMPseudonymizationInfo(WASMRSKFactors {
+        WASMPseudonymizationInfo(WASMPseudonymRSKFactors {
             s: WASMReshuffleFactor(ReshuffleFactor(self.0.s.0 .0.invert())),
-            k: WASMRekeyFactor(RekeyFactor(self.0.k.0 .0.invert())),
+            k: WASMPseudonymRekeyFactor(PseudonymRekeyFactor(self.0.k.0 .0.invert())),
         })
     }
 }
 
-#[wasm_bindgen(js_class = RekeyInfo)]
-impl WASMRekeyInfo {
+#[wasm_bindgen(js_class = AttributeRekeyInfo)]
+impl WASMAttributeRekeyInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &str,
         session_to: &str,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        let x = RekeyInfo::new(
+        let x = AttributeRekeyInfo::new(
             Some(&EncryptionContext::from(session_from)),
             Some(&EncryptionContext::from(session_to)),
             &encryption_secret.0,
         );
-        WASMRekeyInfo(WASMRekeyFactor(x))
+        WASMAttributeRekeyInfo(WASMAttributeRekeyFactor(x))
     }
 
     #[wasm_bindgen]
     pub fn rev(&self) -> Self {
-        WASMRekeyInfo(WASMRekeyFactor(RekeyFactor(self.0 .0 .0.invert())))
+        WASMAttributeRekeyInfo(WASMAttributeRekeyFactor(AttributeRekeyFactor(
+            self.0 .0 .0.invert(),
+        )))
     }
-    #[wasm_bindgen(js_name = fromPseudoInfo)]
-    pub fn from_pseudo_info(x: &WASMPseudonymizationInfo) -> Self {
-        WASMRekeyInfo(x.0.k)
+}
+
+#[wasm_bindgen(js_class = TranscryptionInfo)]
+impl WASMTranscryptionInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
+        let x = TranscryptionInfo::new(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        );
+        Self {
+            pseudonym: WASMPseudonymizationInfo::from(x.pseudonym),
+            attribute: WASMAttributeRekeyInfo::from(x.attribute),
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn rev(&self) -> Self {
+        Self {
+            pseudonym: self.pseudonym.rev(),
+            attribute: self.attribute.rev(),
+        }
     }
 }
 
 impl From<PseudonymizationInfo> for WASMPseudonymizationInfo {
     fn from(x: PseudonymizationInfo) -> Self {
         let s = WASMReshuffleFactor(x.s);
-        let k = WASMRekeyFactor(x.k);
-        WASMPseudonymizationInfo(WASMRSKFactors { s, k })
+        let k = WASMPseudonymRekeyFactor(x.k);
+        WASMPseudonymizationInfo(WASMPseudonymRSKFactors { s, k })
     }
 }
 
@@ -826,15 +866,33 @@ impl From<&WASMPseudonymizationInfo> for PseudonymizationInfo {
     }
 }
 
-impl From<RekeyInfo> for WASMRekeyInfo {
-    fn from(x: RekeyInfo) -> Self {
-        WASMRekeyInfo(WASMRekeyFactor(x))
+impl From<AttributeRekeyInfo> for WASMAttributeRekeyInfo {
+    fn from(x: AttributeRekeyInfo) -> Self {
+        WASMAttributeRekeyInfo(WASMAttributeRekeyFactor(x))
     }
 }
 
-impl From<&WASMRekeyInfo> for RekeyInfo {
-    fn from(x: &WASMRekeyInfo) -> Self {
+impl From<&WASMAttributeRekeyInfo> for AttributeRekeyInfo {
+    fn from(x: &WASMAttributeRekeyInfo) -> Self {
         Self(x.0 .0 .0)
+    }
+}
+
+impl From<TranscryptionInfo> for WASMTranscryptionInfo {
+    fn from(x: TranscryptionInfo) -> Self {
+        Self {
+            pseudonym: WASMPseudonymizationInfo::from(x.pseudonym),
+            attribute: WASMAttributeRekeyInfo::from(x.attribute),
+        }
+    }
+}
+
+impl From<&WASMTranscryptionInfo> for TranscryptionInfo {
+    fn from(x: &WASMTranscryptionInfo) -> Self {
+        Self {
+            pseudonym: PseudonymizationInfo::from(&x.pseudonym),
+            attribute: AttributeRekeyInfo::from(&x.attribute),
+        }
     }
 }
 
@@ -855,11 +913,11 @@ pub fn wasm_pseudonymize(
 #[wasm_bindgen(js_name = rekeyData)]
 pub fn wasm_rekey_data(
     encrypted: &WASMEncryptedAttribute,
-    rekey_info: &WASMRekeyInfo,
+    rekey_info: &WASMAttributeRekeyInfo,
 ) -> WASMEncryptedAttribute {
     let x = rekey(
         &EncryptedAttribute::from(encrypted.value),
-        &RekeyInfo::from(rekey_info),
+        &AttributeRekeyInfo::from(rekey_info),
     );
     WASMEncryptedAttribute(x)
 }
@@ -884,14 +942,18 @@ pub fn wasm_pseudonymize_batch(
 #[wasm_bindgen(js_name = rekeyBatch)]
 pub fn wasm_rekey_batch(
     encrypted: Vec<WASMEncryptedAttribute>,
-    rekey_info: &WASMRekeyInfo,
+    rekey_info: &WASMAttributeRekeyInfo,
 ) -> Box<[WASMEncryptedAttribute]> {
     let mut rng = rand::thread_rng();
     let mut encrypted = encrypted.iter().map(|x| x.0).collect::<Vec<_>>();
-    rekey_batch(&mut encrypted, &RekeyInfo::from(rekey_info), &mut rng)
-        .iter()
-        .map(|x| WASMEncryptedAttribute(*x))
-        .collect()
+    rekey_batch(
+        &mut encrypted,
+        &AttributeRekeyInfo::from(rekey_info),
+        &mut rng,
+    )
+    .iter()
+    .map(|x| WASMEncryptedAttribute(*x))
+    .collect()
 }
 #[wasm_bindgen(js_name = EncryptedData)]
 pub struct WASMEncryptedData {
@@ -925,7 +987,7 @@ impl WASMEncryptedData {
 #[wasm_bindgen(js_name = transcryptBatch)]
 pub fn wasm_transcrypt_batch(
     data: Vec<WASMEncryptedData>,
-    transcryption_info: &WASMPseudonymizationInfo,
+    transcryption_info: &WASMTranscryptionInfo,
 ) -> Vec<WASMEncryptedData> {
     let mut rng = rand::thread_rng();
 

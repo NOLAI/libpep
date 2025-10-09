@@ -33,7 +33,7 @@ pub use arithmetic::{WASMGroupElement, WASMScalarCanBeZero, WASMScalarNonZero};
 pub use elgamal::WASMElGamal;
 
 // Primitives
-pub use high_level::{WASMRekeyFactor, WASMReshuffleFactor};
+pub use high_level::{WASMAttributeRekeyFactor, WASMPseudonymRekeyFactor, WASMReshuffleFactor};
 
 // High-level types and functions
 pub use high_level::{
@@ -44,12 +44,13 @@ pub use high_level::{
     wasm_pseudonymize as pseudonymize, wasm_pseudonymize_batch as pseudonymize_batch,
     wasm_rekey_batch as rekey_batch, wasm_rekey_data as rekey_data,
     wasm_transcrypt_batch as transcrypt_batch, WASMAttribute, WASMAttributeGlobalKeyPair,
-    WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMAttributeSessionKeyPair,
-    WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMEncryptedAttribute,
-    WASMEncryptedData, WASMEncryptedPseudonym, WASMEncryptionSecret, WASMPseudonym,
-    WASMPseudonymGlobalKeyPair, WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
-    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
-    WASMPseudonymizationInfo, WASMPseudonymizationSecret, WASMRSKFactors, WASMRekeyInfo,
+    WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMAttributeRekeyInfo,
+    WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
+    WASMEncryptedAttribute, WASMEncryptedData, WASMEncryptedPseudonym, WASMEncryptionSecret,
+    WASMPseudonym, WASMPseudonymGlobalKeyPair, WASMPseudonymGlobalPublicKey,
+    WASMPseudonymGlobalSecretKey, WASMPseudonymRSKFactors, WASMPseudonymSessionKeyPair,
+    WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey, WASMPseudonymizationInfo,
+    WASMPseudonymizationSecret, WASMTranscryptionInfo,
 };
 
 // Distributed types

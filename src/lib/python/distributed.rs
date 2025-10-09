@@ -2,6 +2,7 @@ use crate::distributed::key_blinding::*;
 use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
 use crate::high_level::keys::*;
+use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::python::arithmetic::*;
 use crate::python::high_level::*;
 use derive_more::{Deref, From, Into};
@@ -240,16 +241,26 @@ impl PyPEPSystem {
         ))
     }
 
-    /// Generate a session key share for the given session.
-    #[pyo3(name = "session_key_share")]
-    fn py_session_key_share(&self, session: &str) -> PySessionKeyShare {
-        PySessionKeyShare(self.session_key_share(&EncryptionContext::from(session)))
+    /// Generate a pseudonym session key share for the given session.
+    #[pyo3(name = "pseudonym_session_key_share")]
+    fn py_pseudonym_session_key_share(&self, session: &str) -> PySessionKeyShare {
+        PySessionKeyShare(self.pseudonym_session_key_share(&EncryptionContext::from(session)))
     }
 
-    /// Generate a rekey info to rekey from a given session to another.
-    #[pyo3(name = "rekey_info")]
-    fn py_rekey_info(&self, session_from: &str, session_to: &str) -> PyRekeyInfo {
-        PyRekeyInfo::from(self.rekey_info(
+    /// Generate an attribute session key share for the given session.
+    #[pyo3(name = "attribute_session_key_share")]
+    fn py_attribute_session_key_share(&self, session: &str) -> PySessionKeyShare {
+        PySessionKeyShare(self.attribute_session_key_share(&EncryptionContext::from(session)))
+    }
+
+    /// Generate attribute rekey info to rekey from a given session to another.
+    #[pyo3(name = "attribute_rekey_info")]
+    fn py_attribute_rekey_info(
+        &self,
+        session_from: &str,
+        session_to: &str,
+    ) -> PyAttributeRekeyInfo {
+        PyAttributeRekeyInfo::from(self.attribute_rekey_info(
             Some(&EncryptionContext::from(session_from)),
             Some(&EncryptionContext::from(session_to)),
         ))
@@ -273,14 +284,14 @@ impl PyPEPSystem {
         ))
     }
 
-    /// Rekey an [`PyEncryptedAttribute`] from one session to another, using [`PyRekeyInfo`].
+    /// Rekey an [`PyEncryptedAttribute`] from one session to another, using [`PyAttributeRekeyInfo`].
     #[pyo3(name = "rekey")]
     fn py_rekey(
         &self,
         encrypted: &PyEncryptedAttribute,
-        rekey_info: &PyRekeyInfo,
+        rekey_info: &PyAttributeRekeyInfo,
     ) -> PyEncryptedAttribute {
-        PyEncryptedAttribute::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
+        PyEncryptedAttribute::from(self.rekey(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)))
     }
 
     /// Pseudonymize an [`PyEncryptedPseudonym`] from one pseudonymization domain and session to
@@ -461,25 +472,38 @@ impl PyOfflinePEPClient {
 pub struct PyReshuffleFactor(ReshuffleFactor);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-#[pyclass(name = "RekeyFactor")]
-pub struct PyRekeyFactor(RekeyFactor);
+#[pyclass(name = "PseudonymRekeyFactor")]
+pub struct PyPseudonymRekeyFactor(PseudonymRekeyFactor);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[pyclass(name = "AttributeRekeyFactor")]
+pub struct PyAttributeRekeyFactor(AttributeRekeyFactor);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "RSKFactors")]
-pub struct PyRSKFactors {
+#[pyclass(name = "PseudonymRSKFactors")]
+pub struct PyPseudonymRSKFactors {
     #[pyo3(get)]
     pub s: PyReshuffleFactor,
     #[pyo3(get)]
-    pub k: PyRekeyFactor,
+    pub k: PyPseudonymRekeyFactor,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[pyclass(name = "PseudonymizationInfo")]
-pub struct PyPseudonymizationInfo(pub PyRSKFactors);
+pub struct PyPseudonymizationInfo(pub PyPseudonymRSKFactors);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "RekeyInfo")]
-pub struct PyRekeyInfo(pub PyRekeyFactor);
+#[pyclass(name = "AttributeRekeyInfo")]
+pub struct PyAttributeRekeyInfo(pub PyAttributeRekeyFactor);
+
+#[derive(Copy, Clone, Debug)]
+#[pyclass(name = "TranscryptionInfo")]
+pub struct PyTranscryptionInfo {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymizationInfo,
+    #[pyo3(get)]
+    pub attribute: PyAttributeRekeyInfo,
+}
 
 #[pymethods]
 impl PyPseudonymizationInfo {
@@ -501,48 +525,78 @@ impl PyPseudonymizationInfo {
             &encryption_secret.0,
         );
         let s = PyReshuffleFactor(x.s);
-        let k = PyRekeyFactor(x.k);
-        PyPseudonymizationInfo(PyRSKFactors { s, k })
+        let k = PyPseudonymRekeyFactor(x.k);
+        PyPseudonymizationInfo(PyPseudonymRSKFactors { s, k })
     }
 
     #[pyo3(name = "rev")]
     fn rev(&self) -> Self {
-        PyPseudonymizationInfo(PyRSKFactors {
+        PyPseudonymizationInfo(PyPseudonymRSKFactors {
             s: PyReshuffleFactor(ReshuffleFactor(self.0.s.0 .0.invert())),
-            k: PyRekeyFactor(RekeyFactor(self.0.k.0 .0.invert())),
+            k: PyPseudonymRekeyFactor(PseudonymRekeyFactor(self.0.k.0 .0.invert())),
         })
     }
 }
 
 #[pymethods]
-impl PyRekeyInfo {
+impl PyAttributeRekeyInfo {
     #[new]
     fn new(session_from: &str, session_to: &str, encryption_secret: &PyEncryptionSecret) -> Self {
-        let x = RekeyInfo::new(
+        let x = AttributeRekeyInfo::new(
             Some(&EncryptionContext::from(session_from)),
             Some(&EncryptionContext::from(session_to)),
             &encryption_secret.0,
         );
-        PyRekeyInfo(PyRekeyFactor(x))
+        PyAttributeRekeyInfo(PyAttributeRekeyFactor(x))
     }
 
     #[pyo3(name = "rev")]
     fn rev(&self) -> Self {
-        PyRekeyInfo(PyRekeyFactor(RekeyFactor(self.0 .0 .0.invert())))
+        PyAttributeRekeyInfo(PyAttributeRekeyFactor(AttributeRekeyFactor(
+            self.0 .0 .0.invert(),
+        )))
+    }
+}
+
+#[pymethods]
+impl PyTranscryptionInfo {
+    #[new]
+    fn new(
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
+        pseudonymization_secret: &PyPseudonymizationSecret,
+        encryption_secret: &PyEncryptionSecret,
+    ) -> Self {
+        let x = TranscryptionInfo::new(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        );
+        Self {
+            pseudonym: PyPseudonymizationInfo::from(x.pseudonym),
+            attribute: PyAttributeRekeyInfo::from(x.attribute),
+        }
     }
 
-    #[staticmethod]
-    #[pyo3(name = "from_pseudo_info")]
-    fn from_pseudo_info(x: &PyPseudonymizationInfo) -> Self {
-        PyRekeyInfo(x.0.k)
+    #[pyo3(name = "rev")]
+    fn rev(&self) -> Self {
+        Self {
+            pseudonym: self.pseudonym.rev(),
+            attribute: self.attribute.rev(),
+        }
     }
 }
 
 impl From<PseudonymizationInfo> for PyPseudonymizationInfo {
     fn from(x: PseudonymizationInfo) -> Self {
         let s = PyReshuffleFactor(x.s);
-        let k = PyRekeyFactor(x.k);
-        PyPseudonymizationInfo(PyRSKFactors { s, k })
+        let k = PyPseudonymRekeyFactor(x.k);
+        PyPseudonymizationInfo(PyPseudonymRSKFactors { s, k })
     }
 }
 
@@ -554,15 +608,33 @@ impl From<&PyPseudonymizationInfo> for PseudonymizationInfo {
     }
 }
 
-impl From<RekeyInfo> for PyRekeyInfo {
-    fn from(x: RekeyInfo) -> Self {
-        PyRekeyInfo(PyRekeyFactor(x))
+impl From<AttributeRekeyInfo> for PyAttributeRekeyInfo {
+    fn from(x: AttributeRekeyInfo) -> Self {
+        PyAttributeRekeyInfo(PyAttributeRekeyFactor(x))
     }
 }
 
-impl From<&PyRekeyInfo> for RekeyInfo {
-    fn from(x: &PyRekeyInfo) -> Self {
+impl From<&PyAttributeRekeyInfo> for AttributeRekeyInfo {
+    fn from(x: &PyAttributeRekeyInfo) -> Self {
         x.0 .0
+    }
+}
+
+impl From<TranscryptionInfo> for PyTranscryptionInfo {
+    fn from(x: TranscryptionInfo) -> Self {
+        Self {
+            pseudonym: PyPseudonymizationInfo::from(x.pseudonym),
+            attribute: PyAttributeRekeyInfo::from(x.attribute),
+        }
+    }
+}
+
+impl From<&PyTranscryptionInfo> for TranscryptionInfo {
+    fn from(x: &PyTranscryptionInfo) -> Self {
+        Self {
+            pseudonym: PseudonymizationInfo::from(&x.pseudonym),
+            attribute: AttributeRekeyInfo::from(&x.attribute),
+        }
     }
 }
 
@@ -574,10 +646,12 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPEPClient>()?;
     m.add_class::<PyOfflinePEPClient>()?;
     m.add_class::<PyReshuffleFactor>()?;
-    m.add_class::<PyRekeyFactor>()?;
-    m.add_class::<PyRSKFactors>()?;
+    m.add_class::<PyPseudonymRekeyFactor>()?;
+    m.add_class::<PyAttributeRekeyFactor>()?;
+    m.add_class::<PyPseudonymRSKFactors>()?;
     m.add_class::<PyPseudonymizationInfo>()?;
-    m.add_class::<PyRekeyInfo>()?;
+    m.add_class::<PyAttributeRekeyInfo>()?;
+    m.add_class::<PyTranscryptionInfo>()?;
     m.add_function(wrap_pyfunction!(
         py_make_blinded_pseudonym_global_secret_key,
         m

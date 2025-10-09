@@ -2,6 +2,8 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
+use crate::high_level::padding::{LongAttribute, LongPseudonym};
+use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::GroupElement;
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::python::elgamal::PyElGamal;
@@ -163,7 +165,7 @@ impl PyAttributeGlobalPublicKey {
 #[pyclass(name = "PseudonymizationSecret")]
 pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
 
-/// Encryption secret used to derive a [`PyRekeyFactor`] from an encryption context (see [`PyRekeyInfo`]).
+/// Encryption secret used to derive rekey factors from an encryption context (see [`PyPseudonymRekeyInfo`] and [`PyAttributeRekeyInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[pyclass(name = "EncryptionSecret")]
@@ -282,22 +284,20 @@ impl PyPseudonym {
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_string_padded")]
-    fn from_string_padded(text: &str) -> Vec<PyPseudonym> {
-        Pseudonym::from_string_padded(text)
-            .into_iter()
-            .map(PyPseudonym::from)
-            .collect()
+    fn from_string_padded(text: &str) -> PyResult<Vec<PyPseudonym>> {
+        LongPseudonym::from_string_padded(text)
+            .map(|long| long.0.into_iter().map(PyPseudonym::from).collect())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
     }
 
     /// Create a collection of pseudonyms from an arbitrary-length byte array
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_bytes_padded")]
-    fn from_bytes_padded(data: &[u8]) -> Vec<PyPseudonym> {
-        Pseudonym::from_bytes_padded(data)
-            .into_iter()
-            .map(PyPseudonym::from)
-            .collect()
+    fn from_bytes_padded(data: &[u8]) -> PyResult<Vec<PyPseudonym>> {
+        LongPseudonym::from_bytes_padded(data)
+            .map(|long| long.0.into_iter().map(PyPseudonym::from).collect())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
     }
 
     /// Convert a collection of pseudonyms back to the original string
@@ -306,7 +306,8 @@ impl PyPseudonym {
     #[pyo3(name = "to_string_padded")]
     fn to_string_padded(pseudonyms: Vec<PyPseudonym>) -> PyResult<String> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        Pseudonym::to_string_padded(&rust_pseudonyms)
+        LongPseudonym(rust_pseudonyms)
+            .to_string_padded()
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
     }
 
@@ -316,9 +317,11 @@ impl PyPseudonym {
     #[pyo3(name = "to_bytes_padded")]
     fn to_bytes_padded(pseudonyms: Vec<PyPseudonym>, py: Python) -> PyResult<PyObject> {
         let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        let result = Pseudonym::to_bytes_padded(&rust_pseudonyms).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
-        })?;
+        let result = LongPseudonym(rust_pseudonyms)
+            .to_bytes_padded()
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+            })?;
         Ok(PyBytes::new_bound(py, &result).into())
     }
 
@@ -432,22 +435,20 @@ impl PyAttribute {
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_string_padded")]
-    fn from_string_padded(text: &str) -> Vec<PyAttribute> {
-        Attribute::from_string_padded(text)
-            .into_iter()
-            .map(PyAttribute::from)
-            .collect()
+    fn from_string_padded(text: &str) -> PyResult<Vec<PyAttribute>> {
+        LongAttribute::from_string_padded(text)
+            .map(|long| long.0.into_iter().map(PyAttribute::from).collect())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
     }
 
     /// Create a collection of attributes from an arbitrary-length byte array
     /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
     #[staticmethod]
     #[pyo3(name = "from_bytes_padded")]
-    fn from_bytes_padded(data: &[u8]) -> Vec<PyAttribute> {
-        Attribute::from_bytes_padded(data)
-            .into_iter()
-            .map(PyAttribute::from)
-            .collect()
+    fn from_bytes_padded(data: &[u8]) -> PyResult<Vec<PyAttribute>> {
+        LongAttribute::from_bytes_padded(data)
+            .map(|long| long.0.into_iter().map(PyAttribute::from).collect())
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
     }
 
     /// Convert a collection of attributes back to the original string
@@ -456,7 +457,8 @@ impl PyAttribute {
     #[pyo3(name = "to_string_padded")]
     fn to_string_padded(attributes: Vec<PyAttribute>) -> PyResult<String> {
         let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        Attribute::to_string_padded(&rust_attributes)
+        LongAttribute(rust_attributes)
+            .to_string_padded()
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
     }
 
@@ -466,9 +468,11 @@ impl PyAttribute {
     #[pyo3(name = "to_bytes_padded")]
     fn to_bytes_padded(attributes: Vec<PyAttribute>, py: Python) -> PyResult<PyObject> {
         let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        let result = Attribute::to_bytes_padded(&rust_attributes).map_err(|e| {
-            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
-        })?;
+        let result = LongAttribute(rust_attributes)
+            .to_bytes_padded()
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+            })?;
         Ok(PyBytes::new_bound(py, &result).into())
     }
 

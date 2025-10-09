@@ -2,6 +2,7 @@ use crate::distributed::key_blinding::*;
 use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
 use crate::high_level::keys::*;
+use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::ScalarNonZero;
 use crate::wasm::arithmetic::*;
 use crate::wasm::high_level::*;
@@ -196,14 +197,22 @@ impl WASMPEPSystem {
         ))
     }
     /// Generate a session key share for the given session.
-    #[wasm_bindgen(js_name = sessionKeyShare)]
-    pub fn wasm_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
-        WASMSessionKeyShare(self.session_key_share(&EncryptionContext::from(session)))
+    #[wasm_bindgen(js_name = pseudonymSessionKeyShare)]
+    pub fn wasm_pseudonym_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
+        WASMSessionKeyShare(self.pseudonym_session_key_share(&EncryptionContext::from(session)))
     }
-    /// Generate a rekey info to rekey from a given session to another.
-    #[wasm_bindgen(js_name = rekeyInfo)]
-    pub fn wasm_rekey_info(&self, session_from: &str, session_to: &str) -> WASMRekeyInfo {
-        WASMRekeyInfo::from(self.rekey_info(
+    #[wasm_bindgen(js_name = attributeSessionKeyShare)]
+    pub fn wasm_attribute_session_key_share(&self, session: &str) -> WASMSessionKeyShare {
+        WASMSessionKeyShare(self.attribute_session_key_share(&EncryptionContext::from(session)))
+    }
+    /// Generate attribute rekey info to rekey from a given session to another.
+    #[wasm_bindgen(js_name = attributeRekeyInfo)]
+    pub fn wasm_attribute_rekey_info(
+        &self,
+        session_from: &str,
+        session_to: &str,
+    ) -> WASMAttributeRekeyInfo {
+        WASMAttributeRekeyInfo::from(self.attribute_rekey_info(
             Some(&EncryptionContext::from(session_from)),
             Some(&EncryptionContext::from(session_to)),
         ))
@@ -226,14 +235,16 @@ impl WASMPEPSystem {
         ))
     }
 
-    /// Rekey an [`WASMEncryptedAttribute`] from one session to another, using [`WASMRekeyInfo`].
+    /// Rekey an [`WASMEncryptedAttribute`] from one session to another, using [`WASMAttributeRekeyInfo`].
     #[wasm_bindgen(js_name = rekey)]
     pub fn wasm_rekey(
         &self,
         encrypted: &WASMEncryptedAttribute,
-        rekey_info: &WASMRekeyInfo,
+        rekey_info: &WASMAttributeRekeyInfo,
     ) -> WASMEncryptedAttribute {
-        WASMEncryptedAttribute::from(self.rekey(&encrypted.0, &RekeyInfo::from(rekey_info)))
+        WASMEncryptedAttribute::from(
+            self.rekey(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)),
+        )
     }
 
     /// Pseudonymize an [`WASMEncryptedPseudonym`] from one pseudonymization domain and session to

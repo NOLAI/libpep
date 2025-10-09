@@ -6,6 +6,7 @@ use libpep::distributed::systems::{PEPClient, PEPSystem};
 use libpep::high_level::contexts::*;
 use libpep::high_level::data_types::*;
 use libpep::high_level::keys::*;
+use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::internal::arithmetic::ScalarNonZero;
 use rand_core::OsRng;
 
@@ -68,19 +69,19 @@ fn n_pep() {
     // Get client session key shares
     let pseudonym_sks_a1 = systems
         .iter()
-        .map(|system| system.session_key_share(&session_a1))
+        .map(|system| system.pseudonym_session_key_share(&session_a1))
         .collect::<Vec<_>>();
     let pseudonym_sks_b1 = systems
         .iter()
-        .map(|system| system.session_key_share(&session_b1))
+        .map(|system| system.pseudonym_session_key_share(&session_b1))
         .collect::<Vec<_>>();
     let attribute_sks_a1 = systems
         .iter()
-        .map(|system| system.session_key_share(&session_a1))
+        .map(|system| system.attribute_session_key_share(&session_a1))
         .collect::<Vec<_>>();
     let attribute_sks_b1 = systems
         .iter()
-        .map(|system| system.session_key_share(&session_b1))
+        .map(|system| system.attribute_session_key_share(&session_b1))
         .collect::<Vec<_>>();
 
     // Create clients
@@ -105,17 +106,13 @@ fn n_pep() {
     let enc_data = client_a.encrypt_attribute(&data, rng);
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
-        let pseudo_info = system.pseudonymization_info(
-            &domain_a,
-            &domain_b,
-            Some(&session_a1),
-            Some(&session_b1),
-        );
-        system.transcrypt(&acc, &pseudo_info)
+        let transcryption_info =
+            system.transcryption_info(&domain_a, &domain_b, Some(&session_a1), Some(&session_b1));
+        system.transcrypt(&acc, &transcryption_info)
     });
 
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
-        let rekey_info = system.rekey_info(Some(&session_a1), Some(&session_b1));
+        let rekey_info = system.attribute_rekey_info(Some(&session_a1), Some(&session_b1));
         system.rekey(&acc, &rekey_info)
     });
 
