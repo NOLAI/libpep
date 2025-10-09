@@ -17,10 +17,15 @@ pub struct BlindingFactor(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
 
-/// A session key share, which a part a session key provided by one transcryptor.
-/// By combining all session key shares and the [`BlindedGlobalSecretKey`], a session key can be derived.
+/// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
+/// By combining all pseudonym session key shares and the [`BlindedGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct SessionKeyShare(pub(crate) ScalarNonZero);
+pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
+
+/// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
+/// By combining all attribute session key shares and the [`BlindedGlobalSecretKey`], an attribute session key can be derived.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// A trait for scalars that are safe to encode and decode since they do not need to remain absolutely secret.
 pub trait SafeScalar {
@@ -85,9 +90,19 @@ impl SafeScalar for BlindedGlobalSecretKey {
     }
 }
 
-impl SafeScalar for SessionKeyShare {
+impl SafeScalar for PseudonymSessionKeyShare {
     fn from(x: ScalarNonZero) -> Self {
-        SessionKeyShare(x)
+        PseudonymSessionKeyShare(x)
+    }
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+
+impl SafeScalar for AttributeSessionKeyShare {
+    fn from(x: ScalarNonZero) -> Self {
+        AttributeSessionKeyShare(x)
     }
 
     fn value(&self) -> &ScalarNonZero {
@@ -136,7 +151,7 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
         deserializer.deserialize_str(BlindedGlobalSecretKeyVisitor)
     }
 }
-impl Serialize for SessionKeyShare {
+impl Serialize for PseudonymSessionKeyShare {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -144,16 +159,16 @@ impl Serialize for SessionKeyShare {
         serializer.serialize_str(self.encode_as_hex().as_str())
     }
 }
-impl<'de> Deserialize<'de> for SessionKeyShare {
+impl<'de> Deserialize<'de> for PseudonymSessionKeyShare {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct SessionKeyShareVisitor;
-        impl Visitor<'_> for SessionKeyShareVisitor {
-            type Value = SessionKeyShare;
+        struct PseudonymSessionKeyShareVisitor;
+        impl Visitor<'_> for PseudonymSessionKeyShareVisitor {
+            type Value = PseudonymSessionKeyShare;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                formatter.write_str("a hex encoded string representing a SessionKeyShare")
+                formatter.write_str("a hex encoded string representing a PseudonymSessionKeyShare")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -161,19 +176,53 @@ impl<'de> Deserialize<'de> for SessionKeyShare {
                 E: Error,
             {
                 ScalarNonZero::decode_from_hex(v)
-                    .map(SessionKeyShare)
+                    .map(PseudonymSessionKeyShare)
                     .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 
-        deserializer.deserialize_str(SessionKeyShareVisitor)
+        deserializer.deserialize_str(PseudonymSessionKeyShareVisitor)
+    }
+}
+
+impl Serialize for AttributeSessionKeyShare {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.encode_as_hex().as_str())
+    }
+}
+impl<'de> Deserialize<'de> for AttributeSessionKeyShare {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct AttributeSessionKeyShareVisitor;
+        impl Visitor<'_> for AttributeSessionKeyShareVisitor {
+            type Value = AttributeSessionKeyShare;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("a hex encoded string representing an AttributeSessionKeyShare")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                ScalarNonZero::decode_from_hex(v)
+                    .map(AttributeSessionKeyShare)
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
+            }
+        }
+
+        deserializer.deserialize_str(AttributeSessionKeyShareVisitor)
     }
 }
 
 /// Create a [`BlindedGlobalSecretKey`] from a [`PseudonymGlobalSecretKey`] and a list of [`BlindingFactor`]s.
 /// Used during system setup to blind the global secret key for pseudonyms.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
-pub fn make_blinded_global_pseudonym_secret_key(
+pub fn make_blinded_pseudonym_global_secret_key(
     global_secret_key: &PseudonymGlobalSecretKey,
     blinding_factors: &[BlindingFactor],
 ) -> Option<BlindedGlobalSecretKey> {
@@ -190,7 +239,7 @@ pub fn make_blinded_global_pseudonym_secret_key(
 /// Create a [`BlindedGlobalSecretKey`] from a [`AttributeGlobalSecretKey`] and a list of [`BlindingFactor`]s.
 /// Used during system setup to blind the global secret key for attributes.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
-pub fn make_blinded_global_attribute_secret_key(
+pub fn make_blinded_attribute_global_secret_key(
     global_secret_key: &AttributeGlobalSecretKey,
     blinding_factors: &[BlindingFactor],
 ) -> Option<BlindedGlobalSecretKey> {
@@ -204,18 +253,26 @@ pub fn make_blinded_global_attribute_secret_key(
     Some(BlindedGlobalSecretKey(y.0 * k))
 }
 
-/// Create a [`SessionKeyShare`] from a [`ScalarNonZero`] rekey factor and a [`BlindingFactor`].
-pub fn make_session_key_share(
+/// Create a [`PseudonymSessionKeyShare`] from a [`ScalarNonZero`] pseudonym rekey factor and a [`BlindingFactor`].
+pub fn make_pseudonym_session_key_share(
     rekey_factor: &ScalarNonZero,
     blinding_factor: &BlindingFactor,
-) -> SessionKeyShare {
-    SessionKeyShare(rekey_factor * blinding_factor.0)
+) -> PseudonymSessionKeyShare {
+    PseudonymSessionKeyShare(rekey_factor * blinding_factor.0)
 }
 
-/// Reconstruct a pseudonym session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
+/// Create an [`AttributeSessionKeyShare`] from a [`ScalarNonZero`] attribute rekey factor and a [`BlindingFactor`].
+pub fn make_attribute_session_key_share(
+    rekey_factor: &ScalarNonZero,
+    blinding_factor: &BlindingFactor,
+) -> AttributeSessionKeyShare {
+    AttributeSessionKeyShare(rekey_factor * blinding_factor.0)
+}
+
+/// Reconstruct a pseudonym session key from a [`BlindedGlobalSecretKey`] and a list of [`PseudonymSessionKeyShare`]s.
 pub fn make_pseudonym_session_key(
     blinded_global_secret_key: BlindedGlobalSecretKey,
-    session_key_shares: &[SessionKeyShare],
+    session_key_shares: &[PseudonymSessionKeyShare],
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
     let secret = PseudonymSessionSecretKey::from(
         session_key_shares
@@ -226,10 +283,10 @@ pub fn make_pseudonym_session_key(
     (public, secret)
 }
 
-/// Reconstruct an attribute session key from a [`BlindedGlobalSecretKey`] and a list of [`SessionKeyShare`]s.
+/// Reconstruct an attribute session key from a [`BlindedGlobalSecretKey`] and a list of [`AttributeSessionKeyShare`]s.
 pub fn make_attribute_session_key(
     blinded_global_secret_key: BlindedGlobalSecretKey,
-    session_key_shares: &[SessionKeyShare],
+    session_key_shares: &[AttributeSessionKeyShare],
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
     let secret = AttributeSessionSecretKey::from(
         session_key_shares
@@ -243,8 +300,8 @@ pub fn make_attribute_session_key(
 /// Update a pseudonym session key share from one session to the other
 pub fn update_pseudonym_session_key(
     session_secret_key: PseudonymSessionSecretKey,
-    old_session_key_share: SessionKeyShare,
-    new_session_key_share: SessionKeyShare,
+    old_session_key_share: PseudonymSessionKeyShare,
+    new_session_key_share: PseudonymSessionKeyShare,
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
     let secret = PseudonymSessionSecretKey::from(
         session_secret_key.0 * old_session_key_share.0.invert() * new_session_key_share.0,
@@ -256,8 +313,8 @@ pub fn update_pseudonym_session_key(
 /// Update an attribute session key share from one session to the other
 pub fn update_attribute_session_key(
     session_secret_key: AttributeSessionSecretKey,
-    old_session_key_share: SessionKeyShare,
-    new_session_key_share: SessionKeyShare,
+    old_session_key_share: AttributeSessionKeyShare,
+    new_session_key_share: AttributeSessionKeyShare,
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
     let secret = AttributeSessionSecretKey::from(
         session_secret_key.0 * old_session_key_share.0.invert() * new_session_key_share.0,
@@ -270,7 +327,7 @@ pub fn update_attribute_session_key(
 /// blinding factors for pseudonyms.
 /// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
-pub fn make_distributed_global_pseudonym_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
@@ -281,7 +338,7 @@ pub fn make_distributed_global_pseudonym_keys<R: RngCore + CryptoRng>(
     let (pk, sk) = make_pseudonym_global_keys(rng);
     let blinding_factors: Vec<BlindingFactor> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
-    let bsk = make_blinded_global_pseudonym_secret_key(&sk, &blinding_factors).unwrap();
+    let bsk = make_blinded_pseudonym_global_secret_key(&sk, &blinding_factors).unwrap();
     (pk, bsk, blinding_factors)
 }
 
@@ -289,7 +346,7 @@ pub fn make_distributed_global_pseudonym_keys<R: RngCore + CryptoRng>(
 /// blinding factors for attributes.
 /// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
-pub fn make_distributed_global_attribute_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
@@ -300,6 +357,6 @@ pub fn make_distributed_global_attribute_keys<R: RngCore + CryptoRng>(
     let (pk, sk) = make_attribute_global_keys(rng);
     let blinding_factors: Vec<BlindingFactor> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
-    let bsk = make_blinded_global_attribute_secret_key(&sk, &blinding_factors).unwrap();
+    let bsk = make_blinded_attribute_global_secret_key(&sk, &blinding_factors).unwrap();
     (pk, bsk, blinding_factors)
 }
