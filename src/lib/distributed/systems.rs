@@ -33,14 +33,20 @@ impl PEPSystem {
         }
     }
     /// Generate a pseudonym session key share for the given session.
-    pub fn pseudonym_session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
+    pub fn pseudonym_session_key_share(
+        &self,
+        session: &EncryptionContext,
+    ) -> PseudonymSessionKeyShare {
         let k = make_pseudonym_rekey_factor(&self.rekeying_secret, session);
-        make_session_key_share(&k.0, &self.blinding_factor)
+        make_pseudonym_session_key_share(&k.0, &self.blinding_factor)
     }
     /// Generate an attribute session key share for the given session.
-    pub fn attribute_session_key_share(&self, session: &EncryptionContext) -> SessionKeyShare {
+    pub fn attribute_session_key_share(
+        &self,
+        session: &EncryptionContext,
+    ) -> AttributeSessionKeyShare {
         let k = make_attribute_rekey_factor(&self.rekeying_secret, session);
-        make_session_key_share(&k.0, &self.blinding_factor)
+        make_attribute_session_key_share(&k.0, &self.blinding_factor)
     }
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
     pub fn attribute_rekey_info(
@@ -168,9 +174,9 @@ impl PEPClient {
     /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
     pub fn new(
         blinded_global_pseudonym_key: BlindedGlobalSecretKey,
-        pseudonym_session_key_shares: &[SessionKeyShare],
+        pseudonym_session_key_shares: &[PseudonymSessionKeyShare],
         blinded_global_attribute_key: BlindedGlobalSecretKey,
-        attribute_session_key_shares: &[SessionKeyShare],
+        attribute_session_key_shares: &[AttributeSessionKeyShare],
     ) -> Self {
         let (pseudonym_public, pseudonym_secret) =
             make_pseudonym_session_key(blinded_global_pseudonym_key, pseudonym_session_key_shares);
@@ -219,8 +225,8 @@ impl PEPClient {
     /// Update a pseudonym session key share from one session to the other
     pub fn update_pseudonym_session_secret_key(
         &mut self,
-        old_key_share: SessionKeyShare,
-        new_key_share: SessionKeyShare,
+        old_key_share: PseudonymSessionKeyShare,
+        new_key_share: PseudonymSessionKeyShare,
     ) {
         (
             self.pseudonym_session_public_key,
@@ -235,8 +241,8 @@ impl PEPClient {
     /// Update an attribute session key share from one session to the other
     pub fn update_attribute_session_secret_key(
         &mut self,
-        old_key_share: SessionKeyShare,
-        new_key_share: SessionKeyShare,
+        old_key_share: AttributeSessionKeyShare,
+        new_key_share: AttributeSessionKeyShare,
     ) {
         (
             self.attribute_session_public_key,
