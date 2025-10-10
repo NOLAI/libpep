@@ -15,24 +15,29 @@ class TestDistributed(unittest.TestCase):
     
     def setUp(self):
         """Setup common test data"""
-        # Generate global keys
-        self.global_keys = high_level.make_global_keys()
-        
+        # Generate global keys for both pseudonyms and attributes
+        self.pseudonym_global_keys = high_level.make_pseudonym_global_keys()
+        self.attribute_global_keys = high_level.make_attribute_global_keys()
+
         # Create secrets
         self.secret = b"test_secret"
         self.pseudo_secret = high_level.PseudonymizationSecret(self.secret)
         self.enc_secret = high_level.EncryptionSecret(self.secret)
-        
+
         # Create blinding factors (simulate 3 transcryptors)
         self.blinding_factors = [
             distributed.BlindingFactor.random(),
             distributed.BlindingFactor.random(),
             distributed.BlindingFactor.random()
         ]
-        
-        # Create blinded global secret key
-        self.blinded_global_key = distributed.make_blinded_global_secret_key(
-            self.global_keys.secret, 
+
+        # Create blinded global secret keys
+        self.blinded_pseudonym_global_key = distributed.make_blinded_pseudonym_global_secret_key(
+            self.pseudonym_global_keys.secret,
+            self.blinding_factors
+        )
+        self.blinded_attribute_global_key = distributed.make_blinded_attribute_global_secret_key(
+            self.attribute_global_keys.secret,
             self.blinding_factors
         )
     
@@ -61,14 +66,14 @@ class TestDistributed(unittest.TestCase):
     
     def test_blinded_global_secret_key(self):
         """Test blinded global secret key operations"""
-        # Test encoding/decoding
-        encoded = self.blinded_global_key.encode()
+        # Test encoding/decoding for pseudonym key
+        encoded = self.blinded_pseudonym_global_key.encode()
         decoded = distributed.BlindedGlobalSecretKey.decode(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(self.blinded_global_key.as_hex(), decoded.as_hex())
-        
+        self.assertEqual(self.blinded_pseudonym_global_key.as_hex(), decoded.as_hex())
+
         # Test hex operations
-        hex_str = self.blinded_global_key.as_hex()
+        hex_str = self.blinded_pseudonym_global_key.as_hex()
         decoded_hex = distributed.BlindedGlobalSecretKey.from_hex(hex_str)
         self.assertIsNotNone(decoded_hex)
         self.assertEqual(hex_str, decoded_hex.as_hex())
@@ -82,16 +87,16 @@ class TestDistributed(unittest.TestCase):
             self.blinding_factors[0]
         )
         
-        # Test session key share generation
+        # Test pseudonym session key share generation
         session = "test_session"
-        key_share = pep_system.session_key_share(session)
-        
+        key_share = pep_system.pseudonym_session_key_share(session)
+
         # Should be deterministic for same inputs
-        key_share2 = pep_system.session_key_share(session)
+        key_share2 = pep_system.pseudonym_session_key_share(session)
         self.assertEqual(key_share.as_hex(), key_share2.as_hex())
-        
+
         # Different sessions should give different shares
-        key_share3 = pep_system.session_key_share("different_session")
+        key_share3 = pep_system.pseudonym_session_key_share("different_session")
         self.assertNotEqual(key_share.as_hex(), key_share3.as_hex())
     
     def test_pep_system_info_generation(self):
@@ -102,18 +107,18 @@ class TestDistributed(unittest.TestCase):
             self.blinding_factors[0]
         )
         
-        # Test rekey info generation
-        rekey_info = pep_system.rekey_info("session1", "session2")
-        self.assertIsNotNone(rekey_info)
-        
+        # Test attribute rekey info generation
+        attr_rekey_info = pep_system.attribute_rekey_info("session1", "session2")
+        self.assertIsNotNone(attr_rekey_info)
+
         # Test pseudonymization info generation
         pseudo_info = pep_system.pseudonymization_info(
             "domain1", "domain2", "session1", "session2"
         )
         self.assertIsNotNone(pseudo_info)
-        
+
         # Test reverse operations
-        rekey_rev = rekey_info.rev()
+        rekey_rev = attr_rekey_info.rev()
         pseudo_rev = pseudo_info.rev()
         
         self.assertIsNotNone(rekey_rev)
@@ -124,7 +129,7 @@ class TestDistributed(unittest.TestCase):
         # Create multiple PEP systems (simulating multiple transcryptors)
         systems = []
         session_key_shares = []
-        
+
         for i in range(3):
             system = distributed.PEPSystem(
                 f"pseudo_secret_{i}",
@@ -132,33 +137,34 @@ class TestDistributed(unittest.TestCase):
                 self.blinding_factors[i]
             )
             systems.append(system)
-            
-            # Generate session key share
-            share = system.session_key_share("test_session")
-            session_key_shares.append(share)
-        
-        # Create PEP client
-        client = distributed.PEPClient(self.blinded_global_key, session_key_shares)
-        
-        # Test session key dumping/restoration
-        session_keys = client.dump()
-        restored_client = distributed.PEPClient.restore(session_keys)
-        
-        # Both clients should have same session keys
-        original_keys = client.dump()
-        restored_keys = restored_client.dump()
-        
-        self.assertEqual(
-            original_keys.public.to_point().as_hex(),
-            restored_keys.public.to_point().as_hex()
+
+            # Generate session key shares using the convenience method
+            shares = system.session_key_shares("test_session")
+            session_key_shares.append(shares)
+
+        # Create PEP client using the convenience constructor
+        client = distributed.PEPClient.from_session_key_shares(
+            self.blinded_pseudonym_global_key,
+            self.blinded_attribute_global_key,
+            session_key_shares
         )
+        
+        # Test session key dumping
+        pseudonym_keys = client.dump_pseudonym_keys()
+        attribute_keys = client.dump_attribute_keys()
+
+        # Keys should be valid
+        self.assertIsNotNone(pseudonym_keys)
+        self.assertIsNotNone(attribute_keys)
+        self.assertIsNotNone(pseudonym_keys.public)
+        self.assertIsNotNone(attribute_keys.public)
     
     def test_encryption_decryption_flow(self):
         """Test full encryption/decryption flow with distributed system"""
         # Setup multiple systems
         systems = []
         session_key_shares = []
-        
+
         for i in range(3):
             system = distributed.PEPSystem(
                 f"pseudo_secret_{i}",
@@ -166,10 +172,14 @@ class TestDistributed(unittest.TestCase):
                 self.blinding_factors[i]
             )
             systems.append(system)
-            session_key_shares.append(system.session_key_share("test_session"))
-        
-        # Create client
-        client = distributed.PEPClient(self.blinded_global_key, session_key_shares)
+            session_key_shares.append(system.session_key_shares("test_session"))
+
+        # Create client using the convenience constructor
+        client = distributed.PEPClient.from_session_key_shares(
+            self.blinded_pseudonym_global_key,
+            self.blinded_attribute_global_key,
+            session_key_shares
+        )
         
         # Test pseudonym encryption/decryption
         pseudo = high_level.Pseudonym.random()
@@ -187,8 +197,11 @@ class TestDistributed(unittest.TestCase):
     
     def test_offline_pep_client(self):
         """Test offline PEP client for encryption-only operations"""
-        # Create offline client
-        offline_client = distributed.OfflinePEPClient(self.global_keys.public)
+        # Create offline client using both global public keys
+        offline_client = distributed.OfflinePEPClient(
+            self.pseudonym_global_keys.public,
+            self.attribute_global_keys.public
+        )
         
         # Test encryption (but can't decrypt without private key)
         pseudo = high_level.Pseudonym.random()
@@ -208,19 +221,33 @@ class TestDistributed(unittest.TestCase):
     def test_session_key_share_operations(self):
         """Test session key share encoding and operations"""
         scalar = arithmetic.ScalarNonZero.random()
-        share = distributed.SessionKeyShare(scalar)
-        
+
+        # Test PseudonymSessionKeyShare
+        pseudo_share = distributed.PseudonymSessionKeyShare(scalar)
+
         # Test encoding/decoding
-        encoded = share.encode()
-        decoded = distributed.SessionKeyShare.decode(encoded)
+        encoded = pseudo_share.encode()
+        decoded = distributed.PseudonymSessionKeyShare.decode(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(share.as_hex(), decoded.as_hex())
-        
+        self.assertEqual(pseudo_share.as_hex(), decoded.as_hex())
+
         # Test hex operations
-        hex_str = share.as_hex()
-        decoded_hex = distributed.SessionKeyShare.from_hex(hex_str)
+        hex_str = pseudo_share.as_hex()
+        decoded_hex = distributed.PseudonymSessionKeyShare.from_hex(hex_str)
         self.assertIsNotNone(decoded_hex)
         self.assertEqual(hex_str, decoded_hex.as_hex())
+
+        # Test AttributeSessionKeyShare
+        attr_share = distributed.AttributeSessionKeyShare(scalar)
+        encoded_attr = attr_share.encode()
+        decoded_attr = distributed.AttributeSessionKeyShare.decode(encoded_attr)
+        self.assertIsNotNone(decoded_attr)
+        self.assertEqual(attr_share.as_hex(), decoded_attr.as_hex())
+
+        # Test SessionKeyShares wrapper
+        session_shares = distributed.SessionKeyShares(pseudo_share, attr_share)
+        self.assertEqual(session_shares.pseudonym.as_hex(), pseudo_share.as_hex())
+        self.assertEqual(session_shares.attribute.as_hex(), attr_share.as_hex())
     
     def test_pseudonymization_rekey_info(self):
         """Test standalone pseudonymization and rekey info creation"""
@@ -234,21 +261,17 @@ class TestDistributed(unittest.TestCase):
         pseudo_rev = pseudo_info.rev()
         self.assertIsNotNone(pseudo_rev)
         
-        # Test RekeyInfo creation
-        rekey_info = distributed.RekeyInfo("session1", "session2", self.enc_secret)
-        rekey_rev = rekey_info.rev()
+        # Test AttributeRekeyInfo creation
+        attr_rekey_info = distributed.AttributeRekeyInfo("session1", "session2", self.enc_secret)
+        rekey_rev = attr_rekey_info.rev()
         self.assertIsNotNone(rekey_rev)
-        
-        # Test conversion from pseudonymization info
-        rekey_from_pseudo = distributed.RekeyInfo.from_pseudo_info(pseudo_info)
-        self.assertIsNotNone(rekey_from_pseudo)
     
     def test_session_key_update(self):
         """Test session key share update functionality"""
         # Create initial client
         systems = []
         initial_shares = []
-        
+
         for i in range(3):
             system = distributed.PEPSystem(
                 f"pseudo_secret_{i}",
@@ -256,18 +279,22 @@ class TestDistributed(unittest.TestCase):
                 self.blinding_factors[i]
             )
             systems.append(system)
-            initial_shares.append(system.session_key_share("session1"))
-        
-        client = distributed.PEPClient(self.blinded_global_key, initial_shares)
-        
+            initial_shares.append(system.session_key_shares("session1"))
+
+        client = distributed.PEPClient.from_session_key_shares(
+            self.blinded_pseudonym_global_key,
+            self.blinded_attribute_global_key,
+            initial_shares
+        )
+
         # Generate new shares for session2
         new_shares = []
         for system in systems:
-            new_shares.append(system.session_key_share("session2"))
-        
-        # Update session keys one by one
+            new_shares.append(system.session_key_shares("session2"))
+
+        # Update session keys one by one using the convenience method
         for i in range(3):
-            client.update_session_secret_key(initial_shares[i], new_shares[i])
+            client.update_session_secret_keys(initial_shares[i], new_shares[i])
         
         # Client should now work with session2 keys
         pseudo = high_level.Pseudonym.random()

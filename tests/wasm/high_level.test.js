@@ -1,17 +1,33 @@
 const {
-    Attribute, decryptData, decryptPseudonym, encryptData,
+    Attribute,
+    decryptData,
+    decryptPseudonym,
+    encryptData,
     encryptPseudonym,
     GroupElement,
-    makeGlobalKeys,
-    makeSessionKeys,
-    pseudonymize, rekeyData, Pseudonym, PseudonymizationInfo, RekeyInfo, PseudonymizationSecret, EncryptionSecret,
-    transcryptBatch, EncryptedEntityData, GlobalPublicKey, EncryptedPseudonym, EncryptedAttribute
+    makePseudonymGlobalKeys,
+    makeAttributeGlobalKeys,
+    makePseudonymSessionKeys,
+    makeAttributeSessionKeys,
+    pseudonymize,
+    rekeyData,
+    Pseudonym,
+    PseudonymizationInfo,
+    AttributeRekeyInfo,
+    TranscryptionInfo,
+    PseudonymizationSecret,
+    EncryptionSecret,
+    transcryptBatch,
+    EncryptedData,
+    PseudonymGlobalPublicKey,
+    AttributeGlobalPublicKey,
+    EncryptedPseudonym,
+    EncryptedAttribute
 } = require("../../pkg/libpep.js");
 
 test('test high level', async () => {
-    const globalKeys = makeGlobalKeys();
-    const globalPublicKey = globalKeys.public;
-    const globalPrivateKey = globalKeys.secret;
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
 
     const secret = Uint8Array.from(Buffer.from("secret"))
 
@@ -23,37 +39,39 @@ test('test high level', async () => {
     const domain2 = "domain2";
     const session2 = "session2";
 
-    const session1Keys = makeSessionKeys(globalPrivateKey, session1, encSecret);
-    const session2Keys = makeSessionKeys(globalPrivateKey, session2, encSecret);
+    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+    const attributeSession2Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
 
     const pseudo = Pseudonym.random();
-    const encPseudo = encryptPseudonym(pseudo, session1Keys.public);
+    const encPseudo = encryptPseudonym(pseudo, pseudonymSession1Keys.public);
 
     const random = GroupElement.random();
     const data = new Attribute(random);
-    const encData = encryptData(data, session1Keys.public);
+    const encData = encryptData(data, attributeSession1Keys.public);
 
-    const decPseudo = decryptPseudonym(encPseudo, session1Keys.secret);
-    const decData = decryptData(encData, session1Keys.secret);
+    const decPseudo = decryptPseudonym(encPseudo, pseudonymSession1Keys.secret);
+    const decData = decryptData(encData, attributeSession1Keys.secret);
 
     expect(pseudo.asHex()).toEqual(decPseudo.asHex());
     expect(data.asHex()).toEqual(decData.asHex());
 
     const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
-    const rekeyInfo = new RekeyInfo(session1, session2, encSecret);
+    const rekeyInfo = new AttributeRekeyInfo(session1, session2, encSecret);
 
     const rekeyed = rekeyData(encData, rekeyInfo);
-    const rekeyedDec = decryptData(rekeyed, session2Keys.secret);
+    const rekeyedDec = decryptData(rekeyed, attributeSession2Keys.secret);
 
     expect(data.asHex()).toEqual(rekeyedDec.asHex());
 
     const pseudonymized = pseudonymize(encPseudo, pseudoInfo);
-    const pseudonymizedDec = decryptPseudonym(pseudonymized, session2Keys.secret);
+    const pseudonymizedDec = decryptPseudonym(pseudonymized, pseudonymSession2Keys.secret);
 
     expect(pseudo.asHex()).not.toEqual(pseudonymizedDec.asHex());
 
     const revPseudonymized = pseudonymize(pseudonymized, pseudoInfo.rev());
-    const revPseudonymizedDec = decryptPseudonym(revPseudonymized, session1Keys.secret);
+    const revPseudonymizedDec = decryptPseudonym(revPseudonymized, pseudonymSession1Keys.secret);
 
     expect(pseudo.asHex()).toEqual(revPseudonymizedDec.asHex());
 })
@@ -149,81 +167,94 @@ test('test fixed size bytes operations', async () => {
 
 test('test encrypted types encoding', async () => {
     // Setup
-    const globalKeys = makeGlobalKeys();
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
     const secret = new Uint8Array(Buffer.from("secret"));
     const encSecret = new EncryptionSecret(secret);
-    const sessionKeys = makeSessionKeys(globalKeys.secret, "session", encSecret);
-    
+    const pseudonymSessionKeys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session", encSecret);
+    const attributeSessionKeys = makeAttributeSessionKeys(attributeGlobalKeys.secret, "session", encSecret);
+
     // Create encrypted pseudonym
     const pseudo = Pseudonym.random();
-    const encPseudo = encryptPseudonym(pseudo, sessionKeys.public);
-    
+    const encPseudo = encryptPseudonym(pseudo, pseudonymSessionKeys.public);
+
     // Test byte encoding/decoding
     const encoded = encPseudo.encode();
     const decoded = EncryptedPseudonym.decode(encoded);
     expect(decoded).not.toBeNull();
-    
+
     // Test base64 encoding/decoding
     const b64Str = encPseudo.asBase64();
     const decodedB64 = EncryptedPseudonym.fromBase64(b64Str);
     expect(decodedB64).not.toBeNull();
-    
+
     // Verify both decode to same plaintext
-    const dec1 = decryptPseudonym(decoded, sessionKeys.secret);
-    const dec2 = decryptPseudonym(decodedB64, sessionKeys.secret);
+    const dec1 = decryptPseudonym(decoded, pseudonymSessionKeys.secret);
+    const dec2 = decryptPseudonym(decodedB64, pseudonymSessionKeys.secret);
     expect(pseudo.asHex()).toEqual(dec1.asHex());
     expect(pseudo.asHex()).toEqual(dec2.asHex());
-    
+
     // Test same for encrypted data point
     const data = Attribute.random();
-    const encData = encryptData(data, sessionKeys.public);
-    
+    const encData = encryptData(data, attributeSessionKeys.public);
+
     const encodedData = encData.encode();
     const decodedData = EncryptedAttribute.decode(encodedData);
     expect(decodedData).not.toBeNull();
-    
-    const decData = decryptData(decodedData, sessionKeys.secret);
+
+    const decData = decryptData(decodedData, attributeSessionKeys.secret);
     expect(data.asHex()).toEqual(decData.asHex());
 });
 
 test('test key generation consistency', async () => {
     const secret = new Uint8Array(Buffer.from("consistent_secret"));
     const encSecret = new EncryptionSecret(secret);
-    
+
     // Generate same global keys multiple times (they should be random)
-    const keys1 = makeGlobalKeys();
-    const keys2 = makeGlobalKeys();
-    expect(keys1.public.asHex()).not.toEqual(keys2.public.asHex());
-    
+    const pseudoKeys1 = makePseudonymGlobalKeys();
+    const pseudoKeys2 = makePseudonymGlobalKeys();
+    expect(pseudoKeys1.public.asHex()).not.toEqual(pseudoKeys2.public.asHex());
+
+    const attrKeys1 = makeAttributeGlobalKeys();
+    const attrKeys2 = makeAttributeGlobalKeys();
+    expect(attrKeys1.public.asHex()).not.toEqual(attrKeys2.public.asHex());
+
     // Generate same session keys with same inputs (should be deterministic)
-    const globalKeys = makeGlobalKeys();
-    const session1a = makeSessionKeys(globalKeys.secret, "session1", encSecret);
-    const session1b = makeSessionKeys(globalKeys.secret, "session1", encSecret);
-    
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const session1a = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session1", encSecret);
+    const session1b = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session1", encSecret);
+
     // Access GroupElement directly from SessionPublicKey (it has property '0')
     expect(session1a.public[0].asHex()).toEqual(session1b.public[0].asHex());
-    
+
     // Different session names should give different keys
-    const session2 = makeSessionKeys(globalKeys.secret, "session2", encSecret);
+    const session2 = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session2", encSecret);
     expect(session1a.public[0].asHex()).not.toEqual(session2.public[0].asHex());
 });
 
 test('test global public key operations', async () => {
-    // Create a global public key from existing test
-    const globalKeys = makeGlobalKeys();
-    const pubKey = globalKeys.public;
-    
-    // Test hex operations
-    const hexStr = pubKey.asHex();
-    const decoded = GlobalPublicKey.fromHex(hexStr);
-    expect(decoded).not.toBeNull();
-    expect(hexStr).toEqual(decoded.asHex());
+    // Test pseudonym global public key
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const pseudoPubKey = pseudonymGlobalKeys.public;
+
+    const pseudoHexStr = pseudoPubKey.asHex();
+    const decodedPseudo = PseudonymGlobalPublicKey.fromHex(pseudoHexStr);
+    expect(decodedPseudo).not.toBeNull();
+    expect(pseudoHexStr).toEqual(decodedPseudo.asHex());
+
+    // Test attribute global public key
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
+    const attrPubKey = attributeGlobalKeys.public;
+
+    const attrHexStr = attrPubKey.asHex();
+    const decodedAttr = AttributeGlobalPublicKey.fromHex(attrHexStr);
+    expect(decodedAttr).not.toBeNull();
+    expect(attrHexStr).toEqual(decodedAttr.asHex());
 });
 
 test('test batch transcrypt', async () => {
-    const globalKeys = makeGlobalKeys();
-    const globalPublicKey = globalKeys.public;
-    const globalPrivateKey = globalKeys.secret;
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
 
     const secret = Uint8Array.from(Buffer.from("secret"))
 
@@ -235,10 +266,10 @@ test('test batch transcrypt', async () => {
     const domain2 = "domain2";
     const session2 = "session2";
 
-    const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
+    const transcryptionInfo = new TranscryptionInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
 
-    const session1Keys = makeSessionKeys(globalPrivateKey, session1, encSecret);
-    const session2Keys = makeSessionKeys(globalPrivateKey, session2, encSecret);
+    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
 
     const messages = [];
 
@@ -249,21 +280,21 @@ test('test batch transcrypt', async () => {
         for (let j = 0; j < 3; j++) {
             dataPoints.push(encryptData(
                 new Attribute(GroupElement.random()),
-                session1Keys.public,
+                attributeSession1Keys.public,
             ));
 
             pseudonyms.push(encryptPseudonym(
                 new Pseudonym(GroupElement.random()),
-                session1Keys.public,
+                pseudonymSession1Keys.public,
             ));
         }
 
-        const entityData = new EncryptedEntityData(pseudonyms, dataPoints);
+        const entityData = new EncryptedData(pseudonyms, dataPoints);
         messages.push(entityData);
     }
-    const transcrypted = transcryptBatch(messages, pseudoInfo);
+    const transcrypted = transcryptBatch(messages, transcryptionInfo);
     expect(transcrypted.length).toEqual(messages.length);
-    
+
     // Verify structure is maintained
     for (let i = 0; i < transcrypted.length; i++) {
         expect(transcrypted[i].pseudonyms.length).toEqual(3);

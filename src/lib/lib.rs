@@ -28,6 +28,19 @@
 //! article by [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
 //! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/) (to be published).
 
+// Compile-time check to prevent using both python and wasm features together.
+// These features are mutually exclusive because:
+// 1. PyO3 (python) builds a cdylib that links to Python interpreter
+// 2. wasm-bindgen (wasm) builds a cdylib that targets WebAssembly
+// 3. Both require different linking strategies and cannot coexist in the same build
+// Use `--features python` for Python bindings or `--features wasm` for WASM, but not both.
+#[cfg(all(feature = "python", feature = "wasm"))]
+compile_error!(
+    "Features `python` and `wasm` are mutually exclusive. \
+     PyO3 and wasm-bindgen have incompatible linking requirements. \
+     Use either `--features python` or `--features wasm`, not both."
+);
+
 pub mod distributed;
 pub mod high_level;
 pub mod internal;

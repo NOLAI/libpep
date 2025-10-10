@@ -27,6 +27,14 @@ pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
+/// A pair of session key shares containing both pseudonym and attribute shares.
+/// This simplifies the API by combining both shares that are always used together.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct SessionKeyShares {
+    pub pseudonym: PseudonymSessionKeyShare,
+    pub attribute: AttributeSessionKeyShare,
+}
+
 /// A trait for scalars that are safe to encode and decode since they do not need to remain absolutely secret.
 pub trait SafeScalar {
     /// Create from a scalar.

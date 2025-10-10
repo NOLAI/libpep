@@ -1,21 +1,35 @@
 const {
     Attribute,
     GroupElement,
-    makeGlobalKeys, makeBlindedGlobalSecretKey, PEPSystem, PEPClient, Pseudonym, BlindingFactor,
+    makePseudonymGlobalKeys,
+    makeAttributeGlobalKeys,
+    makeBlindedPseudonymGlobalSecretKey,
+    makeBlindedAttributeGlobalSecretKey,
+    PEPSystem,
+    PEPClient,
+    Pseudonym,
+    BlindingFactor,
 } = require("../../pkg/libpep.js");
 
 test('n_pep', async () => {
     const n = 3;
 
-    // Create global keys.
-    const keyPair = makeGlobalKeys();
-    const globalPublicKey = keyPair.public;
-    const globalSecret = keyPair.secret
+    // Create global keys for both pseudonyms and attributes.
+    const pseudonymKeyPair = makePseudonymGlobalKeys();
+    const attributeKeyPair = makeAttributeGlobalKeys();
 
     const blindingFactors = Array.from({ length: n }, () => BlindingFactor.random());
 
-    const blindingFactorsCopy = blindingFactors.map(bf => bf.clone());
-    const blindedGlobalSecretKey = makeBlindedGlobalSecretKey(globalSecret, blindingFactorsCopy);
+    const blindingFactorsCopyPseudo = blindingFactors.map(bf => bf.clone());
+    const blindingFactorsCopyAttr = blindingFactors.map(bf => bf.clone());
+    const blindedPseudonymGlobalSecretKey = makeBlindedPseudonymGlobalSecretKey(
+        pseudonymKeyPair.secret,
+        blindingFactorsCopyPseudo
+    );
+    const blindedAttributeGlobalSecretKey = makeBlindedAttributeGlobalSecretKey(
+        attributeKeyPair.secret,
+        blindingFactorsCopyAttr
+    );
 
     // Initialize systems.
     const systems = Array.from({ length: n }, (_, i) => {
@@ -31,13 +45,21 @@ test('n_pep', async () => {
     const sessionA1 = "session-a1";
     const sessionB1 = "session-b1";
 
-    // Generate session key shares.
-    const sksA1 = systems.map(system => system.sessionKeyShare(sessionA1));
-    const sksB1 = systems.map(system => system.sessionKeyShare(sessionB1));
+    // Generate session key shares using the convenience method.
+    const sksA1 = systems.map(system => system.sessionKeyShares(sessionA1));
+    const sksB1 = systems.map(system => system.sessionKeyShares(sessionB1));
 
-    // Create PEP clients.
-    const clientA = new PEPClient(blindedGlobalSecretKey, sksA1);
-    const clientB = new PEPClient(blindedGlobalSecretKey, sksB1);
+    // Create PEP clients using the convenience constructor.
+    const clientA = PEPClient.fromSessionKeyShares(
+        blindedPseudonymGlobalSecretKey,
+        blindedAttributeGlobalSecretKey,
+        sksA1
+    );
+    const clientB = PEPClient.fromSessionKeyShares(
+        blindedPseudonymGlobalSecretKey,
+        blindedAttributeGlobalSecretKey,
+        sksB1
+    );
 
     // Generate random pseudonym and data point.
     const pseudonym = Pseudonym.random();
@@ -52,7 +74,7 @@ test('n_pep', async () => {
         system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1)), encPseudo);
 
     const transcryptedData = systems.reduce((acc, system) =>
-        system.rekey(acc, system.rekeyInfo(sessionA1, sessionB1)), encData);
+        system.rekey(acc, system.attributeRekeyInfo(sessionA1, sessionB1)), encData);
 
     // Decrypt pseudonym and data.
     const decPseudo = clientB.decryptPseudonym(transcryptedPseudo);

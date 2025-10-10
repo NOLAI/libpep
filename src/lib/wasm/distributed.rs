@@ -164,6 +164,38 @@ impl WASMAttributeSessionKeyShare {
     }
 }
 
+/// A pair of session key shares containing both pseudonym and attribute shares.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
+#[wasm_bindgen(js_name = SessionKeyShares)]
+pub struct WASMSessionKeyShares(SessionKeyShares);
+
+#[wasm_bindgen(js_class = "SessionKeyShares")]
+impl WASMSessionKeyShares {
+    /// Create a new [`WASMSessionKeyShares`] from pseudonym and attribute shares.
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        pseudonym: WASMPseudonymSessionKeyShare,
+        attribute: WASMAttributeSessionKeyShare,
+    ) -> Self {
+        WASMSessionKeyShares(SessionKeyShares {
+            pseudonym: pseudonym.0,
+            attribute: attribute.0,
+        })
+    }
+
+    /// Get the pseudonym session key share.
+    #[wasm_bindgen(getter)]
+    pub fn pseudonym(&self) -> WASMPseudonymSessionKeyShare {
+        WASMPseudonymSessionKeyShare(self.0.pseudonym)
+    }
+
+    /// Get the attribute session key share.
+    #[wasm_bindgen(getter)]
+    pub fn attribute(&self) -> WASMAttributeSessionKeyShare {
+        WASMAttributeSessionKeyShare(self.0.attribute)
+    }
+}
+
 /// Create a [`WASMBlindedGlobalSecretKey`] from a [`WASMPseudonymGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
 /// Used during system setup to blind the pseudonym global secret key.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
@@ -246,6 +278,12 @@ impl WASMPEPSystem {
         WASMAttributeSessionKeyShare(
             self.attribute_session_key_share(&EncryptionContext::from(session)),
         )
+    }
+    /// Generate both pseudonym and attribute session key shares for the given session.
+    /// This is a convenience method that returns both shares together.
+    #[wasm_bindgen(js_name = sessionKeyShares)]
+    pub fn wasm_session_key_shares(&self, session: &str) -> WASMSessionKeyShares {
+        WASMSessionKeyShares(self.session_key_shares(&EncryptionContext::from(session)))
     }
     /// Generate attribute rekey info to rekey from a given session to another.
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
@@ -335,6 +373,31 @@ impl WASMPEPClient {
         ))
     }
 
+    /// Create a new PEP client from combined session key shares.
+    /// This is a convenience method that accepts a vector of [`WASMSessionKeyShares`].
+    #[wasm_bindgen(js_name = fromSessionKeyShares)]
+    pub fn from_session_key_shares(
+        blinded_global_pseudonym_key: &WASMBlindedGlobalSecretKey,
+        blinded_global_attribute_key: &WASMBlindedGlobalSecretKey,
+        session_key_shares: Vec<WASMSessionKeyShares>,
+    ) -> Self {
+        // FIXME we do not pass a reference to the session key shares vector, since WASM does not support references to arrays of structs
+        // As a result, we have to clone the session key shares BEFORE passing them to the function, so in javascript.
+        // Simply by passing the session key shares to this function will turn them into null pointers, so we cannot use them anymore in javascript.
+        let shares: Vec<SessionKeyShares> = session_key_shares
+            .into_iter()
+            .map(|x| SessionKeyShares {
+                pseudonym: PseudonymSessionKeyShare(x.0.pseudonym.0),
+                attribute: AttributeSessionKeyShare(x.0.attribute.0),
+            })
+            .collect();
+        Self(PEPClient::from_session_key_shares(
+            blinded_global_pseudonym_key.0,
+            blinded_global_attribute_key.0,
+            &shares,
+        ))
+    }
+
     /// Restore a PEP client from the given session keys.
     #[wasm_bindgen(js_name = restore)]
     pub fn wasm_restore(
@@ -395,6 +458,18 @@ impl WASMPEPClient {
     ) {
         self.0
             .update_attribute_session_secret_key(old_key_share.0, new_key_share.0);
+    }
+
+    /// Update both pseudonym and attribute session key shares from one session to another.
+    /// This is a convenience method that updates both shares together.
+    #[wasm_bindgen(js_name = updateSessionSecretKeys)]
+    pub fn wasm_update_session_secret_keys(
+        &mut self,
+        old_key_shares: WASMSessionKeyShares,
+        new_key_shares: WASMSessionKeyShares,
+    ) {
+        self.0
+            .update_session_secret_keys(old_key_shares.0, new_key_shares.0);
     }
 
     /// Decrypt an encrypted pseudonym.

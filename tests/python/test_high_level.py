@@ -8,8 +8,10 @@ import unittest
 from libpep.arithmetic import GroupElement
 from libpep.high_level import (
     Pseudonym, Attribute, PseudonymizationSecret, EncryptionSecret,
-    EncryptedPseudonym, EncryptedAttribute, GlobalPublicKey,
-    make_global_keys, make_session_keys,
+    EncryptedPseudonym, EncryptedAttribute,
+    PseudonymGlobalPublicKey, AttributeGlobalPublicKey,
+    make_pseudonym_global_keys, make_attribute_global_keys,
+    make_pseudonym_session_keys, make_attribute_session_keys,
     encrypt_pseudonym, decrypt_pseudonym, encrypt_data, decrypt_data
 )
 
@@ -19,38 +21,39 @@ class TestHighLevel(unittest.TestCase):
     def test_high_level_operations(self):
         """Test high-level pseudonym and data operations"""
         # Generate global keys
-        global_keys = make_global_keys()
-        global_public_key = global_keys.public
-        global_private_key = global_keys.secret
-        
+        pseudonym_global_keys = make_pseudonym_global_keys()
+        attribute_global_keys = make_attribute_global_keys()
+
         # Create secrets
         secret = b"secret"
         pseudo_secret = PseudonymizationSecret(secret)
         enc_secret = EncryptionSecret(secret)
-        
+
         # Define domains and sessions
         domain1 = "domain1"
         session1 = "session1"
         domain2 = "domain2"
         session2 = "session2"
-        
+
         # Generate session keys
-        session1_keys = make_session_keys(global_private_key, session1, enc_secret)
-        session2_keys = make_session_keys(global_private_key, session2, enc_secret)
-        
+        pseudonym_session1_keys = make_pseudonym_session_keys(pseudonym_global_keys.secret, session1, enc_secret)
+        pseudonym_session2_keys = make_pseudonym_session_keys(pseudonym_global_keys.secret, session2, enc_secret)
+        attribute_session1_keys = make_attribute_session_keys(attribute_global_keys.secret, session1, enc_secret)
+        attribute_session2_keys = make_attribute_session_keys(attribute_global_keys.secret, session2, enc_secret)
+
         # Create and encrypt pseudonym
         pseudo = Pseudonym.random()
-        enc_pseudo = encrypt_pseudonym(pseudo, session1_keys.public)
-        
+        enc_pseudo = encrypt_pseudonym(pseudo, pseudonym_session1_keys.public)
+
         # Create and encrypt data point
         random_point = GroupElement.random()
         data = Attribute(random_point)
-        enc_data = encrypt_data(data, session1_keys.public)
-        
+        enc_data = encrypt_data(data, attribute_session1_keys.public)
+
         # Decrypt and verify
-        dec_pseudo = decrypt_pseudonym(enc_pseudo, session1_keys.secret)
-        dec_data = decrypt_data(enc_data, session1_keys.secret)
-        
+        dec_pseudo = decrypt_pseudonym(enc_pseudo, pseudonym_session1_keys.secret)
+        dec_data = decrypt_data(enc_data, attribute_session1_keys.secret)
+
         self.assertEqual(pseudo.as_hex(), dec_pseudo.as_hex())
         self.assertEqual(data.as_hex(), dec_data.as_hex())
     
@@ -156,76 +159,96 @@ class TestHighLevel(unittest.TestCase):
     def test_encrypted_types_encoding(self):
         """Test encoding/decoding of encrypted types"""
         # Setup
-        global_keys = make_global_keys()
+        pseudonym_global_keys = make_pseudonym_global_keys()
+        attribute_global_keys = make_attribute_global_keys()
         secret = b"secret"
         enc_secret = EncryptionSecret(secret)
-        session_keys = make_session_keys(global_keys.secret, "session", enc_secret)
-        
+        pseudonym_session_keys = make_pseudonym_session_keys(pseudonym_global_keys.secret, "session", enc_secret)
+        attribute_session_keys = make_attribute_session_keys(attribute_global_keys.secret, "session", enc_secret)
+
         # Create encrypted pseudonym
         pseudo = Pseudonym.random()
-        enc_pseudo = encrypt_pseudonym(pseudo, session_keys.public)
-        
+        enc_pseudo = encrypt_pseudonym(pseudo, pseudonym_session_keys.public)
+
         # Test byte encoding/decoding
         encoded = enc_pseudo.encode()
         decoded = EncryptedPseudonym.decode(encoded)
         self.assertIsNotNone(decoded)
-        
+
         # Test base64 encoding/decoding
         b64_str = enc_pseudo.as_base64()
         decoded_b64 = EncryptedPseudonym.from_base64(b64_str)
         self.assertIsNotNone(decoded_b64)
-        
+
         # Verify both decode to same plaintext
-        dec1 = decrypt_pseudonym(decoded, session_keys.secret)
-        dec2 = decrypt_pseudonym(decoded_b64, session_keys.secret)
+        dec1 = decrypt_pseudonym(decoded, pseudonym_session_keys.secret)
+        dec2 = decrypt_pseudonym(decoded_b64, pseudonym_session_keys.secret)
         self.assertEqual(pseudo.as_hex(), dec1.as_hex())
         self.assertEqual(pseudo.as_hex(), dec2.as_hex())
-        
+
         # Test same for encrypted data point
         data = Attribute.random()
-        enc_data = encrypt_data(data, session_keys.public)
-        
+        enc_data = encrypt_data(data, attribute_session_keys.public)
+
         encoded_data = enc_data.encode()
         decoded_data = EncryptedAttribute.decode(encoded_data)
         self.assertIsNotNone(decoded_data)
-        
-        dec_data = decrypt_data(decoded_data, session_keys.secret)
+
+        dec_data = decrypt_data(decoded_data, attribute_session_keys.secret)
         self.assertEqual(data.as_hex(), dec_data.as_hex())
     
     def test_key_generation_consistency(self):
         """Test that key generation is consistent"""
         secret = b"consistent_secret"
         enc_secret = EncryptionSecret(secret)
-        
+
         # Generate same global keys multiple times (they should be random)
-        keys1 = make_global_keys()
-        keys2 = make_global_keys()
-        self.assertNotEqual(keys1.public.as_hex(), keys2.public.as_hex())
-        
+        pseudo_keys1 = make_pseudonym_global_keys()
+        pseudo_keys2 = make_pseudonym_global_keys()
+        self.assertNotEqual(pseudo_keys1.public.as_hex(), pseudo_keys2.public.as_hex())
+
+        attr_keys1 = make_attribute_global_keys()
+        attr_keys2 = make_attribute_global_keys()
+        self.assertNotEqual(attr_keys1.public.as_hex(), attr_keys2.public.as_hex())
+
         # Generate same session keys with same inputs (should be deterministic)
-        global_keys = make_global_keys()
-        session1a = make_session_keys(global_keys.secret, "session1", enc_secret)
-        session1b = make_session_keys(global_keys.secret, "session1", enc_secret)
-        
+        pseudonym_global_keys = make_pseudonym_global_keys()
+        session1a = make_pseudonym_session_keys(pseudonym_global_keys.secret, "session1", enc_secret)
+        session1b = make_pseudonym_session_keys(pseudonym_global_keys.secret, "session1", enc_secret)
+
         self.assertEqual(session1a.public.to_point().as_hex(), session1b.public.to_point().as_hex())
-        
+
         # Different session names should give different keys
-        session2 = make_session_keys(global_keys.secret, "session2", enc_secret)
+        session2 = make_pseudonym_session_keys(pseudonym_global_keys.secret, "session2", enc_secret)
         self.assertNotEqual(session1a.public.to_point().as_hex(), session2.public.to_point().as_hex())
     
     def test_global_public_key_operations(self):
-        """Test GlobalPublicKey specific operations"""
-        g = GroupElement.random()
-        pub_key = GlobalPublicKey(g)
-        
+        """Test global public key specific operations"""
+        # Test PseudonymGlobalPublicKey
+        g1 = GroupElement.random()
+        pseudo_pub_key = PseudonymGlobalPublicKey(g1)
+
         # Test point conversion
-        self.assertEqual(g.as_hex(), pub_key.to_point().as_hex())
-        
+        self.assertEqual(g1.as_hex(), pseudo_pub_key.to_point().as_hex())
+
         # Test hex operations
-        hex_str = pub_key.as_hex()
-        decoded = GlobalPublicKey.from_hex(hex_str)
+        hex_str = pseudo_pub_key.as_hex()
+        decoded = PseudonymGlobalPublicKey.from_hex(hex_str)
         self.assertIsNotNone(decoded)
         self.assertEqual(hex_str, decoded.as_hex())
+
+        # Test AttributeGlobalPublicKey
+        g2 = GroupElement.random()
+        attr_pub_key = AttributeGlobalPublicKey(g2)
+
+        # Test point conversion
+        self.assertEqual(g2.as_hex(), attr_pub_key.to_point().as_hex())
+
+        # Test hex operations
+        hex_str2 = attr_pub_key.as_hex()
+        decoded2 = AttributeGlobalPublicKey.from_hex(hex_str2)
+        self.assertIsNotNone(decoded2)
+        self.assertEqual(hex_str2, decoded2.as_hex())
 
 
 if __name__ == '__main__':

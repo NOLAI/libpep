@@ -66,36 +66,26 @@ fn n_pep() {
     let session_a1 = EncryptionContext::from("session-a1");
     let session_b1 = EncryptionContext::from("session-b1");
 
-    // Get client session key shares
-    let pseudonym_sks_a1 = systems
+    // Get client session key shares using the new convenience method
+    let sks_a1 = systems
         .iter()
-        .map(|system| system.pseudonym_session_key_share(&session_a1))
+        .map(|system| system.session_key_shares(&session_a1))
         .collect::<Vec<_>>();
-    let pseudonym_sks_b1 = systems
+    let sks_b1 = systems
         .iter()
-        .map(|system| system.pseudonym_session_key_share(&session_b1))
-        .collect::<Vec<_>>();
-    let attribute_sks_a1 = systems
-        .iter()
-        .map(|system| system.attribute_session_key_share(&session_a1))
-        .collect::<Vec<_>>();
-    let attribute_sks_b1 = systems
-        .iter()
-        .map(|system| system.attribute_session_key_share(&session_b1))
+        .map(|system| system.session_key_shares(&session_b1))
         .collect::<Vec<_>>();
 
-    // Create clients
-    let client_a = PEPClient::new(
+    // Create clients using the new convenience constructor
+    let client_a = PEPClient::from_session_key_shares(
         blinded_pseudonym_global_secret_key,
-        &pseudonym_sks_a1,
         blinded_attribute_global_secret_key,
-        &attribute_sks_a1,
+        &sks_a1,
     );
-    let client_b = PEPClient::new(
+    let client_b = PEPClient::from_session_key_shares(
         blinded_pseudonym_global_secret_key,
-        &pseudonym_sks_b1,
         blinded_attribute_global_secret_key,
-        &attribute_sks_b1,
+        &sks_b1,
     );
 
     // Session walkthrough
