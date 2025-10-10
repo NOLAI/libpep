@@ -9,21 +9,13 @@ on:
 jobs:
   semver-checks:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        features:
-          - ""
-          - "elgamal3"
-          - "legacy-pep-repo-compatible"
-          - "wasm"
-          - "python"
 
     name: cargo semver-checks
     steps:
       - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          feature-group: ${{ matrix.features }}
+          feature-group: default-features
 
   test:
     runs-on: ubuntu-latest
