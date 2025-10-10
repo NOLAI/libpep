@@ -189,12 +189,14 @@ npm test
 ```
 
 The following features are available:
-- `python`: enables the Python bindings.
-- `wasm`: enables the WASM library.
+- `python`: enables the Python bindings (mutually exclusive with `wasm`).
+- `wasm`: enables the WASM library (mutually exclusive with `python`).
 - `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
 - `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from domains, contexts and secrets.
 - `insecure-methods`: enables insecure methods, to be used with care.
 - `build-binary`: builds the `peppy` command-line tool to interact with the library (not recommended for production use).
+
+**Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly. These have incompatible linking requirements and cannot coexist in the same build.
 
 ## Install
 

@@ -21,6 +21,10 @@ legacy-pep-repo-compatible = []
 insecure-methods = []
 build-binary = ["buildinfy","commandy","commandy_macros"]
 
+# Note: python and wasm are mutually exclusive and should not be enabled together.
+# PyO3 builds a cdylib that links to Python interpreter, while wasm-bindgen builds
+# a cdylib targeting WebAssembly - they have incompatible linking requirements.
+
 [lib]
 name = "libpep"
 crate-type = ["cdylib", "rlib"]
