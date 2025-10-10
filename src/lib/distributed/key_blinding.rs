@@ -11,19 +11,25 @@ use std::fmt::Formatter;
 #[derive(Copy, Clone, Debug)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
 
-/// A blinded global secret key, which is the global secret key blinded by the blinding factors from
+/// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct BlindedGlobalSecretKey(pub(crate) ScalarNonZero);
+pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
+
+/// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
+/// all transcryptors, making it impossible to see or derive other keys from it without cooperation
+/// of the transcryptors.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`BlindedGlobalSecretKey`], a pseudonym session key can be derived.
+/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`BlindedGlobalSecretKey`], an attribute session key can be derived.
+/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
@@ -88,9 +94,18 @@ impl SafeScalar for BlindingFactor {
         &self.0
     }
 }
-impl SafeScalar for BlindedGlobalSecretKey {
+impl SafeScalar for BlindedPseudonymGlobalSecretKey {
     fn from(x: ScalarNonZero) -> Self {
-        BlindedGlobalSecretKey(x)
+        BlindedPseudonymGlobalSecretKey(x)
+    }
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+impl SafeScalar for BlindedAttributeGlobalSecretKey {
+    fn from(x: ScalarNonZero) -> Self {
+        BlindedAttributeGlobalSecretKey(x)
     }
 
     fn value(&self) -> &ScalarNonZero {
@@ -126,7 +141,7 @@ impl BlindingFactor {
     }
 }
 
-impl Serialize for BlindedGlobalSecretKey {
+impl Serialize for BlindedPseudonymGlobalSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -134,16 +149,18 @@ impl Serialize for BlindedGlobalSecretKey {
         serializer.serialize_str(self.encode_as_hex().as_str())
     }
 }
-impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
+impl<'de> Deserialize<'de> for BlindedPseudonymGlobalSecretKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct BlindedGlobalSecretKeyVisitor;
-        impl Visitor<'_> for BlindedGlobalSecretKeyVisitor {
-            type Value = BlindedGlobalSecretKey;
+        struct BlindedPseudonymGlobalSecretKeyVisitor;
+        impl Visitor<'_> for BlindedPseudonymGlobalSecretKeyVisitor {
+            type Value = BlindedPseudonymGlobalSecretKey;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                formatter.write_str("a hex encoded string representing a BlindedGlobalSecretKey")
+                formatter.write_str(
+                    "a hex encoded string representing a BlindedPseudonymGlobalSecretKey",
+                )
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -151,12 +168,47 @@ impl<'de> Deserialize<'de> for BlindedGlobalSecretKey {
                 E: Error,
             {
                 ScalarNonZero::decode_from_hex(v)
-                    .map(BlindedGlobalSecretKey)
+                    .map(BlindedPseudonymGlobalSecretKey)
                     .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
             }
         }
 
-        deserializer.deserialize_str(BlindedGlobalSecretKeyVisitor)
+        deserializer.deserialize_str(BlindedPseudonymGlobalSecretKeyVisitor)
+    }
+}
+impl Serialize for BlindedAttributeGlobalSecretKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.encode_as_hex().as_str())
+    }
+}
+impl<'de> Deserialize<'de> for BlindedAttributeGlobalSecretKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct BlindedAttributeGlobalSecretKeyVisitor;
+        impl Visitor<'_> for BlindedAttributeGlobalSecretKeyVisitor {
+            type Value = BlindedAttributeGlobalSecretKey;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str(
+                    "a hex encoded string representing a BlindedAttributeGlobalSecretKey",
+                )
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                ScalarNonZero::decode_from_hex(v)
+                    .map(BlindedAttributeGlobalSecretKey)
+                    .ok_or(E::custom(format!("invalid hex encoded string: {v}")))
+            }
+        }
+
+        deserializer.deserialize_str(BlindedAttributeGlobalSecretKeyVisitor)
     }
 }
 impl Serialize for PseudonymSessionKeyShare {
@@ -227,13 +279,13 @@ impl<'de> Deserialize<'de> for AttributeSessionKeyShare {
     }
 }
 
-/// Create a [`BlindedGlobalSecretKey`] from a [`PseudonymGlobalSecretKey`] and a list of [`BlindingFactor`]s.
+/// Create a [`BlindedPseudonymGlobalSecretKey`] from a [`PseudonymGlobalSecretKey`] and a list of [`BlindingFactor`]s.
 /// Used during system setup to blind the global secret key for pseudonyms.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 pub fn make_blinded_pseudonym_global_secret_key(
     global_secret_key: &PseudonymGlobalSecretKey,
     blinding_factors: &[BlindingFactor],
-) -> Option<BlindedGlobalSecretKey> {
+) -> Option<BlindedPseudonymGlobalSecretKey> {
     let y = *global_secret_key;
     let k = blinding_factors
         .iter()
@@ -241,16 +293,16 @@ pub fn make_blinded_pseudonym_global_secret_key(
     if k == ScalarNonZero::one() {
         return None;
     }
-    Some(BlindedGlobalSecretKey(y.0 * k))
+    Some(BlindedPseudonymGlobalSecretKey(y.0 * k))
 }
 
-/// Create a [`BlindedGlobalSecretKey`] from a [`AttributeGlobalSecretKey`] and a list of [`BlindingFactor`]s.
+/// Create a [`BlindedAttributeGlobalSecretKey`] from a [`AttributeGlobalSecretKey`] and a list of [`BlindingFactor`]s.
 /// Used during system setup to blind the global secret key for attributes.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 pub fn make_blinded_attribute_global_secret_key(
     global_secret_key: &AttributeGlobalSecretKey,
     blinding_factors: &[BlindingFactor],
-) -> Option<BlindedGlobalSecretKey> {
+) -> Option<BlindedAttributeGlobalSecretKey> {
     let y = *global_secret_key;
     let k = blinding_factors
         .iter()
@@ -258,7 +310,7 @@ pub fn make_blinded_attribute_global_secret_key(
     if k == ScalarNonZero::one() {
         return None;
     }
-    Some(BlindedGlobalSecretKey(y.0 * k))
+    Some(BlindedAttributeGlobalSecretKey(y.0 * k))
 }
 
 /// Create a [`PseudonymSessionKeyShare`] from a [`ScalarNonZero`] pseudonym rekey factor and a [`BlindingFactor`].
@@ -277,9 +329,9 @@ pub fn make_attribute_session_key_share(
     AttributeSessionKeyShare(rekey_factor * blinding_factor.0)
 }
 
-/// Reconstruct a pseudonym session key from a [`BlindedGlobalSecretKey`] and a list of [`PseudonymSessionKeyShare`]s.
+/// Reconstruct a pseudonym session key from a [`BlindedPseudonymGlobalSecretKey`] and a list of [`PseudonymSessionKeyShare`]s.
 pub fn make_pseudonym_session_key(
-    blinded_global_secret_key: BlindedGlobalSecretKey,
+    blinded_global_secret_key: BlindedPseudonymGlobalSecretKey,
     session_key_shares: &[PseudonymSessionKeyShare],
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
     let secret = PseudonymSessionSecretKey::from(
@@ -291,9 +343,9 @@ pub fn make_pseudonym_session_key(
     (public, secret)
 }
 
-/// Reconstruct an attribute session key from a [`BlindedGlobalSecretKey`] and a list of [`AttributeSessionKeyShare`]s.
+/// Reconstruct an attribute session key from a [`BlindedAttributeGlobalSecretKey`] and a list of [`AttributeSessionKeyShare`]s.
 pub fn make_attribute_session_key(
-    blinded_global_secret_key: BlindedGlobalSecretKey,
+    blinded_global_secret_key: BlindedAttributeGlobalSecretKey,
     session_key_shares: &[AttributeSessionKeyShare],
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
     let secret = AttributeSessionSecretKey::from(
@@ -340,7 +392,7 @@ pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> (
     PseudonymGlobalPublicKey,
-    BlindedGlobalSecretKey,
+    BlindedPseudonymGlobalSecretKey,
     Vec<BlindingFactor>,
 ) {
     let (pk, sk) = make_pseudonym_global_keys(rng);
@@ -359,7 +411,7 @@ pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> (
     AttributeGlobalPublicKey,
-    BlindedGlobalSecretKey,
+    BlindedAttributeGlobalSecretKey,
     Vec<BlindingFactor>,
 ) {
     let (pk, sk) = make_attribute_global_keys(rng);

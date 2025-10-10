@@ -182,9 +182,9 @@ pub struct PEPClient {
 impl PEPClient {
     /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
     pub fn new(
-        blinded_global_pseudonym_key: BlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: BlindedPseudonymGlobalSecretKey,
         pseudonym_session_key_shares: &[PseudonymSessionKeyShare],
-        blinded_global_attribute_key: BlindedGlobalSecretKey,
+        blinded_global_attribute_key: BlindedAttributeGlobalSecretKey,
         attribute_session_key_shares: &[AttributeSessionKeyShare],
     ) -> Self {
         let (pseudonym_public, pseudonym_secret) =
@@ -202,8 +202,8 @@ impl PEPClient {
     /// Create a new PEP client from combined session key shares.
     /// This is a convenience method that accepts a slice of [`SessionKeyShares`].
     pub fn from_session_key_shares(
-        blinded_global_pseudonym_key: BlindedGlobalSecretKey,
-        blinded_global_attribute_key: BlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: BlindedPseudonymGlobalSecretKey,
+        blinded_global_attribute_key: BlindedAttributeGlobalSecretKey,
         session_key_shares: &[SessionKeyShares],
     ) -> Self {
         let pseudonym_shares: Vec<PseudonymSessionKeyShare> =

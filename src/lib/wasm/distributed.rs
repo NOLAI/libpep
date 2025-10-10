@@ -55,45 +55,86 @@ impl WASMBlindingFactor {
     }
 }
 
-/// A blinded global secret key, which is the global secret key blinded by the blinding factors from
+/// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = BlindedGlobalSecretKey)]
-pub struct WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey);
+#[wasm_bindgen(js_name = BlindedPseudonymGlobalSecretKey)]
+pub struct WASMBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey);
 
-#[wasm_bindgen(js_class = "BlindedGlobalSecretKey")]
-impl WASMBlindedGlobalSecretKey {
-    /// Create a new [`WASMBlindedGlobalSecretKey`] from a [`WASMScalarNonZero`].
+#[wasm_bindgen(js_class = "BlindedPseudonymGlobalSecretKey")]
+impl WASMBlindedPseudonymGlobalSecretKey {
+    /// Create a new [`WASMBlindedPseudonymGlobalSecretKey`] from a [`WASMScalarNonZero`].
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedGlobalSecretKey(BlindedGlobalSecretKey(x.0))
+        WASMBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey(x.0))
     }
 
-    /// Encode the [`WASMBlindedGlobalSecretKey`] as a byte array.
+    /// Encode the [`WASMBlindedPseudonymGlobalSecretKey`] as a byte array.
     #[wasm_bindgen]
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode().to_vec()
     }
-    /// Decode a [`WASMBlindedGlobalSecretKey`] from a byte array.
+    /// Decode a [`WASMBlindedPseudonymGlobalSecretKey`] from a byte array.
     #[wasm_bindgen]
-    pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_slice(bytes.as_slice()).map(WASMBlindedGlobalSecretKey)
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
+        BlindedPseudonymGlobalSecretKey::decode_from_slice(bytes.as_slice())
+            .map(WASMBlindedPseudonymGlobalSecretKey)
     }
-    /// Encode the [`WASMBlindedGlobalSecretKey`] as a hexadecimal string.
+    /// Encode the [`WASMBlindedPseudonymGlobalSecretKey`] as a hexadecimal string.
     #[wasm_bindgen(js_name = asHex)]
     pub fn as_hex(self) -> String {
         self.0.encode_as_hex()
     }
-    /// Decode a [`WASMBlindedGlobalSecretKey`] from a hexadecimal string.
+    /// Decode a [`WASMBlindedPseudonymGlobalSecretKey`] from a hexadecimal string.
     #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Option<WASMBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_hex(hex).map(WASMBlindedGlobalSecretKey)
+    pub fn from_hex(hex: &str) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
+        BlindedPseudonymGlobalSecretKey::decode_from_hex(hex)
+            .map(WASMBlindedPseudonymGlobalSecretKey)
+    }
+}
+
+/// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
+/// all transcryptors, making it impossible to see or derive other keys from it without cooperation
+/// of the transcryptors.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[wasm_bindgen(js_name = BlindedAttributeGlobalSecretKey)]
+pub struct WASMBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey);
+
+#[wasm_bindgen(js_class = "BlindedAttributeGlobalSecretKey")]
+impl WASMBlindedAttributeGlobalSecretKey {
+    /// Create a new [`WASMBlindedAttributeGlobalSecretKey`] from a [`WASMScalarNonZero`].
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: WASMScalarNonZero) -> Self {
+        WASMBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey(x.0))
+    }
+
+    /// Encode the [`WASMBlindedAttributeGlobalSecretKey`] as a byte array.
+    #[wasm_bindgen]
+    pub fn encode(&self) -> Vec<u8> {
+        self.0.encode().to_vec()
+    }
+    /// Decode a [`WASMBlindedAttributeGlobalSecretKey`] from a byte array.
+    #[wasm_bindgen]
+    pub fn decode(bytes: Vec<u8>) -> Option<WASMBlindedAttributeGlobalSecretKey> {
+        BlindedAttributeGlobalSecretKey::decode_from_slice(bytes.as_slice())
+            .map(WASMBlindedAttributeGlobalSecretKey)
+    }
+    /// Encode the [`WASMBlindedAttributeGlobalSecretKey`] as a hexadecimal string.
+    #[wasm_bindgen(js_name = asHex)]
+    pub fn as_hex(self) -> String {
+        self.0.encode_as_hex()
+    }
+    /// Decode a [`WASMBlindedAttributeGlobalSecretKey`] from a hexadecimal string.
+    #[wasm_bindgen(js_name = fromHex)]
+    pub fn from_hex(hex: &str) -> Option<WASMBlindedAttributeGlobalSecretKey> {
+        BlindedAttributeGlobalSecretKey::decode_from_hex(hex)
+            .map(WASMBlindedAttributeGlobalSecretKey)
     }
 }
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`WASMBlindedGlobalSecretKey`], a pseudonym session key can be derived.
+/// By combining all pseudonym session key shares and the [`WASMBlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = PseudonymSessionKeyShare)]
 pub struct WASMPseudonymSessionKeyShare(PseudonymSessionKeyShare);
@@ -129,7 +170,7 @@ impl WASMPseudonymSessionKeyShare {
 }
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`WASMBlindedGlobalSecretKey`], an attribute session key can be derived.
+/// By combining all attribute session key shares and the [`WASMBlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = AttributeSessionKeyShare)]
 pub struct WASMAttributeSessionKeyShare(AttributeSessionKeyShare);
@@ -196,14 +237,14 @@ impl WASMSessionKeyShares {
     }
 }
 
-/// Create a [`WASMBlindedGlobalSecretKey`] from a [`WASMPseudonymGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
+/// Create a [`WASMBlindedPseudonymGlobalSecretKey`] from a [`WASMPseudonymGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
 /// Used during system setup to blind the pseudonym global secret key.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 #[wasm_bindgen(js_name = makeBlindedPseudonymGlobalSecretKey)]
 pub fn wasm_make_blinded_pseudonym_global_secret_key(
     global_secret_key: &WASMPseudonymGlobalSecretKey,
     blinding_factors: Vec<WASMBlindingFactor>,
-) -> WASMBlindedGlobalSecretKey {
+) -> WASMBlindedPseudonymGlobalSecretKey {
     // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
     // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
     // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
@@ -211,7 +252,7 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    WASMBlindedGlobalSecretKey(
+    WASMBlindedPseudonymGlobalSecretKey(
         make_blinded_pseudonym_global_secret_key(
             &PseudonymGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
@@ -220,14 +261,14 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
     )
 }
 
-/// Create a [`WASMBlindedGlobalSecretKey`] from a [`WASMAttributeGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
+/// Create a [`WASMBlindedAttributeGlobalSecretKey`] from a [`WASMAttributeGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
 /// Used during system setup to blind the attribute global secret key.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 #[wasm_bindgen(js_name = makeBlindedAttributeGlobalSecretKey)]
 pub fn wasm_make_blinded_attribute_global_secret_key(
     global_secret_key: &WASMAttributeGlobalSecretKey,
     blinding_factors: Vec<WASMBlindingFactor>,
-) -> WASMBlindedGlobalSecretKey {
+) -> WASMBlindedAttributeGlobalSecretKey {
     // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
     // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
     // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
@@ -235,7 +276,7 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
-    WASMBlindedGlobalSecretKey(
+    WASMBlindedAttributeGlobalSecretKey(
         make_blinded_attribute_global_secret_key(
             &AttributeGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
             &bs,
@@ -349,9 +390,9 @@ impl WASMPEPClient {
     /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
     #[wasm_bindgen(constructor)]
     pub fn new(
-        blinded_global_pseudonym_key: &WASMBlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: &WASMBlindedPseudonymGlobalSecretKey,
         pseudonym_session_key_shares: Vec<WASMPseudonymSessionKeyShare>,
-        blinded_global_attribute_key: &WASMBlindedGlobalSecretKey,
+        blinded_global_attribute_key: &WASMBlindedAttributeGlobalSecretKey,
         attribute_session_key_shares: Vec<WASMAttributeSessionKeyShare>,
     ) -> Self {
         // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
@@ -377,8 +418,8 @@ impl WASMPEPClient {
     /// This is a convenience method that accepts a vector of [`WASMSessionKeyShares`].
     #[wasm_bindgen(js_name = fromSessionKeyShares)]
     pub fn from_session_key_shares(
-        blinded_global_pseudonym_key: &WASMBlindedGlobalSecretKey,
-        blinded_global_attribute_key: &WASMBlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: &WASMBlindedPseudonymGlobalSecretKey,
+        blinded_global_attribute_key: &WASMBlindedAttributeGlobalSecretKey,
         session_key_shares: Vec<WASMSessionKeyShares>,
     ) -> Self {
         // FIXME we do not pass a reference to the session key shares vector, since WASM does not support references to arrays of structs

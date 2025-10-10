@@ -68,15 +68,27 @@ class TestDistributed(unittest.TestCase):
         """Test blinded global secret key operations"""
         # Test encoding/decoding for pseudonym key
         encoded = self.blinded_pseudonym_global_key.encode()
-        decoded = distributed.BlindedGlobalSecretKey.decode(encoded)
+        decoded = distributed.BlindedPseudonymGlobalSecretKey.decode(encoded)
         self.assertIsNotNone(decoded)
         self.assertEqual(self.blinded_pseudonym_global_key.as_hex(), decoded.as_hex())
 
-        # Test hex operations
+        # Test hex operations for pseudonym key
         hex_str = self.blinded_pseudonym_global_key.as_hex()
-        decoded_hex = distributed.BlindedGlobalSecretKey.from_hex(hex_str)
+        decoded_hex = distributed.BlindedPseudonymGlobalSecretKey.from_hex(hex_str)
         self.assertIsNotNone(decoded_hex)
         self.assertEqual(hex_str, decoded_hex.as_hex())
+
+        # Test encoding/decoding for attribute key
+        encoded_attr = self.blinded_attribute_global_key.encode()
+        decoded_attr = distributed.BlindedAttributeGlobalSecretKey.decode(encoded_attr)
+        self.assertIsNotNone(decoded_attr)
+        self.assertEqual(self.blinded_attribute_global_key.as_hex(), decoded_attr.as_hex())
+
+        # Test hex operations for attribute key
+        hex_str_attr = self.blinded_attribute_global_key.as_hex()
+        decoded_hex_attr = distributed.BlindedAttributeGlobalSecretKey.from_hex(hex_str_attr)
+        self.assertIsNotNone(decoded_hex_attr)
+        self.assertEqual(hex_str_attr, decoded_hex_attr.as_hex())
     
     def test_pep_system_creation(self):
         """Test PEP system creation and basic operations"""

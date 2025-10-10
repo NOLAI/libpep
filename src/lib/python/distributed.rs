@@ -70,62 +70,118 @@ impl PyBlindingFactor {
     }
 }
 
-/// A blinded global secret key, which is the global secret key blinded by the blinding factors from
+/// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "BlindedGlobalSecretKey")]
-pub struct PyBlindedGlobalSecretKey(BlindedGlobalSecretKey);
+#[pyclass(name = "BlindedPseudonymGlobalSecretKey")]
+pub struct PyBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey);
 
 #[pymethods]
-impl PyBlindedGlobalSecretKey {
-    /// Create a new [`PyBlindedGlobalSecretKey`] from a [`PyScalarNonZero`].
+impl PyBlindedPseudonymGlobalSecretKey {
+    /// Create a new [`PyBlindedPseudonymGlobalSecretKey`] from a [`PyScalarNonZero`].
     #[new]
     fn new(x: PyScalarNonZero) -> Self {
-        PyBlindedGlobalSecretKey(BlindedGlobalSecretKey(x.0))
+        PyBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey(x.0))
     }
 
-    /// Encode the [`PyBlindedGlobalSecretKey`] as a byte array.
+    /// Encode the [`PyBlindedPseudonymGlobalSecretKey`] as a byte array.
     #[pyo3(name = "encode")]
     fn encode(&self, py: Python) -> PyObject {
         PyBytes::new_bound(py, &self.0.encode()).into()
     }
 
-    /// Decode a [`PyBlindedGlobalSecretKey`] from a byte array.
+    /// Decode a [`PyBlindedPseudonymGlobalSecretKey`] from a byte array.
     #[staticmethod]
     #[pyo3(name = "decode")]
-    fn decode(bytes: &[u8]) -> Option<PyBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_slice(bytes).map(PyBlindedGlobalSecretKey)
+    fn decode(bytes: &[u8]) -> Option<PyBlindedPseudonymGlobalSecretKey> {
+        BlindedPseudonymGlobalSecretKey::decode_from_slice(bytes)
+            .map(PyBlindedPseudonymGlobalSecretKey)
     }
 
-    /// Encode the [`PyBlindedGlobalSecretKey`] as a hexadecimal string.
+    /// Encode the [`PyBlindedPseudonymGlobalSecretKey`] as a hexadecimal string.
     #[pyo3(name = "as_hex")]
     fn as_hex(&self) -> String {
         self.0.encode_as_hex()
     }
 
-    /// Decode a [`PyBlindedGlobalSecretKey`] from a hexadecimal string.
+    /// Decode a [`PyBlindedPseudonymGlobalSecretKey`] from a hexadecimal string.
     #[staticmethod]
     #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<PyBlindedGlobalSecretKey> {
-        BlindedGlobalSecretKey::decode_from_hex(hex).map(PyBlindedGlobalSecretKey)
+    fn from_hex(hex: &str) -> Option<PyBlindedPseudonymGlobalSecretKey> {
+        BlindedPseudonymGlobalSecretKey::decode_from_hex(hex).map(PyBlindedPseudonymGlobalSecretKey)
     }
 
     fn __repr__(&self) -> String {
-        format!("BlindedGlobalSecretKey({})", self.as_hex())
+        format!("BlindedPseudonymGlobalSecretKey({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
         self.as_hex()
     }
 
-    fn __eq__(&self, other: &PyBlindedGlobalSecretKey) -> bool {
+    fn __eq__(&self, other: &PyBlindedPseudonymGlobalSecretKey) -> bool {
+        self.0 == other.0
+    }
+}
+
+/// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
+/// all transcryptors, making it impossible to see or derive other keys from it without cooperation
+/// of the transcryptors.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
+#[pyclass(name = "BlindedAttributeGlobalSecretKey")]
+pub struct PyBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey);
+
+#[pymethods]
+impl PyBlindedAttributeGlobalSecretKey {
+    /// Create a new [`PyBlindedAttributeGlobalSecretKey`] from a [`PyScalarNonZero`].
+    #[new]
+    fn new(x: PyScalarNonZero) -> Self {
+        PyBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey(x.0))
+    }
+
+    /// Encode the [`PyBlindedAttributeGlobalSecretKey`] as a byte array.
+    #[pyo3(name = "encode")]
+    fn encode(&self, py: Python) -> PyObject {
+        PyBytes::new_bound(py, &self.0.encode()).into()
+    }
+
+    /// Decode a [`PyBlindedAttributeGlobalSecretKey`] from a byte array.
+    #[staticmethod]
+    #[pyo3(name = "decode")]
+    fn decode(bytes: &[u8]) -> Option<PyBlindedAttributeGlobalSecretKey> {
+        BlindedAttributeGlobalSecretKey::decode_from_slice(bytes)
+            .map(PyBlindedAttributeGlobalSecretKey)
+    }
+
+    /// Encode the [`PyBlindedAttributeGlobalSecretKey`] as a hexadecimal string.
+    #[pyo3(name = "as_hex")]
+    fn as_hex(&self) -> String {
+        self.0.encode_as_hex()
+    }
+
+    /// Decode a [`PyBlindedAttributeGlobalSecretKey`] from a hexadecimal string.
+    #[staticmethod]
+    #[pyo3(name = "from_hex")]
+    fn from_hex(hex: &str) -> Option<PyBlindedAttributeGlobalSecretKey> {
+        BlindedAttributeGlobalSecretKey::decode_from_hex(hex).map(PyBlindedAttributeGlobalSecretKey)
+    }
+
+    fn __repr__(&self) -> String {
+        format!("BlindedAttributeGlobalSecretKey({})", self.as_hex())
+    }
+
+    fn __str__(&self) -> String {
+        self.as_hex()
+    }
+
+    fn __eq__(&self, other: &PyBlindedAttributeGlobalSecretKey) -> bool {
         self.0 == other.0
     }
 }
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`PyBlindedGlobalSecretKey`], a pseudonym session key can be derived.
+/// By combining all pseudonym session key shares and the [`PyBlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[pyclass(name = "PseudonymSessionKeyShare")]
 pub struct PyPseudonymSessionKeyShare(PseudonymSessionKeyShare);
@@ -178,7 +234,7 @@ impl PyPseudonymSessionKeyShare {
 }
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`PyBlindedGlobalSecretKey`], an attribute session key can be derived.
+/// By combining all attribute session key shares and the [`PyBlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[pyclass(name = "AttributeSessionKeyShare")]
 pub struct PyAttributeSessionKeyShare(AttributeSessionKeyShare);
@@ -265,7 +321,7 @@ impl PySessionKeyShares {
     }
 }
 
-/// Create a [`PyBlindedGlobalSecretKey`] from a [`PyPseudonymGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
+/// Create a [`PyBlindedPseudonymGlobalSecretKey`] from a [`PyPseudonymGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
 /// Used during system setup to blind the pseudonym global secret key.
 /// Returns an error if the product of all blinding factors accidentally turns out to be 1.
 #[pyfunction]
@@ -273,7 +329,7 @@ impl PySessionKeyShares {
 pub fn py_make_blinded_pseudonym_global_secret_key(
     global_secret_key: &PyPseudonymGlobalSecretKey,
     blinding_factors: Vec<PyBlindingFactor>,
-) -> PyResult<PyBlindedGlobalSecretKey> {
+) -> PyResult<PyBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
@@ -283,10 +339,10 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
-    Ok(PyBlindedGlobalSecretKey(result))
+    Ok(PyBlindedPseudonymGlobalSecretKey(result))
 }
 
-/// Create a [`PyBlindedGlobalSecretKey`] from a [`PyAttributeGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
+/// Create a [`PyBlindedAttributeGlobalSecretKey`] from a [`PyAttributeGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
 /// Used during system setup to blind the attribute global secret key.
 /// Returns an error if the product of all blinding factors accidentally turns out to be 1.
 #[pyfunction]
@@ -294,7 +350,7 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
 pub fn py_make_blinded_attribute_global_secret_key(
     global_secret_key: &PyAttributeGlobalSecretKey,
     blinding_factors: Vec<PyBlindingFactor>,
-) -> PyResult<PyBlindedGlobalSecretKey> {
+) -> PyResult<PyBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
         .map(|x| BlindingFactor(x.0 .0))
@@ -304,7 +360,7 @@ pub fn py_make_blinded_attribute_global_secret_key(
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
-    Ok(PyBlindedGlobalSecretKey(result))
+    Ok(PyBlindedAttributeGlobalSecretKey(result))
 }
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
@@ -421,9 +477,9 @@ impl PyPEPClient {
     /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
     #[new]
     fn new(
-        blinded_global_pseudonym_key: &PyBlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: &PyBlindedPseudonymGlobalSecretKey,
         pseudonym_session_key_shares: Vec<PyPseudonymSessionKeyShare>,
-        blinded_global_attribute_key: &PyBlindedGlobalSecretKey,
+        blinded_global_attribute_key: &PyBlindedAttributeGlobalSecretKey,
         attribute_session_key_shares: Vec<PyAttributeSessionKeyShare>,
     ) -> Self {
         let pseudonym_shares: Vec<PseudonymSessionKeyShare> = pseudonym_session_key_shares
@@ -447,8 +503,8 @@ impl PyPEPClient {
     #[staticmethod]
     #[pyo3(name = "from_session_key_shares")]
     fn py_from_session_key_shares(
-        blinded_global_pseudonym_key: &PyBlindedGlobalSecretKey,
-        blinded_global_attribute_key: &PyBlindedGlobalSecretKey,
+        blinded_global_pseudonym_key: &PyBlindedPseudonymGlobalSecretKey,
+        blinded_global_attribute_key: &PyBlindedAttributeGlobalSecretKey,
         session_key_shares: Vec<PySessionKeyShares>,
     ) -> Self {
         let shares: Vec<SessionKeyShares> = session_key_shares
@@ -785,7 +841,8 @@ impl From<&PyTranscryptionInfo> for TranscryptionInfo {
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindingFactor>()?;
-    m.add_class::<PyBlindedGlobalSecretKey>()?;
+    m.add_class::<PyBlindedPseudonymGlobalSecretKey>()?;
+    m.add_class::<PyBlindedAttributeGlobalSecretKey>()?;
     m.add_class::<PyPseudonymSessionKeyShare>()?;
     m.add_class::<PyAttributeSessionKeyShare>()?;
     m.add_class::<PySessionKeyShares>()?;
