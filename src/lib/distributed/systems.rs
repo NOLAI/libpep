@@ -48,6 +48,15 @@ impl PEPSystem {
         let k = make_attribute_rekey_factor(&self.rekeying_secret, session);
         make_attribute_session_key_share(&k.0, &self.blinding_factor)
     }
+
+    /// Generate both pseudonym and attribute session key shares for the given session.
+    /// This is a convenience method that returns both shares together.
+    pub fn session_key_shares(&self, session: &EncryptionContext) -> SessionKeyShares {
+        SessionKeyShares {
+            pseudonym: self.pseudonym_session_key_share(session),
+            attribute: self.attribute_session_key_share(session),
+        }
+    }
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
     pub fn attribute_rekey_info(
         &self,
@@ -190,6 +199,25 @@ impl PEPClient {
         }
     }
 
+    /// Create a new PEP client from combined session key shares.
+    /// This is a convenience method that accepts a slice of [`SessionKeyShares`].
+    pub fn from_session_key_shares(
+        blinded_global_pseudonym_key: BlindedGlobalSecretKey,
+        blinded_global_attribute_key: BlindedGlobalSecretKey,
+        session_key_shares: &[SessionKeyShares],
+    ) -> Self {
+        let pseudonym_shares: Vec<PseudonymSessionKeyShare> =
+            session_key_shares.iter().map(|s| s.pseudonym).collect();
+        let attribute_shares: Vec<AttributeSessionKeyShare> =
+            session_key_shares.iter().map(|s| s.attribute).collect();
+        Self::new(
+            blinded_global_pseudonym_key,
+            &pseudonym_shares,
+            blinded_global_attribute_key,
+            &attribute_shares,
+        )
+    }
+
     /// Create a new PEP client from the given session key pairs.
     pub fn restore(
         pseudonym_session_public_key: PseudonymSessionPublicKey,
@@ -252,6 +280,23 @@ impl PEPClient {
             old_key_share,
             new_key_share,
         )
+    }
+
+    /// Update both pseudonym and attribute session key shares from one session to another.
+    /// This is a convenience method that updates both shares together.
+    pub fn update_session_secret_keys(
+        &mut self,
+        old_key_shares: SessionKeyShares,
+        new_key_shares: SessionKeyShares,
+    ) {
+        self.update_pseudonym_session_secret_key(
+            old_key_shares.pseudonym,
+            new_key_shares.pseudonym,
+        );
+        self.update_attribute_session_secret_key(
+            old_key_shares.attribute,
+            new_key_shares.attribute,
+        );
     }
 
     /// Polymorphic encrypt that works for both pseudonyms and attributes.

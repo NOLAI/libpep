@@ -230,6 +230,41 @@ impl PyAttributeSessionKeyShare {
     }
 }
 
+/// A pair of session key shares containing both pseudonym and attribute shares.
+/// This simplifies the API by combining both shares that are always used together.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
+#[pyclass(name = "SessionKeyShares")]
+pub struct PySessionKeyShares {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymSessionKeyShare,
+    #[pyo3(get)]
+    pub attribute: PyAttributeSessionKeyShare,
+}
+
+#[pymethods]
+impl PySessionKeyShares {
+    /// Create a new [`PySessionKeyShares`] from pseudonym and attribute shares.
+    #[new]
+    fn new(pseudonym: PyPseudonymSessionKeyShare, attribute: PyAttributeSessionKeyShare) -> Self {
+        PySessionKeyShares {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SessionKeyShares(pseudonym={}, attribute={})",
+            self.pseudonym.as_hex(),
+            self.attribute.as_hex()
+        )
+    }
+
+    fn __eq__(&self, other: &PySessionKeyShares) -> bool {
+        self.pseudonym == other.pseudonym && self.attribute == other.attribute
+    }
+}
+
 /// Create a [`PyBlindedGlobalSecretKey`] from a [`PyPseudonymGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
 /// Used during system setup to blind the pseudonym global secret key.
 /// Returns an error if the product of all blinding factors accidentally turns out to be 1.
@@ -308,6 +343,17 @@ impl PyPEPSystem {
         PyAttributeSessionKeyShare(
             self.attribute_session_key_share(&EncryptionContext::from(session)),
         )
+    }
+
+    /// Generate both pseudonym and attribute session key shares for the given session.
+    /// This is a convenience method that returns both shares together.
+    #[pyo3(name = "session_key_shares")]
+    fn py_session_key_shares(&self, session: &str) -> PySessionKeyShares {
+        let shares = self.session_key_shares(&EncryptionContext::from(session));
+        PySessionKeyShares {
+            pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
+            attribute: PyAttributeSessionKeyShare(shares.attribute),
+        }
     }
 
     /// Generate attribute rekey info to rekey from a given session to another.
@@ -396,6 +442,29 @@ impl PyPEPClient {
         ))
     }
 
+    /// Create a new PEP client from combined session key shares.
+    /// This is a convenience method that accepts a list of [`PySessionKeyShares`].
+    #[staticmethod]
+    #[pyo3(name = "from_session_key_shares")]
+    fn py_from_session_key_shares(
+        blinded_global_pseudonym_key: &PyBlindedGlobalSecretKey,
+        blinded_global_attribute_key: &PyBlindedGlobalSecretKey,
+        session_key_shares: Vec<PySessionKeyShares>,
+    ) -> Self {
+        let shares: Vec<SessionKeyShares> = session_key_shares
+            .into_iter()
+            .map(|x| SessionKeyShares {
+                pseudonym: PseudonymSessionKeyShare(x.pseudonym.0 .0),
+                attribute: AttributeSessionKeyShare(x.attribute.0 .0),
+            })
+            .collect();
+        Self(PEPClient::from_session_key_shares(
+            blinded_global_pseudonym_key.0,
+            blinded_global_attribute_key.0,
+            &shares,
+        ))
+    }
+
     /// Restore a PEP client from the given session keys.
     #[staticmethod]
     #[pyo3(name = "restore")]
@@ -457,6 +526,25 @@ impl PyPEPClient {
     ) {
         self.0
             .update_attribute_session_secret_key(old_key_share.0, new_key_share.0);
+    }
+
+    /// Update both pseudonym and attribute session key shares from one session to another.
+    /// This is a convenience method that updates both shares together.
+    #[pyo3(name = "update_session_secret_keys")]
+    fn py_update_session_secret_keys(
+        &mut self,
+        old_key_shares: PySessionKeyShares,
+        new_key_shares: PySessionKeyShares,
+    ) {
+        let old_shares = SessionKeyShares {
+            pseudonym: PseudonymSessionKeyShare(old_key_shares.pseudonym.0 .0),
+            attribute: AttributeSessionKeyShare(old_key_shares.attribute.0 .0),
+        };
+        let new_shares = SessionKeyShares {
+            pseudonym: PseudonymSessionKeyShare(new_key_shares.pseudonym.0 .0),
+            attribute: AttributeSessionKeyShare(new_key_shares.attribute.0 .0),
+        };
+        self.0.update_session_secret_keys(old_shares, new_shares);
     }
 
     /// Decrypt an encrypted pseudonym.
@@ -700,6 +788,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindedGlobalSecretKey>()?;
     m.add_class::<PyPseudonymSessionKeyShare>()?;
     m.add_class::<PyAttributeSessionKeyShare>()?;
+    m.add_class::<PySessionKeyShares>()?;
     m.add_class::<PyPEPSystem>()?;
     m.add_class::<PyPEPClient>()?;
     m.add_class::<PyOfflinePEPClient>()?;
