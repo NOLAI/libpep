@@ -57,7 +57,7 @@ pub use high_level::{
 pub use distributed::{
     wasm_make_blinded_attribute_global_secret_key as make_blinded_attribute_global_secret_key,
     wasm_make_blinded_pseudonym_global_secret_key as make_blinded_pseudonym_global_secret_key,
-    WASMAttributeSessionKeyShare, WASMBlindedGlobalSecretKey, WASMBlindingFactor,
-    WASMOfflinePEPClient, WASMPEPClient, WASMPEPSystem, WASMPseudonymSessionKeyShare,
-    WASMSessionKeyShares,
+    WASMAttributeSessionKeyShare, WASMBlindedAttributeGlobalSecretKey,
+    WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor, WASMOfflinePEPClient, WASMPEPClient,
+    WASMPEPSystem, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
