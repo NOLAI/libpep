@@ -60,7 +60,7 @@ fn make_factor(typ: u32, secret: &Secret, payload: &String) -> ScalarNonZero {
     hmac.update(&typ.to_be_bytes());
     hmac.update(payload.as_bytes());
     let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hmac.finalize().into_bytes().as_slice());
+    bytes.copy_from_slice(&hmac.finalize().into_bytes());
     ScalarNonZero::decode_from_hash(&bytes)
 }
 
@@ -119,6 +119,6 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) 
     let result_outer = hmac.finalize().into_bytes();
 
     let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(result_outer.as_slice());
+    bytes.copy_from_slice(&result_outer);
     ScalarNonZero::decode_from_hash(&bytes)
 }
