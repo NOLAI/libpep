@@ -32,11 +32,7 @@ pub mod distributed;
 pub mod high_level;
 pub mod internal;
 pub mod low_level;
+#[cfg(feature = "python")]
+pub mod python;
 #[cfg(feature = "wasm")]
 pub mod wasm;
-
-#[cfg(feature = "python")]
-mod python;
-
-#[cfg(feature = "python")]
-pub use python::libpep;

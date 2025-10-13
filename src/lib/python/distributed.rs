@@ -321,6 +321,127 @@ impl PySessionKeyShares {
     }
 }
 
+/// A pair of blinded global secret keys containing both pseudonym and attribute keys.
+/// This simplifies the API by combining both keys that are always used together.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
+#[pyclass(name = "BlindedGlobalKeys")]
+pub struct PyBlindedGlobalKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyBlindedPseudonymGlobalSecretKey,
+    #[pyo3(get)]
+    pub attribute: PyBlindedAttributeGlobalSecretKey,
+}
+
+#[pymethods]
+impl PyBlindedGlobalKeys {
+    /// Create a new [`PyBlindedGlobalKeys`] from pseudonym and attribute blinded keys.
+    #[new]
+    fn new(
+        pseudonym: PyBlindedPseudonymGlobalSecretKey,
+        attribute: PyBlindedAttributeGlobalSecretKey,
+    ) -> Self {
+        PyBlindedGlobalKeys {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "BlindedGlobalKeys(pseudonym={}, attribute={})",
+            self.pseudonym.as_hex(),
+            self.attribute.as_hex()
+        )
+    }
+
+    fn __eq__(&self, other: &PyBlindedGlobalKeys) -> bool {
+        self.pseudonym == other.pseudonym && self.attribute == other.attribute
+    }
+}
+
+/// A pair of session public keys containing both pseudonym and attribute public keys.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
+#[pyclass(name = "SessionPublicKeys")]
+pub struct PySessionPublicKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymSessionPublicKey,
+    #[pyo3(get)]
+    pub attribute: PyAttributeSessionPublicKey,
+}
+
+#[pymethods]
+impl PySessionPublicKeys {
+    /// Create a new [`PySessionPublicKeys`] from pseudonym and attribute public keys.
+    #[new]
+    fn new(pseudonym: PyPseudonymSessionPublicKey, attribute: PyAttributeSessionPublicKey) -> Self {
+        PySessionPublicKeys {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SessionPublicKeys(pseudonym={}, attribute={})",
+            self.pseudonym.0.encode_as_hex(),
+            self.attribute.0.encode_as_hex()
+        )
+    }
+
+    fn __eq__(&self, other: &PySessionPublicKeys) -> bool {
+        self.pseudonym == other.pseudonym && self.attribute == other.attribute
+    }
+}
+
+/// A pair of session secret keys containing both pseudonym and attribute secret keys.
+#[derive(Copy, Clone, Debug, From, Into)]
+#[pyclass(name = "SessionSecretKeys")]
+pub struct PySessionSecretKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymSessionSecretKey,
+    #[pyo3(get)]
+    pub attribute: PyAttributeSessionSecretKey,
+}
+
+#[pymethods]
+impl PySessionSecretKeys {
+    /// Create a new [`PySessionSecretKeys`] from pseudonym and attribute secret keys.
+    #[new]
+    fn new(pseudonym: PyPseudonymSessionSecretKey, attribute: PyAttributeSessionSecretKey) -> Self {
+        PySessionSecretKeys {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("SessionSecretKeys(pseudonym=..., attribute=...)")
+    }
+}
+
+/// A pair of session key pairs (public and secret) for both pseudonyms and attributes.
+#[derive(Clone, From, Into)]
+#[pyclass(name = "SessionKeys")]
+pub struct PySessionKeys {
+    #[pyo3(get)]
+    pub public: PySessionPublicKeys,
+    #[pyo3(get)]
+    pub secret: PySessionSecretKeys,
+}
+
+#[pymethods]
+impl PySessionKeys {
+    /// Create a new [`PySessionKeys`] from public and secret keys.
+    #[new]
+    fn new(public: PySessionPublicKeys, secret: PySessionSecretKeys) -> Self {
+        PySessionKeys { public, secret }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("SessionKeys(public={}, secret=...)", self.public.__repr__())
+    }
+}
+
 /// Create a [`PyBlindedPseudonymGlobalSecretKey`] from a [`PyPseudonymGlobalSecretKey`] and a list of [`PyBlindingFactor`]s.
 /// Used during system setup to blind the pseudonym global secret key.
 /// Returns an error if the product of all blinding factors accidentally turns out to be 1.
@@ -361,6 +482,60 @@ pub fn py_make_blinded_attribute_global_secret_key(
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
     Ok(PyBlindedAttributeGlobalSecretKey(result))
+}
+
+/// Create [`PyBlindedGlobalKeys`] (both pseudonym and attribute) from global secret keys and blinding factors.
+/// Returns an error if the product of all blinding factors accidentally turns out to be 1 for either key type.
+#[pyfunction]
+#[pyo3(name = "make_blinded_global_keys")]
+pub fn py_make_blinded_global_keys(
+    pseudonym_global_secret_key: &PyPseudonymGlobalSecretKey,
+    attribute_global_secret_key: &PyAttributeGlobalSecretKey,
+    blinding_factors: Vec<PyBlindingFactor>,
+) -> PyResult<PyBlindedGlobalKeys> {
+    let bs: Vec<BlindingFactor> = blinding_factors
+        .into_iter()
+        .map(|x| BlindingFactor(x.0 .0))
+        .collect();
+    let result = make_blinded_global_keys(
+        &PseudonymGlobalSecretKey::from(pseudonym_global_secret_key.0 .0),
+        &AttributeGlobalSecretKey::from(attribute_global_secret_key.0 .0),
+        &bs,
+    )
+    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
+    Ok(PyBlindedGlobalKeys {
+        pseudonym: PyBlindedPseudonymGlobalSecretKey(result.pseudonym),
+        attribute: PyBlindedAttributeGlobalSecretKey(result.attribute),
+    })
+}
+
+/// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
+/// and a list of blinding factors.
+/// The blinding factors should securely be transferred to the transcryptors, the global public keys
+/// and blinded global secret keys can be publicly shared with anyone and are required by clients.
+#[pyfunction]
+#[pyo3(name = "make_distributed_global_keys")]
+pub fn py_make_distributed_global_keys(
+    n: usize,
+) -> (
+    PyPseudonymGlobalPublicKey,
+    PyAttributeGlobalPublicKey,
+    PyBlindedGlobalKeys,
+    Vec<PyBlindingFactor>,
+) {
+    let mut rng = rand::thread_rng();
+    let (pseudonym_pk, attribute_pk, blinded_keys, blinding_factors) =
+        make_distributed_global_keys(n, &mut rng);
+
+    (
+        PyPseudonymGlobalPublicKey(PyGroupElement(pseudonym_pk.0)),
+        PyAttributeGlobalPublicKey(PyGroupElement(attribute_pk.0)),
+        PyBlindedGlobalKeys {
+            pseudonym: PyBlindedPseudonymGlobalSecretKey(blinded_keys.pseudonym),
+            attribute: PyBlindedAttributeGlobalSecretKey(blinded_keys.attribute),
+        },
+        blinding_factors.into_iter().map(PyBlindingFactor).collect(),
+    )
 }
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
@@ -474,9 +649,31 @@ pub struct PyPEPClient(PEPClient);
 
 #[pymethods]
 impl PyPEPClient {
-    /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
+    /// Create a new PEP client from blinded global keys and session key shares.
     #[new]
     fn new(
+        blinded_global_keys: &PyBlindedGlobalKeys,
+        session_key_shares: Vec<PySessionKeyShares>,
+    ) -> Self {
+        let shares: Vec<SessionKeyShares> = session_key_shares
+            .into_iter()
+            .map(|x| SessionKeyShares {
+                pseudonym: PseudonymSessionKeyShare(x.pseudonym.0 .0),
+                attribute: AttributeSessionKeyShare(x.attribute.0 .0),
+            })
+            .collect();
+        let blinded_keys = BlindedGlobalKeys {
+            pseudonym: blinded_global_keys.pseudonym.0,
+            attribute: blinded_global_keys.attribute.0,
+        };
+        Self(PEPClient::new(blinded_keys, &shares))
+    }
+
+    /// Create a new PEP client from separate blinded global keys and session key shares.
+    /// This is a convenience method for when you have separate keys instead of combined types.
+    #[staticmethod]
+    #[pyo3(name = "from_separate_keys")]
+    fn py_from_separate_keys(
         blinded_global_pseudonym_key: &PyBlindedPseudonymGlobalSecretKey,
         pseudonym_session_key_shares: Vec<PyPseudonymSessionKeyShare>,
         blinded_global_attribute_key: &PyBlindedAttributeGlobalSecretKey,
@@ -490,16 +687,26 @@ impl PyPEPClient {
             .into_iter()
             .map(|x| AttributeSessionKeyShare(x.0 .0))
             .collect();
-        Self(PEPClient::new(
-            blinded_global_pseudonym_key.0,
-            &pseudonym_shares,
-            blinded_global_attribute_key.0,
-            &attribute_shares,
-        ))
+
+        let shares: Vec<SessionKeyShares> = pseudonym_shares
+            .iter()
+            .zip(attribute_shares.iter())
+            .map(|(p, a)| SessionKeyShares {
+                pseudonym: *p,
+                attribute: *a,
+            })
+            .collect();
+
+        let blinded_keys = BlindedGlobalKeys {
+            pseudonym: blinded_global_pseudonym_key.0,
+            attribute: blinded_global_attribute_key.0,
+        };
+
+        Self(PEPClient::new(blinded_keys, &shares))
     }
 
     /// Create a new PEP client from combined session key shares.
-    /// This is a convenience method that accepts a list of [`PySessionKeyShares`].
+    /// This is a convenience method for compatibility that accepts separate blinded keys and combined shares.
     #[staticmethod]
     #[pyo3(name = "from_session_key_shares")]
     fn py_from_session_key_shares(
@@ -507,18 +714,11 @@ impl PyPEPClient {
         blinded_global_attribute_key: &PyBlindedAttributeGlobalSecretKey,
         session_key_shares: Vec<PySessionKeyShares>,
     ) -> Self {
-        let shares: Vec<SessionKeyShares> = session_key_shares
-            .into_iter()
-            .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare(x.pseudonym.0 .0),
-                attribute: AttributeSessionKeyShare(x.attribute.0 .0),
-            })
-            .collect();
-        Self(PEPClient::from_session_key_shares(
-            blinded_global_pseudonym_key.0,
-            blinded_global_attribute_key.0,
-            &shares,
-        ))
+        let blinded_keys = PyBlindedGlobalKeys {
+            pseudonym: *blinded_global_pseudonym_key,
+            attribute: *blinded_global_attribute_key,
+        };
+        Self::new(&blinded_keys, session_key_shares)
     }
 
     /// Restore a PEP client from the given session keys.
@@ -528,23 +728,29 @@ impl PyPEPClient {
         pseudonym_session_keys: &PyPseudonymSessionKeyPair,
         attribute_session_keys: &PyAttributeSessionKeyPair,
     ) -> Self {
-        Self(PEPClient::restore(
-            PseudonymSessionPublicKey(pseudonym_session_keys.public.0 .0),
-            PseudonymSessionSecretKey(pseudonym_session_keys.secret.0 .0),
-            AttributeSessionPublicKey(attribute_session_keys.public.0 .0),
-            AttributeSessionSecretKey(attribute_session_keys.secret.0 .0),
-        ))
+        let keys = SessionKeys {
+            pseudonym: PseudonymSessionKeys {
+                public: PseudonymSessionPublicKey(pseudonym_session_keys.public.0 .0),
+                secret: PseudonymSessionSecretKey(pseudonym_session_keys.secret.0 .0),
+            },
+            attribute: AttributeSessionKeys {
+                public: AttributeSessionPublicKey(attribute_session_keys.public.0 .0),
+                secret: AttributeSessionSecretKey(attribute_session_keys.secret.0 .0),
+            },
+        };
+        Self(PEPClient::restore(keys))
     }
 
     /// Dump the pseudonym session key pair.
     #[pyo3(name = "dump_pseudonym_keys")]
     fn py_dump_pseudonym_keys(&self) -> PyPseudonymSessionKeyPair {
+        let keys = self.0.dump();
         PyPseudonymSessionKeyPair {
             public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(
-                self.pseudonym_session_public_key.0,
+                keys.pseudonym.public.0,
             )),
             secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(
-                self.pseudonym_session_secret_key.0,
+                keys.pseudonym.secret.0,
             )),
         }
     }
@@ -552,12 +758,13 @@ impl PyPEPClient {
     /// Dump the attribute session key pair.
     #[pyo3(name = "dump_attribute_keys")]
     fn py_dump_attribute_keys(&self) -> PyAttributeSessionKeyPair {
+        let keys = self.0.dump();
         PyAttributeSessionKeyPair {
             public: PyAttributeSessionPublicKey::from(PyGroupElement::from(
-                self.attribute_session_public_key.0,
+                keys.attribute.public.0,
             )),
             secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(
-                self.attribute_session_secret_key.0,
+                keys.attribute.secret.0,
             )),
         }
     }
@@ -846,6 +1053,10 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionKeyShare>()?;
     m.add_class::<PyAttributeSessionKeyShare>()?;
     m.add_class::<PySessionKeyShares>()?;
+    m.add_class::<PyBlindedGlobalKeys>()?;
+    m.add_class::<PySessionPublicKeys>()?;
+    m.add_class::<PySessionSecretKeys>()?;
+    m.add_class::<PySessionKeys>()?;
     m.add_class::<PyPEPSystem>()?;
     m.add_class::<PyPEPClient>()?;
     m.add_class::<PyOfflinePEPClient>()?;
@@ -864,5 +1075,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         py_make_blinded_attribute_global_secret_key,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(py_make_blinded_global_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_distributed_global_keys, m)?)?;
     Ok(())
 }
