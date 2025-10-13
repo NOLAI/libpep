@@ -462,7 +462,7 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
         JsValue::from(
             factors
                 .into_iter()
-                .map(|f| JsValue::from(f))
+                .map(JsValue::from)
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         ),

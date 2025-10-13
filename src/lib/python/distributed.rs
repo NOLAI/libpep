@@ -415,7 +415,7 @@ impl PySessionSecretKeys {
     }
 
     fn __repr__(&self) -> String {
-        format!("SessionSecretKeys(pseudonym=..., attribute=...)")
+        "SessionSecretKeys(pseudonym=..., attribute=...)".to_string()
     }
 }
 
