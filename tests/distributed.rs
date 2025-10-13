@@ -1,13 +1,7 @@
-use libpep::distributed::key_blinding::{
-    make_blinded_attribute_global_secret_key, make_blinded_pseudonym_global_secret_key,
-    BlindingFactor, SafeScalar,
-};
 use libpep::distributed::systems::{PEPClient, PEPSystem};
 use libpep::high_level::contexts::*;
 use libpep::high_level::data_types::*;
-use libpep::high_level::keys::*;
 use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::internal::arithmetic::ScalarNonZero;
 use rand_core::OsRng;
 
 #[test]
@@ -15,37 +9,9 @@ fn n_pep() {
     let n = 3;
     let rng = &mut OsRng;
 
-    // Global config
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
-    let blinding_factors = (0..n)
-        .map(|_| BlindingFactor::random(rng))
-        .collect::<Vec<_>>();
-    let blinded_pseudonym_global_secret_key = make_blinded_pseudonym_global_secret_key(
-        &pseudonym_global_secret,
-        &blinding_factors.clone(),
-    )
-    .unwrap();
-    let blinded_attribute_global_secret_key = make_blinded_attribute_global_secret_key(
-        &attribute_global_secret,
-        &blinding_factors.clone(),
-    )
-    .unwrap();
-
-    assert_eq!(
-        *blinded_pseudonym_global_secret_key.value(),
-        pseudonym_global_secret.value()
-            * blinding_factors
-                .iter()
-                .fold(ScalarNonZero::one(), |acc, x| acc * x.value().invert())
-    );
-    assert_eq!(
-        *blinded_attribute_global_secret_key.value(),
-        attribute_global_secret.value()
-            * blinding_factors
-                .iter()
-                .fold(ScalarNonZero::one(), |acc, x| acc * x.value().invert())
-    );
+    // Global config - using the combined convenience method
+    let (_pseudonym_global_public, _attribute_global_public, blinded_global_keys, blinding_factors) =
+        libpep::distributed::key_blinding::make_distributed_global_keys(n, rng);
 
     // Create systems
     let systems = (0..n)
@@ -76,17 +42,9 @@ fn n_pep() {
         .map(|system| system.session_key_shares(&session_b1))
         .collect::<Vec<_>>();
 
-    // Create clients using the new convenience constructor
-    let client_a = PEPClient::from_session_key_shares(
-        blinded_pseudonym_global_secret_key,
-        blinded_attribute_global_secret_key,
-        &sks_a1,
-    );
-    let client_b = PEPClient::from_session_key_shares(
-        blinded_pseudonym_global_secret_key,
-        blinded_attribute_global_secret_key,
-        &sks_b1,
-    );
+    // Create clients using the new constructor with wrapper types
+    let client_a = PEPClient::new(blinded_global_keys, &sks_a1);
+    let client_b = PEPClient::new(blinded_global_keys, &sks_b1);
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);

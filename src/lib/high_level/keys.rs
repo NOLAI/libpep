@@ -18,7 +18,7 @@ use std::fmt::Formatter;
 /// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
 /// key may leak information.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct PseudonymGlobalPublicKey(pub GroupElement);
+pub struct PseudonymGlobalPublicKey(pub(crate) GroupElement);
 /// A global secret key for pseudonyms from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
@@ -27,24 +27,46 @@ pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 /// Can also be used to encrypt attributes against, if no session key is available or using a session
 /// key may leak information.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct AttributeGlobalPublicKey(pub GroupElement);
+pub struct AttributeGlobalPublicKey(pub(crate) GroupElement);
 /// A global secret key for attributes from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 pub struct AttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A session public key used to encrypt pseudonyms against, associated with a [`PseudonymSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct PseudonymSessionPublicKey(pub GroupElement);
+pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt pseudonyms with.
 #[derive(Copy, Clone, Debug, From)]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A session public key used to encrypt attributes against, associated with a [`AttributeSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
-pub struct AttributeSessionPublicKey(pub GroupElement);
+pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt attributes with.
 #[derive(Copy, Clone, Debug, From)]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);
+
+/// A pseudonym session key pair containing both public and secret keys.
+#[derive(Copy, Clone, Debug)]
+pub struct PseudonymSessionKeys {
+    pub public: PseudonymSessionPublicKey,
+    pub secret: PseudonymSessionSecretKey,
+}
+
+/// An attribute session key pair containing both public and secret keys.
+#[derive(Copy, Clone, Debug)]
+pub struct AttributeSessionKeys {
+    pub public: AttributeSessionPublicKey,
+    pub secret: AttributeSessionSecretKey,
+}
+
+/// Session keys for both pseudonyms and attributes.
+/// Organized by key type (pseudonym/attribute) rather than by public/secret.
+#[derive(Clone, Debug)]
+pub struct SessionKeys {
+    pub pseudonym: PseudonymSessionKeys,
+    pub attribute: AttributeSessionKeys,
+}
 
 impl Serialize for PseudonymSessionSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -39,7 +39,7 @@ pub struct EncryptionContext {
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub struct PseudonymizationDomain(pub String);
 /// Encryption contexts are used to describe the domain in which ciphertexts exist (typically, a
-/// user's  session).
+/// user's session).
 #[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub struct EncryptionContext(pub String);

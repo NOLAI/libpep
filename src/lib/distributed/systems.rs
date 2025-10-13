@@ -15,8 +15,8 @@ use rand_core::{CryptoRng, RngCore};
 /// a pseudonymisation secret, a rekeying secret and a blinding factor.
 #[derive(Clone)]
 pub struct PEPSystem {
-    pub(crate) pseudonymisation_secret: PseudonymizationSecret,
-    pub(crate) rekeying_secret: EncryptionSecret,
+    pseudonymisation_secret: PseudonymizationSecret,
+    rekeying_secret: EncryptionSecret,
     blinding_factor: BlindingFactor,
 }
 impl PEPSystem {
@@ -52,10 +52,13 @@ impl PEPSystem {
     /// Generate both pseudonym and attribute session key shares for the given session.
     /// This is a convenience method that returns both shares together.
     pub fn session_key_shares(&self, session: &EncryptionContext) -> SessionKeyShares {
-        SessionKeyShares {
-            pseudonym: self.pseudonym_session_key_share(session),
-            attribute: self.attribute_session_key_share(session),
-        }
+        let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&self.rekeying_secret, session);
+        let attribute_rekey_factor = make_attribute_rekey_factor(&self.rekeying_secret, session);
+        make_session_key_shares(
+            &pseudonym_rekey_factor.0,
+            &attribute_rekey_factor.0,
+            &self.blinding_factor,
+        )
     }
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
     pub fn attribute_rekey_info(
@@ -171,83 +174,30 @@ impl PEPSystem {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 }
-/// A PEP client that can encrypt and decrypt data, based on separate session key pairs for pseudonyms and attributes.
+
+/// A PEP client that can encrypt and decrypt data, based on session key pairs for pseudonyms and attributes.
 #[derive(Clone)]
 pub struct PEPClient {
-    pub pseudonym_session_public_key: PseudonymSessionPublicKey,
-    pub(crate) pseudonym_session_secret_key: PseudonymSessionSecretKey,
-    pub attribute_session_public_key: AttributeSessionPublicKey,
-    pub(crate) attribute_session_secret_key: AttributeSessionSecretKey,
+    keys: SessionKeys,
 }
 impl PEPClient {
-    /// Create a new PEP client from the given session key shares for both pseudonyms and attributes.
+    /// Create a new PEP client from blinded global keys and session key shares.
     pub fn new(
-        blinded_global_pseudonym_key: BlindedPseudonymGlobalSecretKey,
-        pseudonym_session_key_shares: &[PseudonymSessionKeyShare],
-        blinded_global_attribute_key: BlindedAttributeGlobalSecretKey,
-        attribute_session_key_shares: &[AttributeSessionKeyShare],
-    ) -> Self {
-        let (pseudonym_public, pseudonym_secret) =
-            make_pseudonym_session_key(blinded_global_pseudonym_key, pseudonym_session_key_shares);
-        let (attribute_public, attribute_secret) =
-            make_attribute_session_key(blinded_global_attribute_key, attribute_session_key_shares);
-        Self {
-            pseudonym_session_public_key: pseudonym_public,
-            pseudonym_session_secret_key: pseudonym_secret,
-            attribute_session_public_key: attribute_public,
-            attribute_session_secret_key: attribute_secret,
-        }
-    }
-
-    /// Create a new PEP client from combined session key shares.
-    /// This is a convenience method that accepts a slice of [`SessionKeyShares`].
-    pub fn from_session_key_shares(
-        blinded_global_pseudonym_key: BlindedPseudonymGlobalSecretKey,
-        blinded_global_attribute_key: BlindedAttributeGlobalSecretKey,
+        blinded_global_keys: BlindedGlobalKeys,
         session_key_shares: &[SessionKeyShares],
     ) -> Self {
-        let pseudonym_shares: Vec<PseudonymSessionKeyShare> =
-            session_key_shares.iter().map(|s| s.pseudonym).collect();
-        let attribute_shares: Vec<AttributeSessionKeyShare> =
-            session_key_shares.iter().map(|s| s.attribute).collect();
-        Self::new(
-            blinded_global_pseudonym_key,
-            &pseudonym_shares,
-            blinded_global_attribute_key,
-            &attribute_shares,
-        )
+        let keys = make_session_keys(blinded_global_keys, session_key_shares);
+        Self { keys }
     }
 
-    /// Create a new PEP client from the given session key pairs.
-    pub fn restore(
-        pseudonym_session_public_key: PseudonymSessionPublicKey,
-        pseudonym_session_secret_key: PseudonymSessionSecretKey,
-        attribute_session_public_key: AttributeSessionPublicKey,
-        attribute_session_secret_key: AttributeSessionSecretKey,
-    ) -> Self {
-        Self {
-            pseudonym_session_public_key,
-            pseudonym_session_secret_key,
-            attribute_session_public_key,
-            attribute_session_secret_key,
-        }
+    /// Create a new PEP client from the given session keys.
+    pub fn restore(keys: SessionKeys) -> Self {
+        Self { keys }
     }
 
-    /// Dump the session key pairs.
-    pub fn dump(
-        &self,
-    ) -> (
-        PseudonymSessionPublicKey,
-        PseudonymSessionSecretKey,
-        AttributeSessionPublicKey,
-        AttributeSessionSecretKey,
-    ) {
-        (
-            self.pseudonym_session_public_key,
-            self.pseudonym_session_secret_key,
-            self.attribute_session_public_key,
-            self.attribute_session_secret_key,
-        )
+    /// Dump the session keys.
+    pub fn dump(&self) -> &SessionKeys {
+        &self.keys
     }
 
     /// Update a pseudonym session key share from one session to the other
@@ -256,14 +206,10 @@ impl PEPClient {
         old_key_share: PseudonymSessionKeyShare,
         new_key_share: PseudonymSessionKeyShare,
     ) {
-        (
-            self.pseudonym_session_public_key,
-            self.pseudonym_session_secret_key,
-        ) = update_pseudonym_session_key(
-            self.pseudonym_session_secret_key,
-            old_key_share,
-            new_key_share,
-        )
+        let (public, secret) =
+            update_pseudonym_session_key(self.keys.pseudonym.secret, old_key_share, new_key_share);
+        self.keys.pseudonym.public = public;
+        self.keys.pseudonym.secret = secret;
     }
 
     /// Update an attribute session key share from one session to the other
@@ -272,14 +218,10 @@ impl PEPClient {
         old_key_share: AttributeSessionKeyShare,
         new_key_share: AttributeSessionKeyShare,
     ) {
-        (
-            self.attribute_session_public_key,
-            self.attribute_session_secret_key,
-        ) = update_attribute_session_key(
-            self.attribute_session_secret_key,
-            old_key_share,
-            new_key_share,
-        )
+        let (public, secret) =
+            update_attribute_session_key(self.keys.attribute.secret, old_key_share, new_key_share);
+        self.keys.attribute.public = public;
+        self.keys.attribute.secret = secret;
     }
 
     /// Update both pseudonym and attribute session key shares from one session to another.
@@ -289,47 +231,80 @@ impl PEPClient {
         old_key_shares: SessionKeyShares,
         new_key_shares: SessionKeyShares,
     ) {
-        self.update_pseudonym_session_secret_key(
-            old_key_shares.pseudonym,
-            new_key_shares.pseudonym,
-        );
-        self.update_attribute_session_secret_key(
-            old_key_shares.attribute,
-            new_key_shares.attribute,
-        );
+        self.keys = update_session_keys(self.keys.clone(), old_key_shares, new_key_shares);
+    }
+
+    /// Get the appropriate public key for a given message type.
+    fn get_public_key_for<M>(&self) -> &M::SessionPublicKey
+    where
+        M: HasSessionKeys + 'static,
+    {
+        use std::any::TypeId;
+
+        if TypeId::of::<M>() == TypeId::of::<Pseudonym>() {
+            // Safe because we've checked the type
+            unsafe { &*(&self.keys.pseudonym.public as *const _ as *const M::SessionPublicKey) }
+        } else if TypeId::of::<M>() == TypeId::of::<Attribute>() {
+            unsafe { &*(&self.keys.attribute.public as *const _ as *const M::SessionPublicKey) }
+        } else {
+            panic!("Unsupported message type")
+        }
+    }
+
+    /// Get the appropriate secret key for a given encrypted message type.
+    fn get_secret_key_for<E>(&self) -> &<E::UnencryptedType as HasSessionKeys>::SessionSecretKey
+    where
+        E: Encrypted,
+        E::UnencryptedType: HasSessionKeys + 'static,
+    {
+        use std::any::TypeId;
+
+        if TypeId::of::<E::UnencryptedType>() == TypeId::of::<Pseudonym>() {
+            unsafe {
+                &*(&self.keys.pseudonym.secret as *const _
+                    as *const <E::UnencryptedType as HasSessionKeys>::SessionSecretKey)
+            }
+        } else if TypeId::of::<E::UnencryptedType>() == TypeId::of::<Attribute>() {
+            unsafe {
+                &*(&self.keys.attribute.secret as *const _
+                    as *const <E::UnencryptedType as HasSessionKeys>::SessionSecretKey)
+            }
+        } else {
+            panic!("Unsupported encrypted type")
+        }
     }
 
     /// Polymorphic encrypt that works for both pseudonyms and attributes.
-    /// Uses the appropriate session key based on the message type.
+    /// Automatically uses the appropriate session key based on the message type.
     ///
     /// # Example
     /// ```ignore
-    /// let encrypted_pseudonym = client.encrypt(&pseudonym, &client.pseudonym_session_public_key, rng);
-    /// let encrypted_attribute = client.encrypt(&attribute, &client.attribute_session_public_key, rng);
+    /// let encrypted_pseudonym = client.encrypt(&pseudonym, rng);
+    /// let encrypted_attribute = client.encrypt(&attribute, rng);
     /// ```
-    pub fn encrypt<M, R, P>(&self, message: &M, public_key: &P, rng: &mut R) -> M::EncryptedType
+    pub fn encrypt<M, R>(&self, message: &M, rng: &mut R) -> M::EncryptedType
     where
-        M: HasSessionKeys<SessionPublicKey = P>,
-        P: PublicKey,
+        M: HasSessionKeys + 'static,
         R: RngCore + CryptoRng,
     {
+        let public_key = self.get_public_key_for::<M>();
         encrypt(message, public_key, rng)
     }
 
     /// Polymorphic decrypt that works for both encrypted pseudonyms and attributes.
-    /// Uses the appropriate session key based on the encrypted message type.
+    /// Automatically uses the appropriate session key based on the encrypted message type.
     ///
     /// # Example
     /// ```ignore
-    /// let pseudonym = client.decrypt(&encrypted_pseudonym, &client.pseudonym_session_secret_key);
-    /// let attribute = client.decrypt(&encrypted_attribute, &client.attribute_session_secret_key);
+    /// let pseudonym = client.decrypt(&encrypted_pseudonym);
+    /// let attribute = client.decrypt(&encrypted_attribute);
     /// ```
-    pub fn decrypt<E, S>(&self, encrypted: &E, secret_key: &S) -> E::UnencryptedType
+    pub fn decrypt<E>(&self, encrypted: &E) -> E::UnencryptedType
     where
         E: Encrypted,
-        E::UnencryptedType: HasSessionKeys<SessionSecretKey = S>,
-        S: SecretKey,
+        E::UnencryptedType: HasSessionKeys + 'static,
     {
+        let secret_key = self.get_secret_key_for::<E>();
         decrypt(encrypted, secret_key)
     }
 
@@ -339,7 +314,7 @@ impl PEPClient {
         message: &Pseudonym,
         rng: &mut R,
     ) -> EncryptedPseudonym {
-        encrypt_pseudonym(message, &self.pseudonym_session_public_key, rng)
+        encrypt_pseudonym(message, &self.keys.pseudonym.public, rng)
     }
 
     /// Encrypt an attribute with the attribute session public key.
@@ -348,17 +323,17 @@ impl PEPClient {
         message: &Attribute,
         rng: &mut R,
     ) -> EncryptedAttribute {
-        encrypt_attribute(message, &self.attribute_session_public_key, rng)
+        encrypt_attribute(message, &self.keys.attribute.public, rng)
     }
 
     /// Decrypt an encrypted pseudonym.
     pub fn decrypt_pseudonym(&self, encrypted: &EncryptedPseudonym) -> Pseudonym {
-        decrypt_pseudonym(encrypted, &self.pseudonym_session_secret_key)
+        decrypt_pseudonym(encrypted, &self.keys.pseudonym.secret)
     }
 
     /// Decrypt an encrypted attribute.
     pub fn decrypt_attribute(&self, encrypted: &EncryptedAttribute) -> Attribute {
-        decrypt_attribute(encrypted, &self.attribute_session_secret_key)
+        decrypt_attribute(encrypted, &self.keys.attribute.secret)
     }
 }
 
