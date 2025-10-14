@@ -1,6 +1,7 @@
 use crate::distributed::key_blinding::*;
 use crate::distributed::systems::*;
 use crate::high_level::contexts::*;
+use crate::high_level::data_types::{EncryptedAttribute, EncryptedPseudonym};
 use crate::high_level::keys::*;
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::python::arithmetic::*;
@@ -442,6 +443,44 @@ impl PySessionKeys {
     }
 }
 
+/// Create a blinded pseudonym global secret key from a pseudonym global secret key and blinding factors.
+#[pyfunction]
+#[pyo3(name = "make_blinded_pseudonym_global_secret_key")]
+pub fn py_make_blinded_pseudonym_global_secret_key(
+    global_secret_key: &PyPseudonymGlobalSecretKey,
+    blinding_factors: Vec<PyBlindingFactor>,
+) -> PyResult<PyBlindedPseudonymGlobalSecretKey> {
+    let bs: Vec<BlindingFactor> = blinding_factors
+        .into_iter()
+        .map(|x| BlindingFactor(x.0 .0))
+        .collect();
+    let result = make_blinded_pseudonym_global_secret_key(
+        &PseudonymGlobalSecretKey::from(global_secret_key.0 .0),
+        &bs,
+    )
+    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
+    Ok(PyBlindedPseudonymGlobalSecretKey(result))
+}
+
+/// Create a blinded attribute global secret key from an attribute global secret key and blinding factors.
+#[pyfunction]
+#[pyo3(name = "make_blinded_attribute_global_secret_key")]
+pub fn py_make_blinded_attribute_global_secret_key(
+    global_secret_key: &PyAttributeGlobalSecretKey,
+    blinding_factors: Vec<PyBlindingFactor>,
+) -> PyResult<PyBlindedAttributeGlobalSecretKey> {
+    let bs: Vec<BlindingFactor> = blinding_factors
+        .into_iter()
+        .map(|x| BlindingFactor(x.0 .0))
+        .collect();
+    let result = make_blinded_attribute_global_secret_key(
+        &AttributeGlobalSecretKey::from(global_secret_key.0 .0),
+        &bs,
+    )
+    .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
+    Ok(PyBlindedAttributeGlobalSecretKey(result))
+}
+
 /// Create [`PyBlindedGlobalKeys`] (both pseudonym and attribute) from global secret keys and blinding factors.
 /// Returns an error if the product of all blinding factors accidentally turns out to be 1 for either key type.
 #[pyfunction]
@@ -464,6 +503,189 @@ pub fn py_make_blinded_global_keys(
         pseudonym: PyBlindedPseudonymGlobalSecretKey(result.pseudonym),
         attribute: PyBlindedAttributeGlobalSecretKey(result.attribute),
     })
+}
+
+/// Create a pseudonym session key share from a rekey factor and blinding factor.
+#[pyfunction]
+#[pyo3(name = "make_pseudonym_session_key_share")]
+pub fn py_make_pseudonym_session_key_share(
+    rekey_factor: &PyScalarNonZero,
+    blinding_factor: &PyBlindingFactor,
+) -> PyPseudonymSessionKeyShare {
+    PyPseudonymSessionKeyShare(make_pseudonym_session_key_share(
+        &rekey_factor.0,
+        &blinding_factor.0,
+    ))
+}
+
+/// Create an attribute session key share from a rekey factor and blinding factor.
+#[pyfunction]
+#[pyo3(name = "make_attribute_session_key_share")]
+pub fn py_make_attribute_session_key_share(
+    rekey_factor: &PyScalarNonZero,
+    blinding_factor: &PyBlindingFactor,
+) -> PyAttributeSessionKeyShare {
+    PyAttributeSessionKeyShare(make_attribute_session_key_share(
+        &rekey_factor.0,
+        &blinding_factor.0,
+    ))
+}
+
+/// Create session key shares (both pseudonym and attribute) from rekey factors and blinding factor.
+#[pyfunction]
+#[pyo3(name = "make_session_key_shares")]
+pub fn py_make_session_key_shares(
+    pseudonym_rekey_factor: &PyScalarNonZero,
+    attribute_rekey_factor: &PyScalarNonZero,
+    blinding_factor: &PyBlindingFactor,
+) -> PySessionKeyShares {
+    let shares = make_session_key_shares(
+        &pseudonym_rekey_factor.0,
+        &attribute_rekey_factor.0,
+        &blinding_factor.0,
+    );
+    PySessionKeyShares {
+        pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
+        attribute: PyAttributeSessionKeyShare(shares.attribute),
+    }
+}
+
+/// Reconstruct pseudonym session keys from blinded global secret key and session key shares.
+#[pyfunction]
+#[pyo3(name = "make_pseudonym_session_key")]
+pub fn py_make_pseudonym_session_key(
+    blinded_global_secret_key: PyBlindedPseudonymGlobalSecretKey,
+    session_key_shares: Vec<PyPseudonymSessionKeyShare>,
+) -> PyPseudonymSessionKeyPair {
+    let shares: Vec<PseudonymSessionKeyShare> = session_key_shares.iter().map(|s| s.0).collect();
+    let (public, secret) = make_pseudonym_session_key(blinded_global_secret_key.0, &shares);
+    PyPseudonymSessionKeyPair {
+        public: PyPseudonymSessionPublicKey(PyGroupElement(public.0)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(secret.0)),
+    }
+}
+
+/// Reconstruct attribute session keys from blinded global secret key and session key shares.
+#[pyfunction]
+#[pyo3(name = "make_attribute_session_key")]
+pub fn py_make_attribute_session_key(
+    blinded_global_secret_key: PyBlindedAttributeGlobalSecretKey,
+    session_key_shares: Vec<PyAttributeSessionKeyShare>,
+) -> PyAttributeSessionKeyPair {
+    let shares: Vec<AttributeSessionKeyShare> = session_key_shares.iter().map(|s| s.0).collect();
+    let (public, secret) = make_attribute_session_key(blinded_global_secret_key.0, &shares);
+    PyAttributeSessionKeyPair {
+        public: PyAttributeSessionPublicKey(PyGroupElement(public.0)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(secret.0)),
+    }
+}
+
+/// Reconstruct session keys (both pseudonym and attribute) from blinded global keys and session key shares.
+#[pyfunction]
+#[pyo3(name = "make_session_keys_distributed")]
+pub fn py_make_session_keys_distributed(
+    blinded_global_keys: &PyBlindedGlobalKeys,
+    session_key_shares: Vec<PySessionKeyShares>,
+) -> PySessionKeys {
+    let shares: Vec<SessionKeyShares> = session_key_shares
+        .iter()
+        .map(|s| SessionKeyShares {
+            pseudonym: s.pseudonym.0,
+            attribute: s.attribute.0,
+        })
+        .collect();
+    let blinded_keys = BlindedGlobalKeys {
+        pseudonym: blinded_global_keys.pseudonym.0,
+        attribute: blinded_global_keys.attribute.0,
+    };
+    let keys = make_session_keys_distributed(blinded_keys, &shares);
+    PySessionKeys {
+        public: PySessionPublicKeys {
+            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(keys.pseudonym.public.0)),
+            attribute: PyAttributeSessionPublicKey(PyGroupElement(keys.attribute.public.0)),
+        },
+        secret: PySessionSecretKeys {
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(keys.pseudonym.secret.0)),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(keys.attribute.secret.0)),
+        },
+    }
+}
+
+/// Update pseudonym session keys with new session key share.
+#[pyfunction]
+#[pyo3(name = "update_pseudonym_session_key")]
+pub fn py_update_pseudonym_session_key(
+    session_secret_key: PyPseudonymSessionSecretKey,
+    old_session_key_share: PyPseudonymSessionKeyShare,
+    new_session_key_share: PyPseudonymSessionKeyShare,
+) -> PyPseudonymSessionKeyPair {
+    let (public, secret) = update_pseudonym_session_key(
+        session_secret_key.0 .0.into(),
+        old_session_key_share.0,
+        new_session_key_share.0,
+    );
+    PyPseudonymSessionKeyPair {
+        public: PyPseudonymSessionPublicKey(PyGroupElement(public.0)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(secret.0)),
+    }
+}
+
+/// Update attribute session keys with new session key share.
+#[pyfunction]
+#[pyo3(name = "update_attribute_session_key")]
+pub fn py_update_attribute_session_key(
+    session_secret_key: PyAttributeSessionSecretKey,
+    old_session_key_share: PyAttributeSessionKeyShare,
+    new_session_key_share: PyAttributeSessionKeyShare,
+) -> PyAttributeSessionKeyPair {
+    let (public, secret) = update_attribute_session_key(
+        session_secret_key.0 .0.into(),
+        old_session_key_share.0,
+        new_session_key_share.0,
+    );
+    PyAttributeSessionKeyPair {
+        public: PyAttributeSessionPublicKey(PyGroupElement(public.0)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(secret.0)),
+    }
+}
+
+/// Update session keys (both pseudonym and attribute) with new session key shares.
+#[pyfunction]
+#[pyo3(name = "update_session_keys")]
+pub fn py_update_session_keys(
+    current_keys: &PySessionKeys,
+    old_shares: &PySessionKeyShares,
+    new_shares: &PySessionKeyShares,
+) -> PySessionKeys {
+    let current = SessionKeys {
+        pseudonym: PseudonymSessionKeys {
+            public: current_keys.public.pseudonym.0 .0.into(),
+            secret: current_keys.secret.pseudonym.0 .0.into(),
+        },
+        attribute: AttributeSessionKeys {
+            public: current_keys.public.attribute.0 .0.into(),
+            secret: current_keys.secret.attribute.0 .0.into(),
+        },
+    };
+    let old = SessionKeyShares {
+        pseudonym: old_shares.pseudonym.0,
+        attribute: old_shares.attribute.0,
+    };
+    let new = SessionKeyShares {
+        pseudonym: new_shares.pseudonym.0,
+        attribute: new_shares.attribute.0,
+    };
+    let updated = update_session_keys(current, old, new);
+    PySessionKeys {
+        public: PySessionPublicKeys {
+            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(updated.pseudonym.public.0)),
+            attribute: PyAttributeSessionPublicKey(PyGroupElement(updated.attribute.public.0)),
+        },
+        secret: PySessionSecretKeys {
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(updated.pseudonym.secret.0)),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(updated.attribute.secret.0)),
+        },
+    }
 }
 
 /// Generate session keys (both pseudonym and attribute) from global secret keys.
@@ -490,6 +712,48 @@ pub fn py_make_session_keys(
             attribute: PyAttributeSessionSecretKey(PyScalarNonZero(keys.attribute.secret.0)),
         },
     }
+}
+
+/// Setup a distributed system with pseudonym global keys, blinded global secret key and blinding factors.
+#[pyfunction]
+#[pyo3(name = "make_distributed_pseudonym_global_keys")]
+pub fn py_make_distributed_pseudonym_global_keys(
+    n: usize,
+) -> (
+    PyPseudonymGlobalPublicKey,
+    PyBlindedPseudonymGlobalSecretKey,
+    Vec<PyBlindingFactor>,
+) {
+    let mut rng = rand::thread_rng();
+    let (public_key, blinded_key, blinding_factors) =
+        make_distributed_pseudonym_global_keys(n, &mut rng);
+
+    (
+        PyPseudonymGlobalPublicKey(PyGroupElement(public_key.0)),
+        PyBlindedPseudonymGlobalSecretKey(blinded_key),
+        blinding_factors.into_iter().map(PyBlindingFactor).collect(),
+    )
+}
+
+/// Setup a distributed system with attribute global keys, blinded global secret key and blinding factors.
+#[pyfunction]
+#[pyo3(name = "make_distributed_attribute_global_keys")]
+pub fn py_make_distributed_attribute_global_keys(
+    n: usize,
+) -> (
+    PyAttributeGlobalPublicKey,
+    PyBlindedAttributeGlobalSecretKey,
+    Vec<PyBlindingFactor>,
+) {
+    let mut rng = rand::thread_rng();
+    let (public_key, blinded_key, blinding_factors) =
+        make_distributed_attribute_global_keys(n, &mut rng);
+
+    (
+        PyAttributeGlobalPublicKey(PyGroupElement(public_key.0)),
+        PyBlindedAttributeGlobalSecretKey(blinded_key),
+        blinding_factors.into_iter().map(PyBlindingFactor).collect(),
+    )
 }
 
 /// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
@@ -590,8 +854,8 @@ impl PyPEPSystem {
         &self,
         session_from: Option<&str>,
         session_to: Option<&str>,
-    ) -> PyPseudonymRekeyInfo {
-        PyPseudonymRekeyInfo::from(self.pseudonym_rekey_info(
+    ) -> PyPseudonymRekeyFactor {
+        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(
             session_from.map(EncryptionContext::from).as_ref(),
             session_to.map(EncryptionContext::from).as_ref(),
         ))
@@ -1063,8 +1327,33 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymizationInfo>()?;
     m.add_class::<PyAttributeRekeyInfo>()?;
     m.add_class::<PyTranscryptionInfo>()?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_pseudonym_global_secret_key,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_attribute_global_secret_key,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(py_make_blinded_global_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_pseudonym_session_key_share, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_attribute_session_key_share, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_session_key_shares, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_pseudonym_session_key, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_attribute_session_key, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_session_keys_distributed, m)?)?;
+    m.add_function(wrap_pyfunction!(py_update_pseudonym_session_key, m)?)?;
+    m.add_function(wrap_pyfunction!(py_update_attribute_session_key, m)?)?;
+    m.add_function(wrap_pyfunction!(py_update_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_session_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_distributed_pseudonym_global_keys,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_distributed_attribute_global_keys,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(py_make_distributed_global_keys, m)?)?;
     Ok(())
 }

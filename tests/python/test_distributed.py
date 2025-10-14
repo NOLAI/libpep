@@ -149,10 +149,9 @@ class TestDistributed(unittest.TestCase):
             shares = system.session_key_shares("test_session")
             session_key_shares.append(shares)
 
-        # Create PEP client using the convenience constructor
-        client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_global_keys.pseudonym,
-            self.blinded_global_keys.attribute,
+        # Create PEP client using the standard constructor
+        client = distributed.PEPClient(
+            self.blinded_global_keys,
             session_key_shares
         )
         
@@ -181,10 +180,9 @@ class TestDistributed(unittest.TestCase):
             systems.append(system)
             session_key_shares.append(system.session_key_shares("test_session"))
 
-        # Create client using the convenience constructor
-        client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_global_keys.pseudonym,
-            self.blinded_global_keys.attribute,
+        # Create client using the standard constructor
+        client = distributed.PEPClient(
+            self.blinded_global_keys,
             session_key_shares
         )
         
@@ -285,9 +283,8 @@ class TestDistributed(unittest.TestCase):
             systems.append(system)
             initial_shares.append(system.session_key_shares("session1"))
 
-        client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_global_keys.pseudonym,
-            self.blinded_global_keys.attribute,
+        client = distributed.PEPClient(
+            self.blinded_global_keys,
             initial_shares
         )
 
