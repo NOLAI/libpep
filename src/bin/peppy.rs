@@ -10,6 +10,7 @@ use libpep::high_level::keys::{
 use libpep::high_level::ops::{
     decrypt_pseudonym, encrypt_pseudonym, encrypt_pseudonym_global, rerandomize, transcrypt,
 };
+use libpep::high_level::padding::LongPseudonym;
 use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
 use rand_core::OsRng;
@@ -43,9 +44,9 @@ struct PseudonymFromOrigin {
 
 #[derive(Command, Debug, Default)]
 #[command("pseudonym-to-origin")]
-#[description("Try to convert a pseudonym back to its origin identifier.")]
+#[description("Try to convert a pseudonym (or long pseudonym) back to its origin identifier.")]
 struct PseudonymToOrigin {
-    #[positional("pseudonym-hex", 1, 1)]
+    #[positional("pseudonym-hex...", 1, 100)]
     args: Vec<String>,
 }
 
@@ -191,35 +192,61 @@ fn main() {
         }
         Some(Sub::PseudonymFromOrigin(arg)) => {
             let origin = arg.args[0].as_bytes();
-            let pseudonym: Pseudonym = match origin.len().cmp(&16) {
+            match origin.len().cmp(&16) {
                 Ordering::Greater => {
-                    eprintln!("Origin identifier must be 16 bytes long.");
-                    std::process::exit(1);
+                    eprintln!("Warning: Origin identifier is longer than 16 bytes, using long pseudonym with PKCS#7 padding.");
+                    let long_pseudonym = LongPseudonym::from_bytes_padded(origin)
+                        .expect("Failed to create long pseudonym");
+                    eprint!("Long pseudonym ({} blocks): ", long_pseudonym.0.len());
+                    let hex_blocks: Vec<String> =
+                        long_pseudonym.0.iter().map(|p| p.encode_as_hex()).collect();
+                    println!("{}", hex_blocks.join(" "));
                 }
                 Ordering::Less => {
                     let mut padded = [0u8; 16];
                     padded[..origin.len()].copy_from_slice(origin);
-                    Pseudonym::from_bytes(&padded)
+                    let pseudonym = Pseudonym::from_bytes(&padded);
+                    eprint!("Pseudonym: ");
+                    println!("{}", &pseudonym.encode_as_hex());
                 }
-                Ordering::Equal => Pseudonym::from_bytes(origin.try_into().unwrap()),
+                Ordering::Equal => {
+                    let pseudonym = Pseudonym::from_bytes(origin.try_into().unwrap());
+                    eprint!("Pseudonym: ");
+                    println!("{}", &pseudonym.encode_as_hex());
+                }
             };
-            eprint!("Pseudonym: ");
-            println!("{}", &pseudonym.encode_as_hex());
         }
         Some(Sub::PseudonymToOrigin(arg)) => {
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[0]).expect("Invalid pseudonym.");
-            let origin = pseudonym.as_bytes();
-            if origin.is_none() {
-                eprintln!("Pseudonym does not have a lizard representation.");
-                std::process::exit(1);
+            if arg.args.len() == 1 {
+                // Single pseudonym - try lizard decoding
+                let pseudonym =
+                    Pseudonym::decode_from_hex(&arg.args[0]).expect("Invalid pseudonym.");
+                let origin = pseudonym.as_bytes();
+                if origin.is_none() {
+                    eprintln!("Pseudonym does not have a lizard representation.");
+                    std::process::exit(1);
+                }
+                eprint!("Origin: ");
+                println!(
+                    "{}",
+                    String::from_utf8_lossy(
+                        &origin.expect("Lizard representation cannot be displayed.")
+                    )
+                );
+            } else {
+                // Multiple pseudonyms - decode as long pseudonym
+                let pseudonyms: Vec<Pseudonym> = arg
+                    .args
+                    .iter()
+                    .map(|hex| Pseudonym::decode_from_hex(hex).expect("Invalid pseudonym"))
+                    .collect();
+                let long_pseudonym = LongPseudonym(pseudonyms);
+                let text = long_pseudonym
+                    .to_string_padded()
+                    .expect("Failed to decode long pseudonym");
+                eprint!("Origin: ");
+                println!("{}", text);
             }
-            eprint!("Origin: ");
-            println!(
-                "{}",
-                String::from_utf8_lossy(
-                    &origin.expect("Lizard representation cannot be displayed.")
-                )
-            );
         }
         Some(Sub::Encrypt(arg)) => {
             let public_key =
