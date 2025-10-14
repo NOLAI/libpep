@@ -31,7 +31,7 @@ use std::io::{Error, ErrorKind};
 /// can be linked together.
 ///
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongPseudonym(pub(crate) Vec<Pseudonym>);
+pub struct LongPseudonym(pub Vec<Pseudonym>);
 
 /// A collection of [Attribute]s that together represent a larger data value using PKCS#7 padding.
 ///
@@ -55,13 +55,13 @@ pub struct LongPseudonym(pub(crate) Vec<Pseudonym>);
 /// let long_attr = LongAttribute::from_string_padded("sensitive data").unwrap();
 /// ```
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongAttribute(pub(crate) Vec<Attribute>);
+pub struct LongAttribute(pub Vec<Attribute>);
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongEncryptedPseudonym(pub(crate) Vec<EncryptedPseudonym>);
+pub struct LongEncryptedPseudonym(pub Vec<EncryptedPseudonym>);
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongEncryptedAttribute(pub(crate) Vec<EncryptedAttribute>);
+pub struct LongEncryptedAttribute(pub Vec<EncryptedAttribute>);
 
 impl LongPseudonym {
     /// Encodes an arbitrary byte array into a `LongPseudonym` using PKCS#7 padding.

@@ -186,7 +186,7 @@ impl PEPClient {
         blinded_global_keys: BlindedGlobalKeys,
         session_key_shares: &[SessionKeyShares],
     ) -> Self {
-        let keys = make_session_keys(blinded_global_keys, session_key_shares);
+        let keys = make_session_keys_distributed(blinded_global_keys, session_key_shares);
         Self { keys }
     }
 
@@ -343,19 +343,12 @@ impl PEPClient {
 /// or when using a session key would leak information.
 #[derive(Clone)]
 pub struct OfflinePEPClient {
-    pub global_pseudonym_public_key: PseudonymGlobalPublicKey,
-    pub global_attribute_public_key: AttributeGlobalPublicKey,
+    pub global_public_keys: GlobalPublicKeys,
 }
 impl OfflinePEPClient {
     /// Create a new offline PEP client from the given global public keys.
-    pub fn new(
-        global_pseudonym_public_key: PseudonymGlobalPublicKey,
-        global_attribute_public_key: AttributeGlobalPublicKey,
-    ) -> Self {
-        Self {
-            global_pseudonym_public_key,
-            global_attribute_public_key,
-        }
+    pub fn new(global_public_keys: GlobalPublicKeys) -> Self {
+        Self { global_public_keys }
     }
     /// Polymorphic encrypt that works for both pseudonyms and attributes using global keys.
     ///
@@ -379,7 +372,7 @@ impl OfflinePEPClient {
         message: &Pseudonym,
         rng: &mut R,
     ) -> EncryptedPseudonym {
-        encrypt_pseudonym_global(message, &self.global_pseudonym_public_key, rng)
+        encrypt_pseudonym_global(message, &self.global_public_keys.pseudonym, rng)
     }
 
     /// Encrypt an attribute with the global attribute public key.
@@ -388,6 +381,6 @@ impl OfflinePEPClient {
         message: &Attribute,
         rng: &mut R,
     ) -> EncryptedAttribute {
-        encrypt_attribute_global(message, &self.global_attribute_public_key, rng)
+        encrypt_attribute_global(message, &self.global_public_keys.attribute, rng)
     }
 }

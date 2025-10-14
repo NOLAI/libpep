@@ -159,6 +159,66 @@ impl PyAttributeGlobalPublicKey {
     }
 }
 
+/// A pair of global public keys containing both pseudonym and attribute keys.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[pyclass(name = "GlobalPublicKeys")]
+pub struct PyGlobalPublicKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymGlobalPublicKey,
+    #[pyo3(get)]
+    pub attribute: PyAttributeGlobalPublicKey,
+}
+
+#[pymethods]
+impl PyGlobalPublicKeys {
+    /// Create new global public keys from pseudonym and attribute keys.
+    #[new]
+    fn new(pseudonym: PyPseudonymGlobalPublicKey, attribute: PyAttributeGlobalPublicKey) -> Self {
+        PyGlobalPublicKeys {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "GlobalPublicKeys(pseudonym={}, attribute={})",
+            self.pseudonym.as_hex(),
+            self.attribute.as_hex()
+        )
+    }
+
+    fn __eq__(&self, other: &PyGlobalPublicKeys) -> bool {
+        self.pseudonym.0 == other.pseudonym.0 && self.attribute.0 == other.attribute.0
+    }
+}
+
+/// A pair of global secret keys containing both pseudonym and attribute keys.
+#[derive(Copy, Clone, Debug)]
+#[pyclass(name = "GlobalSecretKeys")]
+pub struct PyGlobalSecretKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymGlobalSecretKey,
+    #[pyo3(get)]
+    pub attribute: PyAttributeGlobalSecretKey,
+}
+
+#[pymethods]
+impl PyGlobalSecretKeys {
+    /// Create new global secret keys from pseudonym and attribute keys.
+    #[new]
+    fn new(pseudonym: PyPseudonymGlobalSecretKey, attribute: PyAttributeGlobalSecretKey) -> Self {
+        PyGlobalSecretKeys {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        "GlobalSecretKeys(pseudonym=..., attribute=...)".to_string()
+    }
+}
+
 /// Pseudonymization secret used to derive a [`PyReshuffleFactor`] from a pseudonymization domain (see [`PyPseudonymizationInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
@@ -751,6 +811,24 @@ pub fn py_decrypt_data(
     ))
 }
 
+/// Generate new global key pairs for both pseudonyms and attributes.
+#[pyfunction]
+#[pyo3(name = "make_global_keys")]
+pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
+    let mut rng = rand::thread_rng();
+    let (public, secret) = make_global_keys(&mut rng);
+    (
+        PyGlobalPublicKeys {
+            pseudonym: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(public.pseudonym.0)),
+            attribute: PyAttributeGlobalPublicKey::from(PyGroupElement::from(public.attribute.0)),
+        },
+        PyGlobalSecretKeys {
+            pseudonym: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(secret.pseudonym.0)),
+            attribute: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(secret.attribute.0)),
+        },
+    )
+}
+
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionSecretKey>()?;
     m.add_class::<PyAttributeSessionSecretKey>()?;
@@ -760,6 +838,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyAttributeSessionPublicKey>()?;
     m.add_class::<PyPseudonymGlobalPublicKey>()?;
     m.add_class::<PyAttributeGlobalPublicKey>()?;
+    m.add_class::<PyGlobalPublicKeys>()?;
+    m.add_class::<PyGlobalSecretKeys>()?;
     m.add_class::<PyPseudonymizationSecret>()?;
     m.add_class::<PyEncryptionSecret>()?;
     m.add_class::<PyPseudonym>()?;
@@ -770,6 +850,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyAttributeGlobalKeyPair>()?;
     m.add_class::<PyPseudonymSessionKeyPair>()?;
     m.add_class::<PyAttributeSessionKeyPair>()?;
+    m.add_function(wrap_pyfunction!(py_make_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_pseudonym_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_attribute_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_pseudonym_session_keys, m)?)?;

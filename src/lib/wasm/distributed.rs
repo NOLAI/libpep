@@ -362,60 +362,11 @@ impl WASMSessionKeys {
     }
 }
 
-/// Create a [`WASMBlindedPseudonymGlobalSecretKey`] from a [`WASMPseudonymGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
-/// Used during system setup to blind the pseudonym global secret key.
-/// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
-#[wasm_bindgen(js_name = makeBlindedPseudonymGlobalSecretKey)]
-pub fn wasm_make_blinded_pseudonym_global_secret_key(
-    global_secret_key: &WASMPseudonymGlobalSecretKey,
-    blinding_factors: Vec<WASMBlindingFactor>,
-) -> WASMBlindedPseudonymGlobalSecretKey {
-    // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
-    // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
-    // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-    let bs: Vec<BlindingFactor> = blinding_factors
-        .into_iter()
-        .map(|x| BlindingFactor(x.0 .0))
-        .collect();
-    WASMBlindedPseudonymGlobalSecretKey(
-        make_blinded_pseudonym_global_secret_key(
-            &PseudonymGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
-            &bs,
-        )
-        .unwrap(),
-    )
-}
-
-/// Create a [`WASMBlindedAttributeGlobalSecretKey`] from a [`WASMAttributeGlobalSecretKey`] and a list of [`WASMBlindingFactor`]s.
-/// Used during system setup to blind the attribute global secret key.
-/// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
-#[wasm_bindgen(js_name = makeBlindedAttributeGlobalSecretKey)]
-pub fn wasm_make_blinded_attribute_global_secret_key(
-    global_secret_key: &WASMAttributeGlobalSecretKey,
-    blinding_factors: Vec<WASMBlindingFactor>,
-) -> WASMBlindedAttributeGlobalSecretKey {
-    // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
-    // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
-    // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-    let bs: Vec<BlindingFactor> = blinding_factors
-        .into_iter()
-        .map(|x| BlindingFactor(x.0 .0))
-        .collect();
-    WASMBlindedAttributeGlobalSecretKey(
-        make_blinded_attribute_global_secret_key(
-            &AttributeGlobalSecretKey::from(ScalarNonZero::from(global_secret_key.0)),
-            &bs,
-        )
-        .unwrap(),
-    )
-}
-
 /// Create [`WASMBlindedGlobalKeys`] (both pseudonym and attribute) from global secret keys and blinding factors.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1 for either key type.
 #[wasm_bindgen(js_name = makeBlindedGlobalKeys)]
 pub fn wasm_make_blinded_global_keys(
-    pseudonym_global_secret_key: &WASMPseudonymGlobalSecretKey,
-    attribute_global_secret_key: &WASMAttributeGlobalSecretKey,
+    global_secret_keys: &WASMGlobalSecretKeys,
     blinding_factors: Vec<WASMBlindingFactor>,
 ) -> WASMBlindedGlobalKeys {
     // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
@@ -424,8 +375,8 @@ pub fn wasm_make_blinded_global_keys(
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
     let result = make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(ScalarNonZero::from(pseudonym_global_secret_key.0)),
-        &AttributeGlobalSecretKey::from(ScalarNonZero::from(attribute_global_secret_key.0)),
+        &PseudonymGlobalSecretKey::from(ScalarNonZero::from(global_secret_keys.pseudonym.0)),
+        &AttributeGlobalSecretKey::from(ScalarNonZero::from(global_secret_keys.attribute.0)),
         &bs,
     )
     .unwrap();
@@ -440,15 +391,17 @@ pub fn wasm_make_blinded_global_keys(
 /// The blinding factors should securely be transferred to the transcryptors, the global public keys
 /// and blinded global secret keys can be publicly shared with anyone and are required by clients.
 ///
-/// Returns [pseudonymPublicKey, attributePublicKey, blindedGlobalKeys, blindingFactors[]]
+/// Returns [globalPublicKeys, blindedGlobalKeys, blindingFactors[]]
 #[wasm_bindgen(js_name = makeDistributedGlobalKeys)]
 pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
     let mut rng = rand::thread_rng();
-    let (pseudonym_pk, attribute_pk, blinded_keys, blinding_factors) =
+    let (global_public_keys, blinded_keys, blinding_factors) =
         make_distributed_global_keys(n, &mut rng);
 
-    let pseudonym_key = WASMPseudonymGlobalPublicKey(WASMGroupElement(pseudonym_pk.0));
-    let attribute_key = WASMAttributeGlobalPublicKey(WASMGroupElement(attribute_pk.0));
+    let global_keys = WASMGlobalPublicKeys {
+        pseudonym: WASMPseudonymGlobalPublicKey(WASMGroupElement(global_public_keys.pseudonym.0)),
+        attribute: WASMAttributeGlobalPublicKey(WASMGroupElement(global_public_keys.attribute.0)),
+    };
     let blinded = WASMBlindedGlobalKeys(blinded_keys);
     let factors: Vec<WASMBlindingFactor> = blinding_factors
         .into_iter()
@@ -456,8 +409,7 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
         .collect();
 
     vec![
-        JsValue::from(pseudonym_key),
-        JsValue::from(attribute_key),
+        JsValue::from(global_keys),
         JsValue::from(blinded),
         JsValue::from(
             factors
@@ -515,14 +467,44 @@ impl WASMPEPSystem {
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
     pub fn wasm_attribute_rekey_info(
         &self,
-        session_from: &str,
-        session_to: &str,
+        session_from: Option<String>,
+        session_to: Option<String>,
     ) -> WASMAttributeRekeyInfo {
-        WASMAttributeRekeyInfo::from(self.attribute_rekey_info(
-            Some(&EncryptionContext::from(session_from)),
-            Some(&EncryptionContext::from(session_to)),
-        ))
+        WASMAttributeRekeyInfo::from(
+            self.attribute_rekey_info(
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
     }
+
+    /// Generate a pseudonym rekey info to rekey pseudonyms from a given session to another.
+    #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
+    pub fn wasm_pseudonym_rekey_info(
+        &self,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMPseudonymRekeyInfo {
+        WASMPseudonymRekeyInfo::from(
+            self.pseudonym_rekey_info(
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
     /// Generate a pseudonymization info to pseudonymize from a given pseudonymization domain
     /// and session to another.
     #[wasm_bindgen(js_name = pseudonymizationInfo)]
@@ -530,15 +512,48 @@ impl WASMPEPSystem {
         &self,
         domain_from: &str,
         domain_to: &str,
-        session_from: &str,
-        session_to: &str,
+        session_from: Option<String>,
+        session_to: Option<String>,
     ) -> WASMPseudonymizationInfo {
-        WASMPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            Some(&EncryptionContext::from(session_from)),
-            Some(&EncryptionContext::from(session_to)),
-        ))
+        WASMPseudonymizationInfo::from(
+            self.pseudonymization_info(
+                &PseudonymizationDomain::from(domain_from),
+                &PseudonymizationDomain::from(domain_to),
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
+    /// Generate transcryption info to transcrypt from a given pseudonymization domain and session to another.
+    #[wasm_bindgen(js_name = transcryptionInfo)]
+    pub fn wasm_transcryption_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMTranscryptionInfo {
+        WASMTranscryptionInfo::from(
+            self.transcryption_info(
+                &PseudonymizationDomain::from(domain_from),
+                &PseudonymizationDomain::from(domain_to),
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
     }
 
     /// Rekey an [`WASMEncryptedAttribute`] from one session to another, using [`WASMAttributeRekeyInfo`].
@@ -595,104 +610,16 @@ impl WASMPEPClient {
         Self(PEPClient::new(blinded_keys, &shares))
     }
 
-    /// Create a new PEP client from separate blinded global keys and session key shares.
-    /// This is a convenience method for when you have separate keys instead of combined types.
-    #[wasm_bindgen(js_name = fromSeparateKeys)]
-    pub fn from_separate_keys(
-        blinded_global_pseudonym_key: &WASMBlindedPseudonymGlobalSecretKey,
-        pseudonym_session_key_shares: Vec<WASMPseudonymSessionKeyShare>,
-        blinded_global_attribute_key: &WASMBlindedAttributeGlobalSecretKey,
-        attribute_session_key_shares: Vec<WASMAttributeSessionKeyShare>,
-    ) -> Self {
-        // FIXME we do not pass a reference to the blinding factors vector, since WASM does not support references to arrays of structs
-        // As a result, we have to clone the blinding factors BEFORE passing them to the function, so in javascript.
-        // Simply by passing the blinding factors to this function will turn them into null pointers, so we cannot use them anymore in javascript.
-        let pseudonym_shares: Vec<PseudonymSessionKeyShare> = pseudonym_session_key_shares
-            .into_iter()
-            .map(|x| PseudonymSessionKeyShare(x.0 .0))
-            .collect();
-        let attribute_shares: Vec<AttributeSessionKeyShare> = attribute_session_key_shares
-            .into_iter()
-            .map(|x| AttributeSessionKeyShare(x.0 .0))
-            .collect();
-
-        let shares: Vec<SessionKeyShares> = pseudonym_shares
-            .iter()
-            .zip(attribute_shares.iter())
-            .map(|(p, a)| SessionKeyShares {
-                pseudonym: *p,
-                attribute: *a,
-            })
-            .collect();
-
-        let blinded_keys = BlindedGlobalKeys {
-            pseudonym: blinded_global_pseudonym_key.0,
-            attribute: blinded_global_attribute_key.0,
-        };
-
-        Self(PEPClient::new(blinded_keys, &shares))
-    }
-
-    /// Create a new PEP client from combined session key shares.
-    /// This is a convenience method for compatibility that accepts separate blinded keys and combined shares.
-    #[wasm_bindgen(js_name = fromSessionKeyShares)]
-    pub fn from_session_key_shares(
-        blinded_global_pseudonym_key: &WASMBlindedPseudonymGlobalSecretKey,
-        blinded_global_attribute_key: &WASMBlindedAttributeGlobalSecretKey,
-        session_key_shares: Vec<WASMSessionKeyShares>,
-    ) -> Self {
-        let blinded_keys = WASMBlindedGlobalKeys(BlindedGlobalKeys {
-            pseudonym: blinded_global_pseudonym_key.0,
-            attribute: blinded_global_attribute_key.0,
-        });
-        Self::new(&blinded_keys, session_key_shares)
-    }
-
     /// Restore a PEP client from the given session keys.
     #[wasm_bindgen(js_name = restore)]
-    pub fn wasm_restore(
-        pseudonym_session_keys: &WASMPseudonymSessionKeyPair,
-        attribute_session_keys: &WASMAttributeSessionKeyPair,
-    ) -> Self {
-        let keys = SessionKeys {
-            pseudonym: PseudonymSessionKeys {
-                public: PseudonymSessionPublicKey(**pseudonym_session_keys.public),
-                secret: PseudonymSessionSecretKey(**pseudonym_session_keys.secret),
-            },
-            attribute: AttributeSessionKeys {
-                public: AttributeSessionPublicKey(**attribute_session_keys.public),
-                secret: AttributeSessionSecretKey(**attribute_session_keys.secret),
-            },
-        };
-        Self(PEPClient::restore(keys))
+    pub fn wasm_restore(keys: &WASMSessionKeys) -> Self {
+        Self(PEPClient::restore(keys.0.clone()))
     }
 
-    /// Dump the pseudonym session key pair.
-    #[wasm_bindgen(js_name = dumpPseudonymKeys)]
-    pub fn wasm_dump_pseudonym_keys(&self) -> WASMPseudonymSessionKeyPair {
-        let keys = self.0.dump();
-        WASMPseudonymSessionKeyPair {
-            public: WASMPseudonymSessionPublicKey::from(WASMGroupElement::from(
-                keys.pseudonym.public.0,
-            )),
-            secret: WASMPseudonymSessionSecretKey::from(WASMScalarNonZero::from(
-                keys.pseudonym.secret.0,
-            )),
-        }
-    }
-
-    /// Dump the attribute session key pair.
-    #[wasm_bindgen(js_name = dumpAttributeKeys)]
-    pub fn wasm_dump_attribute_keys(&self) -> WASMAttributeSessionKeyPair {
-        let keys = self.0.dump();
-        WASMAttributeSessionKeyPair {
-            public: WASMAttributeSessionPublicKey::from(WASMGroupElement::from(
-                keys.attribute.public.0,
-            )),
-            secret: WASMAttributeSessionSecretKey::from(WASMScalarNonZero::from(
-                keys.attribute.secret.0,
-            )),
-        }
+    /// Dump the session keys.
+    #[wasm_bindgen(js_name = dump)]
+    pub fn wasm_dump(&self) -> WASMSessionKeys {
+        WASMSessionKeys(self.0.dump().clone())
     }
 
     /// Update a pseudonym session key share from one session to the other
@@ -766,14 +693,12 @@ pub struct WASMOfflinePEPClient(OfflinePEPClient);
 impl WASMOfflinePEPClient {
     /// Create a new offline PEP client from the given global public keys.
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        global_pseudonym_public_key: WASMPseudonymGlobalPublicKey,
-        global_attribute_public_key: WASMAttributeGlobalPublicKey,
-    ) -> Self {
-        Self(OfflinePEPClient::new(
-            PseudonymGlobalPublicKey(*global_pseudonym_public_key.0),
-            AttributeGlobalPublicKey(*global_attribute_public_key.0),
-        ))
+    pub fn new(global_keys: &WASMGlobalPublicKeys) -> Self {
+        let global_keys = GlobalPublicKeys {
+            pseudonym: PseudonymGlobalPublicKey(*global_keys.pseudonym.0),
+            attribute: AttributeGlobalPublicKey(*global_keys.attribute.0),
+        };
+        Self(OfflinePEPClient::new(global_keys))
     }
     /// Encrypt an attribute with the global public key.
     #[wasm_bindgen(js_name = encryptData)]

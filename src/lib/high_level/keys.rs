@@ -3,7 +3,7 @@
 //!
 //! Keys are split into separate Attribute and Pseudonym encryption keys for enhanced security.
 
-use crate::high_level::contexts::EncryptionContext;
+use crate::high_level::contexts::{EncryptionContext, RekeyFactor};
 use crate::high_level::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
 };
@@ -31,6 +31,20 @@ pub struct AttributeGlobalPublicKey(pub(crate) GroupElement);
 /// A global secret key for attributes from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 pub struct AttributeGlobalSecretKey(pub(crate) ScalarNonZero);
+
+/// A pair of global public keys containing both pseudonym and attribute keys.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+pub struct GlobalPublicKeys {
+    pub pseudonym: PseudonymGlobalPublicKey,
+    pub attribute: AttributeGlobalPublicKey,
+}
+
+/// A pair of global secret keys containing both pseudonym and attribute keys.
+#[derive(Copy, Clone, Debug)]
+pub struct GlobalSecretKeys {
+    pub pseudonym: PseudonymGlobalSecretKey,
+    pub attribute: AttributeGlobalSecretKey,
+}
 
 /// A session public key used to encrypt pseudonyms against, associated with a [`PseudonymSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
@@ -274,10 +288,13 @@ impl SecretKey for AttributeSessionSecretKey {
     }
 }
 
-/// Generate a new global key pair for pseudonyms.
-pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
-    rng: &mut R,
-) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
+/// Generic key generation for global keys.
+fn _make_global_keys<R, PK, SK>(rng: &mut R) -> (PK, SK)
+where
+    R: RngCore + CryptoRng,
+    PK: From<GroupElement>,
+    SK: From<ScalarNonZero>,
+{
     let sk = loop {
         let sk = ScalarNonZero::random(rng);
         if sk != ScalarNonZero::one() {
@@ -285,21 +302,90 @@ pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
         }
     };
     let pk = sk * G;
-    (PseudonymGlobalPublicKey(pk), PseudonymGlobalSecretKey(sk))
+    (PK::from(pk), SK::from(sk))
+}
+
+/// Generate new global key pairs for both pseudonyms and attributes.
+pub fn make_global_keys<R: RngCore + CryptoRng>(
+    rng: &mut R,
+) -> (GlobalPublicKeys, GlobalSecretKeys) {
+    let (pseudonym_pk, pseudonym_sk) = _make_global_keys(rng);
+    let (attribute_pk, attribute_sk) = _make_global_keys(rng);
+    (
+        GlobalPublicKeys {
+            pseudonym: pseudonym_pk,
+            attribute: attribute_pk,
+        },
+        GlobalSecretKeys {
+            pseudonym: pseudonym_sk,
+            attribute: attribute_sk,
+        },
+    )
+}
+
+/// Generate a new global key pair for pseudonyms.
+pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
+    rng: &mut R,
+) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
+    _make_global_keys(rng)
 }
 
 /// Generate a new global key pair for attributes.
 pub fn make_attribute_global_keys<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> (AttributeGlobalPublicKey, AttributeGlobalSecretKey) {
-    let sk = loop {
-        let sk = ScalarNonZero::random(rng);
-        if sk != ScalarNonZero::one() {
-            break sk;
-        }
-    };
+    _make_global_keys(rng)
+}
+
+/// Generic session key generation.
+fn _make_session_keys<GSK, PK, SK, RF, F>(
+    global: &GSK,
+    context: &EncryptionContext,
+    secret: &EncryptionSecret,
+    rekey_fn: F,
+) -> (PK, SK)
+where
+    GSK: SecretKey,
+    PK: From<GroupElement>,
+    SK: From<ScalarNonZero>,
+    RF: RekeyFactor,
+    F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
+{
+    let k = rekey_fn(secret, context);
+    let sk = k.scalar() * *global.value();
     let pk = sk * G;
-    (AttributeGlobalPublicKey(pk), AttributeGlobalSecretKey(sk))
+    (PK::from(pk), SK::from(sk))
+}
+
+/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
+pub fn make_session_keys(
+    global: &GlobalSecretKeys,
+    context: &EncryptionContext,
+    secret: &EncryptionSecret,
+) -> SessionKeys {
+    let (pseudonym_public, pseudonym_secret) = _make_session_keys(
+        &global.pseudonym,
+        context,
+        secret,
+        make_pseudonym_rekey_factor,
+    );
+    let (attribute_public, attribute_secret) = _make_session_keys(
+        &global.attribute,
+        context,
+        secret,
+        make_attribute_rekey_factor,
+    );
+
+    SessionKeys {
+        pseudonym: PseudonymSessionKeys {
+            public: pseudonym_public,
+            secret: pseudonym_secret,
+        },
+        attribute: AttributeSessionKeys {
+            public: attribute_public,
+            secret: attribute_secret,
+        },
+    }
 }
 
 /// Generate session keys for pseudonyms from a [`PseudonymGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
@@ -308,10 +394,7 @@ pub fn make_pseudonym_session_keys(
     context: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
-    let k = make_pseudonym_rekey_factor(secret, context);
-    let sk = k.0 * global.0;
-    let pk = sk * G;
-    (PseudonymSessionPublicKey(pk), PseudonymSessionSecretKey(sk))
+    _make_session_keys(global, context, secret, make_pseudonym_rekey_factor)
 }
 
 /// Generate session keys for attributes from a [`AttributeGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
@@ -320,8 +403,5 @@ pub fn make_attribute_session_keys(
     context: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
-    let k = make_attribute_rekey_factor(secret, context);
-    let sk = k.0 * global.0;
-    let pk = sk * G;
-    (AttributeSessionPublicKey(pk), AttributeSessionSecretKey(sk))
+    _make_session_keys(global, context, secret, make_attribute_rekey_factor)
 }

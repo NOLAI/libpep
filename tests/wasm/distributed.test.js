@@ -1,10 +1,8 @@
 const {
     Attribute,
     GroupElement,
-    makePseudonymGlobalKeys,
-    makeAttributeGlobalKeys,
-    makeBlindedPseudonymGlobalSecretKey,
-    makeBlindedAttributeGlobalSecretKey,
+    makeGlobalKeys,
+    makeBlindedGlobalKeys,
     PEPSystem,
     PEPClient,
     Pseudonym,
@@ -14,21 +12,15 @@ const {
 test('n_pep', async () => {
     const n = 3;
 
-    // Create global keys for both pseudonyms and attributes.
-    const pseudonymKeyPair = makePseudonymGlobalKeys();
-    const attributeKeyPair = makeAttributeGlobalKeys();
+    // Create global keys using the new combined API.
+    const [globalPublicKeys, globalSecretKeys] = makeGlobalKeys();
 
     const blindingFactors = Array.from({ length: n }, () => BlindingFactor.random());
 
-    const blindingFactorsCopyPseudo = blindingFactors.map(bf => bf.clone());
-    const blindingFactorsCopyAttr = blindingFactors.map(bf => bf.clone());
-    const blindedPseudonymGlobalSecretKey = makeBlindedPseudonymGlobalSecretKey(
-        pseudonymKeyPair.secret,
-        blindingFactorsCopyPseudo
-    );
-    const blindedAttributeGlobalSecretKey = makeBlindedAttributeGlobalSecretKey(
-        attributeKeyPair.secret,
-        blindingFactorsCopyAttr
+    const blindingFactorsCopy = blindingFactors.map(bf => bf.clone());
+    const blindedGlobalKeys = makeBlindedGlobalKeys(
+        globalSecretKeys,
+        blindingFactorsCopy
     );
 
     // Initialize systems.
@@ -51,13 +43,13 @@ test('n_pep', async () => {
 
     // Create PEP clients using the convenience constructor.
     const clientA = PEPClient.fromSessionKeyShares(
-        blindedPseudonymGlobalSecretKey,
-        blindedAttributeGlobalSecretKey,
+        blindedGlobalKeys.pseudonym,
+        blindedGlobalKeys.attribute,
         sksA1
     );
     const clientB = PEPClient.fromSessionKeyShares(
-        blindedPseudonymGlobalSecretKey,
-        blindedAttributeGlobalSecretKey,
+        blindedGlobalKeys.pseudonym,
+        blindedGlobalKeys.attribute,
         sksB1
     );
 

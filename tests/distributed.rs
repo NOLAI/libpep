@@ -10,7 +10,7 @@ fn n_pep() {
     let rng = &mut OsRng;
 
     // Global config - using the combined convenience method
-    let (_pseudonym_global_public, _attribute_global_public, blinded_global_keys, blinding_factors) =
+    let (_global_public_keys, blinded_global_keys, blinding_factors) =
         libpep::distributed::key_blinding::make_distributed_global_keys(n, rng);
 
     // Create systems
