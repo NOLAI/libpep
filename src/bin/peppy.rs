@@ -35,17 +35,17 @@ struct GenerateSessionKeys {
 struct RandomPseudonym {}
 
 #[derive(Command, Debug, Default)]
-#[command("pseudonym-from-origin")]
-#[description("Create a pseudonym from an existing identifier (16 bytes).")]
-struct PseudonymFromOrigin {
-    #[positional("origin", 1, 1)]
+#[command("pseudonym-encode")]
+#[description("Encode an identifier into a pseudonym (or long pseudonym if > 16 bytes).")]
+struct PseudonymEncode {
+    #[positional("identifier", 1, 1)]
     args: Vec<String>,
 }
 
 #[derive(Command, Debug, Default)]
-#[command("pseudonym-to-origin")]
-#[description("Try to convert a pseudonym (or long pseudonym) back to its origin identifier.")]
-struct PseudonymToOrigin {
+#[command("pseudonym-decode")]
+#[description("Decode a pseudonym (or long pseudonym) back to its origin identifier.")]
+struct PseudonymDecode {
     #[positional("pseudonym-hex...", 1, 100)]
     args: Vec<String>,
 }
@@ -137,8 +137,8 @@ enum Sub {
     GenerateGlobalKeys(GenerateGlobalKeys),
     GenerateSessionKeys(GenerateSessionKeys),
     RandomPseudonym(RandomPseudonym),
-    PseudonymFromOrigin(PseudonymFromOrigin),
-    PseudonymToOrigin(PseudonymToOrigin),
+    PseudonymEncode(PseudonymEncode),
+    PseudonymDecode(PseudonymDecode),
     Encrypt(Encrypt),
     EncryptGlobal(EncryptGlobal),
     Decrypt(Decrypt),
@@ -190,11 +190,11 @@ fn main() {
             eprint!("Random pseudonym: ");
             println!("{}", &pseudonym.encode_as_hex());
         }
-        Some(Sub::PseudonymFromOrigin(arg)) => {
+        Some(Sub::PseudonymEncode(arg)) => {
             let origin = arg.args[0].as_bytes();
             match origin.len().cmp(&16) {
                 Ordering::Greater => {
-                    eprintln!("Warning: Origin identifier is longer than 16 bytes, using long pseudonym with PKCS#7 padding.");
+                    eprintln!("Warning: Identifier is longer than 16 bytes, using long pseudonym with PKCS#7 padding. This comes with privacy risks, as blocks can highlight subgroups and the number of blocks is visible.");
                     let long_pseudonym = LongPseudonym::from_bytes_padded(origin)
                         .expect("Failed to create long pseudonym");
                     eprint!("Long pseudonym ({} blocks): ", long_pseudonym.0.len());
@@ -216,7 +216,7 @@ fn main() {
                 }
             };
         }
-        Some(Sub::PseudonymToOrigin(arg)) => {
+        Some(Sub::PseudonymDecode(arg)) => {
             if arg.args.len() == 1 {
                 // Single pseudonym - try lizard decoding
                 let pseudonym =
@@ -226,7 +226,7 @@ fn main() {
                     eprintln!("Pseudonym does not have a lizard representation.");
                     std::process::exit(1);
                 }
-                eprint!("Origin: ");
+                eprint!("Value: ");
                 println!(
                     "{}",
                     String::from_utf8_lossy(
@@ -244,7 +244,7 @@ fn main() {
                 let text = long_pseudonym
                     .to_string_padded()
                     .expect("Failed to decode long pseudonym");
-                eprint!("Origin: ");
+                eprint!("Value: ");
                 println!("{}", text);
             }
         }
