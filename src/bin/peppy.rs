@@ -1,5 +1,5 @@
 use commandy_macros::*;
-use libpep::distributed::key_blinding::{make_distributed_pseudonym_global_keys, SafeScalar};
+use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
 use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{
@@ -332,15 +332,29 @@ fn main() {
             let n = arg.args[0]
                 .parse::<usize>()
                 .expect("Invalid number of nodes.");
-            let (global_public_key, blinded_secret, blinding_factors) =
-                make_distributed_pseudonym_global_keys(n, &mut rng);
-            eprint!("Public global key: ");
-            println!("{}", &global_public_key.encode_as_hex());
-            eprint!("Blinded secret key: ");
-            println!("{}", &blinded_secret.encode_as_hex());
-            eprintln!("Blinding factors (KEEP SECRET): ");
+            let (global_public_keys, blinded_global_keys, blinding_factors) =
+                make_distributed_global_keys(n, &mut rng);
+            eprintln!("Public global keys:");
+            eprintln!(
+                "  - Attributes: {}",
+                &global_public_keys.attribute.encode_as_hex()
+            );
+            eprintln!(
+                "  - Pseudonyms: {}",
+                &global_public_keys.pseudonym.encode_as_hex()
+            );
+            eprintln!("Blinded secret keys:");
+            eprintln!(
+                "  - Attributes: {}",
+                &blinded_global_keys.attribute.encode_as_hex()
+            );
+            eprintln!(
+                "  - Pseudonyms: {}",
+                &blinded_global_keys.pseudonym.encode_as_hex()
+            );
+            eprintln!("Blinding factors (keep secret):");
             for factor in blinding_factors.iter() {
-                println!("{} ", factor.encode_as_hex());
+                eprintln!("  - {}", factor.encode_as_hex());
             }
         }
         None => {
