@@ -55,10 +55,23 @@ pub use high_level::{
 
 // Distributed types
 pub use distributed::{
+    wasm_make_attribute_session_key as make_attribute_session_key_distributed,
+    wasm_make_attribute_session_key_share as make_attribute_session_key_share,
     wasm_make_blinded_attribute_global_secret_key as make_blinded_attribute_global_secret_key,
+    wasm_make_blinded_global_keys as make_blinded_global_keys,
     wasm_make_blinded_pseudonym_global_secret_key as make_blinded_pseudonym_global_secret_key,
-    WASMAttributeSessionKeyShare, WASMAttributeSessionKeys, WASMBlindedAttributeGlobalSecretKey,
-    WASMBlindedGlobalKeys, WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
-    WASMOfflinePEPClient, WASMPEPClient, WASMPEPSystem, WASMPseudonymSessionKeyShare,
-    WASMPseudonymSessionKeys, WASMSessionKeyShares, WASMSessionKeys,
+    wasm_make_distributed_attribute_global_keys as make_distributed_attribute_global_keys,
+    wasm_make_distributed_global_keys as make_distributed_global_keys,
+    wasm_make_distributed_pseudonym_global_keys as make_distributed_pseudonym_global_keys,
+    wasm_make_pseudonym_session_key as make_pseudonym_session_key_distributed,
+    wasm_make_pseudonym_session_key_share as make_pseudonym_session_key_share,
+    wasm_make_session_key_shares as make_session_key_shares,
+    wasm_make_session_keys_distributed as make_session_keys_distributed,
+    wasm_update_attribute_session_key as update_attribute_session_key,
+    wasm_update_pseudonym_session_key as update_pseudonym_session_key,
+    wasm_update_session_keys as update_session_keys, WASMAttributeSessionKeyShare,
+    WASMAttributeSessionKeys, WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor, WASMOfflinePEPClient, WASMPEPClient,
+    WASMPEPSystem, WASMPseudonymSessionKeyShare, WASMPseudonymSessionKeys, WASMSessionKeyShares,
+    WASMSessionKeys,
 };

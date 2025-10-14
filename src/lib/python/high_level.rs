@@ -74,7 +74,7 @@ impl PyAttributeSessionPublicKey {
 /// A pseudonym global public key from which pseudonym session keys are derived.
 /// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
 /// key may leak information.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, From)]
 #[pyclass(name = "PseudonymGlobalPublicKey")]
 pub struct PyPseudonymGlobalPublicKey(pub PyGroupElement);
 
@@ -118,7 +118,7 @@ impl PyPseudonymGlobalPublicKey {
 /// An attribute global public key from which attribute session keys are derived.
 /// Can also be used to encrypt attributes against, if no session key is available or using a session
 /// key may leak information.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, From)]
 #[pyclass(name = "AttributeGlobalPublicKey")]
 pub struct PyAttributeGlobalPublicKey(pub PyGroupElement);
 
