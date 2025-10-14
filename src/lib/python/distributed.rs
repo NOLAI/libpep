@@ -836,7 +836,7 @@ impl PyPEPSystem {
     }
 
     /// Generate attribute rekey info to rekey from a given session to another.
-    #[pyo3(name = "attribute_rekey_info")]
+    #[pyo3(name = "attribute_rekey_info", signature = (session_from=None, session_to=None))]
     fn py_attribute_rekey_info(
         &self,
         session_from: Option<&str>,
@@ -849,7 +849,7 @@ impl PyPEPSystem {
     }
 
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given session to another.
-    #[pyo3(name = "pseudonym_rekey_info")]
+    #[pyo3(name = "pseudonym_rekey_info", signature = (session_from=None, session_to=None))]
     fn py_pseudonym_rekey_info(
         &self,
         session_from: Option<&str>,
@@ -863,7 +863,7 @@ impl PyPEPSystem {
 
     /// Generate a pseudonymization info to pseudonymize from a given pseudonymization domain
     /// and session to another.
-    #[pyo3(name = "pseudonymization_info")]
+    #[pyo3(name = "pseudonymization_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
     fn py_pseudonymization_info(
         &self,
         domain_from: &str,
@@ -880,7 +880,7 @@ impl PyPEPSystem {
     }
 
     /// Generate transcryption info to transcrypt from a given pseudonymization domain and session to another.
-    #[pyo3(name = "transcryption_info")]
+    #[pyo3(name = "transcryption_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
     fn py_transcryption_info(
         &self,
         domain_from: &str,
