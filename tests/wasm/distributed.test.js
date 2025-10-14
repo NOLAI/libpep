@@ -1,27 +1,17 @@
 const {
     Attribute,
     GroupElement,
-    makeGlobalKeys,
-    makeBlindedGlobalKeys,
+    makeDistributedGlobalKeys,
     PEPSystem,
     PEPClient,
     Pseudonym,
-    BlindingFactor,
 } = require("../../pkg/libpep.js");
 
 test('n_pep', async () => {
     const n = 3;
 
-    // Create global keys using the new combined API.
-    const [globalPublicKeys, globalSecretKeys] = makeGlobalKeys();
-
-    const blindingFactors = Array.from({ length: n }, () => BlindingFactor.random());
-
-    const blindingFactorsCopy = blindingFactors.map(bf => bf.clone());
-    const blindedGlobalKeys = makeBlindedGlobalKeys(
-        globalSecretKeys,
-        blindingFactorsCopy
-    );
+    // Create distributed global keys.
+    const [globalPublicKeys, blindedGlobalKeys, blindingFactors] = makeDistributedGlobalKeys(n);
 
     // Initialize systems.
     const systems = Array.from({ length: n }, (_, i) => {
@@ -41,15 +31,13 @@ test('n_pep', async () => {
     const sksA1 = systems.map(system => system.sessionKeyShares(sessionA1));
     const sksB1 = systems.map(system => system.sessionKeyShares(sessionB1));
 
-    // Create PEP clients using the convenience constructor.
-    const clientA = PEPClient.fromSessionKeyShares(
-        blindedGlobalKeys.pseudonym,
-        blindedGlobalKeys.attribute,
+    // Create PEP clients using the standard constructor.
+    const clientA = new PEPClient(
+        blindedGlobalKeys,
         sksA1
     );
-    const clientB = PEPClient.fromSessionKeyShares(
-        blindedGlobalKeys.pseudonym,
-        blindedGlobalKeys.attribute,
+    const clientB = new PEPClient(
+        blindedGlobalKeys,
         sksB1
     );
 

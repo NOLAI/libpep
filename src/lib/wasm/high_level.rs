@@ -216,40 +216,6 @@ impl WASMPseudonym {
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
     }
-
-    /// Create a collection of pseudonyms from an arbitrary-length string
-    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
-    #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Option<Vec<WASMPseudonym>> {
-        LongPseudonym::from_string_padded(text)
-            .ok()
-            .map(|long| long.0.into_iter().map(WASMPseudonym::from).collect())
-    }
-
-    /// Create a collection of pseudonyms from an arbitrary-length byte array
-    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
-    #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> Option<Vec<WASMPseudonym>> {
-        LongPseudonym::from_bytes_padded(data)
-            .ok()
-            .map(|long| long.0.into_iter().map(WASMPseudonym::from).collect())
-    }
-
-    /// Convert a collection of pseudonyms back to the original string
-    /// Returns null if the decoding fails (e.g., invalid padding or UTF-8)
-    #[wasm_bindgen(js_name = toStringPadded)]
-    pub fn to_string_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<String> {
-        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        LongPseudonym(rust_pseudonyms).to_string_padded().ok()
-    }
-
-    /// Convert a collection of pseudonyms back to the original byte array
-    /// Returns null if the decoding fails (e.g., invalid padding)
-    #[wasm_bindgen(js_name = toBytesPadded)]
-    pub fn to_bytes_padded(pseudonyms: Vec<WASMPseudonym>) -> Option<Vec<u8>> {
-        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        LongPseudonym(rust_pseudonyms).to_bytes_padded().ok()
-    }
 }
 
 #[wasm_bindgen(js_class = "Attribute")]
@@ -315,39 +281,117 @@ impl WASMAttribute {
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
     }
+}
 
-    /// Create a collection of attributes from an arbitrary-length string
-    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+/// A collection of pseudonyms that together represent a larger pseudonym value using PKCS#7 padding.
+///
+/// # Privacy Warning
+///
+/// The length (number of blocks) of a `LongPseudonym` may reveal information about the original data.
+/// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
+#[wasm_bindgen(js_name = LongPseudonym)]
+#[derive(Clone, From, Deref)]
+pub struct WASMLongPseudonym(pub(crate) LongPseudonym);
+
+#[wasm_bindgen(js_class = "LongPseudonym")]
+impl WASMLongPseudonym {
+    /// Create from a vector of pseudonyms.
+    #[wasm_bindgen(constructor)]
+    pub fn new(pseudonyms: Vec<WASMPseudonym>) -> Self {
+        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
+        Self(LongPseudonym(rust_pseudonyms))
+    }
+
+    /// Encodes an arbitrary-length string into a `LongPseudonym` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Option<Vec<WASMAttribute>> {
-        LongAttribute::from_string_padded(text)
-            .ok()
-            .map(|long| long.0.into_iter().map(WASMAttribute::from).collect())
+    pub fn from_string_padded(text: &str) -> Option<WASMLongPseudonym> {
+        LongPseudonym::from_string_padded(text).ok().map(Self)
     }
 
-    /// Create a collection of attributes from an arbitrary-length byte array
-    /// Uses PKCS#7 style padding where the padding byte value equals the number of padding bytes
+    /// Encodes an arbitrary-length byte array into a `LongPseudonym` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> Option<Vec<WASMAttribute>> {
-        LongAttribute::from_bytes_padded(data)
-            .ok()
-            .map(|long| long.0.into_iter().map(WASMAttribute::from).collect())
+    pub fn from_bytes_padded(data: &[u8]) -> Option<WASMLongPseudonym> {
+        LongPseudonym::from_bytes_padded(data).ok().map(Self)
     }
 
-    /// Convert a collection of attributes back to the original string
-    /// Returns null if the decoding fails (e.g., invalid padding or UTF-8)
+    /// Decodes the `LongPseudonym` back to the original string.
     #[wasm_bindgen(js_name = toStringPadded)]
-    pub fn to_string_padded(attributes: Vec<WASMAttribute>) -> Option<String> {
-        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        LongAttribute(rust_attributes).to_string_padded().ok()
+    pub fn to_string_padded(&self) -> Option<String> {
+        self.0.to_string_padded().ok()
     }
 
-    /// Convert a collection of attributes back to the original byte array
-    /// Returns null if the decoding fails (e.g., invalid padding)
+    /// Decodes the `LongPseudonym` back to the original byte array.
     #[wasm_bindgen(js_name = toBytesPadded)]
-    pub fn to_bytes_padded(attributes: Vec<WASMAttribute>) -> Option<Vec<u8>> {
-        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|p| p.0).collect();
-        LongAttribute(rust_attributes).to_bytes_padded().ok()
+    pub fn to_bytes_padded(&self) -> Option<Vec<u8>> {
+        self.0.to_bytes_padded().ok()
+    }
+
+    /// Get the underlying pseudonyms.
+    #[wasm_bindgen(js_name = pseudonyms)]
+    pub fn pseudonyms(&self) -> Vec<WASMPseudonym> {
+        self.0 .0.iter().map(|p| WASMPseudonym(*p)).collect()
+    }
+
+    /// Get the number of pseudonym blocks.
+    #[wasm_bindgen(js_name = length)]
+    pub fn length(&self) -> usize {
+        self.0 .0.len()
+    }
+}
+
+/// A collection of attributes that together represent a larger data value using PKCS#7 padding.
+///
+/// # Privacy Warning
+///
+/// The length (number of blocks) of a `LongAttribute` may reveal information about the original data.
+/// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
+#[wasm_bindgen(js_name = LongAttribute)]
+#[derive(Clone, From, Deref)]
+pub struct WASMLongAttribute(pub(crate) LongAttribute);
+
+#[wasm_bindgen(js_class = "LongAttribute")]
+impl WASMLongAttribute {
+    /// Create from a vector of attributes.
+    #[wasm_bindgen(constructor)]
+    pub fn new(attributes: Vec<WASMAttribute>) -> Self {
+        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|a| a.0).collect();
+        Self(LongAttribute(rust_attributes))
+    }
+
+    /// Encodes an arbitrary-length string into a `LongAttribute` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromStringPadded)]
+    pub fn from_string_padded(text: &str) -> Option<WASMLongAttribute> {
+        LongAttribute::from_string_padded(text).ok().map(Self)
+    }
+
+    /// Encodes an arbitrary-length byte array into a `LongAttribute` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromBytesPadded)]
+    pub fn from_bytes_padded(data: &[u8]) -> Option<WASMLongAttribute> {
+        LongAttribute::from_bytes_padded(data).ok().map(Self)
+    }
+
+    /// Decodes the `LongAttribute` back to the original string.
+    #[wasm_bindgen(js_name = toStringPadded)]
+    pub fn to_string_padded(&self) -> Option<String> {
+        self.0.to_string_padded().ok()
+    }
+
+    /// Decodes the `LongAttribute` back to the original byte array.
+    #[wasm_bindgen(js_name = toBytesPadded)]
+    pub fn to_bytes_padded(&self) -> Option<Vec<u8>> {
+        self.0.to_bytes_padded().ok()
+    }
+
+    /// Get the underlying attributes.
+    #[wasm_bindgen(js_name = attributes)]
+    pub fn attributes(&self) -> Vec<WASMAttribute> {
+        self.0 .0.iter().map(|a| WASMAttribute(*a)).collect()
+    }
+
+    /// Get the number of attribute blocks.
+    #[wasm_bindgen(js_name = length)]
+    pub fn length(&self) -> usize {
+        self.0 .0.len()
     }
 }
 

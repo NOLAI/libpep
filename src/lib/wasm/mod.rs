@@ -47,10 +47,10 @@ pub use high_level::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMAttributeRekeyInfo,
     WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
     WASMEncryptedAttribute, WASMEncryptedData, WASMEncryptedPseudonym, WASMEncryptionSecret,
-    WASMPseudonym, WASMPseudonymGlobalKeyPair, WASMPseudonymGlobalPublicKey,
-    WASMPseudonymGlobalSecretKey, WASMPseudonymRSKFactors, WASMPseudonymSessionKeyPair,
-    WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey, WASMPseudonymizationInfo,
-    WASMPseudonymizationSecret, WASMTranscryptionInfo,
+    WASMLongAttribute, WASMLongPseudonym, WASMPseudonym, WASMPseudonymGlobalKeyPair,
+    WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey, WASMPseudonymRSKFactors,
+    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
+    WASMPseudonymizationInfo, WASMPseudonymizationSecret, WASMTranscryptionInfo,
 };
 
 // Distributed types

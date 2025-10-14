@@ -7,7 +7,8 @@ Tests high-level API for pseudonyms, data points, and session management.
 import unittest
 from libpep.arithmetic import GroupElement
 from libpep.high_level import (
-    Pseudonym, Attribute, PseudonymizationSecret, EncryptionSecret,
+    Pseudonym, Attribute, LongPseudonym, LongAttribute,
+    PseudonymizationSecret, EncryptionSecret,
     EncryptedPseudonym, EncryptedAttribute,
     PseudonymGlobalPublicKey, AttributeGlobalPublicKey,
     make_pseudonym_global_keys, make_attribute_global_keys,
@@ -102,41 +103,41 @@ class TestHighLevel(unittest.TestCase):
     def test_string_padding_operations(self):
         """Test string padding for pseudonyms and data points"""
         test_string = "Hello, World! This is a test string for padding."
-        
+
         # Test pseudonym string padding
-        pseudo_list = Pseudonym.from_string_padded(test_string)
-        self.assertGreater(len(pseudo_list), 0)
-        
+        long_pseudo = LongPseudonym.from_string_padded(test_string)
+        self.assertGreater(len(long_pseudo), 0)
+
         # Reconstruct string
-        reconstructed = Pseudonym.to_string_padded(pseudo_list)
+        reconstructed = long_pseudo.to_string_padded()
         self.assertEqual(test_string, reconstructed)
-        
+
         # Test data point string padding
-        data_list = Attribute.from_string_padded(test_string)
-        self.assertGreater(len(data_list), 0)
-        
+        long_attr = LongAttribute.from_string_padded(test_string)
+        self.assertGreater(len(long_attr), 0)
+
         # Reconstruct string
-        reconstructed_data = Attribute.to_string_padded(data_list)
+        reconstructed_data = long_attr.to_string_padded()
         self.assertEqual(test_string, reconstructed_data)
     
     def test_bytes_padding_operations(self):
         """Test bytes padding for pseudonyms and data points"""
         test_bytes = b"Hello, World! This is a test byte array for padding."
-        
+
         # Test pseudonym bytes padding
-        pseudo_list = Pseudonym.from_bytes_padded(test_bytes)
-        self.assertGreater(len(pseudo_list), 0)
-        
+        long_pseudo = LongPseudonym.from_bytes_padded(test_bytes)
+        self.assertGreater(len(long_pseudo), 0)
+
         # Reconstruct bytes
-        reconstructed = Pseudonym.to_bytes_padded(pseudo_list)
+        reconstructed = long_pseudo.to_bytes_padded()
         self.assertEqual(test_bytes, reconstructed)
-        
+
         # Test data point bytes padding
-        data_list = Attribute.from_bytes_padded(test_bytes)
-        self.assertGreater(len(data_list), 0)
-        
+        long_attr = LongAttribute.from_bytes_padded(test_bytes)
+        self.assertGreater(len(long_attr), 0)
+
         # Reconstruct bytes
-        reconstructed_data = Attribute.to_bytes_padded(data_list)
+        reconstructed_data = long_attr.to_bytes_padded()
         self.assertEqual(test_bytes, reconstructed_data)
     
     def test_fixed_size_bytes_operations(self):
