@@ -93,12 +93,30 @@ pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 /// High-level type for the factor used to [`reshuffle`](crate::low_level::primitives::reshuffle) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct ReshuffleFactor(pub ScalarNonZero);
+/// Trait for rekey factors that can be extracted to a scalar.
+pub trait RekeyFactor {
+    fn scalar(&self) -> ScalarNonZero;
+}
+
 /// High-level type for the factor used to [`rekey`](crate::low_level::primitives::rekey) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext for pseudonyms.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct PseudonymRekeyFactor(pub(crate) ScalarNonZero);
+
+impl RekeyFactor for PseudonymRekeyFactor {
+    fn scalar(&self) -> ScalarNonZero {
+        self.0
+    }
+}
+
 /// High-level type for the factor used to [`rekey`](crate::low_level::primitives::rekey) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext for attributes.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct AttributeRekeyFactor(pub(crate) ScalarNonZero);
+
+impl RekeyFactor for AttributeRekeyFactor {
+    fn scalar(&self) -> ScalarNonZero {
+        self.0
+    }
+}
 
 /// High-level type for the factors used to [`rsk`](crate::low_level::primitives::rsk) an [ElGamal](crate::low_level::elgamal::ElGamal) ciphertext for pseudonyms.
 /// Contains both the reshuffle factor (`s`) and the rekey factor (`k`).

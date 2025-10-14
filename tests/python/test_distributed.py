@@ -15,9 +15,8 @@ class TestDistributed(unittest.TestCase):
     
     def setUp(self):
         """Setup common test data"""
-        # Generate global keys for both pseudonyms and attributes
-        self.pseudonym_global_keys = high_level.make_pseudonym_global_keys()
-        self.attribute_global_keys = high_level.make_attribute_global_keys()
+        # Generate global keys using the new combined API
+        self.global_public_keys, self.global_secret_keys = high_level.make_global_keys()
 
         # Create secrets
         self.secret = b"test_secret"
@@ -31,13 +30,9 @@ class TestDistributed(unittest.TestCase):
             distributed.BlindingFactor.random()
         ]
 
-        # Create blinded global secret keys
-        self.blinded_pseudonym_global_key = distributed.make_blinded_pseudonym_global_secret_key(
-            self.pseudonym_global_keys.secret,
-            self.blinding_factors
-        )
-        self.blinded_attribute_global_key = distributed.make_blinded_attribute_global_secret_key(
-            self.attribute_global_keys.secret,
+        # Create blinded global secret keys using the new combined API
+        self.blinded_global_keys = distributed.make_blinded_global_keys(
+            self.global_secret_keys,
             self.blinding_factors
         )
     
@@ -67,25 +62,25 @@ class TestDistributed(unittest.TestCase):
     def test_blinded_global_secret_key(self):
         """Test blinded global secret key operations"""
         # Test encoding/decoding for pseudonym key
-        encoded = self.blinded_pseudonym_global_key.encode()
+        encoded = self.blinded_global_keys.pseudonym.encode()
         decoded = distributed.BlindedPseudonymGlobalSecretKey.decode(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(self.blinded_pseudonym_global_key.as_hex(), decoded.as_hex())
+        self.assertEqual(self.blinded_global_keys.pseudonym.as_hex(), decoded.as_hex())
 
         # Test hex operations for pseudonym key
-        hex_str = self.blinded_pseudonym_global_key.as_hex()
+        hex_str = self.blinded_global_keys.pseudonym.as_hex()
         decoded_hex = distributed.BlindedPseudonymGlobalSecretKey.from_hex(hex_str)
         self.assertIsNotNone(decoded_hex)
         self.assertEqual(hex_str, decoded_hex.as_hex())
 
         # Test encoding/decoding for attribute key
-        encoded_attr = self.blinded_attribute_global_key.encode()
+        encoded_attr = self.blinded_global_keys.attribute.encode()
         decoded_attr = distributed.BlindedAttributeGlobalSecretKey.decode(encoded_attr)
         self.assertIsNotNone(decoded_attr)
-        self.assertEqual(self.blinded_attribute_global_key.as_hex(), decoded_attr.as_hex())
+        self.assertEqual(self.blinded_global_keys.attribute.as_hex(), decoded_attr.as_hex())
 
         # Test hex operations for attribute key
-        hex_str_attr = self.blinded_attribute_global_key.as_hex()
+        hex_str_attr = self.blinded_global_keys.attribute.as_hex()
         decoded_hex_attr = distributed.BlindedAttributeGlobalSecretKey.from_hex(hex_str_attr)
         self.assertIsNotNone(decoded_hex_attr)
         self.assertEqual(hex_str_attr, decoded_hex_attr.as_hex())
@@ -156,20 +151,20 @@ class TestDistributed(unittest.TestCase):
 
         # Create PEP client using the convenience constructor
         client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_pseudonym_global_key,
-            self.blinded_attribute_global_key,
+            self.blinded_global_keys.pseudonym,
+            self.blinded_global_keys.attribute,
             session_key_shares
         )
         
         # Test session key dumping
-        pseudonym_keys = client.dump_pseudonym_keys()
-        attribute_keys = client.dump_attribute_keys()
+        keys = client.dump()
 
         # Keys should be valid
-        self.assertIsNotNone(pseudonym_keys)
-        self.assertIsNotNone(attribute_keys)
-        self.assertIsNotNone(pseudonym_keys.public)
-        self.assertIsNotNone(attribute_keys.public)
+        self.assertIsNotNone(keys)
+        self.assertIsNotNone(keys.public)
+        self.assertIsNotNone(keys.secret)
+        self.assertIsNotNone(keys.public.pseudonym)
+        self.assertIsNotNone(keys.public.attribute)
     
     def test_encryption_decryption_flow(self):
         """Test full encryption/decryption flow with distributed system"""
@@ -188,8 +183,8 @@ class TestDistributed(unittest.TestCase):
 
         # Create client using the convenience constructor
         client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_pseudonym_global_key,
-            self.blinded_attribute_global_key,
+            self.blinded_global_keys.pseudonym,
+            self.blinded_global_keys.attribute,
             session_key_shares
         )
         
@@ -209,11 +204,8 @@ class TestDistributed(unittest.TestCase):
     
     def test_offline_pep_client(self):
         """Test offline PEP client for encryption-only operations"""
-        # Create offline client using both global public keys
-        offline_client = distributed.OfflinePEPClient(
-            self.pseudonym_global_keys.public,
-            self.attribute_global_keys.public
-        )
+        # Create offline client using the combined global public keys
+        offline_client = distributed.OfflinePEPClient(self.global_public_keys)
         
         # Test encryption (but can't decrypt without private key)
         pseudo = high_level.Pseudonym.random()
@@ -294,8 +286,8 @@ class TestDistributed(unittest.TestCase):
             initial_shares.append(system.session_key_shares("session1"))
 
         client = distributed.PEPClient.from_session_key_shares(
-            self.blinded_pseudonym_global_key,
-            self.blinded_attribute_global_key,
+            self.blinded_global_keys.pseudonym,
+            self.blinded_global_keys.attribute,
             initial_shares
         )
 

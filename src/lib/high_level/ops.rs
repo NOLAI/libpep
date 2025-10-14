@@ -262,8 +262,19 @@ pub fn pseudonymize(
     ))
 }
 
+/// Rekey an [`EncryptedPseudonym`] from one encryption context to another, using [`PseudonymRekeyInfo`].
+pub fn rekey_pseudonym(
+    encrypted: &EncryptedPseudonym,
+    rekey_info: &PseudonymRekeyInfo,
+) -> EncryptedPseudonym {
+    EncryptedPseudonym::from(crate::low_level::primitives::rekey(
+        &encrypted.value,
+        &rekey_info.0,
+    ))
+}
+
 /// Rekey an [`EncryptedAttribute`] from one encryption context to another, using [`AttributeRekeyInfo`].
-pub fn rekey(
+pub fn rekey_attribute(
     encrypted: &EncryptedAttribute,
     rekey_info: &AttributeRekeyInfo,
 ) -> EncryptedAttribute {
@@ -271,6 +282,44 @@ pub fn rekey(
         &encrypted.value,
         &rekey_info.0,
     ))
+}
+
+/// Trait for types that can be rekeyed.
+pub trait Rekeyable: Encrypted {
+    type RekeyInfo: RekeyFactor;
+
+    /// Apply the rekey operation specific to this type.
+    fn rekey_impl(encrypted: &Self, rekey_info: &Self::RekeyInfo) -> Self;
+}
+
+impl Rekeyable for EncryptedPseudonym {
+    type RekeyInfo = PseudonymRekeyInfo;
+
+    #[inline]
+    fn rekey_impl(encrypted: &Self, rekey_info: &Self::RekeyInfo) -> Self {
+        EncryptedPseudonym::from_value(crate::low_level::primitives::rekey(
+            encrypted.value(),
+            &rekey_info.scalar(),
+        ))
+    }
+}
+
+impl Rekeyable for EncryptedAttribute {
+    type RekeyInfo = AttributeRekeyInfo;
+
+    #[inline]
+    fn rekey_impl(encrypted: &Self, rekey_info: &Self::RekeyInfo) -> Self {
+        EncryptedAttribute::from_value(crate::low_level::primitives::rekey(
+            encrypted.value(),
+            &rekey_info.scalar(),
+        ))
+    }
+}
+
+/// Polymorphic rekey function that works for both pseudonyms and attributes.
+/// Uses the appropriate rekey info type based on the encrypted message type.
+pub fn rekey<E: Rekeyable>(encrypted: &E, rekey_info: &E::RekeyInfo) -> E {
+    E::rekey_impl(encrypted, rekey_info)
 }
 
 /// Trait for types that can be transcrypted using TranscryptionInfo.
