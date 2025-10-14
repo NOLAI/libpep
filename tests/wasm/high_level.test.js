@@ -1,5 +1,6 @@
 const {
     Attribute,
+    LongAttribute,
     decryptData,
     decryptPseudonym,
     encryptData,
@@ -12,6 +13,7 @@ const {
     pseudonymize,
     rekeyData,
     Pseudonym,
+    LongPseudonym,
     PseudonymizationInfo,
     AttributeRekeyInfo,
     TranscryptionInfo,
@@ -110,41 +112,41 @@ test('test data point operations', async () => {
 
 test('test string padding operations', async () => {
     const testString = "Hello, World! This is a test string for padding.";
-    
+
     // Test pseudonym string padding
-    const pseudoList = Pseudonym.fromStringPadded(testString);
-    expect(pseudoList.length).toBeGreaterThan(0);
-    
+    const longPseudo = LongPseudonym.fromStringPadded(testString);
+    expect(longPseudo.length()).toBeGreaterThan(0);
+
     // Reconstruct string
-    const reconstructed = Pseudonym.toStringPadded(pseudoList);
+    const reconstructed = longPseudo.toStringPadded();
     expect(testString).toEqual(reconstructed);
-    
+
     // Test data point string padding
-    const dataList = Attribute.fromStringPadded(testString);
-    expect(dataList.length).toBeGreaterThan(0);
-    
+    const longAttr = LongAttribute.fromStringPadded(testString);
+    expect(longAttr.length()).toBeGreaterThan(0);
+
     // Reconstruct string
-    const reconstructedData = Attribute.toStringPadded(dataList);
+    const reconstructedData = longAttr.toStringPadded();
     expect(testString).toEqual(reconstructedData);
 });
 
 test('test bytes padding operations', async () => {
     const testBytes = new Uint8Array(Buffer.from("Hello, World! This is a test byte array for padding."));
-    
+
     // Test pseudonym bytes padding
-    const pseudoList = Pseudonym.fromBytesPadded(testBytes);
-    expect(pseudoList.length).toBeGreaterThan(0);
-    
+    const longPseudo = LongPseudonym.fromBytesPadded(testBytes);
+    expect(longPseudo.length()).toBeGreaterThan(0);
+
     // Reconstruct bytes
-    const reconstructed = Pseudonym.toBytesPadded(pseudoList);
+    const reconstructed = longPseudo.toBytesPadded();
     expect(new Uint8Array(reconstructed)).toEqual(testBytes);
-    
+
     // Test data point bytes padding
-    const dataList = Attribute.fromBytesPadded(testBytes);
-    expect(dataList.length).toBeGreaterThan(0);
-    
+    const longAttr = LongAttribute.fromBytesPadded(testBytes);
+    expect(longAttr.length()).toBeGreaterThan(0);
+
     // Reconstruct bytes
-    const reconstructedData = Attribute.toBytesPadded(dataList);
+    const reconstructedData = longAttr.toBytesPadded();
     expect(new Uint8Array(reconstructedData)).toEqual(testBytes);
 });
 

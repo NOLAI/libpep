@@ -115,7 +115,7 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) 
     let result_inner = hasher_inner.finalize();
 
     let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap(); // Use HMAC to prevent length extension attack
-    hmac.update(result_inner.as_slice());
+    hmac.update(&result_inner);
     let result_outer = hmac.finalize().into_bytes();
 
     let mut bytes = [0u8; 64];

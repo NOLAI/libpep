@@ -4,7 +4,6 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::{EncryptedAttribute, EncryptedPseudonym};
 use crate::high_level::keys::*;
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
-use crate::internal::arithmetic::ScalarNonZero;
 use crate::wasm::arithmetic::*;
 use crate::wasm::high_level::*;
 use derive_more::{Deref, From, Into};
@@ -367,8 +366,8 @@ impl WASMSessionKeys {
 #[derive(Clone, Copy, From)]
 #[wasm_bindgen(js_name = GlobalPublicKeys)]
 pub struct WASMGlobalPublicKeys {
-    pub pseudonym: WASMPseudonymGlobalPublicKey,
-    pub attribute: WASMAttributeGlobalPublicKey,
+    pseudonym: WASMPseudonymGlobalPublicKey,
+    attribute: WASMAttributeGlobalPublicKey,
 }
 
 #[wasm_bindgen(js_class = "GlobalPublicKeys")]
@@ -412,8 +411,8 @@ pub fn wasm_make_blinded_global_keys(
         .map(|x| BlindingFactor(x.0 .0))
         .collect();
     make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(ScalarNonZero::from(pseudonym_global_secret_key.0 .0)),
-        &AttributeGlobalSecretKey::from(ScalarNonZero::from(attribute_global_secret_key.0 .0)),
+        &PseudonymGlobalSecretKey::from(pseudonym_global_secret_key.0 .0),
+        &AttributeGlobalSecretKey::from(attribute_global_secret_key.0 .0),
         &bs,
     )
     .map(WASMBlindedGlobalKeys)

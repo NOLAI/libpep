@@ -11,37 +11,8 @@ use crate::low_level::primitives::rsk;
 use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 
-/// Trait that associates an encryptable type with its corresponding session key types.
-pub trait HasSessionKeys: Encryptable {
-    type SessionPublicKey: PublicKey;
-    type SessionSecretKey: SecretKey;
-}
-
-/// Trait that associates an encryptable type with its corresponding global key types.
-pub trait HasGlobalKeys: Encryptable {
-    type GlobalPublicKey: PublicKey;
-    type GlobalSecretKey: SecretKey;
-}
-
-impl HasSessionKeys for Pseudonym {
-    type SessionPublicKey = PseudonymSessionPublicKey;
-    type SessionSecretKey = PseudonymSessionSecretKey;
-}
-
-impl HasSessionKeys for Attribute {
-    type SessionPublicKey = AttributeSessionPublicKey;
-    type SessionSecretKey = AttributeSessionSecretKey;
-}
-
-impl HasGlobalKeys for Pseudonym {
-    type GlobalPublicKey = PseudonymGlobalPublicKey;
-    type GlobalSecretKey = PseudonymGlobalSecretKey;
-}
-
-impl HasGlobalKeys for Attribute {
-    type GlobalPublicKey = AttributeGlobalPublicKey;
-    type GlobalSecretKey = AttributeGlobalSecretKey;
-}
+// Re-export traits from data_types for backwards compatibility
+pub use crate::high_level::data_types::{HasGlobalKeys, HasSessionKeys};
 
 /// Polymorphic encrypt function that works for both pseudonyms and attributes.
 /// Uses the appropriate session key type based on the message type.

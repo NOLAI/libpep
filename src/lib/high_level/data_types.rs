@@ -221,6 +221,39 @@ impl Encryptable for Attribute {
         Self { value }
     }
 }
+
+/// Trait that associates an encryptable type with its corresponding session key types.
+pub trait HasSessionKeys: Encryptable {
+    type SessionPublicKey: crate::high_level::keys::PublicKey;
+    type SessionSecretKey: crate::high_level::keys::SecretKey;
+}
+
+/// Trait that associates an encryptable type with its corresponding global key types.
+pub trait HasGlobalKeys: Encryptable {
+    type GlobalPublicKey: crate::high_level::keys::PublicKey;
+    type GlobalSecretKey: crate::high_level::keys::SecretKey;
+}
+
+impl HasSessionKeys for Pseudonym {
+    type SessionPublicKey = crate::high_level::keys::PseudonymSessionPublicKey;
+    type SessionSecretKey = crate::high_level::keys::PseudonymSessionSecretKey;
+}
+
+impl HasSessionKeys for Attribute {
+    type SessionPublicKey = crate::high_level::keys::AttributeSessionPublicKey;
+    type SessionSecretKey = crate::high_level::keys::AttributeSessionSecretKey;
+}
+
+impl HasGlobalKeys for Pseudonym {
+    type GlobalPublicKey = crate::high_level::keys::PseudonymGlobalPublicKey;
+    type GlobalSecretKey = crate::high_level::keys::PseudonymGlobalSecretKey;
+}
+
+impl HasGlobalKeys for Attribute {
+    type GlobalPublicKey = crate::high_level::keys::AttributeGlobalPublicKey;
+    type GlobalSecretKey = crate::high_level::keys::AttributeGlobalSecretKey;
+}
+
 impl Encrypted for EncryptedPseudonym {
     type UnencryptedType = Pseudonym;
     fn value(&self) -> &ElGamal {
