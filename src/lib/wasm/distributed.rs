@@ -909,13 +909,13 @@ impl WASMPEPClient {
     /// Restore a PEP client from the given session keys.
     #[wasm_bindgen(js_name = restore)]
     pub fn wasm_restore(keys: &WASMSessionKeys) -> Self {
-        Self(PEPClient::restore(keys.0.clone()))
+        Self(PEPClient::restore(keys.clone().into()))
     }
 
     /// Dump the session keys.
     #[wasm_bindgen(js_name = dump)]
     pub fn wasm_dump(&self) -> WASMSessionKeys {
-        WASMSessionKeys(self.0.dump().clone())
+        WASMSessionKeys(*self.dump())
     }
 
     /// Update a pseudonym session key share from one session to the other
