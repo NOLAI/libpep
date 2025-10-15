@@ -2,6 +2,7 @@
 
 use crate::high_level::keys::*;
 use crate::internal::arithmetic::*;
+use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -24,7 +25,7 @@ pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A pair of blinded global secret keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
 pub struct BlindedGlobalKeys {
     pub pseudonym: BlindedPseudonymGlobalSecretKey,
     pub attribute: BlindedAttributeGlobalSecretKey,
@@ -41,7 +42,7 @@ pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// A pair of session key shares containing both pseudonym and attribute shares.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
 pub struct SessionKeyShares {
     pub pseudonym: PseudonymSessionKeyShare,
     pub attribute: AttributeSessionKeyShare,
