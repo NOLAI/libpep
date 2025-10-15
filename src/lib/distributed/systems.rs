@@ -231,7 +231,7 @@ impl PEPClient {
         old_key_shares: SessionKeyShares,
         new_key_shares: SessionKeyShares,
     ) {
-        self.keys = update_session_keys(self.keys.clone(), old_key_shares, new_key_shares);
+        self.keys = update_session_keys(self.keys, old_key_shares, new_key_shares);
     }
 
     /// Get the appropriate public key for a given message type.

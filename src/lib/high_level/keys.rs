@@ -50,25 +50,25 @@ pub struct GlobalSecretKeys {
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt pseudonyms with.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A session public key used to encrypt attributes against, associated with a [`AttributeSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt attributes with.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A pseudonym session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
 pub struct PseudonymSessionKeys {
     pub public: PseudonymSessionPublicKey,
     pub secret: PseudonymSessionSecretKey,
 }
 
 /// An attribute session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
 pub struct AttributeSessionKeys {
     pub public: AttributeSessionPublicKey,
     pub secret: AttributeSessionSecretKey,
@@ -76,7 +76,7 @@ pub struct AttributeSessionKeys {
 
 /// Session keys for both pseudonyms and attributes.
 /// Organized by key type (pseudonym/attribute) rather than by public/secret.
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
 pub struct SessionKeys {
     pub pseudonym: PseudonymSessionKeys,
     pub attribute: AttributeSessionKeys,
