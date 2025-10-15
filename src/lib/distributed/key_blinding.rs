@@ -2,7 +2,7 @@
 
 use crate::high_level::keys::*;
 use crate::internal::arithmetic::*;
-use derive_more::{Deref, From};
+use derive_more::From;
 use rand_core::{CryptoRng, RngCore};
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
