@@ -9,7 +9,8 @@ use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::python::elgamal::PyElGamal;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyAny, PyBytes};
+use pyo3::Py;
 
 /// A pseudonym session secret key used to decrypt pseudonyms with.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
@@ -277,8 +278,8 @@ impl PyPseudonym {
 
     /// Encode the pseudonym as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Encode the pseudonym as a hexadecimal string.
@@ -336,8 +337,8 @@ impl PyPseudonym {
     /// If the value was created using [`PyPseudonym::from_bytes`], this will return a valid value,
     /// but otherwise it will most likely return `None`.
     #[pyo3(name = "as_bytes")]
-    fn as_bytes(&self, py: Python) -> Option<PyObject> {
-        self.0.as_bytes().map(|x| PyBytes::new_bound(py, &x).into())
+    fn as_bytes(&self, py: Python) -> Option<Py<PyAny>> {
+        self.0.as_bytes().map(|x| PyBytes::new(py, &x).into())
     }
 
     /// Encodes a byte array (up to 16 bytes) into a `Pseudonym` using PKCS#7 padding.
@@ -368,11 +369,11 @@ impl PyPseudonym {
 
     /// Decodes the `Pseudonym` back to the original byte array.
     #[pyo3(name = "to_bytes_padded")]
-    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+    fn to_bytes_padded(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = self.0.to_bytes_padded().map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
-        Ok(PyBytes::new_bound(py, &result).into())
+        Ok(PyBytes::new(py, &result).into())
     }
 
     fn __repr__(&self) -> String {
@@ -418,8 +419,8 @@ impl PyAttribute {
 
     /// Encode the attribute as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Encode the attribute as a hexadecimal string.
@@ -477,8 +478,8 @@ impl PyAttribute {
     /// If the value was created using [`PyAttribute::from_bytes`], this will return a valid value,
     /// but otherwise it will most likely return `None`.
     #[pyo3(name = "as_bytes")]
-    fn as_bytes(&self, py: Python) -> Option<PyObject> {
-        self.0.as_bytes().map(|x| PyBytes::new_bound(py, &x).into())
+    fn as_bytes(&self, py: Python) -> Option<Py<PyAny>> {
+        self.0.as_bytes().map(|x| PyBytes::new(py, &x).into())
     }
 
     /// Encodes a byte array (up to 16 bytes) into an `Attribute` using PKCS#7 padding.
@@ -509,11 +510,11 @@ impl PyAttribute {
 
     /// Decodes the `Attribute` back to the original byte array.
     #[pyo3(name = "to_bytes_padded")]
-    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+    fn to_bytes_padded(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = self.0.to_bytes_padded().map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
-        Ok(PyBytes::new_bound(py, &result).into())
+        Ok(PyBytes::new(py, &result).into())
     }
 
     fn __repr__(&self) -> String {
@@ -576,11 +577,11 @@ impl PyLongPseudonym {
 
     /// Decodes the `LongPseudonym` back to the original byte array.
     #[pyo3(name = "to_bytes_padded")]
-    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+    fn to_bytes_padded(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = self.0.to_bytes_padded().map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
-        Ok(PyBytes::new_bound(py, &result).into())
+        Ok(PyBytes::new(py, &result).into())
     }
 
     /// Get the underlying pseudonyms.
@@ -650,11 +651,11 @@ impl PyLongAttribute {
 
     /// Decodes the `LongAttribute` back to the original byte array.
     #[pyo3(name = "to_bytes_padded")]
-    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+    fn to_bytes_padded(&self, py: Python) -> PyResult<Py<PyAny>> {
         let result = self.0.to_bytes_padded().map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
-        Ok(PyBytes::new_bound(py, &result).into())
+        Ok(PyBytes::new(py, &result).into())
     }
 
     /// Get the underlying attributes.
@@ -692,8 +693,8 @@ impl PyEncryptedPseudonym {
 
     /// Encode the encrypted pseudonym as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode an encrypted pseudonym from a byte array.
@@ -744,8 +745,8 @@ impl PyEncryptedAttribute {
 
     /// Encode the encrypted attribute as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode an encrypted attribute from a byte array.

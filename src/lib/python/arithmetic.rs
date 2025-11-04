@@ -1,7 +1,8 @@
 use crate::internal::arithmetic::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyAny, PyBytes};
+use pyo3::Py;
 use rand::rngs::OsRng;
 
 /// Element on a group. Can not be converted to a scalar. Supports addition and subtraction. Multiplication by a scalar is supported.
@@ -14,8 +15,8 @@ pub struct PyGroupElement(pub(crate) GroupElement);
 impl PyGroupElement {
     /// Encodes the group element as a 32-byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decodes a group element from a 32-byte array.
@@ -125,8 +126,8 @@ pub struct PyScalarNonZero(pub(crate) ScalarNonZero);
 impl PyScalarNonZero {
     /// Encodes the scalar as a 32-byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decodes a scalar from a 32-byte array.
@@ -222,8 +223,8 @@ pub struct PyScalarCanBeZero(pub(crate) ScalarCanBeZero);
 impl PyScalarCanBeZero {
     /// Encodes the scalar as a 32-byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decodes a scalar from a 32-byte array.

@@ -2,7 +2,8 @@ use crate::low_level::elgamal::{decrypt, encrypt, ElGamal};
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyAny, PyBytes};
+use pyo3::Py;
 use rand_core::OsRng;
 
 /// An ElGamal ciphertext.
@@ -14,8 +15,8 @@ pub struct PyElGamal(pub(crate) ElGamal);
 impl PyElGamal {
     /// Encodes the ElGamal ciphertext as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decodes an ElGamal ciphertext from a byte array.
