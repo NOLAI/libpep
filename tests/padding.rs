@@ -1,10 +1,10 @@
 use libpep::high_level::contexts::{
     EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
 };
-use libpep::high_level::data_types::{Encryptable, EncryptedPseudonym, Pseudonym};
+use libpep::high_level::data_types::{Attribute, Encryptable, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::high_level::ops::{decrypt, encrypt, pseudonymize};
-use libpep::high_level::padding::{LongAttribute, LongPseudonym};
+use libpep::high_level::padding::{LongAttribute, LongPseudonym, Padded};
 use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use std::io::{Error, ErrorKind};
 
@@ -329,6 +329,218 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
 
     // After reversing the pseudonymization, we should get back the original string
     assert_eq!(original_string, reverse_string);
+
+    Ok(())
+}
+
+// ===== Tests for single-block Pseudonym and Attribute padding =====
+
+#[test]
+fn test_pseudonym_single_block_from_bytes_padded() -> Result<(), Error> {
+    // Test with various byte lengths up to 15
+    let test_cases = [
+        b"" as &[u8],
+        b"a",
+        b"hello",
+        b"Hello, world!",
+        b"123456789012345", // 15 bytes (max)
+    ];
+
+    for data in test_cases {
+        let pseudo = Pseudonym::from_bytes_padded(data)?;
+        let decoded = pseudo.to_bytes_padded()?;
+        assert_eq!(data, decoded.as_slice(), "Failed for input: {:?}", data);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_pseudonym_single_block_from_string_padded() -> Result<(), Error> {
+    // Test with various strings up to 15 bytes
+    let test_cases = ["", "a", "hello", "Hello, world!", "123456789012345"];
+
+    for text in test_cases {
+        let pseudo = Pseudonym::from_string_padded(text)?;
+        let decoded = pseudo.to_string_padded()?;
+        assert_eq!(text, decoded.as_str(), "Failed for input: {:?}", text);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_pseudonym_single_block_too_long() {
+    // Test that data > 15 bytes returns an error
+    let data = b"This is 16 bytes"; // Exactly 16 bytes
+    let result = Pseudonym::from_bytes_padded(data);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+
+    let data = b"This is way more than 15 bytes!";
+    let result = Pseudonym::from_bytes_padded(data);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+
+    // Test with string
+    let text = "This is way more than 15 bytes!";
+    let result = Pseudonym::from_string_padded(text);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+}
+
+#[test]
+fn test_pseudonym_single_block_padding_correctness() -> Result<(), Error> {
+    // Test empty data (should pad with 16 bytes of value 16)
+    let pseudo = Pseudonym::from_bytes_padded(b"")?;
+    let bytes = pseudo.as_bytes().unwrap();
+    assert_eq!([16u8; 16], bytes);
+
+    // Test 1 byte (should pad with 15 bytes of value 15)
+    let pseudo = Pseudonym::from_bytes_padded(b"X")?;
+    let bytes = pseudo.as_bytes().unwrap();
+    assert_eq!(b'X', bytes[0]);
+    for byte in bytes.iter().skip(1) {
+        assert_eq!(15, *byte);
+    }
+
+    // Test 15 bytes (should pad with 1 byte of value 1)
+    let data = b"123456789012345";
+    let pseudo = Pseudonym::from_bytes_padded(data)?;
+    let bytes = pseudo.as_bytes().unwrap();
+    assert_eq!(data, &bytes[..15]);
+    assert_eq!(1, bytes[15]);
+
+    Ok(())
+}
+
+#[test]
+fn test_attribute_single_block_from_bytes_padded() -> Result<(), Error> {
+    // Test with various byte lengths up to 15
+    let test_cases = [
+        b"" as &[u8],
+        b"a",
+        b"hello",
+        b"Hello, world!",
+        b"123456789012345", // 15 bytes (max)
+    ];
+
+    for data in test_cases {
+        let attr = Attribute::from_bytes_padded(data)?;
+        let decoded = attr.to_bytes_padded()?;
+        assert_eq!(data, decoded.as_slice(), "Failed for input: {:?}", data);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_attribute_single_block_from_string_padded() -> Result<(), Error> {
+    // Test with various strings up to 15 bytes
+    let test_cases = ["", "a", "hello", "Hello, world!", "123456789012345"];
+
+    for text in test_cases {
+        let attr = Attribute::from_string_padded(text)?;
+        let decoded = attr.to_string_padded()?;
+        assert_eq!(text, decoded.as_str(), "Failed for input: {:?}", text);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_attribute_single_block_too_long() {
+    // Test that data > 15 bytes returns an error
+    let data = b"This is 16 bytes"; // Exactly 16 bytes
+    let result = Attribute::from_bytes_padded(data);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+
+    let data = b"This is way more than 15 bytes!";
+    let result = Attribute::from_bytes_padded(data);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+
+    // Test with string
+    let text = "This is way more than 15 bytes!";
+    let result = Attribute::from_string_padded(text);
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+}
+
+#[test]
+fn test_attribute_single_block_unicode() -> Result<(), Error> {
+    // Test with Unicode characters (counting bytes, not chars)
+    let test_cases = [
+        "café", // 5 bytes (é is 2 bytes)
+        "你好", // 6 bytes (each Chinese char is 3 bytes)
+        "🎉",   // 4 bytes (emoji)
+    ];
+
+    for text in test_cases {
+        let attr = Attribute::from_string_padded(text)?;
+        let decoded = attr.to_string_padded()?;
+        assert_eq!(text, decoded.as_str(), "Failed for input: {:?}", text);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_attribute_single_block_unicode_too_long() {
+    // A string that looks short but is > 16 bytes in UTF-8
+    let text = "你好世界！"; // 15 bytes (5 chars × 3 bytes each)
+    let result = Attribute::from_string_padded(text);
+    assert!(result.is_ok()); // Should fit
+
+    let text = "你好世界！！"; // 18 bytes (6 chars × 3 bytes each)
+    let result = Attribute::from_string_padded(text);
+    assert!(result.is_err()); // Should not fit
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+}
+
+#[test]
+fn test_single_block_invalid_padding_decode() {
+    // Create an attribute with invalid padding (padding byte = 0)
+    let invalid_block = [0u8; 16];
+    let attr = Attribute::from_bytes(&invalid_block);
+    let result = attr.to_bytes_padded();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+
+    // Create an attribute with inconsistent padding
+    let mut inconsistent_block = [5u8; 16];
+    inconsistent_block[15] = 6; // Wrong padding byte
+    let attr = Attribute::from_bytes(&inconsistent_block);
+    let result = attr.to_bytes_padded();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+
+    // Create an attribute with padding byte > 16
+    let mut invalid_block = [17u8; 16];
+    invalid_block[0] = b'X'; // Some data
+    let attr = Attribute::from_bytes(&invalid_block);
+    let result = attr.to_bytes_padded();
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+}
+
+#[test]
+fn test_single_block_roundtrip_all_sizes() -> Result<(), Error> {
+    // Test roundtrip for all possible data sizes (0-15 bytes)
+    for size in 0..=15 {
+        let data = vec![b'X'; size];
+
+        // Test with Pseudonym
+        let pseudo = Pseudonym::from_bytes_padded(&data)?;
+        let decoded = pseudo.to_bytes_padded()?;
+        assert_eq!(data, decoded, "Pseudonym failed for size {}", size);
+
+        // Test with Attribute
+        let attr = Attribute::from_bytes_padded(&data)?;
+        let decoded = attr.to_bytes_padded()?;
+        assert_eq!(data, decoded, "Attribute failed for size {}", size);
+    }
 
     Ok(())
 }

@@ -8,7 +8,8 @@ use crate::python::arithmetic::*;
 use crate::python::high_level::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyAny, PyBytes};
+use pyo3::Py;
 
 /// A blinding factor used to blind a global secret key during system setup.
 #[derive(Copy, Clone, Debug, From, Into, Deref)]
@@ -34,8 +35,8 @@ impl PyBlindingFactor {
 
     /// Encode the [`PyBlindingFactor`] as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode a [`PyBlindingFactor`] from a byte array.
@@ -88,8 +89,8 @@ impl PyBlindedPseudonymGlobalSecretKey {
 
     /// Encode the [`PyBlindedPseudonymGlobalSecretKey`] as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode a [`PyBlindedPseudonymGlobalSecretKey`] from a byte array.
@@ -143,8 +144,8 @@ impl PyBlindedAttributeGlobalSecretKey {
 
     /// Encode the [`PyBlindedAttributeGlobalSecretKey`] as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode a [`PyBlindedAttributeGlobalSecretKey`] from a byte array.
@@ -197,8 +198,8 @@ impl PyPseudonymSessionKeyShare {
 
     /// Encode the [`PyPseudonymSessionKeyShare`] as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode a [`PyPseudonymSessionKeyShare`] from a byte array.
@@ -250,8 +251,8 @@ impl PyAttributeSessionKeyShare {
 
     /// Encode the [`PyAttributeSessionKeyShare`] as a byte array.
     #[pyo3(name = "encode")]
-    fn encode(&self, py: Python) -> PyObject {
-        PyBytes::new_bound(py, &self.0.encode()).into()
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &self.0.encode()).into()
     }
 
     /// Decode a [`PyAttributeSessionKeyShare`] from a byte array.
