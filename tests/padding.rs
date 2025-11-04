@@ -400,8 +400,8 @@ fn test_pseudonym_single_block_padding_correctness() -> Result<(), Error> {
     let pseudo = Pseudonym::from_bytes_padded(b"X")?;
     let bytes = pseudo.as_bytes().unwrap();
     assert_eq!(b'X', bytes[0]);
-    for i in 1..16 {
-        assert_eq!(15, bytes[i]);
+    for byte in bytes.iter().skip(1) {
+        assert_eq!(15, *byte);
     }
 
     // Test 15 bytes (should pad with 1 byte of value 1)
