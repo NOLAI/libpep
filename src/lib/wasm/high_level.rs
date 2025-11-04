@@ -2,7 +2,7 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::padding::{LongAttribute, LongPseudonym};
+use crate::high_level::padding::{LongAttribute, LongPseudonym, Padded};
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
 use crate::low_level::elgamal::ElGamal;
@@ -216,6 +216,30 @@ impl WASMPseudonym {
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
     }
+
+    /// Encodes a byte array (up to 16 bytes) into a `Pseudonym` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromBytesPadded)]
+    pub fn from_bytes_padded(data: &[u8]) -> Option<Self> {
+        Pseudonym::from_bytes_padded(data).ok().map(Self)
+    }
+
+    /// Encodes a string (up to 16 bytes) into a `Pseudonym` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromStringPadded)]
+    pub fn from_string_padded(text: &str) -> Option<Self> {
+        Pseudonym::from_string_padded(text).ok().map(Self)
+    }
+
+    /// Decodes the `Pseudonym` back to the original string.
+    #[wasm_bindgen(js_name = toStringPadded)]
+    pub fn to_string_padded(&self) -> Option<String> {
+        self.0.to_string_padded().ok()
+    }
+
+    /// Decodes the `Pseudonym` back to the original byte array.
+    #[wasm_bindgen(js_name = toBytesPadded)]
+    pub fn to_bytes_padded(&self) -> Option<Vec<u8>> {
+        self.0.to_bytes_padded().ok()
+    }
 }
 
 #[wasm_bindgen(js_class = "Attribute")]
@@ -280,6 +304,30 @@ impl WASMAttribute {
     #[wasm_bindgen(js_name = asBytes)]
     pub fn as_bytes(&self) -> Option<Vec<u8>> {
         self.0.as_bytes().map(|x| x.to_vec())
+    }
+
+    /// Encodes a byte array (up to 16 bytes) into an `Attribute` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromBytesPadded)]
+    pub fn from_bytes_padded(data: &[u8]) -> Option<Self> {
+        Attribute::from_bytes_padded(data).ok().map(Self)
+    }
+
+    /// Encodes a string (up to 16 bytes) into an `Attribute` using PKCS#7 padding.
+    #[wasm_bindgen(js_name = fromStringPadded)]
+    pub fn from_string_padded(text: &str) -> Option<Self> {
+        Attribute::from_string_padded(text).ok().map(Self)
+    }
+
+    /// Decodes the `Attribute` back to the original string.
+    #[wasm_bindgen(js_name = toStringPadded)]
+    pub fn to_string_padded(&self) -> Option<String> {
+        self.0.to_string_padded().ok()
+    }
+
+    /// Decodes the `Attribute` back to the original byte array.
+    #[wasm_bindgen(js_name = toBytesPadded)]
+    pub fn to_bytes_padded(&self) -> Option<Vec<u8>> {
+        self.0.to_bytes_padded().ok()
     }
 }
 

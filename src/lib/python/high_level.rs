@@ -2,7 +2,7 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::padding::{LongAttribute, LongPseudonym};
+use crate::high_level::padding::{LongAttribute, LongPseudonym, Padded};
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::GroupElement;
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
@@ -340,6 +340,41 @@ impl PyPseudonym {
         self.0.as_bytes().map(|x| PyBytes::new_bound(py, &x).into())
     }
 
+    /// Encodes a byte array (up to 16 bytes) into a `Pseudonym` using PKCS#7 padding.
+    #[staticmethod]
+    #[pyo3(name = "from_bytes_padded")]
+    fn from_bytes_padded(data: &[u8]) -> PyResult<Self> {
+        Pseudonym::from_bytes_padded(data)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    }
+
+    /// Encodes a string (up to 16 bytes) into a `Pseudonym` using PKCS#7 padding.
+    #[staticmethod]
+    #[pyo3(name = "from_string_padded")]
+    fn from_string_padded(text: &str) -> PyResult<Self> {
+        Pseudonym::from_string_padded(text)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    }
+
+    /// Decodes the `Pseudonym` back to the original string.
+    #[pyo3(name = "to_string_padded")]
+    fn to_string_padded(&self) -> PyResult<String> {
+        self.0
+            .to_string_padded()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
+    }
+
+    /// Decodes the `Pseudonym` back to the original byte array.
+    #[pyo3(name = "to_bytes_padded")]
+    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+        let result = self.0.to_bytes_padded().map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+        })?;
+        Ok(PyBytes::new_bound(py, &result).into())
+    }
+
     fn __repr__(&self) -> String {
         format!("Pseudonym({})", self.as_hex())
     }
@@ -444,6 +479,41 @@ impl PyAttribute {
     #[pyo3(name = "as_bytes")]
     fn as_bytes(&self, py: Python) -> Option<PyObject> {
         self.0.as_bytes().map(|x| PyBytes::new_bound(py, &x).into())
+    }
+
+    /// Encodes a byte array (up to 16 bytes) into an `Attribute` using PKCS#7 padding.
+    #[staticmethod]
+    #[pyo3(name = "from_bytes_padded")]
+    fn from_bytes_padded(data: &[u8]) -> PyResult<Self> {
+        Attribute::from_bytes_padded(data)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    }
+
+    /// Encodes a string (up to 16 bytes) into an `Attribute` using PKCS#7 padding.
+    #[staticmethod]
+    #[pyo3(name = "from_string_padded")]
+    fn from_string_padded(text: &str) -> PyResult<Self> {
+        Attribute::from_string_padded(text)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    }
+
+    /// Decodes the `Attribute` back to the original string.
+    #[pyo3(name = "to_string_padded")]
+    fn to_string_padded(&self) -> PyResult<String> {
+        self.0
+            .to_string_padded()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}")))
+    }
+
+    /// Decodes the `Attribute` back to the original byte array.
+    #[pyo3(name = "to_bytes_padded")]
+    fn to_bytes_padded(&self, py: Python) -> PyResult<PyObject> {
+        let result = self.0.to_bytes_padded().map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+        })?;
+        Ok(PyBytes::new_bound(py, &result).into())
     }
 
     fn __repr__(&self) -> String {
