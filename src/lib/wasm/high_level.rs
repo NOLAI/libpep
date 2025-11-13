@@ -2,7 +2,9 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::padding::{LongAttribute, LongPseudonym, Padded};
+use crate::high_level::padding::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+};
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
 use crate::low_level::elgamal::ElGamal;
@@ -498,6 +500,98 @@ impl WASMEncryptedAttribute {
     #[wasm_bindgen(js_name = fromBase64)]
     pub fn from_base64(s: &str) -> Option<Self> {
         EncryptedAttribute::from_base64(s).map(Self)
+    }
+}
+
+/// A collection of encrypted pseudonyms that can be serialized as a pipe-delimited string.
+#[wasm_bindgen(js_name = LongEncryptedPseudonym)]
+#[derive(Clone, From, Deref)]
+pub struct WASMLongEncryptedPseudonym(pub(crate) LongEncryptedPseudonym);
+
+#[wasm_bindgen(js_class = "LongEncryptedPseudonym")]
+impl WASMLongEncryptedPseudonym {
+    /// Create from a vector of encrypted pseudonyms.
+    #[wasm_bindgen(constructor)]
+    pub fn new(encrypted_pseudonyms: Vec<WASMEncryptedPseudonym>) -> Self {
+        let rust_enc_pseudonyms: Vec<EncryptedPseudonym> =
+            encrypted_pseudonyms.into_iter().map(|p| p.0).collect();
+        Self(LongEncryptedPseudonym(rust_enc_pseudonyms))
+    }
+
+    /// Serializes to a pipe-delimited base64 string.
+    #[wasm_bindgen]
+    pub fn serialize(&self) -> String {
+        self.0.serialize()
+    }
+
+    /// Deserializes from a pipe-delimited base64 string.
+    #[wasm_bindgen]
+    pub fn deserialize(s: &str) -> Result<WASMLongEncryptedPseudonym, String> {
+        LongEncryptedPseudonym::deserialize(s)
+            .map(Self)
+            .map_err(|e| format!("Deserialization failed: {}", e))
+    }
+
+    /// Get the underlying encrypted pseudonyms.
+    #[wasm_bindgen(js_name = encryptedPseudonyms)]
+    pub fn encrypted_pseudonyms(&self) -> Vec<WASMEncryptedPseudonym> {
+        self.0
+             .0
+            .iter()
+            .map(|p| WASMEncryptedPseudonym(*p))
+            .collect()
+    }
+
+    /// Get the number of encrypted pseudonym blocks.
+    #[wasm_bindgen(js_name = length)]
+    pub fn length(&self) -> usize {
+        self.0 .0.len()
+    }
+}
+
+/// A collection of encrypted attributes that can be serialized as a pipe-delimited string.
+#[wasm_bindgen(js_name = LongEncryptedAttribute)]
+#[derive(Clone, From, Deref)]
+pub struct WASMLongEncryptedAttribute(pub(crate) LongEncryptedAttribute);
+
+#[wasm_bindgen(js_class = "LongEncryptedAttribute")]
+impl WASMLongEncryptedAttribute {
+    /// Create from a vector of encrypted attributes.
+    #[wasm_bindgen(constructor)]
+    pub fn new(encrypted_attributes: Vec<WASMEncryptedAttribute>) -> Self {
+        let rust_enc_attributes: Vec<EncryptedAttribute> =
+            encrypted_attributes.into_iter().map(|a| a.0).collect();
+        Self(LongEncryptedAttribute(rust_enc_attributes))
+    }
+
+    /// Serializes to a pipe-delimited base64 string.
+    #[wasm_bindgen]
+    pub fn serialize(&self) -> String {
+        self.0.serialize()
+    }
+
+    /// Deserializes from a pipe-delimited base64 string.
+    #[wasm_bindgen]
+    pub fn deserialize(s: &str) -> Result<WASMLongEncryptedAttribute, String> {
+        LongEncryptedAttribute::deserialize(s)
+            .map(Self)
+            .map_err(|e| format!("Deserialization failed: {}", e))
+    }
+
+    /// Get the underlying encrypted attributes.
+    #[wasm_bindgen(js_name = encryptedAttributes)]
+    pub fn encrypted_attributes(&self) -> Vec<WASMEncryptedAttribute> {
+        self.0
+             .0
+            .iter()
+            .map(|a| WASMEncryptedAttribute(*a))
+            .collect()
+    }
+
+    /// Get the number of encrypted attribute blocks.
+    #[wasm_bindgen(js_name = length)]
+    pub fn length(&self) -> usize {
+        self.0 .0.len()
     }
 }
 

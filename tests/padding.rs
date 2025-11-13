@@ -2,9 +2,14 @@ use libpep::high_level::contexts::{
     EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
 };
 use libpep::high_level::data_types::{Attribute, Encryptable, EncryptedPseudonym, Pseudonym};
-use libpep::high_level::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
+use libpep::high_level::keys::{
+    make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
+    make_pseudonym_session_keys,
+};
 use libpep::high_level::ops::{decrypt, encrypt, pseudonymize};
-use libpep::high_level::padding::{LongAttribute, LongPseudonym, Padded};
+use libpep::high_level::padding::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+};
 use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use std::io::{Error, ErrorKind};
 
@@ -541,6 +546,229 @@ fn test_single_block_roundtrip_all_sizes() -> Result<(), Error> {
         let decoded = attr.to_bytes_padded()?;
         assert_eq!(data, decoded, "Attribute failed for size {}", size);
     }
+
+    Ok(())
+}
+
+#[test]
+fn test_long_encrypted_pseudonym_serialize_deserialize() -> Result<(), Error> {
+    // Initialize test environment
+    let mut rng = rand::thread_rng();
+    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let session = EncryptionContext::from("session-1");
+
+    // Create session keys
+    let (session_public, _session_secret) =
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+    // Create some pseudonyms
+    let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization")?;
+
+    // Encrypt them
+    let encrypted: Vec<EncryptedPseudonym> = pseudonyms
+        .iter()
+        .map(|p| encrypt(p, &session_public, &mut rng))
+        .collect();
+    let long_encrypted = LongEncryptedPseudonym::from(encrypted);
+
+    // Serialize
+    let serialized = long_encrypted.serialize();
+
+    // Verify format (should contain "|" delimiter)
+    assert!(serialized.contains('|'));
+
+    // Deserialize
+    let deserialized = LongEncryptedPseudonym::deserialize(&serialized)?;
+
+    // Verify length matches
+    assert_eq!(long_encrypted.len(), deserialized.len());
+
+    // Verify each encrypted pseudonym matches
+    for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+        assert_eq!(original, restored);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_long_encrypted_attribute_serialize_deserialize() -> Result<(), Error> {
+    // Initialize test environment
+    let mut rng = rand::thread_rng();
+    let (_attr_global_public, attr_global_secret) = make_attribute_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let session = EncryptionContext::from("session-1");
+
+    // Create session keys for attributes
+    let (session_public, _session_secret) =
+        make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+
+    // Create some attributes
+    let attributes = LongAttribute::from_string_padded("attribute-test-data")?;
+
+    // Encrypt them
+    let encrypted: Vec<_> = attributes
+        .iter()
+        .map(|a| encrypt(a, &session_public, &mut rng))
+        .collect();
+    let long_encrypted = LongEncryptedAttribute::from(encrypted);
+
+    // Serialize
+    let serialized = long_encrypted.serialize();
+
+    // Verify format (should contain "|" delimiter)
+    assert!(serialized.contains('|'));
+
+    // Deserialize
+    let deserialized = LongEncryptedAttribute::deserialize(&serialized)?;
+
+    // Verify length matches
+    assert_eq!(long_encrypted.len(), deserialized.len());
+
+    // Verify each encrypted attribute matches
+    for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+        assert_eq!(original, restored);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_long_encrypted_pseudonym_empty_roundtrip() {
+    // Empty vector should serialize to empty string and deserialize back to empty vector
+    let empty = LongEncryptedPseudonym(vec![]);
+    let serialized = empty.serialize();
+    assert_eq!(serialized, "");
+
+    let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
+    assert_eq!(deserialized.len(), 0);
+}
+
+#[test]
+fn test_long_encrypted_attribute_empty_roundtrip() {
+    // Empty vector should serialize to empty string and deserialize back to empty vector
+    let empty = LongEncryptedAttribute(vec![]);
+    let serialized = empty.serialize();
+    assert_eq!(serialized, "");
+
+    let deserialized = LongEncryptedAttribute::deserialize(&serialized).unwrap();
+    assert_eq!(deserialized.len(), 0);
+}
+
+#[test]
+fn test_long_encrypted_pseudonym_deserialize_invalid_base64() {
+    // Deserializing invalid base64 should error
+    let result = LongEncryptedPseudonym::deserialize("invalid!!!|also-invalid!!!");
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+}
+
+#[test]
+fn test_long_encrypted_attribute_deserialize_invalid_base64() {
+    // Deserializing invalid base64 should error
+    let result = LongEncryptedAttribute::deserialize("invalid!!!|also-invalid!!!");
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+}
+
+#[test]
+fn test_long_encrypted_pseudonym_serde_json() -> Result<(), Error> {
+    // Initialize test environment
+    let mut rng = rand::thread_rng();
+    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let session = EncryptionContext::from("session-1");
+
+    // Create session keys
+    let (session_public, _session_secret) =
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+    // Create and encrypt some pseudonyms
+    let pseudonyms = LongPseudonym::from_string_padded("serde-test-data")?;
+    let encrypted: Vec<EncryptedPseudonym> = pseudonyms
+        .iter()
+        .map(|p| encrypt(p, &session_public, &mut rng))
+        .collect();
+    let long_encrypted = LongEncryptedPseudonym::from(encrypted);
+
+    // Serialize with serde_json
+    let json = serde_json::to_string(&long_encrypted).expect("Failed to serialize to JSON");
+
+    // Deserialize with serde_json
+    let deserialized: LongEncryptedPseudonym =
+        serde_json::from_str(&json).expect("Failed to deserialize from JSON");
+
+    // Verify length matches
+    assert_eq!(long_encrypted.len(), deserialized.len());
+
+    // Verify each encrypted pseudonym matches
+    for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+        assert_eq!(original, restored);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_long_encrypted_attribute_serde_json() -> Result<(), Error> {
+    // Initialize test environment
+    let mut rng = rand::thread_rng();
+    let (_attr_global_public, attr_global_secret) = make_attribute_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let session = EncryptionContext::from("session-1");
+
+    // Create session keys for attributes
+    let (session_public, _session_secret) =
+        make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+
+    // Create and encrypt some attributes
+    let attributes = LongAttribute::from_string_padded("serde-attribute-test")?;
+    let encrypted: Vec<_> = attributes
+        .iter()
+        .map(|a| encrypt(a, &session_public, &mut rng))
+        .collect();
+    let long_encrypted = LongEncryptedAttribute::from(encrypted);
+
+    // Serialize with serde_json
+    let json = serde_json::to_string(&long_encrypted).expect("Failed to serialize to JSON");
+
+    // Deserialize with serde_json
+    let deserialized: LongEncryptedAttribute =
+        serde_json::from_str(&json).expect("Failed to deserialize from JSON");
+
+    // Verify length matches
+    assert_eq!(long_encrypted.len(), deserialized.len());
+
+    // Verify each encrypted attribute matches
+    for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+        assert_eq!(original, restored);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_long_encrypted_pseudonym_single_item() -> Result<(), Error> {
+    // Test with a single encrypted pseudonym
+    let mut rng = rand::thread_rng();
+    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let session = EncryptionContext::from("session-1");
+    let (session_public, _session_secret) =
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+    let pseudonym = Pseudonym::from_bytes_padded(b"single")?;
+    let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
+    let long_encrypted = LongEncryptedPseudonym::from(vec![encrypted]);
+
+    // Serialize and deserialize
+    let serialized = long_encrypted.serialize();
+    assert!(!serialized.contains('|')); // Single item should not have delimiter
+
+    let deserialized = LongEncryptedPseudonym::deserialize(&serialized)?;
+    assert_eq!(1, deserialized.len());
+    assert_eq!(long_encrypted[0], deserialized[0]);
 
     Ok(())
 }

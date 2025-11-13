@@ -1,7 +1,8 @@
 use crate::high_level::data_types::{
-    Attribute, Encryptable, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
+    Attribute, Encryptable, Encrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
 use derive_more::{Deref, From};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
@@ -269,6 +270,164 @@ impl LongAttribute {
     /// - The padding is invalid
     pub fn to_bytes_padded(&self) -> Result<Vec<u8>, Error> {
         to_bytes_padded_impl(&self.0)
+    }
+}
+
+impl LongEncryptedPseudonym {
+    /// Serializes a `LongEncryptedPseudonym` to a string by concatenating the base64-encoded
+    /// individual `EncryptedPseudonym` items with "|" as a delimiter.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::high_level::padding::LongEncryptedPseudonym;
+    ///
+    /// let long_enc_pseudo = LongEncryptedPseudonym(vec![/* ... */]);
+    /// let serialized = long_enc_pseudo.serialize();
+    /// ```
+    pub fn serialize(&self) -> String {
+        self.0
+            .iter()
+            .map(|item| item.as_base64())
+            .collect::<Vec<_>>()
+            .join("|")
+    }
+
+    /// Deserializes a `LongEncryptedPseudonym` from a string by splitting on "|" and
+    /// decoding each base64-encoded `EncryptedPseudonym`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the base64-encoded parts cannot be decoded.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::high_level::padding::LongEncryptedPseudonym;
+    ///
+    /// let serialized = "base64_1|base64_2|base64_3";
+    /// let long_enc_pseudo = LongEncryptedPseudonym::deserialize(serialized).unwrap();
+    ///
+    /// // Empty string deserializes to empty vector
+    /// let empty = LongEncryptedPseudonym::deserialize("").unwrap();
+    /// assert_eq!(empty.0.len(), 0);
+    /// ```
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        if s.is_empty() {
+            return Ok(LongEncryptedPseudonym(vec![]));
+        }
+
+        let items: Result<Vec<EncryptedPseudonym>, Error> = s
+            .split('|')
+            .map(|part| {
+                EncryptedPseudonym::from_base64(part).ok_or_else(|| {
+                    Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Invalid base64 encoding: {}", part),
+                    )
+                })
+            })
+            .collect();
+
+        items.map(LongEncryptedPseudonym)
+    }
+}
+
+impl LongEncryptedAttribute {
+    /// Serializes a `LongEncryptedAttribute` to a string by concatenating the base64-encoded
+    /// individual `EncryptedAttribute` items with "|" as a delimiter.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::high_level::padding::LongEncryptedAttribute;
+    ///
+    /// let long_enc_attr = LongEncryptedAttribute(vec![/* ... */]);
+    /// let serialized = long_enc_attr.serialize();
+    /// ```
+    pub fn serialize(&self) -> String {
+        self.0
+            .iter()
+            .map(|item| item.as_base64())
+            .collect::<Vec<_>>()
+            .join("|")
+    }
+
+    /// Deserializes a `LongEncryptedAttribute` from a string by splitting on "|" and
+    /// decoding each base64-encoded `EncryptedAttribute`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any of the base64-encoded parts cannot be decoded.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::high_level::padding::LongEncryptedAttribute;
+    ///
+    /// let serialized = "base64_1|base64_2|base64_3";
+    /// let long_enc_attr = LongEncryptedAttribute::deserialize(serialized).unwrap();
+    ///
+    /// // Empty string deserializes to empty vector
+    /// let empty = LongEncryptedAttribute::deserialize("").unwrap();
+    /// assert_eq!(empty.0.len(), 0);
+    /// ```
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        if s.is_empty() {
+            return Ok(LongEncryptedAttribute(vec![]));
+        }
+
+        let items: Result<Vec<EncryptedAttribute>, Error> = s
+            .split('|')
+            .map(|part| {
+                EncryptedAttribute::from_base64(part).ok_or_else(|| {
+                    Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Invalid base64 encoding: {}", part),
+                    )
+                })
+            })
+            .collect();
+
+        items.map(LongEncryptedAttribute)
+    }
+}
+
+impl Serialize for LongEncryptedPseudonym {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+impl<'de> Deserialize<'de> for LongEncryptedPseudonym {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+impl Serialize for LongEncryptedAttribute {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+impl<'de> Deserialize<'de> for LongEncryptedAttribute {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
     }
 }
 

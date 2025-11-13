@@ -2,7 +2,9 @@ use crate::high_level::contexts::*;
 use crate::high_level::data_types::*;
 use crate::high_level::keys::*;
 use crate::high_level::ops::*;
-use crate::high_level::padding::{LongAttribute, LongPseudonym, Padded};
+use crate::high_level::padding::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+};
 use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::GroupElement;
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
@@ -782,6 +784,110 @@ impl PyEncryptedAttribute {
     }
 }
 
+/// A collection of encrypted pseudonyms that can be serialized as a pipe-delimited string.
+#[pyclass(name = "LongEncryptedPseudonym")]
+#[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
+pub struct PyLongEncryptedPseudonym(pub(crate) LongEncryptedPseudonym);
+
+#[pymethods]
+impl PyLongEncryptedPseudonym {
+    /// Create from a vector of encrypted pseudonyms.
+    #[new]
+    fn new(encrypted_pseudonyms: Vec<PyEncryptedPseudonym>) -> Self {
+        let rust_enc_pseudonyms: Vec<EncryptedPseudonym> =
+            encrypted_pseudonyms.into_iter().map(|p| p.0).collect();
+        Self(LongEncryptedPseudonym(rust_enc_pseudonyms))
+    }
+
+    /// Serializes to a pipe-delimited base64 string.
+    #[pyo3(name = "serialize")]
+    fn serialize(&self) -> String {
+        self.0.serialize()
+    }
+
+    /// Deserializes from a pipe-delimited base64 string.
+    #[staticmethod]
+    #[pyo3(name = "deserialize")]
+    fn deserialize(s: &str) -> PyResult<Self> {
+        LongEncryptedPseudonym::deserialize(s)
+            .map(Self)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
+            })
+    }
+
+    /// Get the underlying encrypted pseudonyms.
+    #[pyo3(name = "encrypted_pseudonyms")]
+    fn encrypted_pseudonyms(&self) -> Vec<PyEncryptedPseudonym> {
+        self.0 .0.iter().map(|p| PyEncryptedPseudonym(*p)).collect()
+    }
+
+    /// Get the number of encrypted pseudonym blocks.
+    fn __len__(&self) -> usize {
+        self.0 .0.len()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("LongEncryptedPseudonym({} blocks)", self.0 .0.len())
+    }
+
+    fn __eq__(&self, other: &PyLongEncryptedPseudonym) -> bool {
+        self.0 == other.0
+    }
+}
+
+/// A collection of encrypted attributes that can be serialized as a pipe-delimited string.
+#[pyclass(name = "LongEncryptedAttribute")]
+#[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
+pub struct PyLongEncryptedAttribute(pub(crate) LongEncryptedAttribute);
+
+#[pymethods]
+impl PyLongEncryptedAttribute {
+    /// Create from a vector of encrypted attributes.
+    #[new]
+    fn new(encrypted_attributes: Vec<PyEncryptedAttribute>) -> Self {
+        let rust_enc_attributes: Vec<EncryptedAttribute> =
+            encrypted_attributes.into_iter().map(|a| a.0).collect();
+        Self(LongEncryptedAttribute(rust_enc_attributes))
+    }
+
+    /// Serializes to a pipe-delimited base64 string.
+    #[pyo3(name = "serialize")]
+    fn serialize(&self) -> String {
+        self.0.serialize()
+    }
+
+    /// Deserializes from a pipe-delimited base64 string.
+    #[staticmethod]
+    #[pyo3(name = "deserialize")]
+    fn deserialize(s: &str) -> PyResult<Self> {
+        LongEncryptedAttribute::deserialize(s)
+            .map(Self)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
+            })
+    }
+
+    /// Get the underlying encrypted attributes.
+    #[pyo3(name = "encrypted_attributes")]
+    fn encrypted_attributes(&self) -> Vec<PyEncryptedAttribute> {
+        self.0 .0.iter().map(|a| PyEncryptedAttribute(*a)).collect()
+    }
+
+    /// Get the number of encrypted attribute blocks.
+    fn __len__(&self) -> usize {
+        self.0 .0.len()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("LongEncryptedAttribute({} blocks)", self.0 .0.len())
+    }
+
+    fn __eq__(&self, other: &PyLongEncryptedAttribute) -> bool {
+        self.0 == other.0
+    }
+}
+
 // Pseudonym global key pair
 #[pyclass(name = "PseudonymGlobalKeyPair")]
 #[derive(Copy, Clone, Debug)]
@@ -977,6 +1083,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyLongAttribute>()?;
     m.add_class::<PyEncryptedPseudonym>()?;
     m.add_class::<PyEncryptedAttribute>()?;
+    m.add_class::<PyLongEncryptedPseudonym>()?;
+    m.add_class::<PyLongEncryptedAttribute>()?;
     m.add_class::<PyPseudonymGlobalKeyPair>()?;
     m.add_class::<PyAttributeGlobalKeyPair>()?;
     m.add_class::<PyPseudonymSessionKeyPair>()?;
