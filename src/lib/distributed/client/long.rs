@@ -14,17 +14,25 @@ use std::any::TypeId;
 
 impl PEPClient {
     /// Get the appropriate public key for a long message type (multi-block).
+    ///
+    /// # Safety
+    /// Uses unsafe pointer casts for polymorphic dispatch. Safe because:
+    /// - TypeId checks ensure the correct concrete type before casting
+    /// - All session key types have the same memory layout (GroupElement wrapper)
+    #[allow(unsafe_code)]
     fn get_public_key_for_long<L>(&self) -> &<L::Block as HasSessionKeys>::SessionPublicKey
     where
         L: LongEncryptable + 'static,
         L::Block: HasSessionKeys,
     {
         if TypeId::of::<L>() == TypeId::of::<LongPseudonym>() {
+            // SAFETY: TypeId check ensures L is LongPseudonym, so Block is Pseudonym
             unsafe {
                 &*(&self.keys.pseudonym.public as *const _
                     as *const <L::Block as HasSessionKeys>::SessionPublicKey)
             }
         } else if TypeId::of::<L>() == TypeId::of::<LongAttribute>() {
+            // SAFETY: TypeId check ensures L is LongAttribute, so Block is Attribute
             unsafe {
                 &*(&self.keys.attribute.public as *const _
                     as *const <L::Block as HasSessionKeys>::SessionPublicKey)
@@ -35,6 +43,12 @@ impl PEPClient {
     }
 
     /// Get the appropriate secret key for a long encrypted message type (multi-block).
+    ///
+    /// # Safety
+    /// Uses unsafe pointer casts for polymorphic dispatch. Safe because:
+    /// - TypeId checks ensure the correct concrete type before casting
+    /// - All session key types have the same memory layout (ScalarNonZero wrapper)
+    #[allow(unsafe_code)]
     fn get_secret_key_for_long<LE>(
         &self,
     ) -> &<<LE::UnencryptedType as LongEncryptable>::Block as HasSessionKeys>::SessionSecretKey
@@ -43,11 +57,13 @@ impl PEPClient {
         <LE::UnencryptedType as LongEncryptable>::Block: HasSessionKeys,
     {
         if TypeId::of::<LE>() == TypeId::of::<LongEncryptedPseudonym>() {
+            // SAFETY: TypeId check ensures LE is LongEncryptedPseudonym
             unsafe {
                 &*(&self.keys.pseudonym.secret as *const _
                     as *const <<LE::UnencryptedType as LongEncryptable>::Block as HasSessionKeys>::SessionSecretKey)
             }
         } else if TypeId::of::<LE>() == TypeId::of::<LongEncryptedAttribute>() {
+            // SAFETY: TypeId check ensures LE is LongEncryptedAttribute
             unsafe {
                 &*(&self.keys.attribute.secret as *const _
                     as *const <<LE::UnencryptedType as LongEncryptable>::Block as HasSessionKeys>::SessionSecretKey)
@@ -128,11 +144,17 @@ impl OfflinePEPClient {
     /// Polymorphic encrypt for long (multi-block) data types using global keys.
     /// Automatically uses the appropriate global key based on the message type.
     ///
+    /// # Safety
+    /// Uses unsafe pointer casts for polymorphic dispatch. Safe because:
+    /// - TypeId checks ensure the correct concrete type before casting
+    /// - All global key types have the same memory layout (GroupElement wrapper)
+    ///
     /// # Example
     /// ```ignore
     /// let encrypted_long_pseudonym = client.encrypt_long(&long_pseudonym, rng);
     /// let encrypted_long_attribute = client.encrypt_long(&long_attribute, rng);
     /// ```
+    #[allow(unsafe_code)]
     pub fn encrypt_long<L, R>(&self, message: &L, rng: &mut R) -> L::EncryptedType
     where
         L: LongEncryptable + 'static,
@@ -141,7 +163,7 @@ impl OfflinePEPClient {
     {
         if TypeId::of::<L>() == TypeId::of::<LongPseudonym>() {
             let public_key = &self.global_public_keys.pseudonym;
-            // Safety: We've verified the type matches
+            // SAFETY: TypeId check ensures L is LongPseudonym, so Block is Pseudonym
             unsafe {
                 let public_key_ptr = public_key as *const _
                     as *const <L::Block as crate::high_level::core::HasGlobalKeys>::GlobalPublicKey;
@@ -149,7 +171,7 @@ impl OfflinePEPClient {
             }
         } else if TypeId::of::<L>() == TypeId::of::<LongAttribute>() {
             let public_key = &self.global_public_keys.attribute;
-            // Safety: We've verified the type matches
+            // SAFETY: TypeId check ensures L is LongAttribute, so Block is Attribute
             unsafe {
                 let public_key_ptr = public_key as *const _
                     as *const <L::Block as crate::high_level::core::HasGlobalKeys>::GlobalPublicKey;

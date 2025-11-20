@@ -499,6 +499,8 @@ fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Result<Vec<T>, Error> 
     // Add all full blocks from the input data
     for i in 0..full_blocks {
         let start = i * 16;
+        // Unwrap is safe: slice is exactly 16 bytes by construction
+        #[allow(clippy::unwrap_used)]
         result.push(T::from_bytes(&data[start..start + 16].try_into().unwrap()));
     }
 
@@ -536,6 +538,8 @@ fn to_bytes_padded_impl<T: Encryptable>(items: &[T]) -> Result<Vec<u8>, Error> {
     }
 
     // Process the last block and validate padding
+    // Unwrap is safe: we already checked items.is_empty() above
+    #[allow(clippy::unwrap_used)]
     let last_block = items.last().unwrap().as_bytes().ok_or(Error::new(
         ErrorKind::InvalidData,
         "Last encryptable conversion to bytes failed",

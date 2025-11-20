@@ -453,6 +453,8 @@ where
     let (pk, sk) = make_keys(rng);
     let blinding_factors: Vec<BlindingFactor> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
+    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
+    #[allow(clippy::unwrap_used)]
     let bsk = make_blinded(&sk, &blinding_factors).unwrap();
     (pk, bsk, blinding_factors)
 }
@@ -514,6 +516,8 @@ pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
     let blinding_factors: Vec<BlindingFactor> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
 
+    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
+    #[allow(clippy::unwrap_used)]
     let blinded_global_keys =
         make_blinded_global_keys(&pseudonym_sk, &attribute_sk, &blinding_factors).unwrap();
 

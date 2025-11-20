@@ -78,6 +78,8 @@ impl GroupElement {
             Ok(v) => v,
             Err(_) => return None,
         };
+        // SAFETY: hex::decode of 64 chars produces exactly 32 bytes, so from_slice cannot fail
+        #[allow(clippy::unwrap_used)]
         CompressedRistretto::from_slice(&bytes)
             .unwrap()
             .decompress()

@@ -71,6 +71,12 @@ impl PEPClient {
     }
 
     /// Get the appropriate public key for a given message type (single-block).
+    ///
+    /// # Safety
+    /// Uses unsafe pointer casts for polymorphic dispatch. Safe because:
+    /// - TypeId checks ensure the correct concrete type before casting
+    /// - All session key types have the same memory layout (GroupElement wrapper)
+    #[allow(unsafe_code)]
     fn get_public_key_for<M>(&self) -> &M::SessionPublicKey
     where
         M: HasSessionKeys + 'static,
@@ -78,9 +84,10 @@ impl PEPClient {
         use std::any::TypeId;
 
         if TypeId::of::<M>() == TypeId::of::<Pseudonym>() {
-            // Safe because we've checked the type
+            // SAFETY: TypeId check ensures M is Pseudonym, so M::SessionPublicKey is PseudonymSessionPublicKey
             unsafe { &*(&self.keys.pseudonym.public as *const _ as *const M::SessionPublicKey) }
         } else if TypeId::of::<M>() == TypeId::of::<Attribute>() {
+            // SAFETY: TypeId check ensures M is Attribute, so M::SessionPublicKey is AttributeSessionPublicKey
             unsafe { &*(&self.keys.attribute.public as *const _ as *const M::SessionPublicKey) }
         } else {
             panic!("Unsupported message type")
@@ -88,6 +95,12 @@ impl PEPClient {
     }
 
     /// Get the appropriate secret key for a given encrypted message type (single-block).
+    ///
+    /// # Safety
+    /// Uses unsafe pointer casts for polymorphic dispatch. Safe because:
+    /// - TypeId checks ensure the correct concrete type before casting
+    /// - All session key types have the same memory layout (ScalarNonZero wrapper)
+    #[allow(unsafe_code)]
     fn get_secret_key_for<E>(&self) -> &<E::UnencryptedType as HasSessionKeys>::SessionSecretKey
     where
         E: Encrypted,
@@ -96,11 +109,13 @@ impl PEPClient {
         use std::any::TypeId;
 
         if TypeId::of::<E::UnencryptedType>() == TypeId::of::<Pseudonym>() {
+            // SAFETY: TypeId check ensures E::UnencryptedType is Pseudonym
             unsafe {
                 &*(&self.keys.pseudonym.secret as *const _
                     as *const <E::UnencryptedType as HasSessionKeys>::SessionSecretKey)
             }
         } else if TypeId::of::<E::UnencryptedType>() == TypeId::of::<Attribute>() {
+            // SAFETY: TypeId check ensures E::UnencryptedType is Attribute
             unsafe {
                 &*(&self.keys.attribute.secret as *const _
                     as *const <E::UnencryptedType as HasSessionKeys>::SessionSecretKey)

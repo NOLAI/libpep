@@ -72,6 +72,9 @@ assets = [
     ["target/release/peppy", "bin/peppy", "555"],
 ]
 
+[lints.rust]
+unsafe_code = "deny"
+
 [lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"
