@@ -9,17 +9,21 @@ documentation = "https://docs.rs/libpep"
 license = "Apache-2.0"
 keywords = ["crypto", "pep", "pseudonymization"]
 categories = ["cryptography", "algorithms"]
-description = "Implementation of PEP primitives, offering pseudonymization and encryption interfaces"
+description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
 
 [features]
-default = ["build-binary"]
+default = ["build-binary", "long", "global", "batch", "serde"]
 elgamal3 = []
 wasm = ["wasm-bindgen", "getrandom"]
 python = ["pyo3"]
 legacy-pep-repo-compatible = []
 insecure-methods = []
 build-binary = ["buildinfy","commandy","commandy_macros"]
+long = [] # For long data types
+global = [] # For encryption towards global keys (instead of encryption with session keys)
+batch = [] # For batch transcryption
+serde = ["dep:serde"]
 
 # Note: python and wasm are mutually exclusive and should not be enabled together.
 # PyO3 builds a cdylib that links to Python interpreter, while wasm-bindgen builds
@@ -43,7 +47,7 @@ hmac = "^0.12"
 derive_more = { version = "^1.0", features = ["deref", "from", "into"] }
 hex = "^0.4"
 base64 = "^0.22"
-serde = { version = "^1.0", features = ["derive"] }
+serde = { version = "^1.0", features = ["derive"], optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 getrandom = { version = "^0.2", features = ["js"], optional = true}
 pyo3 = { version = "0.27", features = ["extension-module"], optional = true }
@@ -67,3 +71,7 @@ assets = [
     ["peppy.1", "man/man1/", "444"],
     ["target/release/peppy", "bin/peppy", "555"],
 ]
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

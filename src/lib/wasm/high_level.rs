@@ -1,11 +1,14 @@
-use crate::high_level::contexts::*;
-use crate::high_level::data_types::*;
+use crate::high_level::batch::*;
+use crate::high_level::core::*;
 use crate::high_level::keys::*;
-use crate::high_level::ops::*;
-use crate::high_level::padding::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+use crate::high_level::long::data_types::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use crate::high_level::padding::Padded;
+use crate::high_level::rerandomize::*;
+use crate::high_level::transcryption::contexts::*;
+use crate::high_level::transcryption::ops::*;
+use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
 use crate::low_level::elgamal::ElGamal;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
@@ -1209,4 +1212,64 @@ pub fn wasm_transcrypt_batch(
             }
         })
         .collect()
+}
+
+/// Encrypt a long pseudonym using a global pseudonym public key.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[wasm_bindgen(js_name = encryptLongPseudonymGlobal)]
+pub fn wasm_encrypt_long_pseudonym_global(
+    message: &WASMLongPseudonym,
+    public_key: &WASMPseudonymGlobalPublicKey,
+) -> WASMLongEncryptedPseudonym {
+    let mut rng = rand::thread_rng();
+    WASMLongEncryptedPseudonym(crate::high_level::long::ops::encrypt_long_pseudonym_global(
+        &message.0,
+        &PseudonymGlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+/// Encrypt a long attribute using a global attribute public key.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[wasm_bindgen(js_name = encryptLongAttributeGlobal)]
+pub fn wasm_encrypt_long_attribute_global(
+    message: &WASMLongAttribute,
+    public_key: &WASMAttributeGlobalPublicKey,
+) -> WASMLongEncryptedAttribute {
+    let mut rng = rand::thread_rng();
+    WASMLongEncryptedAttribute(crate::high_level::long::ops::encrypt_long_attribute_global(
+        &message.0,
+        &AttributeGlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+/// Decrypt a long encrypted pseudonym using a global pseudonym secret key.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(feature = "insecure-methods")]
+#[wasm_bindgen(js_name = decryptLongPseudonymGlobal)]
+pub fn wasm_decrypt_long_pseudonym_global(
+    encrypted: &WASMLongEncryptedPseudonym,
+    secret_key: &WASMPseudonymGlobalSecretKey,
+) -> WASMLongPseudonym {
+    WASMLongPseudonym(crate::high_level::long::ops::decrypt_long_pseudonym_global(
+        &encrypted.0,
+        &PseudonymGlobalSecretKey::from(secret_key.0 .0),
+    ))
+}
+
+/// Decrypt a long encrypted attribute using a global attribute secret key.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(feature = "insecure-methods")]
+#[wasm_bindgen(js_name = decryptLongAttributeGlobal)]
+pub fn wasm_decrypt_long_attribute_global(
+    encrypted: &WASMLongEncryptedAttribute,
+    secret_key: &WASMAttributeGlobalSecretKey,
+) -> WASMLongAttribute {
+    WASMLongAttribute(crate::high_level::long::ops::decrypt_long_attribute_global(
+        &encrypted.0,
+        &AttributeGlobalSecretKey::from(secret_key.0 .0),
+    ))
 }

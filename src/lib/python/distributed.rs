@@ -1,9 +1,9 @@
 use crate::distributed::key_blinding::*;
 use crate::distributed::systems::*;
-use crate::high_level::contexts::*;
-use crate::high_level::data_types::{EncryptedAttribute, EncryptedPseudonym};
+use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
 use crate::high_level::keys::*;
-use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use crate::high_level::transcryption::contexts::*;
+use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::python::arithmetic::*;
 use crate::python::high_level::*;
 use derive_more::{Deref, From, Into};

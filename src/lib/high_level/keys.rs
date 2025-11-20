@@ -3,21 +3,25 @@
 //!
 //! Keys are split into separate Attribute and Pseudonym encryption keys for enhanced security.
 
-use crate::high_level::contexts::{EncryptionContext, RekeyFactor};
-use crate::high_level::secrets::{
+use crate::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits, G};
+use crate::high_level::transcryption::contexts::{EncryptionContext, RekeyFactor};
+use crate::high_level::transcryption::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
 };
-use crate::internal::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits, G};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "serde")]
 use std::fmt::Formatter;
 
 /// A global public key for pseudonyms, associated with the [`PseudonymGlobalSecretKey`] from which session keys are derived.
 /// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
 /// key may leak information.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymGlobalPublicKey(pub(crate) GroupElement);
 /// A global secret key for pseudonyms from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
@@ -26,14 +30,16 @@ pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 /// A global public key for attributes, associated with the [`AttributeGlobalSecretKey`] from which session keys are derived.
 /// Can also be used to encrypt attributes against, if no session key is available or using a session
 /// key may leak information.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeGlobalPublicKey(pub(crate) GroupElement);
 /// A global secret key for attributes from which session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
 pub struct AttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A pair of global public keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct GlobalPublicKeys {
     pub pseudonym: PseudonymGlobalPublicKey,
     pub attribute: AttributeGlobalPublicKey,
@@ -47,28 +53,32 @@ pub struct GlobalSecretKeys {
 }
 
 /// A session public key used to encrypt pseudonyms against, associated with a [`PseudonymSessionSecretKey`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt pseudonyms with.
 #[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A session public key used to encrypt attributes against, associated with a [`AttributeSessionSecretKey`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 /// A session secret key used to decrypt attributes with.
 #[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);
 
 /// A pseudonym session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymSessionKeys {
     pub public: PseudonymSessionPublicKey,
     pub secret: PseudonymSessionSecretKey,
 }
 
 /// An attribute session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeSessionKeys {
     pub public: AttributeSessionPublicKey,
     pub secret: AttributeSessionSecretKey,
@@ -76,12 +86,14 @@ pub struct AttributeSessionKeys {
 
 /// Session keys for both pseudonyms and attributes.
 /// Organized by key type (pseudonym/attribute) rather than by public/secret.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SessionKeys {
     pub pseudonym: PseudonymSessionKeys,
     pub attribute: AttributeSessionKeys,
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for PseudonymSessionSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -90,6 +102,7 @@ impl Serialize for PseudonymSessionSecretKey {
         serializer.serialize_str(self.0.encode_as_hex().as_str())
     }
 }
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for PseudonymSessionSecretKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -116,6 +129,7 @@ impl<'de> Deserialize<'de> for PseudonymSessionSecretKey {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for AttributeSessionSecretKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -124,6 +138,7 @@ impl Serialize for AttributeSessionSecretKey {
         serializer.serialize_str(self.0.encode_as_hex().as_str())
     }
 }
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for AttributeSessionSecretKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

@@ -1,4 +1,4 @@
-use libpep::internal::arithmetic::*;
+use libpep::arithmetic::*;
 use libpep::low_level::elgamal::*;
 use libpep::low_level::primitives::*;
 use rand_core::OsRng;

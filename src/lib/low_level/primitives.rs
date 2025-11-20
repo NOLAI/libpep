@@ -1,7 +1,7 @@
 //! PEP primitives for [rekey]ing, [reshuffle]ing, [rerandomize]ation of [ElGamal] ciphertexts, their
 //! transitive and reversible n-PEP extensions, and combined versions.
 
-use crate::internal::arithmetic::*;
+use crate::arithmetic::*;
 use crate::low_level::elgamal::*;
 
 /// Change the representation of a ciphertext without changing the contents.

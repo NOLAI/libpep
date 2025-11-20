@@ -1,11 +1,11 @@
-use crate::high_level::contexts::*;
-use crate::high_level::data_types::*;
+use crate::high_level::core::*;
 use crate::high_level::keys::*;
-use crate::high_level::ops::*;
-use crate::high_level::padding::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+use crate::high_level::long::data_types::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use crate::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use crate::high_level::padding::Padded;
+use crate::high_level::transcryption::contexts::*;
+use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::internal::arithmetic::GroupElement;
 use crate::python::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::python::elgamal::PyElGamal;
@@ -1064,6 +1064,70 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     )
 }
 
+/// Encrypt a long pseudonym using a global pseudonym public key.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[pyfunction]
+#[pyo3(name = "encrypt_long_pseudonym_global")]
+pub fn py_encrypt_long_pseudonym_global(
+    message: &PyLongPseudonym,
+    public_key: &PyPseudonymGlobalPublicKey,
+) -> PyLongEncryptedPseudonym {
+    let mut rng = rand::thread_rng();
+    PyLongEncryptedPseudonym(crate::high_level::long::ops::encrypt_long_pseudonym_global(
+        &message.0,
+        &PseudonymGlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+/// Encrypt a long attribute using a global attribute public key.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[pyfunction]
+#[pyo3(name = "encrypt_long_attribute_global")]
+pub fn py_encrypt_long_attribute_global(
+    message: &PyLongAttribute,
+    public_key: &PyAttributeGlobalPublicKey,
+) -> PyLongEncryptedAttribute {
+    let mut rng = rand::thread_rng();
+    PyLongEncryptedAttribute(crate::high_level::long::ops::encrypt_long_attribute_global(
+        &message.0,
+        &AttributeGlobalPublicKey::from(GroupElement::from(public_key.0)),
+        &mut rng,
+    ))
+}
+
+/// Decrypt a long encrypted pseudonym using a global pseudonym secret key.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(feature = "insecure-methods")]
+#[pyfunction]
+#[pyo3(name = "decrypt_long_pseudonym_global")]
+pub fn py_decrypt_long_pseudonym_global(
+    encrypted: &PyLongEncryptedPseudonym,
+    secret_key: &PyPseudonymGlobalSecretKey,
+) -> PyLongPseudonym {
+    PyLongPseudonym(crate::high_level::long::ops::decrypt_long_pseudonym_global(
+        &encrypted.0,
+        &PseudonymGlobalSecretKey::from(secret_key.0 .0),
+    ))
+}
+
+/// Decrypt a long encrypted attribute using a global attribute secret key.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(feature = "insecure-methods")]
+#[pyfunction]
+#[pyo3(name = "decrypt_long_attribute_global")]
+pub fn py_decrypt_long_attribute_global(
+    encrypted: &PyLongEncryptedAttribute,
+    secret_key: &PyAttributeGlobalSecretKey,
+) -> PyLongAttribute {
+    PyLongAttribute(crate::high_level::long::ops::decrypt_long_attribute_global(
+        &encrypted.0,
+        &AttributeGlobalSecretKey::from(secret_key.0 .0),
+    ))
+}
+
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionSecretKey>()?;
     m.add_class::<PyAttributeSessionSecretKey>()?;
@@ -1098,5 +1162,11 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_decrypt_pseudonym, m)?)?;
     m.add_function(wrap_pyfunction!(py_encrypt_data, m)?)?;
     m.add_function(wrap_pyfunction!(py_decrypt_data, m)?)?;
+    m.add_function(wrap_pyfunction!(py_encrypt_long_pseudonym_global, m)?)?;
+    m.add_function(wrap_pyfunction!(py_encrypt_long_attribute_global, m)?)?;
+    #[cfg(feature = "insecure-methods")]
+    m.add_function(wrap_pyfunction!(py_decrypt_long_pseudonym_global, m)?)?;
+    #[cfg(feature = "insecure-methods")]
+    m.add_function(wrap_pyfunction!(py_decrypt_long_attribute_global, m)?)?;
     Ok(())
 }

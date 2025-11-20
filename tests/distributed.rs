@@ -1,7 +1,8 @@
-use libpep::distributed::systems::{PEPClient, PEPSystem};
-use libpep::high_level::contexts::*;
-use libpep::high_level::data_types::*;
-use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::distributed::client::core::PEPClient;
+use libpep::distributed::server::core::PEPSystem;
+use libpep::high_level::transcryption::contexts::*;
+use libpep::high_level::core::*;
+use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use rand_core::OsRng;
 
 #[test]

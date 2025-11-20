@@ -1,7 +1,7 @@
 //! Utilities for deriving factors from contexts and secrets.
 
-use crate::high_level::contexts::*;
-use crate::internal::arithmetic::*;
+use super::contexts::*;
+use crate::arithmetic::*;
 use derive_more::From;
 use hmac::{Hmac, Mac};
 use sha2::Sha512;

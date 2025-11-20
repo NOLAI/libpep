@@ -1,11 +1,14 @@
 //! Key blinding, session key share generation and session key retrieval for distributed trust.
 
+use crate::arithmetic::*;
 use crate::high_level::keys::*;
-use crate::internal::arithmetic::*;
 use derive_more::From;
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "serde")]
 use std::fmt::Formatter;
 
 /// A blinding factor used to blind a global secret key during system setup.
@@ -25,7 +28,8 @@ pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A pair of blinded global secret keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlindedGlobalKeys {
     pub pseudonym: BlindedPseudonymGlobalSecretKey,
     pub attribute: BlindedAttributeGlobalSecretKey,
@@ -42,7 +46,8 @@ pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// A pair of session key shares containing both pseudonym and attribute shares.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SessionKeyShares {
     pub pseudonym: PseudonymSessionKeyShare,
     pub attribute: AttributeSessionKeyShare,
@@ -149,6 +154,7 @@ impl BlindingFactor {
 }
 
 /// Macro to implement Serialize and Deserialize for SafeScalar types
+#[cfg(feature = "serde")]
 macro_rules! impl_serde_for_safe_scalar {
     ($type:ident) => {
         impl Serialize for $type {
@@ -192,9 +198,13 @@ macro_rules! impl_serde_for_safe_scalar {
     };
 }
 
+#[cfg(feature = "serde")]
 impl_serde_for_safe_scalar!(BlindedPseudonymGlobalSecretKey);
+#[cfg(feature = "serde")]
 impl_serde_for_safe_scalar!(BlindedAttributeGlobalSecretKey);
+#[cfg(feature = "serde")]
 impl_serde_for_safe_scalar!(PseudonymSessionKeyShare);
+#[cfg(feature = "serde")]
 impl_serde_for_safe_scalar!(AttributeSessionKeyShare);
 
 /// Generic function to create a blinded global secret key from a global secret key and blinding factors.
@@ -449,8 +459,8 @@ where
 
 /// Setup a distributed system with pseudonym global keys, a blinded global secret key and a list of
 /// blinding factors for pseudonyms.
-/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
-/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::server::PEPSystem)s), the global public key
+/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::server::PEPClient)s.
 pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
@@ -469,8 +479,8 @@ pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
 
 /// Setup a distributed system with attribute global keys, a blinded global secret key and a list of
 /// blinding factors for attributes.
-/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s), the global public key
-/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::server::PEPSystem)s), the global public key
+/// and blinded global secret key can be publicly shared with anyone and are required by [`PEPClient`](crate::distributed::server::PEPClient)s.
 pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,
@@ -491,9 +501,9 @@ pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
 /// and a list of blinding factors. This is a convenience method that combines
 /// [`make_distributed_pseudonym_global_keys`] and [`make_distributed_attribute_global_keys`].
 ///
-/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::systems::PEPSystem)s),
+/// The blinding factors should securely be transferred to the transcryptors ([`PEPSystem`](crate::distributed::server::PEPSystem)s),
 /// the global public keys and blinded global secret keys can be publicly shared with anyone and are
-/// required by [`PEPClient`](crate::distributed::systems::PEPClient)s.
+/// required by [`PEPClient`](crate::distributed::server::PEPClient)s.
 pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
     n: usize,
     rng: &mut R,

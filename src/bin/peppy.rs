@@ -1,18 +1,22 @@
 use commandy_macros::*;
+use libpep::arithmetic::{ScalarNonZero, ScalarTraits};
 use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
-use libpep::high_level::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
-use libpep::high_level::data_types::{Encryptable, Encrypted, EncryptedPseudonym, Pseudonym};
+use libpep::high_level::core::{
+    decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
+};
+use libpep::high_level::global::encrypt_pseudonym_global;
 use libpep::high_level::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, PseudonymGlobalPublicKey,
     PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
-use libpep::high_level::ops::{
-    decrypt_pseudonym, encrypt_pseudonym, encrypt_pseudonym_global, rerandomize, transcrypt,
+use libpep::high_level::long::core::LongPseudonym;
+use libpep::high_level::rerandomize::rerandomize;
+use libpep::high_level::transcryption::contexts::{
+    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
 };
-use libpep::high_level::padding::LongPseudonym;
-use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::internal::arithmetic::{ScalarNonZero, ScalarTraits};
+use libpep::high_level::transcryption::ops::transcrypt;
+use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use rand_core::OsRng;
 use std::cmp::Ordering;
 

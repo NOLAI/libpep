@@ -15,9 +15,9 @@
 //!
 //! This library provides both a [low-level] API for ElGamal encryption and the PEP
 //! [primitives](low_level::primitives), and a [high-level] API for
-//! [pseudonymization](high_level::ops::pseudonymize) and [rekeying](high_level::ops::rekey)
-//! (i.e. [transcryption](high_level::ops::transcrypt)) of [Pseudonyms](high_level::data_types::Pseudonym)
-//! and [Attributes](high_level::data_types::Attribute) using this cryptographic concept.
+//! [pseudonymization](high_level::transcryption::ops::pseudonymize) and [rekeying](high_level::transcryption::ops::rekey)
+//! (i.e. [transcryption](high_level::transcryption::ops::transcrypt)) of [Pseudonyms](high_level::core::Pseudonym)
+//! and [Attributes](high_level::core::Attribute) using this cryptographic concept.
 //!
 //! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
@@ -28,9 +28,9 @@
 //! article by [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
 //! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/) (to be published).
 
+pub mod arithmetic;
 pub mod distributed;
 pub mod high_level;
-pub mod internal;
 pub mod low_level;
 #[cfg(feature = "python")]
 pub mod python;

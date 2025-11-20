@@ -2,19 +2,19 @@
 //! Based on a simple string representations, this module provides the necessary types to describe
 //! transcryption between different domains and sessions.
 
-use crate::high_level::secrets::{
+use super::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
     EncryptionSecret, PseudonymizationSecret,
 };
-use crate::internal::arithmetic::ScalarNonZero;
+use crate::arithmetic::ScalarNonZero;
 use derive_more::{Deref, From};
-use serde::{Deserialize, Serialize};
 
 /// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
 /// a user's role or usergroup).
 /// With the `legacy-pep-repo-compatible` feature enabled, pseudonymization domains also include
 /// an `audience_type` field, which is used to distinguish between different types of audiences.
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(feature = "legacy-pep-repo-compatible")]
 pub struct PseudonymizationDomain {
     #[deref]
@@ -25,7 +25,8 @@ pub struct PseudonymizationDomain {
 /// user's session).
 /// With the `legacy-pep-repo-compatible` feature enabled, encryption contexts also include
 /// an `audience_type` field, which is used to distinguish between different types of audiences.
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(feature = "legacy-pep-repo-compatible")]
 pub struct EncryptionContext {
     #[deref]
@@ -35,12 +36,14 @@ pub struct EncryptionContext {
 
 /// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
 /// a user's role or usergroup).
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub struct PseudonymizationDomain(pub String);
 /// Encryption contexts are used to describe the domain in which ciphertexts exist (typically, a
 /// user's session).
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref, Serialize, Deserialize)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 pub struct EncryptionContext(pub String);
 
@@ -145,11 +148,32 @@ pub type PseudonymRekeyInfo = PseudonymRekeyFactor;
 pub type AttributeRekeyInfo = AttributeRekeyFactor;
 impl PseudonymizationInfo {
     /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
+    #[cfg(feature = "global")]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
+        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
+        let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
+        Self {
+            s: reshuffle_factor,
+            k: rekey_factor,
+        }
+    }
+
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
+    #[cfg(not(feature = "global"))]
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
@@ -173,6 +197,7 @@ impl PseudonymizationInfo {
 }
 impl PseudonymRekeyInfo {
     /// Compute the rekey info for pseudonyms given sessions and secrets.
+    #[cfg(feature = "global")]
     pub fn new(
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
@@ -189,6 +214,19 @@ impl PseudonymRekeyInfo {
         Self::from(k_from.0.invert() * k_to.0)
     }
 
+    /// Compute the rekey info for pseudonyms given sessions and secrets.
+    #[cfg(not(feature = "global"))]
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
+
+        Self::from(k_from.0.invert() * k_to.0)
+    }
+
     /// Reverse the rekey info (i.e., switch the direction of the rekeying).
     pub fn reverse(&self) -> Self {
         Self::from(self.0.invert())
@@ -197,6 +235,7 @@ impl PseudonymRekeyInfo {
 
 impl AttributeRekeyInfo {
     /// Compute the rekey info for attributes given sessions and secrets.
+    #[cfg(feature = "global")]
     pub fn new(
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
@@ -209,6 +248,19 @@ impl AttributeRekeyInfo {
         let k_to = session_to
             .map(|ctx| make_attribute_rekey_factor(encryption_secret, ctx))
             .unwrap_or_else(|| AttributeRekeyFactor(ScalarNonZero::one()));
+
+        Self::from(k_from.0.invert() * k_to.0)
+    }
+
+    /// Compute the rekey info for attributes given sessions and secrets.
+    #[cfg(not(feature = "global"))]
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
 
         Self::from(k_from.0.invert() * k_to.0)
     }
@@ -233,11 +285,35 @@ pub struct TranscryptionInfo {
 
 impl TranscryptionInfo {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
+    #[cfg(feature = "global")]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        Self {
+            pseudonym: PseudonymizationInfo::new(
+                domain_from,
+                domain_to,
+                session_from,
+                session_to,
+                pseudonymization_secret,
+                encryption_secret,
+            ),
+            attribute: AttributeRekeyInfo::new(session_from, session_to, encryption_secret),
+        }
+    }
+
+    /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
+    #[cfg(not(feature = "global"))]
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {

@@ -1,11 +1,14 @@
-//! High-level data types for pseudonyms and attributes, and their encrypted versions,
-//! Including several ways to encode and decode them.
+//! Core data types for pseudonyms and attributes, their encrypted versions,
+//! and session-key based encryption and decryption operations.
 
-use crate::internal::arithmetic::GroupElement;
+use crate::arithmetic::GroupElement;
 use crate::low_level::elgamal::{ElGamal, ELGAMAL_LENGTH};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::high_level::keys::*;
 
 /// A pseudonym (in the background, this is a [`GroupElement`]) that can be used to identify a user
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
@@ -30,6 +33,7 @@ pub struct EncryptedAttribute {
     pub value: ElGamal,
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for EncryptedAttribute {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -39,6 +43,7 @@ impl Serialize for EncryptedAttribute {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for EncryptedAttribute {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -49,6 +54,7 @@ impl<'de> Deserialize<'de> for EncryptedAttribute {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for EncryptedPseudonym {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -58,6 +64,7 @@ impl Serialize for EncryptedPseudonym {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for EncryptedPseudonym {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -222,8 +229,10 @@ impl Encryptable for Attribute {
     }
 }
 
-/// Trait that associates an encryptable type with its corresponding session key types.
-pub trait HasSessionKeys: Encryptable {
+/// Trait that associates a type with its corresponding session key types.
+/// This trait is implemented by both single-block types (Pseudonym, Attribute)
+/// and multi-block types (LongPseudonym, LongAttribute).
+pub trait HasSessionKeys {
     type SessionPublicKey: crate::high_level::keys::PublicKey;
     type SessionSecretKey: crate::high_level::keys::SecretKey;
 }
@@ -277,4 +286,82 @@ impl Encrypted for EncryptedAttribute {
     {
         Self { value }
     }
+}
+
+// Encryption and decryption operations
+
+/// Polymorphic encrypt function that works for both pseudonyms and attributes.
+/// Uses the appropriate session key type based on the message type.
+pub fn encrypt<M, R>(message: &M, public_key: &M::SessionPublicKey, rng: &mut R) -> M::EncryptedType
+where
+    M: Encryptable + HasSessionKeys,
+    R: RngCore + CryptoRng,
+{
+    M::EncryptedType::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key.value(),
+        rng,
+    ))
+}
+
+/// Polymorphic decrypt function that works for both encrypted pseudonyms and attributes.
+/// Uses the appropriate session key type based on the encrypted message type.
+pub fn decrypt<E, S>(encrypted: &E, secret_key: &S) -> E::UnencryptedType
+where
+    E: Encrypted,
+    E::UnencryptedType: HasSessionKeys<SessionSecretKey = S>,
+    S: SecretKey,
+{
+    E::UnencryptedType::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        secret_key.value(),
+    ))
+}
+
+/// Encrypt a pseudonym using a [`PseudonymSessionPublicKey`].
+pub fn encrypt_pseudonym<R: RngCore + CryptoRng>(
+    message: &Pseudonym,
+    public_key: &PseudonymSessionPublicKey,
+    rng: &mut R,
+) -> EncryptedPseudonym {
+    EncryptedPseudonym::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key.value(),
+        rng,
+    ))
+}
+
+/// Encrypt an attribute using a [`AttributeSessionPublicKey`].
+pub fn encrypt_attribute<R: RngCore + CryptoRng>(
+    message: &Attribute,
+    public_key: &AttributeSessionPublicKey,
+    rng: &mut R,
+) -> EncryptedAttribute {
+    EncryptedAttribute::from_value(crate::low_level::elgamal::encrypt(
+        message.value(),
+        public_key.value(),
+        rng,
+    ))
+}
+
+/// Decrypt an encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+pub fn decrypt_pseudonym(
+    encrypted: &EncryptedPseudonym,
+    secret_key: &PseudonymSessionSecretKey,
+) -> Pseudonym {
+    Pseudonym::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
+}
+
+/// Decrypt an encrypted attribute using a [`AttributeSessionSecretKey`].
+pub fn decrypt_attribute(
+    encrypted: &EncryptedAttribute,
+    secret_key: &AttributeSessionSecretKey,
+) -> Attribute {
+    Attribute::from_value(crate::low_level::elgamal::decrypt(
+        encrypted.value(),
+        &secret_key.0,
+    ))
 }

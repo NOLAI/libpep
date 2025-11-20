@@ -1,4 +1,4 @@
-use libpep::internal::arithmetic::{GroupElement, ScalarNonZero, G};
+use libpep::arithmetic::{GroupElement, ScalarNonZero, G};
 use libpep::low_level::elgamal::{decrypt, encrypt, ElGamal};
 use rand_core::OsRng;
 

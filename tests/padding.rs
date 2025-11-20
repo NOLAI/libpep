@@ -1,16 +1,17 @@
-use libpep::high_level::contexts::{
+use libpep::high_level::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
 };
-use libpep::high_level::data_types::{Attribute, Encryptable, EncryptedPseudonym, Pseudonym};
+use libpep::high_level::core::{Attribute, Encryptable, EncryptedPseudonym, Pseudonym, decrypt, encrypt};
 use libpep::high_level::keys::{
     make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
     make_pseudonym_session_keys,
 };
-use libpep::high_level::ops::{decrypt, encrypt, pseudonymize};
-use libpep::high_level::padding::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Padded,
+use libpep::high_level::transcryption::ops::pseudonymize;
+use libpep::high_level::long::core::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::high_level::padding::Padded;
+use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use std::io::{Error, ErrorKind};
 
 #[test]
@@ -116,7 +117,7 @@ fn test_to_bytes_padded_empty() {
 
 #[test]
 fn test_to_bytes_padded_invalid_padding() {
-    use libpep::high_level::data_types::Attribute;
+    use libpep::high_level::core::Attribute;
 
     // Create an Attribute with invalid padding (padding byte = 0)
     let invalid_block = [0u8; 16];
@@ -167,7 +168,7 @@ fn test_to_string_padded() -> Result<(), Error> {
 
 #[test]
 fn test_to_string_padded_invalid_utf8() {
-    use libpep::high_level::data_types::Attribute;
+    use libpep::high_level::core::Attribute;
 
     // Create data points with non-UTF8 data
     let invalid_utf8 = vec![0xFF, 0xFE, 0xFD]; // Invalid UTF-8 sequence

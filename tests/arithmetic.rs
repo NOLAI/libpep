@@ -1,4 +1,4 @@
-use libpep::internal::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use libpep::arithmetic::{GroupElement, ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use rand::Rng;
 use rand_core::OsRng;
 

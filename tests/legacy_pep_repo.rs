@@ -4,8 +4,8 @@ mod legacy_pep_repo_tests {
         make_pseudonym_session_key_share, BlindingFactor, SafeScalar,
     };
     use libpep::distributed::systems::*;
-    use libpep::high_level::contexts::PseudonymizationDomain;
-    use libpep::high_level::secrets::{
+    use libpep::high_level::transcryption::contexts::PseudonymizationDomain;
+    use libpep::high_level::transcryption::secrets::{
         make_pseudonymisation_factor, EncryptionSecret, PseudonymizationSecret,
     };
     use libpep::internal::arithmetic::*;

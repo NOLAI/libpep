@@ -1,11 +1,14 @@
 //! ElGamal [encrypt]ion and [decrypt]ion.
 
-use crate::internal::arithmetic::*;
+use crate::arithmetic::*;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "serde")]
 use std::fmt::Formatter;
 
 /// Length of an ElGamal encrypted ciphertext in bytes.
@@ -68,6 +71,7 @@ impl ElGamal {
     }
 }
 
+#[cfg(feature = "serde")]
 impl Serialize for ElGamal {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -77,6 +81,7 @@ impl Serialize for ElGamal {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for ElGamal {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

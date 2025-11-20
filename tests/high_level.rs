@@ -1,9 +1,10 @@
-use libpep::high_level::contexts::*;
-use libpep::high_level::data_types::*;
+use libpep::high_level::transcryption::contexts::*;
+use libpep::high_level::core::*;
 use libpep::high_level::keys::*;
-use libpep::high_level::ops::*;
-use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use rand_core::OsRng;
+use libpep::high_level::transcryption::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::high_level::transcryption::ops::{rekey, transcrypt};
 
 #[test]
 fn test_high_level_flow() {
