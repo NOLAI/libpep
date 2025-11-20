@@ -1,4 +1,4 @@
-use crate::internal::arithmetic::*;
+use crate::arithmetic::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};

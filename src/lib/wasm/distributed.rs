@@ -1,5 +1,14 @@
+use crate::distributed::client::core::PEPClient;
+use crate::distributed::client::global::OfflinePEPClient;
+use crate::distributed::client::keys::{
+    make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
+    update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
+};
 use crate::distributed::key_blinding::*;
-use crate::distributed::systems::*;
+use crate::distributed::server::core::PEPSystem;
+use crate::distributed::server::keys::{
+    make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
+};
 use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
 use crate::high_level::keys::*;
 use crate::high_level::transcryption::contexts::*;
@@ -499,7 +508,7 @@ pub fn wasm_make_pseudonym_session_key_share(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMPseudonymSessionKeyShare {
     WASMPseudonymSessionKeyShare(make_pseudonym_session_key_share(
-        &rekey_factor.0,
+        &PseudonymRekeyFactor::from(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -511,7 +520,7 @@ pub fn wasm_make_attribute_session_key_share(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMAttributeSessionKeyShare {
     WASMAttributeSessionKeyShare(make_attribute_session_key_share(
-        &rekey_factor.0,
+        &AttributeRekeyFactor::from(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -524,8 +533,8 @@ pub fn wasm_make_session_key_shares(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMSessionKeyShares {
     WASMSessionKeyShares(make_session_key_shares(
-        &pseudonym_rekey_factor.0,
-        &attribute_rekey_factor.0,
+        &PseudonymRekeyFactor::from(pseudonym_rekey_factor.0),
+        &AttributeRekeyFactor::from(attribute_rekey_factor.0),
         &blinding_factor.0,
     ))
 }

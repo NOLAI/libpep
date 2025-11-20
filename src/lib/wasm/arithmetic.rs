@@ -1,4 +1,4 @@
-use crate::internal::arithmetic::*;
+use crate::arithmetic::*;
 use derive_more::{Deref, From, Into};
 use rand::rngs::OsRng;
 use wasm_bindgen::prelude::*;

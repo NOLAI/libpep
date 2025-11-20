@@ -1,15 +1,15 @@
-use crate::high_level::batch::*;
+use crate::arithmetic::{GroupElement, ScalarNonZero};
 use crate::high_level::core::*;
 use crate::high_level::keys::*;
-use crate::high_level::long::data_types::{
+use crate::high_level::long::core::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use crate::high_level::padding::Padded;
 use crate::high_level::rerandomize::*;
+use crate::high_level::transcryption::batch::*;
 use crate::high_level::transcryption::contexts::*;
 use crate::high_level::transcryption::ops::*;
 use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use crate::internal::arithmetic::{GroupElement, ScalarNonZero};
 use crate::low_level::elgamal::ElGamal;
 use crate::wasm::arithmetic::{WASMGroupElement, WASMScalarNonZero};
 use crate::wasm::elgamal::WASMElGamal;
@@ -1223,11 +1223,13 @@ pub fn wasm_encrypt_long_pseudonym_global(
     public_key: &WASMPseudonymGlobalPublicKey,
 ) -> WASMLongEncryptedPseudonym {
     let mut rng = rand::thread_rng();
-    WASMLongEncryptedPseudonym(crate::high_level::long::ops::encrypt_long_pseudonym_global(
-        &message.0,
-        &PseudonymGlobalPublicKey::from(GroupElement::from(public_key.0)),
-        &mut rng,
-    ))
+    WASMLongEncryptedPseudonym(
+        crate::high_level::long::global::encrypt_long_pseudonym_global(
+            &message.0,
+            &PseudonymGlobalPublicKey::from(GroupElement::from(public_key.0)),
+            &mut rng,
+        ),
+    )
 }
 
 /// Encrypt a long attribute using a global attribute public key.
@@ -1239,11 +1241,13 @@ pub fn wasm_encrypt_long_attribute_global(
     public_key: &WASMAttributeGlobalPublicKey,
 ) -> WASMLongEncryptedAttribute {
     let mut rng = rand::thread_rng();
-    WASMLongEncryptedAttribute(crate::high_level::long::ops::encrypt_long_attribute_global(
-        &message.0,
-        &AttributeGlobalPublicKey::from(GroupElement::from(public_key.0)),
-        &mut rng,
-    ))
+    WASMLongEncryptedAttribute(
+        crate::high_level::long::global::encrypt_long_attribute_global(
+            &message.0,
+            &AttributeGlobalPublicKey::from(GroupElement::from(public_key.0)),
+            &mut rng,
+        ),
+    )
 }
 
 /// Decrypt a long encrypted pseudonym using a global pseudonym secret key.
@@ -1254,10 +1258,12 @@ pub fn wasm_decrypt_long_pseudonym_global(
     encrypted: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> WASMLongPseudonym {
-    WASMLongPseudonym(crate::high_level::long::ops::decrypt_long_pseudonym_global(
-        &encrypted.0,
-        &PseudonymGlobalSecretKey::from(secret_key.0 .0),
-    ))
+    WASMLongPseudonym(
+        crate::high_level::long::global::decrypt_long_pseudonym_global(
+            &encrypted.0,
+            &PseudonymGlobalSecretKey::from(secret_key.0 .0),
+        ),
+    )
 }
 
 /// Decrypt a long encrypted attribute using a global attribute secret key.
@@ -1268,8 +1274,10 @@ pub fn wasm_decrypt_long_attribute_global(
     encrypted: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> WASMLongAttribute {
-    WASMLongAttribute(crate::high_level::long::ops::decrypt_long_attribute_global(
-        &encrypted.0,
-        &AttributeGlobalSecretKey::from(secret_key.0 .0),
-    ))
+    WASMLongAttribute(
+        crate::high_level::long::global::decrypt_long_attribute_global(
+            &encrypted.0,
+            &AttributeGlobalSecretKey::from(secret_key.0 .0),
+        ),
+    )
 }

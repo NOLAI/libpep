@@ -1,7 +1,9 @@
-use crate::distributed::key_blinding::{
+use crate::distributed::client::keys::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
-    update_session_keys, AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare,
-    SessionKeyShares,
+    update_session_keys,
+};
+use crate::distributed::key_blinding::{
+    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use crate::high_level::core::{
     decrypt, decrypt_attribute, decrypt_pseudonym, encrypt, encrypt_attribute, encrypt_pseudonym,

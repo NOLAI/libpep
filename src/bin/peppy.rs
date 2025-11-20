@@ -1,6 +1,9 @@
+// CLI tool uses expect/unwrap for user-facing error messages
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use commandy_macros::*;
 use libpep::arithmetic::{ScalarNonZero, ScalarTraits};
-use libpep::distributed::key_blinding::{make_distributed_global_keys, SafeScalar};
+use libpep::distributed::key_blinding::make_distributed_global_keys;
 use libpep::high_level::core::{
     decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
 };

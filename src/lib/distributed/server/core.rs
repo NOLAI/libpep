@@ -1,5 +1,8 @@
 //! High-level [`PEPSystem`]s and [`PEPClient`]s.
 
+use super::keys::{
+    make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
+};
 use crate::distributed::key_blinding::*;
 use crate::high_level::core::*;
 use crate::high_level::transcryption::contexts::*;
@@ -36,7 +39,7 @@ impl PEPSystem {
         session: &EncryptionContext,
     ) -> PseudonymSessionKeyShare {
         let k = make_pseudonym_rekey_factor(&self.rekeying_secret, session);
-        make_pseudonym_session_key_share(&k.0, &self.blinding_factor)
+        make_pseudonym_session_key_share(&k, &self.blinding_factor)
     }
     /// Generate an attribute session key share for the given session.
     pub fn attribute_session_key_share(
@@ -44,7 +47,7 @@ impl PEPSystem {
         session: &EncryptionContext,
     ) -> AttributeSessionKeyShare {
         let k = make_attribute_rekey_factor(&self.rekeying_secret, session);
-        make_attribute_session_key_share(&k.0, &self.blinding_factor)
+        make_attribute_session_key_share(&k, &self.blinding_factor)
     }
 
     /// Generate both pseudonym and attribute session key shares for the given session.
@@ -53,8 +56,8 @@ impl PEPSystem {
         let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&self.rekeying_secret, session);
         let attribute_rekey_factor = make_attribute_rekey_factor(&self.rekeying_secret, session);
         make_session_key_shares(
-            &pseudonym_rekey_factor.0,
-            &attribute_rekey_factor.0,
+            &pseudonym_rekey_factor,
+            &attribute_rekey_factor,
             &self.blinding_factor,
         )
     }

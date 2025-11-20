@@ -56,7 +56,9 @@ pub fn make_pseudonymisation_factor(
 /// Derive a factor from a secret and a context.
 #[cfg(not(feature = "legacy-pep-repo-compatible"))]
 fn make_factor(typ: u32, secret: &Secret, payload: &String) -> ScalarNonZero {
-    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap(); // Use HMAC to prevent length extension attack
+    // Unwrap is safe: HMAC-SHA512 accepts keys of any length
+    #[allow(clippy::unwrap_used)]
+    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
     hmac.update(&typ.to_be_bytes());
     hmac.update(payload.as_bytes());
     let mut bytes = [0u8; 64];
@@ -114,7 +116,9 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) 
     hasher_inner.update(payload.as_bytes());
     let result_inner = hasher_inner.finalize();
 
-    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap(); // Use HMAC to prevent length extension attack
+    // Unwrap is safe: HMAC-SHA512 accepts keys of any length
+    #[allow(clippy::unwrap_used)]
+    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
     hmac.update(&result_inner);
     let result_outer = hmac.finalize().into_bytes();
 
