@@ -1,11 +1,11 @@
 use crate::arithmetic::py::PyGroupElement;
 use crate::arithmetic::py::PyScalarNonZero;
-use crate::distributed::server::setup::*;
-use crate::high_level::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::high_level::py::{
+use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::core::py::{
     PyAttributeGlobalPublicKey, PyAttributeGlobalSecretKey, PyGlobalPublicKeys, PyGlobalSecretKeys,
     PyPseudonymGlobalPublicKey, PyPseudonymGlobalSecretKey,
 };
+use crate::distributed::server::setup::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};

@@ -3,10 +3,10 @@ use super::super::keys::{
 };
 use super::setup::PyBlindingFactor;
 use crate::arithmetic::py::PyScalarNonZero;
+use crate::core::transcryption::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::distributed::client::py::keys::{
     PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares,
 };
-use crate::high_level::transcryption::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use pyo3::prelude::*;
 
 /// Create a pseudonym session key share.

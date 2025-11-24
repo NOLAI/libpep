@@ -3,23 +3,23 @@
 
 use commandy_macros::*;
 use libpep::arithmetic::{ScalarNonZero, ScalarTraits};
-use libpep::distributed::server::setup::make_distributed_global_keys;
-use libpep::high_level::core::{
+use libpep::core::data::{
     decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
 };
-use libpep::high_level::global::encrypt_pseudonym_global;
-use libpep::high_level::keys::{
+use libpep::core::global::encrypt_pseudonym_global;
+use libpep::core::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, PseudonymGlobalPublicKey,
     PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
-use libpep::high_level::long::core::LongPseudonym;
-use libpep::high_level::rerandomize::rerandomize;
-use libpep::high_level::transcryption::contexts::{
+use libpep::core::long::data::LongPseudonym;
+use libpep::core::rerandomize::rerandomize;
+use libpep::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
 };
-use libpep::high_level::transcryption::ops::transcrypt;
-use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::transcryption::ops::transcrypt;
+use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::distributed::server::setup::make_distributed_global_keys;
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]

@@ -1,6 +1,6 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
-//! This library implements PEP cryptography based on [`ElGamal`](low_level::elgamal) encrypted messages.
+//! This library implements PEP cryptography based on [`ElGamal`](base::elgamal) encrypted messages.
 //!
 //! In the `ElGamal` scheme, a message `M` can be encrypted for a receiver which has public key `Y`
 //! associated with it, belonging to secret key `y`.
@@ -13,11 +13,11 @@
 //! data sharing can be done *asynchronously*. This means that encrypted data can be
 //! stored long-term before it is shared at any point in the future.
 //!
-//! This library provides both a [low-level] API for `ElGamal` encryption and the PEP
-//! [primitives](low_level::primitives), and a [high-level] API for
-//! [pseudonymization](high_level::transcryption::ops::pseudonymize) and [rekeying](high_level::transcryption::ops::rekey)
-//! (i.e. [transcryption](high_level::transcryption::ops::transcrypt)) of [`Pseudonym`](high_level::core::Pseudonym)s
-//! and [`Attribute`](high_level::core::Attribute)s using this cryptographic concept.
+//! This library provides both a [base] API for `ElGamal` encryption and the PEP
+//! [primitives](base::primitives), and a [core] API for
+//! [pseudonymization](core::transcryption::ops::pseudonymize) and [rekeying](core::transcryption::ops::rekey)
+//! (i.e. [transcryption](core::transcryption::ops::transcrypt)) of [`Pseudonym`](core::data::Pseudonym)s
+//! and [`Attribute`](core::data::Attribute)s using this cryptographic concept.
 //!
 //! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
@@ -32,9 +32,9 @@
 compile_error!("Features 'python' and 'wasm' are mutually exclusive");
 
 pub mod arithmetic;
+pub mod base;
+pub mod core;
 pub mod distributed;
-pub mod high_level;
-pub mod low_level;
 
 #[cfg(feature = "python")]
 pub mod py;

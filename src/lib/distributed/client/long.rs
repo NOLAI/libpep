@@ -1,14 +1,14 @@
-use crate::distributed::client::core::PEPClient;
-use crate::distributed::client::global::OfflinePEPClient;
-use crate::high_level::core::{Encryptable, Encrypted, HasSessionKeys};
-use crate::high_level::long::core::{
+use crate::core::data::{Encryptable, Encrypted, HasSessionKeys};
+use crate::core::long::data::{
     decrypt_long, decrypt_long_attribute, decrypt_long_pseudonym, encrypt_long,
     encrypt_long_attribute, encrypt_long_pseudonym, LongAttribute, LongEncryptable, LongEncrypted,
     LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use crate::high_level::long::global::{
+use crate::core::long::global::{
     encrypt_long_attribute_global, encrypt_long_global, encrypt_long_pseudonym_global,
 };
+use crate::distributed::client::core::PEPClient;
+use crate::distributed::client::global::OfflinePEPClient;
 use rand_core::{CryptoRng, RngCore};
 use std::any::TypeId;
 
@@ -193,7 +193,7 @@ impl OfflinePEPClient {
     pub fn encrypt_long<L, R>(&self, message: &L, rng: &mut R) -> L::EncryptedType
     where
         L: LongEncryptable + 'static,
-        L::Block: crate::high_level::core::HasGlobalKeys,
+        L::Block: crate::core::data::HasGlobalKeys,
         R: RngCore + CryptoRng,
     {
         if TypeId::of::<L>() == TypeId::of::<LongPseudonym>() {
@@ -201,7 +201,7 @@ impl OfflinePEPClient {
             // SAFETY: TypeId check ensures L is LongPseudonym, so Block is Pseudonym
             unsafe {
                 let public_key_ptr = public_key as *const _
-                    as *const <L::Block as crate::high_level::core::HasGlobalKeys>::GlobalPublicKey;
+                    as *const <L::Block as crate::core::data::HasGlobalKeys>::GlobalPublicKey;
                 encrypt_long_global(message, &*public_key_ptr, rng)
             }
         } else if TypeId::of::<L>() == TypeId::of::<LongAttribute>() {
@@ -209,7 +209,7 @@ impl OfflinePEPClient {
             // SAFETY: TypeId check ensures L is LongAttribute, so Block is Attribute
             unsafe {
                 let public_key_ptr = public_key as *const _
-                    as *const <L::Block as crate::high_level::core::HasGlobalKeys>::GlobalPublicKey;
+                    as *const <L::Block as crate::core::data::HasGlobalKeys>::GlobalPublicKey;
                 encrypt_long_global(message, &*public_key_ptr, rng)
             }
         } else {

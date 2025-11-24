@@ -17,7 +17,7 @@ jobs:
         with:
           # Note: python and wasm features are mutually exclusive, so we only check core features
           feature-group: only-explicit-features
-          features: elgamal3,long,global,batch,serde,legacy-pep-repo-compatible,insecure-methods
+          features: elgamal3,long,global,batch,serde,legacy,insecure
 
   test:
     runs-on: ubuntu-latest
@@ -26,8 +26,8 @@ jobs:
         features:
           - ""
           - "elgamal3"
-          - "legacy-pep-repo-compatible"
-          - "elgamal3,legacy-pep-repo-compatible"
+          - "legacy"
+          - "elgamal3,legacy"
 
     name: cargo test
     steps:

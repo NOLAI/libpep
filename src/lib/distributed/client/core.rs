@@ -1,3 +1,9 @@
+use crate::core::data::{
+    decrypt, decrypt_attribute, decrypt_pseudonym, encrypt, encrypt_attribute, encrypt_pseudonym,
+    Attribute, Encryptable, Encrypted, EncryptedAttribute, EncryptedPseudonym, HasSessionKeys,
+    Pseudonym,
+};
+use crate::core::keys::SessionKeys;
 use crate::distributed::client::keys::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
     update_session_keys,
@@ -6,12 +12,6 @@ use crate::distributed::server::keys::{
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use crate::distributed::server::setup::BlindedGlobalKeys;
-use crate::high_level::core::{
-    decrypt, decrypt_attribute, decrypt_pseudonym, encrypt, encrypt_attribute, encrypt_pseudonym,
-    Attribute, Encryptable, Encrypted, EncryptedAttribute, EncryptedPseudonym, HasSessionKeys,
-    Pseudonym,
-};
-use crate::high_level::keys::SessionKeys;
 use rand_core::{CryptoRng, RngCore};
 
 /// A PEP client that can encrypt and decrypt data, based on session key pairs for pseudonyms and attributes.

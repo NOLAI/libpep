@@ -1,21 +1,21 @@
 use super::super::core::PEPSystem;
 use super::setup::WASMBlindingFactor;
+use crate::core::data::{EncryptedAttribute, EncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::core::long::data::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::core::long::wasm::data::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::core::transcryption::contexts::*;
+use crate::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use crate::core::transcryption::wasm::contexts::{
+    WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
+    WASMTranscryptionInfo,
+};
+use crate::core::wasm::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::distributed::client::wasm::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
 use crate::distributed::server::setup::BlindingFactor;
-use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
-#[cfg(feature = "long")]
-use crate::high_level::long::core::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "long")]
-use crate::high_level::long::wasm::core::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
-use crate::high_level::transcryption::contexts::*;
-use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use crate::high_level::transcryption::wasm::contexts::{
-    WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
-    WASMTranscryptionInfo,
-};
-use crate::high_level::wasm::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

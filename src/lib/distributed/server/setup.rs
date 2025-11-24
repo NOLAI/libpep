@@ -1,7 +1,7 @@
 //! System setup for distributed trust: blinding factors and blinded global secret keys.
 
 use crate::arithmetic::*;
-use crate::high_level::keys::*;
+use crate::core::keys::*;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 #[cfg(feature = "serde")]

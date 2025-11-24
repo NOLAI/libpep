@@ -1,10 +1,10 @@
 //! Session key shares and generation for distributed trust servers (transcryptors).
 
 use crate::arithmetic::*;
-use crate::distributed::server::setup::BlindingFactor;
-use crate::high_level::transcryption::contexts::{
+use crate::core::transcryption::contexts::{
     AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor,
 };
+use crate::distributed::server::setup::BlindingFactor;
 use derive_more::{Deref, From};
 #[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};

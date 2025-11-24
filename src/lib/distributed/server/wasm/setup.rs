@@ -1,10 +1,10 @@
 use crate::arithmetic::wasm::{WASMGroupElement, WASMScalarNonZero};
-use crate::distributed::server::setup::*;
-use crate::high_level::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::high_level::wasm::keys::{
+use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::core::wasm::keys::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMGlobalPublicKeys,
     WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
 };
+use crate::distributed::server::setup::*;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

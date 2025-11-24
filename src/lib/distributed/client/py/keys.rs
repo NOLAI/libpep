@@ -3,17 +3,17 @@ use super::super::keys::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
+use crate::core::keys::*;
+use crate::core::py::keys::{
+    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyEncryptionSecret,
+    PyGlobalSecretKeys, PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
+};
+use crate::core::transcryption::contexts::*;
 use crate::distributed::server::keys::*;
 use crate::distributed::server::py::setup::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
 };
 use crate::distributed::server::setup::*;
-use crate::high_level::keys::*;
-use crate::high_level::py::keys::{
-    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyEncryptionSecret,
-    PyGlobalSecretKeys, PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
-};
-use crate::high_level::transcryption::contexts::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};

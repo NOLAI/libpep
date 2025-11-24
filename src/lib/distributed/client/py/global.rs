@@ -1,13 +1,11 @@
 use super::super::global::OfflinePEPClient;
-use crate::high_level::keys::*;
+use crate::core::keys::*;
 #[cfg(feature = "long")]
-use crate::high_level::long::py::core::{
+use crate::core::long::py::core::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::high_level::py::core::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::high_level::py::keys::PyGlobalPublicKeys;
+use crate::core::py::core::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::core::py::keys::PyGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 

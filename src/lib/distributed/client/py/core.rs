@@ -4,21 +4,19 @@ use super::keys::{
     PySessionPublicKeys, PySessionSecretKeys,
 };
 use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
-use crate::distributed::server::keys::*;
-use crate::distributed::server::py::setup::PyBlindedGlobalKeys;
-use crate::distributed::server::setup::BlindedGlobalKeys;
-use crate::high_level::keys::*;
+use crate::core::keys::*;
 #[cfg(feature = "long")]
-use crate::high_level::long::py::core::{
+use crate::core::long::py::core::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::high_level::py::core::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::high_level::py::keys::{
+use crate::core::py::core::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::core::py::keys::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+use crate::distributed::server::keys::*;
+use crate::distributed::server::py::setup::PyBlindedGlobalKeys;
+use crate::distributed::server::setup::BlindedGlobalKeys;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 

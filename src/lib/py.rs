@@ -15,8 +15,8 @@ pub fn libpep(m: &Bound<'_, PyModule>) -> PyResult<()> {
             "arithmetic",
             crate::arithmetic::py::register_module as fn(&Bound<'_, PyModule>) -> PyResult<()>,
         ),
-        ("low_level", crate::low_level::py::register_module),
-        ("high_level", crate::high_level::py::register_module),
+        ("base", crate::base::py::register_module),
+        ("core", crate::core::py::register_module),
         ("distributed", crate::distributed::py::register_module),
     ];
 

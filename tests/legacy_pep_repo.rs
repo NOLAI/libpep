@@ -1,15 +1,13 @@
-#[cfg(feature = "legacy-pep-repo-compatible")]
+#[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
     use libpep::arithmetic::ScalarTraits;
-    use libpep::distributed::server::keys::make_pseudonym_session_key_share;
-    use libpep::distributed::server::setup::BlindingFactor;
-    use libpep::high_level::transcryption::contexts::{
-        PseudonymRekeyFactor, PseudonymizationDomain,
-    };
-    use libpep::high_level::transcryption::secrets::{
+    use libpep::core::transcryption::contexts::{PseudonymRekeyFactor, PseudonymizationDomain};
+    use libpep::core::transcryption::secrets::{
         make_pseudonymisation_factor, PseudonymizationSecret,
     };
+    use libpep::distributed::server::keys::make_pseudonym_session_key_share;
+    use libpep::distributed::server::setup::BlindingFactor;
 
     #[test]
     fn test_key_factor_component() {

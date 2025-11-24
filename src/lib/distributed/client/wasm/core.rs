@@ -4,18 +4,18 @@ use super::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
     WASMSessionKeys,
 };
+use crate::core::keys::*;
+#[cfg(feature = "long")]
+use crate::core::long::wasm::data::{
+    WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
+};
+use crate::core::wasm::core::{
+    WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
+};
+use crate::core::wasm::keys::WASMGlobalPublicKeys;
 use crate::distributed::server::keys::*;
 use crate::distributed::server::setup::BlindedGlobalKeys;
 use crate::distributed::server::wasm::setup::WASMBlindedGlobalKeys;
-use crate::high_level::keys::*;
-#[cfg(feature = "long")]
-use crate::high_level::long::wasm::core::{
-    WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
-};
-use crate::high_level::wasm::core::{
-    WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
-};
-use crate::high_level::wasm::keys::WASMGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

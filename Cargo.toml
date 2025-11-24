@@ -19,8 +19,8 @@ long = [] # For long pseudonyms and attributes over 15 bytes
 global = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
 serde = ["dep:serde"] # For (de)serialization support via Serde
-legacy-pep-repo-compatible = [] # For compatibility with the legacy PEP repository implementation
-insecure-methods = [] # Enable insecure methods that typically should not be used in production
+legacy = ["elgamal3", "global"] # For compatibility with the legacy PEP repository implementation
+insecure = [] # Enable insecure methods that typically should not be used in production
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
 wasm = ["wasm-bindgen", "js-sys", "getrandom/wasm_js"] # For building WebAssembly bindings via wasm-bindgen
@@ -75,7 +75,7 @@ assets = [
 ]
 
 [package.metadata.docs.rs]
-features = ["global", "batch", "long", "serde", "elgamal3", "insecure-methods"]
+features = ["global", "batch", "long", "serde", "elgamal3", "insecure"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lints.rust]

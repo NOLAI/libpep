@@ -5,10 +5,10 @@ use super::keys::{
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use super::setup::BlindingFactor;
-use crate::high_level::core::*;
-use crate::high_level::transcryption::contexts::*;
-use crate::high_level::transcryption::ops::*;
-use crate::high_level::transcryption::secrets::{
+use crate::core::data::*;
+use crate::core::transcryption::contexts::*;
+use crate::core::transcryption::ops::*;
+use crate::core::transcryption::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
     PseudonymizationSecret,
 };

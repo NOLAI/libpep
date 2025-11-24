@@ -3,10 +3,10 @@ use super::super::keys::{
 };
 use super::setup::WASMBlindingFactor;
 use crate::arithmetic::wasm::WASMScalarNonZero;
+use crate::core::transcryption::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::distributed::client::wasm::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
-use crate::high_level::transcryption::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use wasm_bindgen::prelude::*;
 
 /// Creates a pseudonym session key share.

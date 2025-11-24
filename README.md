@@ -44,19 +44,23 @@ pip install libpep-py
 
 Use with direct imports from submodules:
 ```python
-from libpep.high_level import Pseudonym, Attribute, make_global_keys
+from libpep.core import (
+    Pseudonym, Attribute,
+    make_pseudonym_global_keys, make_attribute_global_keys
+)
 from libpep.arithmetic import GroupElement, ScalarNonZero
 
 # Generate keys
-keys = make_global_keys()
+pseudonym_keys = make_pseudonym_global_keys()
+attribute_keys = make_attribute_global_keys()
 
 # Create and work with pseudonyms
 pseudonym = Pseudonym.random()
-print(f"Pseudonym: {pseudonym.as_hex()}")
+print(f"Pseudonym: {pseudonym.to_hex()}")
 
 # Create data points
 data = Attribute.random()
-print(f"Data point: {data.as_hex()}")
+print(f"Data point: {data.to_hex()}")
 ```
 
 ### WebAssembly (WASM)
@@ -71,15 +75,16 @@ Use in Node.js or browser applications:
 import * as libpep from '@nolai/libpep-wasm';
 
 // Generate keys
-const keys = libpep.make_global_keys();
+const pseudonymKeys = libpep.makePseudonymGlobalKeys();
+const attributeKeys = libpep.makeAttributeGlobalKeys();
 
 // Create and work with pseudonyms
 const pseudonym = libpep.Pseudonym.random();
-console.log(`Pseudonym: ${pseudonym.as_hex()}`);
+console.log(`Pseudonym: ${pseudonym.toHex()}`);
 
 // Create data points
 const data = libpep.Attribute.random();
-console.log(`Data point: ${data.as_hex()}`);
+console.log(`Data point: ${data.toHex()}`);
 ```
 
 ### API Structure
@@ -89,10 +94,9 @@ Both Python and WASM bindings mirror the Rust API structure with the same module
 | Module | Description |
 |--------|-------------|
 | `arithmetic` | Basic arithmetic operations on scalars and group elements |
-| `elgamal` | ElGamal encryption and decryption primitives |
-| `primitives` | Core PEP operations (`rekey`, `reshuffle`, `rerandomize`) |
-| `high_level` | User-friendly API with `Pseudonym` and `Attribute` classes |
-| `distributed` | Distributed n-PEP operations with multiple servers |
+| `base` | ElGamal encryption/decryption and core PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
+| `core` | User-friendly API with `Pseudonym` and `Attribute` types, keys, and transcryption operations |
+| `distributed` | Distributed n-PEP operations with `PEPSystem` and `PEPClient` for multi-server setups |
 
 For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep).
 
@@ -112,7 +116,7 @@ This way a binary compare of the encrypted pseudonym will not leak any informati
 
 ## Security and Implementation
 
-This library uses the Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), with [patches by Signal](https://github.com/signalapp/curve25519-dalek) for _lizard_ encoding of arbitrary 16 byte values into ristretto points.
+This library uses Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/).
 
 ### Security Considerations
 - All cryptographic operations use constant-time algorithms to prevent timing attacks
@@ -134,12 +138,12 @@ There are specific classes for `ScalarNonZero` and `ScalarCanBeZero`, since for 
 
 ## API
 
-We offer APIs at different abstraction levels.
+We offer APIs at different abstraction levels (that are not-so-coincidentally organized alphabetically in modules):
 
-0. The `arithmetic` module (internal API) offers the basic arithmetic operations on scalars and group elements and the `elgamal` module offers the ElGamal encryption and decryption operations.
-1. The `primitives` module implements the basic PEP operations such as `rekey`, `reshuffle`, and `rerandomize` and the extended `rekey2` and `reshuffle2` variants, as well as a combined `rsk` and `rsk2` operation.
-2. The `high_level` module offer a more user-friendly API with many high level data types such as `Pseudonyms` and `Attributes`.
-3. The `distributed` module additionally provides a high-level API for distributed scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple master keys.
+1. The `arithmetic` module offers basic arithmetic operations on scalars and group elements.
+2. The `base` module provides ElGamal encryption/decryption and implements the core PEP operations such as `rekey`, `reshuffle`, and `rerandomize`, as well as their extended `rekey2`, `reshuffle2`, `rsk`, and `rsk2` variants.
+3. The `core` module offers a user-friendly API with data types such as `Pseudonym` and `Attribute`, key management, and transcryption operations for pseudonymization and rekeying.
+4. The `distributed` module provides an API for distributed n-PEP scenarios, where multiple servers are involved in the rekeying and reshuffling operations and keys are derived from multiple blinded master keys.
 
 Depending on the use case, you can choose the appropriate level of abstraction.
 
@@ -163,38 +167,57 @@ cargo doc --no-deps
 Run tests with different feature combinations:
 ```bash
 cargo test --features elgamal3
-cargo test --features legacy-pep-repo-compatible
+cargo test --features legacy
 ```
 
 ## Building Bindings
 
 ### Python
 
-To build Python bindings for testing:
+To build and test Python bindings:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install maturin pytest
 maturin develop --features python
-python -m pytest tests/python/ -v
+python -m unittest discover tests/python/ -v
+```
+
+To build a wheel for distribution:
+```bash
+maturin build --release --features python
 ```
 
 ### WASM
 
-To build WASM bindings for testing:
+To build and test WASM bindings:
 ```bash
 npm install
 npm run build  # Builds both Node.js and web targets
 npm test
 ```
 
+To build for a specific target:
+```bash
+wasm-pack build --target nodejs --features wasm  # For Node.js
+wasm-pack build --target web --features wasm     # For browsers
+```
+
 The following features are available:
-- `python`: enables the Python bindings (mutually exclusive with `wasm`).
-- `wasm`: enables the WASM library (mutually exclusive with `python`).
-- `elgamal3`: enables longer ElGamal for debugging purposes or backward compatibility, but with being less efficient.
-- `legacy-pep-repo-compatible`: enables the legacy PEP repository compatible mode, which uses a different function to derive scalars from domains, contexts and secrets.
-- `insecure-methods`: enables insecure methods, to be used with care.
-- `build-binary`: builds the `peppy` command-line tool to interact with the library (not recommended for production use).
+
+**Default features** (included unless you use `--no-default-features`):
+- `long`: enables support for long pseudonyms and attributes over 15 bytes using PKCS#7 padding.
+- `global`: enables encryption towards global keys (instead of only session keys).
+- `batch`: enables batch transcryption operations with reordering to prevent linkability.
+- `serde`: enables serialization/deserialization support via Serde.
+- `build-binary`: builds the `peppy` command-line tool.
+
+**Optional features:**
+- `python`: enables Python bindings via PyO3 (mutually exclusive with `wasm`).
+- `wasm`: enables WebAssembly bindings via wasm-bindgen (mutually exclusive with `python`).
+- `elgamal3`: enables ElGamal triple encryption, including the recipient's public key in message encoding. This provides additional security verification but is less efficient.
+- `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets.
+- `insecure`: enables methods that expose global secret keys, to be used with care for testing or special use cases.
 
 **Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly. These have incompatible linking requirements and cannot coexist in the same build.
 

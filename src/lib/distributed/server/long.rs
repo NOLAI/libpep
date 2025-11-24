@@ -1,12 +1,12 @@
 //! Long (multi-block) data type operations for distributed PEP systems and clients.
 
-use crate::distributed::server::core::PEPSystem;
 #[cfg(feature = "batch")]
-use crate::high_level::long::batch::*;
-use crate::high_level::long::core::*;
-use crate::high_level::long::ops::*;
+use crate::core::long::batch::*;
+use crate::core::long::data::*;
+use crate::core::long::ops::*;
 #[cfg(feature = "global")]
-use crate::high_level::transcryption::contexts::*;
+use crate::core::transcryption::contexts::*;
+use crate::distributed::server::core::PEPSystem;
 use rand_core::{CryptoRng, RngCore};
 
 impl PEPSystem {

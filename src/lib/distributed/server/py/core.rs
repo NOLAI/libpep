@@ -1,20 +1,20 @@
 use super::super::core::PEPSystem;
 use super::setup::PyBlindingFactor;
+use crate::core::data::{EncryptedAttribute, EncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::core::long::data::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::core::long::py::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::core::py::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::core::transcryption::contexts::*;
+use crate::core::transcryption::py::contexts::{
+    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
+};
+use crate::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::distributed::client::py::keys::{
     PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares,
 };
 use crate::distributed::server::setup::BlindingFactor;
-use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
-#[cfg(feature = "long")]
-use crate::high_level::long::core::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "long")]
-use crate::high_level::long::py::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::high_level::py::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::high_level::transcryption::contexts::*;
-use crate::high_level::transcryption::py::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
-};
-use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 

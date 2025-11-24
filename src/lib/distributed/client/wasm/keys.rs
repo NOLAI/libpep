@@ -3,19 +3,19 @@ use super::super::keys::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use crate::arithmetic::wasm::{WASMGroupElement, WASMScalarNonZero};
+use crate::core::keys::{
+    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+};
+use crate::core::wasm::keys::{
+    WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
+    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
+};
 use crate::distributed::server::keys::{
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use crate::distributed::server::wasm::setup::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys, WASMBlindedPseudonymGlobalSecretKey,
-};
-use crate::high_level::keys::{
-    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
-};
-use crate::high_level::wasm::keys::{
-    WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
-    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
 };
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;

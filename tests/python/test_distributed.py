@@ -7,7 +7,7 @@ Tests distributed n-PEP systems, PEP clients, and key blinding functionality.
 import unittest
 import libpep
 arithmetic = libpep.arithmetic
-high_level = libpep.high_level
+core = libpep.core
 distributed = libpep.distributed
 
 
@@ -16,12 +16,12 @@ class TestDistributed(unittest.TestCase):
     def setUp(self):
         """Setup common test data"""
         # Generate global keys using the new combined API
-        self.global_public_keys, self.global_secret_keys = high_level.make_global_keys()
+        self.global_public_keys, self.global_secret_keys = core.make_global_keys()
 
         # Create secrets
         self.secret = b"test_secret"
-        self.pseudo_secret = high_level.PseudonymizationSecret(self.secret)
-        self.enc_secret = high_level.EncryptionSecret(self.secret)
+        self.pseudo_secret = core.PseudonymizationSecret(self.secret)
+        self.enc_secret = core.EncryptionSecret(self.secret)
 
         # Create blinding factors (simulate 3 transcryptors)
         self.blinding_factors = [
@@ -187,14 +187,14 @@ class TestDistributed(unittest.TestCase):
         )
         
         # Test pseudonym encryption/decryption
-        pseudo = high_level.Pseudonym.random()
+        pseudo = core.Pseudonym.random()
         enc_pseudo = client.encrypt_pseudonym(pseudo)
         dec_pseudo = client.decrypt_pseudonym(enc_pseudo)
         
         self.assertEqual(pseudo.to_hex(), dec_pseudo.to_hex())
         
         # Test data encryption/decryption
-        data = high_level.Attribute.random()
+        data = core.Attribute.random()
         enc_data = client.encrypt_data(data)
         dec_data = client.decrypt_data(enc_data)
         
@@ -206,10 +206,10 @@ class TestDistributed(unittest.TestCase):
         offline_client = distributed.OfflinePEPClient(self.global_public_keys)
         
         # Test encryption (but can't decrypt without private key)
-        pseudo = high_level.Pseudonym.random()
+        pseudo = core.Pseudonym.random()
         enc_pseudo = offline_client.encrypt_pseudonym(pseudo)
         
-        data = high_level.Attribute.random()
+        data = core.Attribute.random()
         enc_data = offline_client.encrypt_data(data)
         
         # These should be valid encrypted values
@@ -253,7 +253,7 @@ class TestDistributed(unittest.TestCase):
     
     def test_pseudonymization_rekey_info(self):
         """Test standalone pseudonymization and rekey info creation"""
-        from libpep.high_level import PseudonymizationInfo, AttributeRekeyInfo
+        from libpep.core import PseudonymizationInfo, AttributeRekeyInfo
 
         # Test PseudonymizationInfo creation
         pseudo_info = PseudonymizationInfo(
@@ -300,7 +300,7 @@ class TestDistributed(unittest.TestCase):
             client.update_session_secret_keys(initial_shares[i], new_shares[i])
         
         # Client should now work with session2 keys
-        pseudo = high_level.Pseudonym.random()
+        pseudo = core.Pseudonym.random()
         enc_pseudo = client.encrypt_pseudonym(pseudo)
         dec_pseudo = client.decrypt_pseudonym(enc_pseudo)
         

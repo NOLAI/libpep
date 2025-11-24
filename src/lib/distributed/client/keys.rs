@@ -1,15 +1,15 @@
 //! Session key creation and update from session key shares for distributed trust clients.
 
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
+use crate::core::keys::{
+    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+};
 use crate::distributed::server::keys::{
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use crate::distributed::server::setup::{
     BlindedAttributeGlobalSecretKey, BlindedGlobalKeys, BlindedPseudonymGlobalSecretKey,
-};
-use crate::high_level::keys::{
-    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
 };
 use std::ops::Deref;
 
