@@ -38,7 +38,27 @@ where
 
 /// Polymorphic global decrypt function for long (multi-block) encrypted data types.
 /// Uses `ops::decrypt_global` for each individual block.
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_long_global<LE>(
+    encrypted: &LE,
+    secret_key: &<<LE::UnencryptedType as LongEncryptable>::Block as HasGlobalKeys>::GlobalSecretKey,
+) -> Option<LE::UnencryptedType>
+where
+    LE: LongEncrypted,
+    <<LE::UnencryptedType as LongEncryptable>::Block as Encryptable>::EncryptedType:
+        Encrypted<UnencryptedType = <LE::UnencryptedType as LongEncryptable>::Block>,
+    <LE::UnencryptedType as LongEncryptable>::Block: HasGlobalKeys,
+{
+    let decrypted: Option<Vec<_>> = encrypted
+        .encrypted_blocks()
+        .iter()
+        .map(|block| decrypt_global(block, secret_key))
+        .collect();
+    decrypted.map(LE::from_decrypted_blocks)
+}
+
+/// Uses `ops::decrypt_global` for each individual block.
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_long_global<LE>(
     encrypted: &LE,
     secret_key: &<<LE::UnencryptedType as LongEncryptable>::Block as HasGlobalKeys>::GlobalSecretKey,
@@ -69,7 +89,16 @@ pub fn encrypt_long_pseudonym_global<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt a long encrypted pseudonym using a global key.
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_long_pseudonym_global(
+    encrypted: &LongEncryptedPseudonym,
+    secret_key: &PseudonymGlobalSecretKey,
+) -> Option<LongPseudonym> {
+    decrypt_long_global(encrypted, secret_key)
+}
+
+/// Decrypt a long encrypted pseudonym using a global key.
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_long_pseudonym_global(
     encrypted: &LongEncryptedPseudonym,
     secret_key: &PseudonymGlobalSecretKey,
@@ -89,7 +118,16 @@ pub fn encrypt_long_attribute_global<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt a long encrypted attribute using a global key.
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_long_attribute_global(
+    encrypted: &LongEncryptedAttribute,
+    secret_key: &AttributeGlobalSecretKey,
+) -> Option<LongAttribute> {
+    decrypt_long_global(encrypted, secret_key)
+}
+
+/// Decrypt a long encrypted attribute using a global key.
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_long_attribute_global(
     encrypted: &LongEncryptedAttribute,
     secret_key: &AttributeGlobalSecretKey,

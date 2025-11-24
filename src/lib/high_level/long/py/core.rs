@@ -298,7 +298,7 @@ pub fn py_decrypt_long_pseudonym(
         &encrypted.0,
         &PseudonymSessionSecretKey::from(secret_key.0 .0),
     )
-    .map(|x| PyLongPseudonym(x))
+    .map(PyLongPseudonym)
 }
 
 /// Decrypt a long encrypted pseudonym.
@@ -342,7 +342,7 @@ pub fn py_decrypt_long_attribute(
         &encrypted.0,
         &AttributeSessionSecretKey::from(secret_key.0 .0),
     )
-    .map(|x| PyLongAttribute(x))
+    .map(PyLongAttribute)
 }
 
 /// Decrypt a long encrypted attribute.

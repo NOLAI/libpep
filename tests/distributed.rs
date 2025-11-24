@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use libpep::distributed::client::core::PEPClient;
 use libpep::distributed::server::core::PEPSystem;
 use libpep::high_level::core::*;

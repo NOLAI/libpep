@@ -1,5 +1,9 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use libpep::high_level::core::*;
 use libpep::high_level::keys::*;
+#[cfg(feature = "elgamal3")]
+use libpep::high_level::rerandomize::rerandomize;
 use libpep::high_level::transcryption::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use libpep::high_level::transcryption::contexts::*;
 use libpep::high_level::transcryption::ops::{rekey, transcrypt};
@@ -200,7 +204,7 @@ fn test_batch_long() {
         make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
 
     // Create long pseudonyms and attributes with padding
-    let test_strings = vec![
+    let test_strings = [
         "User 1 identifier string that spans multiple blocks",
         "User 2 identifier string that spans multiple blocks",
         "User 3 identifier string that spans multiple blocks",

@@ -27,7 +27,18 @@ where
 
 /// Polymorphic global decrypt function that works for both pseudonyms and attributes.
 /// Uses the appropriate global key type based on the encrypted message type.
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_global<E, S>(encrypted: &E, secret_key: &S) -> Option<E::UnencryptedType>
+where
+    E: Encrypted,
+    E::UnencryptedType: HasGlobalKeys<GlobalSecretKey = S>,
+    S: SecretKey,
+{
+    crate::low_level::elgamal::decrypt(encrypted.value(), secret_key.value())
+        .map(E::UnencryptedType::from_value)
+}
+
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_global<E, S>(encrypted: &E, secret_key: &S) -> E::UnencryptedType
 where
     E: Encrypted,
@@ -71,7 +82,16 @@ pub fn encrypt_attribute_global<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt a pseudonym using a global key (notice that for most applications, this key should be discarded and thus never exist).
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_pseudonym_global(
+    encrypted: &EncryptedPseudonym,
+    secret_key: &PseudonymGlobalSecretKey,
+) -> Option<Pseudonym> {
+    crate::low_level::elgamal::decrypt(encrypted.value(), &secret_key.0).map(Pseudonym::from_value)
+}
+
+/// Decrypt a pseudonym using a global key (notice that for most applications, this key should be discarded and thus never exist).
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_pseudonym_global(
     encrypted: &EncryptedPseudonym,
     secret_key: &PseudonymGlobalSecretKey,
@@ -83,7 +103,16 @@ pub fn decrypt_pseudonym_global(
 }
 
 /// Decrypt an attribute using a global key (notice that for most applications, this key should be discarded and thus never exist).
-#[cfg(feature = "insecure-methods")]
+#[cfg(all(feature = "insecure-methods", feature = "elgamal3"))]
+pub fn decrypt_attribute_global(
+    encrypted: &EncryptedAttribute,
+    secret_key: &AttributeGlobalSecretKey,
+) -> Option<Attribute> {
+    crate::low_level::elgamal::decrypt(encrypted.value(), &secret_key.0).map(Attribute::from_value)
+}
+
+/// Decrypt an attribute using a global key (notice that for most applications, this key should be discarded and thus never exist).
+#[cfg(all(feature = "insecure-methods", not(feature = "elgamal3")))]
 pub fn decrypt_attribute_global(
     encrypted: &EncryptedAttribute,
     secret_key: &AttributeGlobalSecretKey,

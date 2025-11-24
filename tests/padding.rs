@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use libpep::high_level::core::{decrypt, encrypt, EncryptedPseudonym, Pseudonym};
 use libpep::high_level::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::high_level::long::core::LongPseudonym;

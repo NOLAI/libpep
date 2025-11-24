@@ -125,11 +125,25 @@ impl PyPEPClient {
     }
 
     #[pyo3(name = "decrypt_pseudonym")]
+    #[cfg(feature = "elgamal3")]
+    fn py_decrypt_pseudonym(&self, encrypted: &PyEncryptedPseudonym) -> Option<PyPseudonym> {
+        self.decrypt_pseudonym(&encrypted.0).map(PyPseudonym::from)
+    }
+
+    #[pyo3(name = "decrypt_pseudonym")]
+    #[cfg(not(feature = "elgamal3"))]
     fn py_decrypt_pseudonym(&self, encrypted: &PyEncryptedPseudonym) -> PyPseudonym {
         PyPseudonym::from(self.decrypt_pseudonym(&encrypted.0))
     }
 
     #[pyo3(name = "decrypt_data")]
+    #[cfg(feature = "elgamal3")]
+    fn py_decrypt_data(&self, encrypted: &PyEncryptedAttribute) -> Option<PyAttribute> {
+        self.decrypt_attribute(&encrypted.0).map(PyAttribute::from)
+    }
+
+    #[pyo3(name = "decrypt_data")]
+    #[cfg(not(feature = "elgamal3"))]
     fn py_decrypt_data(&self, encrypted: &PyEncryptedAttribute) -> PyAttribute {
         PyAttribute::from(self.decrypt_attribute(&encrypted.0))
     }
@@ -153,7 +167,17 @@ impl PyPEPClient {
         PyLongEncryptedPseudonym::from(self.encrypt_long_pseudonym(&message.0, &mut rng))
     }
 
-    #[cfg(feature = "long")]
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[pyo3(name = "decrypt_long_pseudonym")]
+    fn py_decrypt_long_pseudonym(
+        &self,
+        encrypted: &PyLongEncryptedPseudonym,
+    ) -> Option<PyLongPseudonym> {
+        self.decrypt_long_pseudonym(&encrypted.0)
+            .map(PyLongPseudonym::from)
+    }
+
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
     #[pyo3(name = "decrypt_long_pseudonym")]
     fn py_decrypt_long_pseudonym(&self, encrypted: &PyLongEncryptedPseudonym) -> PyLongPseudonym {
         PyLongPseudonym::from(self.decrypt_long_pseudonym(&encrypted.0))
@@ -166,7 +190,17 @@ impl PyPEPClient {
         PyLongEncryptedAttribute::from(self.encrypt_long_attribute(&message.0, &mut rng))
     }
 
-    #[cfg(feature = "long")]
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[pyo3(name = "decrypt_long_data")]
+    fn py_decrypt_long_data(
+        &self,
+        encrypted: &PyLongEncryptedAttribute,
+    ) -> Option<PyLongAttribute> {
+        self.decrypt_long_attribute(&encrypted.0)
+            .map(PyLongAttribute::from)
+    }
+
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
     #[pyo3(name = "decrypt_long_data")]
     fn py_decrypt_long_data(&self, encrypted: &PyLongEncryptedAttribute) -> PyLongAttribute {
         PyLongAttribute::from(self.decrypt_long_attribute(&encrypted.0))
