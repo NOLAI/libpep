@@ -1,4 +1,4 @@
-use super::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use super::data::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 #[cfg(not(feature = "elgamal3"))]
 use super::keys::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
 use crate::arithmetic::wasm::WASMScalarNonZero;

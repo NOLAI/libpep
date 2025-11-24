@@ -5,7 +5,7 @@ pub mod keys;
 pub mod padding;
 pub mod rerandomize;
 
-pub use core::*;
+pub use data::*;
 #[cfg(feature = "global")]
 pub use global::*;
 pub use keys::*;

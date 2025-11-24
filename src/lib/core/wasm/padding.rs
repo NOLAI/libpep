@@ -3,7 +3,7 @@
 //! Note: These are also exposed as methods on WASMPseudonym and WASMAttribute in core.rs.
 //! This module provides standalone function versions for API completeness.
 
-use super::core::{WASMAttribute, WASMPseudonym};
+use super::data::{WASMAttribute, WASMPseudonym};
 use crate::core::data::{Attribute, Pseudonym};
 use crate::core::padding::Padded;
 use wasm_bindgen::prelude::*;

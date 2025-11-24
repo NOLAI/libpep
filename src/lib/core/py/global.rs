@@ -4,7 +4,7 @@ use super::super::global::{encrypt_attribute_global, encrypt_pseudonym_global};
 use super::super::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::super::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use super::core::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use super::data::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use super::keys::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::keys::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};

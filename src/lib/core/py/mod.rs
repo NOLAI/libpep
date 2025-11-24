@@ -7,7 +7,7 @@ pub mod keys;
 pub mod padding;
 pub mod rerandomize;
 
-pub use core::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+pub use data::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 #[cfg(all(feature = "global", feature = "insecure"))]
 pub use global::{py_decrypt_attribute_global, py_decrypt_pseudonym_global};
 #[cfg(feature = "global")]
@@ -27,7 +27,7 @@ pub use rerandomize::{
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    core::register(m)?;
+    data::register(m)?;
     keys::register(m)?;
     #[cfg(feature = "global")]
     global::register(m)?;

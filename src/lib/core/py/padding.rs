@@ -3,7 +3,7 @@
 //! Note: These are also exposed as methods on PyPseudonym and PyAttribute in core.rs.
 //! This module provides standalone function versions for API completeness.
 
-use super::core::{PyAttribute, PyPseudonym};
+use super::data::{PyAttribute, PyPseudonym};
 use crate::core::data::{Attribute, Pseudonym};
 use crate::core::padding::Padded;
 use pyo3::prelude::*;

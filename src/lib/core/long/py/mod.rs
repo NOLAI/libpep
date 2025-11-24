@@ -8,7 +8,7 @@ pub use batch::{
     py_pseudonymize_long_batch, py_rekey_long_attribute_batch, py_rekey_long_pseudonym_batch,
     py_transcrypt_long_batch,
 };
-pub use core::{
+pub use data::{
     py_decrypt_long_attribute, py_decrypt_long_pseudonym, py_encrypt_long_attribute,
     py_encrypt_long_pseudonym, PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym,
     PyLongPseudonym,
@@ -27,7 +27,7 @@ use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     batch::register(m)?;
-    core::register(m)?;
+    data::register(m)?;
     #[cfg(feature = "global")]
     global::register(m)?;
     ops::register(m)?;

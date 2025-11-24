@@ -1,4 +1,4 @@
-use super::super::core::{
+use super::super::data::{
     decrypt_long_attribute, decrypt_long_pseudonym, encrypt_long_attribute, encrypt_long_pseudonym,
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };

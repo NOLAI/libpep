@@ -1,4 +1,4 @@
-use super::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use super::data::{PyEncryptedAttribute, PyEncryptedPseudonym};
 #[cfg(not(feature = "elgamal3"))]
 use super::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use crate::arithmetic::py::PyScalarNonZero;

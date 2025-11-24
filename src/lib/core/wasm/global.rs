@@ -4,7 +4,7 @@ use super::super::global::{encrypt_attribute_global, encrypt_pseudonym_global};
 use super::super::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::super::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use super::core::{WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym};
+use super::data::{WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym};
 use super::keys::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::keys::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
