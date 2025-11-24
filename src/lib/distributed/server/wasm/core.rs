@@ -11,7 +11,7 @@ use crate::core::transcryption::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
     WASMTranscryptionInfo,
 };
-use crate::core::wasm::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::core::wasm::data::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::distributed::client::wasm::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };

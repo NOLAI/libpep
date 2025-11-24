@@ -3,7 +3,7 @@
 use super::contexts::{WASMAttributeRekeyInfo, WASMPseudonymizationInfo};
 use crate::core::transcryption::batch::{pseudonymize_batch, rekey_batch};
 use crate::core::transcryption::contexts::PseudonymizationInfo;
-use crate::core::wasm::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::core::wasm::data::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use wasm_bindgen::prelude::*;
 
 /// Batch pseudonymization of a list of encrypted pseudonyms.

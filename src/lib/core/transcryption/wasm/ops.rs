@@ -15,7 +15,7 @@ use crate::core::transcryption::contexts::{
 use crate::core::transcryption::ops::{
     pseudonymize, rekey_attribute, rekey_pseudonym, transcrypt_attribute, transcrypt_pseudonym,
 };
-use crate::core::wasm::core::{
+use crate::core::wasm::data::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::core::wasm::keys::{

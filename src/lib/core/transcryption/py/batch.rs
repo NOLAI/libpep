@@ -1,7 +1,7 @@
 //! Python bindings for batch transcryption operations.
 
 use super::contexts::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
-use crate::core::py::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::core::py::data::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::core::transcryption::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use crate::core::transcryption::contexts::{
     AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo,

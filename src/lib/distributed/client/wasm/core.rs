@@ -9,7 +9,7 @@ use crate::core::keys::*;
 use crate::core::long::wasm::data::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
-use crate::core::wasm::core::{
+use crate::core::wasm::data::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::core::wasm::keys::WASMGlobalPublicKeys;

@@ -5,7 +5,7 @@ use crate::core::data::{EncryptedAttribute, EncryptedPseudonym};
 use crate::core::long::data::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::core::long::py::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::core::py::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::core::py::data::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::core::transcryption::contexts::*;
 use crate::core::transcryption::py::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,

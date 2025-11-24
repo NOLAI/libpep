@@ -1,5 +1,5 @@
 #[allow(clippy::wrong_self_convention)]
-pub mod core;
+pub mod data;
 #[cfg(feature = "global")]
 pub mod global;
 #[allow(clippy::wrong_self_convention)]

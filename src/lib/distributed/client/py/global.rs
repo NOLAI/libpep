@@ -4,7 +4,7 @@ use crate::core::keys::*;
 use crate::core::long::py::core::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::core::py::core::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::core::py::data::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use crate::core::py::keys::PyGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
