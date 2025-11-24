@@ -178,7 +178,7 @@ fn test_batch_long() {
         pseudonymize_long_batch, rekey_long_attribute_batch, rekey_long_pseudonym_batch,
         transcrypt_long_batch,
     };
-    use libpep::core::long::core::{
+    use libpep::core::long::data::{
         decrypt_long_attribute, decrypt_long_pseudonym, encrypt_long_attribute,
         encrypt_long_pseudonym, LongAttribute, LongPseudonym,
     };

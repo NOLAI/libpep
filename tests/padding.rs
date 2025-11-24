@@ -2,7 +2,7 @@
 
 use libpep::core::data::{decrypt, encrypt, EncryptedPseudonym, Pseudonym};
 use libpep::core::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
-use libpep::core::long::core::LongPseudonym;
+use libpep::core::long::data::LongPseudonym;
 use libpep::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
 };
