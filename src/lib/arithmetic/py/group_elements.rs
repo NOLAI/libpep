@@ -77,7 +77,7 @@ impl PyGroupElement {
     /// Encode as a byte array of length 16 using lizard encoding.
     /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
     #[pyo3(name = "to_lizard")]
-    fn to_lizard(&self, py: Python) -> Option<Py<PyAny>> {
+    fn encode_lizard(&self, py: Python) -> Option<Py<PyAny>> {
         self.0.to_lizard().map(|x| PyBytes::new(py, &x).into())
     }
 
