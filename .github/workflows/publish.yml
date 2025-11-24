@@ -12,6 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          # Note: python and wasm features are mutually exclusive, so we only check core features
+          feature-group: only-explicit-features
+          features: elgamal3,long,global,batch,serde,legacy,insecure
 
   publish-crate:
     runs-on: ubuntu-latest
@@ -24,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: rust-lang/crates-io-auth-action@v1
         id: auth
       - run: cargo publish
@@ -41,6 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'

@@ -22,6 +22,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         features:
           - ""
@@ -29,25 +30,26 @@ jobs:
           - "legacy"
           - "elgamal3,legacy"
 
-    name: cargo test
+    name: cargo test (${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test --features "${{ matrix.features }}"
 
   build-wasm:
     runs-on: ubuntu-latest
     needs: test
     strategy:
+      fail-fast: false
       matrix:
         target: [ "web", "nodejs" ]
         features: [ "", "elgamal3" ]
 
-    name: wasm-pack build
+    name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - run: cargo install wasm-pack
-      - run: npm install
-      - run: npm test
       - run: wasm-pack build --target ${{ matrix.target }} --features "wasm,${{ matrix.features }}"
