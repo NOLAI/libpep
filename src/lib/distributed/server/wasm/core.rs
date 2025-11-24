@@ -1,0 +1,285 @@
+use super::super::core::PEPSystem;
+use super::setup::WASMBlindingFactor;
+use crate::distributed::client::wasm::keys::{
+    WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
+};
+use crate::distributed::server::setup::BlindingFactor;
+use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::high_level::long::core::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::high_level::long::wasm::core::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::high_level::transcryption::contexts::*;
+use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use crate::high_level::transcryption::wasm::contexts::{
+    WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
+    WASMTranscryptionInfo,
+};
+use crate::high_level::wasm::core::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use derive_more::{Deref, From, Into};
+use wasm_bindgen::prelude::*;
+
+/// A PEP transcryptor system.
+#[derive(Clone, From, Into, Deref)]
+#[wasm_bindgen(js_name = PEPSystem)]
+pub struct WASMPEPSystem(PEPSystem);
+
+#[wasm_bindgen(js_class = PEPSystem)]
+impl WASMPEPSystem {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        pseudonymisation_secret: &str,
+        rekeying_secret: &str,
+        blinding_factor: &WASMBlindingFactor,
+    ) -> Self {
+        Self(PEPSystem::new(
+            PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
+            EncryptionSecret::from(rekeying_secret.as_bytes().into()),
+            BlindingFactor(blinding_factor.0 .0),
+        ))
+    }
+
+    #[wasm_bindgen(js_name = pseudonymSessionKeyShare)]
+    pub fn wasm_pseudonym_session_key_share(&self, session: &str) -> WASMPseudonymSessionKeyShare {
+        WASMPseudonymSessionKeyShare(
+            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
+        )
+    }
+
+    #[wasm_bindgen(js_name = attributeSessionKeyShare)]
+    pub fn wasm_attribute_session_key_share(&self, session: &str) -> WASMAttributeSessionKeyShare {
+        WASMAttributeSessionKeyShare(
+            self.attribute_session_key_share(&EncryptionContext::from(session)),
+        )
+    }
+
+    #[wasm_bindgen(js_name = sessionKeyShares)]
+    pub fn wasm_session_key_shares(&self, session: &str) -> WASMSessionKeyShares {
+        WASMSessionKeyShares(self.session_key_shares(&EncryptionContext::from(session)))
+    }
+
+    #[wasm_bindgen(js_name = attributeRekeyInfo)]
+    pub fn wasm_attribute_rekey_info(
+        &self,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMAttributeRekeyInfo {
+        WASMAttributeRekeyInfo::from(
+            self.attribute_rekey_info(
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
+    #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
+    pub fn wasm_pseudonym_rekey_info(
+        &self,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMPseudonymRekeyFactor {
+        WASMPseudonymRekeyFactor::from(
+            self.pseudonym_rekey_info(
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
+    #[wasm_bindgen(js_name = pseudonymizationInfo)]
+    pub fn wasm_pseudonymization_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMPseudonymizationInfo {
+        WASMPseudonymizationInfo::from(
+            self.pseudonymization_info(
+                &PseudonymizationDomain::from(domain_from),
+                &PseudonymizationDomain::from(domain_to),
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
+    #[wasm_bindgen(js_name = transcryptionInfo)]
+    pub fn wasm_transcryption_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: Option<String>,
+        session_to: Option<String>,
+    ) -> WASMTranscryptionInfo {
+        WASMTranscryptionInfo::from(
+            self.transcryption_info(
+                &PseudonymizationDomain::from(domain_from),
+                &PseudonymizationDomain::from(domain_to),
+                session_from
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+                session_to
+                    .as_ref()
+                    .map(|s| EncryptionContext::from(s.as_str()))
+                    .as_ref(),
+            ),
+        )
+    }
+
+    #[wasm_bindgen(js_name = rekey)]
+    pub fn wasm_rekey(
+        &self,
+        encrypted: &WASMEncryptedAttribute,
+        rekey_info: &WASMAttributeRekeyInfo,
+    ) -> WASMEncryptedAttribute {
+        WASMEncryptedAttribute::from(
+            self.rekey(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)),
+        )
+    }
+
+    #[wasm_bindgen(js_name = pseudonymize)]
+    pub fn wasm_pseudonymize(
+        &self,
+        encrypted: &WASMEncryptedPseudonym,
+        pseudo_info: &WASMPseudonymizationInfo,
+    ) -> WASMEncryptedPseudonym {
+        WASMEncryptedPseudonym::from(
+            self.pseudonymize(&encrypted.0, &PseudonymizationInfo::from(pseudo_info)),
+        )
+    }
+
+    #[wasm_bindgen(js_name = rekeyBatch)]
+    pub fn wasm_rekey_batch(
+        &self,
+        encrypted: Vec<WASMEncryptedAttribute>,
+        rekey_info: &WASMAttributeRekeyInfo,
+    ) -> Vec<WASMEncryptedAttribute> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.rekey_batch(
+            &mut encrypted,
+            &AttributeRekeyInfo::from(rekey_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(WASMEncryptedAttribute::from)
+            .collect()
+    }
+
+    #[wasm_bindgen(js_name = pseudonymizeBatch)]
+    pub fn wasm_pseudonymize_batch(
+        &self,
+        encrypted: Vec<WASMEncryptedPseudonym>,
+        pseudonymization_info: &WASMPseudonymizationInfo,
+    ) -> Vec<WASMEncryptedPseudonym> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.pseudonymize_batch(
+            &mut encrypted,
+            &PseudonymizationInfo::from(pseudonymization_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(WASMEncryptedPseudonym::from)
+            .collect()
+    }
+
+    // Long data type methods
+
+    /// Rekey a long encrypted attribute from one session to another.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = rekeyLong)]
+    pub fn wasm_rekey_long(
+        &self,
+        encrypted: &WASMLongEncryptedAttribute,
+        rekey_info: &WASMAttributeRekeyInfo,
+    ) -> WASMLongEncryptedAttribute {
+        WASMLongEncryptedAttribute::from(
+            self.rekey_long(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)),
+        )
+    }
+
+    /// Pseudonymize a long encrypted pseudonym from one domain/session to another.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = pseudonymizeLong)]
+    pub fn wasm_pseudonymize_long(
+        &self,
+        encrypted: &WASMLongEncryptedPseudonym,
+        pseudonymization_info: &WASMPseudonymizationInfo,
+    ) -> WASMLongEncryptedPseudonym {
+        WASMLongEncryptedPseudonym::from(self.pseudonymize_long(
+            &encrypted.0,
+            &PseudonymizationInfo::from(pseudonymization_info),
+        ))
+    }
+
+    /// Rekey a batch of long encrypted attributes from one session to another.
+    #[cfg(all(feature = "long", feature = "batch"))]
+    #[wasm_bindgen(js_name = rekeyLongBatch)]
+    pub fn wasm_rekey_long_batch(
+        &self,
+        encrypted: Vec<WASMLongEncryptedAttribute>,
+        rekey_info: &WASMAttributeRekeyInfo,
+    ) -> Vec<WASMLongEncryptedAttribute> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<LongEncryptedAttribute> =
+            encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.rekey_long_batch(
+            &mut encrypted,
+            &AttributeRekeyInfo::from(rekey_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(WASMLongEncryptedAttribute::from)
+            .collect()
+    }
+
+    /// Pseudonymize a batch of long encrypted pseudonyms from one domain/session to another.
+    #[cfg(all(feature = "long", feature = "batch"))]
+    #[wasm_bindgen(js_name = pseudonymizeLongBatch)]
+    pub fn wasm_pseudonymize_long_batch(
+        &self,
+        encrypted: Vec<WASMLongEncryptedPseudonym>,
+        pseudonymization_info: &WASMPseudonymizationInfo,
+    ) -> Vec<WASMLongEncryptedPseudonym> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<LongEncryptedPseudonym> =
+            encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.pseudonymize_long_batch(
+            &mut encrypted,
+            &PseudonymizationInfo::from(pseudonymization_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(WASMLongEncryptedPseudonym::from)
+            .collect()
+    }
+}

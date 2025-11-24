@@ -1,4 +1,4 @@
-# `libpep`: Library for polymorphic pseudonymization and encryption
+# `libpep`: Library for polymorphic encryption and pseudonymization
 [![Crates.io](https://img.shields.io/crates/v/libpep.svg)](https://crates.io/crates/libpep)
 [![Downloads](https://img.shields.io/crates/d/libpep)](https://crates.io/crates/libpep)
 [![PyPI](https://img.shields.io/pypi/v/libpep-py)](https://pypi.org/project/libpep-py/)

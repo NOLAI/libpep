@@ -1,18 +1,17 @@
 use libpep::distributed::client::core::PEPClient;
 use libpep::distributed::server::core::PEPSystem;
-use libpep::high_level::transcryption::contexts::*;
 use libpep::high_level::core::*;
+use libpep::high_level::transcryption::contexts::*;
 use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use rand_core::OsRng;
 
 #[test]
 fn n_pep() {
     let n = 3;
-    let rng = &mut OsRng;
+    let rng = &mut rand::rng();
 
     // Global config - using the combined convenience method
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::distributed::key_blinding::make_distributed_global_keys(n, rng);
+        libpep::distributed::server::setup::make_distributed_global_keys(n, rng);
 
     // Create systems
     let systems = (0..n)
@@ -65,7 +64,17 @@ fn n_pep() {
         system.rekey(&acc, &rekey_info)
     });
 
+    #[cfg(feature = "elgamal3")]
+    let dec_pseudo = client_b
+        .decrypt_pseudonym(&transcrypted_pseudo)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let dec_pseudo = client_b.decrypt_pseudonym(&transcrypted_pseudo);
+    #[cfg(feature = "elgamal3")]
+    let dec_data = client_b
+        .decrypt_attribute(&transcrypted_data)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let dec_data = client_b.decrypt_attribute(&transcrypted_data);
 
     assert_eq!(data, dec_data);
@@ -86,6 +95,11 @@ fn n_pep() {
         system.pseudonymize(&acc, &pseudo_info.reverse())
     });
 
+    #[cfg(feature = "elgamal3")]
+    let rev_dec_pseudo = client_a
+        .decrypt_pseudonym(&rev_pseudonymized)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let rev_dec_pseudo = client_a.decrypt_pseudonym(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }

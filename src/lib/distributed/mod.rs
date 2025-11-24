@@ -4,5 +4,17 @@
 //! as long as at least 1 party remains honest).
 
 pub mod client;
-pub mod key_blinding;
 pub mod server;
+
+#[cfg(feature = "python")]
+pub mod py {
+    //! Python bindings for the distributed module.
+
+    use pyo3::prelude::*;
+
+    pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        crate::distributed::client::py::register_module(m)?;
+        crate::distributed::server::py::register_module(m)?;
+        Ok(())
+    }
+}

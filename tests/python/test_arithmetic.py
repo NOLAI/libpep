@@ -22,8 +22,8 @@ class TestArithmetic(unittest.TestCase):
         c = a.add(b)
         d = a.sub(b)
         
-        self.assertEqual(c.as_hex(), "d4d8ae736b598e2e22754f5ef7a8c26dba41a7e934ad76170d5a1419bd42730a")
-        self.assertEqual(d.as_hex(), "c008e64b609452d0a314365f76ff0b68d634f094ce3fa0a9f309e80696ab6f67")
+        self.assertEqual(c.to_hex(), "d4d8ae736b598e2e22754f5ef7a8c26dba41a7e934ad76170d5a1419bd42730a")
+        self.assertEqual(d.to_hex(), "c008e64b609452d0a314365f76ff0b68d634f094ce3fa0a9f309e80696ab6f67")
     
     def test_group_element_operators(self):
         """Test GroupElement Python operator overloads"""
@@ -35,13 +35,13 @@ class TestArithmetic(unittest.TestCase):
         d = a - b
         
         # Should be same as explicit method calls
-        self.assertEqual(c.as_hex(), a.add(b).as_hex())
-        self.assertEqual(d.as_hex(), a.sub(b).as_hex())
+        self.assertEqual(c.to_hex(), a.add(b).to_hex())
+        self.assertEqual(d.to_hex(), a.sub(b).to_hex())
         
         # Test identity
         identity = arithmetic.GroupElement.identity()
-        self.assertEqual((a + identity).as_hex(), a.as_hex())
-        self.assertEqual((a - identity).as_hex(), a.as_hex())
+        self.assertEqual((a + identity).to_hex(), a.to_hex())
+        self.assertEqual((a - identity).to_hex(), a.to_hex())
     
     def test_scalar_arithmetic(self):
         """Test ScalarNonZero arithmetic operations"""
@@ -57,9 +57,9 @@ class TestArithmetic(unittest.TestCase):
         e = a.invert()
         f = c.mul(a)  # Group element * scalar
         
-        self.assertEqual(d.as_hex(), "70b1f2f67d2da167185b133cc1d5157d23bf43741aced485d42e0c791e1d3305")
-        self.assertEqual(e.as_hex(), "6690b6c6f8571e72fe98fa368923c23f090d720419562451d20fa1e4ab556c01")
-        self.assertEqual(f.as_hex(), "56bf55ebfd2fcb7bfc7cbe1208a95d6f5aa3f4842c5b2828375a75c4b78b3126")
+        self.assertEqual(d.to_hex(), "70b1f2f67d2da167185b133cc1d5157d23bf43741aced485d42e0c791e1d3305")
+        self.assertEqual(e.to_hex(), "6690b6c6f8571e72fe98fa368923c23f090d720419562451d20fa1e4ab556c01")
+        self.assertEqual(f.to_hex(), "56bf55ebfd2fcb7bfc7cbe1208a95d6f5aa3f4842c5b2828375a75c4b78b3126")
     
     def test_scalar_can_be_zero(self):
         """Test ScalarCanBeZero operations"""
@@ -79,8 +79,8 @@ class TestArithmetic(unittest.TestCase):
         k = i.add(j)
         l = i.sub(j)
         
-        self.assertEqual(k.as_hex(), "b66d38fbde76986eb2102cd669e2285d4fd85564f43c4d144238a3bee874eb05")
-        self.assertEqual(l.as_hex(), "ded1c3b797c9f2facdb561b18426a29a808984c818c62e9eae50e2f24e0c780d")
+        self.assertEqual(k.to_hex(), "b66d38fbde76986eb2102cd669e2285d4fd85564f43c4d144238a3bee874eb05")
+        self.assertEqual(l.to_hex(), "ded1c3b797c9f2facdb561b18426a29a808984c818c62e9eae50e2f24e0c780d")
     
     def test_scalar_can_be_zero_operators(self):
         """Test ScalarCanBeZero Python operator overloads"""
@@ -91,48 +91,48 @@ class TestArithmetic(unittest.TestCase):
         c = a + b
         d = a - b
         
-        self.assertEqual(c.as_hex(), a.add(b).as_hex())
-        self.assertEqual(d.as_hex(), a.sub(b).as_hex())
+        self.assertEqual(c.to_hex(), a.add(b).to_hex())
+        self.assertEqual(d.to_hex(), a.sub(b).to_hex())
         
         # Test that adding zero doesn't change value
-        self.assertEqual((a + b).as_hex(), a.as_hex())
-        self.assertEqual((a - b).as_hex(), a.as_hex())
+        self.assertEqual((a + b).to_hex(), a.to_hex())
+        self.assertEqual((a - b).to_hex(), a.to_hex())
     
     def test_encoding_decoding(self):
         """Test encode/decode operations"""
         # Test GroupElement
         g = arithmetic.GroupElement.random()
-        encoded = g.encode()
-        decoded = arithmetic.GroupElement.decode(encoded)
+        encoded = g.to_bytes()
+        decoded = arithmetic.GroupElement.from_bytes(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(g.as_hex(), decoded.as_hex())
+        self.assertEqual(g.to_hex(), decoded.to_hex())
         
         # Test ScalarNonZero
         s = arithmetic.ScalarNonZero.random()
-        encoded = s.encode()
-        decoded = arithmetic.ScalarNonZero.decode(encoded)
+        encoded = s.to_bytes()
+        decoded = arithmetic.ScalarNonZero.from_bytes(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(s.as_hex(), decoded.as_hex())
+        self.assertEqual(s.to_hex(), decoded.to_hex())
         
         # Test ScalarCanBeZero
         sc = arithmetic.ScalarCanBeZero.one()
-        encoded = sc.encode()
-        decoded = arithmetic.ScalarCanBeZero.decode(encoded)
+        encoded = sc.to_bytes()
+        decoded = arithmetic.ScalarCanBeZero.from_bytes(encoded)
         self.assertIsNotNone(decoded)
-        self.assertEqual(sc.as_hex(), decoded.as_hex())
+        self.assertEqual(sc.to_hex(), decoded.to_hex())
     
     def test_conversions(self):
         """Test type conversions"""
         # ScalarNonZero to ScalarCanBeZero
         s_nz = arithmetic.ScalarNonZero.random()
         s_cbz = s_nz.to_can_be_zero()
-        self.assertEqual(s_nz.as_hex(), s_cbz.as_hex())
+        self.assertEqual(s_nz.to_hex(), s_cbz.to_hex())
         
         # ScalarCanBeZero to ScalarNonZero (non-zero case)
         s_cbz_one = arithmetic.ScalarCanBeZero.one()
         s_nz_converted = s_cbz_one.to_non_zero()
         self.assertIsNotNone(s_nz_converted)
-        self.assertEqual(s_cbz_one.as_hex(), s_nz_converted.as_hex())
+        self.assertEqual(s_cbz_one.to_hex(), s_nz_converted.to_hex())
         
         # ScalarCanBeZero to ScalarNonZero (zero case)
         s_cbz_zero = arithmetic.ScalarCanBeZero.zero()
@@ -143,18 +143,18 @@ class TestArithmetic(unittest.TestCase):
         """Test generator and constant values"""
         g = arithmetic.GroupElement.generator()
         g2 = arithmetic.GroupElement.generator()
-        self.assertEqual(g.as_hex(), g2.as_hex())
+        self.assertEqual(g.to_hex(), g2.to_hex())
         
         identity = arithmetic.GroupElement.identity()
         one = arithmetic.ScalarNonZero.one()
         
         # G * 1 should equal G
         result = g.mul(one)
-        self.assertEqual(g.as_hex(), result.as_hex())
+        self.assertEqual(g.to_hex(), result.to_hex())
         
         # G + identity should equal G
         result2 = g.add(identity)
-        self.assertEqual(g.as_hex(), result2.as_hex())
+        self.assertEqual(g.to_hex(), result2.to_hex())
 
 
 if __name__ == '__main__':

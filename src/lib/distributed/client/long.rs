@@ -99,6 +99,21 @@ impl PEPClient {
     /// let long_pseudonym = client.decrypt_long(&encrypted_long_pseudonym);
     /// let long_attribute = client.decrypt_long(&encrypted_long_attribute);
     /// ```
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt_long<LE>(&self, encrypted: &LE) -> Option<LE::UnencryptedType>
+    where
+        LE: LongEncrypted + 'static,
+        <<LE::UnencryptedType as LongEncryptable>::Block as Encryptable>::EncryptedType:
+            Encrypted<UnencryptedType = <LE::UnencryptedType as LongEncryptable>::Block>,
+        <LE::UnencryptedType as LongEncryptable>::Block: HasSessionKeys,
+    {
+        let secret_key = self.get_secret_key_for_long::<LE>();
+        decrypt_long(encrypted, secret_key)
+    }
+
+    /// Polymorphic decrypt for long (multi-block) data types.
+    /// Automatically uses the appropriate session key based on the encrypted message type.
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt_long<LE>(&self, encrypted: &LE) -> LE::UnencryptedType
     where
         LE: LongEncrypted + 'static,
@@ -129,11 +144,31 @@ impl PEPClient {
     }
 
     /// Decrypt a long encrypted pseudonym.
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt_long_pseudonym(
+        &self,
+        encrypted: &LongEncryptedPseudonym,
+    ) -> Option<LongPseudonym> {
+        decrypt_long_pseudonym(encrypted, &self.keys.pseudonym.secret)
+    }
+
+    /// Decrypt a long encrypted pseudonym.
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt_long_pseudonym(&self, encrypted: &LongEncryptedPseudonym) -> LongPseudonym {
         decrypt_long_pseudonym(encrypted, &self.keys.pseudonym.secret)
     }
 
     /// Decrypt a long encrypted attribute.
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt_long_attribute(
+        &self,
+        encrypted: &LongEncryptedAttribute,
+    ) -> Option<LongAttribute> {
+        decrypt_long_attribute(encrypted, &self.keys.attribute.secret)
+    }
+
+    /// Decrypt a long encrypted attribute.
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt_long_attribute(&self, encrypted: &LongEncryptedAttribute) -> LongAttribute {
         decrypt_long_attribute(encrypted, &self.keys.attribute.secret)
     }

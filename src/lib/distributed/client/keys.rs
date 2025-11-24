@@ -1,9 +1,11 @@
 //! Session key creation and update from session key shares for distributed trust clients.
 
 use crate::arithmetic::{GroupElement, ScalarNonZero, G};
-use crate::distributed::key_blinding::{
-    AttributeSessionKeyShare, BlindedAttributeGlobalSecretKey, BlindedGlobalKeys,
-    BlindedPseudonymGlobalSecretKey, PseudonymSessionKeyShare, SessionKeyShares,
+use crate::distributed::server::keys::{
+    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
+};
+use crate::distributed::server::setup::{
+    BlindedAttributeGlobalSecretKey, BlindedGlobalKeys, BlindedPseudonymGlobalSecretKey,
 };
 use crate::high_level::keys::{
     AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
@@ -85,7 +87,8 @@ where
     SKS: Deref<Target = ScalarNonZero>,
     PK: From<GroupElement>,
 {
-    let secret = SK::from(*session_secret_key * old_session_key_share.invert() * *new_session_key_share);
+    let secret =
+        SK::from(*session_secret_key * old_session_key_share.invert() * *new_session_key_share);
     let public = PK::from(*secret * G);
     (public, secret)
 }

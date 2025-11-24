@@ -6,8 +6,15 @@
 use super::ops::{pseudonymize, rekey};
 use crate::high_level::core::*;
 use crate::high_level::transcryption::contexts::*;
-use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
+
+/// Fisher-Yates shuffle using rand_core
+fn shuffle<T, R: RngCore>(slice: &mut [T], rng: &mut R) {
+    for i in (1..slice.len()).rev() {
+        let j = (rng.next_u64() as usize) % (i + 1);
+        slice.swap(i, j);
+    }
+}
 
 /// Batch pseudonymization of a slice of [`EncryptedPseudonym`]s, using [`PseudonymizationInfo`].
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.
@@ -16,7 +23,7 @@ pub fn pseudonymize_batch<R: RngCore + CryptoRng>(
     pseudonymization_info: &PseudonymizationInfo,
     rng: &mut R,
 ) -> Box<[EncryptedPseudonym]> {
-    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    shuffle(encrypted, rng); // Shuffle the order to avoid linking
     encrypted
         .iter()
         .map(|x| pseudonymize(x, pseudonymization_info))
@@ -30,7 +37,7 @@ pub fn rekey_batch<R: RngCore + CryptoRng>(
     rekey_info: &AttributeRekeyInfo,
     rng: &mut R,
 ) -> Box<[EncryptedAttribute]> {
-    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    shuffle(encrypted, rng); // Shuffle the order to avoid linking
     encrypted.iter().map(|x| rekey(x, rekey_info)).collect()
 }
 
@@ -60,7 +67,7 @@ pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         }
     }
 
-    encrypted.shuffle(rng); // Shuffle the order to avoid linking
+    shuffle(encrypted, rng); // Shuffle the order to avoid linking
     encrypted
         .iter_mut()
         .map(|(pseudonyms, attributes)| {

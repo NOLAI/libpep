@@ -3,7 +3,7 @@
 
 use commandy_macros::*;
 use libpep::arithmetic::{ScalarNonZero, ScalarTraits};
-use libpep::distributed::key_blinding::make_distributed_global_keys;
+use libpep::distributed::server::setup::make_distributed_global_keys;
 use libpep::high_level::core::{
     decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
 };
@@ -20,7 +20,6 @@ use libpep::high_level::transcryption::contexts::{
 };
 use libpep::high_level::transcryption::ops::transcrypt;
 use libpep::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use rand_core::OsRng;
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]
@@ -165,19 +164,19 @@ struct Options {
 }
 
 fn main() {
-    let mut rng = OsRng;
+    let mut rng = rand::rng();
     let options: Options = commandy::parse_args();
     match options.subcommand {
         Some(Sub::GenerateGlobalKeys(_)) => {
             let (pk, sk) = make_pseudonym_global_keys(&mut rng);
             eprint!("Public global key: ");
-            println!("{}", &pk.encode_as_hex());
+            println!("{}", &pk.to_hex());
             eprint!("Secret global key: ");
-            println!("{}", &sk.value().encode_as_hex());
+            println!("{}", &sk.value().to_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
             let global_secret_key = PseudonymGlobalSecretKey::from(
-                ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid global secret key."),
+                ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid global secret key."),
             );
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
             let session_context = EncryptionContext::from(arg.args[2].as_str());
@@ -188,14 +187,14 @@ fn main() {
                 &encryption_secret,
             );
             eprint!("Public session key: ");
-            println!("{}", &session_pk.encode_as_hex());
+            println!("{}", &session_pk.to_hex());
             eprint!("Secret session key: ");
-            println!("{}", &session_sk.value().encode_as_hex());
+            println!("{}", &session_sk.value().to_hex());
         }
         Some(Sub::RandomPseudonym(_)) => {
             let pseudonym = Pseudonym::random(&mut rng);
             eprint!("Random pseudonym: ");
-            println!("{}", &pseudonym.encode_as_hex());
+            println!("{}", &pseudonym.to_hex());
         }
         Some(Sub::PseudonymEncode(arg)) => {
             let origin = arg.args[0].as_bytes();
@@ -206,29 +205,28 @@ fn main() {
                         .expect("Failed to create long pseudonym");
                     eprint!("Long pseudonym ({} blocks): ", long_pseudonym.0.len());
                     let hex_blocks: Vec<String> =
-                        long_pseudonym.0.iter().map(|p| p.encode_as_hex()).collect();
+                        long_pseudonym.0.iter().map(|p| p.to_hex()).collect();
                     println!("{}", hex_blocks.join(" "));
                 }
                 Ordering::Less => {
                     let mut padded = [0u8; 16];
                     padded[..origin.len()].copy_from_slice(origin);
-                    let pseudonym = Pseudonym::from_bytes(&padded);
+                    let pseudonym = Pseudonym::from_lizard(&padded);
                     eprint!("Pseudonym: ");
-                    println!("{}", &pseudonym.encode_as_hex());
+                    println!("{}", &pseudonym.to_hex());
                 }
                 Ordering::Equal => {
-                    let pseudonym = Pseudonym::from_bytes(origin.try_into().unwrap());
+                    let pseudonym = Pseudonym::from_lizard(origin.try_into().unwrap());
                     eprint!("Pseudonym: ");
-                    println!("{}", &pseudonym.encode_as_hex());
+                    println!("{}", &pseudonym.to_hex());
                 }
             };
         }
         Some(Sub::PseudonymDecode(arg)) => {
             if arg.args.len() == 1 {
                 // Single pseudonym - try lizard decoding
-                let pseudonym =
-                    Pseudonym::decode_from_hex(&arg.args[0]).expect("Invalid pseudonym.");
-                let origin = pseudonym.as_bytes();
+                let pseudonym = Pseudonym::from_hex(&arg.args[0]).expect("Invalid pseudonym.");
+                let origin = pseudonym.to_lizard();
                 if origin.is_none() {
                     eprintln!("Pseudonym does not have a lizard representation.");
                     std::process::exit(1);
@@ -245,7 +243,7 @@ fn main() {
                 let pseudonyms: Vec<Pseudonym> = arg
                     .args
                     .iter()
-                    .map(|hex| Pseudonym::decode_from_hex(hex).expect("Invalid pseudonym"))
+                    .map(|hex| Pseudonym::from_hex(hex).expect("Invalid pseudonym"))
                     .collect();
                 let long_pseudonym = LongPseudonym(pseudonyms);
                 let text = long_pseudonym
@@ -258,28 +256,32 @@ fn main() {
         Some(Sub::Encrypt(arg)) => {
             let public_key =
                 PseudonymSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
+            let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = encrypt_pseudonym(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.encode_as_base64());
+            println!("{}", &ciphertext.to_base64());
         }
         Some(Sub::EncryptGlobal(arg)) => {
             let public_key =
                 PseudonymGlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
-            let pseudonym = Pseudonym::decode_from_hex(&arg.args[1]).expect("Invalid pseudonym.");
+            let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = encrypt_pseudonym_global(&pseudonym, &public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.encode_as_base64());
+            println!("{}", &ciphertext.to_base64());
         }
         Some(Sub::Decrypt(arg)) => {
             let secret_key = PseudonymSessionSecretKey::from(
-                ScalarNonZero::decode_from_hex(&arg.args[0]).expect("Invalid secret key."),
+                ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
                 EncryptedPseudonym::from_base64(&arg.args[1]).expect("Invalid ciphertext.");
+            #[cfg(feature = "elgamal3")]
+            let plaintext = decrypt_pseudonym(&ciphertext, &secret_key)
+                .expect("Decryption failed: key mismatch");
+            #[cfg(not(feature = "elgamal3"))]
             let plaintext = decrypt_pseudonym(&ciphertext, &secret_key);
             eprint!("Plaintext: ");
-            println!("{}", &plaintext.encode_as_hex());
+            println!("{}", &plaintext.to_hex());
         }
         Some(Sub::Rerandomize(arg)) => {
             let ciphertext =
@@ -296,7 +298,7 @@ fn main() {
                 rerandomized = rerandomize(&ciphertext, &mut rng);
             }
             eprint!("Rerandomized ciphertext: ");
-            println!("{}", &rerandomized.encode_as_base64());
+            println!("{}", &rerandomized.to_base64());
         }
         Some(Sub::Transcrypt(arg)) => {
             let pseudonymization_secret =
@@ -318,7 +320,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_as_base64());
+            println!("{}", &transcrypted.to_base64());
         }
         Some(Sub::TranscryptFromGlobal(arg)) => {
             let pseudonymization_secret =
@@ -339,7 +341,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_as_base64());
+            println!("{}", &transcrypted.to_base64());
         }
         Some(Sub::TranscryptToGlobal(arg)) => {
             let pseudonymization_secret =
@@ -360,7 +362,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.encode_as_base64());
+            println!("{}", &transcrypted.to_base64());
         }
         Some(Sub::SetupDistributedSystems(arg)) => {
             let n = arg.args[0]
@@ -369,26 +371,20 @@ fn main() {
             let (global_public_keys, blinded_global_keys, blinding_factors) =
                 make_distributed_global_keys(n, &mut rng);
             eprintln!("Public global keys:");
-            eprintln!(
-                "  - Attributes: {}",
-                &global_public_keys.attribute.encode_as_hex()
-            );
-            eprintln!(
-                "  - Pseudonyms: {}",
-                &global_public_keys.pseudonym.encode_as_hex()
-            );
+            eprintln!("  - Attributes: {}", &global_public_keys.attribute.to_hex());
+            eprintln!("  - Pseudonyms: {}", &global_public_keys.pseudonym.to_hex());
             eprintln!("Blinded secret keys:");
             eprintln!(
                 "  - Attributes: {}",
-                &blinded_global_keys.attribute.encode_as_hex()
+                &blinded_global_keys.attribute.to_hex()
             );
             eprintln!(
                 "  - Pseudonyms: {}",
-                &blinded_global_keys.pseudonym.encode_as_hex()
+                &blinded_global_keys.pseudonym.to_hex()
             );
             eprintln!("Blinding factors (keep secret):");
-            for factor in blinding_factors.iter() {
-                eprintln!("  - {}", factor.encode_as_hex());
+            for factor in blinding_factors {
+                eprintln!("  - {}", factor.to_hex());
             }
         }
         None => {

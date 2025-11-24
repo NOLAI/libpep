@@ -106,6 +106,10 @@ impl LongPseudonym {
     ///
     /// let long_pseudo = LongPseudonym::from_bytes_padded(b"participant123456789@abcdef.hij").unwrap();
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
     pub fn from_bytes_padded(data: &[u8]) -> Result<Self, Error> {
         from_bytes_padded_impl::<Pseudonym>(data).map(LongPseudonym)
     }
@@ -120,6 +124,10 @@ impl LongPseudonym {
     /// # Parameters
     ///
     /// - `text`: The string to encode
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
     pub fn from_string_padded(text: &str) -> Result<Self, Error> {
         Self::from_bytes_padded(text.as_bytes())
     }
@@ -160,6 +168,10 @@ impl LongAttribute {
     /// # Parameters
     ///
     /// - `data`: The bytes to encode
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
     pub fn from_bytes_padded(data: &[u8]) -> Result<Self, Error> {
         from_bytes_padded_impl::<Attribute>(data).map(LongAttribute)
     }
@@ -174,6 +186,10 @@ impl LongAttribute {
     /// # Parameters
     ///
     /// - `text`: The string to encode
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
     pub fn from_string_padded(text: &str) -> Result<Self, Error> {
         Self::from_bytes_padded(text.as_bytes())
     }
@@ -218,7 +234,7 @@ impl LongEncryptedPseudonym {
     pub fn serialize(&self) -> String {
         self.0
             .iter()
-            .map(|item| item.as_base64())
+            .map(|item| item.to_base64())
             .collect::<Vec<_>>()
             .join("|")
     }
@@ -278,7 +294,7 @@ impl LongEncryptedAttribute {
     pub fn serialize(&self) -> String {
         self.0
             .iter()
-            .map(|item| item.as_base64())
+            .map(|item| item.to_base64())
             .collect::<Vec<_>>()
             .join("|")
     }
@@ -501,7 +517,7 @@ fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Result<Vec<T>, Error> 
         let start = i * 16;
         // Unwrap is safe: slice is exactly 16 bytes by construction
         #[allow(clippy::unwrap_used)]
-        result.push(T::from_bytes(&data[start..start + 16].try_into().unwrap()));
+        result.push(T::from_lizard(&data[start..start + 16].try_into().unwrap()));
     }
 
     // Create the final block with PKCS#7 padding
@@ -512,7 +528,7 @@ fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Result<Vec<T>, Error> 
         last_block[..remaining].copy_from_slice(&data[data.len() - remaining..]);
     }
 
-    result.push(T::from_bytes(&last_block));
+    result.push(T::from_lizard(&last_block));
 
     Ok(result)
 }
@@ -530,7 +546,7 @@ fn to_bytes_padded_impl<T: Encryptable>(items: &[T]) -> Result<Vec<u8>, Error> {
 
     // Copy all blocks except the last one
     for item in items.iter().take(items.len() - 1) {
-        let block = item.as_bytes().ok_or(Error::new(
+        let block = item.to_lizard().ok_or(Error::new(
             ErrorKind::InvalidData,
             "Encryptable conversion to bytes failed",
         ))?;
@@ -540,7 +556,7 @@ fn to_bytes_padded_impl<T: Encryptable>(items: &[T]) -> Result<Vec<u8>, Error> {
     // Process the last block and validate padding
     // Unwrap is safe: we already checked items.is_empty() above
     #[allow(clippy::unwrap_used)]
-    let last_block = items.last().unwrap().as_bytes().ok_or(Error::new(
+    let last_block = items.last().unwrap().to_lizard().ok_or(Error::new(
         ErrorKind::InvalidData,
         "Last encryptable conversion to bytes failed",
     ))?;
@@ -586,6 +602,29 @@ where
 
 /// Polymorphic decrypt function for long (multi-block) encrypted data types.
 /// Uses `ops::decrypt` for each individual block.
+/// With the `elgamal3` feature, returns `None` if any block fails to decrypt.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt_long<LE>(
+    encrypted: &LE,
+    secret_key: &<<LE::UnencryptedType as LongEncryptable>::Block as HasSessionKeys>::SessionSecretKey,
+) -> Option<LE::UnencryptedType>
+where
+    LE: LongEncrypted,
+    <<LE::UnencryptedType as LongEncryptable>::Block as Encryptable>::EncryptedType:
+        Encrypted<UnencryptedType = <LE::UnencryptedType as LongEncryptable>::Block>,
+    <LE::UnencryptedType as LongEncryptable>::Block: HasSessionKeys,
+{
+    let decrypted: Option<Vec<_>> = encrypted
+        .encrypted_blocks()
+        .iter()
+        .map(|block| decrypt(block, secret_key))
+        .collect();
+    decrypted.map(LE::from_decrypted_blocks)
+}
+
+/// Polymorphic decrypt function for long (multi-block) encrypted data types.
+/// Uses `ops::decrypt` for each individual block.
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_long<LE>(
     encrypted: &LE,
     secret_key: &<<LE::UnencryptedType as LongEncryptable>::Block as HasSessionKeys>::SessionSecretKey,
@@ -614,6 +653,17 @@ pub fn encrypt_long_pseudonym<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt a long encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+/// With the `elgamal3` feature, returns `None` if any block fails to decrypt.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt_long_pseudonym(
+    encrypted: &LongEncryptedPseudonym,
+    secret_key: &PseudonymSessionSecretKey,
+) -> Option<LongPseudonym> {
+    decrypt_long(encrypted, secret_key)
+}
+
+/// Decrypt a long encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_long_pseudonym(
     encrypted: &LongEncryptedPseudonym,
     secret_key: &PseudonymSessionSecretKey,
@@ -631,9 +681,328 @@ pub fn encrypt_long_attribute<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt a long encrypted attribute using an [`AttributeSessionSecretKey`].
+/// With the `elgamal3` feature, returns `None` if any block fails to decrypt.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt_long_attribute(
+    encrypted: &LongEncryptedAttribute,
+    secret_key: &AttributeSessionSecretKey,
+) -> Option<LongAttribute> {
+    decrypt_long(encrypted, secret_key)
+}
+
+/// Decrypt a long encrypted attribute using an [`AttributeSessionSecretKey`].
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_long_attribute(
     encrypted: &LongEncryptedAttribute,
     secret_key: &AttributeSessionSecretKey,
 ) -> LongAttribute {
     decrypt_long(encrypted, secret_key)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::high_level::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
+    use crate::high_level::transcryption::contexts::EncryptionContext;
+    use crate::high_level::transcryption::secrets::EncryptionSecret;
+    use std::io::ErrorKind;
+
+    #[test]
+    fn long_attribute_from_bytes_padded_empty() {
+        let data: &[u8] = &[];
+        let result = LongAttribute::from_bytes_padded(data).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn long_attribute_from_bytes_padded_single_block() {
+        let data = b"Hello, world!";
+        let result = LongAttribute::from_bytes_padded(data).unwrap();
+
+        assert_eq!(1, result.len());
+
+        // The padding should be 3 bytes of value 3
+        let bytes = result[0].to_lizard().unwrap();
+        assert_eq!(b"Hello, world!\x03\x03\x03", &bytes);
+    }
+
+    #[test]
+    fn long_attribute_from_bytes_padded_exact_block() {
+        let data = b"0123456789ABCDEF";
+        let result = LongAttribute::from_bytes_padded(data).unwrap();
+
+        // Should have 2 blocks: the 16 bytes of data and one full block of padding
+        assert_eq!(2, result.len());
+
+        // First block should be exactly our input
+        assert_eq!(b"0123456789ABCDEF", &result[0].to_lizard().unwrap());
+
+        // Second block should be all padding bytes with value 16
+        let expected_padding = [16u8; 16];
+        assert_eq!(expected_padding, result[1].to_lizard().unwrap());
+    }
+
+    #[test]
+    fn long_attribute_from_bytes_padded_multiple_blocks() {
+        let data = b"This is a longer string that spans multiple blocks";
+        let result = LongAttribute::from_bytes_padded(data).unwrap();
+
+        // Calculate expected number of blocks (51 bytes -> 4 blocks)
+        let expected_blocks = (data.len() / 16) + 1;
+        assert_eq!(expected_blocks, result.len());
+
+        // Check the content of each full block
+        for (i, block) in result.iter().enumerate().take(data.len() / 16) {
+            let start = i * 16;
+            let expected = data[start..start + 16].to_vec();
+            assert_eq!(expected, block.to_lizard().unwrap()[..16]);
+        }
+
+        // Check the last block's padding
+        let last_block = result.last().unwrap().to_lizard().unwrap();
+        let remaining = data.len() % 16;
+        let padding_byte = (16 - remaining) as u8;
+
+        // Verify data portion
+        assert_eq!(&data[data.len() - remaining..], &last_block[..remaining]);
+
+        // Verify padding portion
+        for byte in last_block.iter().skip(remaining) {
+            assert_eq!(&padding_byte, byte);
+        }
+    }
+
+    #[test]
+    fn long_attribute_to_bytes_padded() {
+        let original = b"This is some test data for padding";
+        let attributes = LongAttribute::from_bytes_padded(original).unwrap();
+        let decoded = attributes.to_bytes_padded().unwrap();
+        assert_eq!(original, decoded.as_slice());
+    }
+
+    #[test]
+    fn long_attribute_to_bytes_padded_empty() {
+        let attributes = LongAttribute::from(vec![]);
+        let result = attributes.to_bytes_padded();
+
+        assert!(result.is_err());
+        assert_eq!(ErrorKind::InvalidInput, result.unwrap_err().kind());
+    }
+
+    #[test]
+    fn long_attribute_to_bytes_padded_invalid_padding() {
+        // Create an Attribute with invalid padding (padding byte = 0)
+        let invalid_block = [0u8; 16];
+        let attribute = Attribute::from_lizard(&invalid_block);
+        let long_attr = LongAttribute::from(vec![attribute]);
+
+        let result = long_attr.to_bytes_padded();
+        assert!(result.is_err());
+        assert_eq!(ErrorKind::InvalidData, result.unwrap_err().kind());
+
+        // Try with inconsistent padding
+        let mut inconsistent_block = [5u8; 16];
+        inconsistent_block[15] = 6;
+        let attribute = Attribute::from_lizard(&inconsistent_block);
+        let long_attr = LongAttribute::from(vec![attribute]);
+
+        let result = long_attr.to_bytes_padded();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn long_attribute_to_string_padded() {
+        let original = "This is a UTF-8 string with special chars: ñáéíóú 你好";
+        let attributes = LongAttribute::from_string_padded(original).unwrap();
+        let decoded = attributes.to_string_padded().unwrap();
+        assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn long_attribute_to_string_padded_invalid_utf8() {
+        // Create data points with non-UTF8 data
+        let invalid_utf8 = vec![0xFF, 0xFE, 0xFD];
+        let mut block = [0u8; 16];
+        block[..3].copy_from_slice(&invalid_utf8);
+        block[3..].fill(13); // Padding
+
+        let attribute = Attribute::from_lizard(&block);
+        let long_attr = LongAttribute::from(vec![attribute]);
+
+        let result = long_attr.to_string_padded();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn long_attribute_roundtrip_all_padding_sizes() {
+        for padding_size in 1..=16 {
+            let size = 32 - padding_size;
+            let data = vec![b'X'; size];
+
+            let attributes = LongAttribute::from_bytes_padded(&data).unwrap();
+            let decoded = attributes.to_bytes_padded().unwrap();
+
+            assert_eq!(data, decoded);
+        }
+    }
+
+    #[test]
+    fn long_pseudonym_from_bytes_padded() {
+        let data = b"Hello, world!";
+        let result = LongPseudonym::from_bytes_padded(data).unwrap();
+
+        assert_eq!(1, result.len());
+
+        let bytes = result[0].to_lizard().unwrap();
+        assert_eq!(b"Hello, world!\x03\x03\x03", &bytes);
+    }
+
+    #[test]
+    fn long_pseudonym_to_bytes_padded() {
+        let original = b"This is some test data for padding";
+        let pseudonyms = LongPseudonym::from_bytes_padded(original).unwrap();
+        let decoded = pseudonyms.to_bytes_padded().unwrap();
+        assert_eq!(original, decoded.as_slice());
+    }
+
+    #[test]
+    fn long_pseudonym_string_roundtrip() {
+        let original = "Testing pseudonym string conversion";
+        let pseudonyms = LongPseudonym::from_string_padded(original).unwrap();
+        let decoded = pseudonyms.to_string_padded().unwrap();
+        assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn long_encrypted_pseudonym_serialize_deserialize() {
+        let mut rng = rand::rng();
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &crate::high_level::keys::make_pseudonym_global_keys(&mut rng).1,
+            &EncryptionContext::from("session-1"),
+            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+        );
+
+        let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization").unwrap();
+        let encrypted: Vec<EncryptedPseudonym> = pseudonyms
+            .iter()
+            .map(|p| encrypt(p, &session_public, &mut rng))
+            .collect();
+        let long_encrypted = LongEncryptedPseudonym::from(encrypted);
+
+        let serialized = long_encrypted.serialize();
+        assert!(serialized.contains('|'));
+
+        let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
+        assert_eq!(long_encrypted.len(), deserialized.len());
+
+        for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+            assert_eq!(original, restored);
+        }
+    }
+
+    #[test]
+    fn long_encrypted_attribute_serialize_deserialize() {
+        let mut rng = rand::rng();
+        let (session_public, _session_secret) = make_attribute_session_keys(
+            &crate::high_level::keys::make_attribute_global_keys(&mut rng).1,
+            &EncryptionContext::from("session-1"),
+            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+        );
+
+        let attributes = LongAttribute::from_string_padded("attribute-test-data").unwrap();
+        let encrypted: Vec<_> = attributes
+            .iter()
+            .map(|a| encrypt(a, &session_public, &mut rng))
+            .collect();
+        let long_encrypted = LongEncryptedAttribute::from(encrypted);
+
+        let serialized = long_encrypted.serialize();
+        assert!(serialized.contains('|'));
+
+        let deserialized = LongEncryptedAttribute::deserialize(&serialized).unwrap();
+        assert_eq!(long_encrypted.len(), deserialized.len());
+
+        for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+            assert_eq!(original, restored);
+        }
+    }
+
+    #[test]
+    fn long_encrypted_empty_roundtrip() {
+        let empty_pseudo = LongEncryptedPseudonym(vec![]);
+        let serialized = empty_pseudo.serialize();
+        assert_eq!(serialized, "");
+
+        let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
+        assert_eq!(deserialized.len(), 0);
+
+        let empty_attr = LongEncryptedAttribute(vec![]);
+        let serialized = empty_attr.serialize();
+        assert_eq!(serialized, "");
+
+        let deserialized = LongEncryptedAttribute::deserialize(&serialized).unwrap();
+        assert_eq!(deserialized.len(), 0);
+    }
+
+    #[test]
+    fn long_encrypted_deserialize_invalid_base64() {
+        let result = LongEncryptedPseudonym::deserialize("invalid!!!|also-invalid!!!");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+
+        let result = LongEncryptedAttribute::deserialize("invalid!!!|also-invalid!!!");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn long_encrypted_serde_json() {
+        let mut rng = rand::rng();
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &crate::high_level::keys::make_pseudonym_global_keys(&mut rng).1,
+            &EncryptionContext::from("session-1"),
+            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+        );
+
+        let pseudonyms = LongPseudonym::from_string_padded("serde-test-data").unwrap();
+        let encrypted: Vec<EncryptedPseudonym> = pseudonyms
+            .iter()
+            .map(|p| encrypt(p, &session_public, &mut rng))
+            .collect();
+        let long_encrypted = LongEncryptedPseudonym::from(encrypted);
+
+        let json = serde_json::to_string(&long_encrypted).expect("Failed to serialize to JSON");
+        let deserialized: LongEncryptedPseudonym =
+            serde_json::from_str(&json).expect("Failed to deserialize from JSON");
+
+        assert_eq!(long_encrypted.len(), deserialized.len());
+        for (original, restored) in long_encrypted.iter().zip(deserialized.iter()) {
+            assert_eq!(original, restored);
+        }
+    }
+
+    #[test]
+    fn long_encrypted_pseudonym_single_item() {
+        use crate::high_level::padding::Padded;
+
+        let mut rng = rand::rng();
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &crate::high_level::keys::make_pseudonym_global_keys(&mut rng).1,
+            &EncryptionContext::from("session-1"),
+            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+        );
+
+        let pseudonym = Pseudonym::from_bytes_padded(b"single").unwrap();
+        let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
+        let long_encrypted = LongEncryptedPseudonym::from(vec![encrypted]);
+
+        // Serialize and deserialize
+        let serialized = long_encrypted.serialize();
+        assert!(!serialized.contains('|')); // Single item should not have delimiter
+
+        let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
+        assert_eq!(1, deserialized.len());
+        assert_eq!(long_encrypted[0], deserialized[0]);
+    }
 }

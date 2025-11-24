@@ -3,7 +3,7 @@
 use super::contexts::*;
 use crate::arithmetic::*;
 use derive_more::From;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 #[cfg(feature = "legacy-pep-repo-compatible")]
 use sha2::{Digest, Sha256};
@@ -63,7 +63,7 @@ fn make_factor(typ: u32, secret: &Secret, payload: &String) -> ScalarNonZero {
     hmac.update(payload.as_bytes());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(&hmac.finalize().into_bytes());
-    ScalarNonZero::decode_from_hash(&bytes)
+    ScalarNonZero::from_hash(&bytes)
 }
 
 /// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).
@@ -124,5 +124,5 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) 
 
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(&result_outer);
-    ScalarNonZero::decode_from_hash(&bytes)
+    ScalarNonZero::from_hash(&bytes)
 }

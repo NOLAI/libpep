@@ -7,3 +7,9 @@
 
 pub mod elgamal;
 pub mod primitives;
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

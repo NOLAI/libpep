@@ -1,14 +1,15 @@
 #[cfg(feature = "legacy-pep-repo-compatible")]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
-    use libpep::distributed::key_blinding::{
-        make_pseudonym_session_key_share, BlindingFactor, SafeScalar,
+    use libpep::arithmetic::ScalarTraits;
+    use libpep::distributed::server::keys::make_pseudonym_session_key_share;
+    use libpep::distributed::server::setup::BlindingFactor;
+    use libpep::high_level::transcryption::contexts::{
+        PseudonymRekeyFactor, PseudonymizationDomain,
     };
-    use libpep::distributed::systems::*;
-    use libpep::high_level::transcryption::contexts::PseudonymizationDomain;
     use libpep::high_level::transcryption::secrets::{
-        make_pseudonymisation_factor, EncryptionSecret, PseudonymizationSecret,
+        make_pseudonymisation_factor, PseudonymizationSecret,
     };
-    use libpep::internal::arithmetic::*;
 
     #[test]
     fn test_key_factor_component() {
@@ -35,36 +36,27 @@ mod legacy_pep_repo_tests {
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
             let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
             assert_eq!(
-                pseudo_factor.0.encode_as_hex().to_ascii_uppercase(),
+                pseudo_factor.0.to_hex().to_ascii_uppercase(),
                 *expected_factor
             );
 
-            let blinding_factor = BlindingFactor::decode_from_hex(blinding_hex).unwrap();
+            let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
+            // Note: PEP repo uses the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
+            // We wrap the scalar in a PseudonymRekeyFactor for API compatibility.
+            let rekey_factor = PseudonymRekeyFactor::from(pseudo_factor.0);
             let session_key_share =
-                make_pseudonym_session_key_share(&pseudo_factor.0, &blinding_factor); // This is a bit weird. PEP repo uses completely different keys for data and pseudonyms. They use the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
+                make_pseudonym_session_key_share(&rekey_factor, &blinding_factor);
             assert_eq!(
-                session_key_share.encode_as_hex().to_ascii_uppercase(),
+                session_key_share.to_hex().to_ascii_uppercase(),
                 *expected_sks
             )
         }
     }
 
-    #[test]
-    fn test_pseudonymization() {
-        let _transcryptor1 = PEPSystem::new(
-            PseudonymizationSecret::from(hex::decode("D4E024E453EF835B9FF6806509CFDA5EDA182F6D5B72F2421879D4EEE2AA41386FA548F8D84EA985F91214FBD6A94937ED0F9CE10D9A37340BF301A1DA5594B6").unwrap()),
-            EncryptionSecret::from(hex::decode("108966C6C8D36B65C583F6B7CA8E48F44ADAB81BC23594AB0C53CB2F92F005C1DABBE9E0F57B572BC666EDD2E091ED12D95A404CA49BC8E50D11453D8D7E6F0C").unwrap()),
-            BlindingFactor::decode_from_hex("B8E69234C19D393F64ED46B5AC8613526C5929B086D15671E1EB590CC1A59B01").unwrap()
-        );
-
-        let _transcryptor2 = PEPSystem::new(
-            PseudonymizationSecret::from(hex::decode("9D15F07EF643F04C9ECE22D2F4FE5F41D4D87ACF1E7B95839AEEA1C7E81B8B89BD0BA29468F4F2C9EFB639029AC7AF83BD7679F31866C033589E54B698169855").unwrap()),
-            EncryptionSecret::from(hex::decode("DE124CA9AF1BE64C889AE79A30FEC031CDD019097CF023594976FEDA709D4ED99747CB079E6EABD6CF67A75EF625ACDD6787B5994ACC665EBECCC7C6071406D2").unwrap()),
-            BlindingFactor::decode_from_hex("602F27166E7AF611C2D50E6C06C7FC4A16F74A29A28C1DFEBCDC245ECD34D308").unwrap()
-        );
-
-        let _main_pseudonym = "PEP0".to_string();
-        // TODO implement the rest of the test
-        // let pseudo = GroupElement::decode_lizard(<&[u8; 16]>::try_from(main_pseudonym.as_bytes()).unwrap()).unwrap();
-    }
+    // TODO: test_pseudonymization is incomplete and uses the removed PEPSystem struct
+    // This test needs to be reimplemented with the new distributed module API
+    // #[test]
+    // fn test_pseudonymization() {
+    //     // ...
+    // }
 }

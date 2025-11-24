@@ -7,8 +7,8 @@ Tests PEP primitive operations like rekey, reshuffle, and rsk.
 import unittest
 import libpep
 arithmetic = libpep.arithmetic
-elgamal = libpep.elgamal
-primitives = libpep.primitives
+elgamal = libpep.low_level
+primitives = libpep.low_level
 
 
 class TestPrimitives(unittest.TestCase):
@@ -44,11 +44,11 @@ class TestPrimitives(unittest.TestCase):
         dec_original = elgamal.decrypt(self.encrypted, self.y)
         dec_rerandomized = elgamal.decrypt(rerandomized, self.y)
         
-        self.assertEqual(dec_original.as_hex(), dec_rerandomized.as_hex())
-        self.assertEqual(self.m.as_hex(), dec_rerandomized.as_hex())
+        self.assertEqual(dec_original.to_hex(), dec_rerandomized.to_hex())
+        self.assertEqual(self.m.to_hex(), dec_rerandomized.to_hex())
         
         # But ciphertexts should be different
-        self.assertNotEqual(self.encrypted.as_base64(), rerandomized.as_base64())
+        self.assertNotEqual(self.encrypted.to_base64(), rerandomized.to_base64())
     
     def test_rekey(self):
         """Test rekeying primitive"""
@@ -65,7 +65,7 @@ class TestPrimitives(unittest.TestCase):
         decrypted = elgamal.decrypt(rekeyed, new_secret)
         
         # Should decrypt to same message
-        self.assertEqual(self.m.as_hex(), decrypted.as_hex())
+        self.assertEqual(self.m.to_hex(), decrypted.to_hex())
     
     def test_reshuffle(self):
         """Test reshuffling primitive"""
@@ -79,7 +79,7 @@ class TestPrimitives(unittest.TestCase):
         decrypted = elgamal.decrypt(reshuffled, self.y)
         expected = self.m.mul(s)
         
-        self.assertEqual(expected.as_hex(), decrypted.as_hex())
+        self.assertEqual(expected.to_hex(), decrypted.to_hex())
     
     def test_rsk_combined(self):
         """Test combined reshuffle and rekey (rsk) operation"""
@@ -101,11 +101,11 @@ class TestPrimitives(unittest.TestCase):
         dec_combined = elgamal.decrypt(rsk_result, new_secret)
         dec_separate = elgamal.decrypt(rsk_separate, new_secret)
         
-        self.assertEqual(dec_combined.as_hex(), dec_separate.as_hex())
+        self.assertEqual(dec_combined.to_hex(), dec_separate.to_hex())
         
         # Should be original message multiplied by s
         expected = self.m.mul(s)
-        self.assertEqual(expected.as_hex(), dec_combined.as_hex())
+        self.assertEqual(expected.to_hex(), dec_combined.to_hex())
     
     def test_rekey2_transitivity(self):
         """Test transitive rekeying (rekey2)"""
@@ -128,8 +128,8 @@ class TestPrimitives(unittest.TestCase):
         dec_transitive = elgamal.decrypt(rekeyed_to, new_secret)
         dec_direct = elgamal.decrypt(direct_rekey, new_secret)
         
-        self.assertEqual(dec_transitive.as_hex(), dec_direct.as_hex())
-        self.assertEqual(self.m.as_hex(), dec_transitive.as_hex())
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
+        self.assertEqual(self.m.to_hex(), dec_transitive.to_hex())
     
     def test_reshuffle2_transitivity(self):
         """Test transitive reshuffling (reshuffle2)"""
@@ -150,11 +150,11 @@ class TestPrimitives(unittest.TestCase):
         dec_transitive = elgamal.decrypt(reshuffled_to, self.y)
         dec_direct = elgamal.decrypt(direct_reshuffle, self.y)
         
-        self.assertEqual(dec_transitive.as_hex(), dec_direct.as_hex())
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
         
         # Should be original message multiplied by n_to
         expected = self.m.mul(n_to)
-        self.assertEqual(expected.as_hex(), dec_transitive.as_hex())
+        self.assertEqual(expected.to_hex(), dec_transitive.to_hex())
     
     def test_rsk2_transitivity(self):
         """Test transitive combined operation (rsk2)"""
@@ -179,11 +179,11 @@ class TestPrimitives(unittest.TestCase):
         dec_transitive = elgamal.decrypt(rsk_to, new_secret)
         dec_direct = elgamal.decrypt(direct_rsk, new_secret)
         
-        self.assertEqual(dec_transitive.as_hex(), dec_direct.as_hex())
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
         
         # Should be original message multiplied by s_to
         expected = self.m.mul(s_to)
-        self.assertEqual(expected.as_hex(), dec_transitive.as_hex())
+        self.assertEqual(expected.to_hex(), dec_transitive.to_hex())
     
     def test_identity_operations(self):
         """Test operations with identity elements"""
@@ -193,17 +193,17 @@ class TestPrimitives(unittest.TestCase):
         # Rekey with one should not change decryption
         rekeyed_one = primitives.rekey(self.encrypted, one)
         dec_rekeyed = elgamal.decrypt(rekeyed_one, self.y)
-        self.assertEqual(self.m.as_hex(), dec_rekeyed.as_hex())
+        self.assertEqual(self.m.to_hex(), dec_rekeyed.to_hex())
         
         # Reshuffle with one should not change message
         reshuffled_one = primitives.reshuffle(self.encrypted, one)
         dec_reshuffled = elgamal.decrypt(reshuffled_one, self.y)
-        self.assertEqual(self.m.as_hex(), dec_reshuffled.as_hex())
+        self.assertEqual(self.m.to_hex(), dec_reshuffled.to_hex())
         
         # rsk with ones should not change anything
         rsk_ones = primitives.rsk(self.encrypted, one, one)
         dec_rsk = elgamal.decrypt(rsk_ones, self.y)
-        self.assertEqual(self.m.as_hex(), dec_rsk.as_hex())
+        self.assertEqual(self.m.to_hex(), dec_rsk.to_hex())
 
 
 if __name__ == '__main__':

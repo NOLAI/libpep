@@ -1,0 +1,259 @@
+use super::super::core::PEPSystem;
+use super::setup::PyBlindingFactor;
+use crate::distributed::client::py::keys::{
+    PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares,
+};
+use crate::distributed::server::setup::BlindingFactor;
+use crate::high_level::core::{EncryptedAttribute, EncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::high_level::long::core::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::high_level::long::py::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::high_level::py::core::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::high_level::transcryption::contexts::*;
+use crate::high_level::transcryption::py::contexts::{
+    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
+};
+use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use derive_more::{Deref, From, Into};
+use pyo3::prelude::*;
+
+/// A PEP transcryptor system.
+#[derive(Clone, From, Into, Deref)]
+#[pyclass(name = "PEPSystem")]
+pub struct PyPEPSystem(PEPSystem);
+
+#[pymethods]
+impl PyPEPSystem {
+    #[new]
+    fn new(
+        pseudonymisation_secret: &str,
+        rekeying_secret: &str,
+        blinding_factor: &PyBlindingFactor,
+    ) -> Self {
+        Self(PEPSystem::new(
+            PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
+            EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
+            BlindingFactor(blinding_factor.0 .0),
+        ))
+    }
+
+    #[pyo3(name = "pseudonym_session_key_share")]
+    fn py_pseudonym_session_key_share(&self, session: &str) -> PyPseudonymSessionKeyShare {
+        PyPseudonymSessionKeyShare(
+            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
+        )
+    }
+
+    #[pyo3(name = "attribute_session_key_share")]
+    fn py_attribute_session_key_share(&self, session: &str) -> PyAttributeSessionKeyShare {
+        PyAttributeSessionKeyShare(
+            self.attribute_session_key_share(&EncryptionContext::from(session)),
+        )
+    }
+
+    #[pyo3(name = "session_key_shares")]
+    fn py_session_key_shares(&self, session: &str) -> PySessionKeyShares {
+        let shares = self.session_key_shares(&EncryptionContext::from(session));
+        PySessionKeyShares {
+            pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
+            attribute: PyAttributeSessionKeyShare(shares.attribute),
+        }
+    }
+
+    #[pyo3(name = "attribute_rekey_info", signature = (session_from=None, session_to=None))]
+    fn py_attribute_rekey_info(
+        &self,
+        session_from: Option<&str>,
+        session_to: Option<&str>,
+    ) -> PyAttributeRekeyInfo {
+        PyAttributeRekeyInfo::from(self.attribute_rekey_info(
+            session_from.map(EncryptionContext::from).as_ref(),
+            session_to.map(EncryptionContext::from).as_ref(),
+        ))
+    }
+
+    #[pyo3(name = "pseudonym_rekey_info", signature = (session_from=None, session_to=None))]
+    fn py_pseudonym_rekey_info(
+        &self,
+        session_from: Option<&str>,
+        session_to: Option<&str>,
+    ) -> PyPseudonymRekeyFactor {
+        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(
+            session_from.map(EncryptionContext::from).as_ref(),
+            session_to.map(EncryptionContext::from).as_ref(),
+        ))
+    }
+
+    #[pyo3(name = "pseudonymization_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
+    fn py_pseudonymization_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: Option<&str>,
+        session_to: Option<&str>,
+    ) -> PyPseudonymizationInfo {
+        PyPseudonymizationInfo::from(self.pseudonymization_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            session_from.map(EncryptionContext::from).as_ref(),
+            session_to.map(EncryptionContext::from).as_ref(),
+        ))
+    }
+
+    #[pyo3(name = "transcryption_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
+    fn py_transcryption_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: Option<&str>,
+        session_to: Option<&str>,
+    ) -> PyTranscryptionInfo {
+        PyTranscryptionInfo::from(self.transcryption_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            session_from.map(EncryptionContext::from).as_ref(),
+            session_to.map(EncryptionContext::from).as_ref(),
+        ))
+    }
+
+    #[pyo3(name = "rekey")]
+    fn py_rekey(
+        &self,
+        encrypted: &PyEncryptedAttribute,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> PyEncryptedAttribute {
+        PyEncryptedAttribute::from(self.rekey(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)))
+    }
+
+    #[pyo3(name = "pseudonymize")]
+    fn py_pseudonymize(
+        &self,
+        encrypted: &PyEncryptedPseudonym,
+        pseudo_info: &PyPseudonymizationInfo,
+    ) -> PyEncryptedPseudonym {
+        PyEncryptedPseudonym::from(
+            self.pseudonymize(&encrypted.0, &PseudonymizationInfo::from(pseudo_info)),
+        )
+    }
+
+    #[pyo3(name = "rekey_batch")]
+    fn py_rekey_batch(
+        &self,
+        encrypted: Vec<PyEncryptedAttribute>,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> Vec<PyEncryptedAttribute> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.rekey_batch(
+            &mut encrypted,
+            &AttributeRekeyInfo::from(rekey_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(PyEncryptedAttribute::from)
+            .collect()
+    }
+
+    #[pyo3(name = "pseudonymize_batch")]
+    fn py_pseudonymize_batch(
+        &self,
+        encrypted: Vec<PyEncryptedPseudonym>,
+        pseudonymization_info: &PyPseudonymizationInfo,
+    ) -> Vec<PyEncryptedPseudonym> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.pseudonymize_batch(
+            &mut encrypted,
+            &PseudonymizationInfo::from(pseudonymization_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(PyEncryptedPseudonym::from)
+            .collect()
+    }
+
+    // Long data type methods
+
+    /// Rekey a long encrypted attribute from one session to another.
+    #[cfg(feature = "long")]
+    #[pyo3(name = "rekey_long")]
+    fn py_rekey_long(
+        &self,
+        encrypted: &PyLongEncryptedAttribute,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> PyLongEncryptedAttribute {
+        PyLongEncryptedAttribute::from(
+            self.rekey_long(&encrypted.0, &AttributeRekeyInfo::from(rekey_info)),
+        )
+    }
+
+    /// Pseudonymize a long encrypted pseudonym from one domain/session to another.
+    #[cfg(feature = "long")]
+    #[pyo3(name = "pseudonymize_long")]
+    fn py_pseudonymize_long(
+        &self,
+        encrypted: &PyLongEncryptedPseudonym,
+        pseudonymization_info: &PyPseudonymizationInfo,
+    ) -> PyLongEncryptedPseudonym {
+        PyLongEncryptedPseudonym::from(self.pseudonymize_long(
+            &encrypted.0,
+            &PseudonymizationInfo::from(pseudonymization_info),
+        ))
+    }
+
+    /// Rekey a batch of long encrypted attributes from one session to another.
+    #[cfg(all(feature = "long", feature = "batch"))]
+    #[pyo3(name = "rekey_long_batch")]
+    fn py_rekey_long_batch(
+        &self,
+        encrypted: Vec<PyLongEncryptedAttribute>,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> Vec<PyLongEncryptedAttribute> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<LongEncryptedAttribute> =
+            encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.rekey_long_batch(
+            &mut encrypted,
+            &AttributeRekeyInfo::from(rekey_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(PyLongEncryptedAttribute::from)
+            .collect()
+    }
+
+    /// Pseudonymize a batch of long encrypted pseudonyms from one domain/session to another.
+    #[cfg(all(feature = "long", feature = "batch"))]
+    #[pyo3(name = "pseudonymize_long_batch")]
+    fn py_pseudonymize_long_batch(
+        &self,
+        encrypted: Vec<PyLongEncryptedPseudonym>,
+        pseudonymization_info: &PyPseudonymizationInfo,
+    ) -> Vec<PyLongEncryptedPseudonym> {
+        let mut rng = rand::rng();
+        let mut encrypted: Vec<LongEncryptedPseudonym> =
+            encrypted.into_iter().map(|e| e.0).collect();
+        let result = self.pseudonymize_long_batch(
+            &mut encrypted,
+            &PseudonymizationInfo::from(pseudonymization_info),
+            &mut rng,
+        );
+        result
+            .into_vec()
+            .into_iter()
+            .map(PyLongEncryptedPseudonym::from)
+            .collect()
+    }
+}
+
+pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyPEPSystem>()?;
+    Ok(())
+}

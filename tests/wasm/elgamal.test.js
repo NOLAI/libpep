@@ -7,5 +7,5 @@ test('encryption decryption', async () => {
     const m = GroupElement.random();
     const encrypted = encrypt(m, Y);
     const decrypted = decrypt(encrypted, y);
-    expect(m.asHex()).toEqual(decrypted.asHex());
+    expect(m.toHex()).toEqual(decrypted.toHex());
 })

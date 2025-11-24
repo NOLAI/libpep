@@ -5,9 +5,12 @@ use super::core::{LongEncryptable, LongEncrypted, LongEncryptedAttribute, LongEn
 use crate::arithmetic::ScalarNonZero;
 use crate::high_level::core::{Encryptable, Encrypted};
 #[cfg(all(feature = "global", feature = "insecure-methods"))]
+#[allow(unused_imports)]
 use crate::high_level::global::decrypt_global;
 #[cfg(all(feature = "global", feature = "insecure-methods"))]
+#[allow(unused_imports)]
 use crate::high_level::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+#[cfg(not(feature = "elgamal3"))]
 use crate::high_level::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
 use crate::high_level::rerandomize::rerandomize_known;
 use crate::high_level::transcryption::contexts::{

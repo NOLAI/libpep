@@ -2,8 +2,9 @@
 
 use super::keys::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
+    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
-use crate::distributed::key_blinding::*;
+use super::setup::BlindingFactor;
 use crate::high_level::core::*;
 use crate::high_level::transcryption::contexts::*;
 use crate::high_level::transcryption::ops::*;

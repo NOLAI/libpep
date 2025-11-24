@@ -8,8 +8,15 @@ use super::ops::{pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym};
 use crate::high_level::transcryption::contexts::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
-use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
+
+/// Fisher-Yates shuffle using rand_core
+fn shuffle<T, R: RngCore>(slice: &mut [T], rng: &mut R) {
+    for i in (1..slice.len()).rev() {
+        let j = (rng.next_u64() as usize) % (i + 1);
+        slice.swap(i, j);
+    }
+}
 
 /// A pair of long encrypted pseudonyms and attributes that relate to the same entity, used for batch transcryption.
 pub type LongEncryptedData = (Vec<LongEncryptedPseudonym>, Vec<LongEncryptedAttribute>);
@@ -21,7 +28,7 @@ pub fn pseudonymize_long_batch<R: RngCore + CryptoRng>(
     pseudonymization_info: &PseudonymizationInfo,
     rng: &mut R,
 ) -> Box<[LongEncryptedPseudonym]> {
-    encrypted.shuffle(rng);
+    shuffle(encrypted, rng);
     encrypted
         .iter()
         .map(|x| pseudonymize_long(x, pseudonymization_info))
@@ -35,7 +42,7 @@ pub fn rekey_long_pseudonym_batch<R: RngCore + CryptoRng>(
     rekey_info: &PseudonymRekeyInfo,
     rng: &mut R,
 ) -> Box<[LongEncryptedPseudonym]> {
-    encrypted.shuffle(rng);
+    shuffle(encrypted, rng);
     encrypted
         .iter()
         .map(|x| rekey_long_pseudonym(x, rekey_info))
@@ -49,7 +56,7 @@ pub fn rekey_long_attribute_batch<R: RngCore + CryptoRng>(
     rekey_info: &AttributeRekeyInfo,
     rng: &mut R,
 ) -> Box<[LongEncryptedAttribute]> {
-    encrypted.shuffle(rng);
+    shuffle(encrypted, rng);
     encrypted
         .iter()
         .map(|x| rekey_long_attribute(x, rekey_info))
@@ -64,7 +71,7 @@ pub fn transcrypt_long_batch<R: RngCore + CryptoRng>(
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
 ) -> Box<[LongEncryptedData]> {
-    encrypted.shuffle(rng);
+    shuffle(encrypted, rng);
     encrypted
         .iter_mut()
         .map(|(pseudonyms, attributes)| {

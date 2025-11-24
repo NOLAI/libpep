@@ -9,3 +9,9 @@ pub mod core;
 #[cfg(feature = "global")]
 pub mod global;
 pub mod ops;
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

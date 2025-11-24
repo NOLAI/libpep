@@ -20,3 +20,9 @@ mod scalars;
 
 pub use group_elements::{GroupElement, G};
 pub use scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits, ZeroArgumentError};
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

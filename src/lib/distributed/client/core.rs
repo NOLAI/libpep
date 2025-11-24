@@ -2,9 +2,10 @@ use crate::distributed::client::keys::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
     update_session_keys,
 };
-use crate::distributed::key_blinding::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
+use crate::distributed::server::keys::{
+    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
+use crate::distributed::server::setup::BlindedGlobalKeys;
 use crate::high_level::core::{
     decrypt, decrypt_attribute, decrypt_pseudonym, encrypt, encrypt_attribute, encrypt_pseudonym,
     Attribute, Encryptable, Encrypted, EncryptedAttribute, EncryptedPseudonym, HasSessionKeys,
@@ -146,12 +147,32 @@ impl PEPClient {
 
     /// Polymorphic decrypt that works for both encrypted pseudonyms and attributes.
     /// Automatically uses the appropriate session key based on the encrypted message type.
+    /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
     ///
     /// # Example
     /// ```ignore
     /// let pseudonym = client.decrypt(&encrypted_pseudonym);
     /// let attribute = client.decrypt(&encrypted_attribute);
     /// ```
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt<E>(&self, encrypted: &E) -> Option<E::UnencryptedType>
+    where
+        E: Encrypted,
+        E::UnencryptedType: HasSessionKeys + 'static,
+    {
+        let secret_key = self.get_secret_key_for::<E>();
+        decrypt(encrypted, secret_key)
+    }
+
+    /// Polymorphic decrypt that works for both encrypted pseudonyms and attributes.
+    /// Automatically uses the appropriate session key based on the encrypted message type.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let pseudonym = client.decrypt(&encrypted_pseudonym);
+    /// let attribute = client.decrypt(&encrypted_attribute);
+    /// ```
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt<E>(&self, encrypted: &E) -> E::UnencryptedType
     where
         E: Encrypted,
@@ -180,11 +201,27 @@ impl PEPClient {
     }
 
     /// Decrypt an encrypted pseudonym.
+    /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt_pseudonym(&self, encrypted: &EncryptedPseudonym) -> Option<Pseudonym> {
+        decrypt_pseudonym(encrypted, &self.keys.pseudonym.secret)
+    }
+
+    /// Decrypt an encrypted pseudonym.
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt_pseudonym(&self, encrypted: &EncryptedPseudonym) -> Pseudonym {
         decrypt_pseudonym(encrypted, &self.keys.pseudonym.secret)
     }
 
     /// Decrypt an encrypted attribute.
+    /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
+    #[cfg(feature = "elgamal3")]
+    pub fn decrypt_attribute(&self, encrypted: &EncryptedAttribute) -> Option<Attribute> {
+        decrypt_attribute(encrypted, &self.keys.attribute.secret)
+    }
+
+    /// Decrypt an encrypted attribute.
+    #[cfg(not(feature = "elgamal3"))]
     pub fn decrypt_attribute(&self, encrypted: &EncryptedAttribute) -> Attribute {
         decrypt_attribute(encrypted, &self.keys.attribute.secret)
     }

@@ -143,3 +143,202 @@ pub fn transcrypt_attribute(
 pub fn transcrypt<E: Transcryptable>(encrypted: &E, transcryption_info: &TranscryptionInfo) -> E {
     E::transcrypt_impl(encrypted, transcryption_info)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::high_level::keys::{make_global_keys, make_session_keys};
+    use crate::high_level::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+
+    #[test]
+    fn pseudonymize_changes_encryption_context() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+        let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
+        let from_domain = PseudonymizationDomain::from("domain-from");
+        let to_domain = PseudonymizationDomain::from("domain-to");
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        let pseudonym = Pseudonym::random(&mut rng);
+        let encrypted = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
+
+        let info = PseudonymizationInfo::new(
+            &from_domain,
+            &to_domain,
+            Some(&from_ctx),
+            Some(&to_ctx),
+            &pseudo_secret,
+            &enc_secret,
+        );
+        let pseudonymized = pseudonymize(&encrypted, &info);
+
+        #[cfg(feature = "elgamal3")]
+        let decrypted = decrypt_pseudonym(&pseudonymized, &to_session.pseudonym.secret)
+            .expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_pseudonym(&pseudonymized, &to_session.pseudonym.secret);
+        assert_ne!(pseudonym, decrypted);
+    }
+
+    #[test]
+    fn rekey_pseudonym_preserves_plaintext() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        let pseudonym = Pseudonym::random(&mut rng);
+        let encrypted = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
+
+        let rekey_info = PseudonymRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekeyed = rekey_pseudonym(&encrypted, &rekey_info);
+
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_pseudonym(&rekeyed, &to_session.pseudonym.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_pseudonym(&rekeyed, &to_session.pseudonym.secret);
+        assert_eq!(pseudonym, decrypted);
+    }
+
+    #[test]
+    fn rekey_attribute_preserves_plaintext() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        let attribute = Attribute::random(&mut rng);
+        let encrypted = encrypt_attribute(&attribute, &from_session.attribute.public, &mut rng);
+
+        let rekey_info = AttributeRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekeyed = rekey_attribute(&encrypted, &rekey_info);
+
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_attribute(&rekeyed, &to_session.attribute.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_attribute(&rekeyed, &to_session.attribute.secret);
+        assert_eq!(attribute, decrypted);
+    }
+
+    #[test]
+    fn transcrypt_pseudonym_applies_pseudonymization() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+        let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
+        let from_domain = PseudonymizationDomain::from("domain-from");
+        let to_domain = PseudonymizationDomain::from("domain-to");
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        let pseudonym = Pseudonym::random(&mut rng);
+        let encrypted = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
+
+        let info = TranscryptionInfo::new(
+            &from_domain,
+            &to_domain,
+            Some(&from_ctx),
+            Some(&to_ctx),
+            &pseudo_secret,
+            &enc_secret,
+        );
+        let transcrypted = transcrypt(&encrypted, &info);
+
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_pseudonym(&transcrypted, &to_session.pseudonym.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_pseudonym(&transcrypted, &to_session.pseudonym.secret);
+        assert_ne!(pseudonym, decrypted);
+    }
+
+    #[test]
+    fn transcrypt_attribute_rekeys_only() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+        let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
+        let from_domain = PseudonymizationDomain::from("domain-from");
+        let to_domain = PseudonymizationDomain::from("domain-to");
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        let attribute = Attribute::random(&mut rng);
+        let encrypted = encrypt_attribute(&attribute, &from_session.attribute.public, &mut rng);
+
+        let info = TranscryptionInfo::new(
+            &from_domain,
+            &to_domain,
+            Some(&from_ctx),
+            Some(&to_ctx),
+            &pseudo_secret,
+            &enc_secret,
+        );
+        let transcrypted = transcrypt(&encrypted, &info);
+
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_attribute(&transcrypted, &to_session.attribute.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_attribute(&transcrypted, &to_session.attribute.secret);
+        assert_eq!(attribute, decrypted);
+    }
+
+    #[test]
+    fn polymorphic_rekey_works_for_both_types() {
+        let mut rng = rand::rng();
+        let (_, global_sk) = make_global_keys(&mut rng);
+        let from_ctx = EncryptionContext::from("from");
+        let to_ctx = EncryptionContext::from("to");
+        let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+
+        let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+        let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+
+        // Test with pseudonym
+        let pseudonym = Pseudonym::random(&mut rng);
+        let enc_p = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
+        let rekey_p = PseudonymRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekeyed_p = rekey(&enc_p, &rekey_p);
+        #[cfg(feature = "elgamal3")]
+        let decrypted_p =
+            decrypt_pseudonym(&rekeyed_p, &to_session.pseudonym.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted_p = decrypt_pseudonym(&rekeyed_p, &to_session.pseudonym.secret);
+        assert_eq!(pseudonym, decrypted_p);
+
+        // Test with attribute
+        let attribute = Attribute::random(&mut rng);
+        let enc_a = encrypt_attribute(&attribute, &from_session.attribute.public, &mut rng);
+        let rekey_a = AttributeRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekeyed_a = rekey(&enc_a, &rekey_a);
+        #[cfg(feature = "elgamal3")]
+        let decrypted_a =
+            decrypt_attribute(&rekeyed_a, &to_session.attribute.secret).expect("decrypt failed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted_a = decrypt_attribute(&rekeyed_a, &to_session.attribute.secret);
+        assert_eq!(attribute, decrypted_a);
+    }
+}

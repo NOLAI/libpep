@@ -14,3 +14,9 @@ pub mod long;
 pub mod padding;
 pub mod rerandomize;
 pub mod transcryption;
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

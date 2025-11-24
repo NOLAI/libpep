@@ -15,5 +15,5 @@ test('rekey', async () => {
     const ky = k.mul(y);
     const decrypted = decrypt(rekeyed, ky);
 
-    expect(m.asHex()).toEqual(decrypted.asHex());
+    expect(m.toHex()).toEqual(decrypted.toHex());
 })

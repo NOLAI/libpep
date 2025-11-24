@@ -1,13 +1,13 @@
 //! Long (multi-block) data type operations for distributed PEP systems and clients.
 
-#[cfg(feature = "global")]
-use crate::high_level::transcryption::contexts::*;
+use crate::distributed::server::core::PEPSystem;
 #[cfg(feature = "batch")]
 use crate::high_level::long::batch::*;
 use crate::high_level::long::core::*;
 use crate::high_level::long::ops::*;
+#[cfg(feature = "global")]
+use crate::high_level::transcryption::contexts::*;
 use rand_core::{CryptoRng, RngCore};
-use crate::distributed::server::core::PEPSystem;
 
 impl PEPSystem {
     /// Rekey a long encrypted attribute from one session to another, using [`AttributeRekeyInfo`].
@@ -28,7 +28,7 @@ impl PEPSystem {
     ) -> LongEncryptedPseudonym {
         pseudonymize_long(encrypted, pseudonymization_info)
     }
-    
+
     /// Rekey a batch of long encrypted attributes from one session to another, using [`AttributeRekeyInfo`].
     /// The order of the attributes is randomly shuffled to avoid linking them.
     #[cfg(feature = "batch")]
@@ -68,4 +68,3 @@ impl PEPSystem {
         transcrypt_long_batch(encrypted, transcryption_info, rng)
     }
 }
-

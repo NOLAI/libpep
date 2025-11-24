@@ -85,26 +85,26 @@ pub trait Encrypted {
     where
         Self: Sized;
     /// Encode as a byte array.
-    fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
-        self.value().encode()
+    fn to_bytes(&self) -> [u8; ELGAMAL_LENGTH] {
+        self.value().to_bytes()
     }
     /// Decode from a byte array.
-    fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self>
+    fn from_bytes(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self>
     where
         Self: Sized,
     {
-        ElGamal::decode(v).map(|x| Self::from_value(x))
+        ElGamal::from_bytes(v).map(|x| Self::from_value(x))
     }
     /// Decode from a slice of bytes.
-    fn decode_from_slice(v: &[u8]) -> Option<Self>
+    fn from_slice(v: &[u8]) -> Option<Self>
     where
         Self: Sized,
     {
-        ElGamal::decode_from_slice(v).map(|x| Self::from_value(x))
+        ElGamal::from_slice(v).map(|x| Self::from_value(x))
     }
     /// Encode as a base64 string.
-    fn as_base64(&self) -> String {
-        self.value().encode_as_base64()
+    fn to_base64(&self) -> String {
+        self.value().to_base64()
     }
     /// Decode from a base64 string.
     /// Returns `None` if the input is not a valid base64 encoding of an [ElGamal] ciphertext.
@@ -112,7 +112,7 @@ pub trait Encrypted {
     where
         Self: Sized,
     {
-        ElGamal::decode_from_base64(s).map(|x| Self::from_value(x))
+        ElGamal::from_base64(s).map(|x| Self::from_value(x))
     }
 }
 
@@ -141,66 +141,63 @@ pub trait Encryptable {
         Self::from_point(GroupElement::random(rng))
     }
     /// Encode as a byte array of length 32.
-    /// See [`GroupElement::encode`].
-    fn encode(&self) -> [u8; 32] {
-        self.value().encode()
+    /// See [`GroupElement::to_bytes`].
+    fn to_bytes(&self) -> [u8; 32] {
+        self.value().to_bytes()
     }
-    /// Encode as a hexadecimal string of 64 characters.
-    fn encode_as_hex(&self) -> String {
-        self.value().encode_as_hex()
+    /// Convert to a hexadecimal string of 64 characters.
+    fn to_hex(&self) -> String {
+        self.value().to_hex()
     }
-    /// Decode from a byte array of length 32.
+    /// Create from a byte array of length 32.
     /// Returns `None` if the input is not a valid encoding of a [`GroupElement`].
-    /// See [`GroupElement::decode`].
-    fn decode(bytes: &[u8; 32]) -> Option<Self>
+    fn from_bytes(bytes: &[u8; 32]) -> Option<Self>
     where
         Self: Sized,
     {
-        GroupElement::decode(bytes).map(Self::from_point)
+        GroupElement::from_bytes(bytes).map(Self::from_point)
     }
-    /// Decode from a slice of bytes.
+    /// Create from a slice of bytes.
     /// Returns `None` if the input is not a valid encoding of a [`GroupElement`].
-    /// See [`GroupElement::decode_from_slice`].
-    fn decode_from_slice(slice: &[u8]) -> Option<Self>
+    fn from_slice(slice: &[u8]) -> Option<Self>
     where
         Self: Sized,
     {
-        GroupElement::decode_from_slice(slice).map(Self::from_point)
+        GroupElement::from_slice(slice).map(Self::from_point)
     }
-    /// Decode from a hexadecimal string.
+    /// Create from a hexadecimal string.
     /// Returns `None` if the input is not a valid encoding of a [`GroupElement`].
-    /// See [`GroupElement::decode_from_hex`].
-    fn decode_from_hex(hex: &str) -> Option<Self>
+    fn from_hex(hex: &str) -> Option<Self>
     where
         Self: Sized,
     {
-        GroupElement::decode_from_hex(hex).map(Self::from_point)
+        GroupElement::from_hex(hex).map(Self::from_point)
     }
     /// Create from a hash value.
-    /// See [`GroupElement::decode_from_hash`].
+    /// See [`GroupElement::from_hash`].
     fn from_hash(hash: &[u8; 64]) -> Self
     where
         Self: Sized,
     {
-        Self::from_point(GroupElement::decode_from_hash(hash))
+        Self::from_point(GroupElement::from_hash(hash))
     }
-    /// Create from a byte array of length 16.
+    /// Create from a byte array of length 16 using lizard encoding.
     /// This is useful for creating a pseudonym from an existing identifier or encoding attributes,
     /// as it accepts any 16-byte value.
-    /// See [`GroupElement::decode_lizard`].
-    fn from_bytes(data: &[u8; 16]) -> Self
+    /// See [`GroupElement::from_lizard`].
+    fn from_lizard(data: &[u8; 16]) -> Self
     where
         Self: Sized,
     {
-        Self::from_point(GroupElement::decode_lizard(data))
+        Self::from_point(GroupElement::from_lizard(data))
     }
-    /// Encode as a byte array of length 16.
+    /// Encode as a byte array of length 16 using lizard encoding.
     /// Returns `None` if the point is not a valid lizard encoding of a 16-byte value.
-    /// See [`GroupElement::encode_lizard`].
-    /// If the value was created using [`Encryptable::from_bytes`], this will return a valid value,
+    /// See [`GroupElement::to_lizard`].
+    /// If the value was created using [`Encryptable::from_lizard`], this will return a valid value,
     /// but otherwise it will most likely return `None`.
-    fn as_bytes(&self) -> Option<[u8; 16]> {
-        self.value().encode_lizard()
+    fn to_lizard(&self) -> Option<[u8; 16]> {
+        self.value().to_lizard()
     }
 }
 
@@ -306,6 +303,21 @@ where
 
 /// Polymorphic decrypt function that works for both encrypted pseudonyms and attributes.
 /// Uses the appropriate session key type based on the encrypted message type.
+/// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt<E, S>(encrypted: &E, secret_key: &S) -> Option<E::UnencryptedType>
+where
+    E: Encrypted,
+    E::UnencryptedType: HasSessionKeys<SessionSecretKey = S>,
+    S: SecretKey,
+{
+    crate::low_level::elgamal::decrypt(encrypted.value(), secret_key.value())
+        .map(E::UnencryptedType::from_value)
+}
+
+/// Polymorphic decrypt function that works for both encrypted pseudonyms and attributes.
+/// Uses the appropriate session key type based on the encrypted message type.
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt<E, S>(encrypted: &E, secret_key: &S) -> E::UnencryptedType
 where
     E: Encrypted,
@@ -345,6 +357,17 @@ pub fn encrypt_attribute<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt an encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+/// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt_pseudonym(
+    encrypted: &EncryptedPseudonym,
+    secret_key: &PseudonymSessionSecretKey,
+) -> Option<Pseudonym> {
+    crate::low_level::elgamal::decrypt(encrypted.value(), &secret_key.0).map(Pseudonym::from_value)
+}
+
+/// Decrypt an encrypted pseudonym using a [`PseudonymSessionSecretKey`].
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_pseudonym(
     encrypted: &EncryptedPseudonym,
     secret_key: &PseudonymSessionSecretKey,
@@ -356,6 +379,17 @@ pub fn decrypt_pseudonym(
 }
 
 /// Decrypt an encrypted attribute using a [`AttributeSessionSecretKey`].
+/// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt_attribute(
+    encrypted: &EncryptedAttribute,
+    secret_key: &AttributeSessionSecretKey,
+) -> Option<Attribute> {
+    crate::low_level::elgamal::decrypt(encrypted.value(), &secret_key.0).map(Attribute::from_value)
+}
+
+/// Decrypt an encrypted attribute using a [`AttributeSessionSecretKey`].
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_attribute(
     encrypted: &EncryptedAttribute,
     secret_key: &AttributeSessionSecretKey,
@@ -364,4 +398,154 @@ pub fn decrypt_attribute(
         encrypted.value(),
         &secret_key.0,
     ))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::high_level::transcryption::contexts::EncryptionContext;
+    use crate::high_level::transcryption::secrets::EncryptionSecret;
+
+    #[test]
+    fn pseudonym_encode_decode() {
+        let mut rng = rand::rng();
+        let original = Pseudonym::random(&mut rng);
+        let encoded = original.to_bytes();
+        let decoded = Pseudonym::from_bytes(&encoded).expect("decoding should succeed");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn attribute_encode_decode() {
+        let mut rng = rand::rng();
+        let original = Attribute::random(&mut rng);
+        let encoded = original.to_bytes();
+        let decoded = Attribute::from_bytes(&encoded).expect("decoding should succeed");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn pseudonym_from_lizard_roundtrip() {
+        let data = b"test identifier!";
+        let pseudonym = Pseudonym::from_lizard(data);
+        let decoded = pseudonym
+            .to_lizard()
+            .expect("lizard encoding should succeed");
+        assert_eq!(decoded, *data);
+    }
+
+    #[test]
+    fn attribute_from_lizard_roundtrip() {
+        let data = b"some attribute!!";
+        let attribute = Attribute::from_lizard(data);
+        let decoded = attribute
+            .to_lizard()
+            .expect("lizard encoding should succeed");
+        assert_eq!(decoded, *data);
+    }
+
+    #[test]
+    fn pseudonym_hex_roundtrip() {
+        let mut rng = rand::rng();
+        let original = Pseudonym::random(&mut rng);
+        let hex = original.to_hex();
+        let decoded = Pseudonym::from_hex(&hex).expect("hex decoding should succeed");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn encrypt_decrypt_pseudonym() {
+        let mut rng = rand::rng();
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let session = EncryptionContext::from("session-1");
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+        let original = Pseudonym::random(&mut rng);
+        let encrypted = encrypt_pseudonym(&original, &session_public, &mut rng);
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_pseudonym(&encrypted, &session_secret).expect("decryption should succeed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_pseudonym(&encrypted, &session_secret);
+
+        assert_eq!(decrypted, original);
+    }
+
+    #[test]
+    fn encrypt_decrypt_attribute() {
+        let mut rng = rand::rng();
+        let (_, global_secret) = make_attribute_global_keys(&mut rng);
+        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let session = EncryptionContext::from("session-1");
+        let (session_public, session_secret) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+
+        let original = Attribute::random(&mut rng);
+        let encrypted = encrypt_attribute(&original, &session_public, &mut rng);
+        #[cfg(feature = "elgamal3")]
+        let decrypted =
+            decrypt_attribute(&encrypted, &session_secret).expect("decryption should succeed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt_attribute(&encrypted, &session_secret);
+
+        assert_eq!(decrypted, original);
+    }
+
+    #[test]
+    fn encrypted_pseudonym_base64_roundtrip() {
+        let mut rng = rand::rng();
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let session = EncryptionContext::from("session-1");
+        let (session_public, _) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+        let pseudonym = Pseudonym::random(&mut rng);
+        let encrypted = encrypt_pseudonym(&pseudonym, &session_public, &mut rng);
+        let base64 = encrypted.to_base64();
+        let decoded =
+            EncryptedPseudonym::from_base64(&base64).expect("base64 decoding should succeed");
+
+        assert_eq!(decoded, encrypted);
+    }
+
+    #[test]
+    fn encrypted_attribute_serde_json() {
+        let mut rng = rand::rng();
+        let (_, global_secret) = make_attribute_global_keys(&mut rng);
+        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let session = EncryptionContext::from("session-1");
+        let (session_public, _) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+
+        let attribute = Attribute::random(&mut rng);
+        let encrypted = encrypt_attribute(&attribute, &session_public, &mut rng);
+        let json = serde_json::to_string(&encrypted).expect("serialization should succeed");
+        let deserialized: EncryptedAttribute =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+
+        assert_eq!(deserialized, encrypted);
+    }
+
+    #[test]
+    fn polymorphic_encrypt_decrypt() {
+        let mut rng = rand::rng();
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let session = EncryptionContext::from("session-1");
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+
+        let original = Pseudonym::random(&mut rng);
+        let encrypted = encrypt(&original, &session_public, &mut rng);
+        #[cfg(feature = "elgamal3")]
+        let decrypted = decrypt(&encrypted, &session_secret).expect("decryption should succeed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt(&encrypted, &session_secret);
+
+        assert_eq!(decrypted, original);
+    }
 }

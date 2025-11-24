@@ -28,46 +28,48 @@ pub struct ElGamal {
 }
 
 impl ElGamal {
-    /// Decode an ElGamal ciphertext from a byte array.
-    pub fn decode(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self> {
+    /// Create from a byte array.
+    pub fn from_bytes(v: &[u8; ELGAMAL_LENGTH]) -> Option<Self> {
         Some(Self {
-            gb: GroupElement::decode_from_slice(&v[0..32])?,
-            gc: GroupElement::decode_from_slice(&v[32..64])?,
+            gb: GroupElement::from_slice(&v[0..32])?,
+            gc: GroupElement::from_slice(&v[32..64])?,
             #[cfg(feature = "elgamal3")]
-            gy: GroupElement::decode_from_slice(&v[64..96])?,
+            gy: GroupElement::from_slice(&v[64..96])?,
         })
     }
-    /// Decode an ElGamal ciphertext from a slice of bytes.
-    pub fn decode_from_slice(v: &[u8]) -> Option<Self> {
+
+    /// Create from a slice of bytes.
+    pub fn from_slice(v: &[u8]) -> Option<Self> {
         if v.len() != ELGAMAL_LENGTH {
             None
         } else {
             let mut arr = [0u8; ELGAMAL_LENGTH];
             arr.copy_from_slice(v);
-            Self::decode(&arr)
+            Self::from_bytes(&arr)
         }
     }
 
-    /// Encode an ElGamal ciphertext as a byte array.
-    pub fn encode(&self) -> [u8; ELGAMAL_LENGTH] {
+    /// Convert to a byte array.
+    pub fn to_bytes(&self) -> [u8; ELGAMAL_LENGTH] {
         let mut retval = [0u8; ELGAMAL_LENGTH];
-        retval[0..32].clone_from_slice(self.gb.encode().as_ref());
-        retval[32..64].clone_from_slice(self.gc.encode().as_ref());
+        retval[0..32].clone_from_slice(self.gb.to_bytes().as_ref());
+        retval[32..64].clone_from_slice(self.gc.to_bytes().as_ref());
         #[cfg(feature = "elgamal3")]
-        retval[64..96].clone_from_slice(self.gy.encode().as_ref());
+        retval[64..96].clone_from_slice(self.gy.to_bytes().as_ref());
         retval
     }
 
-    /// Encode an ElGamal ciphertext as a base64 string.
-    pub fn encode_as_base64(&self) -> String {
-        general_purpose::URL_SAFE.encode(self.encode())
+    /// Convert to a base64 string.
+    pub fn to_base64(&self) -> String {
+        general_purpose::URL_SAFE.encode(self.to_bytes())
     }
-    /// Decode an ElGamal ciphertext from a base64 string.
-    pub fn decode_from_base64(s: &str) -> Option<Self> {
+
+    /// Create from a base64 string.
+    pub fn from_base64(s: &str) -> Option<Self> {
         general_purpose::URL_SAFE
             .decode(s)
             .ok()
-            .and_then(|v| Self::decode_from_slice(&v))
+            .and_then(|v| Self::from_slice(&v))
     }
 }
 
@@ -77,7 +79,7 @@ impl Serialize for ElGamal {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.encode_as_base64().as_str())
+        serializer.serialize_str(self.to_base64().as_str())
     }
 }
 
@@ -98,7 +100,7 @@ impl<'de> Deserialize<'de> for ElGamal {
             where
                 E: Error,
             {
-                ElGamal::decode_from_base64(v)
+                ElGamal::from_base64(v)
                     .ok_or(E::custom(format!("invalid base64 encoded string: {v}")))
             }
         }
@@ -128,9 +130,66 @@ pub fn encrypt<R: RngCore + CryptoRng>(
 }
 
 /// Decrypt ElGamal ciphertext (encrypted using `y * G`) using secret key [`ScalarNonZero`] `y`.
-/// With the `elgamal3` feature, the secret key is checked against the public key used for encryption.
+/// With the `elgamal3` feature, returns `None` if the secret key doesn't match the public key used for encryption.
+#[cfg(feature = "elgamal3")]
+pub fn decrypt(encrypted: &ElGamal, y: &ScalarNonZero) -> Option<GroupElement> {
+    if y * G != encrypted.gy {
+        return None;
+    }
+    Some(encrypted.gc - y * encrypted.gb)
+}
+
+/// Decrypt ElGamal ciphertext (encrypted using `y * G`) using secret key [`ScalarNonZero`] `y`.
+#[cfg(not(feature = "elgamal3"))]
 pub fn decrypt(encrypted: &ElGamal, y: &ScalarNonZero) -> GroupElement {
-    #[cfg(feature = "elgamal3")]
-    assert_eq!(y * G, encrypted.gy); // the secret key should be the same as the public key used to encrypt the message
     encrypted.gc - y * encrypted.gb
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encrypt_decrypt_roundtrip() {
+        let mut rng = rand::rng();
+        let secret_key = ScalarNonZero::random(&mut rng);
+        let public_key = secret_key * G;
+        let message = GroupElement::random(&mut rng);
+
+        let encrypted = encrypt(&message, &public_key, &mut rng);
+        #[cfg(feature = "elgamal3")]
+        let decrypted = decrypt(&encrypted, &secret_key).expect("decryption should succeed");
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt(&encrypted, &secret_key);
+
+        assert_eq!(message, decrypted);
+    }
+
+    #[test]
+    fn base64_roundtrip() {
+        let mut rng = rand::rng();
+        let message = GroupElement::random(&mut rng);
+        let public_key = GroupElement::random(&mut rng);
+        let encrypted = encrypt(&message, &public_key, &mut rng);
+
+        let encoded = encrypted.to_base64();
+        let decoded = ElGamal::from_base64(&encoded).expect("base64 decoding should succeed");
+
+        assert_eq!(encrypted, decoded);
+    }
+
+    #[test]
+    fn known_base64_decoding() {
+        #[cfg(feature = "elgamal3")]
+        let base64 = "NESP1FCKkF7nWbqM9cvuUEUPgHaF8qnLeW9RLe_5FCMs-daoTGSyJKa5HRKxk0jFMHVuZ77pJMacNLmtRnlkZEpkKEPWnLzh_s8ievM3gTqeBYm20E23K6hExSxMOw8D";
+        #[cfg(not(feature = "elgamal3"))]
+        let base64 =
+            "xGOnBZzbSrvKUQYBtww0vi8jZWzN9qkrm5OnI2pnEFJu4DkZP2jLLGT-yWa_qnkC_ScCwQwcQtZk_z_z7s_gVQ==";
+
+        let decoded = ElGamal::from_base64(base64).expect("decoding should succeed");
+        let re_encoded = decoded.to_base64();
+
+        assert_eq!(base64, re_encoded);
+    }
 }

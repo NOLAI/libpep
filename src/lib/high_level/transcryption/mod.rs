@@ -10,3 +10,9 @@ pub use ops::*;
 pub use secrets::*;
 #[cfg(feature = "batch")]
 pub mod batch;
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;
