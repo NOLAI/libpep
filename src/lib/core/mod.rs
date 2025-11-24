@@ -1,4 +1,4 @@
-//! High-level API specifying [Pseudonyms](core::Pseudonym) and [Attributes](core::Attribute),
+//! High-level API specifying [Pseudonyms](data::Pseudonym) and [Attributes](data::Attribute),
 //! and [transcryption](transcryption::ops::transcrypt) ([pseudonymization](transcryption::ops::pseudonymize) or [rekeying](transcryption::ops::rekey))
 //! of their encrypted versions between different contexts.
 //! This module is intended for most use cases where a *single* trusted party (transcryptor) is

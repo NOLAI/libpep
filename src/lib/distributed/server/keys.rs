@@ -14,12 +14,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::distributed::setup::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
+/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::distributed::server::setup::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::distributed::setup::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
+/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::distributed::server::setup::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 

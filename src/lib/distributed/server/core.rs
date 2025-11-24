@@ -1,4 +1,4 @@
-//! High-level [`PEPSystem`]s and [`PEPClient`]s.
+//! High-level [`PEPSystem`]s.
 
 use super::keys::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
