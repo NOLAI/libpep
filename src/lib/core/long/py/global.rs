@@ -1,4 +1,4 @@
-use super::core::{
+use super::data::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
 use crate::arithmetic::GroupElement;

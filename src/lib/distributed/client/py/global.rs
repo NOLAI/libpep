@@ -1,7 +1,7 @@
 use super::super::global::OfflinePEPClient;
 use crate::core::keys::*;
 #[cfg(feature = "long")]
-use crate::core::long::py::core::{
+use crate::core::long::py::data::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
 use crate::core::py::data::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};

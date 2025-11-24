@@ -1,4 +1,4 @@
-use super::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use super::data::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::core::long::ops::{
     pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym, rerandomize_long_attribute,
     rerandomize_long_pseudonym, transcrypt_long_attribute, transcrypt_long_pseudonym,

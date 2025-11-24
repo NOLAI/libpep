@@ -1,6 +1,6 @@
 //! Python bindings for batch operations on long (multi-block) data types.
 
-use super::core::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use super::data::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::core::long::batch::{
     pseudonymize_long_batch, rekey_long_attribute_batch, rekey_long_pseudonym_batch,
     transcrypt_long_batch, LongEncryptedData,
