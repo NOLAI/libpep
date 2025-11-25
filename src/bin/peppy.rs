@@ -201,8 +201,7 @@ fn main() {
             match origin.len().cmp(&16) {
                 Ordering::Greater => {
                     eprintln!("Warning: Identifier is longer than 16 bytes, using long pseudonym with PKCS#7 padding. This comes with privacy risks, as blocks can highlight subgroups and the number of blocks is visible.");
-                    let long_pseudonym = LongPseudonym::from_bytes_padded(origin)
-                        .expect("Failed to create long pseudonym");
+                    let long_pseudonym = LongPseudonym::from_bytes_padded(origin);
                     eprint!("Long pseudonym ({} blocks): ", long_pseudonym.0.len());
                     let hex_blocks: Vec<String> =
                         long_pseudonym.0.iter().map(|p| p.to_hex()).collect();

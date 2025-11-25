@@ -2,10 +2,9 @@
 pub mod batch;
 pub mod setup;
 
-pub use keys::*;
-pub use setup::*;
-
 pub mod core;
+#[cfg(feature = "json")]
+pub mod json;
 pub mod keys;
 #[cfg(feature = "long")]
 pub mod long;

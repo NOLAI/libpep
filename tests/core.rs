@@ -213,7 +213,7 @@ fn test_batch_long() {
     let long_pseudonyms: Vec<_> = test_strings
         .iter()
         .map(|s| {
-            let long_pseudo = LongPseudonym::from_string_padded(s).unwrap();
+            let long_pseudo = LongPseudonym::from_string_padded(s);
             encrypt_long_pseudonym(&long_pseudo, &pseudonym_session1_public, rng)
         })
         .collect();
@@ -221,7 +221,7 @@ fn test_batch_long() {
     let long_attributes: Vec<_> = test_strings
         .iter()
         .map(|s| {
-            let long_attr = LongAttribute::from_string_padded(s).unwrap();
+            let long_attr = LongAttribute::from_string_padded(s);
             encrypt_long_attribute(&long_attr, &attribute_session1_public, rng)
         })
         .collect();
@@ -288,12 +288,12 @@ fn test_batch_long() {
             let attr_str = format!("Entity {} attribute data", i);
 
             let long_pseudonyms = vec![{
-                let long_pseudo = LongPseudonym::from_string_padded(&pseudo_str).unwrap();
+                let long_pseudo = LongPseudonym::from_string_padded(&pseudo_str);
                 encrypt_long_pseudonym(&long_pseudo, &pseudonym_session1_public, rng)
             }];
 
             let long_attributes = vec![{
-                let long_attr = LongAttribute::from_string_padded(&attr_str).unwrap();
+                let long_attr = LongAttribute::from_string_padded(&attr_str);
                 encrypt_long_attribute(&long_attr, &attribute_session1_public, rng)
             }];
 

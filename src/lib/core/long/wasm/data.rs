@@ -33,18 +33,14 @@ impl WASMLongPseudonym {
 
     /// Encodes an arbitrary-length string into a `LongPseudonym` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Result<WASMLongPseudonym, JsError> {
-        LongPseudonym::from_string_padded(text)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Encoding failed: {e}")))
+    pub fn from_string_padded(text: &str) -> WASMLongPseudonym {
+        Self(LongPseudonym::from_string_padded(text))
     }
 
     /// Encodes an arbitrary-length byte array into a `LongPseudonym` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> Result<WASMLongPseudonym, JsError> {
-        LongPseudonym::from_bytes_padded(data)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Encoding failed: {e}")))
+    pub fn from_bytes_padded(data: &[u8]) -> WASMLongPseudonym {
+        Self(LongPseudonym::from_bytes_padded(data))
     }
 
     /// Decodes the `LongPseudonym` back to the original string.
@@ -98,18 +94,14 @@ impl WASMLongAttribute {
 
     /// Encodes an arbitrary-length string into a `LongAttribute` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> Result<WASMLongAttribute, JsError> {
-        LongAttribute::from_string_padded(text)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Encoding failed: {e}")))
+    pub fn from_string_padded(text: &str) -> WASMLongAttribute {
+        Self(LongAttribute::from_string_padded(text))
     }
 
     /// Encodes an arbitrary-length byte array into a `LongAttribute` using PKCS#7 padding.
     #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> Result<WASMLongAttribute, JsError> {
-        LongAttribute::from_bytes_padded(data)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Encoding failed: {e}")))
+    pub fn from_bytes_padded(data: &[u8]) -> WASMLongAttribute {
+        Self(LongAttribute::from_bytes_padded(data))
     }
 
     /// Decodes the `LongAttribute` back to the original string.

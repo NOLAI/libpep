@@ -31,7 +31,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     let original_string = "This is a very long id that will be pseudonymized";
 
     // Step 1: Convert string to padded pseudonyms
-    let pseudonym = LongPseudonym::from_string_padded(original_string)?;
+    let pseudonym = LongPseudonym::from_string_padded(original_string);
 
     // Step 2: Encrypt the pseudonyms
     let encrypted_pseudonyms: Vec<EncryptedPseudonym> = pseudonym

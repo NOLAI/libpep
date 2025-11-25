@@ -42,7 +42,18 @@ pub fn wasm_encrypt_attribute_global(
 }
 
 /// Decrypt a pseudonym using a global secret key.
-#[cfg(feature = "insecure")]
+#[cfg(all(feature = "insecure", feature = "elgamal3"))]
+#[wasm_bindgen(js_name = decryptPseudonymGlobal)]
+pub fn wasm_decrypt_pseudonym_global(
+    v: &WASMEncryptedPseudonym,
+    secret_key: &WASMPseudonymGlobalSecretKey,
+) -> Option<WASMPseudonym> {
+    decrypt_pseudonym_global(&v.0, &PseudonymGlobalSecretKey::from(secret_key.0 .0))
+        .map(|p| p.into())
+}
+
+/// Decrypt a pseudonym using a global secret key.
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptPseudonymGlobal)]
 pub fn wasm_decrypt_pseudonym_global(
     v: &WASMEncryptedPseudonym,
@@ -52,7 +63,18 @@ pub fn wasm_decrypt_pseudonym_global(
 }
 
 /// Decrypt an attribute using a global secret key.
-#[cfg(feature = "insecure")]
+#[cfg(all(feature = "insecure", feature = "elgamal3"))]
+#[wasm_bindgen(js_name = decryptAttributeGlobal)]
+pub fn wasm_decrypt_attribute_global(
+    v: &WASMEncryptedAttribute,
+    secret_key: &WASMAttributeGlobalSecretKey,
+) -> Option<WASMAttribute> {
+    decrypt_attribute_global(&v.0, &AttributeGlobalSecretKey::from(secret_key.0 .0))
+        .map(|a| a.into())
+}
+
+/// Decrypt an attribute using a global secret key.
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptAttributeGlobal)]
 pub fn wasm_decrypt_attribute_global(
     v: &WASMEncryptedAttribute,

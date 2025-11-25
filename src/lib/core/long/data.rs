@@ -35,7 +35,7 @@ use std::io::{Error, ErrorKind};
 /// ```no_run
 /// use libpep::core::long::data::LongPseudonym;
 ///
-/// let long_pseudo = LongPseudonym::from_string_padded("some-long-identifier1@example.com").unwrap();
+/// let long_pseudo = LongPseudonym::from_string_padded("some-long-identifier1@example.com");
 /// ```
 ///
 /// Notice that in this example, the first 16-byte block will be "some-identifier1" and the second block
@@ -65,7 +65,7 @@ pub struct LongPseudonym(pub Vec<Pseudonym>);
 /// use libpep::core::long::data::LongAttribute;
 ///
 /// // This will use the minimum number of blocks needed (may leak length information)
-/// let long_attr = LongAttribute::from_string_padded("some long and sensitive data").unwrap();
+/// let long_attr = LongAttribute::from_string_padded("some long and sensitive data");
 /// ```
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
 pub struct LongAttribute(pub Vec<Attribute>);
@@ -90,6 +90,8 @@ impl HasSessionKeys for LongAttribute {
 impl LongPseudonym {
     /// Encodes an arbitrary byte array into a `LongPseudonym` using PKCS#7 padding.
     ///
+    /// This method never fails and can encode any byte array of any length.
+    ///
     /// # Privacy Warning
     ///
     /// The number of blocks will vary with input size, potentially leaking information
@@ -104,17 +106,15 @@ impl LongPseudonym {
     /// ```no_run
     /// use libpep::core::long::data::LongPseudonym;
     ///
-    /// let long_pseudo = LongPseudonym::from_bytes_padded(b"participant123456789@abcdef.hij").unwrap();
+    /// let long_pseudo = LongPseudonym::from_bytes_padded(b"participant123456789@abcdef.hij");
     /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
-    pub fn from_bytes_padded(data: &[u8]) -> Result<Self, Error> {
-        from_bytes_padded_impl::<Pseudonym>(data).map(LongPseudonym)
+    pub fn from_bytes_padded(data: &[u8]) -> Self {
+        LongPseudonym(from_bytes_padded_impl::<Pseudonym>(data))
     }
 
     /// Encodes a string into a `LongPseudonym` using PKCS#7 padding.
+    ///
+    /// This method never fails and can encode any string of any length.
     ///
     /// # Privacy Warning
     ///
@@ -124,11 +124,7 @@ impl LongPseudonym {
     /// # Parameters
     ///
     /// - `text`: The string to encode
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
-    pub fn from_string_padded(text: &str) -> Result<Self, Error> {
+    pub fn from_string_padded(text: &str) -> Self {
         Self::from_bytes_padded(text.as_bytes())
     }
 
@@ -160,6 +156,8 @@ impl LongPseudonym {
 impl LongAttribute {
     /// Encodes an arbitrary byte array into a `LongAttribute` using PKCS#7 padding.
     ///
+    /// This method never fails and can encode any byte array of any length.
+    ///
     /// # Privacy Warning
     ///
     /// The number of blocks will vary with input size, potentially leaking information
@@ -169,14 +167,20 @@ impl LongAttribute {
     ///
     /// - `data`: The bytes to encode
     ///
-    /// # Errors
+    /// # Example
     ///
-    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
-    pub fn from_bytes_padded(data: &[u8]) -> Result<Self, Error> {
-        from_bytes_padded_impl::<Attribute>(data).map(LongAttribute)
+    /// ```no_run
+    /// use libpep::core::long::data::LongAttribute;
+    ///
+    /// let long_attr = LongAttribute::from_bytes_padded(b"some long and sensitive data");
+    /// ```
+    pub fn from_bytes_padded(data: &[u8]) -> Self {
+        LongAttribute(from_bytes_padded_impl::<Attribute>(data))
     }
 
     /// Encodes a string into a `LongAttribute` using PKCS#7 padding.
+    ///
+    /// This method never fails and can encode any string of any length.
     ///
     /// # Privacy Warning
     ///
@@ -186,11 +190,7 @@ impl LongAttribute {
     /// # Parameters
     ///
     /// - `text`: The string to encode
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the data cannot be encoded (e.g., invalid padding).
-    pub fn from_string_padded(text: &str) -> Result<Self, Error> {
+    pub fn from_string_padded(text: &str) -> Self {
         Self::from_bytes_padded(text.as_bytes())
     }
 
@@ -498,18 +498,13 @@ impl LongEncrypted for LongEncryptedAttribute {
 }
 
 /// Internal helper function to encode bytes with PKCS#7 padding
-fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Result<Vec<T>, Error> {
-    // Handle empty data
-    if data.is_empty() {
-        return Ok(vec![]);
-    }
-
+fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Vec<T> {
     // Calculate number of full blocks
     let full_blocks = data.len() / 16;
     let remaining = data.len() % 16;
 
-    // We always need at least one block for padding
-    let total_blocks = full_blocks + 1;
+    // We always need at least one block for padding (even for empty data)
+    let total_blocks = if data.is_empty() { 1 } else { full_blocks + 1 };
     let mut result = Vec::with_capacity(total_blocks);
 
     // Add all full blocks from the input data
@@ -530,7 +525,7 @@ fn from_bytes_padded_impl<T: Encryptable>(data: &[u8]) -> Result<Vec<T>, Error> 
 
     result.push(T::from_lizard(&last_block));
 
-    Ok(result)
+    result
 }
 
 /// Internal helper function to decode padded bytes
@@ -711,14 +706,18 @@ mod tests {
     #[test]
     fn long_attribute_from_bytes_padded_empty() {
         let data: &[u8] = &[];
-        let result = LongAttribute::from_bytes_padded(data).unwrap();
-        assert!(result.is_empty());
+        let result = LongAttribute::from_bytes_padded(data);
+        // Empty data should still result in one block with full padding (PKCS#7)
+        assert_eq!(result.len(), 1);
+        // The block should be all padding bytes with value 16
+        let block_bytes = result[0].to_lizard().unwrap();
+        assert_eq!([16u8; 16], block_bytes);
     }
 
     #[test]
     fn long_attribute_from_bytes_padded_single_block() {
         let data = b"Hello, world!";
-        let result = LongAttribute::from_bytes_padded(data).unwrap();
+        let result = LongAttribute::from_bytes_padded(data);
 
         assert_eq!(1, result.len());
 
@@ -730,7 +729,7 @@ mod tests {
     #[test]
     fn long_attribute_from_bytes_padded_exact_block() {
         let data = b"0123456789ABCDEF";
-        let result = LongAttribute::from_bytes_padded(data).unwrap();
+        let result = LongAttribute::from_bytes_padded(data);
 
         // Should have 2 blocks: the 16 bytes of data and one full block of padding
         assert_eq!(2, result.len());
@@ -746,7 +745,7 @@ mod tests {
     #[test]
     fn long_attribute_from_bytes_padded_multiple_blocks() {
         let data = b"This is a longer string that spans multiple blocks";
-        let result = LongAttribute::from_bytes_padded(data).unwrap();
+        let result = LongAttribute::from_bytes_padded(data);
 
         // Calculate expected number of blocks (51 bytes -> 4 blocks)
         let expected_blocks = (data.len() / 16) + 1;
@@ -776,7 +775,7 @@ mod tests {
     #[test]
     fn long_attribute_to_bytes_padded() {
         let original = b"This is some test data for padding";
-        let attributes = LongAttribute::from_bytes_padded(original).unwrap();
+        let attributes = LongAttribute::from_bytes_padded(original);
         let decoded = attributes.to_bytes_padded().unwrap();
         assert_eq!(original, decoded.as_slice());
     }
@@ -814,7 +813,7 @@ mod tests {
     #[test]
     fn long_attribute_to_string_padded() {
         let original = "This is a UTF-8 string with special chars: ñáéíóú 你好";
-        let attributes = LongAttribute::from_string_padded(original).unwrap();
+        let attributes = LongAttribute::from_string_padded(original);
         let decoded = attributes.to_string_padded().unwrap();
         assert_eq!(original, decoded);
     }
@@ -840,7 +839,7 @@ mod tests {
             let size = 32 - padding_size;
             let data = vec![b'X'; size];
 
-            let attributes = LongAttribute::from_bytes_padded(&data).unwrap();
+            let attributes = LongAttribute::from_bytes_padded(&data);
             let decoded = attributes.to_bytes_padded().unwrap();
 
             assert_eq!(data, decoded);
@@ -850,7 +849,7 @@ mod tests {
     #[test]
     fn long_pseudonym_from_bytes_padded() {
         let data = b"Hello, world!";
-        let result = LongPseudonym::from_bytes_padded(data).unwrap();
+        let result = LongPseudonym::from_bytes_padded(data);
 
         assert_eq!(1, result.len());
 
@@ -861,7 +860,7 @@ mod tests {
     #[test]
     fn long_pseudonym_to_bytes_padded() {
         let original = b"This is some test data for padding";
-        let pseudonyms = LongPseudonym::from_bytes_padded(original).unwrap();
+        let pseudonyms = LongPseudonym::from_bytes_padded(original);
         let decoded = pseudonyms.to_bytes_padded().unwrap();
         assert_eq!(original, decoded.as_slice());
     }
@@ -869,7 +868,7 @@ mod tests {
     #[test]
     fn long_pseudonym_string_roundtrip() {
         let original = "Testing pseudonym string conversion";
-        let pseudonyms = LongPseudonym::from_string_padded(original).unwrap();
+        let pseudonyms = LongPseudonym::from_string_padded(original);
         let decoded = pseudonyms.to_string_padded().unwrap();
         assert_eq!(original, decoded);
     }
@@ -883,7 +882,7 @@ mod tests {
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
-        let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization").unwrap();
+        let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization");
         let encrypted: Vec<EncryptedPseudonym> = pseudonyms
             .iter()
             .map(|p| encrypt(p, &session_public, &mut rng))
@@ -910,7 +909,7 @@ mod tests {
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
-        let attributes = LongAttribute::from_string_padded("attribute-test-data").unwrap();
+        let attributes = LongAttribute::from_string_padded("attribute-test-data");
         let encrypted: Vec<_> = attributes
             .iter()
             .map(|a| encrypt(a, &session_public, &mut rng))
@@ -965,7 +964,7 @@ mod tests {
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
-        let pseudonyms = LongPseudonym::from_string_padded("serde-test-data").unwrap();
+        let pseudonyms = LongPseudonym::from_string_padded("serde-test-data");
         let encrypted: Vec<EncryptedPseudonym> = pseudonyms
             .iter()
             .map(|p| encrypt(p, &session_public, &mut rng))

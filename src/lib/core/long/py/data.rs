@@ -39,19 +39,15 @@ impl PyLongPseudonym {
     /// Encodes an arbitrary-length string into a `LongPseudonym` using PKCS#7 padding.
     #[staticmethod]
     #[pyo3(name = "from_string_padded")]
-    fn from_string_padded(text: &str) -> PyResult<Self> {
-        LongPseudonym::from_string_padded(text)
-            .map(Self)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    fn from_string_padded(text: &str) -> Self {
+        Self(LongPseudonym::from_string_padded(text))
     }
 
     /// Encodes an arbitrary-length byte array into a `LongPseudonym` using PKCS#7 padding.
     #[staticmethod]
     #[pyo3(name = "from_bytes_padded")]
-    fn from_bytes_padded(data: &[u8]) -> PyResult<Self> {
-        LongPseudonym::from_bytes_padded(data)
-            .map(Self)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    fn from_bytes_padded(data: &[u8]) -> Self {
+        Self(LongPseudonym::from_bytes_padded(data))
     }
 
     /// Decodes the `LongPseudonym` back to the original string.
@@ -113,19 +109,15 @@ impl PyLongAttribute {
     /// Encodes an arbitrary-length string into a `LongAttribute` using PKCS#7 padding.
     #[staticmethod]
     #[pyo3(name = "from_string_padded")]
-    fn from_string_padded(text: &str) -> PyResult<Self> {
-        LongAttribute::from_string_padded(text)
-            .map(Self)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    fn from_string_padded(text: &str) -> Self {
+        Self(LongAttribute::from_string_padded(text))
     }
 
     /// Encodes an arbitrary-length byte array into a `LongAttribute` using PKCS#7 padding.
     #[staticmethod]
     #[pyo3(name = "from_bytes_padded")]
-    fn from_bytes_padded(data: &[u8]) -> PyResult<Self> {
-        LongAttribute::from_bytes_padded(data)
-            .map(Self)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}")))
+    fn from_bytes_padded(data: &[u8]) -> Self {
+        Self(LongAttribute::from_bytes_padded(data))
     }
 
     /// Decodes the `LongAttribute` back to the original string.

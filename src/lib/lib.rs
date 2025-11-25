@@ -27,17 +27,21 @@
 //! This library implements an extension of the PEP framework, called *n-PEP*, described in the
 //! article by [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
 //! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/) (to be published).
-
-#[cfg(all(feature = "python", feature = "wasm"))]
-compile_error!("Features 'python' and 'wasm' are mutually exclusive");
+//!
+//! ## Feature flags
+//!
+//! **Note:** The `python` and `wasm` features are mutually exclusive. If both are enabled,
+//! neither binding module will be compiled. This is because PyO3 builds a cdylib that links
+//! to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly -
+//! they have incompatible linking requirements.
 
 pub mod arithmetic;
 pub mod base;
 pub mod core;
 pub mod distributed;
 
-#[cfg(feature = "python")]
+#[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;
 
-#[cfg(feature = "wasm")]
+#[cfg(all(feature = "wasm", not(feature = "python")))]
 pub mod wasm;

@@ -29,7 +29,21 @@ pub fn wasm_encrypt_long_pseudonym_global(
 }
 
 /// Decrypt a long encrypted pseudonym using a global key.
-#[cfg(feature = "insecure")]
+#[cfg(all(feature = "insecure", feature = "elgamal3"))]
+#[wasm_bindgen(js_name = decryptLongPseudonymGlobal)]
+pub fn wasm_decrypt_long_pseudonym_global(
+    encrypted: &WASMLongEncryptedPseudonym,
+    secret_key: &WASMPseudonymGlobalSecretKey,
+) -> Option<WASMLongPseudonym> {
+    decrypt_long_pseudonym_global(
+        &encrypted.0,
+        &PseudonymGlobalSecretKey::from(secret_key.0 .0),
+    )
+    .map(WASMLongPseudonym)
+}
+
+/// Decrypt a long encrypted pseudonym using a global key.
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptLongPseudonymGlobal)]
 pub fn wasm_decrypt_long_pseudonym_global(
     encrypted: &WASMLongEncryptedPseudonym,
@@ -56,7 +70,21 @@ pub fn wasm_encrypt_long_attribute_global(
 }
 
 /// Decrypt a long encrypted attribute using a global key.
-#[cfg(feature = "insecure")]
+#[cfg(all(feature = "insecure", feature = "elgamal3"))]
+#[wasm_bindgen(js_name = decryptLongAttributeGlobal)]
+pub fn wasm_decrypt_long_attribute_global(
+    encrypted: &WASMLongEncryptedAttribute,
+    secret_key: &WASMAttributeGlobalSecretKey,
+) -> Option<WASMLongAttribute> {
+    decrypt_long_attribute_global(
+        &encrypted.0,
+        &AttributeGlobalSecretKey::from(secret_key.0 .0),
+    )
+    .map(WASMLongAttribute)
+}
+
+/// Decrypt a long encrypted attribute using a global key.
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptLongAttributeGlobal)]
 pub fn wasm_decrypt_long_attribute_global(
     encrypted: &WASMLongEncryptedAttribute,
