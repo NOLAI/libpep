@@ -32,26 +32,3 @@ impl PEPSystem {
         crate::core::json::transcryption::transcrypt_batch(values, transcryption_info, rng)
     }
 }
-
-#[cfg(feature = "python")]
-pub mod py {
-    //! Python bindings for distributed server JSON operations.
-    //!
-    //! The JSON methods for PyPEPSystem are implemented directly in
-    //! `distributed::server::py::core` to avoid conflicting #[pymethods] implementations.
-
-    use pyo3::prelude::*;
-
-    pub fn register(_m: &Bound<'_, PyModule>) -> PyResult<()> {
-        // Methods are added to PyPEPSystem in core.rs
-        Ok(())
-    }
-}
-
-#[cfg(feature = "wasm")]
-pub mod wasm {
-    //! WASM bindings for distributed server JSON operations.
-    //!
-    //! The JSON methods for WASMPEPSystem are implemented directly in
-    //! `distributed::server::wasm::core` to avoid multiple #[wasm_bindgen] implementations.
-}
