@@ -92,7 +92,7 @@ pub fn py_transcrypt_long_batch(
         .collect();
     let info = TranscryptionInfo::from(transcryption_info);
     let result = transcrypt_long_batch(enc, &info, &mut rng)
-        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+        .map_err(pyo3::exceptions::PyValueError::new_err)?;
     Ok(result
         .into_iter()
         .map(|(ps, attrs)| {

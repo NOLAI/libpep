@@ -68,8 +68,8 @@ pub fn py_transcrypt_batch(
         })
         .collect();
     let info = TranscryptionInfo::from(transcryption_info);
-    let result = transcrypt_batch(enc, &info, &mut rng)
-        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+    let result =
+        transcrypt_batch(enc, &info, &mut rng).map_err(pyo3::exceptions::PyValueError::new_err)?;
     Ok(result
         .into_iter()
         .map(|(ps, attrs)| {
