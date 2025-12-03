@@ -66,14 +66,39 @@ pub fn rekey_long_attribute_batch<R: RngCore + CryptoRng>(
 /// Batch transcryption of long encrypted data.
 /// The order of the pairs (entities) is randomly shuffled to avoid linking them, but the internal
 /// order of pseudonyms and attributes for the same entity is preserved.
+///
+/// # Errors
+///
+/// Returns an error if the encrypted data do not all have the same structure (same number of pseudonyms and attributes).
 pub fn transcrypt_long_batch<R: RngCore + CryptoRng>(
-    encrypted: &mut Box<[LongEncryptedData]>,
+    mut encrypted: Vec<LongEncryptedData>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Box<[LongEncryptedData]> {
-    shuffle(encrypted, rng);
-    encrypted
-        .iter_mut()
+) -> Result<Vec<LongEncryptedData>, String> {
+    // Check that all LongEncryptedData have the same structure
+    if let Some((enc_pseudonyms, enc_attributes)) = encrypted.first() {
+        let expected_pseudonym_len = enc_pseudonyms.len();
+        let expected_attribute_len = enc_attributes.len();
+
+        for (index, (pseudonyms, attributes)) in encrypted.iter().enumerate() {
+            if pseudonyms.len() != expected_pseudonym_len {
+                return Err(format!(
+                    "All LongEncryptedData must have the same structure. Entry at index {} has {} pseudonyms, expected {}.",
+                    index, pseudonyms.len(), expected_pseudonym_len
+                ));
+            }
+            if attributes.len() != expected_attribute_len {
+                return Err(format!(
+                    "All LongEncryptedData must have the same structure. Entry at index {} has {} attributes, expected {}.",
+                    index, attributes.len(), expected_attribute_len
+                ));
+            }
+        }
+    }
+
+    shuffle(&mut encrypted, rng);
+    let result = encrypted
+        .iter()
         .map(|(pseudonyms, attributes)| {
             let pseudonyms = pseudonyms
                 .iter()
@@ -85,5 +110,6 @@ pub fn transcrypt_long_batch<R: RngCore + CryptoRng>(
                 .collect();
             (pseudonyms, attributes)
         })
-        .collect()
+        .collect();
+    Ok(result)
 }

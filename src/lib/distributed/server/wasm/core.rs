@@ -323,16 +323,18 @@ impl WASMPEPSystem {
         &self,
         values: Vec<crate::core::json::wasm::WASMEncryptedPEPJSONValue>,
         transcryption_info: &crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo,
-    ) -> Vec<crate::core::json::wasm::WASMEncryptedPEPJSONValue> {
+    ) -> Result<Vec<crate::core::json::wasm::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue>
+    {
         use std::ops::Deref;
         let mut rng = rand::rng();
         let rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();
-        let transcrypted =
-            self.deref()
-                .transcrypt_json_batch(rust_values, &transcryption_info.0, &mut rng);
-        transcrypted
+        let transcrypted = self
+            .deref()
+            .transcrypt_json_batch(rust_values, &transcryption_info.0, &mut rng)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&e))?;
+        Ok(transcrypted
             .into_iter()
             .map(crate::core::json::wasm::WASMEncryptedPEPJSONValue)
-            .collect()
+            .collect())
     }
 }

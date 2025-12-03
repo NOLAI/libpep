@@ -22,7 +22,7 @@ pub type JsonError = String;
 ///
 /// - `Null` remains as-is
 /// - `Bool` is stored as a single `Attribute` (1 byte)
-/// - `Number` is stored as a single `Attribute` (8 bytes for u64/i64/f64)
+/// - `Number` is stored as a single `Attribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
 /// - `String` is stored as a `LongAttribute` (variable length)
 /// - `Pseudonym` is stored as a `LongPseudonym` (can be pseudonymized/reshuffled)
 /// - `Array` and `Object` contain nested `PEPJSONValue`s
@@ -43,7 +43,7 @@ pub enum PEPJSONValue {
 ///
 /// - `Null` remains unencrypted
 /// - `Bool` is encrypted as a single `EncryptedAttribute` (1 byte)
-/// - `Number` is encrypted as a single `EncryptedAttribute` (8 bytes for u64/i64/f64)
+/// - `Number` is encrypted as a single `EncryptedAttribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
 /// - `String` is encrypted as a `LongEncryptedAttribute` (variable length)
 /// - `Pseudonym` is encrypted as a `LongEncryptedPseudonym` (can be pseudonymized/reshuffled)
 /// - `Array` and `Object` contain nested `EncryptedPEPJSONValue`s
@@ -80,10 +80,10 @@ impl PEPJSONValue {
             }
             Value::Number(n) => {
                 let bytes = number_to_bytes(n);
-                // Safety: 8 bytes always fits in a 16-byte block with PKCS#7 padding
+                // Safety: 9 bytes always fits in a 16-byte block with PKCS#7 padding
                 #[allow(clippy::expect_used)]
                 let attr = Attribute::from_bytes_padded(&bytes)
-                    .expect("8 bytes always fits in 16-byte block");
+                    .expect("9 bytes always fits in 16-byte block");
                 PEPJSONValue::Number(attr)
             }
             Value::String(s) => {
@@ -176,10 +176,10 @@ impl EncryptedPEPJSONValue {
                 let bytes = decrypted
                     .to_bytes_padded()
                     .map_err(|e| format!("Failed to get bytes from decrypted number: {:?}", e))?;
-                if bytes.len() != 8 {
-                    return Err(format!("Expected 8 bytes for number, got {}", bytes.len()));
+                if bytes.len() != 9 {
+                    return Err(format!("Expected 9 bytes for number, got {}", bytes.len()));
                 }
-                let mut arr = [0u8; 8];
+                let mut arr = [0u8; 9];
                 arr.copy_from_slice(&bytes);
                 let num_val = bytes_to_number(&arr);
                 Ok(Value::Number(num_val))
@@ -203,9 +203,11 @@ impl EncryptedPEPJSONValue {
                 #[cfg(not(feature = "elgamal3"))]
                 let decrypted = decrypt_long_pseudonym(encrypted, &keys.pseudonym.secret);
 
-                let string_val = decrypted
-                    .to_string_padded()
-                    .map_err(|e| format!("Failed to parse pseudonym string: {:?}", e))?;
+                // Try to parse as string, fallback to hex if it fails (e.g., after transcryption)
+                let string_val = decrypted.to_string_padded().unwrap_or_else(|_| {
+                    // Convert to hex representation for pseudonyms that can't be represented as UTF-8
+                    decrypted.to_hex()
+                });
                 Ok(Value::String(string_val))
             }
             EncryptedPEPJSONValue::Array(arr) => {
@@ -297,6 +299,16 @@ mod tests {
         let test_numbers = [0, 1, -1, 42, -42, i64::MAX, i64::MIN];
         for n in test_numbers {
             let value = json!(n);
+            let pep_value = PEPJSONValue::from_value(&value);
+            let encrypted = pep_value.encrypt(&keys, &mut rng);
+            let decrypted = encrypted.decrypt(&keys).unwrap();
+            assert_eq!(value, decrypted);
+        }
+
+        // Test floats
+        let test_floats = [0.0, 1.5, -1.5, 37.2, 38.5, 42.42, f64::MAX, f64::MIN];
+        for f in test_floats {
+            let value = json!(f);
             let pep_value = PEPJSONValue::from_value(&value);
             let encrypted = pep_value.encrypt(&keys, &mut rng);
             let decrypted = encrypted.decrypt(&keys).unwrap();

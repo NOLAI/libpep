@@ -288,19 +288,22 @@ impl PyPEPSystem {
         &self,
         values: Vec<crate::core::json::py::PyEncryptedPEPJSONValue>,
         transcryption_info: &crate::core::transcryption::py::contexts::PyTranscryptionInfo,
-    ) -> Vec<crate::core::json::py::PyEncryptedPEPJSONValue> {
+    ) -> PyResult<Vec<crate::core::json::py::PyEncryptedPEPJSONValue>> {
         use crate::core::transcryption::contexts::TranscryptionInfo;
         let mut rng = rand::rng();
         let rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();
-        let transcrypted = self.0.transcrypt_json_batch(
-            rust_values,
-            &TranscryptionInfo::from(transcryption_info),
-            &mut rng,
-        );
-        transcrypted
+        let transcrypted = self
+            .0
+            .transcrypt_json_batch(
+                rust_values,
+                &TranscryptionInfo::from(transcryption_info),
+                &mut rng,
+            )
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+        Ok(transcrypted
             .into_iter()
             .map(crate::core::json::py::PyEncryptedPEPJSONValue)
-            .collect()
+            .collect())
     }
 }
 

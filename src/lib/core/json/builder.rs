@@ -3,7 +3,7 @@
 use serde_json::Value;
 use std::collections::HashMap;
 
-use super::core::PEPJSONValue;
+use super::data::PEPJSONValue;
 use crate::core::long::data::LongPseudonym;
 
 /// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.

@@ -151,6 +151,18 @@ impl LongPseudonym {
     pub fn to_bytes_padded(&self) -> Result<Vec<u8>, Error> {
         to_bytes_padded_impl(&self.0)
     }
+
+    /// Convert to a hexadecimal string representation.
+    ///
+    /// This is useful for displaying pseudonyms that may not be valid UTF-8,
+    /// such as those that have been transcrypted across different domains.
+    pub fn to_hex(&self) -> String {
+        self.0
+            .iter()
+            .map(|pseudonym| pseudonym.to_hex())
+            .collect::<Vec<_>>()
+            .join("")
+    }
 }
 
 impl LongAttribute {
@@ -216,6 +228,17 @@ impl LongAttribute {
     /// - The padding is invalid
     pub fn to_bytes_padded(&self) -> Result<Vec<u8>, Error> {
         to_bytes_padded_impl(&self.0)
+    }
+
+    /// Convert to a hexadecimal string representation.
+    ///
+    /// This is useful for displaying attributes that may not be valid UTF-8.
+    pub fn to_hex(&self) -> String {
+        self.0
+            .iter()
+            .map(|attribute| attribute.to_hex())
+            .collect::<Vec<_>>()
+            .join("")
     }
 }
 

@@ -47,14 +47,18 @@ pub fn py_rekey_batch(
 /// Batch transcryption of a list of encrypted data pairs.
 /// Each pair contains a list of encrypted pseudonyms and a list of encrypted attributes.
 /// The order of the pairs is randomly shuffled to avoid linking them.
+///
+/// # Errors
+///
+/// Raises a ValueError if the encrypted data do not all have the same structure.
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
 pub fn py_transcrypt_batch(
     encrypted: Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)>,
     transcryption_info: &PyTranscryptionInfo,
-) -> Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)> {
+) -> PyResult<Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)>> {
     let mut rng = rand::rng();
-    let mut enc: Box<[_]> = encrypted
+    let enc: Vec<_> = encrypted
         .into_iter()
         .map(|(ps, attrs)| {
             (
@@ -64,8 +68,9 @@ pub fn py_transcrypt_batch(
         })
         .collect();
     let info = TranscryptionInfo::from(transcryption_info);
-    transcrypt_batch(&mut enc, &info, &mut rng)
-        .into_vec()
+    let result = transcrypt_batch(enc, &info, &mut rng)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+    Ok(result
         .into_iter()
         .map(|(ps, attrs)| {
             (
@@ -73,7 +78,7 @@ pub fn py_transcrypt_batch(
                 attrs.into_iter().map(PyEncryptedAttribute).collect(),
             )
         })
-        .collect()
+        .collect())
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

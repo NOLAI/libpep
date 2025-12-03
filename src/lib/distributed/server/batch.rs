@@ -31,12 +31,16 @@ impl PEPSystem {
 
     /// Transcrypt a batch of encrypted messages for one entity (see [`EncryptedData`]),
     /// from one pseudonymization domain and session to another, using [`TranscryptionInfo`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the encrypted data do not all have the same structure.
     pub fn transcrypt_batch<R: RngCore + CryptoRng>(
         &self,
-        encrypted: &mut Box<[EncryptedData]>,
+        encrypted: Vec<EncryptedData>,
         transcryption_info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Box<[EncryptedData]> {
+    ) -> Result<Vec<EncryptedData>, String> {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 }

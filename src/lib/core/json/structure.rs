@@ -1,6 +1,6 @@
 //! JSON structure descriptors and related operations.
 
-use super::core::EncryptedPEPJSONValue;
+use super::data::EncryptedPEPJSONValue;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -53,7 +53,7 @@ impl EncryptedPEPJSONValue {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::core::json::core::PEPJSONValue;
+    use crate::core::json::data::PEPJSONValue;
     use crate::core::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,
@@ -99,7 +99,12 @@ mod tests {
         let encrypted = pep_value.encrypt(&keys, &mut rng);
         let structure = encrypted.structure();
 
-        assert!(matches!(structure, JSONStructure::Object(_)));
+        let expected = JSONStructure::Object(vec![
+            ("count".to_string(), JSONStructure::Number),
+            ("name".to_string(), JSONStructure::String(1)),
+        ]);
+
+        assert_eq!(structure, expected);
     }
 
     #[test]
@@ -150,25 +155,15 @@ mod tests {
             "age": 30
         });
         let encrypted = pep_value.encrypt(&keys, &mut rng);
-
         let structure = encrypted.structure();
 
-        // Check the structure is an object with expected fields
-        if let JSONStructure::Object(fields) = structure {
-            assert_eq!(fields.len(), 3);
+        let expected = JSONStructure::Object(vec![
+            ("age".to_string(), JSONStructure::Number),
+            ("id".to_string(), JSONStructure::Pseudonym(2)),
+            ("name".to_string(), JSONStructure::String(1)),
+        ]);
 
-            // Fields are sorted alphabetically
-            assert_eq!(fields[0].0, "age");
-            assert_eq!(fields[0].1, JSONStructure::Number);
-
-            assert_eq!(fields[1].0, "id");
-            assert!(matches!(fields[1].1, JSONStructure::Pseudonym(_)));
-
-            assert_eq!(fields[2].0, "name");
-            assert!(matches!(fields[2].1, JSONStructure::String(_)));
-        } else {
-            panic!("Expected Object structure");
-        }
+        assert_eq!(structure, expected);
     }
 
     #[test]
@@ -208,35 +203,27 @@ mod tests {
             "scores": [88, 91, 85]
         }));
         let encrypted = pep_value.encrypt(&keys, &mut rng);
-
         let structure = encrypted.structure();
 
-        if let JSONStructure::Object(fields) = structure {
-            assert_eq!(fields.len(), 2);
+        let expected = JSONStructure::Object(vec![
+            (
+                "scores".to_string(),
+                JSONStructure::Array(vec![
+                    JSONStructure::Number,
+                    JSONStructure::Number,
+                    JSONStructure::Number,
+                ]),
+            ),
+            (
+                "user".to_string(),
+                JSONStructure::Object(vec![
+                    ("active".to_string(), JSONStructure::Bool),
+                    ("name".to_string(), JSONStructure::String(1)),
+                ]),
+            ),
+        ]);
 
-            // scores array
-            assert_eq!(fields[0].0, "scores");
-            if let JSONStructure::Array(items) = &fields[0].1 {
-                assert_eq!(items.len(), 3);
-                assert!(items.iter().all(|i| *i == JSONStructure::Number));
-            } else {
-                panic!("Expected Array");
-            }
-
-            // user object
-            assert_eq!(fields[1].0, "user");
-            if let JSONStructure::Object(user_fields) = &fields[1].1 {
-                assert_eq!(user_fields.len(), 2);
-                assert_eq!(user_fields[0].0, "active");
-                assert_eq!(user_fields[0].1, JSONStructure::Bool);
-                assert_eq!(user_fields[1].0, "name");
-                assert!(matches!(user_fields[1].1, JSONStructure::String(_)));
-            } else {
-                panic!("Expected Object");
-            }
-        } else {
-            panic!("Expected Object structure");
-        }
+        assert_eq!(structure, expected);
     }
 
     /// Example showing what JSONStructure looks like when serialized

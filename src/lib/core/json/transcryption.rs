@@ -3,7 +3,7 @@
 use rand::seq::SliceRandom;
 use rand_core::{CryptoRng, RngCore};
 
-use super::core::EncryptedPEPJSONValue;
+use super::data::EncryptedPEPJSONValue;
 use crate::core::long::ops::{transcrypt_long_attribute, transcrypt_long_pseudonym};
 use crate::core::transcryption::contexts::TranscryptionInfo;
 use crate::core::transcryption::ops::transcrypt_attribute;
@@ -46,22 +46,54 @@ impl EncryptedPEPJSONValue {
     }
 }
 
+/// Transcrypt an EncryptedPEPJSONValue from one context to another.
+///
+/// This transcrypts all encrypted attributes and pseudonyms in the value,
+/// applying both rekeying (for attributes) and pseudonymization (for pseudonyms).
+pub fn transcrypt_json(
+    value: &EncryptedPEPJSONValue,
+    transcryption_info: &TranscryptionInfo,
+) -> EncryptedPEPJSONValue {
+    value.transcrypt(transcryption_info)
+}
+
+#[cfg(feature = "batch")]
 /// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
 ///
 /// This is useful for unlinkability - the shuffled order prevents correlation
 /// between input and output based on position.
-pub fn transcrypt_batch<R: RngCore + CryptoRng>(
-    values: Vec<EncryptedPEPJSONValue>,
+///
+/// # Errors
+///
+/// Returns an error if the values do not all have the same structure.
+pub fn transcrypt_json_batch<R: RngCore + CryptoRng>(
+    mut values: Vec<EncryptedPEPJSONValue>,
     transcryption_info: &TranscryptionInfo,
     rng: &mut R,
-) -> Vec<EncryptedPEPJSONValue> {
-    let mut transcrypted: Vec<EncryptedPEPJSONValue> = values
+) -> Result<Vec<EncryptedPEPJSONValue>, String> {
+    // Verify all values have the same structure
+    if let Some(first) = values.first() {
+        let first_structure = first.structure();
+        for (index, value) in values.iter().enumerate().skip(1) {
+            if first_structure != value.structure() {
+                return Err(format!(
+                    "All values must have the same structure. Value at index {} has a different structure.",
+                    index
+                ));
+            }
+        }
+    }
+
+    // Shuffle first for efficiency
+    values.shuffle(rng);
+
+    // Then transcrypt
+    let transcrypted: Vec<EncryptedPEPJSONValue> = values
         .iter()
         .map(|v| v.transcrypt(transcryption_info))
         .collect();
 
-    transcrypted.shuffle(rng);
-    transcrypted
+    Ok(transcrypted)
 }
 
 #[cfg(test)]
@@ -89,9 +121,8 @@ mod tests {
 
         let from_session = EncryptionContext::from("session-from");
         let to_session = EncryptionContext::from("session-to");
-        // Use same domain so pseudonyms decrypt to same value (for testing)
-        let from_domain = PseudonymizationDomain::from("domain");
-        let to_domain = PseudonymizationDomain::from("domain");
+        let from_domain = PseudonymizationDomain::from("domain-from");
+        let to_domain = PseudonymizationDomain::from("domain-to");
 
         let (from_attr_public, from_attr_secret) =
             make_attribute_session_keys(&attr_global_secret, &from_session, &enc_secret);
@@ -183,15 +214,30 @@ mod tests {
 
         let encrypted = pep_value.encrypt(&from_keys, &mut rng);
         let transcrypted = encrypted.transcrypt(&transcryption_info);
+
         let decrypted = transcrypted.decrypt(&to_keys).unwrap();
 
-        let expected = json!({
-            "id": "user@example.com",
-            "name": "Alice",
-            "age": 30
-        });
+        // Verify the pseudonym changed (as hex representation)
+        let pseudonym_hex = decrypted["id"].as_str().unwrap();
 
-        assert_eq!(expected, decrypted);
+        // The pseudonym is deterministic based on:
+        // - Original value: "user@example.com"
+        // - From domain: "domain-from"
+        // - To domain: "domain-to"
+        // - Pseudonymization secret: "pseudo-secret"
+        assert_eq!(
+            pseudonym_hex,
+            "cec249944578c90ade517b34327e5210b479dbf3efaf5b0cf1d9f559f8f42b788e10050b9fa3dbe245f6843d8eb03e38c1d368914b0a89c7323adca4860f0a48",
+            "Pseudonym should be deterministic and match expected value"
+        );
+        assert_ne!(
+            pseudonym_hex, "user@example.com",
+            "Pseudonym should be different after transcryption to different domain"
+        );
+
+        // Verify regular attributes remain the same
+        assert_eq!(decrypted["name"], "Alice");
+        assert_eq!(decrypted["age"], 30);
     }
 
     #[test]
@@ -232,7 +278,16 @@ mod tests {
             })
             .collect();
 
-        let transcrypted = transcrypt_batch(values, &transcryption_info, &mut rng);
+        // Decrypt values before transcryption to get original pseudonym values
+        let original_pseudonyms: Vec<String> = values
+            .iter()
+            .map(|v| {
+                let decrypted = v.decrypt(&from_keys).unwrap();
+                decrypted["id"].as_str().unwrap().to_string()
+            })
+            .collect();
+
+        let transcrypted = transcrypt_json_batch(values, &transcryption_info, &mut rng).unwrap();
 
         // Verify all values are present (but possibly in different order)
         assert_eq!(transcrypted.len(), 10);
@@ -247,7 +302,12 @@ mod tests {
         decrypted.sort_by_key(|v| v["index"].as_i64().unwrap());
 
         for (i, v) in decrypted.iter().enumerate() {
-            assert_eq!(v["id"], format!("user{}@example.com", i));
+            // Verify the pseudonym value changed after transcryption to different domain
+            let pseudonym_after = v["id"].as_str().unwrap();
+            assert_ne!(
+                &original_pseudonyms[i], pseudonym_after,
+                "Pseudonym should be different after transcryption to different domain"
+            );
             assert_eq!(v["index"], i as i64);
         }
     }

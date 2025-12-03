@@ -70,14 +70,18 @@ pub fn py_rekey_long_attribute_batch(
 /// Batch transcryption of long encrypted data.
 /// Each item contains a list of long encrypted pseudonyms and a list of long encrypted attributes.
 /// The order of the items is randomly shuffled to avoid linking them.
+///
+/// # Errors
+///
+/// Raises a ValueError if the encrypted data do not all have the same structure.
 #[pyfunction]
 #[pyo3(name = "transcrypt_long_batch")]
 pub fn py_transcrypt_long_batch(
     encrypted: Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)>,
     transcryption_info: &PyTranscryptionInfo,
-) -> Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)> {
+) -> PyResult<Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)>> {
     let mut rng = rand::rng();
-    let mut enc: Box<[LongEncryptedData]> = encrypted
+    let enc: Vec<LongEncryptedData> = encrypted
         .into_iter()
         .map(|(ps, attrs)| {
             (
@@ -87,8 +91,9 @@ pub fn py_transcrypt_long_batch(
         })
         .collect();
     let info = TranscryptionInfo::from(transcryption_info);
-    transcrypt_long_batch(&mut enc, &info, &mut rng)
-        .into_vec()
+    let result = transcrypt_long_batch(enc, &info, &mut rng)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+    Ok(result
         .into_iter()
         .map(|(ps, attrs)| {
             (
@@ -96,7 +101,7 @@ pub fn py_transcrypt_long_batch(
                 attrs.into_iter().map(PyLongEncryptedAttribute).collect(),
             )
         })
-        .collect()
+        .collect())
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

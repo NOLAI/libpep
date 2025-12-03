@@ -101,13 +101,17 @@ impl WASMLongEncryptedDataPair {
 /// Batch transcryption of long encrypted data.
 /// Each item contains a list of long encrypted pseudonyms and a list of long encrypted attributes.
 /// The order of the items is randomly shuffled to avoid linking them.
+///
+/// # Errors
+///
+/// Throws an error if the encrypted data do not all have the same structure.
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
     encrypted: Vec<WASMLongEncryptedDataPair>,
     transcryption_info: &WASMTranscryptionInfo,
-) -> Vec<WASMLongEncryptedDataPair> {
+) -> Result<Vec<WASMLongEncryptedDataPair>, JsValue> {
     let mut rng = rand::rng();
-    let mut enc: Box<[LongEncryptedData]> = encrypted
+    let enc: Vec<LongEncryptedData> = encrypted
         .into_iter()
         .map(|pair| {
             (
@@ -120,12 +124,12 @@ pub fn wasm_transcrypt_long_batch(
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
     };
-    transcrypt_long_batch(&mut enc, &info, &mut rng)
-        .into_vec()
+    let result = transcrypt_long_batch(enc, &info, &mut rng).map_err(|e| JsValue::from_str(&e))?;
+    Ok(result
         .into_iter()
         .map(|(ps, attrs)| WASMLongEncryptedDataPair {
             pseudonyms: ps.into_iter().map(WASMLongEncryptedPseudonym).collect(),
             attributes: attrs.into_iter().map(WASMLongEncryptedAttribute).collect(),
         })
-        .collect()
+        .collect())
 }

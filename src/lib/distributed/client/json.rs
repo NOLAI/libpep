@@ -1,6 +1,6 @@
 //! JSON operations for distributed PEP clients.
 
-use crate::core::json::core::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
+use crate::core::json::data::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
 use crate::distributed::client::core::PEPClient;
 use rand_core::{CryptoRng, RngCore};
 use serde_json::Value;

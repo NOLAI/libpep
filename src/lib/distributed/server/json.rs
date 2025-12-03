@@ -1,6 +1,6 @@
 //! JSON operations for distributed PEP systems.
 
-use crate::core::json::core::EncryptedPEPJSONValue;
+use crate::core::json::data::EncryptedPEPJSONValue;
 use crate::core::transcryption::contexts::TranscryptionInfo;
 use crate::distributed::server::core::PEPSystem;
 use rand_core::{CryptoRng, RngCore};
@@ -15,7 +15,7 @@ impl PEPSystem {
         encrypted: &EncryptedPEPJSONValue,
         transcryption_info: &TranscryptionInfo,
     ) -> EncryptedPEPJSONValue {
-        encrypted.transcrypt(transcryption_info)
+        crate::core::json::transcryption::transcrypt_json(encrypted, transcryption_info)
     }
 
     #[cfg(feature = "batch")]
@@ -23,12 +23,16 @@ impl PEPSystem {
     ///
     /// This is useful for unlinkability - the shuffled order prevents correlation
     /// between input and output based on position.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the values do not all have the same structure.
     pub fn transcrypt_json_batch<R: RngCore + CryptoRng>(
         &self,
         values: Vec<EncryptedPEPJSONValue>,
         transcryption_info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Vec<EncryptedPEPJSONValue> {
-        crate::core::json::transcryption::transcrypt_batch(values, transcryption_info, rng)
+    ) -> Result<Vec<EncryptedPEPJSONValue>, String> {
+        crate::core::json::transcryption::transcrypt_json_batch(values, transcryption_info, rng)
     }
 }

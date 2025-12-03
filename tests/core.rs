@@ -167,7 +167,8 @@ fn test_batch() {
         data.push((pseudonyms, attributes));
     }
 
-    let _transcrypted = transcrypt_batch(&mut data.into_boxed_slice(), &transcryption_info, rng);
+    let _transcrypted = transcrypt_batch(data, &transcryption_info, rng)
+        .expect("Batch transcryption should succeed");
 
     // TODO check that the batch is indeed shuffled
 }
@@ -301,8 +302,8 @@ fn test_batch_long() {
         })
         .collect();
 
-    let transcrypted =
-        transcrypt_long_batch(&mut data.into_boxed_slice(), &transcryption_info, rng);
+    let transcrypted = transcrypt_long_batch(data, &transcryption_info, rng)
+        .expect("Batch transcryption should succeed");
     assert_eq!(transcrypted.len(), 3);
 
     // Verify each entity has one pseudonym and one attribute

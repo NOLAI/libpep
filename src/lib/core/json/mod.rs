@@ -5,11 +5,11 @@
 //! or LongAttributes, and optionally as Pseudonyms using `Pseudonym` variant.
 
 pub mod builder;
-pub mod core;
+pub mod data;
 pub mod macros;
 pub mod structure;
 pub mod transcryption;
-mod utils;
+pub(crate) mod utils;
 
 #[cfg(feature = "python")]
 pub mod py;

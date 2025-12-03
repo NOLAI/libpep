@@ -58,13 +58,17 @@ impl PEPSystem {
     /// pseudonymization domain and session to another, using [`TranscryptionInfo`].
     /// The order of the pairs (entities) is randomly shuffled to avoid linking them, but the internal
     /// order of pseudonyms and attributes for the same entity is preserved.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the encrypted data do not all have the same structure.
     #[cfg(feature = "batch")]
     pub fn transcrypt_long_batch<R: RngCore + CryptoRng>(
         &self,
-        encrypted: &mut Box<[LongEncryptedData]>,
+        encrypted: Vec<LongEncryptedData>,
         transcryption_info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Box<[LongEncryptedData]> {
+    ) -> Result<Vec<LongEncryptedData>, String> {
         transcrypt_long_batch(encrypted, transcryption_info, rng)
     }
 }
