@@ -10,3 +10,9 @@ pub mod macros;
 pub mod structure;
 pub mod transcryption;
 mod utils;
+
+#[cfg(feature = "python")]
+pub mod py;
+
+#[cfg(feature = "wasm")]
+pub mod wasm;

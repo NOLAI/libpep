@@ -24,7 +24,7 @@ legacy = ["elgamal3", "global"] # For compatibility with the legacy PEP reposito
 insecure = [] # Enable insecure methods that typically should not be used in production
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
-wasm = ["wasm-bindgen", "js-sys", "getrandom/wasm_js"] # For building WebAssembly bindings via wasm-bindgen
+wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys", "getrandom/wasm_js"] # For building WebAssembly bindings via wasm-bindgen
 python = ["pyo3"] # For building Python bindings via PyO3
 # Note: python and wasm are mutually exclusive and should not be enabled together.
 # PyO3 builds a cdylib that links to the Python interpreter, while wasm-bindgen builds
@@ -51,6 +51,7 @@ base64 = "^0.22"
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
 js-sys = { version = "0.3", optional = true }
 getrandom = { version = "0.3", optional = true }
 pyo3 = { version = "0.27", features = ["extension-module"], optional = true }

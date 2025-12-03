@@ -15,5 +15,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     keys::register(m)?;
     #[cfg(feature = "global")]
     global::register(m)?;
+    #[cfg(feature = "json")]
+    super::json::py::register(m)?;
     Ok(())
 }

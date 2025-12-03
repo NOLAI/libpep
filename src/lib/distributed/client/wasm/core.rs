@@ -232,4 +232,51 @@ impl WASMOfflinePEPClient {
         let mut rng = rand::rng();
         WASMLongEncryptedAttribute::from(self.encrypt_long_attribute(&message.0, &mut rng))
     }
+
+    /// Encrypt a PEPJSONValue into an EncryptedPEPJSONValue.
+    ///
+    /// # Arguments
+    ///
+    /// * `pep_value` - The unencrypted PEPJSONValue to encrypt
+    ///
+    /// # Returns
+    ///
+    /// An EncryptedPEPJSONValue
+    #[cfg(feature = "json")]
+    #[wasm_bindgen(js_name = encryptJSON)]
+    pub fn encrypt_json(
+        &self,
+        pep_value: &crate::core::json::wasm::WASMPEPJSONValue,
+    ) -> crate::core::json::wasm::WASMEncryptedPEPJSONValue {
+        use std::ops::Deref;
+        let mut rng = rand::rng();
+        let encrypted = self.deref().encrypt_json(&pep_value.0, &mut rng);
+        crate::core::json::wasm::WASMEncryptedPEPJSONValue(encrypted)
+    }
+
+    /// Decrypt an EncryptedPEPJSONValue back to a regular JavaScript value.
+    ///
+    /// # Arguments
+    ///
+    /// * `encrypted` - The EncryptedPEPJSONValue to decrypt
+    ///
+    /// # Returns
+    ///
+    /// A JavaScript value (object, array, string, number, boolean, or null)
+    #[cfg(feature = "json")]
+    #[wasm_bindgen(js_name = decryptJSON)]
+    pub fn decrypt_json(
+        &self,
+        encrypted: &crate::core::json::wasm::WASMEncryptedPEPJSONValue,
+    ) -> Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {
+        use std::ops::Deref;
+        let decrypted = self
+            .deref()
+            .decrypt_json(&encrypted.0)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("Decryption failed: {}", e)))?;
+
+        serde_wasm_bindgen::to_value(&decrypted).map_err(|e| {
+            wasm_bindgen::JsValue::from_str(&format!("Failed to convert to JS: {}", e))
+        })
+    }
 }

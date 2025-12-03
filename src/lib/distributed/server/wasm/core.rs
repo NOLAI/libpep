@@ -282,4 +282,57 @@ impl WASMPEPSystem {
             .map(WASMLongEncryptedPseudonym::from)
             .collect()
     }
+
+    /// Transcrypt an EncryptedPEPJSONValue from one context to another.
+    ///
+    /// # Arguments
+    ///
+    /// * `encrypted` - The EncryptedPEPJSONValue to transcrypt
+    /// * `transcryption_info` - The transcryption information
+    ///
+    /// # Returns
+    ///
+    /// A transcrypted EncryptedPEPJSONValue
+    #[cfg(feature = "json")]
+    #[wasm_bindgen(js_name = transcryptJSON)]
+    pub fn transcrypt_json(
+        &self,
+        encrypted: &crate::core::json::wasm::WASMEncryptedPEPJSONValue,
+        transcryption_info: &crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo,
+    ) -> crate::core::json::wasm::WASMEncryptedPEPJSONValue {
+        use std::ops::Deref;
+        let transcrypted = self
+            .deref()
+            .transcrypt_json(&encrypted.0, &transcryption_info.0);
+        crate::core::json::wasm::WASMEncryptedPEPJSONValue(transcrypted)
+    }
+
+    /// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
+    ///
+    /// # Arguments
+    ///
+    /// * `values` - Array of EncryptedPEPJSONValue objects
+    /// * `transcryption_info` - The transcryption information
+    ///
+    /// # Returns
+    ///
+    /// A shuffled array of transcrypted EncryptedPEPJSONValue objects
+    #[cfg(all(feature = "json", feature = "batch"))]
+    #[wasm_bindgen(js_name = transcryptJSONBatch)]
+    pub fn transcrypt_json_batch(
+        &self,
+        values: Vec<crate::core::json::wasm::WASMEncryptedPEPJSONValue>,
+        transcryption_info: &crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo,
+    ) -> Vec<crate::core::json::wasm::WASMEncryptedPEPJSONValue> {
+        use std::ops::Deref;
+        let mut rng = rand::rng();
+        let rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();
+        let transcrypted =
+            self.deref()
+                .transcrypt_json_batch(rust_values, &transcryption_info.0, &mut rng);
+        transcrypted
+            .into_iter()
+            .map(crate::core::json::wasm::WASMEncryptedPEPJSONValue)
+            .collect()
+    }
 }

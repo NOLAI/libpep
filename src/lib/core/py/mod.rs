@@ -36,5 +36,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     super::transcryption::py::register_module(m)?;
     #[cfg(feature = "long")]
     super::long::py::register_module(m)?;
+    #[cfg(feature = "json")]
+    super::json::py::register(m)?;
     Ok(())
 }

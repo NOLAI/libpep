@@ -203,6 +203,44 @@ impl PyPEPClient {
     fn py_decrypt_long_data(&self, encrypted: &PyLongEncryptedAttribute) -> PyLongAttribute {
         PyLongAttribute::from(self.decrypt_long_attribute(&encrypted.0))
     }
+
+    /// Encrypt a PEPJSONValue into an EncryptedPEPJSONValue.
+    ///
+    /// Args:
+    ///     pep_value: The unencrypted PEPJSONValue to encrypt
+    ///
+    /// Returns:
+    ///     An EncryptedPEPJSONValue
+    #[cfg(feature = "json")]
+    #[pyo3(name = "encrypt_json")]
+    fn encrypt_json(
+        &self,
+        pep_value: &crate::core::json::py::PyPEPJSONValue,
+    ) -> crate::core::json::py::PyEncryptedPEPJSONValue {
+        let mut rng = rand::rng();
+        let encrypted = self.0.encrypt_json(&pep_value.0, &mut rng);
+        crate::core::json::py::PyEncryptedPEPJSONValue(encrypted)
+    }
+
+    /// Decrypt an EncryptedPEPJSONValue back to a regular Python object.
+    ///
+    /// Args:
+    ///     encrypted: The EncryptedPEPJSONValue to decrypt
+    ///
+    /// Returns:
+    ///     A Python object (dict, list, str, int, float, bool, or None)
+    #[cfg(feature = "json")]
+    #[pyo3(name = "decrypt_json")]
+    fn decrypt_json(
+        &self,
+        encrypted: &crate::core::json::py::PyEncryptedPEPJSONValue,
+    ) -> PyResult<Py<PyAny>> {
+        let decrypted = self.0.decrypt_json(&encrypted.0).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Decryption failed: {}", e))
+        })?;
+
+        Python::with_gil(|py| crate::core::json::py::json_to_python(py, &decrypted))
+    }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

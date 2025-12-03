@@ -251,6 +251,57 @@ impl PyPEPSystem {
             .map(PyLongEncryptedPseudonym::from)
             .collect()
     }
+
+    /// Transcrypt an EncryptedPEPJSONValue from one context to another.
+    ///
+    /// Args:
+    ///     encrypted: The EncryptedPEPJSONValue to transcrypt
+    ///     transcryption_info: The transcryption information
+    ///
+    /// Returns:
+    ///     A transcrypted EncryptedPEPJSONValue
+    #[cfg(feature = "json")]
+    #[pyo3(name = "transcrypt_json")]
+    fn transcrypt_json(
+        &self,
+        encrypted: &crate::core::json::py::PyEncryptedPEPJSONValue,
+        transcryption_info: &crate::core::transcryption::py::contexts::PyTranscryptionInfo,
+    ) -> crate::core::json::py::PyEncryptedPEPJSONValue {
+        use crate::core::transcryption::contexts::TranscryptionInfo;
+        let transcrypted = self
+            .0
+            .transcrypt_json(&encrypted.0, &TranscryptionInfo::from(transcryption_info));
+        crate::core::json::py::PyEncryptedPEPJSONValue(transcrypted)
+    }
+
+    /// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
+    ///
+    /// Args:
+    ///     values: List of EncryptedPEPJSONValue objects
+    ///     transcryption_info: The transcryption information
+    ///
+    /// Returns:
+    ///     A shuffled list of transcrypted EncryptedPEPJSONValue objects
+    #[cfg(all(feature = "json", feature = "batch"))]
+    #[pyo3(name = "transcrypt_json_batch")]
+    fn transcrypt_json_batch(
+        &self,
+        values: Vec<crate::core::json::py::PyEncryptedPEPJSONValue>,
+        transcryption_info: &crate::core::transcryption::py::contexts::PyTranscryptionInfo,
+    ) -> Vec<crate::core::json::py::PyEncryptedPEPJSONValue> {
+        use crate::core::transcryption::contexts::TranscryptionInfo;
+        let mut rng = rand::rng();
+        let rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();
+        let transcrypted = self.0.transcrypt_json_batch(
+            rust_values,
+            &TranscryptionInfo::from(transcryption_info),
+            &mut rng,
+        );
+        transcrypted
+            .into_iter()
+            .map(crate::core::json::py::PyEncryptedPEPJSONValue)
+            .collect()
+    }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

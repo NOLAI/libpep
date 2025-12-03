@@ -21,5 +21,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     core::register(m)?;
     keys::register(m)?;
     setup::register(m)?;
+    #[cfg(feature = "json")]
+    super::json::py::register(m)?;
     Ok(())
 }
