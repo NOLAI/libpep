@@ -1,4 +1,4 @@
-use super::super::core::PEPClient;
+use super::super::client::PEPClient;
 use super::super::offline::OfflinePEPClient;
 use super::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,

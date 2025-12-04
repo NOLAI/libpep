@@ -19,7 +19,7 @@ use crate::core::long::data::LongPseudonym;
 ///     .build();
 ///
 /// // Then encrypt it
-/// let encrypted = pep_value.encrypt(&keys, &mut rng);
+/// let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
 /// ```
 pub struct PEPJSONBuilder {
     fields: HashMap<String, PEPJSONValue>,
@@ -111,6 +111,7 @@ impl Default for PEPJSONBuilder {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::core::json::data::{decrypt_json, encrypt_json};
     use crate::core::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,
@@ -155,8 +156,8 @@ mod tests {
             .attribute("scores", json!([88, 91, 85]))
             .build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id": "user1@example.com",
@@ -175,8 +176,8 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::new().build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(json!({}), decrypted.to_value().unwrap());
     }
@@ -191,8 +192,8 @@ mod tests {
             .attribute("age", json!(30))
             .build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "name": "Alice",
@@ -212,8 +213,8 @@ mod tests {
             .pseudonym("id2", "user2@example.com")
             .build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id1": "user1@example.com",
@@ -237,8 +238,8 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::from_json(&data, &["id"]).unwrap().build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(data, decrypted.to_value().unwrap());
     }
@@ -259,8 +260,8 @@ mod tests {
             .unwrap()
             .build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(data, decrypted.to_value().unwrap());
     }
@@ -278,8 +279,8 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::from_json(&data, &[]).unwrap().build();
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(data, decrypted.to_value().unwrap());
     }

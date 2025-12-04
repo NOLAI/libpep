@@ -17,6 +17,7 @@ from libpep.core.transcryption.contexts import (
     PseudonymizationInfo,
 )
 from libpep.core.json.builder import PEPJSONBuilder
+from libpep.core.json import encrypt_json, decrypt_json
 
 
 class TestJSONTranscryption(unittest.TestCase):
@@ -45,10 +46,10 @@ class TestJSONTranscryption(unittest.TestCase):
         patient_record = PEPJSONBuilder.from_json(patient_data, ["user_id"]).build()
 
         # Encrypt
-        encrypted = patient_record.encrypt(session_keys)
+        encrypted = encrypt_json(patient_record, session_keys)
 
         # Decrypt to verify original
-        decrypted_original = encrypted.decrypt(session_keys)
+        decrypted_original = decrypt_json(encrypted, session_keys)
         json_original = decrypted_original.to_json()
         self.assertEqual(json_original["user_id"], "user-67890")
         self.assertEqual(json_original["name"], "Alice")
@@ -68,7 +69,7 @@ class TestJSONTranscryption(unittest.TestCase):
         )
 
         # Decrypt transcrypted data
-        decrypted_transcrypted = transcrypted.decrypt(session_keys)
+        decrypted_transcrypted = decrypt_json(transcrypted, session_keys)
         json_transcrypted = decrypted_transcrypted.to_json()
 
         # Attributes should remain the same, but pseudonym should be different
@@ -109,8 +110,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         record2 = PEPJSONBuilder.from_json(data2, ["patient_id"]).build()
 
         # Encrypt both records
-        encrypted1 = record1.encrypt(session_keys)
-        encrypted2 = record2.encrypt(session_keys)
+        encrypted1 = encrypt_json(record1, session_keys)
+        encrypted2 = encrypt_json(record2, session_keys)
 
         # Verify they have the same structure
         structure1 = encrypted1.structure()
@@ -143,7 +144,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
         # Decrypt all transcrypted values
         decrypted_batch = [
-            v.decrypt(session_keys).to_json() for v in transcrypted_batch
+            decrypt_json(v, session_keys).to_json() for v in transcrypted_batch
         ]
 
         # Sort by temperature to have a consistent order (Cold=37.2, Flu=38.5)
@@ -193,8 +194,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         record2 = PEPJSONBuilder.from_json(data2, ["user_id"]).build()
 
         # Encrypt both records
-        encrypted1 = record1.encrypt(session_keys)
-        encrypted2 = record2.encrypt(session_keys)
+        encrypted1 = encrypt_json(record1, session_keys)
+        encrypted2 = encrypt_json(record2, session_keys)
 
         # Verify they have different structures
         structure1 = encrypted1.structure()

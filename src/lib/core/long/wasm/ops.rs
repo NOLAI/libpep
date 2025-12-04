@@ -1,7 +1,8 @@
 use super::data::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
-use crate::core::long::ops::{
-    pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym, rerandomize_long_attribute,
-    rerandomize_long_pseudonym, transcrypt_long_attribute, transcrypt_long_pseudonym,
+use crate::core::long::rerandomize::{rerandomize_long_attribute, rerandomize_long_pseudonym};
+use crate::core::long::transcryption::{
+    pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym, transcrypt_long_attribute,
+    transcrypt_long_pseudonym,
 };
 use crate::core::transcryption::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,

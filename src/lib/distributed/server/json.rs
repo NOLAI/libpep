@@ -2,7 +2,7 @@
 
 use crate::core::json::data::EncryptedPEPJSONValue;
 use crate::core::transcryption::contexts::TranscryptionInfo;
-use crate::distributed::server::core::PEPSystem;
+use crate::distributed::server::transcryptor::PEPSystem;
 use rand_core::{CryptoRng, RngCore};
 
 impl PEPSystem {

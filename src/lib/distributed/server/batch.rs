@@ -3,7 +3,7 @@
 use crate::core::data::*;
 use crate::core::transcryption::batch::*;
 use crate::core::transcryption::contexts::*;
-use crate::distributed::server::core::PEPSystem;
+use crate::distributed::server::transcryptor::PEPSystem;
 use rand_core::{CryptoRng, RngCore};
 
 impl PEPSystem {

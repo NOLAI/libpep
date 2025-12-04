@@ -8,18 +8,13 @@ use crate::core::data::{Encryptable, Encrypted};
 #[allow(unused_imports)]
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 #[cfg(not(feature = "elgamal3"))]
+#[allow(unused_imports)]
 use crate::core::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 #[allow(unused_imports)]
 use crate::core::offline::decrypt_global;
 use crate::core::rerandomize::rerandomize_known;
-use crate::core::transcryption::contexts::{
-    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
-    TranscryptionInfo,
-};
-use crate::core::transcryption::ops::{
-    pseudonymize, rekey_attribute, rekey_pseudonym, transcrypt_attribute, transcrypt_pseudonym,
-};
+use crate::core::transcryption::contexts::RerandomizeFactor;
 use rand_core::{CryptoRng, RngCore};
 
 /// Rerandomize a long encrypted message, i.e. create a binary unlinkable copy of the same message.
@@ -146,74 +141,4 @@ pub fn rerandomize_long_attribute<R: RngCore + CryptoRng>(
     rng: &mut R,
 ) -> LongEncryptedAttribute {
     rerandomize_long(encrypted, public_key, rng)
-}
-
-/// Pseudonymize a long encrypted pseudonym from one pseudonymization and encryption context to another.
-/// Applies pseudonymization to each block independently.
-pub fn pseudonymize_long(
-    encrypted: &LongEncryptedPseudonym,
-    pseudonymization_info: &PseudonymizationInfo,
-) -> LongEncryptedPseudonym {
-    let pseudonymized = encrypted
-        .0
-        .iter()
-        .map(|block| pseudonymize(block, pseudonymization_info))
-        .collect();
-    LongEncryptedPseudonym(pseudonymized)
-}
-
-/// Rekey a long encrypted pseudonym from one encryption context to another.
-/// Applies rekeying to each block independently.
-pub fn rekey_long_pseudonym(
-    encrypted: &LongEncryptedPseudonym,
-    rekey_info: &PseudonymRekeyInfo,
-) -> LongEncryptedPseudonym {
-    let rekeyed = encrypted
-        .0
-        .iter()
-        .map(|block| rekey_pseudonym(block, rekey_info))
-        .collect();
-    LongEncryptedPseudonym(rekeyed)
-}
-
-/// Rekey a long encrypted attribute from one encryption context to another.
-/// Applies rekeying to each block independently.
-pub fn rekey_long_attribute(
-    encrypted: &LongEncryptedAttribute,
-    rekey_info: &AttributeRekeyInfo,
-) -> LongEncryptedAttribute {
-    let rekeyed = encrypted
-        .0
-        .iter()
-        .map(|block| rekey_attribute(block, rekey_info))
-        .collect();
-    LongEncryptedAttribute(rekeyed)
-}
-
-/// Transcrypt a long encrypted pseudonym from one pseudonymization and encryption context to another.
-/// Applies transcryption to each block independently.
-pub fn transcrypt_long_pseudonym(
-    encrypted: &LongEncryptedPseudonym,
-    transcryption_info: &TranscryptionInfo,
-) -> LongEncryptedPseudonym {
-    let transcrypted = encrypted
-        .0
-        .iter()
-        .map(|block| transcrypt_pseudonym(block, transcryption_info))
-        .collect();
-    LongEncryptedPseudonym(transcrypted)
-}
-
-/// Transcrypt a long encrypted attribute from one encryption context to another.
-/// Applies transcryption to each block independently.
-pub fn transcrypt_long_attribute(
-    encrypted: &LongEncryptedAttribute,
-    transcryption_info: &TranscryptionInfo,
-) -> LongEncryptedAttribute {
-    let transcrypted = encrypted
-        .0
-        .iter()
-        .map(|block| transcrypt_attribute(block, transcryption_info))
-        .collect();
-    LongEncryptedAttribute(transcrypted)
 }

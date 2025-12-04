@@ -201,66 +201,110 @@ impl PEPJSONValue {
     }
 }
 
-impl EncryptedPEPJSONValue {
-    /// Decrypt an EncryptedPEPJSONValue into a PEPJSONValue.
-    pub fn decrypt(&self, keys: &SessionKeys) -> Result<PEPJSONValue, JsonError> {
-        use crate::core::data::decrypt_attribute;
-
-        match self {
-            EncryptedPEPJSONValue::Null => Ok(PEPJSONValue::Null),
-            EncryptedPEPJSONValue::Bool(encrypted) => {
-                #[cfg(feature = "elgamal3")]
-                let decrypted = decrypt_attribute(encrypted, &keys.attribute.secret)
-                    .ok_or_else(|| "Failed to decrypt bool".to_string())?;
-                #[cfg(not(feature = "elgamal3"))]
-                let decrypted = decrypt_attribute(encrypted, &keys.attribute.secret);
-
-                Ok(PEPJSONValue::Bool(decrypted))
-            }
-            EncryptedPEPJSONValue::Number(encrypted) => {
-                #[cfg(feature = "elgamal3")]
-                let decrypted = decrypt_attribute(encrypted, &keys.attribute.secret)
-                    .ok_or_else(|| "Failed to decrypt number".to_string())?;
-                #[cfg(not(feature = "elgamal3"))]
-                let decrypted = decrypt_attribute(encrypted, &keys.attribute.secret);
-
-                Ok(PEPJSONValue::Number(decrypted))
-            }
-            EncryptedPEPJSONValue::String(encrypted) => {
-                #[cfg(feature = "elgamal3")]
-                let decrypted = decrypt_long_attribute(encrypted, &keys.attribute.secret)
-                    .ok_or_else(|| "Failed to decrypt string".to_string())?;
-                #[cfg(not(feature = "elgamal3"))]
-                let decrypted = decrypt_long_attribute(encrypted, &keys.attribute.secret);
-
-                Ok(PEPJSONValue::String(decrypted))
-            }
-            EncryptedPEPJSONValue::Pseudonym(encrypted) => {
-                #[cfg(feature = "elgamal3")]
-                let decrypted = decrypt_long_pseudonym(encrypted, &keys.pseudonym.secret)
-                    .ok_or_else(|| "Failed to decrypt pseudonym string".to_string())?;
-                #[cfg(not(feature = "elgamal3"))]
-                let decrypted = decrypt_long_pseudonym(encrypted, &keys.pseudonym.secret);
-
-                Ok(PEPJSONValue::Pseudonym(decrypted))
-            }
-            EncryptedPEPJSONValue::Array(arr) => {
-                let mut decrypted_arr = Vec::with_capacity(arr.len());
-                for item in arr {
-                    decrypted_arr.push(item.decrypt(keys)?);
-                }
-                Ok(PEPJSONValue::Array(decrypted_arr))
-            }
-            EncryptedPEPJSONValue::Object(obj) => {
-                let mut decrypted_obj = HashMap::with_capacity(obj.len());
-                for (key, val) in obj {
-                    decrypted_obj.insert(key.clone(), val.decrypt(keys)?);
-                }
-                Ok(PEPJSONValue::Object(decrypted_obj))
-            }
+/// Encrypt a PEPJSONValue into an EncryptedPEPJSONValue using session keys.
+pub fn encrypt_json<R: RngCore + CryptoRng>(
+    value: &PEPJSONValue,
+    keys: &SessionKeys,
+    rng: &mut R,
+) -> EncryptedPEPJSONValue {
+    match value {
+        PEPJSONValue::Null => EncryptedPEPJSONValue::Null,
+        PEPJSONValue::Bool(attr) => {
+            let encrypted = encrypt_attribute(attr, &keys.attribute.public, rng);
+            EncryptedPEPJSONValue::Bool(encrypted)
+        }
+        PEPJSONValue::Number(attr) => {
+            let encrypted = encrypt_attribute(attr, &keys.attribute.public, rng);
+            EncryptedPEPJSONValue::Number(encrypted)
+        }
+        PEPJSONValue::String(long_attr) => {
+            let encrypted = encrypt_long_attribute(long_attr, &keys.attribute.public, rng);
+            EncryptedPEPJSONValue::String(encrypted)
+        }
+        PEPJSONValue::Pseudonym(long_pseudo) => {
+            let encrypted = encrypt_long_pseudonym(long_pseudo, &keys.pseudonym.public, rng);
+            EncryptedPEPJSONValue::Pseudonym(encrypted)
+        }
+        PEPJSONValue::Array(arr) => {
+            let encrypted_arr = arr
+                .iter()
+                .map(|item| encrypt_json(item, keys, rng))
+                .collect();
+            EncryptedPEPJSONValue::Array(encrypted_arr)
+        }
+        PEPJSONValue::Object(obj) => {
+            let encrypted_obj = obj
+                .iter()
+                .map(|(key, val)| (key.clone(), encrypt_json(val, keys, rng)))
+                .collect();
+            EncryptedPEPJSONValue::Object(encrypted_obj)
         }
     }
 }
+
+/// Decrypt an EncryptedPEPJSONValue into a PEPJSONValue using session keys.
+pub fn decrypt_json(
+    encrypted: &EncryptedPEPJSONValue,
+    keys: &SessionKeys,
+) -> Result<PEPJSONValue, JsonError> {
+    use crate::core::data::decrypt_attribute;
+
+    match encrypted {
+        EncryptedPEPJSONValue::Null => Ok(PEPJSONValue::Null),
+        EncryptedPEPJSONValue::Bool(enc) => {
+            #[cfg(feature = "elgamal3")]
+            let decrypted = decrypt_attribute(enc, &keys.attribute.secret)
+                .ok_or_else(|| "Failed to decrypt bool".to_string())?;
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = decrypt_attribute(enc, &keys.attribute.secret);
+
+            Ok(PEPJSONValue::Bool(decrypted))
+        }
+        EncryptedPEPJSONValue::Number(enc) => {
+            #[cfg(feature = "elgamal3")]
+            let decrypted = decrypt_attribute(enc, &keys.attribute.secret)
+                .ok_or_else(|| "Failed to decrypt number".to_string())?;
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = decrypt_attribute(enc, &keys.attribute.secret);
+
+            Ok(PEPJSONValue::Number(decrypted))
+        }
+        EncryptedPEPJSONValue::String(enc) => {
+            #[cfg(feature = "elgamal3")]
+            let decrypted = decrypt_long_attribute(enc, &keys.attribute.secret)
+                .ok_or_else(|| "Failed to decrypt string".to_string())?;
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = decrypt_long_attribute(enc, &keys.attribute.secret);
+
+            Ok(PEPJSONValue::String(decrypted))
+        }
+        EncryptedPEPJSONValue::Pseudonym(enc) => {
+            #[cfg(feature = "elgamal3")]
+            let decrypted = decrypt_long_pseudonym(enc, &keys.pseudonym.secret)
+                .ok_or_else(|| "Failed to decrypt pseudonym string".to_string())?;
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = decrypt_long_pseudonym(enc, &keys.pseudonym.secret);
+
+            Ok(PEPJSONValue::Pseudonym(decrypted))
+        }
+        EncryptedPEPJSONValue::Array(arr) => {
+            let mut decrypted_arr = Vec::with_capacity(arr.len());
+            for item in arr {
+                decrypted_arr.push(decrypt_json(item, keys)?);
+            }
+            Ok(PEPJSONValue::Array(decrypted_arr))
+        }
+        EncryptedPEPJSONValue::Object(obj) => {
+            let mut decrypted_obj = HashMap::with_capacity(obj.len());
+            for (key, val) in obj {
+                decrypted_obj.insert(key.clone(), decrypt_json(val, keys)?);
+            }
+            Ok(PEPJSONValue::Object(decrypted_obj))
+        }
+    }
+}
+
+impl EncryptedPEPJSONValue {}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
@@ -305,8 +349,8 @@ mod tests {
 
         let value = json!(null);
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(value, decrypted.to_value().unwrap());
     }
@@ -319,8 +363,8 @@ mod tests {
         for b in [true, false] {
             let value = json!(b);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = pep_value.encrypt(&keys, &mut rng);
-            let decrypted = encrypted.decrypt(&keys).unwrap();
+            let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+            let decrypted = decrypt_json(&encrypted, &keys).unwrap();
             assert_eq!(value, decrypted.to_value().unwrap());
         }
     }
@@ -334,8 +378,8 @@ mod tests {
         for n in test_numbers {
             let value = json!(n);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = pep_value.encrypt(&keys, &mut rng);
-            let decrypted = encrypted.decrypt(&keys).unwrap();
+            let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+            let decrypted = decrypt_json(&encrypted, &keys).unwrap();
             assert_eq!(value, decrypted.to_value().unwrap());
         }
 
@@ -344,8 +388,8 @@ mod tests {
         for f in test_floats {
             let value = json!(f);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = pep_value.encrypt(&keys, &mut rng);
-            let decrypted = encrypted.decrypt(&keys).unwrap();
+            let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+            let decrypted = decrypt_json(&encrypted, &keys).unwrap();
             assert_eq!(value, decrypted.to_value().unwrap());
         }
     }
@@ -364,8 +408,8 @@ mod tests {
         for s in test_strings {
             let value = json!(s);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = pep_value.encrypt(&keys, &mut rng);
-            let decrypted = encrypted.decrypt(&keys).unwrap();
+            let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+            let decrypted = decrypt_json(&encrypted, &keys).unwrap();
             assert_eq!(value, decrypted.to_value().unwrap());
         }
     }
@@ -377,8 +421,8 @@ mod tests {
 
         let value = json!([true, 42, "hello", null]);
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(value, decrypted.to_value().unwrap());
     }
@@ -395,8 +439,8 @@ mod tests {
             "email": null
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(value, decrypted.to_value().unwrap());
     }
@@ -423,8 +467,8 @@ mod tests {
             }
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(value, decrypted.to_value().unwrap());
     }
@@ -438,8 +482,8 @@ mod tests {
         for s in test_strings {
             let value = json!(s);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = pep_value.encrypt(&keys, &mut rng);
-            let decrypted = encrypted.decrypt(&keys).unwrap();
+            let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+            let decrypted = decrypt_json(&encrypted, &keys).unwrap();
             assert_eq!(value, decrypted.to_value().unwrap());
         }
     }
@@ -455,13 +499,13 @@ mod tests {
             "number": 123
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
 
         let json_str = serde_json::to_string(&encrypted).expect("serialization should succeed");
         let deserialized: EncryptedPEPJSONValue =
             serde_json::from_str(&json_str).expect("deserialization should succeed");
 
-        let decrypted = deserialized.decrypt(&keys).unwrap();
+        let decrypted = decrypt_json(&deserialized, &keys).unwrap();
         assert_eq!(value, decrypted.to_value().unwrap());
     }
 
@@ -477,8 +521,8 @@ mod tests {
             "name": "Alice",
             "age": 30
         });
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id": "user-123",
@@ -515,8 +559,8 @@ mod tests {
             "verified": true,
             "scores": [88, 91, 85]
         });
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id": "user1@example.com",
@@ -545,14 +589,14 @@ mod tests {
         assert_ne!(pep_value1, pep_value3);
 
         // Test EncryptedPEPJSONValue equality (same plaintext encrypts to different ciphertexts)
-        let encrypted1 = pep_value1.encrypt(&keys, &mut rng);
-        let encrypted2 = pep_value1.encrypt(&keys, &mut rng);
+        let encrypted1 = encrypt_json(&pep_value1, &keys, &mut rng);
+        let encrypted2 = encrypt_json(&pep_value1, &keys, &mut rng);
         // Different encryptions of same plaintext should NOT be equal due to randomness
         assert_ne!(encrypted1, encrypted2);
 
         // Test that decrypted values are equal
-        let decrypted1 = encrypted1.decrypt(&keys).unwrap();
-        let decrypted2 = encrypted2.decrypt(&keys).unwrap();
+        let decrypted1 = decrypt_json(&encrypted1, &keys).unwrap();
+        let decrypted2 = decrypt_json(&encrypted2, &keys).unwrap();
         assert_eq!(decrypted1, decrypted2);
     }
 }

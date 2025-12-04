@@ -3,8 +3,8 @@
 use libpep::core::data::*;
 use libpep::core::transcryption::contexts::*;
 use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::distributed::client::core::PEPClient;
-use libpep::distributed::server::core::PEPSystem;
+use libpep::distributed::client::client::PEPClient;
+use libpep::distributed::server::transcryptor::PEPSystem;
 
 #[test]
 fn n_pep() {

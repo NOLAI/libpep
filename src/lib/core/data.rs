@@ -229,34 +229,34 @@ impl Encryptable for Attribute {
 /// This trait is implemented by both single-block types (Pseudonym, Attribute)
 /// and multi-block types (LongPseudonym, LongAttribute).
 pub trait HasSessionKeys {
-    type SessionPublicKey: crate::core::keys::PublicKey;
-    type SessionSecretKey: crate::core::keys::SecretKey;
+    type SessionPublicKey: PublicKey;
+    type SessionSecretKey: SecretKey;
 }
 
 /// Trait that associates an encryptable type with its corresponding global key types.
 pub trait HasGlobalKeys: Encryptable {
-    type GlobalPublicKey: crate::core::keys::PublicKey;
-    type GlobalSecretKey: crate::core::keys::SecretKey;
+    type GlobalPublicKey: PublicKey;
+    type GlobalSecretKey: SecretKey;
 }
 
 impl HasSessionKeys for Pseudonym {
-    type SessionPublicKey = crate::core::keys::PseudonymSessionPublicKey;
-    type SessionSecretKey = crate::core::keys::PseudonymSessionSecretKey;
+    type SessionPublicKey = PseudonymSessionPublicKey;
+    type SessionSecretKey = PseudonymSessionSecretKey;
 }
 
 impl HasSessionKeys for Attribute {
-    type SessionPublicKey = crate::core::keys::AttributeSessionPublicKey;
-    type SessionSecretKey = crate::core::keys::AttributeSessionSecretKey;
+    type SessionPublicKey = AttributeSessionPublicKey;
+    type SessionSecretKey = AttributeSessionSecretKey;
 }
 
 impl HasGlobalKeys for Pseudonym {
-    type GlobalPublicKey = crate::core::keys::PseudonymGlobalPublicKey;
-    type GlobalSecretKey = crate::core::keys::PseudonymGlobalSecretKey;
+    type GlobalPublicKey = PseudonymGlobalPublicKey;
+    type GlobalSecretKey = PseudonymGlobalSecretKey;
 }
 
 impl HasGlobalKeys for Attribute {
-    type GlobalPublicKey = crate::core::keys::AttributeGlobalPublicKey;
-    type GlobalSecretKey = crate::core::keys::AttributeGlobalSecretKey;
+    type GlobalPublicKey = AttributeGlobalPublicKey;
+    type GlobalSecretKey = AttributeGlobalSecretKey;
 }
 
 impl Encrypted for EncryptedPseudonym {

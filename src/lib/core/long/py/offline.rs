@@ -57,7 +57,7 @@ pub fn py_decrypt_long_pseudonym_global(
         &encrypted.0,
         &PseudonymGlobalSecretKey::from(secret_key.0 .0),
     )
-    .map(|x| PyLongPseudonym(x))
+    .map(PyLongPseudonym)
 }
 
 /// Decrypt a long encrypted pseudonym using a global pseudonym secret key.
@@ -88,7 +88,7 @@ pub fn py_decrypt_long_attribute_global(
         &encrypted.0,
         &AttributeGlobalSecretKey::from(secret_key.0 .0),
     )
-    .map(|x| PyLongAttribute(x))
+    .map(PyLongAttribute)
 }
 
 /// Decrypt a long encrypted attribute using a global attribute secret key.

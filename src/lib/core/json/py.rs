@@ -1,10 +1,20 @@
 //! Python bindings for PEP JSON encryption.
 
 use crate::core::json::builder::PEPJSONBuilder;
-use crate::core::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
+use crate::core::json::data::{decrypt_json, encrypt_json, EncryptedPEPJSONValue, PEPJSONValue};
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::core::json::offline::decrypt_json_global;
+#[cfg(feature = "offline")]
+use crate::core::json::offline::encrypt_json_global;
 use crate::core::json::structure::JSONStructure;
 use crate::core::json::transcryption::transcrypt_json_batch;
-use crate::core::keys::SessionKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::core::keys::GlobalSecretKeys;
+use crate::core::keys::{GlobalPublicKeys, SessionKeys};
+#[cfg(feature = "offline")]
+use crate::core::py::keys::PyGlobalPublicKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::core::py::keys::PyGlobalSecretKeys;
 use crate::core::py::keys::{PyEncryptionSecret, PyPseudonymizationSecret, PySessionKeys};
 use crate::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
@@ -51,21 +61,6 @@ impl PyPEPJSONValue {
             .map_err(|e| PyValueError::new_err(format!("Conversion failed: {}", e)))?;
         Python::attach(|py| json_to_python(py, &json_value))
     }
-
-    /// Encrypt this PEPJSONValue into an EncryptedPEPJSONValue.
-    ///
-    /// Args:
-    ///     session_keys: Session keys containing both public and secret keys
-    ///
-    /// Returns:
-    ///     An EncryptedPEPJSONValue
-    #[pyo3(name = "encrypt")]
-    fn encrypt(&self, session_keys: &PySessionKeys) -> PyResult<PyEncryptedPEPJSONValue> {
-        let mut rng = rand::rng();
-        let keys: SessionKeys = session_keys.clone().into();
-        let encrypted = self.0.encrypt(&keys, &mut rng);
-        Ok(PyEncryptedPEPJSONValue(encrypted))
-    }
 }
 
 /// An encrypted PEP JSON value.
@@ -77,24 +72,6 @@ pub struct PyEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
 #[pymethods]
 impl PyEncryptedPEPJSONValue {
-    /// Decrypt this EncryptedPEPJSONValue back into a PEPJSONValue.
-    ///
-    /// Args:
-    ///     session_keys: Session keys containing both public and secret keys
-    ///
-    /// Returns:
-    ///     A PEPJSONValue
-    #[pyo3(name = "decrypt")]
-    fn decrypt(&self, session_keys: &PySessionKeys) -> PyResult<PyPEPJSONValue> {
-        let keys: SessionKeys = session_keys.clone().into();
-        let decrypted = self
-            .0
-            .decrypt(&keys)
-            .map_err(|e| PyValueError::new_err(format!("Decryption failed: {}", e)))?;
-
-        Ok(PyPEPJSONValue(decrypted))
-    }
-
     /// Get the structure/shape of this EncryptedPEPJSONValue.
     ///
     /// Returns:
@@ -475,6 +452,67 @@ pub(crate) fn json_to_python(py: Python, value: &Value) -> PyResult<Py<PyAny>> {
     }
 }
 
+/// Encrypt a PEPJSONValue using session keys.
+#[pyfunction]
+#[pyo3(name = "encrypt_json")]
+pub fn py_encrypt_json(
+    value: &PyPEPJSONValue,
+    session_keys: &PySessionKeys,
+) -> PyEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
+    let keys: SessionKeys = session_keys.clone().into();
+    PyEncryptedPEPJSONValue(encrypt_json(&value.0, &keys, &mut rng))
+}
+
+/// Decrypt an EncryptedPEPJSONValue using session keys.
+#[pyfunction]
+#[pyo3(name = "decrypt_json")]
+pub fn py_decrypt_json(
+    encrypted: &PyEncryptedPEPJSONValue,
+    session_keys: &PySessionKeys,
+) -> PyResult<PyPEPJSONValue> {
+    let keys: SessionKeys = session_keys.clone().into();
+    let decrypted = decrypt_json(&encrypted.0, &keys)
+        .map_err(|e| PyValueError::new_err(format!("Decryption failed: {}", e)))?;
+    Ok(PyPEPJSONValue(decrypted))
+}
+
+/// Encrypt a PEPJSONValue using global public keys.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[cfg(feature = "offline")]
+#[pyfunction]
+#[pyo3(name = "encrypt_json_global")]
+pub fn py_encrypt_json_global(
+    value: &PyPEPJSONValue,
+    global_keys: &PyGlobalPublicKeys,
+) -> PyEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
+    let keys = GlobalPublicKeys {
+        pseudonym: global_keys.pseudonym.0 .0.into(),
+        attribute: global_keys.attribute.0 .0.into(),
+    };
+    PyEncryptedPEPJSONValue(encrypt_json_global(&value.0, &keys, &mut rng))
+}
+
+/// Decrypt an EncryptedPEPJSONValue using global secret keys.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(all(feature = "insecure", feature = "offline"))]
+#[pyfunction]
+#[pyo3(name = "decrypt_json_global")]
+pub fn py_decrypt_json_global(
+    encrypted: &PyEncryptedPEPJSONValue,
+    global_secret_keys: &PyGlobalSecretKeys,
+) -> PyResult<PyPEPJSONValue> {
+    let keys = GlobalSecretKeys {
+        pseudonym: global_secret_keys.pseudonym.0 .0.into(),
+        attribute: global_secret_keys.attribute.0 .0.into(),
+    };
+    let decrypted = decrypt_json_global(&encrypted.0, &keys)
+        .map_err(|e| PyValueError::new_err(format!("Decryption failed: {}", e)))?;
+    Ok(PyPEPJSONValue(decrypted))
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
 
@@ -482,8 +520,20 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPEPJSONValue>()?;
     m.add_class::<PyEncryptedPEPJSONValue>()?;
     m.add_class::<PyJSONStructure>()?;
+
+    // Session key functions
+    m.add_function(wrap_pyfunction!(py_encrypt_json, m)?)?;
+    m.add_function(wrap_pyfunction!(py_decrypt_json, m)?)?;
+
+    // Batch transcryption functions
     m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+
+    // Global key functions (offline feature)
+    #[cfg(feature = "offline")]
+    m.add_function(wrap_pyfunction!(py_encrypt_json_global, m)?)?;
+    #[cfg(all(feature = "insecure", feature = "offline"))]
+    m.add_function(wrap_pyfunction!(py_decrypt_json_global, m)?)?;
 
     // Create builder submodule to mirror Rust structure
     let builder_module = PyModule::new(py, "builder")?;

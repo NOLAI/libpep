@@ -4,7 +4,7 @@
 //! to prevent linking.
 
 use super::data::{LongEncryptedAttribute, LongEncryptedPseudonym};
-use super::ops::{pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym};
+use super::transcryption::{pseudonymize_long, rekey_long_attribute, rekey_long_pseudonym};
 use crate::core::transcryption::contexts::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };

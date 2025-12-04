@@ -2,6 +2,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::core::json::builder::PEPJSONBuilder;
+use libpep::core::json::data::{decrypt_json, encrypt_json};
 use libpep::core::keys::{make_global_keys, make_session_keys};
 use libpep::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
@@ -32,12 +33,11 @@ fn test_json_transcryption_with_macro() {
     });
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
+    let encrypted = encrypt_json(&patient_record, &session_keys, &mut rng);
 
     // Decrypt to verify original
-    let decrypted_original = encrypted
-        .decrypt(&session_keys)
-        .expect("Decryption should succeed");
+    let decrypted_original =
+        decrypt_json(&encrypted, &session_keys).expect("Decryption should succeed");
     let json_original = decrypted_original
         .to_value()
         .expect("Should convert to JSON");
@@ -96,12 +96,11 @@ fn test_json_transcryption_with_builder() {
         .build();
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
+    let encrypted = encrypt_json(&patient_record, &session_keys, &mut rng);
 
     // Decrypt to verify original
-    let decrypted_original = encrypted
-        .decrypt(&session_keys)
-        .expect("Decryption should succeed");
+    let decrypted_original =
+        decrypt_json(&encrypted, &session_keys).expect("Decryption should succeed");
     let json_original = decrypted_original
         .to_value()
         .expect("Should convert to JSON");
@@ -123,9 +122,8 @@ fn test_json_transcryption_with_builder() {
     let transcrypted = encrypted.transcrypt(&transcryption_info);
 
     // Decrypt transcrypted data
-    let decrypted_transcrypted = transcrypted
-        .decrypt(&session_keys)
-        .expect("Decryption should succeed");
+    let decrypted_transcrypted =
+        decrypt_json(&transcrypted, &session_keys).expect("Decryption should succeed");
     let json_transcrypted = decrypted_transcrypted
         .to_value()
         .expect("Should convert to JSON");
@@ -182,8 +180,8 @@ fn test_json_batch_transcryption_same_structure() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
+    let encrypted1 = encrypt_json(&record1, &session_keys, &mut rng);
+    let encrypted2 = encrypt_json(&record2, &session_keys, &mut rng);
 
     // Verify they have the same structure
     let structure1 = encrypted1.structure();
@@ -221,7 +219,7 @@ fn test_json_batch_transcryption_same_structure() {
     let mut decrypted_batch: Vec<serde_json::Value> = transcrypted_batch
         .iter()
         .map(|v| {
-            v.decrypt(&session_keys)
+            decrypt_json(v, &session_keys)
                 .expect("Decryption should succeed")
                 .to_value()
                 .expect("Should convert to JSON")
@@ -295,8 +293,8 @@ fn test_json_batch_transcryption_different_structures() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
+    let encrypted1 = encrypt_json(&record1, &session_keys, &mut rng);
+    let encrypted2 = encrypt_json(&record2, &session_keys, &mut rng);
 
     // Verify they have different structures
     let structure1 = encrypted1.structure();

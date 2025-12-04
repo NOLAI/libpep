@@ -1,4 +1,4 @@
-use super::super::core::PEPClient;
+use super::super::client::PEPClient;
 use super::keys::{
     PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares, PySessionKeys,
     PySessionPublicKeys, PySessionSecretKeys,
@@ -218,7 +218,7 @@ impl PyPEPClient {
         pep_value: &crate::core::json::py::PyPEPJSONValue,
     ) -> crate::core::json::py::PyEncryptedPEPJSONValue {
         let mut rng = rand::rng();
-        let encrypted = self.0.encrypt_json(&pep_value.0, &mut rng);
+        let encrypted = self.0.encrypt_json_value(&pep_value.0, &mut rng);
         crate::core::json::py::PyEncryptedPEPJSONValue(encrypted)
     }
 
@@ -235,7 +235,7 @@ impl PyPEPClient {
         &self,
         encrypted: &crate::core::json::py::PyEncryptedPEPJSONValue,
     ) -> PyResult<crate::core::json::py::PyPEPJSONValue> {
-        let decrypted = self.0.decrypt_json(&encrypted.0).map_err(|e| {
+        let decrypted = self.0.decrypt_json_value(&encrypted.0).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decryption failed: {}", e))
         })?;
 

@@ -1,4 +1,4 @@
-//! Distributed n-PEP with wrappers for high-level [`PEPSystems`](server::core::PEPSystem) (*transcryptors*) and [`PEPClients`](client::core::PEPClient).
+//! Distributed n-PEP with wrappers for high-level [`PEPSystems`](server::transcryptor::PEPSystem) (*transcryptors*) and [`PEPClients`](client::client::PEPClient).
 //! This module is intended for use cases where transcryption is performed by *n* parties and
 //! trust is distributed among them (i.e. no single party is trusted but the system remains secure
 //! as long as at least 1 party remains honest).

@@ -1,4 +1,5 @@
-pub mod core;
+#[allow(clippy::module_inception)]
+pub mod client;
 #[cfg(feature = "json")]
 pub mod json;
 pub mod keys;

@@ -1,7 +1,9 @@
 //! JSON operations for distributed PEP clients.
 
-use crate::core::json::data::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
-use crate::distributed::client::core::PEPClient;
+use crate::core::json::data::{
+    decrypt_json, encrypt_json, EncryptedPEPJSONValue, JsonError, PEPJSONValue,
+};
+use crate::distributed::client::client::PEPClient;
 use rand_core::{CryptoRng, RngCore};
 
 impl PEPClient {
@@ -9,19 +11,19 @@ impl PEPClient {
     ///
     /// Takes an unencrypted `PEPJSONValue` (created via `pep_json!` macro or builder)
     /// and encrypts it using the client's session keys.
-    pub fn encrypt_json<R: RngCore + CryptoRng>(
+    pub fn encrypt_json_value<R: RngCore + CryptoRng>(
         &self,
         pep_value: &PEPJSONValue,
         rng: &mut R,
     ) -> EncryptedPEPJSONValue {
-        pep_value.encrypt(&self.keys, rng)
+        encrypt_json(pep_value, &self.keys, rng)
     }
 
     /// Decrypt an EncryptedPEPJSONValue back to a PEPJSONValue.
-    pub fn decrypt_json(
+    pub fn decrypt_json_value(
         &self,
         encrypted: &EncryptedPEPJSONValue,
     ) -> Result<PEPJSONValue, JsonError> {
-        encrypted.decrypt(&self.keys)
+        decrypt_json(encrypted, &self.keys)
     }
 }

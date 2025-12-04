@@ -8,7 +8,8 @@ pub mod batch;
 pub mod data;
 #[cfg(feature = "offline")]
 pub mod offline;
-pub mod ops;
+pub mod rerandomize;
+pub mod transcryption;
 
 #[cfg(feature = "python")]
 pub mod py;

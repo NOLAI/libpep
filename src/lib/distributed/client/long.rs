@@ -7,7 +7,7 @@ use crate::core::long::data::{
 use crate::core::long::offline::{
     encrypt_long_attribute_global, encrypt_long_global, encrypt_long_pseudonym_global,
 };
-use crate::distributed::client::core::PEPClient;
+use crate::distributed::client::client::PEPClient;
 use crate::distributed::client::offline::OfflinePEPClient;
 use rand_core::{CryptoRng, RngCore};
 use std::any::TypeId;

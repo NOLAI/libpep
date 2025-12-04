@@ -1,4 +1,4 @@
-use super::super::core::PEPSystem;
+use super::super::transcryptor::PEPSystem;
 use super::setup::PyBlindingFactor;
 use crate::core::data::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
@@ -61,6 +61,7 @@ impl PyPEPSystem {
         }
     }
 
+    #[cfg(feature = "offline")]
     #[pyo3(name = "attribute_rekey_info", signature = (session_from=None, session_to=None))]
     fn py_attribute_rekey_info(
         &self,
@@ -73,6 +74,20 @@ impl PyPEPSystem {
         ))
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[pyo3(name = "attribute_rekey_info")]
+    fn py_attribute_rekey_info(
+        &self,
+        session_from: &str,
+        session_to: &str,
+    ) -> PyAttributeRekeyInfo {
+        PyAttributeRekeyInfo::from(self.attribute_rekey_info(
+            &EncryptionContext::from(session_from),
+            &EncryptionContext::from(session_to),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[pyo3(name = "pseudonym_rekey_info", signature = (session_from=None, session_to=None))]
     fn py_pseudonym_rekey_info(
         &self,
@@ -85,6 +100,20 @@ impl PyPEPSystem {
         ))
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[pyo3(name = "pseudonym_rekey_info")]
+    fn py_pseudonym_rekey_info(
+        &self,
+        session_from: &str,
+        session_to: &str,
+    ) -> PyPseudonymRekeyFactor {
+        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(
+            &EncryptionContext::from(session_from),
+            &EncryptionContext::from(session_to),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[pyo3(name = "pseudonymization_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
     fn py_pseudonymization_info(
         &self,
@@ -101,6 +130,24 @@ impl PyPEPSystem {
         ))
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[pyo3(name = "pseudonymization_info")]
+    fn py_pseudonymization_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
+    ) -> PyPseudonymizationInfo {
+        PyPseudonymizationInfo::from(self.pseudonymization_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            &EncryptionContext::from(session_from),
+            &EncryptionContext::from(session_to),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[pyo3(name = "transcryption_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
     fn py_transcryption_info(
         &self,
@@ -114,6 +161,23 @@ impl PyPEPSystem {
             &PseudonymizationDomain::from(domain_to),
             session_from.map(EncryptionContext::from).as_ref(),
             session_to.map(EncryptionContext::from).as_ref(),
+        ))
+    }
+
+    #[cfg(not(feature = "offline"))]
+    #[pyo3(name = "transcryption_info")]
+    fn py_transcryption_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: &str,
+        session_to: &str,
+    ) -> PyTranscryptionInfo {
+        PyTranscryptionInfo::from(self.transcryption_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            &EncryptionContext::from(session_from),
+            &EncryptionContext::from(session_to),
         ))
     }
 

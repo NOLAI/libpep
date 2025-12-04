@@ -7,6 +7,8 @@
 pub mod builder;
 pub mod data;
 pub mod macros;
+#[cfg(feature = "offline")]
+pub mod offline;
 pub mod structure;
 pub mod transcryption;
 pub(crate) mod utils;

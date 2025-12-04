@@ -1,4 +1,4 @@
-use super::super::core::PEPSystem;
+use super::super::transcryptor::PEPSystem;
 use super::setup::WASMBlindingFactor;
 use crate::core::data::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
@@ -58,6 +58,7 @@ impl WASMPEPSystem {
         WASMSessionKeyShares(self.session_key_shares(&EncryptionContext::from(session)))
     }
 
+    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
     pub fn wasm_attribute_rekey_info(
         &self,
@@ -78,6 +79,20 @@ impl WASMPEPSystem {
         )
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[wasm_bindgen(js_name = attributeRekeyInfo)]
+    pub fn wasm_attribute_rekey_info(
+        &self,
+        session_from: String,
+        session_to: String,
+    ) -> WASMAttributeRekeyInfo {
+        WASMAttributeRekeyInfo::from(self.attribute_rekey_info(
+            &EncryptionContext::from(session_from.as_str()),
+            &EncryptionContext::from(session_to.as_str()),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
     pub fn wasm_pseudonym_rekey_info(
         &self,
@@ -98,6 +113,20 @@ impl WASMPEPSystem {
         )
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
+    pub fn wasm_pseudonym_rekey_info(
+        &self,
+        session_from: String,
+        session_to: String,
+    ) -> WASMPseudonymRekeyFactor {
+        WASMPseudonymRekeyFactor::from(self.pseudonym_rekey_info(
+            &EncryptionContext::from(session_from.as_str()),
+            &EncryptionContext::from(session_to.as_str()),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = pseudonymizationInfo)]
     pub fn wasm_pseudonymization_info(
         &self,
@@ -122,6 +151,24 @@ impl WASMPEPSystem {
         )
     }
 
+    #[cfg(not(feature = "offline"))]
+    #[wasm_bindgen(js_name = pseudonymizationInfo)]
+    pub fn wasm_pseudonymization_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: String,
+        session_to: String,
+    ) -> WASMPseudonymizationInfo {
+        WASMPseudonymizationInfo::from(self.pseudonymization_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            &EncryptionContext::from(session_from.as_str()),
+            &EncryptionContext::from(session_to.as_str()),
+        ))
+    }
+
+    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = transcryptionInfo)]
     pub fn wasm_transcryption_info(
         &self,
@@ -144,6 +191,23 @@ impl WASMPEPSystem {
                     .as_ref(),
             ),
         )
+    }
+
+    #[cfg(not(feature = "offline"))]
+    #[wasm_bindgen(js_name = transcryptionInfo)]
+    pub fn wasm_transcryption_info(
+        &self,
+        domain_from: &str,
+        domain_to: &str,
+        session_from: String,
+        session_to: String,
+    ) -> WASMTranscryptionInfo {
+        WASMTranscryptionInfo::from(self.transcryption_info(
+            &PseudonymizationDomain::from(domain_from),
+            &PseudonymizationDomain::from(domain_to),
+            &EncryptionContext::from(session_from.as_str()),
+            &EncryptionContext::from(session_to.as_str()),
+        ))
     }
 
     #[wasm_bindgen(js_name = rekey)]

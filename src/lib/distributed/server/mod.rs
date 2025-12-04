@@ -2,17 +2,14 @@
 pub mod batch;
 pub mod setup;
 
-pub mod core;
 #[cfg(feature = "json")]
 pub mod json;
 pub mod keys;
 #[cfg(feature = "long")]
 pub mod long;
-#[cfg(feature = "offline")]
-pub mod offline;
-
 #[cfg(feature = "python")]
 pub mod py;
+pub mod transcryptor;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;

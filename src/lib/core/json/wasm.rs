@@ -2,15 +2,23 @@
 
 use crate::core::json::builder::PEPJSONBuilder;
 use crate::core::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::core::json::offline::decrypt_json_global;
+#[cfg(feature = "offline")]
+use crate::core::json::offline::encrypt_json_global;
 use crate::core::json::structure::JSONStructure;
 use crate::core::json::transcryption::transcrypt_json_batch;
-use crate::core::keys::SessionKeys;
+use crate::core::keys::{GlobalPublicKeys, SessionKeys};
 use crate::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
 };
 use crate::core::transcryption::secrets::EncryptionSecret;
 use crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo;
 use crate::core::transcryption::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+#[cfg(feature = "offline")]
+use crate::core::wasm::keys::WASMGlobalPublicKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::core::wasm::keys::WASMGlobalSecretKeys;
 use crate::core::wasm::keys::WASMSessionKeys;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
@@ -55,23 +63,6 @@ impl WASMPEPJSONValue {
         serde_wasm_bindgen::to_value(&json_value)
             .map_err(|e| JsValue::from_str(&format!("Failed to convert to JS: {}", e)))
     }
-
-    /// Encrypt this PEPJSONValue into an EncryptedPEPJSONValue.
-    ///
-    /// # Arguments
-    ///
-    /// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
-    ///
-    /// # Returns
-    ///
-    /// An EncryptedPEPJSONValue
-    #[wasm_bindgen]
-    pub fn encrypt(&self, session_keys: &WASMSessionKeys) -> WASMEncryptedPEPJSONValue {
-        let mut rng = rand::rng();
-        let keys: SessionKeys = (*session_keys).into();
-        let encrypted = self.0.encrypt(&keys, &mut rng);
-        WASMEncryptedPEPJSONValue(encrypted)
-    }
 }
 
 /// An encrypted PEP JSON value.
@@ -83,26 +74,6 @@ pub struct WASMEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
 #[wasm_bindgen(js_class = EncryptedPEPJSONValue)]
 impl WASMEncryptedPEPJSONValue {
-    /// Decrypt this EncryptedPEPJSONValue back into a PEPJSONValue.
-    ///
-    /// # Arguments
-    ///
-    /// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
-    ///
-    /// # Returns
-    ///
-    /// A PEPJSONValue
-    #[wasm_bindgen]
-    pub fn decrypt(&self, session_keys: &WASMSessionKeys) -> Result<WASMPEPJSONValue, JsValue> {
-        let keys: SessionKeys = (*session_keys).into();
-        let decrypted = self
-            .0
-            .decrypt(&keys)
-            .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))?;
-
-        Ok(WASMPEPJSONValue(decrypted))
-    }
-
     /// Get the structure/shape of this EncryptedPEPJSONValue.
     ///
     /// # Returns
@@ -320,6 +291,48 @@ impl WASMPEPJSONBuilder {
     }
 }
 
+/// Encrypt a PEPJSONValue using session keys.
+///
+/// # Arguments
+///
+/// * `value` - PEPJSONValue to encrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
+///
+/// # Returns
+///
+/// An EncryptedPEPJSONValue
+#[wasm_bindgen(js_name = encryptJson)]
+pub fn wasm_encrypt_json(
+    value: &WASMPEPJSONValue,
+    session_keys: &WASMSessionKeys,
+) -> WASMEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
+    let keys: SessionKeys = (*session_keys).into();
+    let encrypted = crate::core::json::data::encrypt_json(&value.0, &keys, &mut rng);
+    WASMEncryptedPEPJSONValue(encrypted)
+}
+
+/// Decrypt an EncryptedPEPJSONValue using session keys.
+///
+/// # Arguments
+///
+/// * `encrypted` - EncryptedPEPJSONValue to decrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
+///
+/// # Returns
+///
+/// A PEPJSONValue
+#[wasm_bindgen(js_name = decryptJson)]
+pub fn wasm_decrypt_json(
+    encrypted: &WASMEncryptedPEPJSONValue,
+    session_keys: &WASMSessionKeys,
+) -> Result<WASMPEPJSONValue, JsValue> {
+    let keys: SessionKeys = (*session_keys).into();
+    let decrypted = crate::core::json::data::decrypt_json(&encrypted.0, &keys)
+        .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))?;
+    Ok(WASMPEPJSONValue(decrypted))
+}
+
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// # Arguments
@@ -348,4 +361,38 @@ pub fn wasm_transcrypt_json_batch(
         .into_iter()
         .map(WASMEncryptedPEPJSONValue)
         .collect())
+}
+
+/// Encrypt a PEPJSONValue using global public keys.
+/// Can be used when encryption happens offline and no session key is available, or when using
+/// a session key may leak information.
+#[cfg(feature = "offline")]
+#[wasm_bindgen(js_name = encryptJsonGlobal)]
+pub fn wasm_encrypt_json_global(
+    value: &WASMPEPJSONValue,
+    global_keys: &WASMGlobalPublicKeys,
+) -> WASMEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
+    let keys = GlobalPublicKeys {
+        pseudonym: (*global_keys.pseudonym().0).into(),
+        attribute: (*global_keys.attribute().0).into(),
+    };
+    WASMEncryptedPEPJSONValue(encrypt_json_global(&value.0, &keys, &mut rng))
+}
+
+/// Decrypt an EncryptedPEPJSONValue using global secret keys.
+/// Note: For most applications, the global secret key should be discarded and thus never exist.
+#[cfg(all(feature = "insecure", feature = "offline"))]
+#[wasm_bindgen(js_name = decryptJsonGlobal)]
+pub fn wasm_decrypt_json_global(
+    encrypted: &WASMEncryptedPEPJSONValue,
+    global_secret_keys: &WASMGlobalSecretKeys,
+) -> Result<WASMPEPJSONValue, JsValue> {
+    let keys = crate::core::keys::GlobalSecretKeys {
+        pseudonym: global_secret_keys.pseudonym().0 .0.into(),
+        attribute: global_secret_keys.attribute().0 .0.into(),
+    };
+    let decrypted = decrypt_json_global(&encrypted.0, &keys)
+        .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))?;
+    Ok(WASMPEPJSONValue(decrypted))
 }

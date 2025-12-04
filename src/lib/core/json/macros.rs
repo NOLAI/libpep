@@ -19,8 +19,8 @@
 /// });
 ///
 /// // Then encrypt it
-/// let encrypted = pep_value.encrypt(&keys, &mut rng);
-/// let decrypted = encrypted.decrypt(&keys)?;
+/// let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+/// let decrypted = decrypt_json(&encrypted, &keys)?;
 /// assert_eq!(decrypted, json!({
 ///     "id": "user1@example.com",
 ///     "age": 16,
@@ -89,6 +89,7 @@ macro_rules! pep_json {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use crate::core::json::data::{decrypt_json, encrypt_json};
     use crate::core::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,
@@ -133,8 +134,8 @@ mod tests {
             "scores": [88, 91, 85]
         });
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id": "user1@example.com",
@@ -156,8 +157,8 @@ mod tests {
             "age": 30
         });
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "name": "Alice",
@@ -174,8 +175,8 @@ mod tests {
 
         let pep_value = pep_json!({});
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         assert_eq!(json!({}), decrypted.to_value().unwrap());
     }
@@ -190,8 +191,8 @@ mod tests {
             "id2": pseudonym("user2@example.com")
         });
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "id1": "user1@example.com",
@@ -211,8 +212,8 @@ mod tests {
             "scores": [1, 2, 3]
         });
 
-        let encrypted = pep_value.encrypt(&keys, &mut rng);
-        let decrypted = encrypted.decrypt(&keys).unwrap();
+        let encrypted = encrypt_json(&pep_value, &keys, &mut rng);
+        let decrypted = decrypt_json(&encrypted, &keys).unwrap();
 
         let expected = json!({
             "user": {
