@@ -6,7 +6,12 @@ Tests high-level API for pseudonyms, data points, and session management.
 
 import unittest
 from libpep.arithmetic.group_elements import GroupElement
-from libpep.core.data import Pseudonym, Attribute, EncryptedPseudonym, EncryptedAttribute
+from libpep.core.data import (
+    Pseudonym,
+    Attribute,
+    EncryptedPseudonym,
+    EncryptedAttribute,
+)
 from libpep.core.keys import (
     PseudonymizationSecret,
     EncryptionSecret,

@@ -2,6 +2,8 @@ const {
     makeGlobalKeys,
     makeSessionKeys,
     PEPJSONBuilder,
+    encryptJson,
+    decryptJson,
     transcryptJsonBatch,
     TranscryptionInfo,
     PseudonymizationSecret,
@@ -30,10 +32,10 @@ test('test json transcryption with builder', async () => {
     const patientRecord = PEPJSONBuilder.fromJson(patientData, ["user_id"]).build();
 
     // Encrypt
-    const encrypted = patientRecord.encrypt(sessionKeys);
+    const encrypted = encryptJson(patientRecord, sessionKeys);
 
     // Decrypt to verify original
-    const decryptedOriginal = encrypted.decrypt(sessionKeys);
+    const decryptedOriginal = decryptJson(encrypted, sessionKeys);
     const jsonOriginal = decryptedOriginal.toJson();
     expect(jsonOriginal.get("user_id")).toBe("user-67890");
     expect(jsonOriginal.get("name")).toBe("Alice");
@@ -58,7 +60,7 @@ test('test json transcryption with builder', async () => {
     expect(encrypted).not.toBe(transcrypted);
 
     // Decrypt transcrypted data
-    const decryptedTranscrypted = transcrypted.decrypt(sessionKeys);
+    const decryptedTranscrypted = decryptJson(transcrypted, sessionKeys);
     const jsonTranscrypted = decryptedTranscrypted.toJson();
 
     // Attributes should remain the same, but pseudonym should be different
@@ -98,8 +100,8 @@ test('test json batch transcryption same structure', async () => {
     const record2 = PEPJSONBuilder.fromJson(data2, ["patient_id"]).build();
 
     // Encrypt both records
-    const encrypted1 = record1.encrypt(sessionKeys);
-    const encrypted2 = record2.encrypt(sessionKeys);
+    const encrypted1 = encryptJson(record1, sessionKeys);
+    const encrypted2 = encryptJson(record2, sessionKeys);
 
     // Verify they have the same structure
     const structure1 = encrypted1.structure();
@@ -129,7 +131,7 @@ test('test json batch transcryption same structure', async () => {
     expect(transcryptedBatch[1]).not.toBe(encrypted2);
 
     // Decrypt all transcrypted values
-    const decryptedBatch = transcryptedBatch.map(v => v.decrypt(sessionKeys).toJson());
+    const decryptedBatch = transcryptedBatch.map(v => decryptJson(v, sessionKeys).toJson());
 
     // Sort by temperature to have a consistent order (Cold=37.2, Flu=38.5)
     decryptedBatch.sort((a, b) => a.get("temperature") - b.get("temperature"));
@@ -176,8 +178,8 @@ test('test json batch transcryption different structures', async () => {
     const record2 = PEPJSONBuilder.fromJson(data2, ["user_id"]).build();
 
     // Encrypt both records
-    const encrypted1 = record1.encrypt(sessionKeys);
-    const encrypted2 = record2.encrypt(sessionKeys);
+    const encrypted1 = encryptJson(record1, sessionKeys);
+    const encrypted2 = encryptJson(record2, sessionKeys);
 
     // Verify they have different structures
     const structure1 = encrypted1.structure();

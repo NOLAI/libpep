@@ -7,7 +7,12 @@ Tests distributed n-PEP systems, PEP clients, and key blinding functionality.
 import unittest
 from libpep.arithmetic.group_elements import GroupElement
 from libpep.arithmetic.scalars import ScalarNonZero
-from libpep.core.data import Pseudonym, Attribute, EncryptedPseudonym, EncryptedAttribute
+from libpep.core.data import (
+    Pseudonym,
+    Attribute,
+    EncryptedPseudonym,
+    EncryptedAttribute,
+)
 from libpep.core.keys import (
     make_global_keys,
     make_session_keys,
