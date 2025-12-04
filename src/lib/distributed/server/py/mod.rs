@@ -2,26 +2,31 @@ pub mod core;
 pub mod keys;
 pub mod setup;
 
-pub use core::PyPEPSystem;
-pub use keys::{
-    py_make_attribute_session_key_share, py_make_pseudonym_session_key_share,
-    py_make_session_key_shares,
-};
-pub use setup::{
-    py_make_blinded_attribute_global_secret_key, py_make_blinded_global_keys,
-    py_make_blinded_pseudonym_global_secret_key, py_make_distributed_attribute_global_keys,
-    py_make_distributed_global_keys, py_make_distributed_pseudonym_global_keys,
-    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
-    PyBlindingFactor,
-};
-
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    core::register(m)?;
-    keys::register(m)?;
-    setup::register(m)?;
-    #[cfg(feature = "json")]
-    super::json::py::register(m)?;
+    let py = m.py();
+
+    let core_module = PyModule::new(py, "core")?;
+    core::register(&core_module)?;
+    m.add_submodule(&core_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.distributed.server.core", &core_module)?;
+
+    let keys_module = PyModule::new(py, "keys")?;
+    keys::register(&keys_module)?;
+    m.add_submodule(&keys_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.distributed.server.keys", &keys_module)?;
+
+    let setup_module = PyModule::new(py, "setup")?;
+    setup::register(&setup_module)?;
+    m.add_submodule(&setup_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.distributed.server.setup", &setup_module)?;
+
     Ok(())
 }

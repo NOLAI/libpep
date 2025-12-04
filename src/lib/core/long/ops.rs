@@ -2,16 +2,16 @@
 //! rerandomization, rekeying, pseudonymization, and transcryption.
 
 use super::data::{LongEncryptable, LongEncrypted, LongEncryptedAttribute, LongEncryptedPseudonym};
-use crate::arithmetic::ScalarNonZero;
+use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::data::{Encryptable, Encrypted};
-#[cfg(all(feature = "global", feature = "insecure"))]
-#[allow(unused_imports)]
-use crate::core::global::decrypt_global;
-#[cfg(all(feature = "global", feature = "insecure"))]
+#[cfg(all(feature = "offline", feature = "insecure"))]
 #[allow(unused_imports)]
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 #[cfg(not(feature = "elgamal3"))]
 use crate::core::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+#[allow(unused_imports)]
+use crate::core::offline::decrypt_global;
 use crate::core::rerandomize::rerandomize_known;
 use crate::core::transcryption::contexts::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,

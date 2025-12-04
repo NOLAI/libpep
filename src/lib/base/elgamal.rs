@@ -1,6 +1,7 @@
 //! ElGamal [encrypt]ion and [decrypt]ion.
 
-use crate::arithmetic::*;
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::scalars::ScalarNonZero;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, RngCore};

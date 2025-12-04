@@ -1,8 +1,9 @@
 use super::super::keys::*;
 use super::super::transcryption::contexts::*;
 use super::super::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
-use crate::arithmetic::GroupElement;
+use crate::arithmetic::group_elements::GroupElement;
+use crate::arithmetic::py::group_elements::PyGroupElement;
+use crate::arithmetic::py::scalars::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
@@ -430,6 +431,145 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     )
 }
 
+/// Pseudonym session keys containing both public and secret keys.
+#[pyclass(name = "PseudonymSessionKeys")]
+#[derive(Clone, Copy)]
+pub struct PyPseudonymSessionKeys {
+    #[pyo3(get)]
+    pub public: PyPseudonymSessionPublicKey,
+    #[pyo3(get)]
+    pub secret: PyPseudonymSessionSecretKey,
+}
+
+#[pymethods]
+impl PyPseudonymSessionKeys {
+    #[new]
+    fn new(public: PyPseudonymSessionPublicKey, secret: PyPseudonymSessionSecretKey) -> Self {
+        PyPseudonymSessionKeys { public, secret }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "PseudonymSessionKeys(public={}, secret=...)",
+            self.public.as_hex()
+        )
+    }
+}
+
+/// Attribute session keys containing both public and secret keys.
+#[pyclass(name = "AttributeSessionKeys")]
+#[derive(Clone, Copy)]
+pub struct PyAttributeSessionKeys {
+    #[pyo3(get)]
+    pub public: PyAttributeSessionPublicKey,
+    #[pyo3(get)]
+    pub secret: PyAttributeSessionSecretKey,
+}
+
+#[pymethods]
+impl PyAttributeSessionKeys {
+    #[new]
+    fn new(public: PyAttributeSessionPublicKey, secret: PyAttributeSessionSecretKey) -> Self {
+        PyAttributeSessionKeys { public, secret }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "AttributeSessionKeys(public={}, secret=...)",
+            self.public.as_hex()
+        )
+    }
+}
+
+/// Session keys for encrypting and decrypting data.
+/// Contains both pseudonym and attribute session keys (public and secret).
+#[pyclass(name = "SessionKeys")]
+#[derive(Clone)]
+pub struct PySessionKeys {
+    #[pyo3(get)]
+    pub pseudonym: PyPseudonymSessionKeys,
+    #[pyo3(get)]
+    pub attribute: PyAttributeSessionKeys,
+}
+
+#[pymethods]
+impl PySessionKeys {
+    /// Create new session keys.
+    ///
+    /// Args:
+    ///     pseudonym: Pseudonym session keys
+    ///     attribute: Attribute session keys
+    ///
+    /// Returns:
+    ///     SessionKeys containing both pseudonym and attribute keys
+    #[new]
+    fn new(pseudonym: PyPseudonymSessionKeys, attribute: PyAttributeSessionKeys) -> Self {
+        Self {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SessionKeys(pseudonym={}, attribute={})",
+            self.pseudonym.__repr__(),
+            self.attribute.__repr__()
+        )
+    }
+}
+
+impl From<PySessionKeys> for SessionKeys {
+    fn from(py_keys: PySessionKeys) -> Self {
+        SessionKeys {
+            pseudonym: PseudonymSessionKeys {
+                public: py_keys.pseudonym.public.0 .0.into(),
+                secret: py_keys.pseudonym.secret.0 .0.into(),
+            },
+            attribute: AttributeSessionKeys {
+                public: py_keys.attribute.public.0 .0.into(),
+                secret: py_keys.attribute.secret.0 .0.into(),
+            },
+        }
+    }
+}
+
+/// Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyEncryptionSecret`].
+#[pyfunction]
+#[pyo3(name = "make_session_keys")]
+pub fn py_make_session_keys(
+    global: &PyGlobalSecretKeys,
+    session: &str,
+    secret: &PyEncryptionSecret,
+) -> PySessionKeys {
+    let keys = make_session_keys(
+        &GlobalSecretKeys {
+            pseudonym: PseudonymGlobalSecretKey(global.pseudonym.0 .0),
+            attribute: AttributeGlobalSecretKey(global.attribute.0 .0),
+        },
+        &EncryptionContext::from(session),
+        &secret.0,
+    );
+    PySessionKeys {
+        pseudonym: PyPseudonymSessionKeys {
+            public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(
+                keys.pseudonym.public.0,
+            )),
+            secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(
+                keys.pseudonym.secret.0,
+            )),
+        },
+        attribute: PyAttributeSessionKeys {
+            public: PyAttributeSessionPublicKey::from(PyGroupElement::from(
+                keys.attribute.public.0,
+            )),
+            secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(
+                keys.attribute.secret.0,
+            )),
+        },
+    }
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionSecretKey>()?;
     m.add_class::<PyAttributeSessionSecretKey>()?;
@@ -441,6 +581,9 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyAttributeGlobalPublicKey>()?;
     m.add_class::<PyGlobalPublicKeys>()?;
     m.add_class::<PyGlobalSecretKeys>()?;
+    m.add_class::<PyPseudonymSessionKeys>()?;
+    m.add_class::<PyAttributeSessionKeys>()?;
+    m.add_class::<PySessionKeys>()?;
     m.add_class::<PyPseudonymizationSecret>()?;
     m.add_class::<PyEncryptionSecret>()?;
     m.add_class::<PyPseudonymGlobalKeyPair>()?;
@@ -450,6 +593,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_make_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_pseudonym_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_attribute_global_keys, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_pseudonym_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_attribute_session_keys, m)?)?;
     Ok(())

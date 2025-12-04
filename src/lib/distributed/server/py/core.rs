@@ -299,7 +299,7 @@ impl PyPEPSystem {
                 &TranscryptionInfo::from(transcryption_info),
                 &mut rng,
             )
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok(transcrypted
             .into_iter()
             .map(crate::core::json::py::PyEncryptedPEPJSONValue)

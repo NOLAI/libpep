@@ -2,7 +2,7 @@ use super::super::keys::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
 };
 use super::setup::WASMBlindingFactor;
-use crate::arithmetic::wasm::WASMScalarNonZero;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::core::transcryption::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::distributed::client::wasm::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,

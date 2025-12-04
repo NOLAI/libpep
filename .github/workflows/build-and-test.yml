@@ -9,15 +9,15 @@ on:
 jobs:
   semver-checks:
     runs-on: ubuntu-latest
-
     name: cargo semver-checks
     steps:
       - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          # Note: python and wasm features are mutually exclusive, so we only check core features
-          feature-group: only-explicit-features
-          features: elgamal3,long,global,batch,serde,legacy,insecure
+          # Check default feature set, plus elgamal3 and legacy.
+          # python/wasm bindings are not included here (and remain mutually exclusive).
+          feature-group: default-features
+          features: elgamal3,legacy,insecure
 
   test:
     runs-on: ubuntu-latest
@@ -44,12 +44,14 @@ jobs:
       fail-fast: false
       matrix:
         target: [ "web", "nodejs" ]
-        features: [ "", "elgamal3" ]
+        features:
+          - "wasm"
+          - "wasm,elgamal3"
 
-    name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features || 'default' }})
+    name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo install wasm-pack
-      - run: wasm-pack build --target ${{ matrix.target }} --features "wasm,${{ matrix.features }}"
+      - run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"

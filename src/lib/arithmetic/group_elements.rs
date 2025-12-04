@@ -163,7 +163,7 @@ impl Hash for GroupElement {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::arithmetic::ScalarNonZero;
+    use crate::arithmetic::scalars::ScalarNonZero;
     use rand_core::RngCore;
 
     #[test]

@@ -1,35 +1,45 @@
 pub mod batch;
 pub mod data;
-#[cfg(feature = "global")]
-pub mod global;
+#[cfg(feature = "offline")]
+pub mod offline;
 pub mod ops;
-
-pub use batch::{
-    py_pseudonymize_long_batch, py_rekey_long_attribute_batch, py_rekey_long_pseudonym_batch,
-    py_transcrypt_long_batch,
-};
-pub use data::{
-    py_decrypt_long_attribute, py_decrypt_long_pseudonym, py_encrypt_long_attribute,
-    py_encrypt_long_pseudonym, PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym,
-    PyLongPseudonym,
-};
-#[cfg(all(feature = "global", feature = "insecure"))]
-pub use global::{py_decrypt_long_attribute_global, py_decrypt_long_pseudonym_global};
-#[cfg(feature = "global")]
-pub use global::{py_encrypt_long_attribute_global, py_encrypt_long_pseudonym_global};
-pub use ops::{
-    py_pseudonymize_long, py_rekey_long_attribute, py_rekey_long_pseudonym,
-    py_rerandomize_long_attribute, py_rerandomize_long_pseudonym, py_transcrypt_long_attribute,
-    py_transcrypt_long_pseudonym,
-};
 
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    batch::register(m)?;
-    data::register(m)?;
-    #[cfg(feature = "global")]
-    global::register(m)?;
-    ops::register(m)?;
+    let py = m.py();
+
+    // Create submodules to mirror Rust structure
+    let batch_module = PyModule::new(py, "batch")?;
+    batch::register(&batch_module)?;
+    m.add_submodule(&batch_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.long.batch", &batch_module)?;
+
+    let data_module = PyModule::new(py, "data")?;
+    data::register(&data_module)?;
+    m.add_submodule(&data_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.long.data", &data_module)?;
+
+    #[cfg(feature = "offline")]
+    {
+        let offline_module = PyModule::new(py, "offline")?;
+        offline::register(&offline_module)?;
+        m.add_submodule(&offline_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.core.long.offline", &offline_module)?;
+    }
+
+    let ops_module = PyModule::new(py, "ops")?;
+    ops::register(&ops_module)?;
+    m.add_submodule(&ops_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.long.ops", &ops_module)?;
+
     Ok(())
 }

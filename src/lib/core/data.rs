@@ -1,14 +1,13 @@
 //! Core data types for pseudonyms and attributes, their encrypted versions,
 //! and session-key based encryption and decryption operations.
 
-use crate::arithmetic::GroupElement;
+use crate::arithmetic::group_elements::GroupElement;
 use crate::base::elgamal::{ElGamal, ELGAMAL_LENGTH};
+use crate::core::keys::*;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use crate::core::keys::*;
 
 /// A pseudonym (in the background, this is a [`GroupElement`]) that can be used to identify a user
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.

@@ -14,13 +14,10 @@ jobs:
         features:
           - ""
           - "elgamal3"
-          - "legacy"
           - "python"
           - "python,elgamal3"
-          - "python,legacy"
           - "wasm"
           - "wasm,elgamal3"
-          - "wasm,legacy"
     name: cargo clippy (${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
@@ -44,12 +41,16 @@ jobs:
         features:
           - ""
           - "elgamal3"
-          - "legacy"
+          - "python"
+          - "python,elgamal3"
+          - "wasm"
+          - "wasm,elgamal3"
     name: cargo test (${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
+
       - run: cargo test --features "${{ matrix.features }}"
       - run: cargo doc --no-deps --features "${{ matrix.features }}"
 
@@ -60,7 +61,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Create virtual environment

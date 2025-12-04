@@ -1,7 +1,7 @@
 use super::data::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 #[cfg(not(feature = "elgamal3"))]
 use super::keys::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
-use crate::arithmetic::wasm::WASMScalarNonZero;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 #[cfg(not(feature = "elgamal3"))]
 use crate::core::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::core::transcryption::contexts::RerandomizeFactor;

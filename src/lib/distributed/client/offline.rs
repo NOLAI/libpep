@@ -1,8 +1,8 @@
 use crate::core::data::{
     Attribute, EncryptedAttribute, EncryptedPseudonym, HasGlobalKeys, Pseudonym,
 };
-use crate::core::global::{encrypt_attribute_global, encrypt_global, encrypt_pseudonym_global};
 use crate::core::keys::{GlobalPublicKeys, PublicKey};
+use crate::core::offline::{encrypt_attribute_global, encrypt_global, encrypt_pseudonym_global};
 use rand_core::{CryptoRng, RngCore};
 
 /// An offline PEP client that can encrypt data, based on global public keys for pseudonyms and attributes.

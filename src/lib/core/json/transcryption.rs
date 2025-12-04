@@ -156,7 +156,7 @@ mod tests {
             },
         };
 
-        #[cfg(feature = "global")]
+        #[cfg(feature = "offline")]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -166,7 +166,7 @@ mod tests {
             &enc_secret,
         );
 
-        #[cfg(not(feature = "global"))]
+        #[cfg(not(feature = "offline"))]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -198,7 +198,7 @@ mod tests {
             "age": 30
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -218,7 +218,8 @@ mod tests {
         let decrypted = transcrypted.decrypt(&to_keys).unwrap();
 
         // Verify the pseudonym changed (as hex representation)
-        let pseudonym_hex = decrypted["id"].as_str().unwrap();
+        let decrypted_json = decrypted.to_value().unwrap();
+        let pseudonym_hex = decrypted_json["id"].as_str().unwrap();
 
         // The pseudonym is deterministic based on:
         // - Original value: "user@example.com"
@@ -236,8 +237,8 @@ mod tests {
         );
 
         // Verify regular attributes remain the same
-        assert_eq!(decrypted["name"], "Alice");
-        assert_eq!(decrypted["age"], 30);
+        assert_eq!(decrypted_json["name"], "Alice");
+        assert_eq!(decrypted_json["age"], 30);
     }
 
     #[test]
@@ -259,7 +260,7 @@ mod tests {
             "scores": [88, 91, 85]
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -283,7 +284,8 @@ mod tests {
             .iter()
             .map(|v| {
                 let decrypted = v.decrypt(&from_keys).unwrap();
-                decrypted["id"].as_str().unwrap().to_string()
+                let json = decrypted.to_value().unwrap();
+                json["id"].as_str().unwrap().to_string()
             })
             .collect();
 
@@ -295,7 +297,7 @@ mod tests {
         // Decrypt all values
         let mut decrypted: Vec<serde_json::Value> = transcrypted
             .iter()
-            .map(|v| v.decrypt(&to_keys).unwrap())
+            .map(|v| v.decrypt(&to_keys).unwrap().to_value().unwrap())
             .collect();
 
         // Sort by index to compare

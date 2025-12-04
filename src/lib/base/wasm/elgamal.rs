@@ -1,4 +1,5 @@
-use crate::arithmetic::wasm::{WASMGroupElement, WASMScalarNonZero};
+use crate::arithmetic::wasm::group_elements::WASMGroupElement;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::base::elgamal::{decrypt, encrypt, ElGamal};
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;

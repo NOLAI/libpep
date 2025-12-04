@@ -1,21 +1,36 @@
 pub mod core;
-#[cfg(feature = "global")]
-pub mod global;
 pub mod keys;
-
-pub use core::PyPEPClient;
-#[cfg(feature = "global")]
-pub use global::PyOfflinePEPClient;
-pub use keys::*;
+#[cfg(feature = "offline")]
+pub mod offline;
 
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    core::register(m)?;
-    keys::register(m)?;
-    #[cfg(feature = "global")]
-    global::register(m)?;
-    #[cfg(feature = "json")]
-    super::json::py::register(m)?;
+    let py = m.py();
+
+    let core_module = PyModule::new(py, "core")?;
+    core::register(&core_module)?;
+    m.add_submodule(&core_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.distributed.client.core", &core_module)?;
+
+    let keys_module = PyModule::new(py, "keys")?;
+    keys::register(&keys_module)?;
+    m.add_submodule(&keys_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.distributed.client.keys", &keys_module)?;
+
+    #[cfg(feature = "offline")]
+    {
+        let offline_module = PyModule::new(py, "offline")?;
+        offline::register(&offline_module)?;
+        m.add_submodule(&offline_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.distributed.client.offline", &offline_module)?;
+    }
+
     Ok(())
 }

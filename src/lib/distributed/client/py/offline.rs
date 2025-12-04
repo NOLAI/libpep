@@ -1,4 +1,4 @@
-use super::super::global::OfflinePEPClient;
+use super::super::offline::OfflinePEPClient;
 use crate::core::keys::*;
 #[cfg(feature = "long")]
 use crate::core::long::py::data::{

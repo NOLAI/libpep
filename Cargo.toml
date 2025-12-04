@@ -13,14 +13,14 @@ description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
 
 [features]
-default = ["build-binary", "long", "global", "batch", "serde"]
+default = ["build-binary", "long", "offline", "batch", "serde", "json"]
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 long = [] # For long pseudonyms and attributes over 15 bytes
-global = [] # For encryption towards global keys (instead of encryption with session keys)
+offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
 serde = ["dep:serde"] # For (de)serialization support via Serde
 json = ["serde", "dep:serde_json"] # For JSON encryption/decryption support
-legacy = ["elgamal3", "global"] # For compatibility with the legacy PEP repository implementation
+legacy = ["elgamal3", "offline"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
@@ -78,7 +78,7 @@ assets = [
 ]
 
 [package.metadata.docs.rs]
-features = ["global", "batch", "long", "serde", "elgamal3", "insecure"]
+features = ["offline", "batch", "long", "serde", "elgamal3", "insecure"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [lints.rust]

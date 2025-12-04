@@ -14,12 +14,9 @@
 //! so that the code is more readable and easier to understand, so it matches the notation in the
 //! mathematical papers.
 
-mod group_elements;
-mod ops;
-mod scalars;
-
-pub use group_elements::{GroupElement, G};
-pub use scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits, ZeroArgumentError};
+pub mod group_elements;
+pub mod ops;
+pub mod scalars;
 
 #[cfg(feature = "python")]
 pub mod py;

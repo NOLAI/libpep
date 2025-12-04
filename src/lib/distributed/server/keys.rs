@@ -1,6 +1,6 @@
 //! Session key shares and generation for distributed trust servers (transcryptors).
 
-use crate::arithmetic::*;
+use crate::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::core::transcryption::contexts::{
     AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor,
 };

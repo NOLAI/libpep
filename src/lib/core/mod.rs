@@ -6,13 +6,13 @@
 //! The API is designed to be user-friendly and safe.
 
 pub mod data;
-#[cfg(feature = "global")]
-pub mod global;
 #[cfg(feature = "json")]
 pub mod json;
 pub mod keys;
 #[cfg(feature = "long")]
 pub mod long;
+#[cfg(feature = "offline")]
+pub mod offline;
 pub mod padding;
 pub mod rerandomize;
 pub mod transcryption;

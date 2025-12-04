@@ -1,9 +1,6 @@
 use crate::core::data::HasGlobalKeys;
 #[cfg(feature = "insecure")]
 use crate::core::data::{Encryptable, Encrypted};
-#[cfg(feature = "insecure")]
-use crate::core::global::decrypt_global;
-use crate::core::global::encrypt_global;
 use crate::core::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
@@ -12,6 +9,9 @@ use crate::core::long::data::LongEncrypted;
 use crate::core::long::data::{
     LongAttribute, LongEncryptable, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
+#[cfg(feature = "insecure")]
+use crate::core::offline::decrypt_global;
+use crate::core::offline::encrypt_global;
 use rand_core::{CryptoRng, RngCore};
 
 /// Polymorphic global encrypt function for long (multi-block) data types.

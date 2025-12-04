@@ -13,8 +13,23 @@ pub mod py {
     use pyo3::prelude::*;
 
     pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        crate::distributed::client::py::register_module(m)?;
-        crate::distributed::server::py::register_module(m)?;
+        let py = m.py();
+
+        // Create submodules to mirror Rust structure
+        let client_module = PyModule::new(py, "client")?;
+        crate::distributed::client::py::register_module(&client_module)?;
+        m.add_submodule(&client_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.distributed.client", &client_module)?;
+
+        let server_module = PyModule::new(py, "server")?;
+        crate::distributed::server::py::register_module(&server_module)?;
+        m.add_submodule(&server_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.distributed.server", &server_module)?;
+
         Ok(())
     }
 }

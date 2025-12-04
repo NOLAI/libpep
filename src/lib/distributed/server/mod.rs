@@ -8,6 +8,8 @@ pub mod json;
 pub mod keys;
 #[cfg(feature = "long")]
 pub mod long;
+#[cfg(feature = "offline")]
+pub mod offline;
 
 #[cfg(feature = "python")]
 pub mod py;

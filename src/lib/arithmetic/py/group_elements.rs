@@ -1,5 +1,5 @@
-use super::super::*;
-use super::scalars::PyScalarNonZero;
+use super::super::group_elements::{GroupElement, G};
+use crate::arithmetic::py::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};

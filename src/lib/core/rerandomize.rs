@@ -1,6 +1,6 @@
 //! Rerandomization operations for creating binary unlinkable copies of encrypted messages.
 
-use crate::arithmetic::ScalarNonZero;
+use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::data::*;
 #[cfg(not(feature = "elgamal3"))]
 use crate::core::keys::PublicKey;

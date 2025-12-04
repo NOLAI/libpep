@@ -1,16 +1,16 @@
 use super::data::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
-use crate::arithmetic::GroupElement;
+use crate::arithmetic::group_elements::GroupElement;
 use crate::core::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
-use crate::core::long::global::{encrypt_long_attribute_global, encrypt_long_pseudonym_global};
+use crate::core::long::offline::{encrypt_long_attribute_global, encrypt_long_pseudonym_global};
 use crate::core::wasm::keys::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "insecure")]
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 #[cfg(feature = "insecure")]
-use crate::core::long::global::{decrypt_long_attribute_global, decrypt_long_pseudonym_global};
+use crate::core::long::offline::{decrypt_long_attribute_global, decrypt_long_pseudonym_global};
 #[cfg(feature = "insecure")]
 use crate::core::wasm::keys::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 

@@ -3,7 +3,6 @@
 use crate::core::json::data::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
 use crate::distributed::client::core::PEPClient;
 use rand_core::{CryptoRng, RngCore};
-use serde_json::Value;
 
 impl PEPClient {
     /// Encrypt a PEPJSONValue into an EncryptedPEPJSONValue.
@@ -18,8 +17,11 @@ impl PEPClient {
         pep_value.encrypt(&self.keys, rng)
     }
 
-    /// Decrypt an EncryptedPEPJSONValue back to a regular JSON value.
-    pub fn decrypt_json(&self, encrypted: &EncryptedPEPJSONValue) -> Result<Value, JsonError> {
+    /// Decrypt an EncryptedPEPJSONValue back to a PEPJSONValue.
+    pub fn decrypt_json(
+        &self,
+        encrypted: &EncryptedPEPJSONValue,
+    ) -> Result<PEPJSONValue, JsonError> {
         encrypted.decrypt(&self.keys)
     }
 }

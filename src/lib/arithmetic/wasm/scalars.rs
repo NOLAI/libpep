@@ -1,4 +1,5 @@
-use super::super::*;
+use crate::arithmetic::scalars::ScalarTraits;
+use crate::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero};
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

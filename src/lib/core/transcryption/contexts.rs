@@ -6,7 +6,7 @@ use super::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
     EncryptionSecret, PseudonymizationSecret,
 };
-use crate::arithmetic::ScalarNonZero;
+use crate::arithmetic::scalars::ScalarNonZero;
 use derive_more::{Deref, From};
 
 /// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
@@ -148,7 +148,7 @@ pub type PseudonymRekeyInfo = PseudonymRekeyFactor;
 pub type AttributeRekeyInfo = AttributeRekeyFactor;
 impl PseudonymizationInfo {
     /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
@@ -168,7 +168,7 @@ impl PseudonymizationInfo {
     }
 
     /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
@@ -197,7 +197,7 @@ impl PseudonymizationInfo {
 }
 impl PseudonymRekeyInfo {
     /// Compute the rekey info for pseudonyms given sessions and secrets.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn new(
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
@@ -215,7 +215,7 @@ impl PseudonymRekeyInfo {
     }
 
     /// Compute the rekey info for pseudonyms given sessions and secrets.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
@@ -235,7 +235,7 @@ impl PseudonymRekeyInfo {
 
 impl AttributeRekeyInfo {
     /// Compute the rekey info for attributes given sessions and secrets.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn new(
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
@@ -253,7 +253,7 @@ impl AttributeRekeyInfo {
     }
 
     /// Compute the rekey info for attributes given sessions and secrets.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
@@ -285,7 +285,7 @@ pub struct TranscryptionInfo {
 
 impl TranscryptionInfo {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
@@ -308,7 +308,7 @@ impl TranscryptionInfo {
     }
 
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,

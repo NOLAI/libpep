@@ -1,7 +1,8 @@
 use super::super::keys::*;
 use super::super::transcryption::contexts::*;
-use super::super::transcryption::secrets::EncryptionSecret;
-use crate::arithmetic::wasm::{WASMGroupElement, WASMScalarNonZero};
+use super::super::transcryption::wasm::secrets::WASMEncryptionSecret;
+use crate::arithmetic::wasm::group_elements::WASMGroupElement;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -54,7 +55,7 @@ impl WASMPseudonymGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        use crate::arithmetic::GroupElement;
+        use crate::arithmetic::group_elements::GroupElement;
         GroupElement::from_slice(&bytes).map(|x| Self(x.into()))
     }
 
@@ -65,7 +66,7 @@ impl WASMPseudonymGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        use crate::arithmetic::GroupElement;
+        use crate::arithmetic::group_elements::GroupElement;
         GroupElement::from_hex(hex).map(|x| Self(x.into()))
     }
 }
@@ -89,7 +90,7 @@ impl WASMAttributeGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        use crate::arithmetic::GroupElement;
+        use crate::arithmetic::group_elements::GroupElement;
         GroupElement::from_slice(&bytes).map(|x| Self(x.into()))
     }
 
@@ -100,7 +101,7 @@ impl WASMAttributeGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        use crate::arithmetic::GroupElement;
+        use crate::arithmetic::group_elements::GroupElement;
         GroupElement::from_hex(hex).map(|x| Self(x.into()))
     }
 }
@@ -325,12 +326,12 @@ pub fn wasm_make_attribute_global_keys() -> WASMAttributeGlobalKeyPair {
 pub fn wasm_make_pseudonym_session_keys(
     global: &WASMPseudonymGlobalSecretKey,
     session: &str,
-    secret: Vec<u8>,
+    secret: &WASMEncryptionSecret,
 ) -> WASMPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey(global.0 .0),
         &EncryptionContext::from(session),
-        &EncryptionSecret::from(secret),
+        &secret.0,
     );
     WASMPseudonymSessionKeyPair {
         public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(public.0)),
@@ -343,15 +344,160 @@ pub fn wasm_make_pseudonym_session_keys(
 pub fn wasm_make_attribute_session_keys(
     global: &WASMAttributeGlobalSecretKey,
     session: &str,
-    secret: Vec<u8>,
+    secret: &WASMEncryptionSecret,
 ) -> WASMAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey(global.0 .0),
         &EncryptionContext::from(session),
-        &EncryptionSecret::from(secret),
+        &secret.0,
     );
     WASMAttributeSessionKeyPair {
         public: WASMAttributeSessionPublicKey(WASMGroupElement::from(public.0)),
         secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(secret_key.0)),
     }
+}
+
+/// Session keys for encrypting and decrypting data.
+/// Pseudonym session keys containing both public and secret keys.
+#[wasm_bindgen(js_name = PseudonymSessionKeys)]
+#[derive(Clone, Copy)]
+pub struct WASMPseudonymSessionKeys {
+    public: WASMPseudonymSessionPublicKey,
+    secret: WASMPseudonymSessionSecretKey,
+}
+
+#[wasm_bindgen(js_class = "PseudonymSessionKeys")]
+impl WASMPseudonymSessionKeys {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        public: WASMPseudonymSessionPublicKey,
+        secret: WASMPseudonymSessionSecretKey,
+    ) -> Self {
+        Self { public, secret }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn public(&self) -> WASMPseudonymSessionPublicKey {
+        self.public
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn secret(&self) -> WASMPseudonymSessionSecretKey {
+        self.secret
+    }
+}
+
+/// Attribute session keys containing both public and secret keys.
+#[wasm_bindgen(js_name = AttributeSessionKeys)]
+#[derive(Clone, Copy)]
+pub struct WASMAttributeSessionKeys {
+    public: WASMAttributeSessionPublicKey,
+    secret: WASMAttributeSessionSecretKey,
+}
+
+#[wasm_bindgen(js_class = "AttributeSessionKeys")]
+impl WASMAttributeSessionKeys {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        public: WASMAttributeSessionPublicKey,
+        secret: WASMAttributeSessionSecretKey,
+    ) -> Self {
+        Self { public, secret }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn public(&self) -> WASMAttributeSessionPublicKey {
+        self.public
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn secret(&self) -> WASMAttributeSessionSecretKey {
+        self.secret
+    }
+}
+
+/// Session keys for both pseudonyms and attributes.
+/// Contains both pseudonym and attribute session keys (public and secret).
+#[wasm_bindgen(js_name = SessionKeys)]
+#[derive(Clone, Copy)]
+pub struct WASMSessionKeys {
+    pseudonym: WASMPseudonymSessionKeys,
+    attribute: WASMAttributeSessionKeys,
+}
+
+#[wasm_bindgen(js_class = "SessionKeys")]
+impl WASMSessionKeys {
+    #[wasm_bindgen(constructor)]
+    pub fn new(pseudonym: WASMPseudonymSessionKeys, attribute: WASMAttributeSessionKeys) -> Self {
+        Self {
+            pseudonym,
+            attribute,
+        }
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn pseudonym(&self) -> WASMPseudonymSessionKeys {
+        self.pseudonym
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn attribute(&self) -> WASMAttributeSessionKeys {
+        self.attribute
+    }
+}
+
+impl From<WASMSessionKeys> for SessionKeys {
+    fn from(keys: WASMSessionKeys) -> Self {
+        SessionKeys {
+            pseudonym: PseudonymSessionKeys {
+                public: keys.pseudonym.public.0 .0.into(),
+                secret: keys.pseudonym.secret.0 .0.into(),
+            },
+            attribute: AttributeSessionKeys {
+                public: keys.attribute.public.0 .0.into(),
+                secret: keys.attribute.secret.0 .0.into(),
+            },
+        }
+    }
+}
+
+impl From<SessionKeys> for WASMSessionKeys {
+    fn from(keys: SessionKeys) -> Self {
+        WASMSessionKeys {
+            pseudonym: WASMPseudonymSessionKeys {
+                public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(
+                    keys.pseudonym.public.0,
+                )),
+                secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(
+                    keys.pseudonym.secret.0,
+                )),
+            },
+            attribute: WASMAttributeSessionKeys {
+                public: WASMAttributeSessionPublicKey(WASMGroupElement::from(
+                    keys.attribute.public.0,
+                )),
+                secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(
+                    keys.attribute.secret.0,
+                )),
+            },
+        }
+    }
+}
+
+/// Generate session keys for both pseudonyms and attributes from global secret keys, a session and a secret.
+#[wasm_bindgen(js_name = makeSessionKeys)]
+pub fn wasm_make_session_keys(
+    global: &WASMGlobalSecretKeys,
+    session: &str,
+    secret: &WASMEncryptionSecret,
+) -> WASMSessionKeys {
+    let keys = make_session_keys(
+        &GlobalSecretKeys {
+            pseudonym: PseudonymGlobalSecretKey(global.pseudonym.0 .0),
+            attribute: AttributeGlobalSecretKey(global.attribute.0 .0),
+        },
+        &EncryptionContext::from(session),
+        &secret.0,
+    );
+    keys.into()
 }

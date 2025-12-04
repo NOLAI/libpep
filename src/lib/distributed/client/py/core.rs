@@ -234,12 +234,12 @@ impl PyPEPClient {
     fn decrypt_json(
         &self,
         encrypted: &crate::core::json::py::PyEncryptedPEPJSONValue,
-    ) -> PyResult<Py<PyAny>> {
+    ) -> PyResult<crate::core::json::py::PyPEPJSONValue> {
         let decrypted = self.0.decrypt_json(&encrypted.0).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!("Decryption failed: {}", e))
         })?;
 
-        Python::with_gil(|py| crate::core::json::py::json_to_python(py, &decrypted))
+        Ok(crate::core::json::py::PyPEPJSONValue(decrypted))
     }
 }
 

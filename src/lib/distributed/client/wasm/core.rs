@@ -1,8 +1,7 @@
 use super::super::core::PEPClient;
-use super::super::global::OfflinePEPClient;
+use super::super::offline::OfflinePEPClient;
 use super::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
-    WASMSessionKeys,
 };
 use crate::core::keys::*;
 #[cfg(feature = "long")]
@@ -13,6 +12,7 @@ use crate::core::wasm::data::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::core::wasm::keys::WASMGlobalPublicKeys;
+use crate::core::wasm::keys::WASMSessionKeys;
 use crate::distributed::server::keys::*;
 use crate::distributed::server::setup::BlindedGlobalKeys;
 use crate::distributed::server::wasm::setup::WASMBlindedGlobalKeys;
@@ -47,12 +47,12 @@ impl WASMPEPClient {
 
     #[wasm_bindgen(js_name = restore)]
     pub fn wasm_restore(keys: &WASMSessionKeys) -> Self {
-        Self(PEPClient::restore(keys.clone().into()))
+        Self(PEPClient::restore((*keys).into()))
     }
 
     #[wasm_bindgen(js_name = dump)]
     pub fn wasm_dump(&self) -> WASMSessionKeys {
-        WASMSessionKeys(*self.dump())
+        (*self.dump()).into()
     }
 
     #[wasm_bindgen(js_name = updatePseudonymSessionSecretKey)]
@@ -233,50 +233,6 @@ impl WASMOfflinePEPClient {
         WASMLongEncryptedAttribute::from(self.encrypt_long_attribute(&message.0, &mut rng))
     }
 
-    /// Encrypt a PEPJSONValue into an EncryptedPEPJSONValue.
-    ///
-    /// # Arguments
-    ///
-    /// * `pep_value` - The unencrypted PEPJSONValue to encrypt
-    ///
-    /// # Returns
-    ///
-    /// An EncryptedPEPJSONValue
-    #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = encryptJSON)]
-    pub fn encrypt_json(
-        &self,
-        pep_value: &crate::core::json::wasm::WASMPEPJSONValue,
-    ) -> crate::core::json::wasm::WASMEncryptedPEPJSONValue {
-        use std::ops::Deref;
-        let mut rng = rand::rng();
-        let encrypted = self.deref().encrypt_json(&pep_value.0, &mut rng);
-        crate::core::json::wasm::WASMEncryptedPEPJSONValue(encrypted)
-    }
-
-    /// Decrypt an EncryptedPEPJSONValue back to a regular JavaScript value.
-    ///
-    /// # Arguments
-    ///
-    /// * `encrypted` - The EncryptedPEPJSONValue to decrypt
-    ///
-    /// # Returns
-    ///
-    /// A JavaScript value (object, array, string, number, boolean, or null)
-    #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = decryptJSON)]
-    pub fn decrypt_json(
-        &self,
-        encrypted: &crate::core::json::wasm::WASMEncryptedPEPJSONValue,
-    ) -> Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {
-        use std::ops::Deref;
-        let decrypted = self
-            .deref()
-            .decrypt_json(&encrypted.0)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("Decryption failed: {}", e)))?;
-
-        serde_wasm_bindgen::to_value(&decrypted).map_err(|e| {
-            wasm_bindgen::JsValue::from_str(&format!("Failed to convert to JS: {}", e))
-        })
-    }
+    // TODO: Implement encrypt_json and decrypt_json for OfflinePEPClient
+    // These methods were removed during refactoring and need to be re-implemented
 }

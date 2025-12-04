@@ -1,4 +1,4 @@
-use super::super::*;
+use super::super::scalars::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};

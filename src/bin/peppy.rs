@@ -2,17 +2,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use commandy_macros::*;
-use libpep::arithmetic::{ScalarNonZero, ScalarTraits};
+use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::core::data::{
     decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
 };
-use libpep::core::global::encrypt_pseudonym_global;
 use libpep::core::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, PseudonymGlobalPublicKey,
     PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
 use libpep::core::long::data::LongPseudonym;
+use libpep::core::offline::encrypt_pseudonym_global;
 use libpep::core::rerandomize::rerandomize;
 use libpep::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,

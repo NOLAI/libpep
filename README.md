@@ -207,9 +207,10 @@ The following features are available:
 
 **Default features** (included unless you use `--no-default-features`):
 - `long`: enables support for long pseudonyms and attributes over 15 bytes using PKCS#7 padding.
-- `global`: enables encryption towards global keys (instead of only session keys).
+- `offline`: enables offline encryption towards global keys (instead of only session keys).
 - `batch`: enables batch transcryption operations with reordering to prevent linkability.
 - `serde`: enables serialization/deserialization support via Serde.
+- `json`: enables PEP json structured data types.
 - `build-binary`: builds the `peppy` command-line tool.
 
 **Optional features:**

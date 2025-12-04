@@ -1,6 +1,7 @@
 //! Session key creation and update from session key shares for distributed trust clients.
 
-use crate::arithmetic::{GroupElement, ScalarNonZero, G};
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::keys::{
     AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
     PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,

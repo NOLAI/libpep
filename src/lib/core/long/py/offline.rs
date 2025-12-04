@@ -1,7 +1,7 @@
 use super::data::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::arithmetic::GroupElement;
+use crate::arithmetic::group_elements::GroupElement;
 use crate::core::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
@@ -20,7 +20,7 @@ pub fn py_encrypt_long_pseudonym_global(
     public_key: &PyPseudonymGlobalPublicKey,
 ) -> PyLongEncryptedPseudonym {
     let mut rng = rand::rng();
-    PyLongEncryptedPseudonym(crate::core::long::global::encrypt_long_pseudonym_global(
+    PyLongEncryptedPseudonym(crate::core::long::offline::encrypt_long_pseudonym_global(
         &message.0,
         &PseudonymGlobalPublicKey::from(GroupElement::from(public_key.0)),
         &mut rng,
@@ -37,7 +37,7 @@ pub fn py_encrypt_long_attribute_global(
     public_key: &PyAttributeGlobalPublicKey,
 ) -> PyLongEncryptedAttribute {
     let mut rng = rand::rng();
-    PyLongEncryptedAttribute(crate::core::long::global::encrypt_long_attribute_global(
+    PyLongEncryptedAttribute(crate::core::long::offline::encrypt_long_attribute_global(
         &message.0,
         &AttributeGlobalPublicKey::from(GroupElement::from(public_key.0)),
         &mut rng,
@@ -53,7 +53,7 @@ pub fn py_decrypt_long_pseudonym_global(
     encrypted: &PyLongEncryptedPseudonym,
     secret_key: &PyPseudonymGlobalSecretKey,
 ) -> Option<PyLongPseudonym> {
-    crate::core::long::global::decrypt_long_pseudonym_global(
+    crate::core::long::offline::decrypt_long_pseudonym_global(
         &encrypted.0,
         &PseudonymGlobalSecretKey::from(secret_key.0 .0),
     )
@@ -69,7 +69,7 @@ pub fn py_decrypt_long_pseudonym_global(
     encrypted: &PyLongEncryptedPseudonym,
     secret_key: &PyPseudonymGlobalSecretKey,
 ) -> PyLongPseudonym {
-    PyLongPseudonym(crate::core::long::global::decrypt_long_pseudonym_global(
+    PyLongPseudonym(crate::core::long::offline::decrypt_long_pseudonym_global(
         &encrypted.0,
         &PseudonymGlobalSecretKey::from(secret_key.0 .0),
     ))
@@ -84,7 +84,7 @@ pub fn py_decrypt_long_attribute_global(
     encrypted: &PyLongEncryptedAttribute,
     secret_key: &PyAttributeGlobalSecretKey,
 ) -> Option<PyLongAttribute> {
-    crate::core::long::global::decrypt_long_attribute_global(
+    crate::core::long::offline::decrypt_long_attribute_global(
         &encrypted.0,
         &AttributeGlobalSecretKey::from(secret_key.0 .0),
     )
@@ -100,7 +100,7 @@ pub fn py_decrypt_long_attribute_global(
     encrypted: &PyLongEncryptedAttribute,
     secret_key: &PyAttributeGlobalSecretKey,
 ) -> PyLongAttribute {
-    PyLongAttribute(crate::core::long::global::decrypt_long_attribute_global(
+    PyLongAttribute(crate::core::long::offline::decrypt_long_attribute_global(
         &encrypted.0,
         &AttributeGlobalSecretKey::from(secret_key.0 .0),
     ))

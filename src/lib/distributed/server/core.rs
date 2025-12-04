@@ -34,6 +34,17 @@ impl PEPSystem {
             blinding_factor,
         }
     }
+
+    /// Get a reference to the pseudonymisation secret.
+    pub(crate) fn pseudonymisation_secret(&self) -> &PseudonymizationSecret {
+        &self.pseudonymisation_secret
+    }
+
+    /// Get a reference to the rekeying secret.
+    pub(crate) fn rekeying_secret(&self) -> &EncryptionSecret {
+        &self.rekeying_secret
+    }
+
     /// Generate a pseudonym session key share for the given session.
     pub fn pseudonym_session_key_share(
         &self,
@@ -63,44 +74,44 @@ impl PEPSystem {
         )
     }
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn attribute_rekey_info(
         &self,
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
     ) -> AttributeRekeyInfo {
-        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+        self.attribute_rekey_info_offline(session_from, session_to)
     }
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn attribute_rekey_info(
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> AttributeRekeyInfo {
-        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+        AttributeRekeyInfo::new(Some(session_from), Some(session_to), &self.rekeying_secret)
     }
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn pseudonym_rekey_info(
         &self,
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
     ) -> PseudonymRekeyInfo {
-        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+        self.pseudonym_rekey_info_offline(session_from, session_to)
     }
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn pseudonym_rekey_info(
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> PseudonymRekeyInfo {
-        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+        PseudonymRekeyInfo::new(Some(session_from), Some(session_to), &self.rekeying_secret)
     }
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn pseudonymization_info(
         &self,
         domain_form: &PseudonymizationDomain,
@@ -108,18 +119,11 @@ impl PEPSystem {
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
     ) -> PseudonymizationInfo {
-        PseudonymizationInfo::new(
-            domain_form,
-            domain_to,
-            session_from,
-            session_to,
-            &self.pseudonymisation_secret,
-            &self.rekeying_secret,
-        )
+        self.pseudonymization_info_offline(domain_form, domain_to, session_from, session_to)
     }
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn pseudonymization_info(
         &self,
         domain_form: &PseudonymizationDomain,
@@ -130,8 +134,8 @@ impl PEPSystem {
         PseudonymizationInfo::new(
             domain_form,
             domain_to,
-            session_from,
-            session_to,
+            Some(session_from),
+            Some(session_to),
             &self.pseudonymisation_secret,
             &self.rekeying_secret,
         )
@@ -156,7 +160,7 @@ impl PEPSystem {
 
     /// Generate transcryption info to transcrypt from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     pub fn transcryption_info(
         &self,
         domain_from: &PseudonymizationDomain,
@@ -164,18 +168,11 @@ impl PEPSystem {
         session_from: Option<&EncryptionContext>,
         session_to: Option<&EncryptionContext>,
     ) -> TranscryptionInfo {
-        TranscryptionInfo::new(
-            domain_from,
-            domain_to,
-            session_from,
-            session_to,
-            &self.pseudonymisation_secret,
-            &self.rekeying_secret,
-        )
+        self.transcryption_info_offline(domain_from, domain_to, session_from, session_to)
     }
     /// Generate transcryption info to transcrypt from a given [`PseudonymizationDomain`]
     /// and [`EncryptionContext`] to another.
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     pub fn transcryption_info(
         &self,
         domain_from: &PseudonymizationDomain,
@@ -186,8 +183,8 @@ impl PEPSystem {
         TranscryptionInfo::new(
             domain_from,
             domain_to,
-            session_from,
-            session_to,
+            Some(session_from),
+            Some(session_to),
             &self.pseudonymisation_secret,
             &self.rekeying_secret,
         )

@@ -1,7 +1,7 @@
-use crate::arithmetic::py::PyGroupElement;
-use crate::arithmetic::py::PyScalarNonZero;
+use crate::arithmetic::py::group_elements::PyGroupElement;
+use crate::arithmetic::py::scalars::PyScalarNonZero;
 use crate::core::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::core::py::{
+use crate::core::py::keys::{
     PyAttributeGlobalPublicKey, PyAttributeGlobalSecretKey, PyGlobalPublicKeys, PyGlobalSecretKeys,
     PyPseudonymGlobalPublicKey, PyPseudonymGlobalSecretKey,
 };

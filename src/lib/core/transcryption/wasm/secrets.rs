@@ -6,7 +6,7 @@ use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
 use super::contexts::WASMPseudonymRekeyFactor;
-use crate::arithmetic::wasm::WASMScalarNonZero;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 
 /// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
 #[derive(Clone, Debug, From, Into, Deref)]

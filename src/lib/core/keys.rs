@@ -3,7 +3,8 @@
 //!
 //! Keys are split into separate Attribute and Pseudonym encryption keys for enhanced security.
 
-use crate::arithmetic::{GroupElement, ScalarNonZero, ScalarTraits, G};
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::core::transcryption::contexts::{EncryptionContext, RekeyFactor};
 use crate::core::transcryption::secrets::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,

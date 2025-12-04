@@ -4,28 +4,42 @@ pub mod contexts;
 pub mod ops;
 pub mod secrets;
 
-#[cfg(feature = "batch")]
-pub use batch::{py_pseudonymize_batch, py_rekey_batch, py_transcrypt_batch};
-pub use contexts::{
-    PyAttributeRekeyFactor, PyAttributeRekeyInfo, PyPseudonymRSKFactors, PyPseudonymRekeyFactor,
-    PyPseudonymizationInfo, PyReshuffleFactor, PyTranscryptionInfo,
-};
-pub use ops::{
-    py_decrypt_attribute, py_decrypt_pseudonym, py_encrypt_attribute, py_encrypt_pseudonym,
-    py_pseudonymize, py_rekey_attribute, py_rekey_pseudonym, py_transcrypt_attribute,
-    py_transcrypt_pseudonym,
-};
-pub use secrets::{
-    py_make_attribute_rekey_factor, py_make_pseudonym_rekey_factor, py_make_pseudonymisation_factor,
-};
-
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let py = m.py();
+
+    // Create submodules to mirror Rust structure
     #[cfg(feature = "batch")]
-    batch::register(m)?;
-    contexts::register(m)?;
-    ops::register(m)?;
-    secrets::register(m)?;
+    {
+        let batch_module = PyModule::new(py, "batch")?;
+        batch::register(&batch_module)?;
+        m.add_submodule(&batch_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.core.transcryption.batch", &batch_module)?;
+    }
+
+    let contexts_module = PyModule::new(py, "contexts")?;
+    contexts::register(&contexts_module)?;
+    m.add_submodule(&contexts_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.transcryption.contexts", &contexts_module)?;
+
+    let ops_module = PyModule::new(py, "ops")?;
+    ops::register(&ops_module)?;
+    m.add_submodule(&ops_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.transcryption.ops", &ops_module)?;
+
+    let secrets_module = PyModule::new(py, "secrets")?;
+    secrets::register(&secrets_module)?;
+    m.add_submodule(&secrets_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.transcryption.secrets", &secrets_module)?;
+
     Ok(())
 }

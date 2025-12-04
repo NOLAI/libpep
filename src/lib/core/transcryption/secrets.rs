@@ -1,7 +1,7 @@
 //! Utilities for deriving factors from contexts and secrets.
 
 use super::contexts::*;
-use crate::arithmetic::*;
+use crate::arithmetic::scalars::ScalarNonZero;
 use derive_more::From;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;

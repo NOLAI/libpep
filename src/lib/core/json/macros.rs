@@ -143,7 +143,7 @@ mod tests {
             "scores": [88, 91, 85]
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -164,7 +164,7 @@ mod tests {
             "age": 30
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
         let encrypted = pep_value.encrypt(&keys, &mut rng);
         let decrypted = encrypted.decrypt(&keys).unwrap();
 
-        assert_eq!(json!({}), decrypted);
+        assert_eq!(json!({}), decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod tests {
             "id2": "user2@example.com"
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 
     #[test]
@@ -222,6 +222,6 @@ mod tests {
             "scores": [1, 2, 3]
         });
 
-        assert_eq!(expected, decrypted);
+        assert_eq!(expected, decrypted.to_value().unwrap());
     }
 }

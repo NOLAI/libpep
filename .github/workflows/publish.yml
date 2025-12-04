@@ -7,15 +7,15 @@ on:
 jobs:
   semver-checks:
     runs-on: ubuntu-latest
-
     name: cargo semver-checks
     steps:
       - uses: actions/checkout@v4
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          # Note: python and wasm features are mutually exclusive, so we only check core features
-          feature-group: only-explicit-features
-          features: elgamal3,long,global,batch,serde,legacy,insecure
+          # Check default feature set, plus elgamal3 and legacy.
+          # python/wasm bindings are not included here (and remain mutually exclusive).
+          feature-group: default-features
+          features: elgamal3,legacy,insecure
 
   publish-crate:
     runs-on: ubuntu-latest

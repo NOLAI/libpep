@@ -6,8 +6,8 @@
 #[cfg(feature = "batch")]
 pub mod batch;
 pub mod data;
-#[cfg(feature = "global")]
-pub mod global;
+#[cfg(feature = "offline")]
+pub mod offline;
 pub mod ops;
 
 #[cfg(feature = "python")]

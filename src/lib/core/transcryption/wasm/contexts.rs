@@ -1,6 +1,6 @@
 use super::super::contexts::*;
+use super::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use crate::core::transcryption::contexts::AttributeRekeyFactor;
-use crate::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use derive_more::From;
 use wasm_bindgen::prelude::*;
 
@@ -16,20 +16,14 @@ pub struct WASMAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 impl WASMAttributeRekeyInfo {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        session_from: Option<String>,
-        session_to: Option<String>,
-        encryption_secret: Vec<u8>,
+        session_from: &str,
+        session_to: &str,
+        encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
         let info = AttributeRekeyInfo::new(
-            session_from
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            session_to
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            &EncryptionSecret::from(encryption_secret),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
+            &encryption_secret.0,
         );
         WASMAttributeRekeyInfo(info)
     }
@@ -50,24 +44,18 @@ impl WASMPseudonymizationInfo {
     pub fn new(
         domain_from: &str,
         domain_to: &str,
-        session_from: Option<String>,
-        session_to: Option<String>,
-        pseudonymization_secret: Vec<u8>,
-        encryption_secret: Vec<u8>,
+        session_from: &str,
+        session_to: &str,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
         let info = PseudonymizationInfo::new(
             &PseudonymizationDomain::from(domain_from),
             &PseudonymizationDomain::from(domain_to),
-            session_from
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            session_to
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            &PseudonymizationSecret::from(pseudonymization_secret),
-            &EncryptionSecret::from(encryption_secret),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
         );
         WASMPseudonymizationInfo(info)
     }
@@ -96,24 +84,18 @@ impl WASMTranscryptionInfo {
     pub fn new(
         domain_from: &str,
         domain_to: &str,
-        session_from: Option<String>,
-        session_to: Option<String>,
-        pseudonymization_secret: Vec<u8>,
-        encryption_secret: Vec<u8>,
+        session_from: &str,
+        session_to: &str,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
         let info = TranscryptionInfo::new(
             &PseudonymizationDomain::from(domain_from),
             &PseudonymizationDomain::from(domain_to),
-            session_from
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            session_to
-                .as_ref()
-                .map(|s| EncryptionContext::from(s.as_str()))
-                .as_ref(),
-            &PseudonymizationSecret::from(pseudonymization_secret),
-            &EncryptionSecret::from(encryption_secret),
+            Some(&EncryptionContext::from(session_from)),
+            Some(&EncryptionContext::from(session_to)),
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
         );
         WASMTranscryptionInfo(info)
     }

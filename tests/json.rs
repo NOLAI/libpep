@@ -38,8 +38,11 @@ fn test_json_transcryption_with_macro() {
     let decrypted_original = encrypted
         .decrypt(&session_keys)
         .expect("Decryption should succeed");
-    assert_eq!(decrypted_original["patient_id"], "patient-12345");
-    assert_eq!(decrypted_original["diagnosis"], "Flu");
+    let json_original = decrypted_original
+        .to_value()
+        .expect("Should convert to JSON");
+    assert_eq!(json_original["patient_id"], "patient-12345");
+    assert_eq!(json_original["diagnosis"], "Flu");
 
     // Transcrypt from hospital A to hospital B
     let transcryption_info = TranscryptionInfo::new(
@@ -64,6 +67,8 @@ fn test_json_transcryption_with_macro() {
 
 #[test]
 fn test_json_transcryption_with_builder() {
+    use serde_json::json;
+
     let mut rng = rand::rng();
 
     // Setup keys and secrets
@@ -77,13 +82,17 @@ fn test_json_transcryption_with_builder() {
 
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
-    // Build patient record with pseudonym using builder
-    use serde_json::json;
-    let patient_record = PEPJSONBuilder::new()
-        .pseudonym("user_id", "user-67890")
-        .attribute("name", json!("Alice"))
-        .attribute("age", json!(30))
-        .attribute("active", json!(true))
+    // Create JSON with existing data, marking "user_id" as a pseudonym field
+    let patient_data = json!({
+        "user_id": "user-67890",
+        "name": "Alice",
+        "age": 30,
+        "active": true
+    });
+
+    // Convert to PEP JSON, specifying which fields are pseudonyms
+    let patient_record = PEPJSONBuilder::from_json(&patient_data, &["user_id"])
+        .expect("Should create PEP JSON from existing JSON")
         .build();
 
     // Encrypt
@@ -93,8 +102,13 @@ fn test_json_transcryption_with_builder() {
     let decrypted_original = encrypted
         .decrypt(&session_keys)
         .expect("Decryption should succeed");
-    assert_eq!(decrypted_original["user_id"], "user-67890");
-    assert_eq!(decrypted_original["name"], "Alice");
+    let json_original = decrypted_original
+        .to_value()
+        .expect("Should convert to JSON");
+    assert_eq!(json_original["user_id"], "user-67890");
+    assert_eq!(json_original["name"], "Alice");
+    assert_eq!(json_original["age"], 30);
+    assert_eq!(json_original["active"], true);
 
     // Transcrypt from clinic A to clinic B
     let transcryption_info = TranscryptionInfo::new(
@@ -108,12 +122,21 @@ fn test_json_transcryption_with_builder() {
 
     let transcrypted = encrypted.transcrypt(&transcryption_info);
 
-    // Verify that the encrypted structures are different after transcryption
-    // (The pseudonym has been transformed)
+    // Decrypt transcrypted data
+    let decrypted_transcrypted = transcrypted
+        .decrypt(&session_keys)
+        .expect("Decryption should succeed");
+    let json_transcrypted = decrypted_transcrypted
+        .to_value()
+        .expect("Should convert to JSON");
+
+    // Attributes should remain the same, but pseudonym should be different
+    assert_eq!(json_transcrypted["name"], "Alice");
+    assert_eq!(json_transcrypted["age"], 30);
+    assert_eq!(json_transcrypted["active"], true);
     assert_ne!(
-        format!("{:?}", encrypted),
-        format!("{:?}", transcrypted),
-        "Encrypted values should be different after transcryption"
+        json_transcrypted["user_id"], "user-67890",
+        "Pseudonym should be different after cross-domain transcryption"
     );
 }
 
@@ -135,18 +158,28 @@ fn test_json_batch_transcryption_same_structure() {
 
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
-    // Create two JSON values with the SAME structure
-    let record1 = pep_json!({
-        "patient_id": pseudonym("patient-001"),
+    // Create two JSON values with the SAME structure using standard JSON
+    use serde_json::json;
+
+    let data1 = json!({
+        "patient_id": "patient-001",
         "diagnosis": "Flu",
         "temperature": 38.5
     });
 
-    let record2 = pep_json!({
-        "patient_id": pseudonym("patient-002"),
+    let data2 = json!({
+        "patient_id": "patient-002",
         "diagnosis": "Cold",
         "temperature": 37.2
     });
+
+    // Convert to PEP JSON, specifying "patient_id" as pseudonym field
+    let record1 = PEPJSONBuilder::from_json(&data1, &["patient_id"])
+        .expect("Should create PEP JSON from existing JSON")
+        .build();
+    let record2 = PEPJSONBuilder::from_json(&data2, &["patient_id"])
+        .expect("Should create PEP JSON from existing JSON")
+        .build();
 
     // Encrypt both records
     let encrypted1 = record1.encrypt(&session_keys, &mut rng);
@@ -187,7 +220,12 @@ fn test_json_batch_transcryption_same_structure() {
     // Decrypt all transcrypted values
     let mut decrypted_batch: Vec<serde_json::Value> = transcrypted_batch
         .iter()
-        .map(|v| v.decrypt(&session_keys).expect("Decryption should succeed"))
+        .map(|v| {
+            v.decrypt(&session_keys)
+                .expect("Decryption should succeed")
+                .to_value()
+                .expect("Should convert to JSON")
+        })
         .collect();
 
     // Sort by temperature to have a consistent order (Flu=38.5, Cold=37.2)
@@ -232,19 +270,29 @@ fn test_json_batch_transcryption_different_structures() {
 
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
-    // Create two JSON values with DIFFERENT structures
-    let record1 = pep_json!({
-        "patient_id": pseudonym("patient-001"),
+    // Create two JSON values with DIFFERENT structures using standard JSON
+    use serde_json::json;
+
+    let data1 = json!({
+        "patient_id": "patient-001",
         "diagnosis": "Flu",
         "temperature": 38.5
     });
 
-    let record2 = pep_json!({
-        "user_id": pseudonym("user-002"),
+    let data2 = json!({
+        "user_id": "user-002",
         "name": "Bob",
         "age": 25,
         "active": true
     });
+
+    // Convert to PEP JSON with different pseudonym fields
+    let record1 = PEPJSONBuilder::from_json(&data1, &["patient_id"])
+        .expect("Should create PEP JSON from existing JSON")
+        .build();
+    let record2 = PEPJSONBuilder::from_json(&data2, &["user_id"])
+        .expect("Should create PEP JSON from existing JSON")
+        .build();
 
     // Encrypt both records
     let encrypted1 = record1.encrypt(&session_keys, &mut rng);

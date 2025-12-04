@@ -4,7 +4,7 @@
 use crate::core::long::batch::*;
 use crate::core::long::data::*;
 use crate::core::long::ops::*;
-#[cfg(feature = "global")]
+#[cfg(feature = "offline")]
 use crate::core::transcryption::contexts::*;
 use crate::distributed::server::core::PEPSystem;
 use rand_core::{CryptoRng, RngCore};

@@ -2,14 +2,12 @@ use super::super::keys::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
-use crate::arithmetic::wasm::{WASMGroupElement, WASMScalarNonZero};
-use crate::core::keys::{
-    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
-};
+use crate::arithmetic::wasm::group_elements::WASMGroupElement;
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::core::wasm::keys::{
     WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
     WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
+    WASMSessionKeys,
 };
 use crate::distributed::server::keys::{
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
@@ -115,90 +113,6 @@ impl WASMSessionKeyShares {
     }
 }
 
-/// Pseudonym session keys.
-#[derive(Copy, Clone, Debug, From, Into)]
-#[wasm_bindgen(js_name = PseudonymSessionKeys)]
-pub struct WASMPseudonymSessionKeys(pub(crate) PseudonymSessionKeys);
-
-#[wasm_bindgen(js_class = "PseudonymSessionKeys")]
-impl WASMPseudonymSessionKeys {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        public: WASMPseudonymSessionPublicKey,
-        secret: WASMPseudonymSessionSecretKey,
-    ) -> Self {
-        WASMPseudonymSessionKeys(PseudonymSessionKeys {
-            public: PseudonymSessionPublicKey::from(public.0 .0),
-            secret: PseudonymSessionSecretKey::from(secret.0 .0),
-        })
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn public(&self) -> WASMPseudonymSessionPublicKey {
-        WASMPseudonymSessionPublicKey(WASMGroupElement::from(self.0.public.0))
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn secret(&self) -> WASMPseudonymSessionSecretKey {
-        WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(self.0.secret.0))
-    }
-}
-
-/// Attribute session keys.
-#[derive(Copy, Clone, Debug, From, Into)]
-#[wasm_bindgen(js_name = AttributeSessionKeys)]
-pub struct WASMAttributeSessionKeys(pub(crate) AttributeSessionKeys);
-
-#[wasm_bindgen(js_class = "AttributeSessionKeys")]
-impl WASMAttributeSessionKeys {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        public: WASMAttributeSessionPublicKey,
-        secret: WASMAttributeSessionSecretKey,
-    ) -> Self {
-        WASMAttributeSessionKeys(AttributeSessionKeys {
-            public: AttributeSessionPublicKey::from(public.0 .0),
-            secret: AttributeSessionSecretKey::from(secret.0 .0),
-        })
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn public(&self) -> WASMAttributeSessionPublicKey {
-        WASMAttributeSessionPublicKey(WASMGroupElement::from(self.0.public.0))
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn secret(&self) -> WASMAttributeSessionSecretKey {
-        WASMAttributeSessionSecretKey(WASMScalarNonZero::from(self.0.secret.0))
-    }
-}
-
-/// Session keys.
-#[derive(Clone, From, Into)]
-#[wasm_bindgen(js_name = SessionKeys)]
-pub struct WASMSessionKeys(pub(crate) SessionKeys);
-
-#[wasm_bindgen(js_class = "SessionKeys")]
-impl WASMSessionKeys {
-    #[wasm_bindgen(constructor)]
-    pub fn new(pseudonym: WASMPseudonymSessionKeys, attribute: WASMAttributeSessionKeys) -> Self {
-        WASMSessionKeys(SessionKeys {
-            pseudonym: pseudonym.0,
-            attribute: attribute.0,
-        })
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn pseudonym(&self) -> WASMPseudonymSessionKeys {
-        WASMPseudonymSessionKeys(self.0.pseudonym)
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn attribute(&self) -> WASMAttributeSessionKeys {
-        WASMAttributeSessionKeys(self.0.attribute)
-    }
-}
-
 /// Combines pseudonym session key shares.
 #[wasm_bindgen(js_name = makePseudonymSessionKey)]
 pub fn wasm_make_pseudonym_session_key(
@@ -233,11 +147,11 @@ pub fn wasm_make_session_keys_distributed(
     blinded_global_keys: WASMBlindedGlobalKeys,
     shares: Vec<WASMSessionKeyShares>,
 ) -> WASMSessionKeys {
-    let shares: Vec<SessionKeyShares> = shares.into_iter().map(|s| s.0).collect();
-    WASMSessionKeys(make_session_keys_distributed(
+    let keys = make_session_keys_distributed(
         blinded_global_keys.0,
-        &shares,
-    ))
+        &shares.into_iter().map(|s| s.0).collect::<Vec<_>>(),
+    );
+    keys.into()
 }
 
 /// Updates a pseudonym session key.
@@ -277,9 +191,6 @@ pub fn wasm_update_session_keys(
     old_shares: WASMSessionKeyShares,
     new_shares: WASMSessionKeyShares,
 ) -> WASMSessionKeys {
-    WASMSessionKeys(update_session_keys(
-        session_keys.0,
-        old_shares.0,
-        new_shares.0,
-    ))
+    let updated = update_session_keys(session_keys.into(), old_shares.0, new_shares.0);
+    updated.into()
 }

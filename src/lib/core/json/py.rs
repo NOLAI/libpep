@@ -1,22 +1,20 @@
 //! Python bindings for PEP JSON encryption.
 
 use crate::core::json::builder::PEPJSONBuilder;
-use crate::core::json::core::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
+use crate::core::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::core::json::structure::JSONStructure;
-use crate::core::json::transcryption::transcrypt_batch;
+use crate::core::json::transcryption::transcrypt_json_batch;
 use crate::core::keys::SessionKeys;
-use crate::core::long::data::LongPseudonym;
-use crate::core::padding::Padded;
-use crate::core::py::keys::{PyGlobalSecretKeys, PyPseudonymizationSecret};
+use crate::core::py::keys::{PyEncryptionSecret, PyPseudonymizationSecret, PySessionKeys};
 use crate::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
 };
+use crate::core::transcryption::py::contexts::PyTranscryptionInfo;
 use crate::core::transcryption::secrets::EncryptionSecret;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyBytes, PyDict, PyList, PyString};
+use pyo3::types::{PyAny, PyBytes, PyDict, PyList};
 use serde_json::Value;
-use std::collections::HashMap;
 
 /// A PEP JSON value that can be encrypted.
 ///
@@ -41,37 +39,30 @@ impl PyPEPJSONValue {
         Ok(Self(PEPJSONValue::from_value(&json_value)))
     }
 
+    /// Convert this PEPJSONValue to a regular Python object.
+    ///
+    /// Returns:
+    ///     A Python object (dict, list, str, int, float, bool, or None)
+    #[pyo3(name = "to_json")]
+    fn to_json(&self) -> PyResult<Py<PyAny>> {
+        let json_value = self
+            .0
+            .to_value()
+            .map_err(|e| PyValueError::new_err(format!("Conversion failed: {}", e)))?;
+        Python::attach(|py| json_to_python(py, &json_value))
+    }
+
     /// Encrypt this PEPJSONValue into an EncryptedPEPJSONValue.
     ///
     /// Args:
-    ///     attribute_public_key: Attribute session public key
-    ///     pseudonym_public_key: Pseudonym session public key
+    ///     session_keys: Session keys containing both public and secret keys
     ///
     /// Returns:
     ///     An EncryptedPEPJSONValue
     #[pyo3(name = "encrypt")]
-    fn encrypt(
-        &self,
-        attribute_public_key: &PyAny,
-        pseudonym_public_key: &PyAny,
-    ) -> PyResult<PyEncryptedPEPJSONValue> {
+    fn encrypt(&self, session_keys: &PySessionKeys) -> PyResult<PyEncryptedPEPJSONValue> {
         let mut rng = rand::rng();
-
-        // Extract keys from the Python objects
-        let attr_public = attribute_public_key.extract()?;
-        let pseudo_public = pseudonym_public_key.extract()?;
-
-        let keys = SessionKeys {
-            attribute: crate::core::keys::AttributeSessionKeys {
-                public: attr_public,
-                secret: Default::default(), // Not needed for encryption
-            },
-            pseudonym: crate::core::keys::PseudonymSessionKeys {
-                public: pseudo_public,
-                secret: Default::default(), // Not needed for encryption
-            },
-        };
-
+        let keys: SessionKeys = session_keys.clone().into();
         let encrypted = self.0.encrypt(&keys, &mut rng);
         Ok(PyEncryptedPEPJSONValue(encrypted))
     }
@@ -86,41 +77,22 @@ pub struct PyEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
 #[pymethods]
 impl PyEncryptedPEPJSONValue {
-    /// Decrypt this EncryptedPEPJSONValue back into a regular Python object.
+    /// Decrypt this EncryptedPEPJSONValue back into a PEPJSONValue.
     ///
     /// Args:
-    ///     attribute_secret_key: Attribute session secret key
-    ///     pseudonym_secret_key: Pseudonym session secret key
+    ///     session_keys: Session keys containing both public and secret keys
     ///
     /// Returns:
-    ///     A Python object (dict, list, str, int, float, bool, or None)
+    ///     A PEPJSONValue
     #[pyo3(name = "decrypt")]
-    fn decrypt(
-        &self,
-        attribute_secret_key: &PyAny,
-        pseudonym_secret_key: &PyAny,
-    ) -> PyResult<Py<PyAny>> {
-        // Extract keys from the Python objects
-        let attr_secret = attribute_secret_key.extract()?;
-        let pseudo_secret = pseudonym_secret_key.extract()?;
-
-        let keys = SessionKeys {
-            attribute: crate::core::keys::AttributeSessionKeys {
-                public: Default::default(), // Not needed for decryption
-                secret: attr_secret,
-            },
-            pseudonym: crate::core::keys::PseudonymSessionKeys {
-                public: Default::default(), // Not needed for decryption
-                secret: pseudo_secret,
-            },
-        };
-
+    fn decrypt(&self, session_keys: &PySessionKeys) -> PyResult<PyPEPJSONValue> {
+        let keys: SessionKeys = session_keys.clone().into();
         let decrypted = self
             .0
             .decrypt(&keys)
             .map_err(|e| PyValueError::new_err(format!("Decryption failed: {}", e)))?;
 
-        Python::with_gil(|py| json_to_python(py, &decrypted))
+        Ok(PyPEPJSONValue(decrypted))
     }
 
     /// Get the structure/shape of this EncryptedPEPJSONValue.
@@ -153,7 +125,7 @@ impl PyEncryptedPEPJSONValue {
         from_session: Option<&str>,
         to_session: Option<&str>,
         pseudonymization_secret: Option<PyPseudonymizationSecret>,
-        encryption_secret: Option<&PyBytes>,
+        encryption_secret: Option<PyEncryptionSecret>,
     ) -> PyResult<Self> {
         let from_domain = PseudonymizationDomain::from(from_domain);
         let to_domain = PseudonymizationDomain::from(to_domain);
@@ -165,10 +137,10 @@ impl PyEncryptedPEPJSONValue {
         });
 
         let enc_secret = encryption_secret
-            .map(|b| EncryptionSecret::from(b.as_bytes().to_vec()))
+            .map(|s| s.0)
             .unwrap_or_else(|| EncryptionSecret::from(vec![]));
 
-        #[cfg(feature = "global")]
+        #[cfg(feature = "offline")]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -178,7 +150,7 @@ impl PyEncryptedPEPJSONValue {
             &enc_secret,
         );
 
-        #[cfg(not(feature = "global"))]
+        #[cfg(not(feature = "offline"))]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -266,19 +238,20 @@ impl PyPEPJSONBuilder {
         }
     }
 
-    /// Create a builder from a Python dict, marking specified fields as pseudonyms.
+    /// Create a builder from a JSON object (dict), marking specified fields as pseudonyms.
     ///
     /// Args:
-    ///     value: A Python dict
+    ///     value: A Python dict or JSON-serializable object
     ///     pseudonyms: A list of field names that should be treated as pseudonyms
     ///
     /// Returns:
     ///     A PEPJSONBuilder
     #[staticmethod]
-    #[pyo3(name = "from_dict")]
-    fn from_dict(value: &Bound<PyDict>, pseudonyms: Vec<&str>) -> PyResult<Self> {
-        let json_value = python_to_json(value.as_any())?;
-        let builder = PEPJSONBuilder::from_json(&json_value, &pseudonyms).ok_or_else(|| {
+    #[pyo3(name = "from_json")]
+    fn from_json(value: &Bound<PyAny>, pseudonyms: Vec<String>) -> PyResult<Self> {
+        let json_value = python_to_json(value)?;
+        let pseudonym_refs: Vec<&str> = pseudonyms.iter().map(|s| s.as_str()).collect();
+        let builder = PEPJSONBuilder::from_json(&json_value, &pseudonym_refs).ok_or_else(|| {
             PyValueError::new_err("Invalid object or pseudonym field not a string")
         })?;
         Ok(Self { builder })
@@ -291,15 +264,17 @@ impl PyPEPJSONBuilder {
     ///     value: Field value (any JSON-serializable Python object)
     ///
     /// Returns:
-    ///     Self (for chaining)
+    ///     Self for method chaining
     #[pyo3(name = "attribute")]
-    fn attribute(
-        mut slf: PyRefMut<Self>,
+    fn attribute<'py>(
+        slf: Bound<'py, Self>,
         key: &str,
-        value: &Bound<PyAny>,
-    ) -> PyResult<PyRefMut<Self>> {
+        value: &Bound<'py, PyAny>,
+    ) -> PyResult<Bound<'py, Self>> {
         let json_value = python_to_json(value)?;
-        slf.builder = std::mem::take(&mut slf.builder).attribute(key, json_value);
+        let mut borrow = slf.borrow_mut();
+        borrow.builder = std::mem::take(&mut borrow.builder).attribute(key, json_value);
+        drop(borrow);
         Ok(slf)
     }
 
@@ -310,10 +285,12 @@ impl PyPEPJSONBuilder {
     ///     value: String value
     ///
     /// Returns:
-    ///     Self (for chaining)
+    ///     Self for method chaining
     #[pyo3(name = "pseudonym")]
-    fn pseudonym(mut slf: PyRefMut<Self>, key: &str, value: &str) -> PyResult<PyRefMut<Self>> {
-        slf.builder = std::mem::take(&mut slf.builder).pseudonym(key, value);
+    fn pseudonym<'py>(slf: Bound<'py, Self>, key: &str, value: &str) -> PyResult<Bound<'py, Self>> {
+        let mut borrow = slf.borrow_mut();
+        borrow.builder = std::mem::take(&mut borrow.builder).pseudonym(key, value);
+        drop(borrow);
         Ok(slf)
     }
 
@@ -323,7 +300,7 @@ impl PyPEPJSONBuilder {
     ///     A PEPJSONValue
     #[pyo3(name = "build")]
     fn build(&mut self) -> PyPEPJSONValue {
-        let builder = std::mem::replace(&mut self.builder, PEPJSONBuilder::new());
+        let builder = std::mem::take(&mut self.builder);
         PyPEPJSONValue(builder.build())
     }
 }
@@ -351,7 +328,7 @@ pub fn py_transcrypt_batch(
     from_session: Option<&str>,
     to_session: Option<&str>,
     pseudonymization_secret: Option<PyPseudonymizationSecret>,
-    encryption_secret: Option<&PyBytes>,
+    encryption_secret: Option<Bound<'_, PyBytes>>,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
 
@@ -368,7 +345,7 @@ pub fn py_transcrypt_batch(
         .map(|b| EncryptionSecret::from(b.as_bytes().to_vec()))
         .unwrap_or_else(|| EncryptionSecret::from(vec![]));
 
-    #[cfg(feature = "global")]
+    #[cfg(feature = "offline")]
     let transcryption_info = TranscryptionInfo::new(
         &from_domain,
         &to_domain,
@@ -378,7 +355,7 @@ pub fn py_transcrypt_batch(
         &enc_secret,
     );
 
-    #[cfg(not(feature = "global"))]
+    #[cfg(not(feature = "offline"))]
     let transcryption_info = TranscryptionInfo::new(
         &from_domain,
         &to_domain,
@@ -391,7 +368,29 @@ pub fn py_transcrypt_batch(
     );
 
     let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let transcrypted = transcrypt_batch(rust_values, &transcryption_info, &mut rng);
+    let transcrypted = transcrypt_json_batch(rust_values, &transcryption_info, &mut rng)
+        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
+
+    Ok(transcrypted
+        .into_iter()
+        .map(PyEncryptedPEPJSONValue)
+        .collect())
+}
+
+/// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
+///
+/// This is a simpler version that accepts a PyTranscryptionInfo.
+#[pyfunction]
+#[pyo3(name = "transcrypt_json_batch")]
+pub fn py_transcrypt_json_batch(
+    values: Vec<PyEncryptedPEPJSONValue>,
+    transcryption_info: &PyTranscryptionInfo,
+) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
+    let mut rng = rand::rng();
+    let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let info: TranscryptionInfo = transcryption_info.into();
+    let transcrypted = transcrypt_json_batch(rust_values, &info, &mut rng)
+        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted
         .into_iter()
@@ -414,13 +413,13 @@ fn python_to_json(value: &Bound<PyAny>) -> PyResult<Value> {
             .unwrap_or(Value::Null))
     } else if let Ok(s) = value.extract::<String>() {
         Ok(Value::String(s))
-    } else if let Ok(list) = value.downcast::<PyList>() {
+    } else if let Ok(list) = value.cast::<PyList>() {
         let mut arr = Vec::new();
         for item in list.iter() {
             arr.push(python_to_json(&item)?);
         }
         Ok(Value::Array(arr))
-    } else if let Ok(dict) = value.downcast::<PyDict>() {
+    } else if let Ok(dict) = value.cast::<PyDict>() {
         let mut obj = serde_json::Map::new();
         for (key, val) in dict.iter() {
             let key_str = key.extract::<String>()?;
@@ -437,19 +436,28 @@ fn python_to_json(value: &Bound<PyAny>) -> PyResult<Value> {
 pub(crate) fn json_to_python(py: Python, value: &Value) -> PyResult<Py<PyAny>> {
     match value {
         Value::Null => Ok(py.None()),
-        Value::Bool(b) => Ok(b.into_py(py)),
+        Value::Bool(b) => {
+            let bound = (*b).into_pyobject(py)?;
+            Ok(bound.as_any().clone().unbind())
+        }
         Value::Number(n) => {
             if let Some(i) = n.as_i64() {
-                Ok(i.into_py(py))
+                let bound = i.into_pyobject(py)?;
+                Ok(bound.as_any().clone().unbind())
             } else if let Some(u) = n.as_u64() {
-                Ok(u.into_py(py))
+                let bound = u.into_pyobject(py)?;
+                Ok(bound.as_any().clone().unbind())
             } else if let Some(f) = n.as_f64() {
-                Ok(f.into_py(py))
+                let bound = f.into_pyobject(py)?;
+                Ok(bound.as_any().clone().unbind())
             } else {
                 Err(PyValueError::new_err("Invalid number"))
             }
         }
-        Value::String(s) => Ok(s.into_py(py)),
+        Value::String(s) => {
+            let bound = s.as_str().into_pyobject(py)?;
+            Ok(bound.as_any().clone().unbind())
+        }
         Value::Array(arr) => {
             let list = PyList::empty(py);
             for item in arr {
@@ -468,10 +476,22 @@ pub(crate) fn json_to_python(py: Python, value: &Value) -> PyResult<Py<PyAny>> {
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let py = m.py();
+
+    // Register main JSON types at json module level
     m.add_class::<PyPEPJSONValue>()?;
     m.add_class::<PyEncryptedPEPJSONValue>()?;
     m.add_class::<PyJSONStructure>()?;
-    m.add_class::<PyPEPJSONBuilder>()?;
     m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+
+    // Create builder submodule to mirror Rust structure
+    let builder_module = PyModule::new(py, "builder")?;
+    builder_module.add_class::<PyPEPJSONBuilder>()?;
+    m.add_submodule(&builder_module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("libpep.core.json.builder", &builder_module)?;
+
     Ok(())
 }

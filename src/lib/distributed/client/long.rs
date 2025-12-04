@@ -4,11 +4,11 @@ use crate::core::long::data::{
     encrypt_long_attribute, encrypt_long_pseudonym, LongAttribute, LongEncryptable, LongEncrypted,
     LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use crate::core::long::global::{
+use crate::core::long::offline::{
     encrypt_long_attribute_global, encrypt_long_global, encrypt_long_pseudonym_global,
 };
 use crate::distributed::client::core::PEPClient;
-use crate::distributed::client::global::OfflinePEPClient;
+use crate::distributed::client::offline::OfflinePEPClient;
 use rand_core::{CryptoRng, RngCore};
 use std::any::TypeId;
 
@@ -174,7 +174,7 @@ impl PEPClient {
     }
 }
 
-#[cfg(feature = "global")]
+#[cfg(feature = "offline")]
 impl OfflinePEPClient {
     /// Polymorphic encrypt for long (multi-block) data types using global keys.
     /// Automatically uses the appropriate global key based on the message type.

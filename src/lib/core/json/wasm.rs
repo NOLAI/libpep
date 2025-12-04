@@ -1,20 +1,17 @@
 //! WASM bindings for PEP JSON encryption.
 
-use crate::arithmetic::ScalarNonZero;
 use crate::core::json::builder::PEPJSONBuilder;
-use crate::core::json::core::{EncryptedPEPJSONValue, PEPJSONValue};
+use crate::core::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::core::json::structure::JSONStructure;
-use crate::core::json::transcryption::transcrypt_batch;
+use crate::core::json::transcryption::transcrypt_json_batch;
 use crate::core::keys::SessionKeys;
 use crate::core::transcryption::contexts::{
     EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
 };
 use crate::core::transcryption::secrets::EncryptionSecret;
-use crate::core::transcryption::wasm::secrets::WASMPseudonymizationSecret;
-use crate::core::wasm::keys::{
-    WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMPseudonymSessionPublicKey,
-    WASMPseudonymSessionSecretKey,
-};
+use crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo;
+use crate::core::transcryption::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::core::wasm::keys::WASMSessionKeys;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
@@ -43,35 +40,35 @@ impl WASMPEPJSONValue {
         Ok(Self(PEPJSONValue::from_value(&json_value)))
     }
 
+    /// Convert this PEPJSONValue to a regular JavaScript value.
+    ///
+    /// # Returns
+    ///
+    /// A JavaScript value (object, array, string, number, boolean, or null)
+    #[wasm_bindgen(js_name = toJson)]
+    pub fn to_json(&self) -> Result<JsValue, JsValue> {
+        let json_value = self
+            .0
+            .to_value()
+            .map_err(|e| JsValue::from_str(&format!("Conversion failed: {}", e)))?;
+
+        serde_wasm_bindgen::to_value(&json_value)
+            .map_err(|e| JsValue::from_str(&format!("Failed to convert to JS: {}", e)))
+    }
+
     /// Encrypt this PEPJSONValue into an EncryptedPEPJSONValue.
     ///
     /// # Arguments
     ///
-    /// * `attribute_public_key` - Attribute session public key
-    /// * `pseudonym_public_key` - Pseudonym session public key
+    /// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
     ///
     /// # Returns
     ///
     /// An EncryptedPEPJSONValue
     #[wasm_bindgen]
-    pub fn encrypt(
-        &self,
-        attribute_public_key: &WASMAttributeSessionPublicKey,
-        pseudonym_public_key: &WASMPseudonymSessionPublicKey,
-    ) -> WASMEncryptedPEPJSONValue {
+    pub fn encrypt(&self, session_keys: &WASMSessionKeys) -> WASMEncryptedPEPJSONValue {
         let mut rng = rand::rng();
-
-        let keys = SessionKeys {
-            attribute: crate::core::keys::AttributeSessionKeys {
-                public: (*attribute_public_key.0).into(),
-                secret: ScalarNonZero::one().into(), // Dummy value, not needed for encryption
-            },
-            pseudonym: crate::core::keys::PseudonymSessionKeys {
-                public: (*pseudonym_public_key.0).into(),
-                secret: ScalarNonZero::one().into(), // Dummy value, not needed for encryption
-            },
-        };
-
+        let keys: SessionKeys = (*session_keys).into();
         let encrypted = self.0.encrypt(&keys, &mut rng);
         WASMEncryptedPEPJSONValue(encrypted)
     }
@@ -86,42 +83,24 @@ pub struct WASMEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
 #[wasm_bindgen(js_class = EncryptedPEPJSONValue)]
 impl WASMEncryptedPEPJSONValue {
-    /// Decrypt this EncryptedPEPJSONValue back into a regular JavaScript value.
+    /// Decrypt this EncryptedPEPJSONValue back into a PEPJSONValue.
     ///
     /// # Arguments
     ///
-    /// * `attribute_secret_key` - Attribute session secret key
-    /// * `pseudonym_secret_key` - Pseudonym session secret key
+    /// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
     ///
     /// # Returns
     ///
-    /// A JavaScript value (object, array, string, number, boolean, or null)
+    /// A PEPJSONValue
     #[wasm_bindgen]
-    pub fn decrypt(
-        &self,
-        attribute_secret_key: &WASMAttributeSessionSecretKey,
-        pseudonym_secret_key: &WASMPseudonymSessionSecretKey,
-    ) -> Result<JsValue, JsValue> {
-        use crate::arithmetic::G;
-
-        let keys = SessionKeys {
-            attribute: crate::core::keys::AttributeSessionKeys {
-                public: G.into(), // Dummy value, not needed for decryption
-                secret: (*attribute_secret_key.0).into(),
-            },
-            pseudonym: crate::core::keys::PseudonymSessionKeys {
-                public: G.into(), // Dummy value, not needed for decryption
-                secret: (*pseudonym_secret_key.0).into(),
-            },
-        };
-
+    pub fn decrypt(&self, session_keys: &WASMSessionKeys) -> Result<WASMPEPJSONValue, JsValue> {
+        let keys: SessionKeys = (*session_keys).into();
         let decrypted = self
             .0
             .decrypt(&keys)
             .map_err(|e| JsValue::from_str(&format!("Decryption failed: {}", e)))?;
 
-        serde_wasm_bindgen::to_value(&decrypted)
-            .map_err(|e| JsValue::from_str(&format!("Failed to convert to JS: {}", e)))
+        Ok(WASMPEPJSONValue(decrypted))
     }
 
     /// Get the structure/shape of this EncryptedPEPJSONValue.
@@ -156,7 +135,7 @@ impl WASMEncryptedPEPJSONValue {
         from_session: Option<String>,
         to_session: Option<String>,
         pseudonymization_secret: Option<WASMPseudonymizationSecret>,
-        encryption_secret: Option<Vec<u8>>,
+        encryption_secret: Option<WASMEncryptionSecret>,
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
         let from_domain = PseudonymizationDomain::from(from_domain);
         let to_domain = PseudonymizationDomain::from(to_domain);
@@ -168,10 +147,10 @@ impl WASMEncryptedPEPJSONValue {
         });
 
         let enc_secret = encryption_secret
-            .map(EncryptionSecret::from)
+            .map(|s| s.0)
             .unwrap_or_else(|| EncryptionSecret::from(vec![]));
 
-        #[cfg(feature = "global")]
+        #[cfg(feature = "offline")]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -181,7 +160,7 @@ impl WASMEncryptedPEPJSONValue {
             &enc_secret,
         );
 
-        #[cfg(not(feature = "global"))]
+        #[cfg(not(feature = "offline"))]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
@@ -234,8 +213,14 @@ pub struct WASMJSONStructure(pub(crate) JSONStructure);
 impl WASMJSONStructure {
     /// Convert to a human-readable string.
     #[wasm_bindgen(js_name = toString)]
-    pub fn to_string(&self) -> String {
+    pub fn to_json_string(&self) -> String {
         format!("{:?}", self.0)
+    }
+
+    /// Compare two structures for equality.
+    #[wasm_bindgen(js_name = equals)]
+    pub fn equals(&self, other: &WASMJSONStructure) -> bool {
+        self.0 == other.0
     }
 
     /// Serialize to JSON string.
@@ -251,6 +236,7 @@ impl WASMJSONStructure {
 }
 
 /// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.
+#[derive(Default)]
 #[wasm_bindgen(js_name = PEPJSONBuilder)]
 pub struct WASMPEPJSONBuilder {
     builder: PEPJSONBuilder,
@@ -261,23 +247,21 @@ impl WASMPEPJSONBuilder {
     /// Create a new builder.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self {
-            builder: PEPJSONBuilder::new(),
-        }
+        Self::default()
     }
 
     /// Create a builder from a JavaScript object, marking specified fields as pseudonyms.
     ///
     /// # Arguments
     ///
-    /// * `value` - A JavaScript object
+    /// * `value` - A JavaScript object (will be converted to JSON)
     /// * `pseudonyms` - An array of field names that should be treated as pseudonyms
     ///
     /// # Returns
     ///
     /// A PEPJSONBuilder
-    #[wasm_bindgen(js_name = fromObject)]
-    pub fn from_object(
+    #[wasm_bindgen(js_name = fromJson)]
+    pub fn from_json(
         value: JsValue,
         pseudonyms: Vec<String>,
     ) -> Result<WASMPEPJSONBuilder, JsValue> {
@@ -336,70 +320,29 @@ impl WASMPEPJSONBuilder {
     }
 }
 
-/// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
+/// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// # Arguments
 ///
 /// * `values` - Array of EncryptedPEPJSONValue objects
-/// * `from_domain` - Source pseudonymization domain
-/// * `to_domain` - Target pseudonymization domain
-/// * `from_session` - Source encryption session (optional)
-/// * `to_session` - Target encryption session (optional)
-/// * `pseudonymization_secret` - Pseudonymization secret
-/// * `encryption_secret` - Encryption secret
+/// * `transcryption_info` - TranscryptionInfo containing all transcryption parameters
 ///
 /// # Returns
 ///
 /// A shuffled array of transcrypted EncryptedPEPJSONValue objects
-#[wasm_bindgen(js_name = transcryptBatch)]
-pub fn wasm_transcrypt_batch(
+///
+/// # Errors
+///
+/// Returns an error if the values don't all have the same structure
+#[wasm_bindgen(js_name = transcryptJsonBatch)]
+pub fn wasm_transcrypt_json_batch(
     values: Vec<WASMEncryptedPEPJSONValue>,
-    from_domain: &str,
-    to_domain: &str,
-    from_session: Option<String>,
-    to_session: Option<String>,
-    pseudonymization_secret: Option<WASMPseudonymizationSecret>,
-    encryption_secret: Option<Vec<u8>>,
+    transcryption_info: &WASMTranscryptionInfo,
 ) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
     let mut rng = rand::rng();
-
-    let from_domain = PseudonymizationDomain::from(from_domain);
-    let to_domain = PseudonymizationDomain::from(to_domain);
-    let from_session_ctx = from_session.as_deref().map(EncryptionContext::from);
-    let to_session_ctx = to_session.as_deref().map(EncryptionContext::from);
-
-    let pseudo_secret = pseudonymization_secret.map(|s| s.0).unwrap_or_else(|| {
-        crate::core::transcryption::secrets::PseudonymizationSecret::from(vec![])
-    });
-
-    let enc_secret = encryption_secret
-        .map(EncryptionSecret::from)
-        .unwrap_or_else(|| EncryptionSecret::from(vec![]));
-
-    #[cfg(feature = "global")]
-    let transcryption_info = TranscryptionInfo::new(
-        &from_domain,
-        &to_domain,
-        from_session_ctx.as_ref(),
-        to_session_ctx.as_ref(),
-        &pseudo_secret,
-        &enc_secret,
-    );
-
-    #[cfg(not(feature = "global"))]
-    let transcryption_info = TranscryptionInfo::new(
-        &from_domain,
-        &to_domain,
-        &from_session_ctx
-            .ok_or_else(|| JsValue::from_str("from_session required without global feature"))?,
-        &to_session_ctx
-            .ok_or_else(|| JsValue::from_str("to_session required without global feature"))?,
-        &pseudo_secret,
-        &enc_secret,
-    );
-
     let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let transcrypted = transcrypt_batch(rust_values, &transcryption_info, &mut rng);
+    let transcrypted = transcrypt_json_batch(rust_values, &transcryption_info.0, &mut rng)
+        .map_err(|e| JsValue::from_str(&e))?;
 
     Ok(transcrypted
         .into_iter()

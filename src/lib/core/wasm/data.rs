@@ -1,7 +1,7 @@
 use super::super::data::*;
 use super::super::padding::Padded;
-use crate::arithmetic::wasm::WASMGroupElement;
-use crate::base::wasm::WASMElGamal;
+use crate::arithmetic::wasm::group_elements::WASMGroupElement;
+use crate::base::wasm::elgamal::WASMElGamal;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

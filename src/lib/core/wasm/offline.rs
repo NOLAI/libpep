@@ -1,14 +1,14 @@
-#[cfg(feature = "insecure")]
-use super::super::global::{decrypt_attribute_global, decrypt_pseudonym_global};
-use super::super::global::{encrypt_attribute_global, encrypt_pseudonym_global};
 use super::super::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::super::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+#[cfg(feature = "insecure")]
+use super::super::offline::{decrypt_attribute_global, decrypt_pseudonym_global};
+use super::super::offline::{encrypt_attribute_global, encrypt_pseudonym_global};
 use super::data::{WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym};
 use super::keys::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
 #[cfg(feature = "insecure")]
 use super::keys::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
-use crate::arithmetic::GroupElement;
+use crate::arithmetic::group_elements::GroupElement;
 use wasm_bindgen::prelude::*;
 
 /// Encrypt a pseudonym using a global public key.

@@ -1,5 +1,5 @@
-use super::super::*;
-use super::scalars::WASMScalarNonZero;
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
