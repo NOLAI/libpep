@@ -226,14 +226,22 @@ mod tests {
         // - From domain: "domain-from"
         // - To domain: "domain-to"
         // - Pseudonymization secret: "pseudo-secret"
+        assert_ne!(
+            pseudonym_hex, "user@example.com",
+            "Pseudonym should be different after transcryption to different domain"
+        );
+
+        #[cfg(feature = "legacy")]
+        assert_eq!(
+            pseudonym_hex,
+            "3e9f94d1796939e7089945a7c561f37f31174063cee572172cf81b4069ad247cb68549768010949c1422fe4d611d45fb5cfe84c474b4d1493f36735df5a19066",
+            "Pseudonym should be deterministic and match expected value"
+        );
+        #[cfg(not(feature = "legacy"))]
         assert_eq!(
             pseudonym_hex,
             "cec249944578c90ade517b34327e5210b479dbf3efaf5b0cf1d9f559f8f42b788e10050b9fa3dbe245f6843d8eb03e38c1d368914b0a89c7323adca4860f0a48",
             "Pseudonym should be deterministic and match expected value"
-        );
-        assert_ne!(
-            pseudonym_hex, "user@example.com",
-            "Pseudonym should be different after transcryption to different domain"
         );
 
         // Verify regular attributes remain the same
