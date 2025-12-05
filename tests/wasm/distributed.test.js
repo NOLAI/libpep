@@ -5,6 +5,8 @@ const {
     PEPSystem,
     PEPClient,
     Pseudonym,
+    PseudonymizationDomain,
+    EncryptionContext,
 } = require("../../pkg/libpep.js");
 
 test('n_pep', async () => {
@@ -22,10 +24,10 @@ test('n_pep', async () => {
     });
 
     // Create pseudonymization domains and encryption contexts.
-    const domainA = "user-a";
-    const domainB = "user-b";
-    const sessionA1 = "session-a1";
-    const sessionB1 = "session-b1";
+    const domainA = new PseudonymizationDomain("user-a");
+    const domainB = new PseudonymizationDomain("user-b");
+    const sessionA1 = new EncryptionContext("session-a1");
+    const sessionB1 = new EncryptionContext("session-b1");
 
     // Generate session key shares using the convenience method.
     const sksA1 = systems.map(system => system.sessionKeyShares(sessionA1));
@@ -61,13 +63,13 @@ test('n_pep', async () => {
     const decData = clientB.decryptData(transcryptedData);
 
     // Assert equality and inequality.
-    expect(decData.asHex()).toEqual(data.asHex());
+    expect(decData.toHex()).toEqual(data.toHex());
     expect(decPseudo).not.toEqual(pseudonym);
 
     // Reverse pseudonymization.
     const revPseudonymized = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1).rev()), transcryptedPseudo);
+        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1).reverse()), transcryptedPseudo);
 
     const revDecPseudo = clientA.decryptPseudonym(revPseudonymized);
-    expect(revDecPseudo.asHex()).toEqual(pseudonym.asHex());
+    expect(revDecPseudo.toHex()).toEqual(pseudonym.toHex());
 });

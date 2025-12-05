@@ -8,11 +8,22 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    name: cargo clippy
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - "elgamal3"
+          - "python"
+          - "python,elgamal3"
+          - "wasm"
+          - "wasm,elgamal3"
+    name: cargo clippy (${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --features "${{ matrix.features }}" -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest
@@ -24,12 +35,24 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    name: cargo test
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - ""
+          - "elgamal3"
+          - "python"
+          - "python,elgamal3"
+          - "wasm"
+          - "wasm,elgamal3"
+    name: cargo test (${{ matrix.features || 'default' }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo test --all-features
-      - run: cargo doc --no-deps
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo test --features "${{ matrix.features }}"
+      - run: cargo doc --no-deps --features "${{ matrix.features }}"
 
   test-python:
     runs-on: ubuntu-latest
@@ -37,7 +60,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: actions/setup-python@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Create virtual environment
@@ -58,12 +82,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
       - run: cargo install wasm-pack
       - run: npm install
-      - name: Build WASM package
-        run: npm run build
-      - name: Run WASM tests
+      - name: Build and test WASM package
         run: npm test

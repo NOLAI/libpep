@@ -1,17 +1,19 @@
-use libpep::distributed::systems::{PEPClient, PEPSystem};
-use libpep::high_level::contexts::*;
-use libpep::high_level::data_types::*;
-use libpep::high_level::secrets::{EncryptionSecret, PseudonymizationSecret};
-use rand_core::OsRng;
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
+use libpep::core::data::*;
+use libpep::core::transcryption::contexts::*;
+use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::distributed::client::client::PEPClient;
+use libpep::distributed::server::transcryptor::PEPSystem;
 
 #[test]
 fn n_pep() {
     let n = 3;
-    let rng = &mut OsRng;
+    let rng = &mut rand::rng();
 
     // Global config - using the combined convenience method
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::distributed::key_blinding::make_distributed_global_keys(n, rng);
+        libpep::distributed::server::setup::make_distributed_global_keys(n, rng);
 
     // Create systems
     let systems = (0..n)
@@ -55,16 +57,26 @@ fn n_pep() {
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let transcryption_info =
-            system.transcryption_info(&domain_a, &domain_b, Some(&session_a1), Some(&session_b1));
+            system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
         system.transcrypt(&acc, &transcryption_info)
     });
 
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
-        let rekey_info = system.attribute_rekey_info(Some(&session_a1), Some(&session_b1));
+        let rekey_info = system.attribute_rekey_info(&session_a1, &session_b1);
         system.rekey(&acc, &rekey_info)
     });
 
+    #[cfg(feature = "elgamal3")]
+    let dec_pseudo = client_b
+        .decrypt_pseudonym(&transcrypted_pseudo)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let dec_pseudo = client_b.decrypt_pseudonym(&transcrypted_pseudo);
+    #[cfg(feature = "elgamal3")]
+    let dec_data = client_b
+        .decrypt_attribute(&transcrypted_data)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let dec_data = client_b.decrypt_attribute(&transcrypted_data);
 
     assert_eq!(data, dec_data);
@@ -76,15 +88,16 @@ fn n_pep() {
     }
 
     let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
-        let pseudo_info = system.pseudonymization_info(
-            &domain_a,
-            &domain_b,
-            Some(&session_a1),
-            Some(&session_b1),
-        );
+        let pseudo_info =
+            system.pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1);
         system.pseudonymize(&acc, &pseudo_info.reverse())
     });
 
+    #[cfg(feature = "elgamal3")]
+    let rev_dec_pseudo = client_a
+        .decrypt_pseudonym(&rev_pseudonymized)
+        .expect("decryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
     let rev_dec_pseudo = client_a.decrypt_pseudonym(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }
