@@ -57,12 +57,12 @@ fn n_pep() {
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let transcryption_info =
-            system.transcryption_info(&domain_a, &domain_b, Some(&session_a1), Some(&session_b1));
+            system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
         system.transcrypt(&acc, &transcryption_info)
     });
 
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
-        let rekey_info = system.attribute_rekey_info(Some(&session_a1), Some(&session_b1));
+        let rekey_info = system.attribute_rekey_info(&session_a1, &session_b1);
         system.rekey(&acc, &rekey_info)
     });
 
@@ -88,12 +88,8 @@ fn n_pep() {
     }
 
     let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
-        let pseudo_info = system.pseudonymization_info(
-            &domain_a,
-            &domain_b,
-            Some(&session_a1),
-            Some(&session_b1),
-        );
+        let pseudo_info =
+            system.pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1);
         system.pseudonymize(&acc, &pseudo_info.reverse())
     });
 

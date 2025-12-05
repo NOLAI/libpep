@@ -14,14 +14,15 @@ readme = "README.md"
 
 [features]
 default = ["build-binary", "long", "offline", "batch", "serde", "json"]
+serde = ["dep:serde"] # For (de)serialization support via Serde
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
-long = [] # For long pseudonyms and attributes over 15 bytes
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
-serde = ["dep:serde"] # For (de)serialization support via Serde
+long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["serde", "dep:serde_json"] # For JSON encryption/decryption support
-legacy = ["elgamal3", "offline"] # For compatibility with the legacy PEP repository implementation
-insecure = [] # Enable insecure methods that typically should not be used in production
+global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
+legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with the legacy PEP repository implementation
+insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
 wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys", "getrandom/wasm_js"] # For building WebAssembly bindings via wasm-bindgen

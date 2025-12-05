@@ -15,6 +15,8 @@ from libpep.core.keys import (
 from libpep.core.transcryption.contexts import (
     TranscryptionInfo,
     PseudonymizationInfo,
+    PseudonymizationDomain,
+    EncryptionContext,
 )
 from libpep.core.json.builder import PEPJSONBuilder
 from libpep.core.json import encrypt_json, decrypt_json
@@ -28,9 +30,9 @@ class TestJSONTranscryption(unittest.TestCase):
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
         enc_secret = EncryptionSecret(b"encryption-secret")
 
-        domain_a = "clinic-a"
-        domain_b = "clinic-b"
-        session = "session-1"
+        domain_a = PseudonymizationDomain("clinic-a")
+        domain_b = PseudonymizationDomain("clinic-b")
+        session = EncryptionContext("session-1")
 
         session_keys = make_session_keys(global_keys[1], session, enc_secret)
 
@@ -94,9 +96,9 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
         enc_secret = EncryptionSecret(b"encryption-secret")
 
-        domain_a = "domain-a"
-        domain_b = "domain-b"
-        session = "session-1"
+        domain_a = PseudonymizationDomain("domain-a")
+        domain_b = PseudonymizationDomain("domain-b")
+        session = EncryptionContext("session-1")
 
         session_keys = make_session_keys(global_keys[1], session, enc_secret)
 
@@ -178,9 +180,9 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
         enc_secret = EncryptionSecret(b"encryption-secret")
 
-        domain_a = "domain-a"
-        domain_b = "domain-b"
-        session = "session-1"
+        domain_a = PseudonymizationDomain("domain-a")
+        domain_b = PseudonymizationDomain("domain-b")
+        session = EncryptionContext("session-1")
 
         session_keys = make_session_keys(global_keys[1], session, enc_secret)
 

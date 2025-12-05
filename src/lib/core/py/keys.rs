@@ -1,5 +1,4 @@
 use super::super::keys::*;
-use super::super::transcryption::contexts::*;
 use super::super::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::py::group_elements::PyGroupElement;
@@ -380,12 +379,12 @@ pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
 #[pyo3(name = "make_pseudonym_session_keys")]
 pub fn py_make_pseudonym_session_keys(
     global: &PyPseudonymGlobalSecretKey,
-    session: &str,
+    session: &crate::core::transcryption::py::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey(global.0 .0),
-        &EncryptionContext::from(session),
+        &session.0,
         &secret.0,
     );
     PyPseudonymSessionKeyPair {
@@ -399,12 +398,12 @@ pub fn py_make_pseudonym_session_keys(
 #[pyo3(name = "make_attribute_session_keys")]
 pub fn py_make_attribute_session_keys(
     global: &PyAttributeGlobalSecretKey,
-    session: &str,
+    session: &crate::core::transcryption::py::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey(global.0 .0),
-        &EncryptionContext::from(session),
+        &session.0,
         &secret.0,
     );
     PyAttributeSessionKeyPair {
@@ -539,7 +538,7 @@ impl From<PySessionKeys> for SessionKeys {
 #[pyo3(name = "make_session_keys")]
 pub fn py_make_session_keys(
     global: &PyGlobalSecretKeys,
-    session: &str,
+    session: &crate::core::transcryption::py::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PySessionKeys {
     let keys = make_session_keys(
@@ -547,7 +546,7 @@ pub fn py_make_session_keys(
             pseudonym: PseudonymGlobalSecretKey(global.pseudonym.0 .0),
             attribute: AttributeGlobalSecretKey(global.attribute.0 .0),
         },
-        &EncryptionContext::from(session),
+        &session.0,
         &secret.0,
     );
     PySessionKeys {

@@ -8,8 +8,8 @@ use crate::core::long::wasm::data::{WASMLongEncryptedAttribute, WASMLongEncrypte
 use crate::core::transcryption::contexts::*;
 use crate::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::core::transcryption::wasm::contexts::{
-    WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
-    WASMTranscryptionInfo,
+    WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymRekeyFactor,
+    WASMPseudonymizationDomain, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
 use crate::core::wasm::data::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::distributed::client::wasm::keys::{
@@ -40,173 +40,73 @@ impl WASMPEPSystem {
     }
 
     #[wasm_bindgen(js_name = pseudonymSessionKeyShare)]
-    pub fn wasm_pseudonym_session_key_share(&self, session: &str) -> WASMPseudonymSessionKeyShare {
-        WASMPseudonymSessionKeyShare(
-            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
-        )
+    pub fn wasm_pseudonym_session_key_share(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> WASMPseudonymSessionKeyShare {
+        WASMPseudonymSessionKeyShare(self.pseudonym_session_key_share(&session.0))
     }
 
     #[wasm_bindgen(js_name = attributeSessionKeyShare)]
-    pub fn wasm_attribute_session_key_share(&self, session: &str) -> WASMAttributeSessionKeyShare {
-        WASMAttributeSessionKeyShare(
-            self.attribute_session_key_share(&EncryptionContext::from(session)),
-        )
+    pub fn wasm_attribute_session_key_share(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> WASMAttributeSessionKeyShare {
+        WASMAttributeSessionKeyShare(self.attribute_session_key_share(&session.0))
     }
 
     #[wasm_bindgen(js_name = sessionKeyShares)]
-    pub fn wasm_session_key_shares(&self, session: &str) -> WASMSessionKeyShares {
-        WASMSessionKeyShares(self.session_key_shares(&EncryptionContext::from(session)))
+    pub fn wasm_session_key_shares(&self, session: &WASMEncryptionContext) -> WASMSessionKeyShares {
+        WASMSessionKeyShares(self.session_key_shares(&session.0))
     }
 
-    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
     pub fn wasm_attribute_rekey_info(
         &self,
-        session_from: Option<String>,
-        session_to: Option<String>,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
     ) -> WASMAttributeRekeyInfo {
-        WASMAttributeRekeyInfo::from(
-            self.attribute_rekey_info(
-                session_from
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-                session_to
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-            ),
-        )
+        WASMAttributeRekeyInfo::from(self.attribute_rekey_info(&session_from.0, &session_to.0))
     }
 
-    #[cfg(not(feature = "offline"))]
-    #[wasm_bindgen(js_name = attributeRekeyInfo)]
-    pub fn wasm_attribute_rekey_info(
-        &self,
-        session_from: String,
-        session_to: String,
-    ) -> WASMAttributeRekeyInfo {
-        WASMAttributeRekeyInfo::from(self.attribute_rekey_info(
-            &EncryptionContext::from(session_from.as_str()),
-            &EncryptionContext::from(session_to.as_str()),
-        ))
-    }
-
-    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
     pub fn wasm_pseudonym_rekey_info(
         &self,
-        session_from: Option<String>,
-        session_to: Option<String>,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
     ) -> WASMPseudonymRekeyFactor {
-        WASMPseudonymRekeyFactor::from(
-            self.pseudonym_rekey_info(
-                session_from
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-                session_to
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-            ),
-        )
+        WASMPseudonymRekeyFactor::from(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
     }
 
-    #[cfg(not(feature = "offline"))]
-    #[wasm_bindgen(js_name = pseudonymRekeyInfo)]
-    pub fn wasm_pseudonym_rekey_info(
-        &self,
-        session_from: String,
-        session_to: String,
-    ) -> WASMPseudonymRekeyFactor {
-        WASMPseudonymRekeyFactor::from(self.pseudonym_rekey_info(
-            &EncryptionContext::from(session_from.as_str()),
-            &EncryptionContext::from(session_to.as_str()),
-        ))
-    }
-
-    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = pseudonymizationInfo)]
     pub fn wasm_pseudonymization_info(
         &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: Option<String>,
-        session_to: Option<String>,
-    ) -> WASMPseudonymizationInfo {
-        WASMPseudonymizationInfo::from(
-            self.pseudonymization_info(
-                &PseudonymizationDomain::from(domain_from),
-                &PseudonymizationDomain::from(domain_to),
-                session_from
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-                session_to
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-            ),
-        )
-    }
-
-    #[cfg(not(feature = "offline"))]
-    #[wasm_bindgen(js_name = pseudonymizationInfo)]
-    pub fn wasm_pseudonymization_info(
-        &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: String,
-        session_to: String,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
     ) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            &EncryptionContext::from(session_from.as_str()),
-            &EncryptionContext::from(session_to.as_str()),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
         ))
     }
 
-    #[cfg(feature = "offline")]
     #[wasm_bindgen(js_name = transcryptionInfo)]
     pub fn wasm_transcryption_info(
         &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: Option<String>,
-        session_to: Option<String>,
-    ) -> WASMTranscryptionInfo {
-        WASMTranscryptionInfo::from(
-            self.transcryption_info(
-                &PseudonymizationDomain::from(domain_from),
-                &PseudonymizationDomain::from(domain_to),
-                session_from
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-                session_to
-                    .as_ref()
-                    .map(|s| EncryptionContext::from(s.as_str()))
-                    .as_ref(),
-            ),
-        )
-    }
-
-    #[cfg(not(feature = "offline"))]
-    #[wasm_bindgen(js_name = transcryptionInfo)]
-    pub fn wasm_transcryption_info(
-        &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: String,
-        session_to: String,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
     ) -> WASMTranscryptionInfo {
         WASMTranscryptionInfo::from(self.transcryption_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            &EncryptionContext::from(session_from.as_str()),
-            &EncryptionContext::from(session_to.as_str()),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
         ))
     }
 

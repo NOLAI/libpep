@@ -50,6 +50,8 @@ from libpep.core.transcryption.contexts import (
     PseudonymizationInfo,
     AttributeRekeyInfo,
     TranscryptionInfo,
+    PseudonymizationDomain,
+    EncryptionContext,
 )
 
 
@@ -223,10 +225,10 @@ class TestHighLevel(unittest.TestCase):
         # Generate same session keys with same inputs (should be deterministic)
         pseudonym_global_keys = make_pseudonym_global_keys()
         session1a = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, "session1", enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
         )
         session1b = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, "session1", enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
         )
 
         self.assertEqual(
@@ -235,7 +237,7 @@ class TestHighLevel(unittest.TestCase):
 
         # Different session names should give different keys
         session2 = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, "session2", enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session2"), enc_secret
         )
         self.assertNotEqual(
             session1a.public.to_point().to_hex(), session2.public.to_point().to_hex()
@@ -282,10 +284,10 @@ class TestHighLevel(unittest.TestCase):
         enc_secret = EncryptionSecret(secret)
 
         # Define domains and sessions
-        domain1 = "domain1"
-        session1 = "session1"
-        domain2 = "domain2"
-        session2 = "session2"
+        domain1 = PseudonymizationDomain("domain1")
+        session1 = EncryptionContext("session1")
+        domain2 = PseudonymizationDomain("domain2")
+        session2 = EncryptionContext("session2")
 
         # Generate session keys
         pseudonym_session1_keys = make_pseudonym_session_keys(

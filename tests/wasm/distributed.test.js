@@ -5,6 +5,8 @@ const {
     PEPSystem,
     PEPClient,
     Pseudonym,
+    PseudonymizationDomain,
+    EncryptionContext,
 } = require("../../pkg/libpep.js");
 
 test('n_pep', async () => {
@@ -22,10 +24,10 @@ test('n_pep', async () => {
     });
 
     // Create pseudonymization domains and encryption contexts.
-    const domainA = "user-a";
-    const domainB = "user-b";
-    const sessionA1 = "session-a1";
-    const sessionB1 = "session-b1";
+    const domainA = new PseudonymizationDomain("user-a");
+    const domainB = new PseudonymizationDomain("user-b");
+    const sessionA1 = new EncryptionContext("session-a1");
+    const sessionB1 = new EncryptionContext("session-b1");
 
     // Generate session key shares using the convenience method.
     const sksA1 = systems.map(system => system.sessionKeyShares(sessionA1));

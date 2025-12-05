@@ -113,6 +113,7 @@ The following features are available:
 - `elgamal3`: enables ElGamal triple encryption, including the recipient's public key in message encoding. This provides additional security verification but is less efficient.
 - `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets.
 - `insecure`: enables methods that expose global secret keys, to be used with care for testing or special use cases.
+- `global-pseudonyms`: enables global pseudonyms (which are insecure).
 
 **Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly.
 These have incompatible linking requirements and cannot coexist in the same build.

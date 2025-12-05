@@ -43,8 +43,8 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     let pseudo_info = PseudonymizationInfo::new(
         &domain_a,
         &domain_b,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );
@@ -80,8 +80,8 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     let reverse_pseudo_info = PseudonymizationInfo::new(
         &domain_b,
         &domain_a,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );
@@ -105,7 +105,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
         })
         .collect();
 
-    let reverse_long = LongPseudonym::from(reverse_decrypted);
+    let reverse_long = LongPseudonym(reverse_decrypted);
     let reverse_string = reverse_long.to_string_padded()?;
 
     // After reversing the pseudonymization, we should get back the original string

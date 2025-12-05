@@ -7,83 +7,105 @@ use super::secrets::{
     EncryptionSecret, PseudonymizationSecret,
 };
 use crate::arithmetic::scalars::ScalarNonZero;
-use derive_more::{Deref, From};
+use derive_more::From;
 
 /// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
 /// a user's role or usergroup).
-/// With the `legacy` feature enabled, pseudonymization domains also include
-/// an `audience_type` field, which is used to distinguish between different types of audiences.
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+///
+/// With the `global-pseudonyms` feature enabled, domains can be `Global` (for pseudonyms that work across all domains).
+/// With the `legacy` feature enabled, specific domains include an `audience_type` field.
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg(feature = "legacy")]
-pub struct PseudonymizationDomain {
-    #[deref]
-    pub payload: String,
-    pub audience_type: u32,
+#[cfg_attr(feature = "serde", serde(untagged))]
+pub enum PseudonymizationDomain {
+    #[cfg(feature = "global-pseudonyms")]
+    /// Global domain for pseudonyms
+    Global,
+    #[cfg(feature = "legacy")]
+    /// Specific domain with payload and audience type (legacy mode)
+    Specific { payload: String, audience_type: u32 },
+    #[cfg(not(feature = "legacy"))]
+    /// Specific domain with payload only
+    Specific(String),
 }
+
 /// Encryption contexts are used to describe the context in which ciphertexts exist (typically, a
 /// user's session).
-/// With the `legacy` feature enabled, encryption contexts also include
-/// an `audience_type` field, which is used to distinguish between different types of audiences.
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
+///
+/// With the `offline` feature enabled, contexts can be `Global` (for offline encryption).
+/// With the `legacy` feature enabled, specific contexts include an `audience_type` field.
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg(feature = "legacy")]
-pub struct EncryptionContext {
-    #[deref]
-    pub payload: String,
-    pub audience_type: u32,
+#[cfg_attr(feature = "serde", serde(untagged))]
+pub enum EncryptionContext {
+    #[cfg(feature = "offline")]
+    /// Global context for offline encryption
+    Global,
+    #[cfg(feature = "legacy")]
+    /// Specific context with payload and audience type (legacy mode)
+    Specific { payload: String, audience_type: u32 },
+    #[cfg(not(feature = "legacy"))]
+    /// Specific context with payload only
+    Specific(String),
 }
 
-/// Pseudonymization domains are used to describe the domain in which pseudonyms exist (typically,
-/// a user's role or usergroup).
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg(not(feature = "legacy"))]
-pub struct PseudonymizationDomain(pub String);
-/// Encryption contexts are used to describe the domain in which ciphertexts exist (typically, a
-/// user's session).
-#[derive(Clone, Eq, Hash, PartialEq, Debug, Deref)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg(not(feature = "legacy"))]
-pub struct EncryptionContext(pub String);
-
 impl PseudonymizationDomain {
+    /// Create a specific domain from a string payload
     #[cfg(feature = "legacy")]
     pub fn from(payload: &str) -> Self {
-        PseudonymizationDomain {
+        PseudonymizationDomain::Specific {
             payload: payload.to_string(),
             audience_type: 0,
         }
     }
+
+    /// Create a specific domain from a string payload
     #[cfg(not(feature = "legacy"))]
     pub fn from(payload: &str) -> Self {
-        PseudonymizationDomain(payload.to_string())
+        PseudonymizationDomain::Specific(payload.to_string())
     }
 
+    /// Create a global domain (available only with global-pseudonyms feature)
+    #[cfg(feature = "global-pseudonyms")]
+    pub fn global() -> Self {
+        PseudonymizationDomain::Global
+    }
+
+    /// Create a specific domain with audience type (legacy mode)
     #[cfg(feature = "legacy")]
     pub fn from_audience(payload: &str, audience_type: u32) -> Self {
-        PseudonymizationDomain {
+        PseudonymizationDomain::Specific {
             payload: payload.to_string(),
             audience_type,
         }
     }
 }
 impl EncryptionContext {
+    /// Create a specific context from a string payload
     #[cfg(feature = "legacy")]
     pub fn from(payload: &str) -> Self {
-        EncryptionContext {
+        EncryptionContext::Specific {
             payload: payload.to_string(),
             audience_type: 0,
         }
     }
+
+    /// Create a specific context from a string payload
     #[cfg(not(feature = "legacy"))]
     pub fn from(payload: &str) -> Self {
-        EncryptionContext(payload.to_string())
+        EncryptionContext::Specific(payload.to_string())
     }
 
+    /// Create a global context (available only with offline feature)
+    #[cfg(feature = "offline")]
+    pub fn global() -> Self {
+        EncryptionContext::Global
+    }
+
+    /// Create a specific context with audience type (legacy mode)
     #[cfg(feature = "legacy")]
     pub fn from_audience(payload: &str, audience_type: u32) -> Self {
-        EncryptionContext {
+        EncryptionContext::Specific {
             payload: payload.to_string(),
             audience_type,
         }
@@ -148,27 +170,6 @@ pub type PseudonymRekeyInfo = PseudonymRekeyFactor;
 pub type AttributeRekeyInfo = AttributeRekeyFactor;
 impl PseudonymizationInfo {
     /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    #[cfg(feature = "offline")]
-    pub fn new(
-        domain_from: &PseudonymizationDomain,
-        domain_to: &PseudonymizationDomain,
-        session_from: Option<&EncryptionContext>,
-        session_to: Option<&EncryptionContext>,
-        pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
-        let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
-        Self {
-            s: reshuffle_factor,
-            k: rekey_factor,
-        }
-    }
-
-    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    #[cfg(not(feature = "offline"))]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
@@ -179,7 +180,7 @@ impl PseudonymizationInfo {
     ) -> Self {
         let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
         let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
-        let reshuffle_factor = ReshuffleFactor::from(s_from.0.invert() * s_to.0);
+        let reshuffle_factor = ReshuffleFactor(s_from.0.invert() * s_to.0);
         let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
         Self {
             s: reshuffle_factor,
@@ -190,32 +191,13 @@ impl PseudonymizationInfo {
     /// Reverse the pseudonymization info (i.e., switch the direction of the pseudonymization).
     pub fn reverse(&self) -> Self {
         Self {
-            s: ReshuffleFactor::from(self.s.0.invert()),
-            k: PseudonymRekeyFactor::from(self.k.0.invert()),
+            s: ReshuffleFactor(self.s.0.invert()),
+            k: PseudonymRekeyFactor(self.k.0.invert()),
         }
     }
 }
 impl PseudonymRekeyInfo {
     /// Compute the rekey info for pseudonyms given sessions and secrets.
-    #[cfg(feature = "offline")]
-    pub fn new(
-        session_from: Option<&EncryptionContext>,
-        session_to: Option<&EncryptionContext>,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let k_from = session_from
-            .map(|ctx| make_pseudonym_rekey_factor(encryption_secret, ctx))
-            .unwrap_or_else(|| PseudonymRekeyFactor(ScalarNonZero::one()));
-
-        let k_to = session_to
-            .map(|ctx| make_pseudonym_rekey_factor(encryption_secret, ctx))
-            .unwrap_or_else(|| PseudonymRekeyFactor(ScalarNonZero::one()));
-
-        Self::from(k_from.0.invert() * k_to.0)
-    }
-
-    /// Compute the rekey info for pseudonyms given sessions and secrets.
-    #[cfg(not(feature = "offline"))]
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
@@ -223,37 +205,17 @@ impl PseudonymRekeyInfo {
     ) -> Self {
         let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
         let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
-
-        Self::from(k_from.0.invert() * k_to.0)
+        PseudonymRekeyFactor(k_from.0.invert() * k_to.0)
     }
 
     /// Reverse the rekey info (i.e., switch the direction of the rekeying).
     pub fn reverse(&self) -> Self {
-        Self::from(self.0.invert())
+        PseudonymRekeyFactor(self.0.invert())
     }
 }
 
 impl AttributeRekeyInfo {
     /// Compute the rekey info for attributes given sessions and secrets.
-    #[cfg(feature = "offline")]
-    pub fn new(
-        session_from: Option<&EncryptionContext>,
-        session_to: Option<&EncryptionContext>,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let k_from = session_from
-            .map(|ctx| make_attribute_rekey_factor(encryption_secret, ctx))
-            .unwrap_or_else(|| AttributeRekeyFactor(ScalarNonZero::one()));
-
-        let k_to = session_to
-            .map(|ctx| make_attribute_rekey_factor(encryption_secret, ctx))
-            .unwrap_or_else(|| AttributeRekeyFactor(ScalarNonZero::one()));
-
-        Self::from(k_from.0.invert() * k_to.0)
-    }
-
-    /// Compute the rekey info for attributes given sessions and secrets.
-    #[cfg(not(feature = "offline"))]
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
@@ -261,13 +223,12 @@ impl AttributeRekeyInfo {
     ) -> Self {
         let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
         let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
-
-        Self::from(k_from.0.invert() * k_to.0)
+        AttributeRekeyFactor(k_from.0.invert() * k_to.0)
     }
 
     /// Reverse the rekey info (i.e., switch the direction of the rekeying).
     pub fn reverse(&self) -> Self {
-        Self::from(self.0.invert())
+        AttributeRekeyFactor(self.0.invert())
     }
 }
 impl From<PseudonymizationInfo> for PseudonymRekeyInfo {
@@ -285,30 +246,6 @@ pub struct TranscryptionInfo {
 
 impl TranscryptionInfo {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
-    #[cfg(feature = "offline")]
-    pub fn new(
-        domain_from: &PseudonymizationDomain,
-        domain_to: &PseudonymizationDomain,
-        session_from: Option<&EncryptionContext>,
-        session_to: Option<&EncryptionContext>,
-        pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        Self {
-            pseudonym: PseudonymizationInfo::new(
-                domain_from,
-                domain_to,
-                session_from,
-                session_to,
-                pseudonymization_secret,
-                encryption_secret,
-            ),
-            attribute: AttributeRekeyInfo::new(session_from, session_to, encryption_secret),
-        }
-    }
-
-    /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
-    #[cfg(not(feature = "offline"))]
     pub fn new(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,

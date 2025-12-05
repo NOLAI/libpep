@@ -8,7 +8,8 @@ use crate::core::long::py::data::{PyLongEncryptedAttribute, PyLongEncryptedPseud
 use crate::core::py::data::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::core::transcryption::contexts::*;
 use crate::core::transcryption::py::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
+    PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,
+    PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use crate::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::distributed::client::py::keys::{
@@ -39,145 +40,77 @@ impl PyPEPSystem {
     }
 
     #[pyo3(name = "pseudonym_session_key_share")]
-    fn py_pseudonym_session_key_share(&self, session: &str) -> PyPseudonymSessionKeyShare {
-        PyPseudonymSessionKeyShare(
-            self.pseudonym_session_key_share(&EncryptionContext::from(session)),
-        )
+    fn py_pseudonym_session_key_share(
+        &self,
+        session: &PyEncryptionContext,
+    ) -> PyPseudonymSessionKeyShare {
+        PyPseudonymSessionKeyShare(self.pseudonym_session_key_share(&session.0))
     }
 
     #[pyo3(name = "attribute_session_key_share")]
-    fn py_attribute_session_key_share(&self, session: &str) -> PyAttributeSessionKeyShare {
-        PyAttributeSessionKeyShare(
-            self.attribute_session_key_share(&EncryptionContext::from(session)),
-        )
+    fn py_attribute_session_key_share(
+        &self,
+        session: &PyEncryptionContext,
+    ) -> PyAttributeSessionKeyShare {
+        PyAttributeSessionKeyShare(self.attribute_session_key_share(&session.0))
     }
 
     #[pyo3(name = "session_key_shares")]
-    fn py_session_key_shares(&self, session: &str) -> PySessionKeyShares {
-        let shares = self.session_key_shares(&EncryptionContext::from(session));
+    fn py_session_key_shares(&self, session: &PyEncryptionContext) -> PySessionKeyShares {
+        let shares = self.session_key_shares(&session.0);
         PySessionKeyShares {
             pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
             attribute: PyAttributeSessionKeyShare(shares.attribute),
         }
     }
 
-    #[cfg(feature = "offline")]
-    #[pyo3(name = "attribute_rekey_info", signature = (session_from=None, session_to=None))]
-    fn py_attribute_rekey_info(
-        &self,
-        session_from: Option<&str>,
-        session_to: Option<&str>,
-    ) -> PyAttributeRekeyInfo {
-        PyAttributeRekeyInfo::from(self.attribute_rekey_info(
-            session_from.map(EncryptionContext::from).as_ref(),
-            session_to.map(EncryptionContext::from).as_ref(),
-        ))
-    }
-
-    #[cfg(not(feature = "offline"))]
     #[pyo3(name = "attribute_rekey_info")]
     fn py_attribute_rekey_info(
         &self,
-        session_from: &str,
-        session_to: &str,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
     ) -> PyAttributeRekeyInfo {
-        PyAttributeRekeyInfo::from(self.attribute_rekey_info(
-            &EncryptionContext::from(session_from),
-            &EncryptionContext::from(session_to),
-        ))
+        PyAttributeRekeyInfo::from(self.attribute_rekey_info(&session_from.0, &session_to.0))
     }
 
-    #[cfg(feature = "offline")]
-    #[pyo3(name = "pseudonym_rekey_info", signature = (session_from=None, session_to=None))]
-    fn py_pseudonym_rekey_info(
-        &self,
-        session_from: Option<&str>,
-        session_to: Option<&str>,
-    ) -> PyPseudonymRekeyFactor {
-        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(
-            session_from.map(EncryptionContext::from).as_ref(),
-            session_to.map(EncryptionContext::from).as_ref(),
-        ))
-    }
-
-    #[cfg(not(feature = "offline"))]
     #[pyo3(name = "pseudonym_rekey_info")]
     fn py_pseudonym_rekey_info(
         &self,
-        session_from: &str,
-        session_to: &str,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
     ) -> PyPseudonymRekeyFactor {
-        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(
-            &EncryptionContext::from(session_from),
-            &EncryptionContext::from(session_to),
-        ))
+        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
     }
 
-    #[cfg(feature = "offline")]
-    #[pyo3(name = "pseudonymization_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
-    fn py_pseudonymization_info(
-        &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: Option<&str>,
-        session_to: Option<&str>,
-    ) -> PyPseudonymizationInfo {
-        PyPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            session_from.map(EncryptionContext::from).as_ref(),
-            session_to.map(EncryptionContext::from).as_ref(),
-        ))
-    }
-
-    #[cfg(not(feature = "offline"))]
     #[pyo3(name = "pseudonymization_info")]
     fn py_pseudonymization_info(
         &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: &str,
-        session_to: &str,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
     ) -> PyPseudonymizationInfo {
         PyPseudonymizationInfo::from(self.pseudonymization_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            &EncryptionContext::from(session_from),
-            &EncryptionContext::from(session_to),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
         ))
     }
 
-    #[cfg(feature = "offline")]
-    #[pyo3(name = "transcryption_info", signature = (domain_from, domain_to, session_from=None, session_to=None))]
-    fn py_transcryption_info(
-        &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: Option<&str>,
-        session_to: Option<&str>,
-    ) -> PyTranscryptionInfo {
-        PyTranscryptionInfo::from(self.transcryption_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            session_from.map(EncryptionContext::from).as_ref(),
-            session_to.map(EncryptionContext::from).as_ref(),
-        ))
-    }
-
-    #[cfg(not(feature = "offline"))]
     #[pyo3(name = "transcryption_info")]
     fn py_transcryption_info(
         &self,
-        domain_from: &str,
-        domain_to: &str,
-        session_from: &str,
-        session_to: &str,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
     ) -> PyTranscryptionInfo {
         PyTranscryptionInfo::from(self.transcryption_info(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            &EncryptionContext::from(session_from),
-            &EncryptionContext::from(session_to),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
         ))
     }
 

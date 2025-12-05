@@ -48,8 +48,8 @@ fn test_json_transcryption_with_macro() {
     let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );
@@ -113,8 +113,8 @@ fn test_json_transcryption_with_builder() {
     let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );
@@ -192,8 +192,8 @@ fn test_json_batch_transcryption_same_structure() {
     let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );
@@ -308,8 +308,8 @@ fn test_json_batch_transcryption_different_structures() {
     let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
-        Some(&session),
-        Some(&session),
+        &session,
+        &session,
         &pseudo_secret,
         &enc_secret,
     );

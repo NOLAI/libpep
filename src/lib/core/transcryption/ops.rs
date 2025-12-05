@@ -171,8 +171,8 @@ mod tests {
         let info = PseudonymizationInfo::new(
             &from_domain,
             &to_domain,
-            Some(&from_ctx),
-            Some(&to_ctx),
+            &from_ctx,
+            &to_ctx,
             &pseudo_secret,
             &enc_secret,
         );
@@ -200,7 +200,7 @@ mod tests {
         let pseudonym = Pseudonym::random(&mut rng);
         let encrypted = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
-        let rekey_info = PseudonymRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekey_info = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
         let rekeyed = rekey_pseudonym(&encrypted, &rekey_info);
 
         #[cfg(feature = "elgamal3")]
@@ -225,7 +225,7 @@ mod tests {
         let attribute = Attribute::random(&mut rng);
         let encrypted = encrypt_attribute(&attribute, &from_session.attribute.public, &mut rng);
 
-        let rekey_info = AttributeRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekey_info = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
         let rekeyed = rekey_attribute(&encrypted, &rekey_info);
 
         #[cfg(feature = "elgamal3")]
@@ -256,8 +256,8 @@ mod tests {
         let info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
-            Some(&from_ctx),
-            Some(&to_ctx),
+            &from_ctx,
+            &to_ctx,
             &pseudo_secret,
             &enc_secret,
         );
@@ -291,8 +291,8 @@ mod tests {
         let info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,
-            Some(&from_ctx),
-            Some(&to_ctx),
+            &from_ctx,
+            &to_ctx,
             &pseudo_secret,
             &enc_secret,
         );
@@ -320,7 +320,7 @@ mod tests {
         // Test with pseudonym
         let pseudonym = Pseudonym::random(&mut rng);
         let enc_p = encrypt_pseudonym(&pseudonym, &from_session.pseudonym.public, &mut rng);
-        let rekey_p = PseudonymRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekey_p = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
         let rekeyed_p = rekey(&enc_p, &rekey_p);
         #[cfg(feature = "elgamal3")]
         let decrypted_p =
@@ -332,7 +332,7 @@ mod tests {
         // Test with attribute
         let attribute = Attribute::random(&mut rng);
         let enc_a = encrypt_attribute(&attribute, &from_session.attribute.public, &mut rng);
-        let rekey_a = AttributeRekeyInfo::new(Some(&from_ctx), Some(&to_ctx), &enc_secret);
+        let rekey_a = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
         let rekeyed_a = rekey(&enc_a, &rekey_a);
         #[cfg(feature = "elgamal3")]
         let decrypted_a =

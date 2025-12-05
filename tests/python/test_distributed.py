@@ -24,6 +24,8 @@ from libpep.core.transcryption.contexts import (
     TranscryptionInfo,
     PseudonymizationInfo,
     AttributeRekeyInfo,
+    PseudonymizationDomain,
+    EncryptionContext,
 )
 from libpep.distributed.server.setup import (
     BlindingFactor,
@@ -129,7 +131,7 @@ class TestDistributed(unittest.TestCase):
         )
 
         # Test pseudonym session key share generation
-        session = "test_session"
+        session = EncryptionContext("test_session")
         key_share = pep_system.pseudonym_session_key_share(session)
 
         # Should be deterministic for same inputs
@@ -137,7 +139,7 @@ class TestDistributed(unittest.TestCase):
         self.assertEqual(key_share.to_hex(), key_share2.to_hex())
 
         # Different sessions should give different shares
-        key_share3 = pep_system.pseudonym_session_key_share("different_session")
+        key_share3 = pep_system.pseudonym_session_key_share(EncryptionContext("different_session"))
         self.assertNotEqual(key_share.to_hex(), key_share3.to_hex())
 
     def test_pep_system_info_generation(self):
@@ -147,12 +149,18 @@ class TestDistributed(unittest.TestCase):
         )
 
         # Test attribute rekey info generation
-        attr_rekey_info = pep_system.attribute_rekey_info("session1", "session2")
+        attr_rekey_info = pep_system.attribute_rekey_info(
+            EncryptionContext("session1"),
+            EncryptionContext("session2")
+        )
         self.assertIsNotNone(attr_rekey_info)
 
         # Test pseudonymization info generation
         pseudo_info = pep_system.pseudonymization_info(
-            "domain1", "domain2", "session1", "session2"
+            PseudonymizationDomain("domain1"),
+            PseudonymizationDomain("domain2"),
+            EncryptionContext("session1"),
+            EncryptionContext("session2")
         )
         self.assertIsNotNone(pseudo_info)
 
@@ -176,7 +184,7 @@ class TestDistributed(unittest.TestCase):
             systems.append(system)
 
             # Generate session key shares using the convenience method
-            shares = system.session_key_shares("test_session")
+            shares = system.session_key_shares(EncryptionContext("test_session"))
             session_key_shares.append(shares)
 
         # Create PEP client using the standard constructor
@@ -203,7 +211,7 @@ class TestDistributed(unittest.TestCase):
                 f"pseudo_secret_{i}", f"enc_secret_{i}", self.blinding_factors[i]
             )
             systems.append(system)
-            session_key_shares.append(system.session_key_shares("test_session"))
+            session_key_shares.append(system.session_key_shares(EncryptionContext("test_session")))
 
         # Create client using the standard constructor
         client = PEPClient(self.blinded_global_keys, session_key_shares)
@@ -277,10 +285,10 @@ class TestDistributed(unittest.TestCase):
         """Test standalone pseudonymization and rekey info creation"""
         # Test PseudonymizationInfo creation
         pseudo_info = PseudonymizationInfo(
-            "domain1",
-            "domain2",
-            "session1",
-            "session2",
+            PseudonymizationDomain("domain1"),
+            PseudonymizationDomain("domain2"),
+            EncryptionContext("session1"),
+            EncryptionContext("session2"),
             self.pseudo_secret,
             self.enc_secret,
         )
@@ -290,7 +298,11 @@ class TestDistributed(unittest.TestCase):
         self.assertIsNotNone(pseudo_rev)
 
         # Test AttributeRekeyInfo creation
-        attr_rekey_info = AttributeRekeyInfo("session1", "session2", self.enc_secret)
+        attr_rekey_info = AttributeRekeyInfo(
+            EncryptionContext("session1"),
+            EncryptionContext("session2"),
+            self.enc_secret
+        )
         rekey_rev = attr_rekey_info.rev()
         self.assertIsNotNone(rekey_rev)
 
@@ -305,14 +317,14 @@ class TestDistributed(unittest.TestCase):
                 f"pseudo_secret_{i}", f"enc_secret_{i}", self.blinding_factors[i]
             )
             systems.append(system)
-            initial_shares.append(system.session_key_shares("session1"))
+            initial_shares.append(system.session_key_shares(EncryptionContext("session1")))
 
         client = PEPClient(self.blinded_global_keys, initial_shares)
 
         # Generate new shares for session2
         new_shares = []
         for system in systems:
-            new_shares.append(system.session_key_shares("session2"))
+            new_shares.append(system.session_key_shares(EncryptionContext("session2")))
 
         # Update session keys one by one using the convenience method
         for i in range(3):

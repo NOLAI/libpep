@@ -3,6 +3,58 @@ use crate::core::py::keys::{PyEncryptionSecret, PyPseudonymizationSecret};
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 
+#[derive(Clone, Debug)]
+#[pyclass(name = "PseudonymizationDomain")]
+pub struct PyPseudonymizationDomain(pub(crate) PseudonymizationDomain);
+
+#[pymethods]
+impl PyPseudonymizationDomain {
+    /// Create a specific pseudonymization domain from a string identifier.
+    #[new]
+    fn new(payload: &str) -> Self {
+        Self(PseudonymizationDomain::from(payload))
+    }
+
+    /// Create a specific pseudonymization domain from a string identifier.
+    #[staticmethod]
+    fn from_str(payload: &str) -> Self {
+        Self(PseudonymizationDomain::from(payload))
+    }
+
+    /// Create a global pseudonymization domain.
+    #[cfg(feature = "global-pseudonyms")]
+    #[staticmethod]
+    fn global() -> Self {
+        Self(PseudonymizationDomain::global())
+    }
+}
+
+#[derive(Clone, Debug)]
+#[pyclass(name = "EncryptionContext")]
+pub struct PyEncryptionContext(pub(crate) EncryptionContext);
+
+#[pymethods]
+impl PyEncryptionContext {
+    /// Create a specific encryption context from a string identifier.
+    #[new]
+    fn new(payload: &str) -> Self {
+        Self(EncryptionContext::from(payload))
+    }
+
+    /// Create a specific encryption context from a string identifier.
+    #[staticmethod]
+    fn from_str(payload: &str) -> Self {
+        Self(EncryptionContext::from(payload))
+    }
+
+    /// Create a global encryption context.
+    #[cfg(feature = "offline")]
+    #[staticmethod]
+    fn global() -> Self {
+        Self(EncryptionContext::global())
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[pyclass(name = "ReshuffleFactor")]
 pub struct PyReshuffleFactor(pub(crate) ReshuffleFactor);
@@ -45,18 +97,18 @@ pub struct PyTranscryptionInfo {
 impl PyPseudonymizationInfo {
     #[new]
     fn new(
-        domain_from: &str,
-        domain_to: &str,
-        session_from: &str,
-        session_to: &str,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
         let x = PseudonymizationInfo::new(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            Some(&EncryptionContext::from(session_from)),
-            Some(&EncryptionContext::from(session_to)),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
         );
@@ -87,12 +139,12 @@ impl PyPseudonymizationInfo {
 #[pymethods]
 impl PyAttributeRekeyInfo {
     #[new]
-    fn new(session_from: &str, session_to: &str, encryption_secret: &PyEncryptionSecret) -> Self {
-        let x = AttributeRekeyInfo::new(
-            Some(&EncryptionContext::from(session_from)),
-            Some(&EncryptionContext::from(session_to)),
-            &encryption_secret.0,
-        );
+    fn new(
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+        encryption_secret: &PyEncryptionSecret,
+    ) -> Self {
+        let x = AttributeRekeyInfo::new(&session_from.0, &session_to.0, &encryption_secret.0);
         PyAttributeRekeyInfo(PyAttributeRekeyFactor(x))
     }
 
@@ -108,18 +160,18 @@ impl PyAttributeRekeyInfo {
 impl PyTranscryptionInfo {
     #[new]
     fn new(
-        domain_from: &str,
-        domain_to: &str,
-        session_from: &str,
-        session_to: &str,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
         let x = TranscryptionInfo::new(
-            &PseudonymizationDomain::from(domain_from),
-            &PseudonymizationDomain::from(domain_to),
-            Some(&EncryptionContext::from(session_from)),
-            Some(&EncryptionContext::from(session_to)),
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
         );
@@ -185,6 +237,8 @@ impl From<&PyTranscryptionInfo> for TranscryptionInfo {
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyPseudonymizationDomain>()?;
+    m.add_class::<PyEncryptionContext>()?;
     m.add_class::<PyReshuffleFactor>()?;
     m.add_class::<PyPseudonymRekeyFactor>()?;
     m.add_class::<PyAttributeRekeyFactor>()?;

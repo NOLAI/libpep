@@ -33,7 +33,16 @@ pub fn make_pseudonym_rekey_factor(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> PseudonymRekeyFactor {
-    PseudonymRekeyFactor::from(make_factor(0x01, &secret.0, context))
+    match context {
+        EncryptionContext::Specific(payload) => {
+            PseudonymRekeyFactor(make_factor(0x01, &secret.0, payload))
+        }
+        #[cfg(feature = "offline")]
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            PseudonymRekeyFactor(ScalarNonZero::one())
+        }
+    }
 }
 /// Derive an attribute rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
@@ -41,7 +50,16 @@ pub fn make_attribute_rekey_factor(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> AttributeRekeyFactor {
-    AttributeRekeyFactor::from(make_factor(0x02, &secret.0, context))
+    match context {
+        EncryptionContext::Specific(payload) => {
+            AttributeRekeyFactor(make_factor(0x02, &secret.0, payload))
+        }
+        #[cfg(feature = "offline")]
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            AttributeRekeyFactor(ScalarNonZero::one())
+        }
+    }
 }
 
 /// Derive a pseudonymisation factor from a secret and a context.
@@ -50,7 +68,16 @@ pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor {
-    ReshuffleFactor::from(make_factor(0x03, &secret.0, domain))
+    match domain {
+        PseudonymizationDomain::Specific(payload) => {
+            ReshuffleFactor(make_factor(0x03, &secret.0, payload))
+        }
+        #[cfg(feature = "global-pseudonyms")]
+        PseudonymizationDomain::Global => {
+            // Global domain - return identity factor
+            ReshuffleFactor(ScalarNonZero::one())
+        }
+    }
 }
 
 /// Derive a factor from a secret and a context.
@@ -72,12 +99,16 @@ pub fn make_pseudonym_rekey_factor(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> PseudonymRekeyFactor {
-    PseudonymRekeyFactor::from(make_factor(
-        &secret.0,
-        0x02,
-        context.audience_type,
-        &context.payload,
-    ))
+    match context {
+        EncryptionContext::Specific {
+            payload,
+            audience_type,
+        } => PseudonymRekeyFactor(make_factor(&secret.0, 0x02, *audience_type, payload)),
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            PseudonymRekeyFactor(ScalarNonZero::one())
+        }
+    }
 }
 /// Derive an attribute rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
@@ -85,26 +116,34 @@ pub fn make_attribute_rekey_factor(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> AttributeRekeyFactor {
-    AttributeRekeyFactor::from(make_factor(
-        &secret.0,
-        0x01,
-        context.audience_type,
-        &context.payload,
-    ))
+    match context {
+        EncryptionContext::Specific {
+            payload,
+            audience_type,
+        } => AttributeRekeyFactor(make_factor(&secret.0, 0x01, *audience_type, payload)),
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            AttributeRekeyFactor(ScalarNonZero::one())
+        }
+    }
 }
 
 /// Derive a pseudonymisation factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
 pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
-    payload: &PseudonymizationDomain,
+    domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor {
-    ReshuffleFactor::from(make_factor(
-        &secret.0,
-        0x01,
-        payload.audience_type,
-        &payload.payload,
-    ))
+    match domain {
+        PseudonymizationDomain::Specific {
+            payload,
+            audience_type,
+        } => ReshuffleFactor(make_factor(&secret.0, 0x01, *audience_type, payload)),
+        PseudonymizationDomain::Global => {
+            // Global domain - return identity factor
+            ReshuffleFactor(ScalarNonZero::one())
+        }
+    }
 }
 
 /// Derive a factor from a secret and a context (using the legacy PEP repo method).

@@ -23,7 +23,9 @@ const {
     PseudonymGlobalPublicKey,
     AttributeGlobalPublicKey,
     EncryptedPseudonym,
-    EncryptedAttribute
+    EncryptedAttribute,
+    PseudonymizationDomain,
+    EncryptionContext,
 } = require("../../pkg/libpep.js");
 
 test('test high level', async () => {
@@ -35,10 +37,10 @@ test('test high level', async () => {
     const pseudoSecret = new PseudonymizationSecret(secret);
     const encSecret = new EncryptionSecret(secret);
 
-    const domain1 = "domain1";
-    const session1 = "session1";
-    const domain2 = "domain2";
-    const session2 = "session2";
+    const domain1 = new PseudonymizationDomain("domain1");
+    const session1 = new EncryptionContext("session1");
+    const domain2 = new PseudonymizationDomain("domain2");
+    const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
     const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
@@ -172,8 +174,9 @@ test('test encrypted types encoding', async () => {
     const attributeGlobalKeys = makeAttributeGlobalKeys();
     const secret = new Uint8Array(Buffer.from("secret"));
     const encSecret = new EncryptionSecret(secret);
-    const pseudonymSessionKeys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session", encSecret);
-    const attributeSessionKeys = makeAttributeSessionKeys(attributeGlobalKeys.secret, "session", encSecret);
+    const session = new EncryptionContext("session");
+    const pseudonymSessionKeys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session, encSecret);
+    const attributeSessionKeys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session, encSecret);
 
     // Create encrypted pseudonym
     const pseudo = Pseudonym.random();
@@ -222,15 +225,17 @@ test('test key generation consistency', async () => {
 
     // Generate same session keys with same inputs (should be deterministic)
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
-    const session1a = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session1", encSecret);
-    const session1b = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session1", encSecret);
+    const session1 = new EncryptionContext("session1");
+    const session1a = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const session1b = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
 
     // Access GroupElement directly from SessionPublicKey (it has property '0')
     expect(session1a.public[0].toHex()).toEqual(session1b.public[0].toHex());
 
     // Different session names should give different keys
-    const session2 = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, "session2", encSecret);
-    expect(session1a.public[0].toHex()).not.toEqual(session2.public[0].toHex());
+    const session2 = new EncryptionContext("session2");
+    const session2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+    expect(session1a.public[0].toHex()).not.toEqual(session2Keys.public[0].toHex());
 });
 
 test('test global public key operations', async () => {
@@ -284,10 +289,10 @@ test('test batch long operations', async () => {
     const pseudoSecret = new PseudonymizationSecret(secret);
     const encSecret = new EncryptionSecret(secret);
 
-    const domain1 = "domain1";
-    const session1 = "session1";
-    const domain2 = "domain2";
-    const session2 = "session2";
+    const domain1 = new PseudonymizationDomain("domain1");
+    const session1 = new EncryptionContext("session1");
+    const domain2 = new PseudonymizationDomain("domain2");
+    const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
     const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
@@ -386,10 +391,10 @@ test.skip('test batch transcrypt', async () => {
     const pseudoSecret = new PseudonymizationSecret(secret);
     const encSecret = new EncryptionSecret(secret);
 
-    const domain1 = "domain1";
-    const session1 = "session1";
-    const domain2 = "domain2";
-    const session2 = "session2";
+    const domain1 = new PseudonymizationDomain("domain1");
+    const session1 = new EncryptionContext("session1");
+    const domain2 = new PseudonymizationDomain("domain2");
+    const session2 = new EncryptionContext("session2");
 
     const transcryptionInfo = new TranscryptionInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
 

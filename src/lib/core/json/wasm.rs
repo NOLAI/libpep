@@ -9,11 +9,10 @@ use crate::core::json::offline::encrypt_json_global;
 use crate::core::json::structure::JSONStructure;
 use crate::core::json::transcryption::transcrypt_json_batch;
 use crate::core::keys::{GlobalPublicKeys, SessionKeys};
-use crate::core::transcryption::contexts::{
-    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
+use crate::core::transcryption::contexts::TranscryptionInfo;
+use crate::core::transcryption::wasm::contexts::{
+    WASMEncryptionContext, WASMPseudonymizationDomain, WASMTranscryptionInfo,
 };
-use crate::core::transcryption::secrets::EncryptionSecret;
-use crate::core::transcryption::wasm::contexts::WASMTranscryptionInfo;
 use crate::core::transcryption::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 #[cfg(feature = "offline")]
 use crate::core::wasm::keys::WASMGlobalPublicKeys;
@@ -101,46 +100,20 @@ impl WASMEncryptedPEPJSONValue {
     #[wasm_bindgen]
     pub fn transcrypt(
         &self,
-        from_domain: &str,
-        to_domain: &str,
-        from_session: Option<String>,
-        to_session: Option<String>,
-        pseudonymization_secret: Option<WASMPseudonymizationSecret>,
-        encryption_secret: Option<WASMEncryptionSecret>,
+        from_domain: &WASMPseudonymizationDomain,
+        to_domain: &WASMPseudonymizationDomain,
+        from_session: &WASMEncryptionContext,
+        to_session: &WASMEncryptionContext,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
-        let from_domain = PseudonymizationDomain::from(from_domain);
-        let to_domain = PseudonymizationDomain::from(to_domain);
-        let from_session_ctx = from_session.as_deref().map(EncryptionContext::from);
-        let to_session_ctx = to_session.as_deref().map(EncryptionContext::from);
-
-        let pseudo_secret = pseudonymization_secret.map(|s| s.0).unwrap_or_else(|| {
-            crate::core::transcryption::secrets::PseudonymizationSecret::from(vec![])
-        });
-
-        let enc_secret = encryption_secret
-            .map(|s| s.0)
-            .unwrap_or_else(|| EncryptionSecret::from(vec![]));
-
-        #[cfg(feature = "offline")]
         let transcryption_info = TranscryptionInfo::new(
-            &from_domain,
-            &to_domain,
-            from_session_ctx.as_ref(),
-            to_session_ctx.as_ref(),
-            &pseudo_secret,
-            &enc_secret,
-        );
-
-        #[cfg(not(feature = "offline"))]
-        let transcryption_info = TranscryptionInfo::new(
-            &from_domain,
-            &to_domain,
-            &from_session_ctx
-                .ok_or_else(|| JsValue::from_str("from_session required without global feature"))?,
-            &to_session_ctx
-                .ok_or_else(|| JsValue::from_str("to_session required without global feature"))?,
-            &pseudo_secret,
-            &enc_secret,
+            &from_domain.0,
+            &to_domain.0,
+            &from_session.0,
+            &to_session.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
         );
 
         let transcrypted = self.0.transcrypt(&transcryption_info);

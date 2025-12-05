@@ -312,8 +312,8 @@ fn main() {
             let transcryption_info = TranscryptionInfo::new(
                 &domain_from,
                 &domain_to,
-                Some(&session_from),
-                Some(&session_to),
+                &session_from,
+                &session_to,
                 &pseudonymization_secret,
                 &encryption_secret,
             );
@@ -333,8 +333,8 @@ fn main() {
             let transcryption_info = TranscryptionInfo::new(
                 &domain_from,
                 &domain_to,
-                None,
-                Some(&session_to),
+                &EncryptionContext::global(),
+                &session_to,
                 &pseudonymization_secret,
                 &encryption_secret,
             );
@@ -354,8 +354,8 @@ fn main() {
             let transcryption_info = TranscryptionInfo::new(
                 &domain_from,
                 &domain_to,
-                Some(&session_from),
-                None,
+                &session_from,
+                &EncryptionContext::global(),
                 &pseudonymization_secret,
                 &encryption_secret,
             );

@@ -16,14 +16,13 @@ use crate::core::py::keys::PyGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::core::py::keys::PyGlobalSecretKeys;
 use crate::core::py::keys::{PyEncryptionSecret, PyPseudonymizationSecret, PySessionKeys};
-use crate::core::transcryption::contexts::{
-    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
+use crate::core::transcryption::contexts::TranscryptionInfo;
+use crate::core::transcryption::py::contexts::{
+    PyEncryptionContext, PyPseudonymizationDomain, PyTranscryptionInfo,
 };
-use crate::core::transcryption::py::contexts::PyTranscryptionInfo;
-use crate::core::transcryption::secrets::EncryptionSecret;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyBytes, PyDict, PyList};
+use pyo3::types::{PyAny, PyDict, PyList};
 use serde_json::Value;
 
 /// A PEP JSON value that can be encrypted.
@@ -86,59 +85,30 @@ impl PyEncryptedPEPJSONValue {
     /// Args:
     ///     from_domain: Source pseudonymization domain
     ///     to_domain: Target pseudonymization domain
-    ///     from_session: Source encryption session (optional)
-    ///     to_session: Target encryption session (optional)
+    ///     from_session: Source encryption session
+    ///     to_session: Target encryption session
     ///     pseudonymization_secret: Pseudonymization secret
     ///     encryption_secret: Encryption secret
     ///
     /// Returns:
     ///     A transcrypted EncryptedPEPJSONValue
     #[pyo3(name = "transcrypt")]
-    #[pyo3(signature = (from_domain, to_domain, from_session=None, to_session=None, pseudonymization_secret=None, encryption_secret=None))]
     fn transcrypt(
         &self,
-        from_domain: &str,
-        to_domain: &str,
-        from_session: Option<&str>,
-        to_session: Option<&str>,
-        pseudonymization_secret: Option<PyPseudonymizationSecret>,
-        encryption_secret: Option<PyEncryptionSecret>,
+        from_domain: &PyPseudonymizationDomain,
+        to_domain: &PyPseudonymizationDomain,
+        from_session: &PyEncryptionContext,
+        to_session: &PyEncryptionContext,
+        pseudonymization_secret: &PyPseudonymizationSecret,
+        encryption_secret: &PyEncryptionSecret,
     ) -> PyResult<Self> {
-        let from_domain = PseudonymizationDomain::from(from_domain);
-        let to_domain = PseudonymizationDomain::from(to_domain);
-        let from_session_ctx = from_session.map(EncryptionContext::from);
-        let to_session_ctx = to_session.map(EncryptionContext::from);
-
-        let pseudo_secret = pseudonymization_secret.map(|s| s.0).unwrap_or_else(|| {
-            crate::core::transcryption::secrets::PseudonymizationSecret::from(vec![])
-        });
-
-        let enc_secret = encryption_secret
-            .map(|s| s.0)
-            .unwrap_or_else(|| EncryptionSecret::from(vec![]));
-
-        #[cfg(feature = "offline")]
         let transcryption_info = TranscryptionInfo::new(
-            &from_domain,
-            &to_domain,
-            from_session_ctx.as_ref(),
-            to_session_ctx.as_ref(),
-            &pseudo_secret,
-            &enc_secret,
-        );
-
-        #[cfg(not(feature = "offline"))]
-        let transcryption_info = TranscryptionInfo::new(
-            &from_domain,
-            &to_domain,
-            &from_session_ctx.ok_or_else(|| {
-                PyValueError::new_err("from_session required without global feature")
-            })?,
-            &to_session_ctx.ok_or_else(|| {
-                PyValueError::new_err("to_session required without global feature")
-            })?,
-            &pseudo_secret,
-            &enc_secret,
+            &from_domain.0,
+            &to_domain.0,
+            &from_session.0,
+            &to_session.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
         );
 
         let transcrypted = self.0.transcrypt(&transcryption_info);
@@ -286,66 +256,20 @@ impl PyPEPJSONBuilder {
 ///
 /// Args:
 ///     values: List of EncryptedPEPJSONValue objects
-///     from_domain: Source pseudonymization domain
-///     to_domain: Target pseudonymization domain
-///     from_session: Source encryption session (optional)
-///     to_session: Target encryption session (optional)
-///     pseudonymization_secret: Pseudonymization secret
-///     encryption_secret: Encryption secret
+///     transcryption_info: TranscryptionInfo object containing domains, sessions, and secrets
 ///
 /// Returns:
 ///     A shuffled list of transcrypted EncryptedPEPJSONValue objects
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
-#[pyo3(signature = (values, from_domain, to_domain, from_session=None, to_session=None, pseudonymization_secret=None, encryption_secret=None))]
 pub fn py_transcrypt_batch(
     values: Vec<PyEncryptedPEPJSONValue>,
-    from_domain: &str,
-    to_domain: &str,
-    from_session: Option<&str>,
-    to_session: Option<&str>,
-    pseudonymization_secret: Option<PyPseudonymizationSecret>,
-    encryption_secret: Option<Bound<'_, PyBytes>>,
+    transcryption_info: &PyTranscryptionInfo,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
-
-    let from_domain = PseudonymizationDomain::from(from_domain);
-    let to_domain = PseudonymizationDomain::from(to_domain);
-    let from_session_ctx = from_session.map(EncryptionContext::from);
-    let to_session_ctx = to_session.map(EncryptionContext::from);
-
-    let pseudo_secret = pseudonymization_secret.map(|s| s.0).unwrap_or_else(|| {
-        crate::core::transcryption::secrets::PseudonymizationSecret::from(vec![])
-    });
-
-    let enc_secret = encryption_secret
-        .map(|b| EncryptionSecret::from(b.as_bytes().to_vec()))
-        .unwrap_or_else(|| EncryptionSecret::from(vec![]));
-
-    #[cfg(feature = "offline")]
-    let transcryption_info = TranscryptionInfo::new(
-        &from_domain,
-        &to_domain,
-        from_session_ctx.as_ref(),
-        to_session_ctx.as_ref(),
-        &pseudo_secret,
-        &enc_secret,
-    );
-
-    #[cfg(not(feature = "offline"))]
-    let transcryption_info = TranscryptionInfo::new(
-        &from_domain,
-        &to_domain,
-        &from_session_ctx
-            .ok_or_else(|| PyValueError::new_err("from_session required without global feature"))?,
-        &to_session_ctx
-            .ok_or_else(|| PyValueError::new_err("to_session required without global feature"))?,
-        &pseudo_secret,
-        &enc_secret,
-    );
-
     let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let transcrypted = transcrypt_json_batch(rust_values, &transcryption_info, &mut rng)
+    let info: TranscryptionInfo = transcryption_info.into();
+    let transcrypted = transcrypt_json_batch(rust_values, &info, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted

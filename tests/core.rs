@@ -71,8 +71,8 @@ fn test_core_flow() {
     let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
-        Some(&session1),
-        Some(&session2),
+        &session1,
+        &session2,
         &pseudo_secret,
         &enc_secret,
     );
@@ -145,8 +145,8 @@ fn test_batch() {
     let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
-        Some(&session1),
-        Some(&session2),
+        &session1,
+        &session2,
         &pseudo_secret,
         &enc_secret,
     );
@@ -230,8 +230,8 @@ fn test_batch_long() {
     let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
-        Some(&session1),
-        Some(&session2),
+        &session1,
+        &session2,
         &pseudo_secret,
         &enc_secret,
     );

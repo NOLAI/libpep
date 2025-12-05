@@ -158,17 +158,6 @@ mod tests {
             },
         };
 
-        #[cfg(feature = "offline")]
-        let transcryption_info = TranscryptionInfo::new(
-            &from_domain,
-            &to_domain,
-            Some(&from_session),
-            Some(&to_session),
-            &pseudo_secret,
-            &enc_secret,
-        );
-
-        #[cfg(not(feature = "offline"))]
         let transcryption_info = TranscryptionInfo::new(
             &from_domain,
             &to_domain,

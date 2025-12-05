@@ -8,6 +8,8 @@ const {
     TranscryptionInfo,
     PseudonymizationSecret,
     EncryptionSecret,
+    PseudonymizationDomain,
+    EncryptionContext,
 } = require("../../pkg/libpep.js");
 
 test('test json transcryption with builder', async () => {
@@ -16,7 +18,7 @@ test('test json transcryption with builder', async () => {
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
     const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
 
-    const session = "session-1";
+    const session = new EncryptionContext("session-1");
 
     const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
 
@@ -43,8 +45,8 @@ test('test json transcryption with builder', async () => {
     expect(jsonOriginal.get("active")).toBe(true);
 
     // Transcrypt from clinic A to clinic B
-    const domainA = "clinic-a";
-    const domainB = "clinic-b";
+    const domainA = new PseudonymizationDomain("clinic-a");
+    const domainB = new PseudonymizationDomain("clinic-b");
 
     const transcrypted = encrypted.transcrypt(
         domainA,
@@ -76,9 +78,9 @@ test('test json batch transcryption same structure', async () => {
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
     const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
 
-    const domainA = "domain-a";
-    const domainB = "domain-b";
-    const session = "session-1";
+    const domainA = new PseudonymizationDomain("domain-a");
+    const domainB = new PseudonymizationDomain("domain-b");
+    const session = new EncryptionContext("session-1");
 
     const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
 
@@ -153,9 +155,9 @@ test('test json batch transcryption different structures', async () => {
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
     const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
 
-    const domainA = "domain-a";
-    const domainB = "domain-b";
-    const session = "session-1";
+    const domainA = new PseudonymizationDomain("domain-a");
+    const domainB = new PseudonymizationDomain("domain-b");
+    const session = new EncryptionContext("session-1");
 
     const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
 

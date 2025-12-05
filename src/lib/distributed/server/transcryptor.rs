@@ -78,21 +78,16 @@ impl PEPSystem {
     /// Generate an attribute rekey info to rekey attributes from a given [`EncryptionContext`] to another.
     pub fn attribute_rekey_info(
         &self,
-        #[cfg(feature = "offline")] session_from: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_from: &EncryptionContext,
-        #[cfg(feature = "offline")] session_to: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_to: &EncryptionContext,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
     ) -> AttributeRekeyInfo {
         AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
-    #[cfg(feature = "offline")]
     pub fn pseudonym_rekey_info(
         &self,
-        #[cfg(feature = "offline")] session_from: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_from: &EncryptionContext,
-        #[cfg(feature = "offline")] session_to: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_to: &EncryptionContext,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
     ) -> PseudonymRekeyInfo {
         PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
@@ -101,15 +96,13 @@ impl PEPSystem {
     /// and [`EncryptionContext`] to another.
     pub fn pseudonymization_info(
         &self,
-        domain_form: &PseudonymizationDomain,
+        domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
-        #[cfg(feature = "offline")] session_from: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_from: &EncryptionContext,
-        #[cfg(feature = "offline")] session_to: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_to: &EncryptionContext,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
     ) -> PseudonymizationInfo {
         PseudonymizationInfo::new(
-            domain_form,
+            domain_from,
             domain_to,
             session_from,
             session_to,
@@ -139,10 +132,8 @@ impl PEPSystem {
         &self,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
-        #[cfg(feature = "offline")] session_from: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_from: &EncryptionContext,
-        #[cfg(feature = "offline")] session_to: Option<&EncryptionContext>,
-        #[cfg(not(feature = "offline"))] session_to: &EncryptionContext,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
     ) -> TranscryptionInfo {
         TranscryptionInfo::new(
             domain_from,
