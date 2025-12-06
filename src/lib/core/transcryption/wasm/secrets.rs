@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 use super::contexts::WASMPseudonymRekeyFactor;
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`](crate::core::transcryption::contexts::ReshuffleFactor) from a [`PseudonymizationDomain`].
 #[derive(Clone, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(pub(crate) PseudonymizationSecret);

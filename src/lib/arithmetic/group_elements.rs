@@ -10,7 +10,7 @@ use sha2::Sha256;
 use std::fmt::Formatter;
 use std::hash::Hash;
 
-/// The base point constant so that a [`ScalarNonZero`](super::ScalarNonZero)/[`ScalarCanBeZero`](super::ScalarCanBeZero) `s` can be converted to a [`GroupElement`] by performing `s * G`.
+/// The base point constant so that a [`ScalarNonZero`](super::scalars::ScalarNonZero)/[`ScalarCanBeZero`](super::scalars::ScalarCanBeZero) `s` can be converted to a [`GroupElement`] by performing `s * G`.
 pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT);
 
 /// Element on a group.

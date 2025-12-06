@@ -282,13 +282,13 @@ impl PyGlobalSecretKeys {
     }
 }
 
-/// Pseudonymization secret used to derive a [`PyReshuffleFactor`] from a pseudonymization domain (see [`PyPseudonymizationInfo`]).
+/// Pseudonymization secret used to derive a reshuffle factor from a pseudonymization domain (see [`crate::core::transcryption::contexts::ReshuffleFactor`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[pyclass(name = "PseudonymizationSecret")]
 pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
 
-/// Encryption secret used to derive rekey factors from an encryption context (see [`PyPseudonymRekeyInfo`] and [`PyAttributeRekeyInfo`]).
+/// Encryption secret used to derive rekey factors from an encryption context (see [`crate::core::transcryption::contexts::PseudonymRekeyInfo`] and [`crate::core::transcryption::contexts::AttributeRekeyInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[pyclass(name = "EncryptionSecret")]

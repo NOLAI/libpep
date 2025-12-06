@@ -19,8 +19,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt::Formatter;
 
 /// A global public key for pseudonyms, associated with the [`PseudonymGlobalSecretKey`] from which session keys are derived.
-/// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
-/// key may leak information.
+/// Can also be used to encrypt pseudonyms, if no session key is available or using a session key may leak information.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymGlobalPublicKey(pub(crate) GroupElement);
@@ -29,8 +28,7 @@ pub struct PseudonymGlobalPublicKey(pub(crate) GroupElement);
 pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 
 /// A global public key for attributes, associated with the [`AttributeGlobalSecretKey`] from which session keys are derived.
-/// Can also be used to encrypt attributes against, if no session key is available or using a session
-/// key may leak information.
+/// Can also be used to encrypt attributes, if no session key is available or using a session key may leak information.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeGlobalPublicKey(pub(crate) GroupElement);
@@ -53,7 +51,7 @@ pub struct GlobalSecretKeys {
     pub attribute: AttributeGlobalSecretKey,
 }
 
-/// A session public key used to encrypt pseudonyms against, associated with a [`PseudonymSessionSecretKey`].
+/// A session public key used to encrypt pseudonyms, associated with a [`PseudonymSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
@@ -61,7 +59,7 @@ pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 #[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 
-/// A session public key used to encrypt attributes against, associated with a [`AttributeSessionSecretKey`].
+/// A session public key used to encrypt attributes, associated with a [`AttributeSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
