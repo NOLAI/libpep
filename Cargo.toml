@@ -64,6 +64,15 @@ thiserror = "2.0.18"
 [dev-dependencies]
 serde_json = "^1.0"
 rand = "0.10.0-rc.5"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "base"
+harness = false
+
+[[bench]]
+name = "distributed"
+harness = false
 
 [package.metadata.deb]
 name = "peppy"
