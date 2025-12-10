@@ -1,0 +1,86 @@
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-git-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-benchmark-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-benchmark-
+            ${{ runner.os }}-cargo-build-
+
+      - name: Run all benchmarks
+        run: cargo bench
+
+      - name: Create benchmark summary
+        run: |
+          echo "# Benchmark Results" > benchmark-summary.md
+          echo "" >> benchmark-summary.md
+          echo "**Run Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> benchmark-summary.md
+          echo "**Commit:** ${{ github.sha }}" >> benchmark-summary.md
+          echo "**Branch:** ${{ github.ref_name }}" >> benchmark-summary.md
+          echo "" >> benchmark-summary.md
+
+          if [ -f "target/criterion/report/index.html" ]; then
+            echo "## Base Operations Benchmarks" >> benchmark-summary.md
+            echo "" >> benchmark-summary.md
+            echo "Benchmark reports generated successfully." >> benchmark-summary.md
+            echo "See the artifacts for detailed HTML reports." >> benchmark-summary.md
+          fi
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            target/criterion/
+            benchmark-summary.md
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('benchmark-summary.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary + '\n\nDownload the full benchmark report from the workflow artifacts.'
+            });
