@@ -157,7 +157,7 @@ pub fn process_entities_batch(
     }
 }
 
-
+#[allow(dead_code)]
 fn bench_distributed_transcrypt(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_complete");
 
@@ -258,16 +258,15 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                             &client_a,
                         );
 
-                        b.iter(|| {
-                            process_entities_batch(
-                                black_box(encrypted_data.clone()),
-                                black_box(&systems),
-                                black_box(&domain_a),
-                                black_box(&domain_b),
-                                black_box(&session_a),
-                                black_box(&session_b),
-                            );
-                        })
+                        b.iter_batched(
+                            || encrypted_data.clone(),
+                            |data| {
+                                process_entities_batch(
+                                    data, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                                );
+                            },
+                            criterion::BatchSize::LargeInput,
+                        )
                     },
                 );
             }
