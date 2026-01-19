@@ -15,200 +15,215 @@ fn setup_keys() -> (ScalarNonZero, GroupElement) {
 }
 
 fn bench_encrypt(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-
     c.bench_function("encrypt", |b| {
-        b.iter(|| {
-            let mut rng_inner = rand::rng();
-            encrypt(black_box(&message), black_box(&public_key), &mut rng_inner)
-        })
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                (message, public_key, rng)
+            },
+            |(message, public_key, mut rng)| encrypt(&message, &public_key, &mut rng),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_decrypt(c: &mut Criterion) {
-    let (secret_key, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-
     c.bench_function("decrypt", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = decrypt(black_box(&encrypted), black_box(&secret_key));
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = decrypt(black_box(&encrypted), black_box(&secret_key));
-        })
+        b.iter_batched(
+            || {
+                let (secret_key, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                (encrypted, secret_key)
+            },
+            |(encrypted, secret_key)| decrypt(&encrypted, &secret_key),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rerandomize(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let r = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rerandomize", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = rerandomize(black_box(&encrypted), black_box(&r));
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = rerandomize(black_box(&encrypted), black_box(&public_key), black_box(&r));
-        })
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let r = ScalarNonZero::random(&mut rng);
+                (encrypted, public_key, r)
+            },
+            |(encrypted, public_key, r)| {
+                #[cfg(feature = "elgamal3")]
+                { rerandomize(&encrypted, &r) }
+                #[cfg(not(feature = "elgamal3"))]
+                { rerandomize(&encrypted, &public_key, &r) }
+            },
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_reshuffle(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let s = ScalarNonZero::random(&mut rng);
-
     c.bench_function("reshuffle", |b| {
-        b.iter(|| reshuffle(black_box(&encrypted), black_box(&s)))
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                (encrypted, s)
+            },
+            |(encrypted, s)| reshuffle(&encrypted, &s),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rekey(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let k = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rekey", |b| {
-        b.iter(|| rekey(black_box(&encrypted), black_box(&k)))
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                (encrypted, k)
+            },
+            |(encrypted, k)| rekey(&encrypted, &k),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rsk(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let s = ScalarNonZero::random(&mut rng);
-    let k = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rsk", |b| {
-        b.iter(|| rsk(black_box(&encrypted), black_box(&s), black_box(&k)))
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                (encrypted, s, k)
+            },
+            |(encrypted, s, k)| rsk(&encrypted, &s, &k),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rrsk(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let r = ScalarNonZero::random(&mut rng);
-    let s = ScalarNonZero::random(&mut rng);
-    let k = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rrsk", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = rrsk(
-                black_box(&encrypted),
-                black_box(&r),
-                black_box(&s),
-                black_box(&k),
-            );
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = rrsk(
-                black_box(&encrypted),
-                black_box(&public_key),
-                black_box(&r),
-                black_box(&s),
-                black_box(&k),
-            );
-        })
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let r = ScalarNonZero::random(&mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                (encrypted, public_key, r, s, k)
+            },
+            |(encrypted, public_key, r, s, k)| {
+                #[cfg(feature = "elgamal3")]
+                { rrsk(&encrypted, &r, &s, &k) }
+                #[cfg(not(feature = "elgamal3"))]
+                { rrsk(&encrypted, &public_key, &r, &s, &k) }
+            },
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_reshuffle2(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let s_from = ScalarNonZero::random(&mut rng);
-    let s_to = ScalarNonZero::random(&mut rng);
-
     c.bench_function("reshuffle2", |b| {
-        b.iter(|| reshuffle2(black_box(&encrypted), black_box(&s_from), black_box(&s_to)))
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s_from = ScalarNonZero::random(&mut rng);
+                let s_to = ScalarNonZero::random(&mut rng);
+                (encrypted, s_from, s_to)
+            },
+            |(encrypted, s_from, s_to)| reshuffle2(&encrypted, &s_from, &s_to),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rekey2(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let k_from = ScalarNonZero::random(&mut rng);
-    let k_to = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rekey2", |b| {
-        b.iter(|| rekey2(black_box(&encrypted), black_box(&k_from), black_box(&k_to)))
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let k_from = ScalarNonZero::random(&mut rng);
+                let k_to = ScalarNonZero::random(&mut rng);
+                (encrypted, k_from, k_to)
+            },
+            |(encrypted, k_from, k_to)| rekey2(&encrypted, &k_from, &k_to),
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rsk2(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let s_from = ScalarNonZero::random(&mut rng);
-    let s_to = ScalarNonZero::random(&mut rng);
-    let k_from = ScalarNonZero::random(&mut rng);
-    let k_to = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rsk2", |b| {
-        b.iter(|| {
-            rsk2(
-                black_box(&encrypted),
-                black_box(&s_from),
-                black_box(&s_to),
-                black_box(&k_from),
-                black_box(&k_to),
-            )
-        })
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s_from = ScalarNonZero::random(&mut rng);
+                let s_to = ScalarNonZero::random(&mut rng);
+                let k_from = ScalarNonZero::random(&mut rng);
+                let k_to = ScalarNonZero::random(&mut rng);
+                (encrypted, s_from, s_to, k_from, k_to)
+            },
+            |(encrypted, s_from, s_to, k_from, k_to)| {
+                rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to)
+            },
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 
 fn bench_rrsk2(c: &mut Criterion) {
-    let (_, public_key) = setup_keys();
-    let mut rng = rng();
-    let message = GroupElement::random(&mut rng);
-    let encrypted = encrypt(&message, &public_key, &mut rng);
-    let r = ScalarNonZero::random(&mut rng);
-    let s_from = ScalarNonZero::random(&mut rng);
-    let s_to = ScalarNonZero::random(&mut rng);
-    let k_from = ScalarNonZero::random(&mut rng);
-    let k_to = ScalarNonZero::random(&mut rng);
-
     c.bench_function("rrsk2", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = rrsk2(
-                black_box(&encrypted),
-                black_box(&r),
-                black_box(&s_from),
-                black_box(&s_to),
-                black_box(&k_from),
-                black_box(&k_to),
-            );
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = rrsk2(
-                black_box(&encrypted),
-                black_box(&public_key),
-                black_box(&r),
-                black_box(&s_from),
-                black_box(&s_to),
-                black_box(&k_from),
-                black_box(&k_to),
-            );
-        })
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let r = ScalarNonZero::random(&mut rng);
+                let s_from = ScalarNonZero::random(&mut rng);
+                let s_to = ScalarNonZero::random(&mut rng);
+                let k_from = ScalarNonZero::random(&mut rng);
+                let k_to = ScalarNonZero::random(&mut rng);
+                (encrypted, public_key, r, s_from, s_to, k_from, k_to)
+            },
+            |(encrypted, public_key, r, s_from, s_to, k_from, k_to)| {
+                #[cfg(feature = "elgamal3")]
+                { rrsk2(&encrypted, &r, &s_from, &s_to, &k_from, &k_to) }
+                #[cfg(not(feature = "elgamal3"))]
+                { rrsk2(&encrypted, &public_key, &r, &s_from, &s_to, &k_from, &k_to) }
+            },
+            criterion::BatchSize::SmallInput,
+        )
     });
 }
 

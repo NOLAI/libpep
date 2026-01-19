@@ -7,8 +7,13 @@ use libpep::distributed::server::setup::make_distributed_global_keys;
 use libpep::distributed::server::transcryptor::PEPSystem;
 use rand::rng;
 
+/// Configuration parameters for distributed benchmarks
+pub const BENCHMARK_SERVERS: [usize; 4] = [1, 2, 3, 4];
+pub const BENCHMARK_ENTITIES: [usize; 4] = [1, 10, 100, 1000];
+pub const BENCHMARK_STRUCTURES: [(usize, usize); 4] = [(1, 0), (1, 1), (1, 2), (1, 10)];
+
 /// Setup a distributed PEP system with n transcryptors
-fn setup_distributed_system(
+pub fn setup_distributed_system(
     n: usize,
 ) -> (
     Vec<PEPSystem>,
@@ -64,133 +69,154 @@ fn setup_distributed_system(
     )
 }
 
-fn bench_client_encrypt_pseudonym(c: &mut Criterion) {
-    let (_, client_a, _, _, _, _, _) = setup_distributed_system(3);
+/// Generate test entities with the given structure
+pub fn generate_entities(
+    num_entities: usize,
+    num_pseudonyms_per_entity: usize,
+    num_attributes_per_entity: usize,
+    client: &PEPClient,
+) -> Vec<(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)> {
     let rng = &mut rng();
-    let pseudonym = Pseudonym::random(rng);
-
-    c.bench_function("client_encrypt_pseudonym", |b| {
-        b.iter(|| {
-            let rng_inner = &mut rand::rng();
-            client_a.encrypt_pseudonym(black_box(&pseudonym), rng_inner)
+    (0..num_entities)
+        .map(|_| {
+            let pseudonyms: Vec<_> = (0..num_pseudonyms_per_entity)
+                .map(|_| {
+                    let pseudonym = Pseudonym::random(rng);
+                    client.encrypt_pseudonym(&pseudonym, rng)
+                })
+                .collect();
+            let attributes: Vec<_> = (0..num_attributes_per_entity)
+                .map(|_| {
+                    let attribute = Attribute::random(rng);
+                    client.encrypt_attribute(&attribute, rng)
+                })
+                .collect();
+            (pseudonyms, attributes)
         })
-    });
+        .collect()
 }
 
-fn bench_client_encrypt_attribute(c: &mut Criterion) {
-    let (_, client_a, _, _, _, _, _) = setup_distributed_system(3);
-    let rng = &mut rng();
-    let attribute = Attribute::random(rng);
-
-    c.bench_function("client_encrypt_attribute", |b| {
-        b.iter(|| {
-            let rng_inner = &mut rand::rng();
-            client_a.encrypt_attribute(black_box(&attribute), rng_inner)
-        })
-    });
+/// Process entities individually through all servers
+pub fn process_entities_individually(
+    entities: &[(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)],
+    systems: &[PEPSystem],
+    domain_a: &PseudonymizationDomain,
+    domain_b: &PseudonymizationDomain,
+    session_a: &EncryptionContext,
+    session_b: &EncryptionContext,
+) {
+    for (pseudonyms, attributes) in entities {
+        // Process all pseudonyms for this entity
+        for encrypted in pseudonyms {
+            let _ = systems.iter().fold(*encrypted, |acc, system| {
+                let transcryption_info =
+                    system.transcryption_info(domain_a, domain_b, session_a, session_b);
+                system.transcrypt(&acc, &transcryption_info)
+            });
+        }
+        // Process all attributes for this entity
+        for encrypted in attributes {
+            let _ = systems.iter().fold(*encrypted, |acc, system| {
+                let rekey_info = system.attribute_rekey_info(session_a, session_b);
+                system.rekey(&acc, &rekey_info)
+            });
+        }
+    }
 }
 
-fn bench_client_decrypt_pseudonym(c: &mut Criterion) {
-    let (_, client_a, _, _, _, _, _) = setup_distributed_system(3);
-    let rng = &mut rng();
-    let pseudonym = Pseudonym::random(rng);
-    let encrypted = client_a.encrypt_pseudonym(&pseudonym, rng);
+/// Process entities using batch operations
+pub fn process_entities_batch(
+    entities: Vec<(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)>,
+    systems: &[PEPSystem],
+    domain_a: &PseudonymizationDomain,
+    domain_b: &PseudonymizationDomain,
+    session_a: &EncryptionContext,
+    session_b: &EncryptionContext,
+) {
+    let mut batch = entities;
+    let mut batch_rng = rand::rng();
 
-    c.bench_function("client_decrypt_pseudonym", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = black_box(&client_a)
-                .decrypt_pseudonym(black_box(&encrypted))
-                .expect("decryption should succeed");
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = black_box(&client_a).decrypt_pseudonym(black_box(&encrypted));
-        })
-    });
+    for system in systems {
+        let transcryption_info = system.transcryption_info(domain_a, domain_b, session_a, session_b);
+        batch = if let Ok(result) = system.transcrypt_batch(batch, &transcryption_info, &mut batch_rng) {
+            result
+        } else {
+            break;
+        };
+    }
 }
 
-fn bench_client_decrypt_attribute(c: &mut Criterion) {
-    let (_, client_a, _, _, _, _, _) = setup_distributed_system(3);
-    let rng = &mut rng();
-    let attribute = Attribute::random(rng);
-    let encrypted = client_a.encrypt_attribute(&attribute, rng);
-
-    c.bench_function("client_decrypt_attribute", |b| {
-        b.iter(|| {
-            #[cfg(feature = "elgamal3")]
-            let _ = black_box(&client_a)
-                .decrypt_attribute(black_box(&encrypted))
-                .expect("decryption should succeed");
-            #[cfg(not(feature = "elgamal3"))]
-            let _ = black_box(&client_a).decrypt_attribute(black_box(&encrypted));
-        })
-    });
-}
-
-fn bench_server_rekey_attribute(c: &mut Criterion) {
-    let (systems, client_a, _, session_a, session_b, _, _) = setup_distributed_system(3);
-    let rng = &mut rng();
-    let attribute = Attribute::random(rng);
-    let encrypted = client_a.encrypt_attribute(&attribute, rng);
-    let rekey_info = systems[0].attribute_rekey_info(&session_a, &session_b);
-
-    c.bench_function("server_rekey_attribute", |b| {
-        b.iter(|| systems[0].rekey(black_box(&encrypted), black_box(&rekey_info)))
-    });
-}
-
-fn bench_server_pseudonymize(c: &mut Criterion) {
-    let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
-        setup_distributed_system(3);
-    let rng = &mut rng();
-    let pseudonym = Pseudonym::random(rng);
-    let encrypted = client_a.encrypt_pseudonym(&pseudonym, rng);
-    let pseudonymization_info =
-        systems[0].pseudonymization_info(&domain_a, &domain_b, &session_a, &session_b);
-
-    c.bench_function("server_pseudonymize", |b| {
-        b.iter(|| systems[0].pseudonymize(black_box(&encrypted), black_box(&pseudonymization_info)))
-    });
-}
-
-fn bench_server_transcrypt(c: &mut Criterion) {
-    let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
-        setup_distributed_system(3);
-    let rng = &mut rng();
-    let pseudonym = Pseudonym::random(rng);
-    let encrypted = client_a.encrypt_pseudonym(&pseudonym, rng);
-    let transcryption_info =
-        systems[0].transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-
-    c.bench_function("server_transcrypt", |b| {
-        b.iter(|| systems[0].transcrypt(black_box(&encrypted), black_box(&transcryption_info)))
-    });
-}
-
-fn bench_distributed_transcrypt_complete(c: &mut Criterion) {
+fn bench_distributed_transcrypt(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_complete");
 
-    for n in [2, 3, 5, 7].iter() {
-        group.bench_with_input(BenchmarkId::from_parameter(n), n, |b, &n| {
-            let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
-                setup_distributed_system(n);
-            let rng = &mut rng();
-            let pseudonym = Pseudonym::random(rng);
-            let encrypted = client_a.encrypt_pseudonym(&pseudonym, rng);
+    for num_servers in BENCHMARK_SERVERS.iter() {
+        for num_entities in BENCHMARK_ENTITIES.iter() {
+            for (num_pseudonyms_per_entity, num_attributes_per_entity) in BENCHMARK_STRUCTURES.iter() {
+                group.bench_with_input(
+                    BenchmarkId::from_parameter(format!(
+                        "{}servers_{}entities_{}p_{}a",
+                        num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity
+                    )),
+                    &(num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity),
+                    |b, &(&num_servers, &num_entities, &num_pseudonyms_per_entity, &num_attributes_per_entity)| {
+                        let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
+                            setup_distributed_system(num_servers);
 
-            b.iter(|| {
-                // Simulate complete transcryption through all servers
-                let result = systems.iter().fold(black_box(encrypted), |acc, system| {
-                    let transcryption_info = system.transcryption_info(
-                        black_box(&domain_a),
-                        black_box(&domain_b),
-                        black_box(&session_a),
-                        black_box(&session_b),
-                    );
-                    system.transcrypt(&acc, &transcryption_info)
-                });
-                result
-            })
-        });
+                        // Pre-generate all data as entity tuples
+                        let entities = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+
+                        b.iter(|| {
+                            process_entities_individually(
+                                black_box(&entities),
+                                black_box(&systems),
+                                black_box(&domain_a),
+                                black_box(&domain_b),
+                                black_box(&session_a),
+                                black_box(&session_b),
+                            );
+                        })
+                    },
+                );
+            }
+        }
+    }
+
+    group.finish();
+}
+
+fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
+    let mut group = c.benchmark_group("distributed_transcrypt_batch");
+
+    for num_servers in BENCHMARK_SERVERS.iter() {
+        for num_entities in BENCHMARK_ENTITIES.iter() {
+            for (num_pseudonyms_per_entity, num_attributes_per_entity) in BENCHMARK_STRUCTURES.iter() {
+                group.bench_with_input(
+                    BenchmarkId::from_parameter(format!(
+                        "{}servers_{}entities_{}p_{}a",
+                        num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity
+                    )),
+                    &(num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity),
+                    |b, &(&num_servers, &num_entities, &num_pseudonyms_per_entity, &num_attributes_per_entity)| {
+                        let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
+                            setup_distributed_system(num_servers);
+
+                        // Pre-generate all data as EncryptedData tuples
+                        let encrypted_data = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+
+                        b.iter(|| {
+                            process_entities_batch(
+                                black_box(encrypted_data.clone()),
+                                black_box(&systems),
+                                black_box(&domain_a),
+                                black_box(&domain_b),
+                                black_box(&session_a),
+                                black_box(&session_b),
+                            );
+                        })
+                    },
+                );
+            }
+        }
     }
 
     group.finish();
@@ -198,14 +224,8 @@ fn bench_distributed_transcrypt_complete(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_client_encrypt_pseudonym,
-    bench_client_encrypt_attribute,
-    bench_client_decrypt_pseudonym,
-    bench_client_decrypt_attribute,
-    bench_server_rekey_attribute,
-    bench_server_pseudonymize,
-    bench_server_transcrypt,
-    bench_distributed_transcrypt_complete
+    bench_distributed_transcrypt,
+    bench_distributed_transcrypt_batch
 );
 
 criterion_main!(benches);
