@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::arithmetic::group_elements::{GroupElement, G};
 use libpep::arithmetic::scalars::ScalarNonZero;
 use libpep::base::elgamal::{decrypt, encrypt};
@@ -58,9 +58,13 @@ fn bench_rerandomize(c: &mut Criterion) {
             },
             |(encrypted, public_key, r)| {
                 #[cfg(feature = "elgamal3")]
-                { rerandomize(&encrypted, &r) }
+                {
+                    rerandomize(&encrypted, &r)
+                }
                 #[cfg(not(feature = "elgamal3"))]
-                { rerandomize(&encrypted, &public_key, &r) }
+                {
+                    rerandomize(&encrypted, &public_key, &r)
+                }
             },
             criterion::BatchSize::SmallInput,
         )
@@ -134,9 +138,13 @@ fn bench_rrsk(c: &mut Criterion) {
             },
             |(encrypted, public_key, r, s, k)| {
                 #[cfg(feature = "elgamal3")]
-                { rrsk(&encrypted, &r, &s, &k) }
+                {
+                    rrsk(&encrypted, &r, &s, &k)
+                }
                 #[cfg(not(feature = "elgamal3"))]
-                { rrsk(&encrypted, &public_key, &r, &s, &k) }
+                {
+                    rrsk(&encrypted, &public_key, &r, &s, &k)
+                }
             },
             criterion::BatchSize::SmallInput,
         )
@@ -218,9 +226,13 @@ fn bench_rrsk2(c: &mut Criterion) {
             },
             |(encrypted, public_key, r, s_from, s_to, k_from, k_to)| {
                 #[cfg(feature = "elgamal3")]
-                { rrsk2(&encrypted, &r, &s_from, &s_to, &k_from, &k_to) }
+                {
+                    rrsk2(&encrypted, &r, &s_from, &s_to, &k_from, &k_to)
+                }
                 #[cfg(not(feature = "elgamal3"))]
-                { rrsk2(&encrypted, &public_key, &r, &s_from, &s_to, &k_from, &k_to) }
+                {
+                    rrsk2(&encrypted, &public_key, &r, &s_from, &s_to, &k_from, &k_to)
+                }
             },
             criterion::BatchSize::SmallInput,
         )

@@ -75,7 +75,10 @@ pub fn generate_entities(
     num_pseudonyms_per_entity: usize,
     num_attributes_per_entity: usize,
     client: &PEPClient,
-) -> Vec<(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)> {
+) -> Vec<(
+    Vec<libpep::core::data::EncryptedPseudonym>,
+    Vec<libpep::core::data::EncryptedAttribute>,
+)> {
     let rng = &mut rng();
     (0..num_entities)
         .map(|_| {
@@ -98,7 +101,10 @@ pub fn generate_entities(
 
 /// Process entities individually through all servers
 pub fn process_entities_individually(
-    entities: &[(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)],
+    entities: &[(
+        Vec<libpep::core::data::EncryptedPseudonym>,
+        Vec<libpep::core::data::EncryptedAttribute>,
+    )],
     systems: &[PEPSystem],
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
@@ -126,7 +132,10 @@ pub fn process_entities_individually(
 
 /// Process entities using batch operations
 pub fn process_entities_batch(
-    entities: Vec<(Vec<libpep::core::data::EncryptedPseudonym>, Vec<libpep::core::data::EncryptedAttribute>)>,
+    entities: Vec<(
+        Vec<libpep::core::data::EncryptedPseudonym>,
+        Vec<libpep::core::data::EncryptedAttribute>,
+    )>,
     systems: &[PEPSystem],
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
@@ -137,8 +146,11 @@ pub fn process_entities_batch(
     let mut batch_rng = rand::rng();
 
     for system in systems {
-        let transcryption_info = system.transcryption_info(domain_a, domain_b, session_a, session_b);
-        batch = if let Ok(result) = system.transcrypt_batch(batch, &transcryption_info, &mut batch_rng) {
+        let transcryption_info =
+            system.transcryption_info(domain_a, domain_b, session_a, session_b);
+        batch = if let Ok(result) =
+            system.transcrypt_batch(batch, &transcryption_info, &mut batch_rng)
+        {
             result
         } else {
             break;
@@ -146,24 +158,46 @@ pub fn process_entities_batch(
     }
 }
 
+#[allow(dead_code)]
 fn bench_distributed_transcrypt(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_complete");
 
     for num_servers in BENCHMARK_SERVERS.iter() {
         for num_entities in BENCHMARK_ENTITIES.iter() {
-            for (num_pseudonyms_per_entity, num_attributes_per_entity) in BENCHMARK_STRUCTURES.iter() {
+            for (num_pseudonyms_per_entity, num_attributes_per_entity) in
+                BENCHMARK_STRUCTURES.iter()
+            {
                 group.bench_with_input(
                     BenchmarkId::from_parameter(format!(
                         "{}servers_{}entities_{}p_{}a",
-                        num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity
+                        num_servers,
+                        num_entities,
+                        num_pseudonyms_per_entity,
+                        num_attributes_per_entity
                     )),
-                    &(num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity),
-                    |b, &(&num_servers, &num_entities, &num_pseudonyms_per_entity, &num_attributes_per_entity)| {
+                    &(
+                        num_servers,
+                        num_entities,
+                        num_pseudonyms_per_entity,
+                        num_attributes_per_entity,
+                    ),
+                    |b,
+                     &(
+                        &num_servers,
+                        &num_entities,
+                        &num_pseudonyms_per_entity,
+                        &num_attributes_per_entity,
+                    )| {
                         let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
                             setup_distributed_system(num_servers);
 
                         // Pre-generate all data as entity tuples
-                        let entities = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+                        let entities = generate_entities(
+                            num_entities,
+                            num_pseudonyms_per_entity,
+                            num_attributes_per_entity,
+                            &client_a,
+                        );
 
                         b.iter(|| {
                             process_entities_individually(
@@ -184,24 +218,46 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
     group.finish();
 }
 
+#[allow(dead_code)]
 fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_batch");
 
     for num_servers in BENCHMARK_SERVERS.iter() {
         for num_entities in BENCHMARK_ENTITIES.iter() {
-            for (num_pseudonyms_per_entity, num_attributes_per_entity) in BENCHMARK_STRUCTURES.iter() {
+            for (num_pseudonyms_per_entity, num_attributes_per_entity) in
+                BENCHMARK_STRUCTURES.iter()
+            {
                 group.bench_with_input(
                     BenchmarkId::from_parameter(format!(
                         "{}servers_{}entities_{}p_{}a",
-                        num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity
+                        num_servers,
+                        num_entities,
+                        num_pseudonyms_per_entity,
+                        num_attributes_per_entity
                     )),
-                    &(num_servers, num_entities, num_pseudonyms_per_entity, num_attributes_per_entity),
-                    |b, &(&num_servers, &num_entities, &num_pseudonyms_per_entity, &num_attributes_per_entity)| {
+                    &(
+                        num_servers,
+                        num_entities,
+                        num_pseudonyms_per_entity,
+                        num_attributes_per_entity,
+                    ),
+                    |b,
+                     &(
+                        &num_servers,
+                        &num_entities,
+                        &num_pseudonyms_per_entity,
+                        &num_attributes_per_entity,
+                    )| {
                         let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
                             setup_distributed_system(num_servers);
 
                         // Pre-generate all data as EncryptedData tuples
-                        let encrypted_data = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+                        let encrypted_data = generate_entities(
+                            num_entities,
+                            num_pseudonyms_per_entity,
+                            num_attributes_per_entity,
+                            &client_a,
+                        );
 
                         b.iter(|| {
                             process_entities_batch(

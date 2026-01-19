@@ -13,7 +13,13 @@ struct BenchMetadata {
 
 impl energy_bench::Metadata<5> for BenchMetadata {
     fn get_header() -> [&'static str; 5] {
-        ["Operation", "Servers", "Entities", "Pseudonyms/Entity", "Attributes/Entity"]
+        [
+            "Operation",
+            "Servers",
+            "Entities",
+            "Pseudonyms/Entity",
+            "Attributes/Entity",
+        ]
     }
 
     fn get_values(&self) -> [String; 5] {
@@ -40,7 +46,12 @@ fn main() {
                     setup_distributed_system(num_servers);
 
                 // Pre-generate all data as entity tuples
-                let entities = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+                let entities = generate_entities(
+                    num_entities,
+                    num_pseudonyms_per_entity,
+                    num_attributes_per_entity,
+                    &client_a,
+                );
 
                 let metadata = BenchMetadata {
                     operation: "distributed_transcrypt",
@@ -51,7 +62,9 @@ fn main() {
                 };
 
                 bench.benchmark::<(), ()>(metadata, &|| {
-                    process_entities_individually(&entities, &systems, &domain_a, &domain_b, &session_a, &session_b);
+                    process_entities_individually(
+                        &entities, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                    );
                     Ok(())
                 });
             }
@@ -66,7 +79,12 @@ fn main() {
                     setup_distributed_system(num_servers);
 
                 // Pre-generate all data as EncryptedData tuples
-                let encrypted_data = generate_entities(num_entities, num_pseudonyms_per_entity, num_attributes_per_entity, &client_a);
+                let encrypted_data = generate_entities(
+                    num_entities,
+                    num_pseudonyms_per_entity,
+                    num_attributes_per_entity,
+                    &client_a,
+                );
 
                 let metadata = BenchMetadata {
                     operation: "distributed_transcrypt_batch",
@@ -77,7 +95,14 @@ fn main() {
                 };
 
                 bench.benchmark::<(), ()>(metadata, &|| {
-                    process_entities_batch(encrypted_data.clone(), &systems, &domain_a, &domain_b, &session_a, &session_b);
+                    process_entities_batch(
+                        encrypted_data.clone(),
+                        &systems,
+                        &domain_a,
+                        &domain_b,
+                        &session_a,
+                        &session_b,
+                    );
                     Ok(())
                 });
             }
