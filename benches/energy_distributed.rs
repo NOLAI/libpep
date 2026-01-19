@@ -78,7 +78,7 @@ fn main() {
                 let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
                     setup_distributed_system(num_servers);
 
-                // Pre-generate all data as EncryptedData tuples
+                // Pre-generate all data as entity tuples
                 let encrypted_data = generate_entities(
                     num_entities,
                     num_pseudonyms_per_entity,

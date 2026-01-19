@@ -70,9 +70,6 @@ fn main() {
 
         bench.benchmark::<(), ()>(metadata, &|| {
             for _ in 0..iterations {
-                #[cfg(feature = "elgamal3")]
-                let _ = decrypt(&encrypted, &secret_key);
-                #[cfg(not(feature = "elgamal3"))]
                 let _ = decrypt(&encrypted, &secret_key);
             }
             Ok(())
