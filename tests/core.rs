@@ -4,7 +4,9 @@ use libpep::core::data::*;
 use libpep::core::keys::*;
 #[cfg(feature = "elgamal3")]
 use libpep::core::rerandomize::rerandomize;
-use libpep::core::transcryption::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::core::transcryption::batch::{
+    pseudonymize_batch, rekey_batch, transcrypt_batch, EncryptedData,
+};
 use libpep::core::transcryption::contexts::*;
 use libpep::core::transcryption::ops::{rekey, transcrypt};
 use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
@@ -156,7 +158,7 @@ fn test_batch() {
     let _rekeyed = rekey_batch(&mut attributes, &attribute_rekey_info, rng);
     let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info.pseudonym, rng);
 
-    let mut data = vec![];
+    let mut data: Vec<EncryptedData> = vec![];
     for _ in 0..10 {
         let pseudonyms = (0..10)
             .map(|_| encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng))

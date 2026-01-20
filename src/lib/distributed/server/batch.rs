@@ -35,12 +35,12 @@ impl PEPSystem {
     /// # Errors
     ///
     /// Returns an error if the encrypted data do not all have the same structure.
-    pub fn transcrypt_batch<R: RngCore + CryptoRng>(
+    pub fn transcrypt_batch<E: BatchTranscryptable<R>, R: RngCore + CryptoRng>(
         &self,
-        encrypted: Vec<EncryptedData>,
+        encrypted: E,
         transcryption_info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Result<Vec<EncryptedData>, String> {
+    ) -> Result<E, String> {
         transcrypt_batch(encrypted, transcryption_info, rng)
     }
 }

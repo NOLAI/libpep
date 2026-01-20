@@ -5,6 +5,7 @@
 use super::contexts::*;
 use crate::base::primitives::rsk;
 use crate::core::data::*;
+use crate::core::transcryption::batch::EncryptedData;
 
 /// Pseudonymize an [`EncryptedPseudonym`] from one pseudonymization and encryption context to another,
 /// using [`PseudonymizationInfo`].
@@ -80,9 +81,9 @@ pub fn rekey<E: Rekeyable>(encrypted: &E, rekey_info: &E::RekeyInfo) -> E {
 }
 
 /// Trait for types that can be transcrypted using TranscryptionInfo.
-/// This trait is implemented separately for pseudonyms and attributes to provide
+/// This trait is implemented separately for pseudonyms, attributes and encrypted_data to provide
 /// type-specific transcryption behavior without runtime dispatch.
-pub trait Transcryptable: Encrypted {
+pub trait Transcryptable {
     /// Apply the transcryption operation specific to this type.
     fn transcrypt_impl(encrypted: &Self, transcryption_info: &TranscryptionInfo) -> Self;
 }
@@ -105,6 +106,24 @@ impl Transcryptable for EncryptedAttribute {
             encrypted.value(),
             &transcryption_info.attribute.0,
         ))
+    }
+}
+
+impl Transcryptable for EncryptedData {
+    #[inline]
+    fn transcrypt_impl(encrypted: &Self, transcryption_info: &TranscryptionInfo) -> Self {
+        let pseudonyms = encrypted
+            .0
+            .iter()
+            .map(|x| transcrypt_pseudonym(x, transcryption_info))
+            .collect();
+        let attributes = encrypted
+            .1
+            .iter()
+            .map(|x| transcrypt_attribute(x, transcryption_info))
+            .collect();
+
+        (pseudonyms, attributes)
     }
 }
 
