@@ -160,6 +160,7 @@ pub fn process_entities_batch(
 #[allow(dead_code)]
 fn bench_distributed_transcrypt(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_complete");
+    group.sample_size(50);
 
     for num_servers in BENCHMARK_SERVERS.iter() {
         for num_entities in BENCHMARK_ENTITIES.iter() {
@@ -220,6 +221,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
 #[allow(dead_code)]
 fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_batch");
+    group.sample_size(50);
 
     for num_servers in BENCHMARK_SERVERS.iter() {
         for num_entities in BENCHMARK_ENTITIES.iter() {
