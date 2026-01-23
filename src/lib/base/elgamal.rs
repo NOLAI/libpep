@@ -61,7 +61,7 @@ impl ElGamal {
     }
 
     /// Convert to a byte array, consuming self.
-    /// Optimized version that avoids unnecessary copies when the value is no longer needed.
+    /// Convenience variant of [`to_bytes`] for APIs that take ownership of the value.
     pub fn into_bytes(self) -> [u8; ELGAMAL_LENGTH] {
         self.to_bytes()
     }

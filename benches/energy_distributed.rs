@@ -2,6 +2,7 @@ mod distributed;
 
 use distributed::*;
 use energy_bench::EnergyBenchBuilder;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct BenchMetadata {
     operation: &'static str,
@@ -78,13 +79,15 @@ fn main() {
                 let (systems, client_a, _, session_a, session_b, domain_a, domain_b) =
                     setup_distributed_system(num_servers);
 
-                // Pre-generate all data as entity tuples
-                let encrypted_data = generate_entities(
-                    num_entities,
-                    num_pseudonyms_per_entity,
-                    num_attributes_per_entity,
-                    &client_a,
-                );
+                // Pre-generate entity tuples for benchmarking
+                let encrypted_data_batch: Vec<_> = (0..10)
+                    .map(|_| generate_entities(
+                        num_entities,
+                        num_pseudonyms_per_entity,
+                        num_attributes_per_entity,
+                        &client_a,
+                    ))
+                    .collect();
 
                 let metadata = BenchMetadata {
                     operation: "distributed_transcrypt_batch",
@@ -94,7 +97,10 @@ fn main() {
                     num_attributes_per_entity,
                 };
 
+                let counter = AtomicUsize::new(0);
                 bench.benchmark::<(), ()>(metadata, &|| {
+                    let idx = counter.fetch_add(1, Ordering::Relaxed);
+                    let encrypted_data = &encrypted_data_batch[idx % encrypted_data_batch.len()];
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
