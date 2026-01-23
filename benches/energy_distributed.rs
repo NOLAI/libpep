@@ -81,12 +81,14 @@ fn main() {
 
                 // Pre-generate entity tuples for benchmarking
                 let encrypted_data_batch: Vec<_> = (0..10)
-                    .map(|_| generate_entities(
-                        num_entities,
-                        num_pseudonyms_per_entity,
-                        num_attributes_per_entity,
-                        &client_a,
-                    ))
+                    .map(|_| {
+                        generate_entities(
+                            num_entities,
+                            num_pseudonyms_per_entity,
+                            num_attributes_per_entity,
+                            &client_a,
+                        )
+                    })
                     .collect();
 
                 let metadata = BenchMetadata {

@@ -38,7 +38,11 @@ pub fn setup_distributed_system(
             let encryption_secret =
                 EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
             let blinding_factor = blinding_factors[i];
-            DistributedTranscryptor::new(pseudonymization_secret, encryption_secret, blinding_factor)
+            DistributedTranscryptor::new(
+                pseudonymization_secret,
+                encryption_secret,
+                blinding_factor,
+            )
         })
         .collect();
 
@@ -114,18 +118,22 @@ pub fn process_entities_individually(
     for (pseudonyms, attributes) in entities {
         // Process all pseudonyms for this entity
         for encrypted in pseudonyms {
-            let _ = systems.iter().fold(*encrypted, |acc, system: &DistributedTranscryptor| {
-                let transcryption_info =
-                    system.transcryption_info(domain_a, domain_b, session_a, session_b);
-                system.transcrypt(&acc, &transcryption_info)
-            });
+            let _ = systems
+                .iter()
+                .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
+                    let transcryption_info =
+                        system.transcryption_info(domain_a, domain_b, session_a, session_b);
+                    system.transcrypt(&acc, &transcryption_info)
+                });
         }
         // Process all attributes for this entity
         for encrypted in attributes {
-            let _ = systems.iter().fold(*encrypted, |acc, system: &DistributedTranscryptor| {
-                let rekey_info = system.attribute_rekey_info(session_a, session_b);
-                system.rekey(&acc, &rekey_info)
-            });
+            let _ = systems
+                .iter()
+                .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
+                    let rekey_info = system.attribute_rekey_info(session_a, session_b);
+                    system.rekey(&acc, &rekey_info)
+                });
         }
     }
 }
@@ -145,9 +153,7 @@ pub fn process_entities_batch(
     // Convert entity tuples to EncryptedRecord
     let mut batch: Vec<EncryptedRecord> = entities
         .into_iter()
-        .map(|(pseudonyms, attributes)| {
-            EncryptedRecord::new(pseudonyms, attributes)
-        })
+        .map(|(pseudonyms, attributes)| EncryptedRecord::new(pseudonyms, attributes))
         .collect();
 
     let mut batch_rng = rand::rng();

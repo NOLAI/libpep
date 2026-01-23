@@ -96,11 +96,11 @@ jobs:
             echo "${servers}|${entities}|${pseudonyms}|${attributes}|${time_us}" >> /tmp/batch_results.txt
           done
 
-          # Merge results by configuration
+          # Merge results by configuration (match on servers, entities, pseudonyms, and attributes)
           sort /tmp/individual_results.txt > /tmp/individual_sorted.txt
           sort /tmp/batch_results.txt > /tmp/batch_sorted.txt
 
-          join -t '|' /tmp/individual_sorted.txt /tmp/batch_sorted.txt | while IFS='|' read -r servers entities pseudonyms attributes individual_time batch_time; do
+          awk -F'|' 'NR==FNR { key = $1 FS $2 FS $3 FS $4; indiv[key] = $5; next } { key = $1 FS $2 FS $3 FS $4; if (key in indiv) { print $1 FS $2 FS $3 FS $4 FS indiv[key] FS $5 } }' /tmp/individual_sorted.txt /tmp/batch_sorted.txt | while IFS='|' read -r servers entities pseudonyms attributes individual_time batch_time; do
             echo "| $servers | $entities | $pseudonyms | $attributes | $individual_time | $batch_time |" >> $GITHUB_STEP_SUMMARY
             echo "| $servers | $entities | $pseudonyms | $attributes | $individual_time | $batch_time |" >> benchmark_tables/distributed_transcryption.md
           done
