@@ -4,16 +4,16 @@
 //! more than 16 bytes of data. These types are built on top of PKCS#7 padding.
 
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::contexts::{
-    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
-    TranscryptionInfo,
-};
 use crate::core::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
 use crate::core::data::traits::{
     Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
+};
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::core::keys::{
     AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
@@ -931,7 +931,7 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::core::contexts::EncryptionContext;
+    use crate::core::factors::contexts::EncryptionContext;
     use crate::core::factors::EncryptionSecret;
     use crate::core::functions::encrypt;
     use crate::core::keys::{make_attribute_session_keys, make_pseudonym_session_keys};

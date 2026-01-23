@@ -1,10 +1,10 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, PseudonymizationInfo};
 use libpep::core::data::long::LongPseudonym;
 use libpep::core::data::simple::{EncryptedPseudonym, Pseudonym};
 use libpep::core::data::traits::{Encryptable, Encrypted};
-use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::core::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
 use libpep::core::functions::pseudonymize;
 use libpep::core::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use std::io::Error;

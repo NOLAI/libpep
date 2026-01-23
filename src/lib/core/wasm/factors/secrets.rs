@@ -1,6 +1,6 @@
 //! WASM bindings for secret types and factor derivation functions.
 
-use crate::core::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::core::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::core::factors::*;
 use derive_more::{Deref, From, Into};
@@ -12,8 +12,8 @@ use crate::core::wasm::factors::types::{
 
 /// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
 ///
-/// [`ReshuffleFactor`]: crate::core::contexts::ReshuffleFactor
-/// [`PseudonymizationDomain`]: crate::core::contexts::PseudonymizationDomain
+/// [`ReshuffleFactor`]: crate::core::factors::ReshuffleFactor
+/// [`PseudonymizationDomain`]: crate::core::factors::contexts::PseudonymizationDomain
 #[derive(Clone, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(pub(crate) PseudonymizationSecret);

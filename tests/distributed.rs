@@ -1,8 +1,8 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::core::client::{Client, DistributedClient};
-use libpep::core::contexts::*;
 use libpep::core::data::simple::*;
+use libpep::core::factors::contexts::*;
 use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::transcryptor::DistributedTranscryptor;
 

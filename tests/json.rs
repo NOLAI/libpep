@@ -3,9 +3,11 @@
 
 #[cfg(feature = "batch")]
 use libpep::core::batch::transcrypt_batch;
-use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 use libpep::core::data::json::builder::PEPJSONBuilder;
 use libpep::core::data::traits::{Encryptable, Encrypted, Transcryptable};
+use libpep::core::factors::contexts::{
+    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
+};
 use libpep::core::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;

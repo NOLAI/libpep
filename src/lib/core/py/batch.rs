@@ -2,8 +2,9 @@
 
 use super::contexts::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
 use crate::core::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
-use crate::core::contexts::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use crate::core::data::records::EncryptedRecord;
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{AttributeRekeyInfo, PseudonymizationInfo};
 use crate::core::functions::{decrypt, encrypt};
 use crate::core::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,

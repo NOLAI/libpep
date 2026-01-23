@@ -67,3 +67,42 @@ impl From<PseudonymizationInfo> for PseudonymRekeyInfo {
         x.k
     }
 }
+
+/// The information required for transcryption, containing both pseudonymization info and attribute rekey info.
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+pub struct TranscryptionInfo {
+    pub pseudonym: PseudonymizationInfo,
+    pub attribute: AttributeRekeyInfo,
+}
+
+impl TranscryptionInfo {
+    /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
+    pub fn new(
+        domain_from: &crate::core::factors::contexts::PseudonymizationDomain,
+        domain_to: &crate::core::factors::contexts::PseudonymizationDomain,
+        session_from: &crate::core::factors::contexts::EncryptionContext,
+        session_to: &crate::core::factors::contexts::EncryptionContext,
+        pseudonymization_secret: &crate::core::factors::PseudonymizationSecret,
+        encryption_secret: &crate::core::factors::EncryptionSecret,
+    ) -> Self {
+        Self {
+            pseudonym: PseudonymizationInfo::new(
+                domain_from,
+                domain_to,
+                session_from,
+                session_to,
+                pseudonymization_secret,
+                encryption_secret,
+            ),
+            attribute: AttributeRekeyInfo::new(session_from, session_to, encryption_secret),
+        }
+    }
+
+    /// Reverse the transcryption info (i.e., switch the direction of the transcryption).
+    pub fn reverse(&self) -> Self {
+        Self {
+            pseudonym: self.pseudonym.reverse(),
+            attribute: self.attribute.reverse(),
+        }
+    }
+}

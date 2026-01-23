@@ -3,10 +3,10 @@
 //! These operations process multiple items at once and shuffle them
 //! to prevent linking.
 
-use crate::core::contexts::TranscryptionInfo;
 use crate::core::data::traits::{
     Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
 };
+use crate::core::factors::TranscryptionInfo;
 use rand_core::{CryptoRng, RngCore};
 use thiserror::Error;
 
@@ -86,7 +86,7 @@ fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(), BatchError
 /// ```
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
-    info: &crate::core::contexts::PseudonymizationInfo,
+    info: &crate::core::factors::PseudonymizationInfo,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where

@@ -4,7 +4,8 @@ use super::traits::SecretKey;
 use super::types::*;
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::contexts::{EncryptionContext, RekeyFactor};
+use crate::core::factors::contexts::EncryptionContext;
+use crate::core::factors::RekeyFactor;
 use crate::core::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
 };

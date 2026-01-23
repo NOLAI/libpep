@@ -3,9 +3,9 @@
 //! A `Record` represents a collection of pseudonyms and attributes that belong to the same entity.
 //! When encrypted, it becomes an `EncryptedRecord`.
 
-use crate::core::contexts::TranscryptionInfo;
 use crate::core::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::core::data::traits::{Encryptable, Encrypted, Transcryptable};
+use crate::core::factors::TranscryptionInfo;
 use crate::core::keys::{GlobalPublicKeys, SessionKeys};
 use rand_core::{CryptoRng, RngCore};
 
@@ -260,7 +260,7 @@ impl Encrypted for EncryptedRecord {
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rerandomize_known(&self, factor: &crate::core::contexts::RerandomizeFactor) -> Self {
+    fn rerandomize_known(&self, factor: &crate::core::factors::RerandomizeFactor) -> Self {
         EncryptedRecord {
             pseudonyms: self
                 .pseudonyms
@@ -279,7 +279,7 @@ impl Encrypted for EncryptedRecord {
     fn rerandomize_known(
         &self,
         keys: &SessionKeys,
-        factor: &crate::core::contexts::RerandomizeFactor,
+        factor: &crate::core::factors::RerandomizeFactor,
     ) -> Self {
         EncryptedRecord {
             pseudonyms: self
@@ -461,7 +461,7 @@ impl Encrypted for LongEncryptedRecord {
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rerandomize_known(&self, factor: &crate::core::contexts::RerandomizeFactor) -> Self {
+    fn rerandomize_known(&self, factor: &crate::core::factors::RerandomizeFactor) -> Self {
         LongEncryptedRecord {
             pseudonyms: self
                 .pseudonyms
@@ -480,7 +480,7 @@ impl Encrypted for LongEncryptedRecord {
     fn rerandomize_known(
         &self,
         keys: &SessionKeys,
-        factor: &crate::core::contexts::RerandomizeFactor,
+        factor: &crate::core::factors::RerandomizeFactor,
     ) -> Self {
         LongEncryptedRecord {
             pseudonyms: self

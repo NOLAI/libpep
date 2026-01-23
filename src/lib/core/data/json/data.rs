@@ -2,13 +2,14 @@
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::contexts::{RerandomizeFactor, TranscryptionInfo};
 use crate::core::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use crate::core::data::padding::Padded;
 use crate::core::data::simple::{Attribute, EncryptedAttribute};
 use crate::core::data::traits::{Encryptable, Encrypted, Transcryptable};
+use crate::core::factors::RerandomizeFactor;
+use crate::core::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::core::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -510,7 +511,7 @@ impl crate::core::batch::HasStructure for EncryptedPEPJSONValue {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::core::contexts::EncryptionContext;
+    use crate::core::factors::contexts::EncryptionContext;
     use crate::core::factors::EncryptionSecret;
     use crate::core::functions::{decrypt, encrypt};
     use crate::core::keys::{

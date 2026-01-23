@@ -14,7 +14,7 @@ use crate::core::client::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
-use crate::core::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor};
+use crate::core::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::core::keys::distribution::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,

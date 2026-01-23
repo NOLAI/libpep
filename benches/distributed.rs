@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use libpep::core::client::{Client, DistributedClient};
-use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::core::data::records::EncryptedRecord;
 use libpep::core::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::transcryptor::DistributedTranscryptor;
 use rand::rng;

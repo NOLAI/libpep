@@ -52,8 +52,8 @@ impl EncryptedPEPJSONValue {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::core::contexts::EncryptionContext;
     use crate::core::data::json::data::PEPJSONValue;
+    use crate::core::factors::contexts::EncryptionContext;
     use crate::core::factors::EncryptionSecret;
     use crate::core::functions::encrypt;
     use crate::core::keys::{

@@ -89,7 +89,7 @@ macro_rules! pep_json {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::core::contexts::EncryptionContext;
+    use crate::core::factors::contexts::EncryptionContext;
     use crate::core::factors::EncryptionSecret;
     use crate::core::functions::{decrypt, encrypt};
     use crate::core::keys::{

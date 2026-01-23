@@ -3,7 +3,7 @@
 use super::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use super::types::*;
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 #[cfg(feature = "legacy")]

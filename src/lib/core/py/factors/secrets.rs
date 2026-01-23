@@ -1,6 +1,6 @@
 //! Python bindings for secret types and factor derivation functions.
 
-use crate::core::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::core::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use crate::core::factors::*;
 use derive_more::{Deref, From, Into};

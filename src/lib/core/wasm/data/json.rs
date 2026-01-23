@@ -1,12 +1,12 @@
 //! WASM bindings for PEP JSON encryption.
 
 use crate::core::batch::transcrypt_batch;
-use crate::core::contexts::TranscryptionInfo;
 use crate::core::data::json::builder::PEPJSONBuilder;
 use crate::core::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::core::data::json::structure::JSONStructure;
 use crate::core::data::json::utils;
 use crate::core::data::traits::Transcryptable;
+use crate::core::factors::TranscryptionInfo;
 use crate::core::functions::{decrypt, encrypt};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::core::functions::{decrypt_global, encrypt_global};

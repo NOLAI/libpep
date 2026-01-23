@@ -2,7 +2,7 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
     use libpep::arithmetic::scalars::ScalarTraits;
-    use libpep::core::contexts::{PseudonymRekeyFactor, PseudonymizationDomain};
+    use libpep::core::factors::contexts::{PseudonymRekeyFactor, PseudonymizationDomain};
     use libpep::core::factors::derivation::make_pseudonymisation_factor;
     use libpep::core::factors::secrets::PseudonymizationSecret;
     use libpep::core::keys::distribution::blinding::BlindingFactor;

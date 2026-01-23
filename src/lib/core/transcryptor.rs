@@ -2,9 +2,12 @@
 
 #[cfg(feature = "batch")]
 use crate::core::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
-use crate::core::contexts::*;
 use crate::core::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use crate::core::factors::contexts::*;
+use crate::core::factors::{
+    AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
+    PseudonymizationSecret, TranscryptionInfo,
+};
 use crate::core::functions::{pseudonymize, rekey, transcrypt};
 use rand_core::{CryptoRng, RngCore};
 

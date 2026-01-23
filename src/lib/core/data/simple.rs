@@ -4,12 +4,12 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::base::elgamal::{ElGamal, ELGAMAL_LENGTH};
-use crate::core::contexts::{
-    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
-    TranscryptionInfo,
-};
 use crate::core::data::traits::{
     Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
+};
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::core::keys::*;
 use derive_more::{Deref, From};
@@ -515,7 +515,7 @@ impl crate::core::batch::HasStructure for EncryptedAttribute {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::core::contexts::EncryptionContext;
+    use crate::core::factors::contexts::EncryptionContext;
     use crate::core::factors::EncryptionSecret;
     use crate::core::functions::{decrypt, encrypt};
 

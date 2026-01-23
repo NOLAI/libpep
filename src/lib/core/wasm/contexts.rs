@@ -1,5 +1,8 @@
-use crate::core::contexts::AttributeRekeyFactor;
-use crate::core::contexts::*;
+use crate::core::factors::contexts::*;
+use crate::core::factors::{
+    AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymizationInfo,
+    ReshuffleFactor, TranscryptionInfo,
+};
 use crate::core::wasm::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 pub use crate::core::wasm::factors::types::WASMPseudonymRekeyFactor;
 use derive_more::From;

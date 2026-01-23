@@ -11,6 +11,7 @@
 //! - [`types`]: Factor types and Info type aliases
 //! - [`derivation`]: Functions for deriving factors from contexts and secrets
 
+pub mod contexts;
 pub mod derivation;
 pub mod secrets;
 pub mod types;

@@ -236,8 +236,8 @@ impl WASMLongEncryptedAttribute {
 
 /// WASM bindings for batch operations on long (multi-block) data types.
 use crate::core::batch::{rekey_batch, transcrypt_batch};
-use crate::core::contexts::TranscryptionInfo;
 use crate::core::data::records::LongEncryptedRecord;
+use crate::core::factors::TranscryptionInfo;
 use crate::core::wasm::contexts::{WASMPseudonymRekeyFactor, WASMTranscryptionInfo};
 
 /// Batch rekeying of long encrypted pseudonyms.

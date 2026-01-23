@@ -1,6 +1,7 @@
 //! Core traits for encryption and decryption operations.
 
-use crate::core::contexts::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{PseudonymizationInfo, RerandomizeFactor};
 use rand_core::{CryptoRng, RngCore};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.

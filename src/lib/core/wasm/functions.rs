@@ -7,11 +7,10 @@ use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::core::batch::{
     decrypt_batch, encrypt_batch, pseudonymize_batch, rekey_batch, transcrypt_batch,
 };
-use crate::core::contexts::{
-    AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
-};
 use crate::core::data::records::EncryptedRecord;
 use crate::core::data::records::LongEncryptedRecord;
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::core::functions::decrypt_global;
 #[cfg(feature = "offline")]

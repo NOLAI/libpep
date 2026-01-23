@@ -3,7 +3,6 @@
 
 use commandy_macros::*;
 use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
 #[cfg(feature = "json")]
 use libpep::core::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
 use libpep::core::data::long::{
@@ -14,6 +13,8 @@ use libpep::core::data::simple::{
     Pseudonym,
 };
 use libpep::core::data::traits::{Encryptable, Encrypted};
+use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::core::factors::TranscryptionInfo;
 use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::functions::transcrypt;
 use libpep::core::keys::distribution::{make_distributed_global_keys, BlindingFactor};

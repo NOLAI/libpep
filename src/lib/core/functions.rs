@@ -2,10 +2,11 @@
 //!
 //! These functions work with any type implementing the corresponding traits from [`crate::core::data::traits`].
 
-use crate::core::contexts::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
 use crate::core::data::traits::{
     Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
 };
+use crate::core::factors::TranscryptionInfo;
+use crate::core::factors::{PseudonymizationInfo, RerandomizeFactor};
 use rand_core::{CryptoRng, RngCore};
 
 // Encryption and decryption functions

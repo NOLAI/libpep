@@ -5,7 +5,7 @@
 
 use super::blinding::BlindingFactor;
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::contexts::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
+use crate::core::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
 use derive_more::{Deref, From};
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
