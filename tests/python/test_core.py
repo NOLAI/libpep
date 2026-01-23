@@ -22,36 +22,14 @@ from libpep.core.keys import (
     make_pseudonym_session_keys,
     make_attribute_session_keys,
 )
-
-# Import global encryption functions (session-based encrypt/decrypt don't exist as standalone functions)
-from libpep.core.offline import encrypt_pseudonym_global, encrypt_attribute_global
-from libpep.core.long.data import (
-    LongPseudonym,
-    LongAttribute,
-    encrypt_long_pseudonym,
-    encrypt_long_attribute,
-    decrypt_long_pseudonym,
-    decrypt_long_attribute,
-)
-from libpep.core.long.ops import (
-    pseudonymize_long,
-    rekey_long_pseudonym,
-    rekey_long_attribute,
-    transcrypt_long_pseudonym,
-    transcrypt_long_attribute,
-)
-from libpep.core.long.batch import (
-    pseudonymize_long_batch,
-    rekey_long_pseudonym_batch,
-    rekey_long_attribute_batch,
-    transcrypt_long_batch,
-)
-from libpep.core.transcryption.contexts import (
+from libpep.core import (
     PseudonymizationInfo,
     AttributeRekeyInfo,
     TranscryptionInfo,
     PseudonymizationDomain,
     EncryptionContext,
+    encrypt,
+    decrypt,
 )
 
 
@@ -61,22 +39,32 @@ class TestHighLevel(unittest.TestCase):
         # Generate global keys
         pseudonym_global_keys = make_pseudonym_global_keys()
         attribute_global_keys = make_attribute_global_keys()
+        enc_secret = EncryptionSecret(b"test_secret")
 
-        # Create and encrypt pseudonym with global key
+        # Create session keys
+        session = EncryptionContext("test_session")
+        pseudonym_session_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session, enc_secret
+        )
+        attribute_session_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session, enc_secret
+        )
+
+        # Create and encrypt pseudonym
         pseudo = Pseudonym.random()
-        enc_pseudo = encrypt_pseudonym_global(pseudo, pseudonym_global_keys.public)
+        enc_pseudo = encrypt(pseudo, pseudonym_session_keys.public)
 
-        # Create and encrypt data point with global key
+        # Create and encrypt data point
         random_point = GroupElement.random()
         data = Attribute(random_point)
-        enc_data = encrypt_attribute_global(data, attribute_global_keys.public)
+        enc_data = encrypt(data, attribute_session_keys.public)
 
-        # Verify encryption happened (encrypted types exist)
-        self.assertIsNotNone(enc_pseudo)
-        self.assertIsNotNone(enc_data)
+        # Verify encryption and decryption
+        dec_pseudo = decrypt(enc_pseudo, pseudonym_session_keys.secret)
+        dec_data = decrypt(enc_data, attribute_session_keys.secret)
 
-        # Note: Decryption with global secret key is only available with 'insecure' feature
-        # which is not enabled by default for security reasons
+        self.assertEqual(pseudo.to_hex(), dec_pseudo.to_hex())
+        self.assertEqual(data.to_hex(), dec_data.to_hex())
 
     def test_pseudonym_operations(self):
         """Test pseudonym creation and manipulation"""
@@ -122,42 +110,30 @@ class TestHighLevel(unittest.TestCase):
 
     def test_string_padding_operations(self):
         """Test string padding for pseudonyms and data points"""
-        test_string = "Hello, World! This is a test string for padding."
+        test_string = "Hello!"  # Max 15 bytes for single block
 
         # Test pseudonym string padding
-        long_pseudo = LongPseudonym.from_string_padded(test_string)
-        self.assertGreater(len(long_pseudo), 0)
-
-        # Reconstruct string
-        reconstructed = long_pseudo.to_string_padded()
+        pseudo = Pseudonym.from_string_padded(test_string)
+        reconstructed = pseudo.to_string_padded()
         self.assertEqual(test_string, reconstructed)
 
         # Test data point string padding
-        long_attr = LongAttribute.from_string_padded(test_string)
-        self.assertGreater(len(long_attr), 0)
-
-        # Reconstruct string
-        reconstructed_data = long_attr.to_string_padded()
+        attr = Attribute.from_string_padded(test_string)
+        reconstructed_data = attr.to_string_padded()
         self.assertEqual(test_string, reconstructed_data)
 
     def test_bytes_padding_operations(self):
         """Test bytes padding for pseudonyms and data points"""
-        test_bytes = b"Hello, World! This is a test byte array for padding."
+        test_bytes = b"Hello!"  # Max 15 bytes for single block
 
         # Test pseudonym bytes padding
-        long_pseudo = LongPseudonym.from_bytes_padded(test_bytes)
-        self.assertGreater(len(long_pseudo), 0)
-
-        # Reconstruct bytes
-        reconstructed = long_pseudo.to_bytes_padded()
+        pseudo = Pseudonym.from_bytes_padded(test_bytes)
+        reconstructed = pseudo.to_bytes_padded()
         self.assertEqual(test_bytes, reconstructed)
 
         # Test data point bytes padding
-        long_attr = LongAttribute.from_bytes_padded(test_bytes)
-        self.assertGreater(len(long_attr), 0)
-
-        # Reconstruct bytes
-        reconstructed_data = long_attr.to_bytes_padded()
+        attr = Attribute.from_bytes_padded(test_bytes)
+        reconstructed_data = attr.to_bytes_padded()
         self.assertEqual(test_bytes, reconstructed_data)
 
     def test_fixed_size_bytes_operations(self):
@@ -182,10 +158,19 @@ class TestHighLevel(unittest.TestCase):
         # Setup
         pseudonym_global_keys = make_pseudonym_global_keys()
         attribute_global_keys = make_attribute_global_keys()
+        enc_secret = EncryptionSecret(b"test_secret")
+        session = EncryptionContext("test_session")
 
-        # Create encrypted pseudonym with global key
+        pseudonym_session_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session, enc_secret
+        )
+        attribute_session_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session, enc_secret
+        )
+
+        # Create encrypted pseudonym
         pseudo = Pseudonym.random()
-        enc_pseudo = encrypt_pseudonym_global(pseudo, pseudonym_global_keys.public)
+        enc_pseudo = encrypt(pseudo, pseudonym_session_keys.public)
 
         # Test byte encoding/decoding
         encoded = enc_pseudo.to_bytes()
@@ -197,16 +182,22 @@ class TestHighLevel(unittest.TestCase):
         decoded_b64 = EncryptedPseudonym.from_base64(b64_str)
         self.assertIsNotNone(decoded_b64)
 
-        # Verify encoding/decoding works (but skip decryption as it requires 'insecure' feature)
-        # Note: Decryption requires the 'insecure' feature which is not enabled by default
+        # Verify decryption works
+        dec1 = decrypt(decoded, pseudonym_session_keys.secret)
+        dec2 = decrypt(decoded_b64, pseudonym_session_keys.secret)
+        self.assertEqual(pseudo.to_hex(), dec1.to_hex())
+        self.assertEqual(pseudo.to_hex(), dec2.to_hex())
 
         # Test same for encrypted data point
         data = Attribute.random()
-        enc_data = encrypt_attribute_global(data, attribute_global_keys.public)
+        enc_data = encrypt(data, attribute_session_keys.public)
 
         encoded_data = enc_data.to_bytes()
         decoded_data = EncryptedAttribute.from_bytes(encoded_data)
         self.assertIsNotNone(decoded_data)
+
+        dec_data = decrypt(decoded_data, attribute_session_keys.secret)
+        self.assertEqual(data.to_hex(), dec_data.to_hex())
 
     def test_key_generation_consistency(self):
         """Test that key generation is consistent"""
@@ -271,133 +262,6 @@ class TestHighLevel(unittest.TestCase):
         self.assertIsNotNone(decoded2)
         self.assertEqual(hex_str2, decoded2.to_hex())
 
-    def test_batch_long_operations(self):
-        """Test batch operations on long pseudonyms and attributes"""
-
-        # Generate global keys
-        pseudonym_global_keys = make_pseudonym_global_keys()
-        attribute_global_keys = make_attribute_global_keys()
-
-        # Create secrets
-        secret = b"secret"
-        pseudo_secret = PseudonymizationSecret(secret)
-        enc_secret = EncryptionSecret(secret)
-
-        # Define domains and sessions
-        domain1 = PseudonymizationDomain("domain1")
-        session1 = EncryptionContext("session1")
-        domain2 = PseudonymizationDomain("domain2")
-        session2 = EncryptionContext("session2")
-
-        # Generate session keys
-        pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session1, enc_secret
-        )
-        pseudonym_session2_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session2, enc_secret
-        )
-        attribute_session1_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session1, enc_secret
-        )
-        attribute_session2_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session2, enc_secret
-        )
-
-        # Create long pseudonyms and attributes with padding
-        test_strings = [
-            "User 1 identifier string that spans multiple blocks",
-            "User 2 identifier string that spans multiple blocks",
-            "User 3 identifier string that spans multiple blocks",
-        ]
-
-        long_pseudonyms = [
-            encrypt_long_pseudonym(
-                LongPseudonym.from_string_padded(s), pseudonym_session1_keys.public
-            )
-            for s in test_strings
-        ]
-
-        long_attributes = [
-            encrypt_long_attribute(
-                LongAttribute.from_string_padded(s), attribute_session1_keys.public
-            )
-            for s in test_strings
-        ]
-
-        # Create transcryption info
-        transcryption_info = TranscryptionInfo(
-            domain1, domain2, session1, session2, pseudo_secret, enc_secret
-        )
-
-        # Test batch rekeying of long pseudonyms
-        rekeyed_pseudonyms = rekey_long_pseudonym_batch(
-            long_pseudonyms.copy(), transcryption_info.pseudonym.k
-        )
-        self.assertEqual(len(rekeyed_pseudonyms), 3)
-
-        # Test batch rekeying of long attributes
-        rekeyed_attributes = rekey_long_attribute_batch(
-            long_attributes.copy(), transcryption_info.attribute
-        )
-        self.assertEqual(len(rekeyed_attributes), 3)
-
-        # Verify decryption works after rekeying
-        for rekeyed_attr in rekeyed_attributes:
-            decrypted = decrypt_long_attribute(
-                rekeyed_attr, attribute_session2_keys.secret
-            )
-            decrypted_string = decrypted.to_string_padded()
-            self.assertIn(decrypted_string, test_strings)
-
-        # Test batch pseudonymization of long pseudonyms
-        pseudonymized = pseudonymize_long_batch(
-            long_pseudonyms.copy(), transcryption_info.pseudonym
-        )
-        self.assertEqual(len(pseudonymized), 3)
-
-        # Verify decryption works after pseudonymization
-        for pseudonymized_pseudo in pseudonymized:
-            decrypted = decrypt_long_pseudonym(
-                pseudonymized_pseudo, pseudonym_session2_keys.secret
-            )
-            # After pseudonymization, the value changes but we can verify it decrypts
-            self.assertEqual(len(decrypted), 4)  # String padded to 4 blocks
-
-        # Test batch transcryption of long data
-        data = [
-            (
-                [
-                    encrypt_long_pseudonym(
-                        LongPseudonym.from_string_padded(f"Entity {i} pseudonym data"),
-                        pseudonym_session1_keys.public,
-                    )
-                ],
-                [
-                    encrypt_long_attribute(
-                        LongAttribute.from_string_padded(f"Entity {i} attribute data"),
-                        attribute_session1_keys.public,
-                    )
-                ],
-            )
-            for i in range(3)
-        ]
-
-        transcrypted = transcrypt_long_batch(data, transcryption_info)
-        self.assertEqual(len(transcrypted), 3)
-
-        # Verify each entity has one pseudonym and one attribute
-        for pseudonyms, attributes in transcrypted:
-            self.assertEqual(len(pseudonyms), 1)
-            self.assertEqual(len(attributes), 1)
-
-            # Verify attributes decrypt correctly
-            decrypted_attr = decrypt_long_attribute(
-                attributes[0], attribute_session2_keys.secret
-            )
-            attr_str = decrypted_attr.to_string_padded()
-            self.assertTrue(
-                attr_str.startswith("Entity ") and attr_str.endswith(" attribute data")
-            )
 
 
 if __name__ == "__main__":

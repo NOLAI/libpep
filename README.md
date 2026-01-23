@@ -10,6 +10,8 @@
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
 
 This library implements PEP cryptography based on ElGamal encrypted messages.
+It can be used to encrypt data and re-encrypt it for different keys without decrypting the data, while pseudonymizing encrypted identifiers in the data.
+
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
 This encryption is random (polymorphic): every time a different random `b` is used, results in different ciphertexts (encrypted messages).
 We represent this encryption function as `Enc(b, M, Y)`.
@@ -82,18 +84,60 @@ npm install @nolai/libpep-wasm
 
 ## API Structure
 
-The library is organized into the following main modules, each providing a different level of abstraction and functionality for working with PEP (not so coincidentally organized alphabetically):
+The library is organized into the following main modules, each providing a different level of abstraction and functionality for working with PEP:
 
 | Module | Description |
 |--------|-------------|
-| `arithmetic` | Basic arithmetic operations on scalars and group elements |
-| `base` | ElGamal encryption/decryption and core PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
-| `core` | User-friendly API with `Pseudonym` and `Attribute` types, keys, and transcryption operations |
-| `distributed` | Distributed n-PEP operations with `PEPSystem` and `PEPClient` for multi-server setups |
+| `arithmetic` | Basic arithmetic operations on scalars and group elements using Curve25519 |
+| `base` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
+| `core` | High-level API for `Pseudonym` and `Attribute` types with transcryption operations |
+
+### Core Module Structure
+
+The `core` module is further organized into specialized submodules:
+
+| Submodule | Description |
+|-----------|-------------|
+| `core::data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
+| `core::keys` | Key management: global keys, session keys, key generation, and distributed key setup |
+| `core::factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
+| `core::contexts` | Encryption contexts and pseudonymization domains for factor derivation |
+| `core::transcryptor` | Transcryptor for pseudonymization and rekeying operations |
+| `core::client` | Client-side encryption and decryption using session keys |
+| `core::functions` | High-level convenience functions for common operations |
+
+#### Keys Module (`core::keys`)
+
+- `core::keys::types` - Key type definitions (GlobalPublicKeys, SessionKeys, etc.)
+- `core::keys::generation` - Functions for generating global and session keys
+- `core::keys::distribution::blinding` - Blinding factors for distributed transcryptors
+- `core::keys::distribution::shares` - Session key shares for distributed key derivation
+- `core::keys::distribution::setup` - Setup functions for distributed transcryptor systems
+
+#### Factors Module (`core::factors`)
+
+- `core::factors::types` - Factor types (ReshuffleFactor, PseudonymRekeyFactor, AttributeRekeyFactor, RerandomizeFactor)
+- `core::factors::secrets` - Secret types (PseudonymizationSecret, EncryptionSecret)
+- `core::factors::derivation` - Functions for deriving factors from secrets and contexts
+
+#### Data Module (`core::data`)
+
+- `core::data::simple` - Simple `Pseudonym` and `Attribute` types (up to 15 bytes)
+- `core::data::long` - Long pseudonyms and attributes (over 15 bytes with PKCS#7 padding) (requires `long` feature)
+- `core::data::json` - JSON structured data with nested pseudonyms and attributes (requires `json` feature)
+- `core::data::records` - Record types for batch operations
+- `core::data::padding` - Padding utilities for data types
+
+#### Distributed Transcryptors
+
+The library supports distributed n-PEP operations where multiple transcryptors cooperatively perform pseudonymization and rekeying without any single party having access to the global secret keys. This functionality is integrated into the `core` module:
+
+- Key distribution setup is in `core::keys::distribution`
+- The distributed transcryptor implementation can be found in distributed server/client components
 
 For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep)
 
-Both Python and WASM bindings mirror the Rust API structure with the same modules.
+Both Python and WASM bindings mirror the Rust API structure with the same modules and organization.
 
 ### Features
 

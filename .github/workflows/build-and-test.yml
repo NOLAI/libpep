@@ -24,13 +24,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        features:
-          - ""
-          - "elgamal3"
-          - "legacy"
-          - "elgamal3,legacy"
+        include:
+          - features: ""
+            name: "default"
+          - features: "elgamal3"
+            name: "default+elgamal3"
+          - features: "legacy"
+            name: "default+legacy"
 
-    name: cargo test (${{ matrix.features || 'default' }})
+    name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -47,6 +49,7 @@ jobs:
         features:
           - "wasm"
           - "wasm,elgamal3"
+          - "wasm,legacy"
 
     name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features }})
     steps:

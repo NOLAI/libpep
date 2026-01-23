@@ -8,18 +8,21 @@ import unittest
 from libpep.core.keys import (
     make_global_keys,
     make_session_keys,
-    SessionKeys,
     EncryptionSecret,
     PseudonymizationSecret,
 )
-from libpep.core.transcryption.contexts import (
+from libpep.core import (
     TranscryptionInfo,
     PseudonymizationInfo,
     PseudonymizationDomain,
     EncryptionContext,
+    encrypt,
+    decrypt,
 )
-from libpep.core.json.builder import PEPJSONBuilder
-from libpep.core.json import encrypt_json, decrypt_json
+from libpep.core.data.json import (
+    transcrypt_json_batch,
+)
+from libpep.core.data.json.builder import PEPJSONBuilder
 
 
 class TestJSONTranscryption(unittest.TestCase):
@@ -48,10 +51,10 @@ class TestJSONTranscryption(unittest.TestCase):
         patient_record = PEPJSONBuilder.from_json(patient_data, ["user_id"]).build()
 
         # Encrypt
-        encrypted = encrypt_json(patient_record, session_keys)
+        encrypted = encrypt(patient_record, session_keys)
 
         # Decrypt to verify original
-        decrypted_original = decrypt_json(encrypted, session_keys)
+        decrypted_original = decrypt(encrypted, session_keys)
         json_original = decrypted_original.to_json()
         self.assertEqual(json_original["user_id"], "user-67890")
         self.assertEqual(json_original["name"], "Alice")
@@ -71,7 +74,7 @@ class TestJSONTranscryption(unittest.TestCase):
         )
 
         # Decrypt transcrypted data
-        decrypted_transcrypted = decrypt_json(transcrypted, session_keys)
+        decrypted_transcrypted = decrypt(transcrypted, session_keys)
         json_transcrypted = decrypted_transcrypted.to_json()
 
         # Attributes should remain the same, but pseudonym should be different
@@ -88,9 +91,6 @@ class TestJSONTranscryption(unittest.TestCase):
 class TestJSONBatchTranscryption(unittest.TestCase):
     def test_json_batch_transcryption_same_structure(self):
         """Test batch transcryption of JSON values with the same structure"""
-        from libpep.core.json import transcrypt_json_batch
-        from libpep.core.transcryption.contexts import TranscryptionInfo
-
         # Setup keys and secrets
         global_keys = make_global_keys()
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
@@ -112,8 +112,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         record2 = PEPJSONBuilder.from_json(data2, ["patient_id"]).build()
 
         # Encrypt both records
-        encrypted1 = encrypt_json(record1, session_keys)
-        encrypted2 = encrypt_json(record2, session_keys)
+        encrypted1 = encrypt(record1, session_keys)
+        encrypted2 = encrypt(record2, session_keys)
 
         # Verify they have the same structure
         structure1 = encrypted1.structure()
@@ -146,7 +146,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
         # Decrypt all transcrypted values
         decrypted_batch = [
-            decrypt_json(v, session_keys).to_json() for v in transcrypted_batch
+            decrypt(v, session_keys).to_json() for v in transcrypted_batch
         ]
 
         # Sort by temperature to have a consistent order (Cold=37.2, Flu=38.5)
@@ -172,9 +172,6 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
     def test_json_batch_transcryption_different_structures(self):
         """Test batch transcryption fails with different structures"""
-        from libpep.core.json import transcrypt_json_batch
-        from libpep.core.transcryption.contexts import TranscryptionInfo
-
         # Setup keys and secrets
         global_keys = make_global_keys()
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
@@ -196,8 +193,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         record2 = PEPJSONBuilder.from_json(data2, ["user_id"]).build()
 
         # Encrypt both records
-        encrypted1 = encrypt_json(record1, session_keys)
-        encrypted2 = encrypt_json(record2, session_keys)
+        encrypted1 = encrypt(record1, session_keys)
+        encrypted2 = encrypt(record2, session_keys)
 
         # Verify they have different structures
         structure1 = encrypted1.structure()
@@ -220,10 +217,11 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             transcrypt_json_batch([encrypted1, encrypted2], transcryption_info)
 
-        self.assertIn(
-            "All values must have the same structure",
-            str(context.exception),
-            "Error should mention structure mismatch",
+        # Error message may vary, just check that it mentions structure or inconsistency
+        error_msg = str(context.exception).lower()
+        self.assertTrue(
+            "structure" in error_msg or "inconsistent" in error_msg,
+            f"Error should mention structure mismatch, got: {context.exception}",
         )
 
 

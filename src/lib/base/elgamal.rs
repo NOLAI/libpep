@@ -120,8 +120,8 @@ pub fn encrypt<R: RngCore + CryptoRng>(
     gy: &GroupElement,
     rng: &mut R,
 ) -> ElGamal {
-    let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
     assert_ne!(gy, &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
+    let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
     ElGamal {
         gb: r * G,
         gc: gm + r * gy,

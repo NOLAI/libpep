@@ -3,23 +3,28 @@
 
 use commandy_macros::*;
 use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-use libpep::core::data::{
-    decrypt_pseudonym, encrypt_pseudonym, Encryptable, Encrypted, EncryptedPseudonym, Pseudonym,
+use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
+#[cfg(feature = "json")]
+use libpep::core::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
+use libpep::core::data::long::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
+use libpep::core::data::simple::{
+    Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
+    Pseudonym,
+};
+use libpep::core::data::traits::{Encryptable, Encrypted};
+use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::functions::transcrypt;
+use libpep::core::keys::distribution::{make_distributed_global_keys, BlindingFactor};
+#[cfg(feature = "json")]
+use libpep::core::keys::make_session_keys;
 use libpep::core::keys::{
-    make_pseudonym_global_keys, make_pseudonym_session_keys, PseudonymGlobalPublicKey,
-    PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
-    SecretKey,
+    make_pseudonym_global_keys, make_pseudonym_session_keys, AttributeGlobalPublicKey,
+    AttributeGlobalSecretKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,
+    PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey, SecretKey,
 };
-use libpep::core::long::data::LongPseudonym;
-use libpep::core::offline::encrypt_pseudonym_global;
-use libpep::core::rerandomize::rerandomize;
-use libpep::core::transcryption::contexts::{
-    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
-};
-use libpep::core::transcryption::ops::transcrypt;
-use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::distributed::server::setup::make_distributed_global_keys;
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]
@@ -36,23 +41,23 @@ struct GenerateSessionKeys {
 }
 
 #[derive(Command, Debug, Default)]
-#[command("random-pseudonym")]
-#[description("Create a random new pseudonym.")]
-struct RandomPseudonym {}
+#[command("random")]
+#[description("Create a random new pseudonym or attribute.")]
+struct Random {}
 
 #[derive(Command, Debug, Default)]
-#[command("pseudonym-encode")]
-#[description("Encode an identifier into a pseudonym (or long pseudonym if > 16 bytes).")]
-struct PseudonymEncode {
+#[command("encode")]
+#[description("Encode an identifier into a pseudonym/attribute (or long version if > 16 bytes).")]
+struct Encode {
     #[positional("identifier", 1, 1)]
     args: Vec<String>,
 }
 
 #[derive(Command, Debug, Default)]
-#[command("pseudonym-decode")]
-#[description("Decode a pseudonym (or long pseudonym) back to its origin identifier.")]
-struct PseudonymDecode {
-    #[positional("pseudonym-hex...", 1, 100)]
+#[command("decode")]
+#[description("Decode a pseudonym/attribute (or long version) back to its origin identifier.")]
+struct Decode {
+    #[positional("hex...", 1, 100)]
     args: Vec<String>,
 }
 
@@ -77,6 +82,84 @@ struct EncryptGlobal {
 #[description("Decrypt a pseudonym with a session secret key.")]
 struct Decrypt {
     #[positional("session-secret-key ciphertext", 2, 2)]
+    args: Vec<String>,
+}
+
+#[derive(Command, Debug, Default)]
+#[command("encrypt-attribute")]
+#[description("Encrypt an attribute with a session public key.")]
+struct EncryptAttribute {
+    #[positional("session-public-key attribute", 2, 2)]
+    args: Vec<String>,
+}
+
+#[derive(Command, Debug, Default)]
+#[command("encrypt-attribute-global")]
+#[description("Encrypt an attribute with a global public key.")]
+struct EncryptAttributeGlobal {
+    #[positional("global-public-key attribute", 2, 2)]
+    args: Vec<String>,
+}
+
+#[derive(Command, Debug, Default)]
+#[command("decrypt-attribute")]
+#[description("Decrypt an attribute with a session secret key.")]
+struct DecryptAttribute {
+    #[positional("session-secret-key ciphertext", 2, 2)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("encrypt-long-pseudonym")]
+#[description("Encrypt a long pseudonym with a session public key.")]
+struct EncryptLongPseudonym {
+    #[positional("session-public-key pseudonym-hex...", 2, 100)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("decrypt-long-pseudonym")]
+#[description("Decrypt a long pseudonym with a session secret key.")]
+struct DecryptLongPseudonym {
+    #[positional("session-secret-key ciphertext-serialized", 2, 2)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("transcrypt-long-pseudonym")]
+#[description("Transcrypt a long pseudonym from one domain and session to another.")]
+struct TranscryptLongPseudonym {
+    #[positional("pseudonymization-secret encryption-secret domain-from domain-to session-from session-to ciphertext-serialized",7,7)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("encrypt-long-attribute")]
+#[description("Encrypt a long attribute with a session public key.")]
+struct EncryptLongAttribute {
+    #[positional("session-public-key attribute-hex...", 2, 100)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("decrypt-long-attribute")]
+#[description("Decrypt a long attribute with a session secret key.")]
+struct DecryptLongAttribute {
+    #[positional("session-secret-key ciphertext-serialized", 2, 2)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "long")]
+#[derive(Command, Debug, Default)]
+#[command("transcrypt-long-attribute")]
+#[description("Transcrypt a long attribute from one domain and session to another.")]
+struct TranscryptLongAttribute {
+    #[positional("pseudonymization-secret encryption-secret domain-from domain-to session-from session-to ciphertext-serialized",7,7)]
     args: Vec<String>,
 }
 
@@ -131,6 +214,41 @@ struct TranscryptToGlobal {
 }
 
 #[derive(Command, Debug, Default)]
+#[command("transcrypt-attribute")]
+#[description("Transcrypt an attribute from one domain and session to another.")]
+struct TranscryptAttribute {
+    #[positional("pseudonymization-secret encryption-secret domain-from domain-to session-from session-to ciphertext",7,7)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "json")]
+#[derive(Command, Debug, Default)]
+#[command("json-encrypt")]
+#[description("Encrypt a JSON object with session keys. Pseudonym fields are specified as comma-separated: field1,field2 (or empty string for none).")]
+struct JsonEncrypt {
+    #[positional("pseudonym-global-secret attribute-global-secret encryption-secret session-context pseudonym-fields json-string", 6, 6)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "json")]
+#[derive(Command, Debug, Default)]
+#[command("json-decrypt")]
+#[description("Decrypt a JSON object with session keys.")]
+struct JsonDecrypt {
+    #[positional("pseudonym-global-secret attribute-global-secret encryption-secret session-context encrypted-json-string", 5, 5)]
+    args: Vec<String>,
+}
+
+#[cfg(feature = "json")]
+#[derive(Command, Debug, Default)]
+#[command("json-transcrypt")]
+#[description("Transcrypt a JSON object from one domain and session to another.")]
+struct JsonTranscrypt {
+    #[positional("pseudonymization-secret encryption-secret domain-from domain-to session-from session-to encrypted-json-string", 7, 7)]
+    args: Vec<String>,
+}
+
+#[derive(Command, Debug, Default)]
 #[command("setup-distributed")]
 #[description("Creates the secrets needed for distributed systems.")]
 struct SetupDistributedSystems {
@@ -142,16 +260,38 @@ struct SetupDistributedSystems {
 enum Sub {
     GenerateGlobalKeys(GenerateGlobalKeys),
     GenerateSessionKeys(GenerateSessionKeys),
-    RandomPseudonym(RandomPseudonym),
-    PseudonymEncode(PseudonymEncode),
-    PseudonymDecode(PseudonymDecode),
+    Random(Random),
+    Encode(Encode),
+    Decode(Decode),
     Encrypt(Encrypt),
     EncryptGlobal(EncryptGlobal),
     Decrypt(Decrypt),
+    EncryptAttribute(EncryptAttribute),
+    EncryptAttributeGlobal(EncryptAttributeGlobal),
+    DecryptAttribute(DecryptAttribute),
+    #[cfg(feature = "long")]
+    EncryptLongPseudonym(EncryptLongPseudonym),
+    #[cfg(feature = "long")]
+    DecryptLongPseudonym(DecryptLongPseudonym),
+    #[cfg(feature = "long")]
+    TranscryptLongPseudonym(TranscryptLongPseudonym),
+    #[cfg(feature = "long")]
+    EncryptLongAttribute(EncryptLongAttribute),
+    #[cfg(feature = "long")]
+    DecryptLongAttribute(DecryptLongAttribute),
+    #[cfg(feature = "long")]
+    TranscryptLongAttribute(TranscryptLongAttribute),
     Rerandomize(Rerandomize),
     Transcrypt(Transcrypt),
     TranscryptFromGlobal(TranscryptFromGlobal),
     TranscryptToGlobal(TranscryptToGlobal),
+    TranscryptAttribute(TranscryptAttribute),
+    #[cfg(feature = "json")]
+    JsonEncrypt(JsonEncrypt),
+    #[cfg(feature = "json")]
+    JsonDecrypt(JsonDecrypt),
+    #[cfg(feature = "json")]
+    JsonTranscrypt(JsonTranscrypt),
     SetupDistributedSystems(SetupDistributedSystems),
 }
 
@@ -191,18 +331,18 @@ fn main() {
             eprint!("Secret session key: ");
             println!("{}", &session_sk.value().to_hex());
         }
-        Some(Sub::RandomPseudonym(_)) => {
+        Some(Sub::Random(_)) => {
             let pseudonym = Pseudonym::random(&mut rng);
-            eprint!("Random pseudonym: ");
+            eprint!("Random: ");
             println!("{}", &pseudonym.to_hex());
         }
-        Some(Sub::PseudonymEncode(arg)) => {
+        Some(Sub::Encode(arg)) => {
             let origin = arg.args[0].as_bytes();
             match origin.len().cmp(&16) {
                 Ordering::Greater => {
-                    eprintln!("Warning: Identifier is longer than 16 bytes, using long pseudonym with PKCS#7 padding. This comes with privacy risks, as blocks can highlight subgroups and the number of blocks is visible.");
+                    eprintln!("Warning: Identifier is longer than 16 bytes, using long encoding with PKCS#7 padding. This comes with privacy risks, as blocks can highlight subgroups and the number of blocks is visible.");
                     let long_pseudonym = LongPseudonym::from_bytes_padded(origin);
-                    eprint!("Long pseudonym ({} blocks): ", long_pseudonym.0.len());
+                    eprint!("Long ({} blocks): ", long_pseudonym.0.len());
                     let hex_blocks: Vec<String> =
                         long_pseudonym.0.iter().map(|p| p.to_hex()).collect();
                     println!("{}", hex_blocks.join(" "));
@@ -211,23 +351,23 @@ fn main() {
                     let mut padded = [0u8; 16];
                     padded[..origin.len()].copy_from_slice(origin);
                     let pseudonym = Pseudonym::from_lizard(&padded);
-                    eprint!("Pseudonym: ");
+                    eprint!("Encoded: ");
                     println!("{}", &pseudonym.to_hex());
                 }
                 Ordering::Equal => {
                     let pseudonym = Pseudonym::from_lizard(origin.try_into().unwrap());
-                    eprint!("Pseudonym: ");
+                    eprint!("Encoded: ");
                     println!("{}", &pseudonym.to_hex());
                 }
             };
         }
-        Some(Sub::PseudonymDecode(arg)) => {
+        Some(Sub::Decode(arg)) => {
             if arg.args.len() == 1 {
-                // Single pseudonym - try lizard decoding
-                let pseudonym = Pseudonym::from_hex(&arg.args[0]).expect("Invalid pseudonym.");
+                // Single block - try lizard decoding
+                let pseudonym = Pseudonym::from_hex(&arg.args[0]).expect("Invalid hex value.");
                 let origin = pseudonym.to_lizard();
                 if origin.is_none() {
-                    eprintln!("Pseudonym does not have a lizard representation.");
+                    eprintln!("Value does not have a lizard representation.");
                     std::process::exit(1);
                 }
                 eprint!("Value: ");
@@ -238,16 +378,16 @@ fn main() {
                     )
                 );
             } else {
-                // Multiple pseudonyms - decode as long pseudonym
+                // Multiple blocks - decode as long
                 let pseudonyms: Vec<Pseudonym> = arg
                     .args
                     .iter()
-                    .map(|hex| Pseudonym::from_hex(hex).expect("Invalid pseudonym"))
+                    .map(|hex| Pseudonym::from_hex(hex).expect("Invalid hex value"))
                     .collect();
                 let long_pseudonym = LongPseudonym(pseudonyms);
                 let text = long_pseudonym
                     .to_string_padded()
-                    .expect("Failed to decode long pseudonym");
+                    .expect("Failed to decode long value");
                 eprint!("Value: ");
                 println!("{}", text);
             }
@@ -256,7 +396,7 @@ fn main() {
             let public_key =
                 PseudonymSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
             let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
-            let ciphertext = encrypt_pseudonym(&pseudonym, &public_key, &mut rng);
+            let ciphertext = pseudonym.encrypt(&public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.to_base64());
         }
@@ -264,7 +404,7 @@ fn main() {
             let public_key =
                 PseudonymGlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
             let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
-            let ciphertext = encrypt_pseudonym_global(&pseudonym, &public_key, &mut rng);
+            let ciphertext = pseudonym.encrypt_global(&public_key, &mut rng);
             eprint!("Ciphertext: ");
             println!("{}", &ciphertext.to_base64());
         }
@@ -275,12 +415,150 @@ fn main() {
             let ciphertext =
                 EncryptedPseudonym::from_base64(&arg.args[1]).expect("Invalid ciphertext.");
             #[cfg(feature = "elgamal3")]
-            let plaintext = decrypt_pseudonym(&ciphertext, &secret_key)
+            let plaintext = ciphertext
+                .decrypt(&secret_key)
                 .expect("Decryption failed: key mismatch");
             #[cfg(not(feature = "elgamal3"))]
-            let plaintext = decrypt_pseudonym(&ciphertext, &secret_key);
+            let plaintext = ciphertext.decrypt(&secret_key);
             eprint!("Plaintext: ");
             println!("{}", &plaintext.to_hex());
+        }
+        Some(Sub::EncryptAttribute(arg)) => {
+            let public_key =
+                AttributeSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let attribute = Attribute::from_hex(&arg.args[1]).expect("Invalid attribute.");
+            let ciphertext = attribute.encrypt(&public_key, &mut rng);
+            eprint!("Ciphertext: ");
+            println!("{}", &ciphertext.to_base64());
+        }
+        Some(Sub::EncryptAttributeGlobal(arg)) => {
+            let public_key =
+                AttributeGlobalPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let attribute = Attribute::from_hex(&arg.args[1]).expect("Invalid attribute.");
+            let ciphertext = attribute.encrypt_global(&public_key, &mut rng);
+            eprint!("Ciphertext: ");
+            println!("{}", &ciphertext.to_base64());
+        }
+        Some(Sub::DecryptAttribute(arg)) => {
+            let secret_key = AttributeSessionSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
+            );
+            let ciphertext =
+                EncryptedAttribute::from_base64(&arg.args[1]).expect("Invalid ciphertext.");
+            #[cfg(feature = "elgamal3")]
+            let plaintext = ciphertext
+                .decrypt(&secret_key)
+                .expect("Decryption failed: key mismatch");
+            #[cfg(not(feature = "elgamal3"))]
+            let plaintext = ciphertext.decrypt(&secret_key);
+            eprint!("Plaintext: ");
+            println!("{}", &plaintext.to_hex());
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::EncryptLongPseudonym(arg)) => {
+            let public_key =
+                PseudonymSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let pseudonyms: Vec<Pseudonym> = arg.args[1..]
+                .iter()
+                .map(|hex| Pseudonym::from_hex(hex).expect("Invalid pseudonym"))
+                .collect();
+            let long_pseudonym = LongPseudonym(pseudonyms);
+            let ciphertext = long_pseudonym.encrypt(&public_key, &mut rng);
+            eprint!("Ciphertext (serialized): ");
+            println!("{}", ciphertext.serialize());
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::DecryptLongPseudonym(arg)) => {
+            let secret_key = PseudonymSessionSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
+            );
+            let ciphertext =
+                LongEncryptedPseudonym::deserialize(&arg.args[1]).expect("Invalid ciphertext.");
+            #[cfg(feature = "elgamal3")]
+            let plaintext = ciphertext
+                .decrypt(&secret_key)
+                .expect("Decryption failed: key mismatch");
+            #[cfg(not(feature = "elgamal3"))]
+            let plaintext = ciphertext.decrypt(&secret_key);
+            let hex_blocks: Vec<String> = plaintext.0.iter().map(|p| p.to_hex()).collect();
+            eprint!("Plaintext ({} blocks): ", plaintext.0.len());
+            println!("{}", hex_blocks.join(" "));
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::TranscryptLongPseudonym(arg)) => {
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
+            let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
+            let session_from = EncryptionContext::from(arg.args[4].as_str());
+            let session_to = EncryptionContext::from(arg.args[5].as_str());
+            let ciphertext =
+                LongEncryptedPseudonym::deserialize(&arg.args[6]).expect("Invalid ciphertext.");
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                &session_from,
+                &session_to,
+                &pseudonymization_secret,
+                &encryption_secret,
+            );
+            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            eprint!("Transcrypted ciphertext (serialized): ");
+            println!("{}", transcrypted.serialize());
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::EncryptLongAttribute(arg)) => {
+            let public_key =
+                AttributeSessionPublicKey::from_hex(&arg.args[0]).expect("Invalid public key.");
+            let attributes: Vec<Attribute> = arg.args[1..]
+                .iter()
+                .map(|hex| Attribute::from_hex(hex).expect("Invalid attribute"))
+                .collect();
+            let long_attribute = LongAttribute(attributes);
+            let ciphertext = long_attribute.encrypt(&public_key, &mut rng);
+            eprint!("Ciphertext (serialized): ");
+            println!("{}", ciphertext.serialize());
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::DecryptLongAttribute(arg)) => {
+            let secret_key = AttributeSessionSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
+            );
+            let ciphertext =
+                LongEncryptedAttribute::deserialize(&arg.args[1]).expect("Invalid ciphertext.");
+            #[cfg(feature = "elgamal3")]
+            let plaintext = ciphertext
+                .decrypt(&secret_key)
+                .expect("Decryption failed: key mismatch");
+            #[cfg(not(feature = "elgamal3"))]
+            let plaintext = ciphertext.decrypt(&secret_key);
+            let hex_blocks: Vec<String> = plaintext.0.iter().map(|a| a.to_hex()).collect();
+            eprint!("Plaintext ({} blocks): ", plaintext.0.len());
+            println!("{}", hex_blocks.join(" "));
+        }
+        #[cfg(feature = "long")]
+        Some(Sub::TranscryptLongAttribute(arg)) => {
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
+            let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
+            let session_from = EncryptionContext::from(arg.args[4].as_str());
+            let session_to = EncryptionContext::from(arg.args[5].as_str());
+            let ciphertext =
+                LongEncryptedAttribute::deserialize(&arg.args[6]).expect("Invalid ciphertext.");
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                &session_from,
+                &session_to,
+                &pseudonymization_secret,
+                &encryption_secret,
+            );
+            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            eprint!("Transcrypted ciphertext (serialized): ");
+            println!("{}", transcrypted.serialize());
         }
         Some(Sub::Rerandomize(arg)) => {
             let ciphertext =
@@ -290,11 +568,11 @@ fn main() {
             {
                 let public_key =
                     PseudonymSessionPublicKey::from_hex(&arg.args[1]).expect("Invalid public key.");
-                rerandomized = rerandomize(&ciphertext, &public_key, &mut rng);
+                rerandomized = ciphertext.rerandomize(&public_key, &mut rng);
             }
             #[cfg(feature = "elgamal3")]
             {
-                rerandomized = rerandomize(&ciphertext, &mut rng);
+                rerandomized = ciphertext.rerandomize(&mut rng);
             }
             eprint!("Rerandomized ciphertext: ");
             println!("{}", &rerandomized.to_base64());
@@ -363,12 +641,154 @@ fn main() {
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.to_base64());
         }
+        Some(Sub::TranscryptAttribute(arg)) => {
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
+            let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
+            let session_from = EncryptionContext::from(arg.args[4].as_str());
+            let session_to = EncryptionContext::from(arg.args[5].as_str());
+            let ciphertext =
+                EncryptedAttribute::from_base64(&arg.args[6]).expect("Invalid ciphertext.");
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                &session_from,
+                &session_to,
+                &pseudonymization_secret,
+                &encryption_secret,
+            );
+            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            eprint!("Transcrypted ciphertext: ");
+            println!("{}", &transcrypted.to_base64());
+        }
+        #[cfg(feature = "json")]
+        Some(Sub::JsonEncrypt(arg)) => {
+            let pseudonym_global_secret = PseudonymGlobalSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[0])
+                    .expect("Invalid pseudonym global secret key."),
+            );
+            let attribute_global_secret = AttributeGlobalSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[1])
+                    .expect("Invalid attribute global secret key."),
+            );
+            let encryption_secret = EncryptionSecret::from(arg.args[2].as_bytes().to_vec());
+            let session_context = EncryptionContext::from(arg.args[3].as_str());
+            let pseudonym_fields_str = &arg.args[4];
+            let json_string = &arg.args[5];
+
+            let global_secrets = GlobalSecretKeys {
+                pseudonym: pseudonym_global_secret,
+                attribute: attribute_global_secret,
+            };
+            let session_keys =
+                make_session_keys(&global_secrets, &session_context, &encryption_secret);
+
+            // Parse pseudonym fields
+            let pseudonym_fields: Vec<&str> = if pseudonym_fields_str.is_empty() {
+                vec![]
+            } else {
+                pseudonym_fields_str.split(',').collect()
+            };
+
+            // Parse JSON
+            let json: serde_json::Value = serde_json::from_str(json_string).expect("Invalid JSON");
+
+            // Build PEP JSON
+            let pep_json = PEPJSONBuilder::from_json(&json, &pseudonym_fields)
+                .expect("Failed to build PEP JSON")
+                .build();
+
+            // Encrypt
+            let encrypted = pep_json.encrypt(&session_keys, &mut rng);
+
+            // Serialize to JSON
+            let encrypted_json = serde_json::to_string(&encrypted).expect("Failed to serialize");
+            eprint!("Encrypted JSON: ");
+            println!("{}", encrypted_json);
+        }
+        #[cfg(feature = "json")]
+        Some(Sub::JsonDecrypt(arg)) => {
+            let pseudonym_global_secret = PseudonymGlobalSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[0])
+                    .expect("Invalid pseudonym global secret key."),
+            );
+            let attribute_global_secret = AttributeGlobalSecretKey::from(
+                ScalarNonZero::from_hex(&arg.args[1])
+                    .expect("Invalid attribute global secret key."),
+            );
+            let encryption_secret = EncryptionSecret::from(arg.args[2].as_bytes().to_vec());
+            let session_context = EncryptionContext::from(arg.args[3].as_str());
+            let encrypted_json_string = &arg.args[4];
+
+            let global_secrets = GlobalSecretKeys {
+                pseudonym: pseudonym_global_secret,
+                attribute: attribute_global_secret,
+            };
+            let session_keys =
+                make_session_keys(&global_secrets, &session_context, &encryption_secret);
+
+            // Parse encrypted JSON
+            let encrypted: EncryptedPEPJSONValue =
+                serde_json::from_str(encrypted_json_string).expect("Invalid encrypted JSON");
+
+            // Decrypt
+            #[cfg(feature = "elgamal3")]
+            let decrypted = encrypted
+                .decrypt(&session_keys)
+                .expect("Decryption failed: key mismatch");
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = encrypted.decrypt(&session_keys);
+
+            // Convert to JSON value
+            let json = decrypted.to_value().expect("Failed to convert to JSON");
+            let json_string = serde_json::to_string_pretty(&json).expect("Failed to serialize");
+            eprint!("Decrypted JSON: ");
+            println!("{}", json_string);
+        }
+        #[cfg(feature = "json")]
+        Some(Sub::JsonTranscrypt(arg)) => {
+            let pseudonymization_secret =
+                PseudonymizationSecret::from(arg.args[0].as_bytes().to_vec());
+            let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
+            let domain_from = PseudonymizationDomain::from(arg.args[2].as_str());
+            let domain_to = PseudonymizationDomain::from(arg.args[3].as_str());
+            let session_from = EncryptionContext::from(arg.args[4].as_str());
+            let session_to = EncryptionContext::from(arg.args[5].as_str());
+            let encrypted_json_string = &arg.args[6];
+
+            // Parse encrypted JSON
+            let encrypted: EncryptedPEPJSONValue =
+                serde_json::from_str(encrypted_json_string).expect("Invalid encrypted JSON");
+
+            let transcryption_info = TranscryptionInfo::new(
+                &domain_from,
+                &domain_to,
+                &session_from,
+                &session_to,
+                &pseudonymization_secret,
+                &encryption_secret,
+            );
+
+            // Transcrypt
+            let transcrypted = transcrypt(&encrypted, &transcryption_info);
+
+            // Serialize to JSON
+            let transcrypted_json =
+                serde_json::to_string(&transcrypted).expect("Failed to serialize");
+            eprint!("Transcrypted JSON: ");
+            println!("{}", transcrypted_json);
+        }
         Some(Sub::SetupDistributedSystems(arg)) => {
             let n = arg.args[0]
                 .parse::<usize>()
                 .expect("Invalid number of nodes.");
-            let (global_public_keys, blinded_global_keys, blinding_factors) =
-                make_distributed_global_keys(n, &mut rng);
+            let (global_public_keys, blinded_global_keys, blinding_factors): (
+                _,
+                _,
+                Vec<BlindingFactor>,
+            ) = make_distributed_global_keys(n, &mut rng);
             eprintln!("Public global keys:");
             eprintln!("  - Attributes: {}", &global_public_keys.attribute.to_hex());
             eprintln!("  - Pseudonyms: {}", &global_public_keys.pseudonym.to_hex());
@@ -382,7 +802,7 @@ fn main() {
                 &blinded_global_keys.pseudonym.to_hex()
             );
             eprintln!("Blinding factors (keep secret):");
-            for factor in blinding_factors {
+            for factor in &blinding_factors {
                 eprintln!("  - {}", factor.to_hex());
             }
         }

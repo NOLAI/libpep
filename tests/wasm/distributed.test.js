@@ -2,8 +2,8 @@ const {
     Attribute,
     GroupElement,
     makeDistributedGlobalKeys,
-    PEPSystem,
-    PEPClient,
+    DistributedTranscryptor,
+    Client,
     Pseudonym,
     PseudonymizationDomain,
     EncryptionContext,
@@ -20,7 +20,7 @@ test('n_pep', async () => {
         const pseudonymizationSecret = `secret-${i}`;
         const encryptionSecret = `secret-${i}`;
         const blindingFactor = blindingFactors[i];
-        return new PEPSystem(pseudonymizationSecret, encryptionSecret, blindingFactor);
+        return new DistributedTranscryptor(pseudonymizationSecret, encryptionSecret, blindingFactor);
     });
 
     // Create pseudonymization domains and encryption contexts.
@@ -34,11 +34,11 @@ test('n_pep', async () => {
     const sksB1 = systems.map(system => system.sessionKeyShares(sessionB1));
 
     // Create PEP clients using the standard constructor.
-    const clientA = new PEPClient(
+    const clientA = new Client(
         blindedGlobalKeys,
         sksA1
     );
-    const clientB = new PEPClient(
+    const clientB = new Client(
         blindedGlobalKeys,
         sksB1
     );

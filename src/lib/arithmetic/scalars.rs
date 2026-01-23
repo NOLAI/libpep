@@ -1,5 +1,11 @@
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::de::{Error, Visitor};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+#[cfg(feature = "serde")]
+use std::fmt::Formatter;
 
 /// Returned if a zero scalar is inverted (which is similar to why a division by zero is not possible).
 #[derive(Debug)]
@@ -179,6 +185,146 @@ impl ScalarTraits for ScalarCanBeZero {
 impl ScalarTraits for ScalarNonZero {
     fn raw(&self) -> &Scalar {
         &self.0
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for ScalarNonZero {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_hex())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for ScalarNonZero {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ScalarNonZeroVisitor;
+        impl Visitor<'_> for ScalarNonZeroVisitor {
+            type Value = ScalarNonZero;
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("a hex encoded string representing a non-zero scalar")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                ScalarNonZero::from_hex(v)
+                    .ok_or_else(|| E::custom(format!("invalid hex encoded string: {v}")))
+            }
+        }
+
+        deserializer.deserialize_str(ScalarNonZeroVisitor)
+    }
+}
+
+impl<'b> std::ops::Add<&'b ScalarCanBeZero> for &ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn add(self, rhs: &'b ScalarCanBeZero) -> Self::Output {
+        ScalarCanBeZero(self.0 + rhs.0)
+    }
+}
+
+impl<'b> std::ops::Add<&'b ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn add(mut self, rhs: &'b ScalarCanBeZero) -> Self::Output {
+        self.0 += rhs.0;
+        self
+    }
+}
+
+impl std::ops::Add<ScalarCanBeZero> for &ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn add(self, mut rhs: ScalarCanBeZero) -> Self::Output {
+        rhs.0 += self.0;
+        rhs
+    }
+}
+
+impl std::ops::Add<ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn add(mut self, rhs: ScalarCanBeZero) -> Self::Output {
+        self.0 += rhs.0;
+        self
+    }
+}
+
+impl<'b> std::ops::Sub<&'b ScalarCanBeZero> for &ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn sub(self, rhs: &'b ScalarCanBeZero) -> Self::Output {
+        ScalarCanBeZero(self.0 - rhs.0)
+    }
+}
+
+impl<'b> std::ops::Sub<&'b ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn sub(mut self, rhs: &'b ScalarCanBeZero) -> Self::Output {
+        self.0 -= rhs.0;
+        self
+    }
+}
+
+impl std::ops::Sub<ScalarCanBeZero> for &ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn sub(self, rhs: ScalarCanBeZero) -> Self::Output {
+        ScalarCanBeZero(self.0 - rhs.0)
+    }
+}
+
+impl std::ops::Sub<ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self.0 -= rhs.0;
+        self
+    }
+}
+
+impl<'b> std::ops::Mul<&'b ScalarNonZero> for &ScalarNonZero {
+    type Output = ScalarNonZero;
+
+    fn mul(self, rhs: &'b ScalarNonZero) -> Self::Output {
+        ScalarNonZero(self.0 * rhs.0)
+    }
+}
+
+impl<'b> std::ops::Mul<&'b ScalarNonZero> for ScalarNonZero {
+    type Output = ScalarNonZero;
+
+    fn mul(mut self, rhs: &'b ScalarNonZero) -> Self::Output {
+        self.0 *= rhs.0;
+        self
+    }
+}
+
+impl std::ops::Mul<ScalarNonZero> for &ScalarNonZero {
+    type Output = ScalarNonZero;
+
+    fn mul(self, mut rhs: ScalarNonZero) -> Self::Output {
+        rhs.0 *= self.0;
+        rhs
+    }
+}
+
+impl std::ops::Mul<ScalarNonZero> for ScalarNonZero {
+    type Output = ScalarNonZero;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self.0 *= rhs.0;
+        self
     }
 }
 

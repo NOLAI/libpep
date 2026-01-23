@@ -1,6 +1,9 @@
+#[cfg(feature = "batch")]
+pub mod batch;
+pub mod client;
+pub mod contexts;
 pub mod data;
+pub mod factors;
+pub mod functions;
 pub mod keys;
-#[cfg(feature = "offline")]
-pub mod offline;
-pub mod padding;
-pub mod rerandomize;
+pub mod transcryptor;
