@@ -8,7 +8,6 @@ use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
-
 #[cfg(feature = "long")]
 use libpep::core::data::long::{LongAttribute, LongPseudonym};
 
@@ -103,7 +102,9 @@ fn bench_pseudonym_roundtrip_batch(c: &mut Criterion) {
     let rng_setup = &mut rng();
 
     // Pre-generate pseudonyms
-    let pseudonyms: Vec<_> = (0..NUM_ITEMS).map(|_| Pseudonym::random(rng_setup)).collect();
+    let pseudonyms: Vec<_> = (0..NUM_ITEMS)
+        .map(|_| Pseudonym::random(rng_setup))
+        .collect();
     let encrypted_base: Vec<_> = pseudonyms
         .iter()
         .map(|p| client_a.encrypt(p, rng_setup))
@@ -114,9 +115,11 @@ fn bench_pseudonym_roundtrip_batch(c: &mut Criterion) {
             let rng = &mut rng();
             let mut working = encrypted_base.clone();
             for system in &systems {
-                let info =
-                    system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system.transcrypt_batch(&mut working, &info, rng).expect("transcrypt batch").to_vec();
+                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
+                working = system
+                    .transcrypt_batch(&mut working, &info, rng)
+                    .expect("transcrypt batch")
+                    .to_vec();
             }
             black_box(working);
         })
@@ -153,7 +156,9 @@ fn bench_attribute_roundtrip_batch(c: &mut Criterion) {
     let rng_setup = &mut rng();
 
     // Pre-generate attributes
-    let attributes: Vec<_> = (0..NUM_ITEMS).map(|_| Attribute::random(rng_setup)).collect();
+    let attributes: Vec<_> = (0..NUM_ITEMS)
+        .map(|_| Attribute::random(rng_setup))
+        .collect();
     let encrypted_base: Vec<_> = attributes
         .iter()
         .map(|a| client_a.encrypt(a, rng_setup))
@@ -165,7 +170,10 @@ fn bench_attribute_roundtrip_batch(c: &mut Criterion) {
             let mut working = encrypted_base.clone();
             for system in &systems {
                 let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system.rekey_batch(&mut working, &info, rng).expect("rekey batch").to_vec();
+                working = system
+                    .rekey_batch(&mut working, &info, rng)
+                    .expect("rekey batch")
+                    .to_vec();
             }
             black_box(working);
         })
@@ -219,9 +227,11 @@ fn bench_long_pseudonym_roundtrip_batch(c: &mut Criterion) {
             let rng = &mut rng();
             let mut working = encrypted_base.clone();
             for system in &systems {
-                let info =
-                    system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system.transcrypt_batch(&mut working, &info, rng).expect("transcrypt batch").to_vec();
+                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
+                working = system
+                    .transcrypt_batch(&mut working, &info, rng)
+                    .expect("transcrypt batch")
+                    .to_vec();
             }
             black_box(working);
         })
@@ -275,7 +285,10 @@ fn bench_long_attribute_roundtrip_batch(c: &mut Criterion) {
             let mut working = encrypted_base.clone();
             for system in &systems {
                 let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system.rekey_batch(&mut working, &info, rng).expect("rekey batch").to_vec();
+                working = system
+                    .rekey_batch(&mut working, &info, rng)
+                    .expect("rekey batch")
+                    .to_vec();
             }
             black_box(working);
         })
@@ -346,9 +359,11 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
             let rng = &mut rng();
             let mut working = encrypted_base.clone();
             for system in &systems {
-                let info = system
-                    .transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system.transcrypt_batch(&mut working, &info, rng).expect("transcrypt batch").to_vec();
+                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
+                working = system
+                    .transcrypt_batch(&mut working, &info, rng)
+                    .expect("transcrypt batch")
+                    .to_vec();
             }
             black_box(working);
         })
