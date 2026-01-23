@@ -2,17 +2,8 @@ use crate::core::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use crate::core::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::core::functions::{decrypt, encrypt};
-use crate::core::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
 use crate::core::wasm::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
-};
-use crate::core::wasm::keys::{
-    WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMPseudonymSessionPublicKey,
-    WASMPseudonymSessionSecretKey,
 };
 use derive_more::{Deref, From};
 use wasm_bindgen::prelude::*;
@@ -243,117 +234,11 @@ impl WASMLongEncryptedAttribute {
     }
 }
 
-/// Encrypt a long pseudonym.
-#[wasm_bindgen(js_name = encryptLongPseudonym)]
-pub fn wasm_encrypt_long_pseudonym(
-    message: &WASMLongPseudonym,
-    public_key: &WASMPseudonymSessionPublicKey,
-) -> WASMLongEncryptedPseudonym {
-    let mut rng = rand::rng();
-    WASMLongEncryptedPseudonym(encrypt(
-        &message.0,
-        &PseudonymSessionPublicKey::from(public_key.0 .0),
-        &mut rng,
-    ))
-}
-
-/// Decrypt a long encrypted pseudonym.
-#[wasm_bindgen(js_name = decryptLongPseudonym)]
-#[cfg(feature = "elgamal3")]
-pub fn wasm_decrypt_long_pseudonym(
-    encrypted: &WASMLongEncryptedPseudonym,
-    secret_key: &WASMPseudonymSessionSecretKey,
-) -> Option<WASMLongPseudonym> {
-    decrypt(
-        &encrypted.0,
-        &PseudonymSessionSecretKey::from(secret_key.0 .0),
-    )
-    .map(WASMLongPseudonym)
-}
-
-/// Decrypt a long encrypted pseudonym.
-#[wasm_bindgen(js_name = decryptLongPseudonym)]
-#[cfg(not(feature = "elgamal3"))]
-pub fn wasm_decrypt_long_pseudonym(
-    encrypted: &WASMLongEncryptedPseudonym,
-    secret_key: &WASMPseudonymSessionSecretKey,
-) -> WASMLongPseudonym {
-    WASMLongPseudonym(decrypt(
-        &encrypted.0,
-        &PseudonymSessionSecretKey::from(secret_key.0 .0),
-    ))
-}
-
-/// Encrypt a long attribute.
-#[wasm_bindgen(js_name = encryptLongAttribute)]
-pub fn wasm_encrypt_long_attribute(
-    message: &WASMLongAttribute,
-    public_key: &WASMAttributeSessionPublicKey,
-) -> WASMLongEncryptedAttribute {
-    let mut rng = rand::rng();
-    WASMLongEncryptedAttribute(encrypt(
-        &message.0,
-        &AttributeSessionPublicKey::from(public_key.0 .0),
-        &mut rng,
-    ))
-}
-
-/// Decrypt a long encrypted attribute.
-#[wasm_bindgen(js_name = decryptLongAttribute)]
-#[cfg(feature = "elgamal3")]
-pub fn wasm_decrypt_long_attribute(
-    encrypted: &WASMLongEncryptedAttribute,
-    secret_key: &WASMAttributeSessionSecretKey,
-) -> Option<WASMLongAttribute> {
-    decrypt(
-        &encrypted.0,
-        &AttributeSessionSecretKey::from(secret_key.0 .0),
-    )
-    .map(WASMLongAttribute)
-}
-
-/// Decrypt a long encrypted attribute.
-#[wasm_bindgen(js_name = decryptLongAttribute)]
-#[cfg(not(feature = "elgamal3"))]
-pub fn wasm_decrypt_long_attribute(
-    encrypted: &WASMLongEncryptedAttribute,
-    secret_key: &WASMAttributeSessionSecretKey,
-) -> WASMLongAttribute {
-    WASMLongAttribute(decrypt(
-        &encrypted.0,
-        &AttributeSessionSecretKey::from(secret_key.0 .0),
-    ))
-}
 /// WASM bindings for batch operations on long (multi-block) data types.
-use crate::core::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
-use crate::core::contexts::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
+use crate::core::batch::{rekey_batch, transcrypt_batch};
+use crate::core::contexts::TranscryptionInfo;
 use crate::core::data::records::LongEncryptedRecord;
-use crate::core::wasm::contexts::{
-    WASMAttributeRekeyInfo, WASMPseudonymRekeyFactor, WASMPseudonymizationInfo,
-    WASMTranscryptionInfo,
-};
-
-/// Batch pseudonymization of long encrypted pseudonyms.
-/// The order of the pseudonyms is randomly shuffled to avoid linking them.
-#[wasm_bindgen(js_name = pseudonymizeLongBatch)]
-pub fn wasm_pseudonymize_long_batch(
-    encrypted: Vec<WASMLongEncryptedPseudonym>,
-    pseudonymization_info: &WASMPseudonymizationInfo,
-) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
-    let mut rng = rand::rng();
-    let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
-    let info = PseudonymizationInfo {
-        s: pseudonymization_info.0.s,
-        k: pseudonymization_info.0.k,
-    };
-    let result = pseudonymize_batch(&mut enc, &info, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
-        .into_iter()
-        .map(WASMLongEncryptedPseudonym)
-        .collect())
-}
+use crate::core::wasm::contexts::{WASMPseudonymRekeyFactor, WASMTranscryptionInfo};
 
 /// Batch rekeying of long encrypted pseudonyms.
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.
@@ -370,25 +255,6 @@ pub fn wasm_rekey_long_pseudonym_batch(
         .into_vec()
         .into_iter()
         .map(WASMLongEncryptedPseudonym)
-        .collect())
-}
-
-/// Batch rekeying of long encrypted attributes.
-/// The order of the attributes is randomly shuffled to avoid linking them.
-#[wasm_bindgen(js_name = rekeyLongAttributeBatch)]
-pub fn wasm_rekey_long_attribute_batch(
-    encrypted: Vec<WASMLongEncryptedAttribute>,
-    rekey_info: &WASMAttributeRekeyInfo,
-) -> Result<Vec<WASMLongEncryptedAttribute>, JsValue> {
-    let mut rng = rand::rng();
-    let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
-    let info = AttributeRekeyInfo::from(rekey_info.0);
-    let result =
-        rekey_batch(&mut enc, &info, &mut rng).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
-        .into_iter()
-        .map(WASMLongEncryptedAttribute)
         .collect())
 }
 

@@ -1,5 +1,3 @@
-#[cfg(feature = "batch")]
-pub mod batch;
 pub mod client;
 pub mod contexts;
 pub mod data;

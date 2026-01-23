@@ -1,12 +1,9 @@
 //! WASM bindings for Record types - standalone encrypt/decrypt operations.
 
 use crate::core::data::records::{EncryptedRecord, Record};
-use crate::core::functions::{decrypt, encrypt};
-use crate::core::keys::SessionKeys;
 use crate::core::wasm::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
-use crate::core::wasm::keys::types::WASMSessionKeys;
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "long")]
@@ -124,42 +121,6 @@ impl From<WASMRecordEncrypted> for EncryptedRecord {
             record.attributes.into_iter().map(|a| a.0).collect(),
         )
     }
-}
-
-/// Encrypt a Record using session keys.
-#[wasm_bindgen(js_name = encryptRecord)]
-pub fn wasm_encrypt_record(
-    record: WASMRecord,
-    session_keys: &WASMSessionKeys,
-) -> WASMRecordEncrypted {
-    let mut rng = rand::rng();
-    let keys: SessionKeys = (*session_keys).into();
-    let record: Record = record.into();
-    encrypt(&record, &keys, &mut rng).into()
-}
-
-/// Decrypt an encrypted Record using session keys.
-#[cfg(feature = "elgamal3")]
-#[wasm_bindgen(js_name = decryptRecord)]
-pub fn wasm_decrypt_record(
-    encrypted: WASMRecordEncrypted,
-    session_keys: &WASMSessionKeys,
-) -> Option<WASMRecord> {
-    let keys: SessionKeys = (*session_keys).into();
-    let encrypted: EncryptedRecord = encrypted.into();
-    decrypt(&encrypted, &keys).map(|r| r.into())
-}
-
-/// Decrypt an encrypted Record using session keys.
-#[cfg(not(feature = "elgamal3"))]
-#[wasm_bindgen(js_name = decryptRecord)]
-pub fn wasm_decrypt_record(
-    encrypted: WASMRecordEncrypted,
-    session_keys: &WASMSessionKeys,
-) -> WASMRecord {
-    let keys: SessionKeys = (*session_keys).into();
-    let encrypted: EncryptedRecord = encrypted.into();
-    decrypt(&encrypted, &keys).into()
 }
 
 // Long Record types (only when 'long' feature is enabled)
@@ -288,43 +249,4 @@ impl From<WASMLongRecordEncrypted> for LongEncryptedRecord {
             record.attributes.into_iter().map(|a| a.0).collect(),
         )
     }
-}
-
-#[cfg(feature = "long")]
-/// Encrypt a LongRecord using session keys.
-#[wasm_bindgen(js_name = encryptLongRecord)]
-pub fn wasm_encrypt_long_record(
-    record: WASMLongRecord,
-    session_keys: &WASMSessionKeys,
-) -> WASMLongRecordEncrypted {
-    let mut rng = rand::rng();
-    let keys: SessionKeys = (*session_keys).into();
-    let record: LongRecord = record.into();
-    encrypt(&record, &keys, &mut rng).into()
-}
-
-#[cfg(feature = "long")]
-/// Decrypt an encrypted LongRecord using session keys.
-#[cfg(feature = "elgamal3")]
-#[wasm_bindgen(js_name = decryptLongRecord)]
-pub fn wasm_decrypt_long_record(
-    encrypted: WASMLongRecordEncrypted,
-    session_keys: &WASMSessionKeys,
-) -> Option<WASMLongRecord> {
-    let keys: SessionKeys = (*session_keys).into();
-    let encrypted: LongEncryptedRecord = encrypted.into();
-    decrypt(&encrypted, &keys).map(|r| r.into())
-}
-
-#[cfg(feature = "long")]
-/// Decrypt an encrypted LongRecord using session keys.
-#[cfg(not(feature = "elgamal3"))]
-#[wasm_bindgen(js_name = decryptLongRecord)]
-pub fn wasm_decrypt_long_record(
-    encrypted: WASMLongRecordEncrypted,
-    session_keys: &WASMSessionKeys,
-) -> WASMLongRecord {
-    let keys: SessionKeys = (*session_keys).into();
-    let encrypted: LongEncryptedRecord = encrypted.into();
-    decrypt(&encrypted, &keys).into()
 }

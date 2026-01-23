@@ -446,7 +446,7 @@ impl PyClient {
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyPseudonym> = result.into_iter().map(PyPseudonym).collect();
-            return Ok(py_result.into_py_any(py)?);
+            return py_result.into_py_any(py);
         }
 
         // Try Vec<EncryptedAttribute>
@@ -457,7 +457,7 @@ impl PyClient {
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyAttribute> = result.into_iter().map(PyAttribute).collect();
-            return Ok(py_result.into_py_any(py)?);
+            return py_result.into_py_any(py);
         }
 
         // Try Vec<LongEncryptedPseudonym>
@@ -469,7 +469,7 @@ impl PyClient {
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyLongPseudonym> = result.into_iter().map(PyLongPseudonym).collect();
-            return Ok(py_result.into_py_any(py)?);
+            return py_result.into_py_any(py);
         }
 
         // Try Vec<LongEncryptedAttribute>
@@ -481,7 +481,7 @@ impl PyClient {
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyLongAttribute> = result.into_iter().map(PyLongAttribute).collect();
-            return Ok(py_result.into_py_any(py)?);
+            return py_result.into_py_any(py);
         }
 
         Err(PyTypeError::new_err(

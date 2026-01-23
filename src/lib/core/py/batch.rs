@@ -436,7 +436,7 @@ pub fn py_decrypt_batch(
                 .into_iter()
                 .map(|ep| PyPseudonym(decrypt(&ep.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -448,7 +448,7 @@ pub fn py_decrypt_batch(
                 .into_iter()
                 .map(|ea| PyAttribute(decrypt(&ea.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -461,7 +461,7 @@ pub fn py_decrypt_batch(
                 .into_iter()
                 .map(|lep| PyLongPseudonym(decrypt(&lep.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -474,7 +474,7 @@ pub fn py_decrypt_batch(
                 .into_iter()
                 .map(|lea| PyLongAttribute(decrypt(&lea.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
