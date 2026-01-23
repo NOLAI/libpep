@@ -134,9 +134,10 @@ impl ScalarCanBeZero {
     }
 
     /// Check if this scalar is zero.
+    /// Uses constant-time comparison to avoid timing side-channels.
     #[must_use]
     pub fn is_zero(&self) -> bool {
-        self.0.as_bytes().iter().all(|x| *x == 0)
+        self.0 == Scalar::ZERO
     }
 }
 

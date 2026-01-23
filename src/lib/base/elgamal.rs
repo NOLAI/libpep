@@ -60,6 +60,12 @@ impl ElGamal {
         retval
     }
 
+    /// Convert to a byte array, consuming self.
+    /// Convenience variant of [`Self::to_bytes`] for APIs that take ownership of the value.
+    pub fn into_bytes(self) -> [u8; ELGAMAL_LENGTH] {
+        self.to_bytes()
+    }
+
     /// Convert to a base64 string.
     pub fn to_base64(&self) -> String {
         general_purpose::URL_SAFE.encode(self.to_bytes())

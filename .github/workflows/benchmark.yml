@@ -1,0 +1,77 @@
+name: Quick Benchmarks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  benchmark:
+    name: Quick Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run benchmarks
+        run: cargo bench --bench base --bench quick -- --output-format bencher | tee benchmark_output.txt
+
+      - name: Parse and display benchmark results
+        run: |
+          mkdir -p benchmark_tables
+
+          echo "## Base Operation Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Operation | Average Time (ns) |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------------------|" >> $GITHUB_STEP_SUMMARY
+
+          # Also write to file
+          echo "| Operation | Average Time (ns) |" > benchmark_tables/base_operations.md
+          echo "|-----------|-------------------|" >> benchmark_tables/base_operations.md
+
+          # Parse base operations (encrypt, decrypt, etc.)
+          for op in encrypt decrypt rerandomize reshuffle rekey rsk rrsk reshuffle2 rekey2 rsk2 rrsk2; do
+            if grep -q "^test $op " benchmark_output.txt; then
+              time=$(grep "^test $op " benchmark_output.txt | awk '{print $5}' | sed 's/,//g')
+              echo "| $op | $time |" >> $GITHUB_STEP_SUMMARY
+              echo "| $op | $time |" >> benchmark_tables/base_operations.md
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Quick Roundtrip Benchmarks (100 items, 2 transcryptors)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Operation | Average Time |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------------|" >> $GITHUB_STEP_SUMMARY
+
+          # Also write to file
+          echo "| Operation | Average Time |" > benchmark_tables/quick_benchmarks.md
+          echo "|-----------|--------------|" >> benchmark_tables/quick_benchmarks.md
+
+          # Parse quick benchmark results
+          for op in pseudonym_roundtrip_100 attribute_roundtrip_100 long_pseudonym_roundtrip_100 long_attribute_roundtrip_100 json_roundtrip_100; do
+            if grep -q "^test $op " benchmark_output.txt; then
+              time=$(grep "^test $op " benchmark_output.txt | awk '{print $5, $6}')
+              echo "| $op | $time |" >> $GITHUB_STEP_SUMMARY
+              echo "| $op | $time |" >> benchmark_tables/quick_benchmarks.md
+            fi
+          done
+
+      - name: Upload benchmark tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-tables-${{ github.sha }}
+          path: benchmark_tables/
+          retention-days: 90
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: target/criterion/
+          retention-days: 90
