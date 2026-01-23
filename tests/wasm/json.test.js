@@ -201,5 +201,5 @@ test('test json batch transcryption different structures', async () => {
     // Verify we get an error about structure mismatch
     expect(() => {
         transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo);
-    }).toThrow(/All values must have the same structure/);
+    }).toThrow(/Inconsistent structure in batch/);
 });

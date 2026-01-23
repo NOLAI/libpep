@@ -26,6 +26,18 @@ const {
     EncryptedAttribute,
     PseudonymizationDomain,
     EncryptionContext,
+    LongEncryptedPseudonym,
+    LongEncryptedAttribute,
+    encryptLongPseudonym,
+    encryptLongAttribute,
+    decryptLongPseudonym,
+    decryptLongAttribute,
+    pseudonymizeLongBatch,
+    rekeyLongPseudonymBatch,
+    rekeyLongAttributeBatch,
+    transcryptLongBatch,
+    LongEncryptedRecord,
+    EncryptedRecord,
 } = require("../../pkg/libpep.js");
 
 test('test high level', async () => {
@@ -259,29 +271,6 @@ test('test global public key operations', async () => {
 });
 
 test('test batch long operations', async () => {
-    const {
-        LongPseudonym,
-        LongAttribute,
-        LongEncryptedPseudonym,
-        LongEncryptedAttribute,
-        encryptLongPseudonym,
-        encryptLongAttribute,
-        decryptLongPseudonym,
-        decryptLongAttribute,
-        makePseudonymGlobalKeys,
-        makeAttributeGlobalKeys,
-        makePseudonymSessionKeys,
-        makeAttributeSessionKeys,
-        PseudonymizationSecret,
-        EncryptionSecret,
-        TranscryptionInfo,
-        pseudonymizeLongBatch,
-        rekeyLongPseudonymBatch,
-        rekeyLongAttributeBatch,
-        transcryptLongBatch,
-        LongEncryptedDataPair,
-    } = require("../../pkg/libpep.js");
-
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const attributeGlobalKeys = makeAttributeGlobalKeys();
 
@@ -364,7 +353,7 @@ test('test batch long operations', async () => {
             LongAttribute.fromStringPadded(`Entity ${i} attribute data`),
             attributeSession1Keys.public
         )];
-        data.push(new LongEncryptedDataPair(pseudonyms, attributes));
+        data.push(new LongEncryptedRecord(pseudonyms, attributes));
     }
 
     const transcrypted = transcryptLongBatch(data, transcryptionInfo);
@@ -419,7 +408,7 @@ test.skip('test batch transcrypt', async () => {
             ));
         }
 
-        const entityData = new EncryptedData(pseudonyms, dataPoints);
+        const entityData = new EncryptedRecord(pseudonyms, dataPoints);
         messages.push(entityData);
     }
     const transcrypted = transcryptBatch(messages, transcryptionInfo);

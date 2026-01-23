@@ -1,13 +1,12 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::data::{decrypt, encrypt, EncryptedPseudonym, Pseudonym};
+use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, PseudonymizationInfo};
+use libpep::core::data::long::LongPseudonym;
+use libpep::core::data::simple::{EncryptedPseudonym, Pseudonym};
+use libpep::core::data::traits::{Encryptable, Encrypted};
+use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::functions::pseudonymize;
 use libpep::core::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
-use libpep::core::long::data::LongPseudonym;
-use libpep::core::transcryption::contexts::{
-    EncryptionContext, PseudonymizationDomain, PseudonymizationInfo,
-};
-use libpep::core::transcryption::ops::pseudonymize;
-use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use std::io::Error;
 
 #[test]
@@ -36,7 +35,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Step 2: Encrypt the pseudonyms
     let encrypted_pseudonyms: Vec<EncryptedPseudonym> = pseudonym
         .iter()
-        .map(|p| encrypt(p, &session_public, &mut rng))
+        .map(|p| p.encrypt(&session_public, &mut rng))
         .collect();
 
     // Step 3: Create pseudonymization info for transform
@@ -61,11 +60,11 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
         .map(|ep| {
             #[cfg(feature = "elgamal3")]
             {
-                decrypt(ep, &session_secret).expect("decrypt failed")
+                ep.decrypt(&session_secret).expect("decrypt failed")
             }
             #[cfg(not(feature = "elgamal3"))]
             {
-                decrypt(ep, &session_secret)
+                ep.decrypt(&session_secret)
             }
         })
         .collect();
@@ -73,7 +72,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Step 6: Encrypt the decrypted pseudonyms
     let re_encrypted_pseudonyms: Vec<EncryptedPseudonym> = decrypted_pseudonyms
         .iter()
-        .map(|p| encrypt(p, &session_public, &mut rng))
+        .map(|p| p.encrypt(&session_public, &mut rng))
         .collect();
 
     // Step 7: Reverse the pseudonymization
@@ -96,11 +95,11 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
         .map(|ep| {
             #[cfg(feature = "elgamal3")]
             {
-                decrypt(ep, &session_secret).expect("decrypt failed")
+                ep.decrypt(&session_secret).expect("decrypt failed")
             }
             #[cfg(not(feature = "elgamal3"))]
             {
-                decrypt(ep, &session_secret)
+                ep.decrypt(&session_secret)
             }
         })
         .collect();

@@ -1,10 +1,10 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::data::*;
-use libpep::core::transcryption::contexts::*;
-use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::distributed::client::client::PEPClient;
-use libpep::distributed::server::transcryptor::PEPSystem;
+use libpep::core::client::{Client, DistributedClient};
+use libpep::core::contexts::*;
+use libpep::core::data::simple::*;
+use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::transcryptor::DistributedTranscryptor;
 
 #[test]
 fn n_pep() {
@@ -13,7 +13,7 @@ fn n_pep() {
 
     // Global config - using the combined convenience method
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::distributed::server::setup::make_distributed_global_keys(n, rng);
+        libpep::core::keys::distribution::make_distributed_global_keys(n, rng);
 
     // Create systems
     let systems = (0..n)
@@ -23,7 +23,11 @@ fn n_pep() {
             let encryption_secret =
                 EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
             let blinding_factor = blinding_factors[i];
-            PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
+            DistributedTranscryptor::new(
+                pseudonymization_secret,
+                encryption_secret,
+                blinding_factor,
+            )
         })
         .collect::<Vec<_>>();
 
@@ -44,16 +48,16 @@ fn n_pep() {
         .map(|system| system.session_key_shares(&session_b1))
         .collect::<Vec<_>>();
 
-    // Create clients using the new constructor with wrapper types
-    let client_a = PEPClient::new(blinded_global_keys, &sks_a1);
-    let client_b = PEPClient::new(blinded_global_keys, &sks_b1);
+    // Create clients using the distributed constructor
+    let client_a = Client::from_shares(blinded_global_keys, &sks_a1);
+    let client_b = Client::from_shares(blinded_global_keys, &sks_b1);
 
     // Session walkthrough
     let pseudonym = Pseudonym::random(rng);
     let data = Attribute::random(rng);
 
-    let enc_pseudo = client_a.encrypt_pseudonym(&pseudonym, rng);
-    let enc_data = client_a.encrypt_attribute(&data, rng);
+    let enc_pseudo = client_a.encrypt(&pseudonym, rng);
+    let enc_data = client_a.encrypt(&data, rng);
 
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let transcryption_info =
@@ -68,16 +72,16 @@ fn n_pep() {
 
     #[cfg(feature = "elgamal3")]
     let dec_pseudo = client_b
-        .decrypt_pseudonym(&transcrypted_pseudo)
+        .decrypt(&transcrypted_pseudo)
         .expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
-    let dec_pseudo = client_b.decrypt_pseudonym(&transcrypted_pseudo);
+    let dec_pseudo = client_b.decrypt(&transcrypted_pseudo);
     #[cfg(feature = "elgamal3")]
     let dec_data = client_b
-        .decrypt_attribute(&transcrypted_data)
+        .decrypt(&transcrypted_data)
         .expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
-    let dec_data = client_b.decrypt_attribute(&transcrypted_data);
+    let dec_data = client_b.decrypt(&transcrypted_data);
 
     assert_eq!(data, dec_data);
 
@@ -95,9 +99,9 @@ fn n_pep() {
 
     #[cfg(feature = "elgamal3")]
     let rev_dec_pseudo = client_a
-        .decrypt_pseudonym(&rev_pseudonymized)
+        .decrypt(&rev_pseudonymized)
         .expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
-    let rev_dec_pseudo = client_a.decrypt_pseudonym(&rev_pseudonymized);
+    let rev_dec_pseudo = client_a.decrypt(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }

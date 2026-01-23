@@ -1,6 +1,8 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
 //! This library implements PEP cryptography based on [`ElGamal`](base::elgamal) encrypted messages.
+//! It can be used to encrypt data and re-encrypt it for different keys without decrypting the data,
+//! while pseudonymizing encrypted identifiers in the data.
 //!
 //! In the `ElGamal` scheme, a message `M` can be encrypted for a receiver which has public key `Y`
 //! associated with it, belonging to secret key `y`.
@@ -15,9 +17,9 @@
 //!
 //! This library provides both a [base] API for `ElGamal` encryption and the PEP
 //! [primitives](base::primitives), and a [core] API for
-//! [pseudonymization](core::transcryption::ops::pseudonymize) and [rekeying](core::transcryption::ops::rekey)
-//! (i.e. [transcryption](core::transcryption::ops::transcrypt)) of [`Pseudonym`](core::data::Pseudonym)s
-//! and [`Attribute`](core::data::Attribute)s using this cryptographic concept.
+//! [pseudonymization](core::functions::pseudonymize) and [rekeying](core::functions::rekey)
+//! (i.e. [transcryption](core::functions::transcrypt)) of [`Pseudonym`](core::data::simple::Pseudonym)s
+//! and [`Attribute`](core::data::simple::Attribute)s using this cryptographic concept.
 //!
 //! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
@@ -38,7 +40,6 @@
 pub mod arithmetic;
 pub mod base;
 pub mod core;
-pub mod distributed;
 
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;

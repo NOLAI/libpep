@@ -17,7 +17,6 @@ pub fn libpep(m: &Bound<'_, PyModule>) -> PyResult<()> {
         ),
         ("base", crate::base::py::register_module),
         ("core", crate::core::py::register_module),
-        ("distributed", crate::distributed::py::register_module),
     ];
 
     for (name, register_fn) in modules {

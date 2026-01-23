@@ -1,14 +1,15 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::json::builder::PEPJSONBuilder;
-use libpep::core::json::data::{decrypt_json, encrypt_json};
+#[cfg(feature = "batch")]
+use libpep::core::batch::transcrypt_batch;
+use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain, TranscryptionInfo};
+use libpep::core::data::json::builder::PEPJSONBuilder;
+use libpep::core::data::traits::{Encryptable, Encrypted, Transcryptable};
+use libpep::core::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::core::keys::{make_global_keys, make_session_keys};
-use libpep::core::transcryption::contexts::{
-    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
-};
-use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::pep_json;
+use serde_json::json;
 
 #[test]
 fn test_json_transcryption_with_macro() {
@@ -33,11 +34,14 @@ fn test_json_transcryption_with_macro() {
     });
 
     // Encrypt
-    let encrypted = encrypt_json(&patient_record, &session_keys, &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
 
     // Decrypt to verify original
-    let decrypted_original =
-        decrypt_json(&encrypted, &session_keys).expect("Decryption should succeed");
+    #[cfg(feature = "elgamal3")]
+    let decrypted_original = encrypted.decrypt(&session_keys).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_original = encrypted.decrypt(&session_keys);
+
     let json_original = decrypted_original
         .to_value()
         .expect("Should convert to JSON");
@@ -67,8 +71,6 @@ fn test_json_transcryption_with_macro() {
 
 #[test]
 fn test_json_transcryption_with_builder() {
-    use serde_json::json;
-
     let mut rng = rand::rng();
 
     // Setup keys and secrets
@@ -96,11 +98,14 @@ fn test_json_transcryption_with_builder() {
         .build();
 
     // Encrypt
-    let encrypted = encrypt_json(&patient_record, &session_keys, &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
 
     // Decrypt to verify original
-    let decrypted_original =
-        decrypt_json(&encrypted, &session_keys).expect("Decryption should succeed");
+    #[cfg(feature = "elgamal3")]
+    let decrypted_original = encrypted.decrypt(&session_keys).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_original = encrypted.decrypt(&session_keys);
+
     let json_original = decrypted_original
         .to_value()
         .expect("Should convert to JSON");
@@ -122,8 +127,10 @@ fn test_json_transcryption_with_builder() {
     let transcrypted = encrypted.transcrypt(&transcryption_info);
 
     // Decrypt transcrypted data
-    let decrypted_transcrypted =
-        decrypt_json(&transcrypted, &session_keys).expect("Decryption should succeed");
+    #[cfg(feature = "elgamal3")]
+    let decrypted_transcrypted = transcrypted.decrypt(&session_keys).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_transcrypted = transcrypted.decrypt(&session_keys);
     let json_transcrypted = decrypted_transcrypted
         .to_value()
         .expect("Should convert to JSON");
@@ -141,8 +148,6 @@ fn test_json_transcryption_with_builder() {
 #[cfg(feature = "batch")]
 #[test]
 fn test_json_batch_transcryption_same_structure() {
-    use libpep::core::json::transcryption::transcrypt_json_batch;
-
     let mut rng = rand::rng();
 
     // Setup keys and secrets
@@ -157,7 +162,6 @@ fn test_json_batch_transcryption_same_structure() {
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create two JSON values with the SAME structure using standard JSON
-    use serde_json::json;
 
     let data1 = json!({
         "patient_id": "patient-001",
@@ -180,8 +184,8 @@ fn test_json_batch_transcryption_same_structure() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = encrypt_json(&record1, &session_keys, &mut rng);
-    let encrypted2 = encrypt_json(&record2, &session_keys, &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
 
     // Verify they have the same structure
     let structure1 = encrypted1.structure();
@@ -198,12 +202,10 @@ fn test_json_batch_transcryption_same_structure() {
         &enc_secret,
     );
 
-    let transcrypted_batch = transcrypt_json_batch(
-        vec![encrypted1.clone(), encrypted2.clone()],
-        &transcryption_info,
-        &mut rng,
-    )
-    .expect("Batch transcryption should succeed for same structure");
+    let mut batch = vec![encrypted1.clone(), encrypted2.clone()];
+    let transcrypted_batch = transcrypt_batch(&mut batch, &transcryption_info, &mut rng)
+        .unwrap()
+        .into_vec();
 
     // Verify we got 2 records back
     assert_eq!(transcrypted_batch.len(), 2);
@@ -219,10 +221,12 @@ fn test_json_batch_transcryption_same_structure() {
     let mut decrypted_batch: Vec<serde_json::Value> = transcrypted_batch
         .iter()
         .map(|v| {
-            decrypt_json(v, &session_keys)
-                .expect("Decryption should succeed")
-                .to_value()
-                .expect("Should convert to JSON")
+            #[cfg(feature = "elgamal3")]
+            let decrypted = v.decrypt(&session_keys).unwrap();
+            #[cfg(not(feature = "elgamal3"))]
+            let decrypted = v.decrypt(&session_keys);
+
+            decrypted.to_value().expect("Should convert to JSON")
         })
         .collect();
 
@@ -253,8 +257,6 @@ fn test_json_batch_transcryption_same_structure() {
 #[cfg(feature = "batch")]
 #[test]
 fn test_json_batch_transcryption_different_structures() {
-    use libpep::core::json::transcryption::transcrypt_json_batch;
-
     let mut rng = rand::rng();
 
     // Setup keys and secrets
@@ -269,7 +271,6 @@ fn test_json_batch_transcryption_different_structures() {
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create two JSON values with DIFFERENT structures using standard JSON
-    use serde_json::json;
 
     let data1 = json!({
         "patient_id": "patient-001",
@@ -293,8 +294,8 @@ fn test_json_batch_transcryption_different_structures() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = encrypt_json(&record1, &session_keys, &mut rng);
-    let encrypted2 = encrypt_json(&record2, &session_keys, &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
 
     // Verify they have different structures
     let structure1 = encrypted1.structure();
@@ -314,17 +315,16 @@ fn test_json_batch_transcryption_different_structures() {
         &enc_secret,
     );
 
-    let result = transcrypt_json_batch(vec![encrypted1, encrypted2], &transcryption_info, &mut rng);
+    // Attempt batch transcryption (this should fail because structures don't match)
+    let mut batch = vec![encrypted1, encrypted2];
+    let result = transcrypt_batch(&mut batch, &transcryption_info, &mut rng);
 
-    // Verify we got an error about structure mismatch
-    assert!(
-        result.is_err(),
-        "Should return error for different structures"
-    );
-    assert!(
-        result
-            .unwrap_err()
-            .contains("All values must have the same structure"),
-        "Error should mention structure mismatch"
-    );
+    // Verify that it returns an error due to inconsistent structure
+    assert!(result.is_err(), "Should fail with inconsistent structures");
+    match result {
+        Err(libpep::core::batch::BatchError::InconsistentStructure { .. }) => {
+            // Expected error
+        }
+        _ => panic!("Expected InconsistentStructure error"),
+    }
 }

@@ -15,7 +15,6 @@
 //! mathematical papers.
 
 pub mod group_elements;
-pub mod ops;
 pub mod scalars;
 
 #[cfg(feature = "python")]
