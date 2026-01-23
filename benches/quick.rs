@@ -1,5 +1,7 @@
 //! Quick benchmarks for CI - simple roundtrip transcryption tests with 2 transcryptors.
 
+#![allow(clippy::expect_used)]
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use libpep::core::client::{Client, DistributedClient};
 use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain};
@@ -187,7 +189,7 @@ fn bench_long_pseudonym_roundtrip(c: &mut Criterion) {
 
     // Pre-generate long pseudonyms (50 bytes each)
     let long_pseudonyms: Vec<_> = (0..NUM_ITEMS)
-        .map(|_| LongPseudonym::from_bytes_padded(&vec![42u8; 50]))
+        .map(|_| LongPseudonym::from_bytes_padded(&[42u8; 50]))
         .collect();
     let encrypted: Vec<_> = long_pseudonyms
         .iter()
@@ -215,7 +217,7 @@ fn bench_long_pseudonym_roundtrip_batch(c: &mut Criterion) {
 
     // Pre-generate long pseudonyms (50 bytes each)
     let long_pseudonyms: Vec<_> = (0..NUM_ITEMS)
-        .map(|_| LongPseudonym::from_bytes_padded(&vec![42u8; 50]))
+        .map(|_| LongPseudonym::from_bytes_padded(&[42u8; 50]))
         .collect();
     let encrypted_base: Vec<_> = long_pseudonyms
         .iter()
@@ -245,7 +247,7 @@ fn bench_long_attribute_roundtrip(c: &mut Criterion) {
 
     // Pre-generate long attributes (50 bytes each)
     let long_attributes: Vec<_> = (0..NUM_ITEMS)
-        .map(|_| LongAttribute::from_bytes_padded(&vec![42u8; 50]))
+        .map(|_| LongAttribute::from_bytes_padded(&[42u8; 50]))
         .collect();
     let encrypted: Vec<_> = long_attributes
         .iter()
@@ -272,7 +274,7 @@ fn bench_long_attribute_roundtrip_batch(c: &mut Criterion) {
 
     // Pre-generate long attributes (50 bytes each)
     let long_attributes: Vec<_> = (0..NUM_ITEMS)
-        .map(|_| LongAttribute::from_bytes_padded(&vec![42u8; 50]))
+        .map(|_| LongAttribute::from_bytes_padded(&[42u8; 50]))
         .collect();
     let encrypted_base: Vec<_> = long_attributes
         .iter()
