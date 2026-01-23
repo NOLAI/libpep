@@ -1,10 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use libpep::core::data::{Attribute, Encryptable, Pseudonym};
-use libpep::core::transcryption::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::core::transcryption::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::distributed::client::client::PEPClient;
-use libpep::distributed::server::setup::make_distributed_global_keys;
-use libpep::distributed::server::transcryptor::PEPSystem;
+use libpep::core::client::{Client, DistributedClient};
+use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::core::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::core::keys::distribution::make_distributed_global_keys;
+use libpep::core::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
 /// Configuration parameters for distributed benchmarks
@@ -16,9 +16,9 @@ pub const BENCHMARK_STRUCTURES: [(usize, usize); 4] = [(1, 0), (1, 1), (1, 2), (
 pub fn setup_distributed_system(
     n: usize,
 ) -> (
-    Vec<PEPSystem>,
-    PEPClient,
-    PEPClient,
+    Vec<DistributedTranscryptor>,
+    Client,
+    Client,
     EncryptionContext,
     EncryptionContext,
     PseudonymizationDomain,
@@ -31,14 +31,14 @@ pub fn setup_distributed_system(
         make_distributed_global_keys(n, rng);
 
     // Create transcryptors
-    let systems: Vec<PEPSystem> = (0..n)
+    let systems: Vec<DistributedTranscryptor> = (0..n)
         .map(|i| {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes().into());
             let encryption_secret =
                 EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
             let blinding_factor = blinding_factors[i];
-            PEPSystem::new(pseudonymization_secret, encryption_secret, blinding_factor)
+            DistributedTranscryptor::new(pseudonymization_secret, encryption_secret, blinding_factor)
         })
         .collect();
 
@@ -61,8 +61,8 @@ pub fn setup_distributed_system(
         .collect::<Vec<_>>();
 
     // Create clients
-    let client_a = PEPClient::new(blinded_global_keys, &sks_a);
-    let client_b = PEPClient::new(blinded_global_keys, &sks_b);
+    let client_a = Client::from_shares(blinded_global_keys, &sks_a);
+    let client_b = Client::from_shares(blinded_global_keys, &sks_b);
 
     (
         systems, client_a, client_b, session_a, session_b, domain_a, domain_b,
@@ -74,10 +74,10 @@ pub fn generate_entities(
     num_entities: usize,
     num_pseudonyms_per_entity: usize,
     num_attributes_per_entity: usize,
-    client: &PEPClient,
+    client: &Client,
 ) -> Vec<(
-    Vec<libpep::core::data::EncryptedPseudonym>,
-    Vec<libpep::core::data::EncryptedAttribute>,
+    Vec<libpep::core::data::simple::EncryptedPseudonym>,
+    Vec<libpep::core::data::simple::EncryptedAttribute>,
 )> {
     let rng = &mut rng();
     (0..num_entities)
@@ -85,13 +85,13 @@ pub fn generate_entities(
             let pseudonyms: Vec<_> = (0..num_pseudonyms_per_entity)
                 .map(|_| {
                     let pseudonym = Pseudonym::random(rng);
-                    client.encrypt_pseudonym(&pseudonym, rng)
+                    client.encrypt(&pseudonym, rng)
                 })
                 .collect();
             let attributes: Vec<_> = (0..num_attributes_per_entity)
                 .map(|_| {
                     let attribute = Attribute::random(rng);
-                    client.encrypt_attribute(&attribute, rng)
+                    client.encrypt(&attribute, rng)
                 })
                 .collect();
             (pseudonyms, attributes)
@@ -102,10 +102,10 @@ pub fn generate_entities(
 /// Process entities individually through all servers
 pub fn process_entities_individually(
     entities: &[(
-        Vec<libpep::core::data::EncryptedPseudonym>,
-        Vec<libpep::core::data::EncryptedAttribute>,
+        Vec<libpep::core::data::simple::EncryptedPseudonym>,
+        Vec<libpep::core::data::simple::EncryptedAttribute>,
     )],
-    systems: &[PEPSystem],
+    systems: &[DistributedTranscryptor],
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
@@ -131,30 +131,38 @@ pub fn process_entities_individually(
 }
 
 /// Process entities using batch operations
+/// Optimized: computes transcryption/rekey info once per system rather than per entity
 pub fn process_entities_batch(
-    entities: Vec<(
-        Vec<libpep::core::data::EncryptedPseudonym>,
-        Vec<libpep::core::data::EncryptedAttribute>,
+    mut entities: Vec<(
+        Vec<libpep::core::data::simple::EncryptedPseudonym>,
+        Vec<libpep::core::data::simple::EncryptedAttribute>,
     )>,
-    systems: &[PEPSystem],
+    systems: &[DistributedTranscryptor],
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
-    let mut batch = entities;
     let mut batch_rng = rand::rng();
 
     for system in systems {
-        let transcryption_info =
-            system.transcryption_info(domain_a, domain_b, session_a, session_b);
-        batch = if let Ok(result) =
-            system.transcrypt_batch(batch, &transcryption_info, &mut batch_rng)
-        {
-            result
-        } else {
-            break;
-        };
+        // Compute info once per system (optimization)
+        let transcryption_info = system.transcryption_info(domain_a, domain_b, session_a, session_b);
+        let rekey_info = system.attribute_rekey_info(session_a, session_b);
+
+        // Process pseudonyms in batch for each entity
+        for entity in &mut entities {
+            if let Ok(result) = system.transcrypt_batch(&mut entity.0, &transcryption_info, &mut batch_rng) {
+                entity.0 = result.into_vec();
+            }
+        }
+
+        // Process attributes in batch for each entity
+        for entity in &mut entities {
+            if let Ok(result) = system.rekey_batch(&mut entity.1, &rekey_info, &mut batch_rng) {
+                entity.1 = result.into_vec();
+            }
+        }
     }
 }
 
@@ -259,16 +267,21 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                             &client_a,
                         );
 
-                        b.iter(|| {
-                            process_entities_batch(
-                                black_box(encrypted_data.clone()),
-                                black_box(&systems),
-                                black_box(&domain_a),
-                                black_box(&domain_b),
-                                black_box(&session_a),
-                                black_box(&session_b),
-                            );
-                        })
+                        // Optimized: clone outside the benchmark iteration
+                        b.iter_batched(
+                            || encrypted_data.clone(),
+                            |data| {
+                                process_entities_batch(
+                                    data,
+                                    black_box(&systems),
+                                    black_box(&domain_a),
+                                    black_box(&domain_b),
+                                    black_box(&session_a),
+                                    black_box(&session_b),
+                                );
+                            },
+                            criterion::BatchSize::SmallInput,
+                        )
                     },
                 );
             }
