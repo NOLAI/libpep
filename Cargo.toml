@@ -25,7 +25,7 @@ legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with t
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
-wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys"] # For building WebAssembly bindings via wasm-bindgen
+wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys", "getrandom"] # For building WebAssembly bindings via wasm-bindgen
 python = ["pyo3"] # For building Python bindings via PyO3
 # Note: python and wasm are mutually exclusive and should not be enabled together.
 # PyO3 builds a cdylib that links to the Python interpreter, while wasm-bindgen builds
