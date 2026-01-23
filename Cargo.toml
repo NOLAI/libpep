@@ -72,6 +72,10 @@ name = "base"
 harness = false
 
 [[bench]]
+name = "quick"
+harness = false
+
+[[bench]]
 name = "distributed"
 harness = false
 

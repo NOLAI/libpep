@@ -1,7 +1,6 @@
-name: Benchmarks
+name: Quick Benchmarks
 
 on:
-  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -9,7 +8,7 @@ on:
 
 jobs:
   benchmark:
-    name: Benchmarks
+    name: Quick Benchmarks
     runs-on: ubuntu-latest
 
     steps:
@@ -20,9 +19,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run benchmarks
-        run: cargo bench --bench base --bench distributed -- --output-format bencher | tee benchmark_output.txt
+        run: cargo bench --bench base --bench quick -- --output-format bencher | tee benchmark_output.txt
 
-      - name: Parse and display base operation results
+      - name: Parse and display benchmark results
         run: |
           mkdir -p benchmark_tables
 
@@ -44,69 +43,24 @@ jobs:
             fi
           done
 
-      - name: Parse and display distributed operation results
-        run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Distributed Transcryption Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Quick Roundtrip Benchmarks (100 items, 2 transcryptors)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Servers | Entities | Pseudonyms | Attributes | Individual (μs) | Batch (μs) |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|----------|------------|------------|-----------------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Operation | Average Time |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------------|" >> $GITHUB_STEP_SUMMARY
 
           # Also write to file
-          echo "| Servers | Entities | Pseudonyms | Attributes | Individual (μs) | Batch (μs) |" > benchmark_tables/distributed_transcryption.md
-          echo "|---------|----------|------------|------------|-----------------|------------|" >> benchmark_tables/distributed_transcryption.md
+          echo "| Operation | Average Time |" > benchmark_tables/quick_benchmarks.md
+          echo "|-----------|--------------|" >> benchmark_tables/quick_benchmarks.md
 
-          # Create temporary files for storing results
-          touch /tmp/individual_results.txt
-          touch /tmp/batch_results.txt
-
-          # Parse distributed_transcrypt_complete results
-          grep "^test distributed_transcrypt_complete" benchmark_output.txt | while read -r line; do
-            benchmark=$(echo "$line" | awk '{print $2}')
-            time=$(echo "$line" | awk '{print $5}' | sed 's/,//g')
-
-            # Extract parameters from benchmark name (format: distributed_transcrypt_complete/1servers_1entities_1p_0a)
-            params=$(echo "$benchmark" | sed 's/.*\/\([0-9]*\)servers_\([0-9]*\)entities_\([0-9]*\)p_\([0-9]*\)a/\1 \2 \3 \4/')
-            servers=$(echo $params | awk '{print $1}')
-            entities=$(echo $params | awk '{print $2}')
-            pseudonyms=$(echo $params | awk '{print $3}')
-            attributes=$(echo $params | awk '{print $4}')
-
-            # Convert ns to μs
-            time_us=$(awk "BEGIN {printf \"%.2f\", $time / 1000}")
-
-            echo "${servers}|${entities}|${pseudonyms}|${attributes}|${time_us}" >> /tmp/individual_results.txt
+          # Parse quick benchmark results
+          for op in pseudonym_roundtrip_100 attribute_roundtrip_100 long_pseudonym_roundtrip_100 long_attribute_roundtrip_100 json_roundtrip_100; do
+            if grep -q "^test $op " benchmark_output.txt; then
+              time=$(grep "^test $op " benchmark_output.txt | awk '{print $5, $6}')
+              echo "| $op | $time |" >> $GITHUB_STEP_SUMMARY
+              echo "| $op | $time |" >> benchmark_tables/quick_benchmarks.md
+            fi
           done
-
-          # Parse distributed_transcrypt_batch results
-          grep "^test distributed_transcrypt_batch" benchmark_output.txt | while read -r line; do
-            benchmark=$(echo "$line" | awk '{print $2}')
-            time=$(echo "$line" | awk '{print $5}' | sed 's/,//g')
-
-            # Extract parameters from benchmark name
-            params=$(echo "$benchmark" | sed 's/.*\/\([0-9]*\)servers_\([0-9]*\)entities_\([0-9]*\)p_\([0-9]*\)a/\1 \2 \3 \4/')
-            servers=$(echo $params | awk '{print $1}')
-            entities=$(echo $params | awk '{print $2}')
-            pseudonyms=$(echo $params | awk '{print $3}')
-            attributes=$(echo $params | awk '{print $4}')
-
-            # Convert ns to μs
-            time_us=$(awk "BEGIN {printf \"%.2f\", $time / 1000}")
-
-            echo "${servers}|${entities}|${pseudonyms}|${attributes}|${time_us}" >> /tmp/batch_results.txt
-          done
-
-          # Merge results by configuration (match on servers, entities, pseudonyms, and attributes)
-          sort /tmp/individual_results.txt > /tmp/individual_sorted.txt
-          sort /tmp/batch_results.txt > /tmp/batch_sorted.txt
-
-          awk -F'|' 'NR==FNR { key = $1 FS $2 FS $3 FS $4; indiv[key] = $5; next } { key = $1 FS $2 FS $3 FS $4; if (key in indiv) { print $1 FS $2 FS $3 FS $4 FS indiv[key] FS $5 } }' /tmp/individual_sorted.txt /tmp/batch_sorted.txt | while IFS='|' read -r servers entities pseudonyms attributes individual_time batch_time; do
-            echo "| $servers | $entities | $pseudonyms | $attributes | $individual_time | $batch_time |" >> $GITHUB_STEP_SUMMARY
-            echo "| $servers | $entities | $pseudonyms | $attributes | $individual_time | $batch_time |" >> benchmark_tables/distributed_transcryption.md
-          done
-
-          # Clean up temp files
-          rm -f /tmp/individual_results.txt /tmp/batch_results.txt /tmp/individual_sorted.txt /tmp/batch_sorted.txt
 
       - name: Upload benchmark tables
         uses: actions/upload-artifact@v4
@@ -120,26 +74,4 @@ jobs:
         with:
           name: benchmark-results-${{ github.sha }}
           path: target/criterion/
-          retention-days: 90
-
-  energy-benchmark:
-    name: Energy Benchmarks
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Run energy benchmarks
-        run: cargo bench --bench energy_base --bench energy_distributed
-
-      - name: Upload energy benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: energy-benchmark-results-${{ github.sha }}
-          path: energy-bench-results/
           retention-days: 90
