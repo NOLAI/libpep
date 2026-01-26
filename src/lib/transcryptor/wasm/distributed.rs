@@ -139,6 +139,7 @@ impl WASMDistributedTranscryptor {
         )
     }
 
+    #[cfg(feature = "batch")]
     #[wasm_bindgen(js_name = rekeyBatch)]
     pub fn wasm_rekey_batch(
         &self,
@@ -161,6 +162,7 @@ impl WASMDistributedTranscryptor {
             .collect())
     }
 
+    #[cfg(feature = "batch")]
     #[wasm_bindgen(js_name = pseudonymizeBatch)]
     pub fn wasm_pseudonymize_batch(
         &self,

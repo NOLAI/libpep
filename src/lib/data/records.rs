@@ -49,6 +49,7 @@ pub struct EncryptedRecord {
 }
 
 /// A long record containing multiple long pseudonyms and attributes for a single entity.
+#[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LongRecord {
     pub pseudonyms: Vec<LongPseudonym>,
@@ -56,6 +57,7 @@ pub struct LongRecord {
 }
 
 /// An encrypted long record containing multiple encrypted long pseudonyms and attributes.
+#[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LongEncryptedRecord {
     pub pseudonyms: Vec<LongEncryptedPseudonym>,
@@ -82,6 +84,7 @@ impl EncryptedRecord {
     }
 }
 
+#[cfg(feature = "long")]
 impl LongRecord {
     /// Create a new LongRecord with the given long pseudonyms and attributes.
     pub fn new(pseudonyms: Vec<LongPseudonym>, attributes: Vec<LongAttribute>) -> Self {
@@ -92,6 +95,7 @@ impl LongRecord {
     }
 }
 
+#[cfg(feature = "long")]
 impl LongEncryptedRecord {
     /// Create a new LongEncryptedRecord with the given encrypted long pseudonyms and attributes.
     pub fn new(
@@ -305,6 +309,7 @@ impl Transcryptable for EncryptedRecord {
     }
 }
 
+#[cfg(feature = "long")]
 impl Encryptable for LongRecord {
     type EncryptedType = LongEncryptedRecord;
     type PublicKeyType = SessionKeys;
@@ -355,6 +360,7 @@ impl Encryptable for LongRecord {
 }
 
 // Implement Encrypted for LongEncryptedRecord
+#[cfg(feature = "long")]
 impl Encrypted for LongEncryptedRecord {
     type UnencryptedType = LongRecord;
     type SecretKeyType = SessionKeys;
@@ -497,6 +503,7 @@ impl Encrypted for LongEncryptedRecord {
     }
 }
 
+#[cfg(feature = "long")]
 impl Transcryptable for LongEncryptedRecord {
     fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
         LongEncryptedRecord {
@@ -506,6 +513,7 @@ impl Transcryptable for LongEncryptedRecord {
     }
 }
 
+#[cfg(feature = "batch")]
 impl HasStructure for EncryptedRecord {
     type Structure = RecordStructure;
 
@@ -517,6 +525,7 @@ impl HasStructure for EncryptedRecord {
     }
 }
 
+#[cfg(all(feature = "batch", feature = "long"))]
 impl HasStructure for LongEncryptedRecord {
     type Structure = LongRecordStructure;
 

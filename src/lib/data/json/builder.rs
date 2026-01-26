@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 use super::data::PEPJSONValue;
+#[cfg(feature = "long")]
 use crate::data::long::LongPseudonym;
 
 /// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.

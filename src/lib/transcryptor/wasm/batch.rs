@@ -1,6 +1,7 @@
 //! WASM bindings for batch transcryption operations.
 
 use crate::data::records::EncryptedRecord;
+#[cfg(feature = "long")]
 use crate::data::records::LongEncryptedRecord;
 #[cfg(feature = "json")]
 use crate::data::wasm::json::WASMEncryptedPEPJSONValue;

@@ -21,6 +21,7 @@ use crate::keys::wasm::types::WASMSessionKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalPublicKeys;
 use crate::keys::SessionKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::transcrypt_batch;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
@@ -326,6 +327,7 @@ pub fn wasm_decrypt_json(
 /// # Errors
 ///
 /// Returns an error if the values don't all have the same structure
+#[cfg(feature = "batch")]
 #[wasm_bindgen(js_name = transcryptJsonBatch)]
 pub fn wasm_transcrypt_json_batch(
     values: Vec<WASMEncryptedPEPJSONValue>,
