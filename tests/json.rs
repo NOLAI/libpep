@@ -2,14 +2,15 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 #[cfg(feature = "batch")]
-use libpep::core::batch::transcrypt_batch;
-use libpep::core::data::json::builder::PEPJSONBuilder;
-use libpep::core::data::traits::{Encryptable, Encrypted, Transcryptable};
-use libpep::core::factors::contexts::{
-    EncryptionContext, PseudonymizationDomain, TranscryptionInfo,
+use libpep::transcryptor::transcrypt_batch;
+use libpep::data::json::builder::PEPJSONBuilder;
+use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
+use libpep::factors::contexts::{
+    EncryptionContext, PseudonymizationDomain,
 };
-use libpep::core::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::core::keys::{make_global_keys, make_session_keys};
+use libpep::factors::TranscryptionInfo;
+use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
 use serde_json::json;
 
@@ -324,7 +325,7 @@ fn test_json_batch_transcryption_different_structures() {
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");
     match result {
-        Err(libpep::core::batch::BatchError::InconsistentStructure { .. }) => {
+        Err(libpep::transcryptor::BatchError::InconsistentStructure { .. }) => {
             // Expected error
         }
         _ => panic!("Expected InconsistentStructure error"),

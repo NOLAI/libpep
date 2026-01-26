@@ -5,24 +5,24 @@ Tests JSON encryption, decryption, and transcryption with structured data.
 """
 
 import unittest
-from libpep.core.keys import (
+from libpep.keys import (
     make_global_keys,
     make_session_keys,
+)
+from libpep.factors import (
     EncryptionSecret,
     PseudonymizationSecret,
-)
-from libpep.core import (
     TranscryptionInfo,
     PseudonymizationInfo,
     PseudonymizationDomain,
     EncryptionContext,
+)
+from libpep.client import (
     encrypt,
     decrypt,
 )
-from libpep.core.data.json import (
-    transcrypt_json_batch,
-)
-from libpep.core.data.json.builder import PEPJSONBuilder
+from libpep.data import json as pepjson
+from libpep.data.json import transcrypt_json_batch, PEPJSONBuilder
 
 
 class TestJSONTranscryption(unittest.TestCase):

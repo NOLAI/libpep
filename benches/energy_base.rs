@@ -1,8 +1,8 @@
 use energy_bench::EnergyBenchBuilder;
 use libpep::arithmetic::group_elements::{GroupElement, G};
 use libpep::arithmetic::scalars::ScalarNonZero;
-use libpep::base::elgamal::{decrypt, encrypt};
-use libpep::base::primitives::{
+use libpep::core::elgamal::{decrypt, encrypt};
+use libpep::core::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
 use rand::rng;

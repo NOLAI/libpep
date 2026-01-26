@@ -1,7 +1,2 @@
-pub mod client;
-pub mod contexts;
-pub mod data;
-pub mod factors;
-pub mod functions;
-pub mod keys;
-pub mod transcryptor;
+pub mod elgamal;
+pub mod primitives;

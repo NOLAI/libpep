@@ -1,20 +1,20 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 #[cfg(feature = "batch")]
-use libpep::core::batch::{pseudonymize_batch, rekey_batch, transcrypt_batch};
-use libpep::core::data::long::{LongAttribute, LongPseudonym};
-use libpep::core::data::records::LongEncryptedRecord;
-use libpep::core::data::simple::*;
-use libpep::core::factors::contexts::*;
-use libpep::core::factors::{
+use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::client::{decrypt, encrypt};
+use libpep::data::long::{LongAttribute, LongPseudonym};
+use libpep::data::records::LongEncryptedRecord;
+use libpep::data::simple::*;
+use libpep::factors::contexts::*;
+use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
 #[cfg(feature = "elgamal3")]
-use libpep::core::functions::rerandomize;
-use libpep::core::functions::{decrypt, encrypt, pseudonymize};
-use libpep::core::functions::{rekey, transcrypt};
-use libpep::core::keys::*;
+use libpep::transcryptor::rerandomize;
+use libpep::transcryptor::{pseudonymize, rekey, transcrypt};
+use libpep::keys::*;
 
 #[test]
 fn test_core_flow() {

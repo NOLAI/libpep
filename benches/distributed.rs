@@ -1,10 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use libpep::core::client::{Client, DistributedClient};
-use libpep::core::data::records::EncryptedRecord;
-use libpep::core::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::core::transcryptor::DistributedTranscryptor;
+use libpep::client::{Client, Distributed};
+use libpep::data::records::EncryptedRecord;
+use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
 /// Configuration parameters for distributed benchmarks
@@ -28,7 +28,7 @@ pub fn setup_distributed_system(
 
     // Create distributed global keys
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::core::keys::distribution::make_distributed_global_keys(n, rng);
+        libpep::keys::distribution::make_distributed_global_keys(n, rng);
 
     // Create transcryptors
     let systems: Vec<DistributedTranscryptor> = (0..n)
@@ -80,8 +80,8 @@ pub fn generate_entities(
     num_attributes_per_entity: usize,
     client: &Client,
 ) -> Vec<(
-    Vec<libpep::core::data::simple::EncryptedPseudonym>,
-    Vec<libpep::core::data::simple::EncryptedAttribute>,
+    Vec<libpep::data::simple::EncryptedPseudonym>,
+    Vec<libpep::data::simple::EncryptedAttribute>,
 )> {
     let rng = &mut rng();
     (0..num_entities)
@@ -106,8 +106,8 @@ pub fn generate_entities(
 /// Process entities individually through all servers
 pub fn process_entities_individually(
     entities: &[(
-        Vec<libpep::core::data::simple::EncryptedPseudonym>,
-        Vec<libpep::core::data::simple::EncryptedAttribute>,
+        Vec<libpep::data::simple::EncryptedPseudonym>,
+        Vec<libpep::data::simple::EncryptedAttribute>,
     )],
     systems: &[DistributedTranscryptor],
     domain_a: &PseudonymizationDomain,
@@ -141,8 +141,8 @@ pub fn process_entities_individually(
 /// Process entities using batch operations
 pub fn process_entities_batch(
     entities: Vec<(
-        Vec<libpep::core::data::simple::EncryptedPseudonym>,
-        Vec<libpep::core::data::simple::EncryptedAttribute>,
+        Vec<libpep::data::simple::EncryptedPseudonym>,
+        Vec<libpep::data::simple::EncryptedAttribute>,
     )>,
     systems: &[DistributedTranscryptor],
     domain_a: &PseudonymizationDomain,

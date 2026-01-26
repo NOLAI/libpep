@@ -4,23 +4,23 @@
 use commandy_macros::*;
 use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 #[cfg(feature = "json")]
-use libpep::core::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
-use libpep::core::data::long::{
+use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
+use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use libpep::core::data::simple::{
+use libpep::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use libpep::core::data::traits::{Encryptable, Encrypted};
-use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::core::factors::TranscryptionInfo;
-use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::core::functions::transcrypt;
-use libpep::core::keys::distribution::{make_distributed_global_keys, BlindingFactor};
+use libpep::data::traits::{Encryptable, Encrypted};
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::TranscryptionInfo;
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::transcryptor::transcrypt;
+use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
 #[cfg(feature = "json")]
-use libpep::core::keys::make_session_keys;
-use libpep::core::keys::{
+use libpep::keys::make_session_keys;
+use libpep::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, AttributeGlobalPublicKey,
     AttributeGlobalSecretKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
     GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,

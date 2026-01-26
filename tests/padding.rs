@@ -1,12 +1,12 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::data::long::LongPseudonym;
-use libpep::core::data::simple::{EncryptedPseudonym, Pseudonym};
-use libpep::core::data::traits::{Encryptable, Encrypted};
-use libpep::core::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::core::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
-use libpep::core::functions::pseudonymize;
-use libpep::core::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
+use libpep::data::long::LongPseudonym;
+use libpep::data::simple::{EncryptedPseudonym, Pseudonym};
+use libpep::data::traits::{Encryptable, Encrypted};
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
+use libpep::transcryptor::pseudonymize;
+use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use std::io::Error;
 
 #[test]

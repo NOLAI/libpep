@@ -2,11 +2,12 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
     use libpep::arithmetic::scalars::ScalarTraits;
-    use libpep::core::factors::contexts::{PseudonymRekeyFactor, PseudonymizationDomain};
-    use libpep::core::factors::derivation::make_pseudonymisation_factor;
-    use libpep::core::factors::secrets::PseudonymizationSecret;
-    use libpep::core::keys::distribution::blinding::BlindingFactor;
-    use libpep::core::keys::distribution::shares::make_pseudonym_session_key_share;
+    use libpep::factors::contexts::PseudonymizationDomain;
+    use libpep::factors::PseudonymRekeyFactor;
+    use libpep::factors::derivation::make_pseudonymisation_factor;
+    use libpep::factors::secrets::PseudonymizationSecret;
+    use libpep::keys::distribution::blinding::BlindingFactor;
+    use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
 
     #[test]
     fn test_key_factor_component() {
