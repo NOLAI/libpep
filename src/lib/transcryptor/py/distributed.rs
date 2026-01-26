@@ -4,7 +4,9 @@
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::{PyEncryptedRecord, PyLongEncryptedRecord};
+use crate::data::py::records::PyEncryptedRecord;
+#[cfg(feature = "long")]
+use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
     PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,

@@ -22,6 +22,7 @@ use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::GlobalSecretKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -263,6 +264,7 @@ impl PyPEPJSONBuilder {
 ///
 /// Returns:
 ///     A shuffled list of transcrypted EncryptedPEPJSONValue objects
+#[cfg(feature = "batch")]
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
 pub fn py_transcrypt_batch(
@@ -285,6 +287,7 @@ pub fn py_transcrypt_batch(
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// This is a simpler version that accepts a PyTranscryptionInfo.
+#[cfg(feature = "batch")]
 #[pyfunction]
 #[pyo3(name = "transcrypt_json_batch")]
 pub fn py_transcrypt_json_batch(
@@ -460,8 +463,11 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPEPJSONBuilder>()?;
 
     // Batch transcryption functions
-    m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+    #[cfg(feature = "batch")]
+    {
+        m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
+        m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+    }
 
     // Global key functions (offline feature)
     #[cfg(feature = "offline")]

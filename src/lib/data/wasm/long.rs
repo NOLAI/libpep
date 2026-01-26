@@ -239,10 +239,12 @@ use crate::data::records::LongEncryptedRecord;
 use crate::factors::wasm::contexts::WASMTranscryptionInfo;
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use crate::factors::TranscryptionInfo;
+#[cfg(feature = "batch")]
 use crate::transcryptor::{rekey_batch, transcrypt_batch};
 
 /// Batch rekeying of long encrypted pseudonyms.
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.
+#[cfg(feature = "batch")]
 #[wasm_bindgen(js_name = rekeyLongPseudonymBatch)]
 pub fn wasm_rekey_long_pseudonym_batch(
     encrypted: Vec<WASMLongEncryptedPseudonym>,
@@ -297,6 +299,7 @@ impl WASMLongEncryptedRecord {
 /// # Errors
 ///
 /// Throws an error if the encrypted data do not all have the same structure.
+#[cfg(feature = "batch")]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
     encrypted: Vec<WASMLongEncryptedRecord>,

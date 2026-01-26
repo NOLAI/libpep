@@ -1,7 +1,9 @@
 //! Python bindings for batch transcryption operations.
 
 use crate::client::{decrypt, encrypt};
-use crate::data::py::records::{PyEncryptedRecord, PyLongEncryptedRecord};
+use crate::data::py::records::PyEncryptedRecord;
+#[cfg(feature = "long")]
+use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };

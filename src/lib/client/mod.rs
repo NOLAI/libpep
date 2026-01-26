@@ -15,7 +15,9 @@ pub mod py;
 pub mod wasm;
 
 // Re-export types
-pub use types::{Client, OfflineClient};
+pub use types::Client;
+#[cfg(feature = "offline")]
+pub use types::OfflineClient;
 
 // Re-export functions
 pub use functions::{decrypt, encrypt};
