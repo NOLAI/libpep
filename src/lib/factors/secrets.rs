@@ -12,11 +12,11 @@ use sha2::{Digest, Sha256};
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 pub type Secret = Box<[u8]>;
 
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`](super::ReshuffleFactor) from a [`PseudonymizationDomain`](crate::factors::contexts::PseudonymizationDomain).
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`](ReshuffleFactor) from a [`PseudonymizationDomain`](PseudonymizationDomain).
 #[derive(Clone, Debug, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
-/// Encryption secret used to derive rekey factors from an [`EncryptionContext`](crate::factors::contexts::EncryptionContext).
+/// Encryption secret used to derive rekey factors from an [`EncryptionContext`](EncryptionContext).
 #[derive(Clone, Debug, From)]
 pub struct EncryptionSecret(pub(crate) Secret);
 

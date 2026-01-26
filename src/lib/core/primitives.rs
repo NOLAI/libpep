@@ -300,7 +300,7 @@ mod tests {
         // encrypt/decrypt this value
         let encrypted = encrypt(&m, &(k_from * gy), &mut rng);
 
-        let rekeyed = super::rekey2(&encrypted, &k_from, &k_to);
+        let rekeyed = rekey2(&encrypted, &k_from, &k_to);
 
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&rekeyed, &(k_to * y)).expect("decryption should succeed");
@@ -328,7 +328,7 @@ mod tests {
         // encrypt/decrypt this value
         let encrypted = encrypt(&m, &gy, &mut rng);
 
-        let reshuffled = super::reshuffle2(&encrypted, &s_from, &s_to);
+        let reshuffled = reshuffle2(&encrypted, &s_from, &s_to);
 
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&reshuffled, &y).expect("decryption should succeed");
@@ -358,7 +358,7 @@ mod tests {
         // encrypt/decrypt this value
         let encrypted = encrypt(&m, &(k_from * gy), &mut rng);
 
-        let rsked = super::rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
+        let rsked = rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
 
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&rsked, &(k_to * y)).expect("decryption should succeed");
@@ -417,11 +417,11 @@ mod tests {
         let encrypted = encrypt(&(s_user1 * m), &gy, &mut rng);
 
         // reshuffle from user1 to user2, then from user2 to user3
-        let reshuffled_1_to_2 = super::reshuffle2(&encrypted, &s_user1, &s_user2);
-        let reshuffled_2_to_3 = super::reshuffle2(&reshuffled_1_to_2, &s_user2, &s_user3);
+        let reshuffled_1_to_2 = reshuffle2(&encrypted, &s_user1, &s_user2);
+        let reshuffled_2_to_3 = reshuffle2(&reshuffled_1_to_2, &s_user2, &s_user3);
 
         // reshuffle directly from user1 to user3
-        let reshuffled_1_to_3 = super::reshuffle2(&encrypted, &s_user1, &s_user3);
+        let reshuffled_1_to_3 = reshuffle2(&encrypted, &s_user1, &s_user3);
 
         // transitivity: going 1->2->3 should equal going 1->3 directly
         assert_eq!(reshuffled_2_to_3, reshuffled_1_to_3);
@@ -458,11 +458,11 @@ mod tests {
         let encrypted = encrypt(&(s_user1 * m), &(k_user1 * gy), &mut rng);
 
         // rsk from user1 to user2, then from user2 to user3
-        let rsked_1_to_2 = super::rsk2(&encrypted, &s_user1, &s_user2, &k_user1, &k_user2);
-        let rsked_2_to_3 = super::rsk2(&rsked_1_to_2, &s_user2, &s_user3, &k_user2, &k_user3);
+        let rsked_1_to_2 = rsk2(&encrypted, &s_user1, &s_user2, &k_user1, &k_user2);
+        let rsked_2_to_3 = rsk2(&rsked_1_to_2, &s_user2, &s_user3, &k_user2, &k_user3);
 
         // rsk directly from user1 to user3
-        let rsked_1_to_3 = super::rsk2(&encrypted, &s_user1, &s_user3, &k_user1, &k_user3);
+        let rsked_1_to_3 = rsk2(&encrypted, &s_user1, &s_user3, &k_user1, &k_user3);
 
         // transitivity: going 1->2->3 should equal going 1->3 directly
         assert_eq!(rsked_2_to_3, rsked_1_to_3);
