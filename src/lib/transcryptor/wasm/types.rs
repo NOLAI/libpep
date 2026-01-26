@@ -3,21 +3,21 @@
 #[cfg(feature = "long")]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
-use crate::factors::{
-    AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
-};
-use crate::transcryptor::Transcryptor;
-use crate::factors::wasm::contexts::{
-    WASMAttributeRekeyInfo, WASMEncryptionContext,
-    WASMPseudonymizationDomain, WASMPseudonymizationInfo, WASMTranscryptionInfo,
-};
-use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::wasm::records::WASMLongRecordEncrypted;
 use crate::data::wasm::records::WASMRecordEncrypted;
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::factors::wasm::contexts::{
+    WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
+    WASMPseudonymizationInfo, WASMTranscryptionInfo,
+};
+use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
+use crate::factors::{
+    AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
+};
+use crate::transcryptor::Transcryptor;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

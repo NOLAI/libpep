@@ -25,4 +25,4 @@ pub use distributed::DistributedTranscryptor;
 
 // Re-export batch functions and types
 #[cfg(feature = "batch")]
-pub use batch::{BatchError, pseudonymize_batch, rekey_batch, transcrypt_batch};
+pub use batch::{pseudonymize_batch, rekey_batch, transcrypt_batch, BatchError};

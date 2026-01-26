@@ -1,30 +1,22 @@
 //! Python bindings for transcryption functions.
 
+use crate::arithmetic::py::PyScalarNonZero;
+#[cfg(feature = "json")]
+use crate::data::py::json::PyEncryptedPEPJSONValue;
+#[cfg(feature = "long")]
+use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::data::py::records::PyEncryptedRecord;
+use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
-use crate::arithmetic::py::PyScalarNonZero;
 use crate::factors::TranscryptionInfo;
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
-use crate::transcryptor::{
-    pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt,
-};
-use crate::keys::{
-    AttributeSessionPublicKey, PseudonymSessionPublicKey,
-};
-use crate::keys::py::{
-    PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey,
-};
-#[cfg(feature = "long")]
-use crate::data::py::long::{
-    PyLongEncryptedAttribute, PyLongEncryptedPseudonym,
-};
-use crate::data::py::records::PyEncryptedRecord;
-#[cfg(feature = "json")]
-use crate::data::py::json::PyEncryptedPEPJSONValue;
-use crate::data::py::simple::{
-    PyEncryptedAttribute, PyEncryptedPseudonym,
-};
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::py::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
+use crate::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

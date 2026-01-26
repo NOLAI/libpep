@@ -6,9 +6,7 @@ use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
-use crate::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret,
-};
+use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret};
 use rand_core::{CryptoRng, RngCore};
 
 /// Polymorphic function to generate a global key pair.

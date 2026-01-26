@@ -2,10 +2,6 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
     PyBlindingFactor,
 };
-use crate::keys::py::types::{
-    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
-    PyPseudonymSessionSecretKey,
-};
 use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
 use crate::arithmetic::scalars::ScalarTraits;
 use crate::client::distributed::{
@@ -13,6 +9,10 @@ use crate::client::distributed::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use crate::keys::distribution::*;
+use crate::keys::py::types::{
+    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
+    PyPseudonymSessionSecretKey,
+};
 use crate::keys::*;
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
@@ -224,7 +224,10 @@ impl PySessionKeys {
     }
 
     fn __repr__(&self) -> String {
-        format!("SessionKeysPublicSecret(public={}, secret=...)", self.public.__repr__())
+        format!(
+            "SessionKeysPublicSecret(public={}, secret=...)",
+            self.public.__repr__()
+        )
     }
 }
 

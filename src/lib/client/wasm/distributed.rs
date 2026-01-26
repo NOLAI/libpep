@@ -1,10 +1,7 @@
 //! WASM bindings for distributed client.
 
-use crate::client::Distributed;
 use crate::client::Client;
-use crate::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
-};
+use crate::client::Distributed;
 #[cfg(feature = "json")]
 use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 #[cfg(feature = "long")]
@@ -16,6 +13,9 @@ use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
 use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
+};
+use crate::keys::distribution::{
+    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use crate::keys::wasm::distribution::WASMBlindedGlobalKeys;
 use crate::keys::wasm::types::WASMSessionKeys;

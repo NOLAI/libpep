@@ -1,10 +1,10 @@
 use crate::factors::contexts::*;
+use crate::factors::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use crate::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymizationInfo,
     ReshuffleFactor, TranscryptionInfo,
 };
-use crate::factors::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
-use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use derive_more::From;
 use wasm_bindgen::prelude::*;
 

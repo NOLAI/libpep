@@ -1,10 +1,6 @@
 //! WASM bindings for batch client operations.
 
 use crate::client::{decrypt_batch, encrypt_batch};
-use crate::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -15,6 +11,10 @@ use crate::data::wasm::simple::{
 use crate::keys::wasm::types::{
     WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMPseudonymSessionPublicKey,
     WASMPseudonymSessionSecretKey,
+};
+use crate::keys::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
 };
 use wasm_bindgen::prelude::*;
 
@@ -191,4 +191,3 @@ pub fn wasm_decrypt_long_attribute_batch(
         .map(|decrypted| decrypted.into_iter().map(WASMLongAttribute).collect())
         .map_err(|e| e.to_string())
 }
-

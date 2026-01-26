@@ -1,23 +1,25 @@
 //! Python bindings for batch transcryption operations.
 
-use crate::factors::py::contexts::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
 use crate::client::{decrypt, encrypt};
-use crate::data::records::EncryptedRecord;
-use crate::factors::TranscryptionInfo;
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
-use crate::keys::types::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
 use crate::data::py::records::{PyEncryptedRecord, PyLongEncryptedRecord};
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
+use crate::data::records::EncryptedRecord;
+use crate::factors::py::contexts::{
+    PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
+};
+use crate::factors::TranscryptionInfo;
+use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
 use crate::keys::py::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+use crate::keys::types::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+};
+use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
@@ -27,22 +29,22 @@ use crate::client::decrypt_global;
 #[cfg(feature = "offline")]
 use crate::client::encrypt_global;
 #[cfg(feature = "offline")]
-use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-#[cfg(feature = "offline")]
 use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+#[cfg(feature = "offline")]
+use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 
 #[cfg(feature = "long")]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "long")]
-use crate::data::records::LongEncryptedRecord;
-#[cfg(feature = "long")]
 use crate::data::py::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
+#[cfg(feature = "long")]
+use crate::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
 use crate::data::py::json::PyEncryptedPEPJSONValue;

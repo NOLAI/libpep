@@ -8,9 +8,7 @@ use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use crate::data::traits::{
-    Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -931,9 +929,9 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::client::encrypt;
     use crate::factors::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
-    use crate::client::encrypt;
     use crate::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
     use std::io::ErrorKind;
 

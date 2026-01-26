@@ -12,7 +12,7 @@ pub use setup::{
     wasm_make_distributed_pseudonym_global_keys,
 };
 pub use shares::{
-    WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
     wasm_make_attribute_session_key_share, wasm_make_pseudonym_session_key_share,
-    wasm_make_session_key_shares,
+    wasm_make_session_key_shares, WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
+    WASMSessionKeyShares,
 };

@@ -1,17 +1,15 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-#[cfg(feature = "batch")]
-use libpep::transcryptor::transcrypt_batch;
 use libpep::data::json::builder::PEPJSONBuilder;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
-use libpep::factors::contexts::{
-    EncryptionContext, PseudonymizationDomain,
-};
-use libpep::factors::TranscryptionInfo;
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::TranscryptionInfo;
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
+#[cfg(feature = "batch")]
+use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
 
 #[test]

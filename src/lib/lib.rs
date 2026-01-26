@@ -38,13 +38,13 @@
 //! they have incompatible linking requirements.
 
 pub mod arithmetic;
-pub mod core;
 pub mod client;
+pub mod core;
 pub mod data;
 pub mod factors;
 pub mod keys;
-pub mod transcryptor;
 pub mod prelude;
+pub mod transcryptor;
 
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;

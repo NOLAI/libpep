@@ -14,6 +14,7 @@ use pyo3::Py;
 pub struct PyPseudonym(pub(crate) Pseudonym);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyPseudonym {
     /// Create from a [`PyGroupElement`].
     #[new]
@@ -155,6 +156,7 @@ impl PyPseudonym {
 pub struct PyAttribute(pub(crate) Attribute);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyAttribute {
     /// Create from a [`PyGroupElement`].
     #[new]

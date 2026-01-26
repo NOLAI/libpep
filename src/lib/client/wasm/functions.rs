@@ -1,19 +1,8 @@
-use crate::factors::wasm::contexts::WASMTranscryptionInfo;
-use crate::client::{decrypt, encrypt};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::client::decrypt_global;
 #[cfg(feature = "offline")]
 use crate::client::encrypt_global;
-use crate::factors::TranscryptionInfo;
-use crate::transcryptor::transcrypt;
-#[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, SessionKeys,
-};
+use crate::client::{decrypt, encrypt};
 #[cfg(feature = "json")]
 use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 #[cfg(feature = "long")]
@@ -26,6 +15,8 @@ use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+use crate::factors::wasm::contexts::WASMTranscryptionInfo;
+use crate::factors::TranscryptionInfo;
 use crate::keys::wasm::types::WASMSessionKeys;
 #[cfg(feature = "offline")]
 use crate::keys::wasm::types::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
@@ -35,6 +26,15 @@ use crate::keys::wasm::types::{
     WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMPseudonymSessionPublicKey,
     WASMPseudonymSessionSecretKey,
 };
+#[cfg(feature = "offline")]
+use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::keys::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, SessionKeys,
+};
+use crate::transcryptor::transcrypt;
 use wasm_bindgen::prelude::*;
 
 /// Encrypt a pseudonym using a session public key.

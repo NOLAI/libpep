@@ -34,6 +34,7 @@ pub struct PyAttributeGlobalSecretKey(pub PyScalarNonZero);
 pub struct PyPseudonymSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyPseudonymSessionPublicKey {
     /// Returns the group element associated with this public key.
     #[pyo3(name = "to_point")]
@@ -74,6 +75,7 @@ impl PyPseudonymSessionPublicKey {
 pub struct PyAttributeSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyAttributeSessionPublicKey {
     /// Returns the group element associated with this public key.
     #[pyo3(name = "to_point")]
@@ -116,6 +118,7 @@ impl PyAttributeSessionPublicKey {
 pub struct PyPseudonymGlobalPublicKey(pub PyGroupElement);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyPseudonymGlobalPublicKey {
     /// Creates a new pseudonym global public key from a group element.
     #[new]
@@ -173,6 +176,7 @@ impl PyPseudonymGlobalPublicKey {
 pub struct PyAttributeGlobalPublicKey(pub PyGroupElement);
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyAttributeGlobalPublicKey {
     /// Creates a new attribute global public key from a group element.
     #[new]

@@ -2,7 +2,6 @@
 
 #[cfg(feature = "offline")]
 use crate::client::OfflineClient;
-use crate::keys::*;
 #[cfg(feature = "json")]
 use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 #[cfg(feature = "long")]
@@ -15,7 +14,8 @@ use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
-use crate::keys::py::{PyGlobalPublicKeys};
+use crate::keys::py::PyGlobalPublicKeys;
+use crate::keys::*;
 use derive_more::{Deref, From, Into};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -143,7 +143,9 @@ impl PyOfflineClient {
     fn py_encrypt_record(&self, record: &PyRecord) -> PyResult<PyEncryptedRecord> {
         use crate::data::traits::Encryptable;
         let mut rng = rand::rng();
-        let result = record.0.encrypt_global(&self.0.global_public_keys, &mut rng);
+        let result = record
+            .0
+            .encrypt_global(&self.0.global_public_keys, &mut rng);
         Ok(PyEncryptedRecord(result))
     }
 
@@ -153,7 +155,9 @@ impl PyOfflineClient {
     fn py_encrypt_long_record(&self, record: &PyLongRecord) -> PyResult<PyLongEncryptedRecord> {
         use crate::data::traits::Encryptable;
         let mut rng = rand::rng();
-        let result = record.0.encrypt_global(&self.0.global_public_keys, &mut rng);
+        let result = record
+            .0
+            .encrypt_global(&self.0.global_public_keys, &mut rng);
         Ok(PyLongEncryptedRecord(result))
     }
 

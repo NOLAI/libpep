@@ -1,9 +1,9 @@
 //! Secret types and functions for deriving cryptographic factors from contexts and secrets.
 
-use derive_more::From;
 use super::types::*;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use derive_more::From;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 #[cfg(feature = "legacy")]

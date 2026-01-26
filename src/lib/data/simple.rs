@@ -4,9 +4,7 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
-use crate::data::traits::{
-    Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -515,9 +513,9 @@ impl crate::data::traits::HasStructure for EncryptedAttribute {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::client::{decrypt, encrypt};
     use crate::factors::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
-    use crate::client::{decrypt, encrypt};
 
     #[test]
     fn pseudonym_encode_decode() {

@@ -8,20 +8,20 @@ use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
 use crate::data::json::utils;
 use crate::data::traits::Transcryptable;
-use crate::factors::TranscryptionInfo;
-use crate::transcryptor::transcrypt_batch;
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::GlobalPublicKeys;
-use crate::keys::SessionKeys;
 use crate::factors::wasm::contexts::{
     WASMEncryptionContext, WASMPseudonymizationDomain, WASMTranscryptionInfo,
 };
 use crate::factors::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::TranscryptionInfo;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::wasm::types::WASMGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::wasm::types::WASMGlobalSecretKeys;
 use crate::keys::wasm::types::WASMSessionKeys;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::keys::GlobalPublicKeys;
+use crate::keys::SessionKeys;
+use crate::transcryptor::transcrypt_batch;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 

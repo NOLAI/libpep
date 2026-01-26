@@ -1,17 +1,21 @@
 //! WASM bindings for transcryption functions.
 
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
+#[cfg(feature = "long")]
+use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
-use crate::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
+use crate::factors::{
+    AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
+};
+#[cfg(not(feature = "elgamal3"))]
 use crate::keys::wasm::types::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
-#[cfg(feature = "long")]
-use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
-use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use wasm_bindgen::prelude::*;
 
 /// Pseudonymize an encrypted pseudonym from one domain/session to another.
@@ -276,4 +280,3 @@ pub fn wasm_rerandomize_long_encrypted_attribute_known(
 // ============================================================================
 // Record Functions
 // ============================================================================
-

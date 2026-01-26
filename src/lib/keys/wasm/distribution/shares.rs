@@ -2,11 +2,6 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::keys::wasm::types::{
-    WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
-    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
-    WASMSessionKeys,
-};
 use crate::arithmetic::scalars::ScalarTraits;
 use crate::arithmetic::wasm::group_elements::WASMGroupElement;
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
@@ -18,6 +13,11 @@ use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::keys::distribution::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
+};
+use crate::keys::wasm::types::{
+    WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
+    WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
+    WASMSessionKeys,
 };
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;

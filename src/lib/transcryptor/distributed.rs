@@ -50,10 +50,7 @@ impl DistributedTranscryptor {
         &self,
         session: &EncryptionContext,
     ) -> crate::keys::distribution::PseudonymSessionKeyShare {
-        let k = crate::factors::make_pseudonym_rekey_factor(
-            self.system.rekeying_secret(),
-            session,
-        );
+        let k = crate::factors::make_pseudonym_rekey_factor(self.system.rekeying_secret(), session);
         crate::keys::distribution::make_pseudonym_session_key_share(&k, &self.blinding_factor)
     }
 
@@ -62,10 +59,7 @@ impl DistributedTranscryptor {
         &self,
         session: &EncryptionContext,
     ) -> crate::keys::distribution::AttributeSessionKeyShare {
-        let k = crate::factors::make_attribute_rekey_factor(
-            self.system.rekeying_secret(),
-            session,
-        );
+        let k = crate::factors::make_attribute_rekey_factor(self.system.rekeying_secret(), session);
         crate::keys::distribution::make_attribute_session_key_share(&k, &self.blinding_factor)
     }
 
@@ -75,14 +69,10 @@ impl DistributedTranscryptor {
         &self,
         session: &EncryptionContext,
     ) -> crate::keys::distribution::SessionKeyShares {
-        let pseudonym_rekey_factor = crate::factors::make_pseudonym_rekey_factor(
-            self.system.rekeying_secret(),
-            session,
-        );
-        let attribute_rekey_factor = crate::factors::make_attribute_rekey_factor(
-            self.system.rekeying_secret(),
-            session,
-        );
+        let pseudonym_rekey_factor =
+            crate::factors::make_pseudonym_rekey_factor(self.system.rekeying_secret(), session);
+        let attribute_rekey_factor =
+            crate::factors::make_attribute_rekey_factor(self.system.rekeying_secret(), session);
         crate::keys::distribution::make_session_key_shares(
             &pseudonym_rekey_factor,
             &attribute_rekey_factor,

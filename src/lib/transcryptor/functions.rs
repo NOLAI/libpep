@@ -1,6 +1,8 @@
 //! Polymorphic transcryption helper functions for pseudonymization, rekeying, and rerandomization.
 
-use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+#[cfg(not(feature = "elgamal3"))]
+use crate::data::traits::Encryptable;
+use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
 use rand_core::{CryptoRng, RngCore};
 

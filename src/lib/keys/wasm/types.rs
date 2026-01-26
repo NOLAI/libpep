@@ -259,8 +259,14 @@ pub struct WASMGlobalSecretKeys {
 #[wasm_bindgen(js_class = "GlobalSecretKeys")]
 impl WASMGlobalSecretKeys {
     #[wasm_bindgen(constructor)]
-    pub fn new(pseudonym: WASMPseudonymGlobalSecretKey, attribute: WASMAttributeGlobalSecretKey) -> Self {
-        Self { pseudonym, attribute }
+    pub fn new(
+        pseudonym: WASMPseudonymGlobalSecretKey,
+        attribute: WASMAttributeGlobalSecretKey,
+    ) -> Self {
+        Self {
+            pseudonym,
+            attribute,
+        }
     }
 
     #[wasm_bindgen(getter)]

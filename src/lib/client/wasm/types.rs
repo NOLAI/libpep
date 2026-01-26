@@ -2,7 +2,6 @@
 
 #[cfg(feature = "offline")]
 use crate::client::OfflineClient;
-use crate::keys::*;
 #[cfg(feature = "json")]
 use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 #[cfg(feature = "long")]
@@ -16,6 +15,7 @@ use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::keys::wasm::types::WASMGlobalPublicKeys;
+use crate::keys::*;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 

@@ -17,15 +17,13 @@ pub trait SessionKeyShare:
 impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
     type PublicKeyType = crate::keys::PseudonymSessionPublicKey;
     type SecretKeyType = crate::keys::PseudonymSessionSecretKey;
-    type BlindedGlobalSecretKeyType =
-        crate::keys::distribution::BlindedPseudonymGlobalSecretKey;
+    type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedPseudonymGlobalSecretKey;
 }
 
 impl SessionKeyShare for crate::keys::distribution::AttributeSessionKeyShare {
     type PublicKeyType = crate::keys::AttributeSessionPublicKey;
     type SecretKeyType = crate::keys::AttributeSessionSecretKey;
-    type BlindedGlobalSecretKeyType =
-        crate::keys::distribution::BlindedAttributeGlobalSecretKey;
+    type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedAttributeGlobalSecretKey;
 }
 
 /// Polymorphic function to reconstruct a session key from a blinded global secret key and session key shares.

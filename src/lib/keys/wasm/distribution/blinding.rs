@@ -2,10 +2,7 @@ use crate::arithmetic::scalars::ScalarTraits;
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::keys::distribution::*;
 use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::wasm::types::{
-    WASMAttributeGlobalSecretKey,
-    WASMPseudonymGlobalSecretKey,
-};
+use crate::keys::wasm::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -166,4 +163,3 @@ pub fn wasm_make_blinded_global_keys(
     )
     .map(WASMBlindedGlobalKeys)
 }
-

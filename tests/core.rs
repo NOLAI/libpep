@@ -1,7 +1,5 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-#[cfg(feature = "batch")]
-use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use libpep::client::{decrypt, encrypt};
 use libpep::data::long::{LongAttribute, LongPseudonym};
 use libpep::data::records::LongEncryptedRecord;
@@ -11,10 +9,12 @@ use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
+use libpep::keys::*;
 #[cfg(feature = "elgamal3")]
 use libpep::transcryptor::rerandomize;
 use libpep::transcryptor::{pseudonymize, rekey, transcrypt};
-use libpep::keys::*;
+#[cfg(feature = "batch")]
+use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 
 #[test]
 fn test_core_flow() {

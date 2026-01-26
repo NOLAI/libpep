@@ -1,10 +1,12 @@
+use super::blinding::{
+    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
+    PyBlindingFactor,
+};
 use crate::arithmetic::py::group_elements::PyGroupElement;
 use crate::keys::distribution::*;
 use crate::keys::py::types::{
-    PyAttributeGlobalPublicKey, PyGlobalPublicKeys,
-    PyPseudonymGlobalPublicKey,
+    PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
-use super::blinding::{PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor};
 use pyo3::prelude::*;
 
 #[pyfunction]
@@ -87,4 +89,3 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_make_distributed_global_keys, m)?)?;
     Ok(())
 }
-

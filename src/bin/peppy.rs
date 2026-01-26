@@ -16,7 +16,6 @@ use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::transcryptor::transcrypt;
 use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
 #[cfg(feature = "json")]
 use libpep::keys::make_session_keys;
@@ -26,6 +25,7 @@ use libpep::keys::{
     GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,
     PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey, SecretKey,
 };
+use libpep::transcryptor::transcrypt;
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]

@@ -1,28 +1,28 @@
 //! Python bindings for PEP JSON encryption.
 
-use crate::transcryptor::transcrypt_batch;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::client::decrypt_global;
+#[cfg(feature = "offline")]
+use crate::client::encrypt_global;
 use crate::data::json::builder::PEPJSONBuilder;
 use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
 use crate::data::json::utils;
 use crate::data::traits::Transcryptable;
+use crate::factors::py::contexts::{
+    PyEncryptionContext, PyPseudonymizationDomain, PyTranscryptionInfo,
+};
 use crate::factors::TranscryptionInfo;
-#[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::client::decrypt_global;
 #[cfg(feature = "offline")]
-use crate::client::encrypt_global;
+use crate::keys::py::types::PyGlobalPublicKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
+use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::GlobalSecretKeys;
-use crate::factors::py::contexts::{
-    PyEncryptionContext, PyPseudonymizationDomain, PyTranscryptionInfo,
-};
-#[cfg(feature = "offline")]
-use crate::keys::py::types::PyGlobalPublicKeys;
-use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
-#[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
+use crate::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList};

@@ -2,10 +2,6 @@
 
 use crate::client::distributed::make_session_keys_distributed;
 use crate::client::Client;
-use crate::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
-};
-use crate::keys::*;
 #[cfg(feature = "json")]
 use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 #[cfg(feature = "long")]
@@ -18,12 +14,16 @@ use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
-use crate::keys::py::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
+use crate::keys::distribution::{
+    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
+};
 use crate::keys::py::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
 use crate::keys::py::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyBlindedGlobalKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
 };
+use crate::keys::py::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
+use crate::keys::*;
 use derive_more::{Deref, From, Into};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

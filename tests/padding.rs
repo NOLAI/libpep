@@ -5,8 +5,8 @@ use libpep::data::simple::{EncryptedPseudonym, Pseudonym};
 use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
-use libpep::transcryptor::pseudonymize;
 use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
+use libpep::transcryptor::pseudonymize;
 use std::io::Error;
 
 #[test]

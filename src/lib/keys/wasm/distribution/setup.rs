@@ -1,13 +1,13 @@
+use super::blinding::{
+    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
+};
 use crate::arithmetic::wasm::group_elements::WASMGroupElement;
 use crate::keys::distribution::*;
 use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::keys::wasm::types::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMGlobalPublicKeys,
     WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
-};
-use super::blinding::{
-    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
-    WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
 use wasm_bindgen::prelude::*;
 

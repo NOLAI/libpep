@@ -2,11 +2,6 @@
 
 use crate::data::records::EncryptedRecord;
 use crate::data::records::LongEncryptedRecord;
-use crate::factors::wasm::contexts::{
-    WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
-};
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 #[cfg(feature = "json")]
 use crate::data::wasm::json::WASMEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
@@ -15,6 +10,11 @@ use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseud
 use crate::data::wasm::records::WASMLongRecordEncrypted;
 use crate::data::wasm::records::WASMRecordEncrypted;
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::factors::wasm::contexts::{
+    WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
+};
+use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use wasm_bindgen::prelude::*;
 
 /// Batch pseudonymize encrypted pseudonyms.

@@ -1,11 +1,10 @@
 use crate::arithmetic::py::scalars::PyScalarNonZero;
 use crate::arithmetic::scalars::ScalarTraits;
 use crate::keys::distribution::*;
-use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::keys::py::types::{
-    PyAttributeGlobalSecretKey, PyGlobalSecretKeys,
-    PyPseudonymGlobalSecretKey,
+    PyAttributeGlobalSecretKey, PyGlobalSecretKeys, PyPseudonymGlobalSecretKey,
 };
+use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
@@ -268,8 +267,14 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindedPseudonymGlobalSecretKey>()?;
     m.add_class::<PyBlindedAttributeGlobalSecretKey>()?;
     m.add_class::<PyBlindedGlobalKeys>()?;
-    m.add_function(wrap_pyfunction!(py_make_blinded_pseudonym_global_secret_key, m)?)?;
-    m.add_function(wrap_pyfunction!(py_make_blinded_attribute_global_secret_key, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_pseudonym_global_secret_key,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        py_make_blinded_attribute_global_secret_key,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(py_make_blinded_global_keys, m)?)?;
     Ok(())
 }
