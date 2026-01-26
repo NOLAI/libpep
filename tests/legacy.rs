@@ -3,8 +3,7 @@
 mod legacy_pep_repo_tests {
     use libpep::arithmetic::scalars::ScalarTraits;
     use libpep::factors::contexts::PseudonymizationDomain;
-    use libpep::factors::derivation::make_pseudonymisation_factor;
-    use libpep::factors::secrets::PseudonymizationSecret;
+    use libpep::factors::secrets::{make_pseudonymisation_factor, PseudonymizationSecret};
     use libpep::factors::PseudonymRekeyFactor;
     use libpep::keys::distribution::blinding::BlindingFactor;
     use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
