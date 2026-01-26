@@ -3,18 +3,18 @@
 #![allow(clippy::expect_used)]
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use libpep::core::client::{Client, DistributedClient};
-use libpep::core::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::core::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::core::transcryptor::DistributedTranscryptor;
+use libpep::client::{Client, Distributed};
+use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
 #[cfg(feature = "long")]
-use libpep::core::data::long::{LongAttribute, LongPseudonym};
+use libpep::data::long::{LongAttribute, LongPseudonym};
 
 #[cfg(feature = "json")]
-use libpep::core::data::json::PEPJSONValue;
+use libpep::data::json::PEPJSONValue;
 
 const NUM_ITEMS: usize = 100;
 const NUM_TRANSCRYPTORS: usize = 2;
@@ -34,7 +34,7 @@ fn setup_system() -> (
 
     // Create distributed global keys
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::core::keys::distribution::make_distributed_global_keys(n, rng);
+        libpep::keys::distribution::make_distributed_global_keys(n, rng);
 
     // Create transcryptors
     let systems: Vec<DistributedTranscryptor> = (0..n)

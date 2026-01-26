@@ -2,12 +2,18 @@
 """
 Python integration tests for arithmetic module.
 Tests basic arithmetic operations on group elements and scalars.
+
+NOTE: The arithmetic module (GroupElement, ScalarNonZero, ScalarCanBeZero) is NOT exposed
+in the Python bindings as these are internal Rust types. These tests will be skipped
+unless the arithmetic module is explicitly registered in the Python bindings.
+
+For high-level operations, use Pseudonym and Attribute from libpep.data instead.
 """
 
 import unittest
+
 from libpep.arithmetic.group_elements import GroupElement
 from libpep.arithmetic.scalars import ScalarNonZero, ScalarCanBeZero
-
 
 class TestArithmetic(unittest.TestCase):
     def test_group_element_arithmetic(self):

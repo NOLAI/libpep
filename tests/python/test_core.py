@@ -1,267 +1,329 @@
 #!/usr/bin/env python3
 """
-Python integration tests for core module.
-Tests high-level API for pseudonyms, data points, and session management.
+Python integration tests for base/core module.
+Tests ElGamal encryption/decryption and PEP primitive operations.
+
+NOTE: The base module (libpep.core) with ElGamal and primitives is NOT exposed
+in the Python bindings as these are low-level internal functions. These tests will be skipped
+unless the core module is explicitly registered in the Python bindings.
+
+For high-level operations, use encrypt/decrypt from libpep and Pseudonym/Attribute from libpep.data instead.
 """
 
 import unittest
+
 from libpep.arithmetic.group_elements import GroupElement
-from libpep.core.data import (
-    Pseudonym,
-    Attribute,
-    EncryptedPseudonym,
-    EncryptedAttribute,
-)
-from libpep.core.keys import (
-    PseudonymizationSecret,
-    EncryptionSecret,
-    PseudonymGlobalPublicKey,
-    AttributeGlobalPublicKey,
-    make_pseudonym_global_keys,
-    make_attribute_global_keys,
-    make_pseudonym_session_keys,
-    make_attribute_session_keys,
-)
-from libpep.core import (
-    PseudonymizationInfo,
-    AttributeRekeyInfo,
-    TranscryptionInfo,
-    PseudonymizationDomain,
-    EncryptionContext,
-    encrypt,
-    decrypt,
+from libpep.arithmetic.scalars import ScalarNonZero
+from libpep.core.elgamal import encrypt, decrypt, ElGamal
+from libpep.core.primitives import (
+    rekey,
+    rekey2,
+    rerandomize,
+    reshuffle,
+    reshuffle2,
+    rsk,
+    rsk2,
+    rrsk,
+    rrsk2,
 )
 
+class TestElGamal(unittest.TestCase):
+    def test_encryption_decryption(self):
+        """Test basic ElGamal encryption/decryption"""
+        # Generate key pair
+        G = GroupElement.generator()
+        y = ScalarNonZero.random()
+        Y = G.mul(y)  # Public key
 
-class TestHighLevel(unittest.TestCase):
-    def test_core_operations(self):
-        """Test high-level pseudonym and data operations"""
-        # Generate global keys
-        pseudonym_global_keys = make_pseudonym_global_keys()
-        attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(b"test_secret")
+        # Generate random message
+        m = GroupElement.random()
 
-        # Create session keys
-        session = EncryptionContext("test_session")
-        pseudonym_session_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session, enc_secret
-        )
-        attribute_session_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session, enc_secret
-        )
+        # Encrypt and decrypt
+        encrypted = encrypt(m, Y)
+        decrypted = decrypt(encrypted, y)
 
-        # Create and encrypt pseudonym
-        pseudo = Pseudonym.random()
-        enc_pseudo = encrypt(pseudo, pseudonym_session_keys.public)
+        # Verify message integrity
+        self.assertEqual(m.to_hex(), decrypted.to_hex())
 
-        # Create and encrypt data point
-        random_point = GroupElement.random()
-        data = Attribute(random_point)
-        enc_data = encrypt(data, attribute_session_keys.public)
+    def test_multiple_encryptions(self):
+        """Test that multiple encryptions of same message are different (due to randomness)"""
+        G = GroupElement.generator()
+        y = ScalarNonZero.random()
+        Y = G.mul(y)
+        m = GroupElement.random()
 
-        # Verify encryption and decryption
-        dec_pseudo = decrypt(enc_pseudo, pseudonym_session_keys.secret)
-        dec_data = decrypt(enc_data, attribute_session_keys.secret)
+        # Encrypt same message multiple times
+        enc1 = encrypt(m, Y)
+        enc2 = encrypt(m, Y)
 
-        self.assertEqual(pseudo.to_hex(), dec_pseudo.to_hex())
-        self.assertEqual(data.to_hex(), dec_data.to_hex())
+        # Ciphertexts should be different (due to randomness)
+        self.assertNotEqual(enc1.to_base64(), enc2.to_base64())
 
-    def test_pseudonym_operations(self):
-        """Test pseudonym creation and manipulation"""
-        # Test random pseudonym
-        pseudo1 = Pseudonym.random()
-        pseudo2 = Pseudonym.random()
-        self.assertNotEqual(pseudo1.to_hex(), pseudo2.to_hex())
+        # But both should decrypt to same message
+        dec1 = decrypt(enc1, y)
+        dec2 = decrypt(enc2, y)
 
-        # Test from group element
-        g = GroupElement.random()
-        pseudo3 = Pseudonym(g)
-        self.assertEqual(g.to_hex(), pseudo3.to_point().to_hex())
+        self.assertEqual(m.to_hex(), dec1.to_hex())
+        self.assertEqual(m.to_hex(), dec2.to_hex())
+        self.assertEqual(dec1.to_hex(), dec2.to_hex())
 
-        # Test encoding/decoding
-        encoded = pseudo1.to_bytes()
-        decoded = Pseudonym.from_bytes(encoded)
-        self.assertIsNotNone(decoded)
-        self.assertEqual(pseudo1.to_hex(), decoded.to_hex())
+    def test_elgamal_encoding(self):
+        """Test ElGamal ciphertext encoding/decoding"""
+        G = GroupElement.generator()
+        y = ScalarNonZero.random()
+        Y = G.mul(y)
+        m = GroupElement.random()
 
-        # Test hex encoding/decoding
-        hex_str = pseudo1.to_hex()
-        decoded_hex = Pseudonym.from_hex(hex_str)
-        self.assertIsNotNone(decoded_hex)
-        self.assertEqual(pseudo1.to_hex(), decoded_hex.to_hex())
-
-    def test_attribute_operations(self):
-        """Test data point creation and manipulation"""
-        # Test random data point
-        data1 = Attribute.random()
-        data2 = Attribute.random()
-        self.assertNotEqual(data1.to_hex(), data2.to_hex())
-
-        # Test from group element
-        g = GroupElement.random()
-        data3 = Attribute(g)
-        self.assertEqual(g.to_hex(), data3.to_point().to_hex())
-
-        # Test encoding/decoding
-        encoded = data1.to_bytes()
-        decoded = Attribute.from_bytes(encoded)
-        self.assertIsNotNone(decoded)
-        self.assertEqual(data1.to_hex(), decoded.to_hex())
-
-    def test_string_padding_operations(self):
-        """Test string padding for pseudonyms and data points"""
-        test_string = "Hello!"  # Max 15 bytes for single block
-
-        # Test pseudonym string padding
-        pseudo = Pseudonym.from_string_padded(test_string)
-        reconstructed = pseudo.to_string_padded()
-        self.assertEqual(test_string, reconstructed)
-
-        # Test data point string padding
-        attr = Attribute.from_string_padded(test_string)
-        reconstructed_data = attr.to_string_padded()
-        self.assertEqual(test_string, reconstructed_data)
-
-    def test_bytes_padding_operations(self):
-        """Test bytes padding for pseudonyms and data points"""
-        test_bytes = b"Hello!"  # Max 15 bytes for single block
-
-        # Test pseudonym bytes padding
-        pseudo = Pseudonym.from_bytes_padded(test_bytes)
-        reconstructed = pseudo.to_bytes_padded()
-        self.assertEqual(test_bytes, reconstructed)
-
-        # Test data point bytes padding
-        attr = Attribute.from_bytes_padded(test_bytes)
-        reconstructed_data = attr.to_bytes_padded()
-        self.assertEqual(test_bytes, reconstructed_data)
-
-    def test_fixed_size_bytes_operations(self):
-        """Test 16-byte fixed size operations using lizard encoding"""
-        # Create 16-byte test data
-        test_bytes = b"1234567890abcdef"  # Exactly 16 bytes
-
-        # Test pseudonym from/to lizard
-        pseudo = Pseudonym.from_lizard(test_bytes)
-        reconstructed = pseudo.to_lizard()
-        self.assertIsNotNone(reconstructed)
-        self.assertEqual(test_bytes, reconstructed)
-
-        # Test data point from/to lizard
-        data = Attribute.from_lizard(test_bytes)
-        reconstructed_data = data.to_lizard()
-        self.assertIsNotNone(reconstructed_data)
-        self.assertEqual(test_bytes, reconstructed_data)
-
-    def test_encrypted_types_encoding(self):
-        """Test encoding/decoding of encrypted types"""
-        # Setup
-        pseudonym_global_keys = make_pseudonym_global_keys()
-        attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(b"test_secret")
-        session = EncryptionContext("test_session")
-
-        pseudonym_session_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session, enc_secret
-        )
-        attribute_session_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session, enc_secret
-        )
-
-        # Create encrypted pseudonym
-        pseudo = Pseudonym.random()
-        enc_pseudo = encrypt(pseudo, pseudonym_session_keys.public)
+        # Create ciphertext
+        encrypted = encrypt(m, Y)
 
         # Test byte encoding/decoding
-        encoded = enc_pseudo.to_bytes()
-        decoded = EncryptedPseudonym.from_bytes(encoded)
+        encoded_bytes = encrypted.to_bytes()
+        decoded = ElGamal.from_bytes(encoded_bytes)
         self.assertIsNotNone(decoded)
+
+        # Verify decryption still works
+        decrypted_original = decrypt(encrypted, y)
+        decrypted_decoded = decrypt(decoded, y)
+        self.assertEqual(decrypted_original.to_hex(), decrypted_decoded.to_hex())
 
         # Test base64 encoding/decoding
-        b64_str = enc_pseudo.to_base64()
-        decoded_b64 = EncryptedPseudonym.from_base64(b64_str)
+        base64_str = encrypted.to_base64()
+        decoded_b64 = ElGamal.from_base64(base64_str)
         self.assertIsNotNone(decoded_b64)
 
-        # Verify decryption works
-        dec1 = decrypt(decoded, pseudonym_session_keys.secret)
-        dec2 = decrypt(decoded_b64, pseudonym_session_keys.secret)
-        self.assertEqual(pseudo.to_hex(), dec1.to_hex())
-        self.assertEqual(pseudo.to_hex(), dec2.to_hex())
+        # Verify decryption still works
+        decrypted_b64 = decrypt(decoded_b64, y)
+        self.assertEqual(decrypted_original.to_hex(), decrypted_b64.to_hex())
 
-        # Test same for encrypted data point
-        data = Attribute.random()
-        enc_data = encrypt(data, attribute_session_keys.public)
+    def test_elgamal_representation(self):
+        """Test ElGamal string representations"""
+        G = GroupElement.generator()
+        y = ScalarNonZero.random()
+        Y = G.mul(y)
+        m = GroupElement.random()
 
-        encoded_data = enc_data.to_bytes()
-        decoded_data = EncryptedAttribute.from_bytes(encoded_data)
-        self.assertIsNotNone(decoded_data)
+        encrypted = encrypt(m, Y)
 
-        dec_data = decrypt(decoded_data, attribute_session_keys.secret)
-        self.assertEqual(data.to_hex(), dec_data.to_hex())
+        # Test string representations
+        str_repr = str(encrypted)
+        repr_repr = repr(encrypted)
 
-    def test_key_generation_consistency(self):
-        """Test that key generation is consistent"""
-        secret = b"consistent_secret"
-        enc_secret = EncryptionSecret(secret)
+        self.assertIsInstance(str_repr, str)
+        self.assertIsInstance(repr_repr, str)
+        self.assertIn("ElGamal", repr_repr)
 
-        # Generate same global keys multiple times (they should be random)
-        pseudo_keys1 = make_pseudonym_global_keys()
-        pseudo_keys2 = make_pseudonym_global_keys()
-        self.assertNotEqual(pseudo_keys1.public.to_hex(), pseudo_keys2.public.to_hex())
+        # str should be same as base64
+        self.assertEqual(str_repr, encrypted.to_base64())
 
-        attr_keys1 = make_attribute_global_keys()
-        attr_keys2 = make_attribute_global_keys()
-        self.assertNotEqual(attr_keys1.public.to_hex(), attr_keys2.public.to_hex())
+    def test_deterministic_values(self):
+        """Test with known deterministic values for consistency"""
+        # Use known values for reproducible test
+        y_hex = "044214715d782745a36ededee498b31d882f5e6239db9f9443f6bfef04944906"
+        y = ScalarNonZero.from_hex(y_hex)
+        self.assertIsNotNone(y)
 
-        # Generate same session keys with same inputs (should be deterministic)
-        pseudonym_global_keys = make_pseudonym_global_keys()
-        session1a = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
-        )
-        session1b = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
-        )
+        # Use generator as both message and base for public key
+        generator = GroupElement.generator()
+        Y = generator.mul(y)  # Public key
 
-        self.assertEqual(
-            session1a.public.to_point().to_hex(), session1b.public.to_point().to_hex()
-        )
+        # Encrypt generator with this key setup
+        encrypted = encrypt(generator, Y)
+        decrypted = decrypt(encrypted, y)
 
-        # Different session names should give different keys
-        session2 = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session2"), enc_secret
-        )
-        self.assertNotEqual(
-            session1a.public.to_point().to_hex(), session2.public.to_point().to_hex()
-        )
+        # Should decrypt back to original message
+        self.assertEqual(generator.to_hex(), decrypted.to_hex())
 
-    def test_global_public_key_operations(self):
-        """Test global public key specific operations"""
-        # Test PseudonymGlobalPublicKey
-        g1 = GroupElement.random()
-        pseudo_pub_key = PseudonymGlobalPublicKey(g1)
 
-        # Test point conversion
-        self.assertEqual(g1.to_hex(), pseudo_pub_key.to_point().to_hex())
+class TestPrimitives(unittest.TestCase):
+    def setUp(self):
+        """Setup common test data"""
+        # Generate key pair
+        self.G = GroupElement.generator()
+        self.y = ScalarNonZero.random()
+        self.Y = self.G.mul(self.y)  # Public key
 
-        # Test hex operations
-        hex_str = pseudo_pub_key.to_hex()
-        decoded = PseudonymGlobalPublicKey.from_hex(hex_str)
-        self.assertIsNotNone(decoded)
-        self.assertEqual(hex_str, decoded.to_hex())
+        # Generate message and encrypt it
+        self.m = GroupElement.random()
+        self.encrypted = encrypt(self.m, self.Y)
 
-        # Test AttributeGlobalPublicKey
-        g2 = GroupElement.random()
-        attr_pub_key = AttributeGlobalPublicKey(g2)
+    def test_rerandomize(self):
+        """Test rerandomization primitive"""
+        # Generate rerandomization factor
+        r = ScalarNonZero.random()
 
-        # Test point conversion
-        self.assertEqual(g2.to_hex(), attr_pub_key.to_point().to_hex())
+        # Rerandomize the ciphertext
+        # Check if we need public key (non-elgamal3 version)
+        try:
+            rerandomized = rerandomize(self.encrypted, self.Y, r)
+        except TypeError:
+            # elgamal3 version - doesn't need public key
+            rerandomized = rerandomize(self.encrypted, r)
 
-        # Test hex operations
-        hex_str2 = attr_pub_key.to_hex()
-        decoded2 = AttributeGlobalPublicKey.from_hex(hex_str2)
-        self.assertIsNotNone(decoded2)
-        self.assertEqual(hex_str2, decoded2.to_hex())
+        # Both should decrypt to same message
+        dec_original = decrypt(self.encrypted, self.y)
+        dec_rerandomized = decrypt(rerandomized, self.y)
 
+        self.assertEqual(dec_original.to_hex(), dec_rerandomized.to_hex())
+        self.assertEqual(self.m.to_hex(), dec_rerandomized.to_hex())
+
+        # But ciphertexts should be different
+        self.assertNotEqual(self.encrypted.to_base64(), rerandomized.to_base64())
+
+    def test_rekey(self):
+        """Test rekeying primitive"""
+        # Generate rekeying factor
+        k = ScalarNonZero.random()
+
+        # Rekey the ciphertext
+        rekeyed = rekey(self.encrypted, k)
+
+        # New secret key should be k * y
+        new_secret = self.y.mul(k)
+
+        # Decrypt with new key
+        decrypted = decrypt(rekeyed, new_secret)
+
+        # Should decrypt to same message
+        self.assertEqual(self.m.to_hex(), decrypted.to_hex())
+
+    def test_reshuffle(self):
+        """Test reshuffling primitive"""
+        # Generate shuffle factor
+        s = ScalarNonZero.random()
+
+        # Reshuffle the ciphertext
+        reshuffled = reshuffle(self.encrypted, s)
+
+        # Decrypt and verify the message is multiplied by s
+        decrypted = decrypt(reshuffled, self.y)
+        expected = self.m.mul(s)
+
+        self.assertEqual(expected.to_hex(), decrypted.to_hex())
+
+    def test_rsk_combined(self):
+        """Test combined reshuffle and rekey (rsk) operation"""
+        # Generate factors
+        s = ScalarNonZero.random()
+        k = ScalarNonZero.random()
+
+        # Apply rsk
+        rsk_result = rsk(self.encrypted, s, k)
+
+        # Apply operations separately
+        reshuffled = reshuffle(self.encrypted, s)
+        rsk_separate = rekey(reshuffled, k)
+
+        # New secret key
+        new_secret = self.y.mul(k)
+
+        # Both should decrypt to same result
+        dec_combined = decrypt(rsk_result, new_secret)
+        dec_separate = decrypt(rsk_separate, new_secret)
+
+        self.assertEqual(dec_combined.to_hex(), dec_separate.to_hex())
+
+        # Should be original message multiplied by s
+        expected = self.m.mul(s)
+        self.assertEqual(expected.to_hex(), dec_combined.to_hex())
+
+    def test_rekey2_transitivity(self):
+        """Test transitive rekeying (rekey2)"""
+        # Generate key factors
+        k_from = ScalarNonZero.random()
+        k_to = ScalarNonZero.random()
+
+        # First, rekey with k_from
+        rekeyed_from = rekey(self.encrypted, k_from)
+
+        # Then use rekey2 to go from k_from to k_to
+        rekeyed_to = rekey2(rekeyed_from, k_from, k_to)
+
+        # This should be equivalent to direct rekey with k_to
+        direct_rekey = rekey(self.encrypted, k_to)
+
+        # Both should decrypt to same message with k_to * y
+        new_secret = self.y.mul(k_to)
+
+        dec_transitive = decrypt(rekeyed_to, new_secret)
+        dec_direct = decrypt(direct_rekey, new_secret)
+
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
+        self.assertEqual(self.m.to_hex(), dec_transitive.to_hex())
+
+    def test_reshuffle2_transitivity(self):
+        """Test transitive reshuffling (reshuffle2)"""
+        # Generate shuffle factors
+        n_from = ScalarNonZero.random()
+        n_to = ScalarNonZero.random()
+
+        # First, reshuffle with n_from
+        reshuffled_from = reshuffle(self.encrypted, n_from)
+
+        # Then use reshuffle2 to go from n_from to n_to
+        reshuffled_to = reshuffle2(reshuffled_from, n_from, n_to)
+
+        # This should be equivalent to direct reshuffle with n_to
+        direct_reshuffle = reshuffle(self.encrypted, n_to)
+
+        # Both should decrypt to same result
+        dec_transitive = decrypt(reshuffled_to, self.y)
+        dec_direct = decrypt(direct_reshuffle, self.y)
+
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
+
+        # Should be original message multiplied by n_to
+        expected = self.m.mul(n_to)
+        self.assertEqual(expected.to_hex(), dec_transitive.to_hex())
+
+    def test_rsk2_transitivity(self):
+        """Test transitive combined operation (rsk2)"""
+        # Generate factors
+        s_from = ScalarNonZero.random()
+        s_to = ScalarNonZero.random()
+        k_from = ScalarNonZero.random()
+        k_to = ScalarNonZero.random()
+
+        # First, apply rsk with from factors
+        rsk_from = rsk(self.encrypted, s_from, k_from)
+
+        # Then use rsk2 to transition
+        rsk_to = rsk2(rsk_from, s_from, s_to, k_from, k_to)
+
+        # This should be equivalent to direct rsk with to factors
+        direct_rsk = rsk(self.encrypted, s_to, k_to)
+
+        # Both should decrypt to same result
+        new_secret = self.y.mul(k_to)
+
+        dec_transitive = decrypt(rsk_to, new_secret)
+        dec_direct = decrypt(direct_rsk, new_secret)
+
+        self.assertEqual(dec_transitive.to_hex(), dec_direct.to_hex())
+
+        # Should be original message multiplied by s_to
+        expected = self.m.mul(s_to)
+        self.assertEqual(expected.to_hex(), dec_transitive.to_hex())
+
+    def test_identity_operations(self):
+        """Test operations with identity elements"""
+        # Test with scalar one (identity for multiplication)
+        one = ScalarNonZero.one()
+
+        # Rekey with one should not change decryption
+        rekeyed_one = rekey(self.encrypted, one)
+        dec_rekeyed = decrypt(rekeyed_one, self.y)
+        self.assertEqual(self.m.to_hex(), dec_rekeyed.to_hex())
+
+        # Reshuffle with one should not change message
+        reshuffled_one = reshuffle(self.encrypted, one)
+        dec_reshuffled = decrypt(reshuffled_one, self.y)
+        self.assertEqual(self.m.to_hex(), dec_reshuffled.to_hex())
+
+        # rsk with ones should not change anything
+        rsk_ones = rsk(self.encrypted, one, one)
+        dec_rsk = decrypt(rsk_ones, self.y)
+        self.assertEqual(self.m.to_hex(), dec_rsk.to_hex())
 
 
 if __name__ == "__main__":

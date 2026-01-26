@@ -41,6 +41,6 @@ dev = [
 ]
 
 [tool.maturin]
-features = ["pyo3/extension-module", "python"]
+features = ["pyo3/extension-module", "python", "json", "long", "offline", "batch", "serde"]
 module-name = "libpep"
 

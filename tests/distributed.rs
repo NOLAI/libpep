@@ -1,10 +1,10 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::core::client::{Client, DistributedClient};
-use libpep::core::contexts::*;
-use libpep::core::data::simple::*;
-use libpep::core::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::core::transcryptor::DistributedTranscryptor;
+use libpep::client::{Client, Distributed};
+use libpep::data::simple::*;
+use libpep::factors::contexts::*;
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::transcryptor::DistributedTranscryptor;
 
 #[test]
 fn n_pep() {
@@ -13,7 +13,7 @@ fn n_pep() {
 
     // Global config - using the combined convenience method
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
-        libpep::core::keys::distribution::make_distributed_global_keys(n, rng);
+        libpep::keys::distribution::make_distributed_global_keys(n, rng);
 
     // Create systems
     let systems = (0..n)

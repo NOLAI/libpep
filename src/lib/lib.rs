@@ -1,6 +1,6 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
-//! This library implements PEP cryptography based on [`ElGamal`](base::elgamal) encrypted messages.
+//! This library implements PEP cryptography based on [`ElGamal`](core::elgamal) encrypted messages.
 //! It can be used to encrypt data and re-encrypt it for different keys without decrypting the data,
 //! while pseudonymizing encrypted identifiers in the data.
 //!
@@ -15,8 +15,8 @@
 //! data sharing can be done *asynchronously*. This means that encrypted data can be
 //! stored long-term before it is shared at any point in the future.
 //!
-//! This library provides both a [base] API for `ElGamal` encryption and the PEP
-//! [primitives](base::primitives), and a [core] API for
+//! This library provides both a [core] API for `ElGamal` encryption and the PEP
+//! [primitives](core::primitives), and a [core] API for
 //! [pseudonymization](core::functions::pseudonymize) and [rekeying](core::functions::rekey)
 //! (i.e. [transcryption](core::functions::transcrypt)) of [`Pseudonym`](core::data::simple::Pseudonym)s
 //! and [`Attribute`](core::data::simple::Attribute)s using this cryptographic concept.
@@ -38,11 +38,26 @@
 //! they have incompatible linking requirements.
 
 pub mod arithmetic;
-pub mod base;
+pub mod client;
 pub mod core;
+pub mod data;
+pub mod factors;
+pub mod keys;
+pub mod prelude;
+pub mod transcryptor;
 
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;
 
 #[cfg(all(feature = "wasm", not(feature = "python")))]
 pub mod wasm;
+
+#[cfg(all(feature = "python", not(feature = "wasm")))]
+use pyo3::prelude::*;
+
+/// Python module for libpep
+#[cfg(all(feature = "python", not(feature = "wasm")))]
+#[pymodule]
+fn libpep(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    py::register_module(m)
+}

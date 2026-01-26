@@ -5,36 +5,38 @@ Tests distributed n-PEP systems, PEP clients, and key blinding functionality.
 """
 
 import unittest
-from libpep.arithmetic.group_elements import GroupElement
-from libpep.arithmetic.scalars import ScalarNonZero
-from libpep.core.data import (
+from libpep.data import (
     Pseudonym,
     Attribute,
     EncryptedPseudonym,
     EncryptedAttribute,
 )
-from libpep.core.keys import (
+from libpep.keys import (
     make_global_keys,
     make_session_keys,
-    EncryptionSecret,
-    PseudonymizationSecret,
     BlindingFactor,
     BlindedGlobalKeys,
     make_blinded_global_keys,
     make_pseudonym_global_keys,
     make_attribute_global_keys,
 )
-from libpep.core import (
+from libpep.factors import (
+    PseudonymizationSecret,
+    EncryptionSecret,
     TranscryptionInfo,
     PseudonymizationInfo,
     AttributeRekeyInfo,
     PseudonymizationDomain,
     EncryptionContext,
+)
+from libpep.client import (
     Client,
     OfflineClient,
-    DistributedTranscryptor,
     encrypt,
     decrypt,
+)
+from libpep.transcryptor import (
+    DistributedTranscryptor,
 )
 
 
@@ -67,10 +69,6 @@ class TestDistributed(unittest.TestCase):
         bf1 = BlindingFactor.random()
         bf2 = BlindingFactor.random()
         self.assertNotEqual(bf1.to_hex(), bf2.to_hex())
-
-        # Test from scalar
-        scalar = ScalarNonZero.random()
-        bf3 = BlindingFactor(scalar)
 
         # Test encoding/decoding
         encoded = bf1.to_bytes()

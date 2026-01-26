@@ -1,7 +1,13 @@
-//! WebAssembly bindings for libpep using wasm-bindgen.
+//! WASM bindings for libpep.
+//!
+//! This module re-exports WASM bindings from their respective submodules.
 
-use wasm_bindgen::prelude::*;
+// Re-export from submodules
+pub use crate::client::wasm as client;
+pub use crate::data::wasm as data;
+pub use crate::factors::wasm as factors;
+pub use crate::keys::wasm as keys;
+pub use crate::transcryptor::wasm as transcryptor;
 
-/// Initialize the WASM module
-#[wasm_bindgen(start)]
-pub fn wasm_main() {}
+// Re-export functions from client module for backwards compatibility
+pub use client::functions::*;

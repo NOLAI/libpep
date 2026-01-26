@@ -1,19 +1,12 @@
-//! High-level API specifying [Pseudonyms](data::simple::Pseudonym) and [Attributes](data::simple::Attribute),
-//! and [transcryption](functions::transcrypt) ([pseudonymization](functions::pseudonymize) or [rekeying](functions::rekey))
-//! of their encrypted versions between different contexts.
-//! This module is intended for most use cases where a *single* trusted party (transcryptor) is
-//! responsible for pseudonymization and rekeying.
-//! The API is designed to be user-friendly and safe.
+//! Low-level cryptographic [primitives] for [ElGamal](elgamal) encryption and (n)-PEP operations.
+//! This module is intended for non-standard uses cases where the individual (n)-PEP primitives are
+//! needed.
+//!
+//! For most use cases, the [high-level](crate::core) API should be used, which provides
+//! a more user-friendly and safer interface.
 
-#[cfg(feature = "batch")]
-pub mod batch;
-pub mod client;
-pub mod contexts;
-pub mod data;
-pub mod factors;
-pub mod functions;
-pub mod keys;
-pub mod transcryptor;
+pub mod elgamal;
+pub mod primitives;
 
 #[cfg(feature = "python")]
 pub mod py;
