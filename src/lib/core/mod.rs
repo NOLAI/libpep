@@ -13,3 +13,5 @@ pub mod py;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
+pub mod proved;
+pub mod zkps;
