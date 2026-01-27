@@ -131,7 +131,7 @@ fn test_json_transcryption_with_builder() {
     #[cfg(feature = "elgamal3")]
     let decrypted_transcrypted = transcrypted.decrypt(&session_keys).unwrap();
     #[cfg(not(feature = "elgamal3"))]
-    let decrypted_transcrypted = decrypt(&transcrypted, &session_keys);
+    let decrypted_transcrypted = transcrypted.decrypt(&session_keys);
     let json_transcrypted = decrypted_transcrypted
         .to_value()
         .expect("Should convert to JSON");
