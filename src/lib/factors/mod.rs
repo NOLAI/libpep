@@ -16,6 +16,9 @@ pub mod contexts;
 pub mod secrets;
 pub mod types;
 
+#[cfg(feature = "verifiable")]
+pub mod commitments;
+
 #[cfg(feature = "python")]
 pub mod py;
 
@@ -32,4 +35,9 @@ pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
     PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor,
     TranscryptionInfo,
+};
+
+#[cfg(feature = "verifiable")]
+pub use commitments::{
+    ProvedPseudonymizationCommitments, ProvedRekeyCommitments, ProvedReshuffleCommitments,
 };

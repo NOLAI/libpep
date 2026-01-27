@@ -133,10 +133,133 @@ pub fn make_attribute_session_keys(
     make_session_key_pair(global, context, secret, make_attribute_rekey_factor)
 }
 
+// Verifiable session key generation with proofs
+
+#[cfg(feature = "verifiable")]
+use crate::core::proved::RekeyFactorCommitments;
+#[cfg(feature = "verifiable")]
+use crate::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
+
+/// Generate session keys with a proof of correct construction.
+///
+/// This variant generates a session key along with a zero-knowledge proof that
+/// the key was constructed correctly as u_i = b_i * k_i, where:
+/// - b_i is a blinding factor
+/// - k_i is the rekey factor for the given context
+///
+/// The proof allows users to verify the session key share without revealing
+/// the secret factors.
+///
+/// # Arguments
+///
+/// * `global` - Global secret key
+/// * `context` - Encryption context
+/// * `secret` - Encryption secret
+/// * `blinding` - Blinding factor b_i (kept secret)
+/// * `rekey_fn` - Function to derive the rekey factor
+/// * `rng` - Random number generator for proof generation
+///
+/// # Returns
+///
+/// A tuple containing:
+/// - The public session key
+/// - The secret session key (u_i = b_i * k_i * global_secret)
+/// - A proof of correct construction
+/// - The blinding commitment (B_i = b_i * G)
+#[cfg(feature = "verifiable")]
+pub fn make_session_key_pair_with_proof<GSK, PK, SK, RF, F, R>(
+    global: &GSK,
+    context: &EncryptionContext,
+    secret: &EncryptionSecret,
+    blinding: &ScalarNonZero,
+    rekey_fn: F,
+    rng: &mut R,
+) -> (PK, SK, SessionKeyShareProof, BlindingCommitment)
+where
+    GSK: SecretKey,
+    PK: From<GroupElement>,
+    SK: From<ScalarNonZero>,
+    RF: RekeyFactor,
+    F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
+    R: RngCore + CryptoRng,
+{
+    // Compute rekey factor k_i
+    let k = rekey_fn(secret, context);
+
+    // Compute session key share contribution: u_i = b_i * k_i
+    let share = blinding * k.scalar();
+
+    // Compute final session key: sk = u_i * global_secret
+    let sk = share * *global.value();
+    let pk = sk * G;
+
+    // Create blinding commitment B_i = b_i * G
+    let blinding_commitment = BlindingCommitment::new(blinding);
+
+    // Create rekey factor commitment K_i = k_i * G
+    let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), rng);
+
+    // Create proof that u_i = b_i * k_i
+    let proof = SessionKeyShareProof::new(blinding, &k.scalar(), &rekey_commitment.val, rng);
+
+    (PK::from(pk), SK::from(sk), proof, blinding_commitment)
+}
+
+/// Generate pseudonym session keys with a proof of correct construction.
+///
+/// This is a convenience wrapper around [`make_session_key_pair_with_proof`] for pseudonym keys.
+///
+/// # Security Note
+///
+/// The returned proof should only be shared with the user requesting the session key,
+/// not publicly, as it contains information about the session key share.
+#[cfg(feature = "verifiable")]
+pub fn make_pseudonym_session_keys_with_proof<R: RngCore + CryptoRng>(
+    global: &PseudonymGlobalSecretKey,
+    context: &EncryptionContext,
+    secret: &EncryptionSecret,
+    blinding: &ScalarNonZero,
+    rng: &mut R,
+) -> (
+    PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+    SessionKeyShareProof,
+    BlindingCommitment,
+) {
+    make_session_key_pair_with_proof(global, context, secret, blinding, make_pseudonym_rekey_factor, rng)
+}
+
+/// Generate attribute session keys with a proof of correct construction.
+///
+/// This is a convenience wrapper around [`make_session_key_pair_with_proof`] for attribute keys.
+///
+/// # Security Note
+///
+/// The returned proof should only be shared with the user requesting the session key,
+/// not publicly, as it contains information about the session key share.
+#[cfg(feature = "verifiable")]
+pub fn make_attribute_session_keys_with_proof<R: RngCore + CryptoRng>(
+    global: &AttributeGlobalSecretKey,
+    context: &EncryptionContext,
+    secret: &EncryptionSecret,
+    blinding: &ScalarNonZero,
+    rng: &mut R,
+) -> (
+    AttributeSessionPublicKey,
+    AttributeSessionSecretKey,
+    SessionKeyShareProof,
+    BlindingCommitment,
+) {
+    make_session_key_pair_with_proof(global, context, secret, blinding, make_attribute_rekey_factor, rng)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "verifiable")]
+    use crate::core::proved::RekeyFactorCommitments;
 
     #[test]
     fn make_global_keys_creates_valid_keypairs() {
@@ -225,6 +348,66 @@ mod tests {
         let decoded =
             AttributeGlobalPublicKey::from_hex(&hex).expect("hex decoding should succeed");
         assert_eq!(public, decoded);
+    }
+
+    #[test]
+    #[cfg(feature = "verifiable")]
+    fn make_session_keys_with_proof_valid() {
+        let mut rng = rand::rng();
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
+        let context = EncryptionContext::from("test-context");
+        let secret = EncryptionSecret::from(b"test-secret".to_vec());
+        let blinding = ScalarNonZero::random(&mut rng);
+
+        // Generate pseudonym session keys with proof
+        let (_pub_key, _sec_key, proof, blinding_commitment) =
+            make_pseudonym_session_keys_with_proof(
+                &global_sk.pseudonym,
+                &context,
+                &secret,
+                &blinding,
+                &mut rng,
+            );
+
+        // Create rekey factor commitment for verification
+        let k = make_pseudonym_rekey_factor(&secret, &context);
+        let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), &mut rng);
+
+        // Verify the proof
+        assert!(proof.verify(&blinding_commitment, &rekey_commitment.val));
+
+        // Verify the commitment matches
+        assert_eq!(*blinding_commitment.value(), blinding * G);
+    }
+
+    #[test]
+    #[cfg(feature = "verifiable")]
+    fn make_attribute_session_keys_with_proof_valid() {
+        let mut rng = rand::rng();
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
+        let context = EncryptionContext::from("test-context");
+        let secret = EncryptionSecret::from(b"test-secret".to_vec());
+        let blinding = ScalarNonZero::random(&mut rng);
+
+        // Generate attribute session keys with proof
+        let (_pub_key, _sec_key, proof, blinding_commitment) =
+            make_attribute_session_keys_with_proof(
+                &global_sk.attribute,
+                &context,
+                &secret,
+                &blinding,
+                &mut rng,
+            );
+
+        // Create rekey factor commitment for verification
+        let k = make_attribute_rekey_factor(&secret, &context);
+        let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), &mut rng);
+
+        // Verify the proof
+        assert!(proof.verify(&blinding_commitment, &rekey_commitment.val));
+
+        // Verify the commitment matches
+        assert_eq!(*blinding_commitment.value(), blinding * G);
     }
 
     #[test]

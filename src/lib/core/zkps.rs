@@ -24,7 +24,7 @@
 //! ```
 //! # use libpep::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::arithmetic::scalars::ScalarNonZero;
-//! # use libpep::base::zkps::{create_proof, verify_proof};
+//! # use libpep::core::zkps::{create_proof, verify_proof};
 //! # let mut rng = rand::rng();
 //! let secret = ScalarNonZero::random(&mut rng);
 //! let message = GroupElement::random(&mut rng);
@@ -189,7 +189,7 @@ impl<'de> Deserialize<'de> for Proof {
 /// ```
 /// # use libpep::arithmetic::group_elements::{GroupElement, G};
 /// # use libpep::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::base::zkps::{create_proof, verify_proof};
+/// # use libpep::core::zkps::{create_proof, verify_proof};
 /// # let mut rng = rand::rng();
 /// let secret = ScalarNonZero::random(&mut rng);
 /// let message = GroupElement::random(&mut rng);
@@ -399,7 +399,7 @@ pub fn verify_proof_split(
 /// ```
 /// # use libpep::arithmetic::group_elements::{GroupElement, G};
 /// # use libpep::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::base::zkps::{create_proof, verify_proof};
+/// # use libpep::core::zkps::{create_proof, verify_proof};
 /// # let mut rng = rand::rng();
 /// # let secret = ScalarNonZero::random(&mut rng);
 /// # let message = GroupElement::random(&mut rng);
@@ -434,7 +434,7 @@ type Signature = Proof;
 /// ```
 /// # use libpep::arithmetic::group_elements::{GroupElement, G};
 /// # use libpep::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::base::zkps::{sign, verify};
+/// # use libpep::core::zkps::{sign, verify};
 /// # let mut rng = rand::rng();
 /// let secret_key = ScalarNonZero::random(&mut rng);
 /// let public_key = &secret_key * G;
@@ -547,7 +547,7 @@ pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupEl
 /// ```
 /// # use libpep::arithmetic::group_elements::{GroupElement, G};
 /// # use libpep::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::base::zkps::{sign_unlinkable, verify};
+/// # use libpep::core::zkps::{sign_unlinkable, verify};
 /// # let mut rng = rand::rng();
 /// let secret_key = ScalarNonZero::random(&mut rng);
 /// let public_key = &secret_key * G;

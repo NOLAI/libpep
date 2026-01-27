@@ -13,8 +13,9 @@ description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
 
 [features]
-default = ["build-binary", "long", "offline", "batch", "serde", "json"]
+default = ["build-binary", "long", "offline", "batch", "serde", "json", "verifiable"]
 serde = ["dep:serde"] # For (de)serialization support via Serde
+verifiable = [] # Enable verifiable operations with zero-knowledge proofs
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability

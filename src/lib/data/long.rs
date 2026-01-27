@@ -828,6 +828,55 @@ impl Transcryptable for LongEncryptedAttribute {
     }
 }
 
+// Verifiable operations for long types - trait implementations
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiablePseudonymizable for LongEncryptedPseudonym {
+    type PseudonymizationProof = Vec<crate::core::proved::VerifiableRSK>;
+
+    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+        &self,
+        info: &crate::factors::PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof {
+        self.0
+            .iter()
+            .map(|block| block.verifiable_pseudonymize(info, rng))
+            .collect()
+    }
+}
+
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiableRekeyable for LongEncryptedPseudonym {
+    type RekeyProof = Vec<crate::core::proved::VerifiableRekey>;
+
+    fn verifiable_rekey<R: RngCore + CryptoRng>(
+        &self,
+        info: &Self::RekeyInfo,
+        rng: &mut R,
+    ) -> Self::RekeyProof {
+        self.0
+            .iter()
+            .map(|block| block.verifiable_rekey(info, rng))
+            .collect()
+    }
+}
+
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiableRekeyable for LongEncryptedAttribute {
+    type RekeyProof = Vec<crate::core::proved::VerifiableRekey>;
+
+    fn verifiable_rekey<R: RngCore + CryptoRng>(
+        &self,
+        info: &Self::RekeyInfo,
+        rng: &mut R,
+    ) -> Self::RekeyProof {
+        self.0
+            .iter()
+            .map(|block| block.verifiable_rekey(info, rng))
+            .collect()
+    }
+}
+
 #[cfg(feature = "batch")]
 impl crate::data::traits::HasStructure for LongEncryptedPseudonym {
     type Structure = usize;
