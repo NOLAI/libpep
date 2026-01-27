@@ -10,7 +10,6 @@
 //! - [`contexts`]: Context types (PseudonymizationDomain, EncryptionContext)
 //! - [`secrets`]: Secret types (PseudonymizationSecret, EncryptionSecret)
 //! - [`types`]: Factor types and Info type aliases
-//! - [`derivation`]: Functions for deriving factors from contexts and secrets
 
 pub mod contexts;
 pub mod secrets;
