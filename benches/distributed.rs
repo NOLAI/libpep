@@ -7,6 +7,13 @@ use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
+#[cfg(feature = "verifiable")]
+use libpep::data::traits::{Pseudonymizable, VerifiablePseudonymizable, VerifiableRekeyable};
+#[cfg(feature = "verifiable")]
+use libpep::transcryptor::Transcryptor;
+#[cfg(feature = "verifiable")]
+use libpep::verifier::Verifier;
+
 /// Configuration parameters for distributed benchmarks
 pub const BENCHMARK_SERVERS: [usize; 4] = [1, 2, 3, 4];
 pub const BENCHMARK_ENTITIES: [usize; 4] = [1, 10, 100, 1000];
@@ -293,6 +300,224 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+fn bench_verifiable_commitment_generation(c: &mut Criterion) {
+    c.bench_function("verifiable_commitment_generation", |b| {
+        b.iter_batched(
+            || {
+                let rng = rand::rng();
+                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
+                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
+                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
+                let domain_from = PseudonymizationDomain::from("domain-a");
+                let domain_to = PseudonymizationDomain::from("domain-b");
+                let session_from = EncryptionContext::from("session-a");
+                let session_to = EncryptionContext::from("session-b");
+                let info = transcryptor.pseudonymization_info(
+                    &domain_from,
+                    &domain_to,
+                    &session_from,
+                    &session_to,
+                );
+                (info, rng)
+            },
+            |(info, mut rng)| {
+                black_box(Transcryptor::pseudonymization_commitments(&info, &mut rng))
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+fn bench_verifiable_commitment_verification(c: &mut Criterion) {
+    c.bench_function("verifiable_commitment_verification", |b| {
+        b.iter_batched(
+            || {
+                let mut rng = rand::rng();
+                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
+                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
+                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
+                let domain_from = PseudonymizationDomain::from("domain-a");
+                let domain_to = PseudonymizationDomain::from("domain-b");
+                let session_from = EncryptionContext::from("session-a");
+                let session_to = EncryptionContext::from("session-b");
+                let info = transcryptor.pseudonymization_info(
+                    &domain_from,
+                    &domain_to,
+                    &session_from,
+                    &session_to,
+                );
+                let commitments = Transcryptor::pseudonymization_commitments(&info, &mut rng);
+                let verifier = Verifier::new();
+                (commitments, verifier)
+            },
+            |(commitments, verifier)| {
+                black_box(verifier.verify_pseudonymization_commitments(&commitments))
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+fn bench_verifiable_pseudonymization(c: &mut Criterion) {
+    c.bench_function("verifiable_pseudonymization", |b| {
+        b.iter_batched(
+            || {
+                let mut rng = rand::rng();
+                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
+                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
+                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
+                let domain_from = PseudonymizationDomain::from("domain-a");
+                let domain_to = PseudonymizationDomain::from("domain-b");
+                let session_from = EncryptionContext::from("session-a");
+                let session_to = EncryptionContext::from("session-b");
+
+                // Create distributed client and encrypt pseudonym
+                let (_global_pub, blinded_keys, blinding_factors) =
+                    libpep::keys::distribution::make_distributed_global_keys(1, &mut rng);
+                let dis_transcryptor = DistributedTranscryptor::new(
+                    ps_secret.clone(),
+                    enc_secret.clone(),
+                    blinding_factors[0],
+                );
+                let sks = dis_transcryptor.session_key_shares(&session_from);
+                let client = Client::from_shares(blinded_keys, &[sks]);
+                let pseudonym = Pseudonym::random(&mut rng);
+                let encrypted = client.encrypt(&pseudonym, &mut rng);
+
+                let info = transcryptor.pseudonymization_info(
+                    &domain_from,
+                    &domain_to,
+                    &session_from,
+                    &session_to,
+                );
+                (encrypted, info, rng)
+            },
+            |(encrypted, info, mut rng)| {
+                black_box(encrypted.verifiable_pseudonymize(&info, &mut rng))
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+fn bench_verifiable_rekey(c: &mut Criterion) {
+    c.bench_function("verifiable_rekey", |b| {
+        b.iter_batched(
+            || {
+                let mut rng = rand::rng();
+                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
+                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
+                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
+                let session_from = EncryptionContext::from("session-a");
+                let session_to = EncryptionContext::from("session-b");
+
+                // Create distributed client and encrypt attribute
+                let (_global_pub, blinded_keys, blinding_factors) =
+                    libpep::keys::distribution::make_distributed_global_keys(1, &mut rng);
+                let dis_transcryptor = DistributedTranscryptor::new(
+                    ps_secret.clone(),
+                    enc_secret.clone(),
+                    blinding_factors[0],
+                );
+                let sks = dis_transcryptor.session_key_shares(&session_from);
+                let client = Client::from_shares(blinded_keys, &[sks]);
+                let attribute = Attribute::random(&mut rng);
+                let encrypted = client.encrypt(&attribute, &mut rng);
+
+                let info = transcryptor.attribute_rekey_info(&session_from, &session_to);
+                (encrypted, info, rng)
+            },
+            |(encrypted, info, mut rng)| black_box(encrypted.verifiable_rekey(&info, &mut rng)),
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
+    c.bench_function("verifiable_pseudonymization_verify", |b| {
+        b.iter_batched(
+            || {
+                let mut rng = rand::rng();
+                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
+                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
+                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
+                let domain_from = PseudonymizationDomain::from("domain-a");
+                let domain_to = PseudonymizationDomain::from("domain-b");
+                let session_from = EncryptionContext::from("session-a");
+                let session_to = EncryptionContext::from("session-b");
+
+                // Create distributed client and encrypt pseudonym
+                let (_global_pub, blinded_keys, blinding_factors) =
+                    libpep::keys::distribution::make_distributed_global_keys(1, &mut rng);
+                let dis_transcryptor = DistributedTranscryptor::new(
+                    ps_secret.clone(),
+                    enc_secret.clone(),
+                    blinding_factors[0],
+                );
+                let sks = dis_transcryptor.session_key_shares(&session_from);
+                let client = Client::from_shares(blinded_keys, &[sks]);
+                let pseudonym = Pseudonym::random(&mut rng);
+                let encrypted = client.encrypt(&pseudonym, &mut rng);
+
+                let info = transcryptor.pseudonymization_info(
+                    &domain_from,
+                    &domain_to,
+                    &session_from,
+                    &session_to,
+                );
+
+                let operation_proof = encrypted.verifiable_pseudonymize(&info, &mut rng);
+                let factors_proof = Transcryptor::pseudonymization_factors_proof(&info, &mut rng);
+                let result = encrypted.pseudonymize(&info);
+                let commitments = Transcryptor::pseudonymization_commitments(&info, &mut rng);
+                let verifier = Verifier::new();
+
+                (
+                    encrypted,
+                    result,
+                    operation_proof,
+                    factors_proof,
+                    commitments,
+                    verifier,
+                )
+            },
+            |(original, result, operation_proof, factors_proof, commitments, verifier)| {
+                black_box(verifier.verify_pseudonymization(
+                    &original,
+                    &result,
+                    &operation_proof,
+                    &factors_proof,
+                    &commitments,
+                ))
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+criterion_group!(
+    benches,
+    bench_distributed_transcrypt,
+    bench_distributed_transcrypt_batch,
+    bench_verifiable_commitment_generation,
+    bench_verifiable_commitment_verification,
+    bench_verifiable_pseudonymization,
+    bench_verifiable_rekey,
+    bench_verifiable_pseudonymization_verify
+);
+
+#[cfg(not(feature = "verifiable"))]
 criterion_group!(
     benches,
     bench_distributed_transcrypt,

@@ -14,8 +14,20 @@ pub mod cache;
 #[allow(clippy::module_inception)]
 pub mod verifier;
 
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
+#[cfg(feature = "python")]
+pub mod py;
+
 pub use cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache, InMemoryCommitmentsCache,
     PseudonymRekeyCommitmentsCache, ReshuffleCommitmentsCache,
 };
 pub use verifier::Verifier;
+
+#[cfg(feature = "wasm")]
+pub use wasm::WASMVerifier;
+
+#[cfg(feature = "python")]
+pub use py::PyVerifier;

@@ -7,6 +7,12 @@ use libpep::core::primitives::{
 };
 use rand::rng;
 
+#[cfg(feature = "verifiable")]
+use libpep::core::proved::{
+    PseudonymizationFactorCommitments, RSKFactorsProof, RekeyFactorCommitments, VerifiableRSK,
+    VerifiableRekey, VerifiableReshuffle,
+};
+
 fn setup_keys() -> (ScalarNonZero, GroupElement) {
     let mut rng = rng();
     let secret_key = ScalarNonZero::random(&mut rng);
@@ -239,6 +245,170 @@ fn bench_rrsk2(c: &mut Criterion) {
     });
 }
 
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
+    c.bench_function("verifiable_reshuffle_create", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                (encrypted, s, rng)
+            },
+            |(encrypted, s, mut rng)| VerifiableReshuffle::new(&encrypted, &s, &mut rng),
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
+    c.bench_function("verifiable_reshuffle_verify", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                let proof = VerifiableReshuffle::new(&encrypted, &s, &mut rng);
+                let result = reshuffle(&encrypted, &s);
+                let (commitments, _) = PseudonymizationFactorCommitments::new(&s, &mut rng);
+                (encrypted, result, proof, commitments)
+            },
+            |(encrypted, result, proof, commitments)| {
+                proof.verify_reshuffle(&encrypted, &result, &commitments)
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_rekey_create(c: &mut Criterion) {
+    c.bench_function("verifiable_rekey_create", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                (encrypted, k, rng)
+            },
+            |(encrypted, k, mut rng)| VerifiableRekey::new(&encrypted, &k, &mut rng),
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_rekey_verify(c: &mut Criterion) {
+    c.bench_function("verifiable_rekey_verify", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                let proof = VerifiableRekey::new(&encrypted, &k, &mut rng);
+                let result = rekey(&encrypted, &k);
+                let (commitments, _) = RekeyFactorCommitments::new(&k, &mut rng);
+                (encrypted, result, proof, commitments)
+            },
+            |(encrypted, result, proof, commitments)| {
+                proof.verify_rekey(&encrypted, &result, &commitments)
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_rsk_create(c: &mut Criterion) {
+    c.bench_function("verifiable_rsk_create", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                (encrypted, s, k, rng)
+            },
+            |(encrypted, s, k, mut rng)| VerifiableRSK::new(&encrypted, &s, &k, &mut rng),
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_rsk_verify(c: &mut Criterion) {
+    c.bench_function("verifiable_rsk_verify", |b| {
+        b.iter_batched(
+            || {
+                let (_, public_key) = setup_keys();
+                let mut rng = rand::rng();
+                let message = GroupElement::random(&mut rng);
+                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let s = ScalarNonZero::random(&mut rng);
+                let k = ScalarNonZero::random(&mut rng);
+                let proof = VerifiableRSK::new(&encrypted, &s, &k, &mut rng);
+                let result = rsk(&encrypted, &s, &k);
+                let rsk_proof = RSKFactorsProof::new(&s, &k, &mut rng);
+                let (reshuffle_commitments, _) =
+                    PseudonymizationFactorCommitments::new(&s, &mut rng);
+                let (rekey_commitments, _) = RekeyFactorCommitments::new(&k, &mut rng);
+                (
+                    encrypted,
+                    result,
+                    proof,
+                    rsk_proof,
+                    reshuffle_commitments,
+                    rekey_commitments,
+                )
+            },
+            |(encrypted, result, proof, rsk_proof, reshuffle_commitments, rekey_commitments)| {
+                proof.verify_rsk(
+                    &encrypted,
+                    &result,
+                    &rsk_proof,
+                    &reshuffle_commitments,
+                    &rekey_commitments,
+                )
+            },
+            criterion::BatchSize::SmallInput,
+        )
+    });
+}
+
+#[cfg(feature = "verifiable")]
+criterion_group!(
+    benches,
+    bench_encrypt,
+    bench_decrypt,
+    bench_rerandomize,
+    bench_reshuffle,
+    bench_rekey,
+    bench_rsk,
+    bench_rrsk,
+    bench_reshuffle2,
+    bench_rekey2,
+    bench_rsk2,
+    bench_rrsk2,
+    bench_verifiable_reshuffle_create,
+    bench_verifiable_reshuffle_verify,
+    bench_verifiable_rekey_create,
+    bench_verifiable_rekey_verify,
+    bench_verifiable_rsk_create,
+    bench_verifiable_rsk_verify
+);
+
+#[cfg(not(feature = "verifiable"))]
 criterion_group!(
     benches,
     bench_encrypt,
@@ -253,4 +423,5 @@ criterion_group!(
     bench_rsk2,
     bench_rrsk2
 );
+
 criterion_main!(benches);

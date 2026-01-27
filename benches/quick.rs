@@ -16,6 +16,11 @@ use libpep::data::long::{LongAttribute, LongPseudonym};
 #[cfg(feature = "json")]
 use libpep::data::json::PEPJSONValue;
 
+#[cfg(feature = "verifiable")]
+use libpep::data::traits::VerifiablePseudonymizable;
+#[cfg(feature = "verifiable")]
+use libpep::transcryptor::Transcryptor;
+
 const NUM_ITEMS: usize = 100;
 const NUM_TRANSCRYPTORS: usize = 2;
 
@@ -372,7 +377,65 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(feature = "long", feature = "json", feature = "batch"))]
+#[cfg(feature = "verifiable")]
+fn bench_verifiable_pseudonymization_quick(c: &mut Criterion) {
+    let (_systems, client_a, _client_b, session_a, session_b, domain_a, domain_b) = setup_system();
+    let rng_setup = &mut rng();
+
+    // Create a single transcryptor for verifiable operations
+    let ps_secret = PseudonymizationSecret::from(b"ps-0".to_vec());
+    let enc_secret = EncryptionSecret::from(b"es-0".to_vec());
+    let transcryptor = Transcryptor::new(ps_secret, enc_secret);
+
+    // Pre-generate pseudonyms
+    let pseudonyms: Vec<_> = (0..NUM_ITEMS)
+        .map(|_| Pseudonym::random(rng_setup))
+        .collect();
+    let encrypted: Vec<_> = pseudonyms
+        .iter()
+        .map(|p| client_a.encrypt(p, rng_setup))
+        .collect();
+
+    let info = transcryptor.pseudonymization_info(&domain_a, &domain_b, &session_a, &session_b);
+
+    c.bench_function("verifiable_pseudonymization_quick_100", |b| {
+        b.iter(|| {
+            let rng = &mut rng();
+            for enc in &encrypted {
+                let proof = enc.verifiable_pseudonymize(&info, rng);
+                black_box(proof);
+            }
+        })
+    });
+}
+
+#[cfg(all(
+    feature = "long",
+    feature = "json",
+    feature = "batch",
+    feature = "verifiable"
+))]
+criterion_group!(
+    benches,
+    bench_pseudonym_roundtrip,
+    bench_pseudonym_roundtrip_batch,
+    bench_attribute_roundtrip,
+    bench_attribute_roundtrip_batch,
+    bench_long_pseudonym_roundtrip,
+    bench_long_pseudonym_roundtrip_batch,
+    bench_long_attribute_roundtrip,
+    bench_long_attribute_roundtrip_batch,
+    bench_json_roundtrip,
+    bench_json_roundtrip_batch,
+    bench_verifiable_pseudonymization_quick
+);
+
+#[cfg(all(
+    feature = "long",
+    feature = "json",
+    feature = "batch",
+    not(feature = "verifiable")
+))]
 criterion_group!(
     benches,
     bench_pseudonym_roundtrip,
@@ -387,7 +450,28 @@ criterion_group!(
     bench_json_roundtrip_batch
 );
 
-#[cfg(all(feature = "long", feature = "json", not(feature = "batch")))]
+#[cfg(all(
+    feature = "long",
+    feature = "json",
+    not(feature = "batch"),
+    feature = "verifiable"
+))]
+criterion_group!(
+    benches,
+    bench_pseudonym_roundtrip,
+    bench_attribute_roundtrip,
+    bench_long_pseudonym_roundtrip,
+    bench_long_attribute_roundtrip,
+    bench_json_roundtrip,
+    bench_verifiable_pseudonymization_quick
+);
+
+#[cfg(all(
+    feature = "long",
+    feature = "json",
+    not(feature = "batch"),
+    not(feature = "verifiable")
+))]
 criterion_group!(
     benches,
     bench_pseudonym_roundtrip,
@@ -397,6 +481,7 @@ criterion_group!(
     bench_json_roundtrip
 );
 
+// All remaining combinations - without verifiable for simplicity
 #[cfg(all(feature = "long", feature = "batch", not(feature = "json")))]
 criterion_group!(
     benches,

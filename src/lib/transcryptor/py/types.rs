@@ -381,6 +381,128 @@ impl PyTranscryptor {
             "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
         ))
     }
+
+    /// Generate commitment proofs for pseudonymization factors.
+    #[cfg(feature = "verifiable")]
+    fn pseudonymization_commitments(
+        &self,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyProvedPseudonymizationCommitments {
+        use crate::factors::py::commitments::PyProvedPseudonymizationCommitments;
+        let mut rng = rand::rng();
+        let info = self.pseudonymization_info(
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
+        );
+        PyProvedPseudonymizationCommitments {
+            inner: Transcryptor::pseudonymization_commitments(&info, &mut rng),
+        }
+    }
+
+    /// Generate commitment proofs for attribute rekey factors.
+    #[cfg(feature = "verifiable")]
+    fn attribute_rekey_commitments(
+        &self,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyProvedRekeyCommitments {
+        use crate::factors::py::commitments::PyProvedRekeyCommitments;
+        let mut rng = rand::rng();
+        let info = self.attribute_rekey_info(&session_from.0, &session_to.0);
+        PyProvedRekeyCommitments {
+            inner: Transcryptor::attribute_rekey_commitments(&info, &mut rng),
+        }
+    }
+
+    /// Generate commitment proofs for pseudonym rekey factors.
+    #[cfg(feature = "verifiable")]
+    fn pseudonym_rekey_commitments(
+        &self,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyProvedRekeyCommitments {
+        use crate::factors::py::commitments::PyProvedRekeyCommitments;
+        let mut rng = rand::rng();
+        let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
+        PyProvedRekeyCommitments {
+            inner: Transcryptor::pseudonym_rekey_commitments(&info, &mut rng),
+        }
+    }
+
+    /// Perform verifiable pseudonymization.
+    ///
+    /// Returns a tuple of (operation_proof, factors_proof).
+    #[cfg(feature = "verifiable")]
+    fn verifiable_pseudonymize(
+        &self,
+        encrypted: &PyEncryptedPseudonym,
+        pseudo_info: &PyPseudonymizationInfo,
+    ) -> (
+        crate::core::py::proved::PyVerifiableRSK,
+        crate::core::py::proved::PyRSKFactorsProof,
+    ) {
+        use crate::data::traits::VerifiablePseudonymizable;
+
+        let mut rng = rand::rng();
+        let info = PseudonymizationInfo::from(pseudo_info);
+        let operation_proof = encrypted.0.verifiable_pseudonymize(&info, &mut rng);
+        let factors_proof = Transcryptor::pseudonymization_factors_proof(&info, &mut rng);
+
+        (
+            crate::core::py::proved::PyVerifiableRSK {
+                inner: operation_proof,
+            },
+            crate::core::py::proved::PyRSKFactorsProof {
+                inner: factors_proof,
+            },
+        )
+    }
+
+    /// Perform verifiable attribute rekey.
+    ///
+    /// Returns the operation proof.
+    #[cfg(feature = "verifiable")]
+    fn verifiable_attribute_rekey(
+        &self,
+        encrypted: &PyEncryptedAttribute,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> crate::core::py::proved::PyVerifiableRekey {
+        use crate::data::traits::VerifiableRekeyable;
+
+        let mut rng = rand::rng();
+        let info = AttributeRekeyInfo::from(rekey_info);
+        let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
+
+        crate::core::py::proved::PyVerifiableRekey {
+            inner: operation_proof,
+        }
+    }
+
+    /// Perform verifiable pseudonym rekey.
+    ///
+    /// Returns the operation proof.
+    #[cfg(feature = "verifiable")]
+    fn verifiable_pseudonym_rekey(
+        &self,
+        encrypted: &PyEncryptedPseudonym,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::core::py::proved::PyVerifiableRekey {
+        use crate::data::traits::VerifiableRekeyable;
+
+        let mut rng = rand::rng();
+        let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
+        let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
+
+        crate::core::py::proved::PyVerifiableRekey {
+            inner: operation_proof,
+        }
+    }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
