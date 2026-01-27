@@ -3,11 +3,16 @@
 //! A `Record` represents a collection of pseudonyms and attributes that belong to the same entity.
 //! When encrypted, it becomes an `EncryptedRecord`.
 
-use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+use crate::data::simple::{
+    Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
+};
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::keys::{GlobalPublicKeys, SessionKeys};
 use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::io::{Error, ErrorKind};
 
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -82,6 +87,91 @@ impl EncryptedRecord {
             attributes,
         }
     }
+
+    /// Serializes an `EncryptedRecord` to a string.
+    ///
+    /// Individual items are base64-encoded and joined with `"|"`.
+    /// Pseudonyms and attributes are separated by `";"`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::data::records::EncryptedRecord;
+    ///
+    /// let record = EncryptedRecord::new(vec![/* ... */], vec![/* ... */]);
+    /// let serialized = record.serialize();
+    /// ```
+    pub fn serialize(&self) -> String {
+        let pseudonyms = self
+            .pseudonyms
+            .iter()
+            .map(|p| p.to_base64())
+            .collect::<Vec<_>>()
+            .join("|");
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|a| a.to_base64())
+            .collect::<Vec<_>>()
+            .join("|");
+        format!("{};{}", pseudonyms, attributes)
+    }
+
+    /// Deserializes an `EncryptedRecord` from a string.
+    ///
+    /// Expects the format produced by [`serialize`](Self::serialize):
+    /// pseudonyms and attributes separated by `";"`, with individual items
+    /// separated by `"|"`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format is invalid or any base64-encoded part cannot be decoded.
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        let parts: Vec<&str> = s.splitn(2, ';').collect();
+        if parts.len() != 2 {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Expected pseudonyms and attributes separated by ';'",
+            ));
+        }
+
+        let pseudonyms = if parts[0].is_empty() {
+            vec![]
+        } else {
+            parts[0]
+                .split('|')
+                .map(|part| {
+                    EncryptedPseudonym::from_base64(part).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid base64 encoding: {}", part),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        let attributes = if parts[1].is_empty() {
+            vec![]
+        } else {
+            parts[1]
+                .split('|')
+                .map(|part| {
+                    EncryptedAttribute::from_base64(part).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid base64 encoding: {}", part),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        Ok(EncryptedRecord {
+            pseudonyms,
+            attributes,
+        })
+    }
 }
 
 #[cfg(feature = "long")]
@@ -106,6 +196,69 @@ impl LongEncryptedRecord {
             pseudonyms,
             attributes,
         }
+    }
+
+    /// Serializes a `LongEncryptedRecord` to a string.
+    ///
+    /// Each long encrypted item is serialized using its own `serialize` method (which uses `"|"`).
+    /// Items within the same group are separated by `"~"`.
+    /// Pseudonyms and attributes groups are separated by `";"`.
+    pub fn serialize(&self) -> String {
+        let pseudonyms = self
+            .pseudonyms
+            .iter()
+            .map(|p| p.serialize())
+            .collect::<Vec<_>>()
+            .join("~");
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|a| a.serialize())
+            .collect::<Vec<_>>()
+            .join("~");
+        format!("{};{}", pseudonyms, attributes)
+    }
+
+    /// Deserializes a `LongEncryptedRecord` from a string.
+    ///
+    /// Expects the format produced by [`serialize`](Self::serialize):
+    /// pseudonyms and attributes separated by `";"`, with individual long items
+    /// separated by `"~"`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format is invalid or any part cannot be decoded.
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        let parts: Vec<&str> = s.splitn(2, ';').collect();
+        if parts.len() != 2 {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Expected pseudonyms and attributes separated by ';'",
+            ));
+        }
+
+        let pseudonyms = if parts[0].is_empty() {
+            vec![]
+        } else {
+            parts[0]
+                .split('~')
+                .map(LongEncryptedPseudonym::deserialize)
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        let attributes = if parts[1].is_empty() {
+            vec![]
+        } else {
+            parts[1]
+                .split('~')
+                .map(LongEncryptedAttribute::deserialize)
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        Ok(LongEncryptedRecord {
+            pseudonyms,
+            attributes,
+        })
     }
 }
 
@@ -306,6 +459,27 @@ impl Transcryptable for EncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
             attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
         }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for EncryptedRecord {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for EncryptedRecord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -510,6 +684,27 @@ impl Transcryptable for LongEncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
             attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
         }
+    }
+}
+
+#[cfg(all(feature = "serde", feature = "long"))]
+impl Serialize for LongEncryptedRecord {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+#[cfg(all(feature = "serde", feature = "long"))]
+impl<'de> Deserialize<'de> for LongEncryptedRecord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
     }
 }
 
