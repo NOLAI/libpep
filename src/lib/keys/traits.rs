@@ -145,6 +145,12 @@ impl KeyProvider<AttributeSessionSecretKey> for SessionKeys {
     }
 }
 
+impl KeyProvider<SessionKeys> for SessionKeys {
+    fn get_key(&self) -> &SessionKeys {
+        self
+    }
+}
+
 impl KeyProvider<PseudonymGlobalPublicKey> for GlobalPublicKeys {
     fn get_key(&self) -> &PseudonymGlobalPublicKey {
         &self.pseudonym
@@ -154,5 +160,11 @@ impl KeyProvider<PseudonymGlobalPublicKey> for GlobalPublicKeys {
 impl KeyProvider<AttributeGlobalPublicKey> for GlobalPublicKeys {
     fn get_key(&self) -> &AttributeGlobalPublicKey {
         &self.attribute
+    }
+}
+
+impl KeyProvider<GlobalPublicKeys> for GlobalPublicKeys {
+    fn get_key(&self) -> &GlobalPublicKeys {
+        self
     }
 }

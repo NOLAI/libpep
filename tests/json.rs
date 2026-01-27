@@ -131,7 +131,7 @@ fn test_json_transcryption_with_builder() {
     #[cfg(feature = "elgamal3")]
     let decrypted_transcrypted = transcrypted.decrypt(&session_keys).unwrap();
     #[cfg(not(feature = "elgamal3"))]
-    let decrypted_transcrypted = transcrypted.decrypt(&session_keys);
+    let decrypted_transcrypted = decrypt(&transcrypted, &session_keys);
     let json_transcrypted = decrypted_transcrypted
         .to_value()
         .expect("Should convert to JSON");
@@ -328,4 +328,87 @@ fn test_json_batch_transcryption_different_structures() {
         }
         _ => panic!("Expected InconsistentStructure error"),
     }
+}
+
+#[test]
+fn test_json_transcryption_with_client_and_transcryptor() {
+    let mut rng = rand::rng();
+
+    // Setup keys and secrets
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
+    let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
+
+    let domain_a = PseudonymizationDomain::from("hospital-a");
+    let domain_b = PseudonymizationDomain::from("hospital-b");
+    let session = EncryptionContext::from("session-1");
+
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+
+    // Create client and transcryptor
+    let client = libpep::client::Client::new(session_keys);
+    let transcryptor =
+        libpep::transcryptor::Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+
+    // Create patient record JSON data
+    let patient_data = json!({
+        "patient_id": "patient-54321",
+        "name": "John Doe",
+        "diagnosis": "Healthy",
+        "temperature": 36.6
+    });
+
+    // Convert to PEP JSON, marking "patient_id" as a pseudonym field
+    let patient_record = PEPJSONBuilder::from_json(&patient_data, &["patient_id"])
+        .expect("Should create PEP JSON from existing JSON")
+        .build();
+
+    // Encrypt using the client
+    let encrypted = client.encrypt(&patient_record, &mut rng);
+
+    // Decrypt to verify original
+    #[cfg(feature = "elgamal3")]
+    let decrypted_original = client.decrypt(&encrypted).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_original = client.decrypt(&encrypted);
+
+    let json_original = decrypted_original
+        .to_value()
+        .expect("Should convert to JSON");
+    assert_eq!(json_original["patient_id"], "patient-54321");
+    assert_eq!(json_original["name"], "John Doe");
+    assert_eq!(json_original["diagnosis"], "Healthy");
+    assert_eq!(json_original["temperature"].as_f64().unwrap(), 36.6);
+
+    // Transcrypt from hospital A to hospital B using the transcryptor
+    let transcryption_info =
+        transcryptor.transcryption_info(&domain_a, &domain_b, &session, &session);
+
+    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+
+    // Verify that the encrypted structures are different after transcryption
+    assert_ne!(
+        format!("{:?}", encrypted),
+        format!("{:?}", transcrypted),
+        "Encrypted values should be different after transcryption"
+    );
+
+    // Decrypt transcrypted data
+    #[cfg(feature = "elgamal3")]
+    let decrypted_transcrypted = client.decrypt(&transcrypted).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_transcrypted = client.decrypt(&transcrypted);
+
+    let json_transcrypted = decrypted_transcrypted
+        .to_value()
+        .expect("Should convert to JSON");
+
+    // Attributes should remain the same, but pseudonym should be different
+    assert_eq!(json_transcrypted["name"], "John Doe");
+    assert_eq!(json_transcrypted["diagnosis"], "Healthy");
+    assert_eq!(json_transcrypted["temperature"].as_f64().unwrap(), 36.6);
+    assert_ne!(
+        json_transcrypted["patient_id"], "patient-54321",
+        "Pseudonym should be different after cross-domain transcryption"
+    );
 }

@@ -315,7 +315,7 @@ fn bench_json_roundtrip(c: &mut Criterion) {
         .collect();
     let encrypted: Vec<_> = json_values
         .iter()
-        .map(|j| client_a.encrypt_json(j, rng))
+        .map(|j| client_a.encrypt(j, rng))
         .collect();
 
     c.bench_function("json_roundtrip_100", |b| {
@@ -353,7 +353,7 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
         .collect();
     let encrypted_base: Vec<_> = json_values
         .iter()
-        .map(|j| client_a.encrypt_json(j, rng_setup))
+        .map(|j| client_a.encrypt(j, rng_setup))
         .collect();
 
     c.bench_function("json_roundtrip_batch_100", |b| {

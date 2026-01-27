@@ -60,40 +60,6 @@ impl Client {
         encrypted.decrypt(self.keys.get_key())
     }
 
-    /// Encrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(feature = "json")]
-    pub fn encrypt_json<R>(
-        &self,
-        message: &crate::data::json::data::PEPJSONValue,
-        rng: &mut R,
-    ) -> crate::data::json::data::EncryptedPEPJSONValue
-    where
-        R: RngCore + CryptoRng,
-    {
-        message.encrypt(&self.keys, rng)
-    }
-
-    /// Decrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(all(feature = "json", feature = "elgamal3"))]
-    pub fn decrypt_json(
-        &self,
-        encrypted: &crate::data::json::data::EncryptedPEPJSONValue,
-    ) -> Option<crate::data::json::data::PEPJSONValue> {
-        encrypted.decrypt(&self.keys)
-    }
-
-    /// Decrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(all(feature = "json", not(feature = "elgamal3")))]
-    pub fn decrypt_json(
-        &self,
-        encrypted: &crate::data::json::data::EncryptedPEPJSONValue,
-    ) -> crate::data::json::data::PEPJSONValue {
-        encrypted.decrypt(&self.keys)
-    }
-
     /// Encrypt a batch of messages with the appropriate session public key.
     /// Automatically selects the correct key (pseudonym or attribute) based on the message type.
     #[cfg(feature = "batch")]
