@@ -226,7 +226,14 @@ pub fn make_pseudonym_session_keys_with_proof<R: RngCore + CryptoRng>(
     SessionKeyShareProof,
     BlindingCommitment,
 ) {
-    make_session_key_pair_with_proof(global, context, secret, blinding, make_pseudonym_rekey_factor, rng)
+    make_session_key_pair_with_proof(
+        global,
+        context,
+        secret,
+        blinding,
+        make_pseudonym_rekey_factor,
+        rng,
+    )
 }
 
 /// Generate attribute session keys with a proof of correct construction.
@@ -250,7 +257,14 @@ pub fn make_attribute_session_keys_with_proof<R: RngCore + CryptoRng>(
     SessionKeyShareProof,
     BlindingCommitment,
 ) {
-    make_session_key_pair_with_proof(global, context, secret, blinding, make_attribute_rekey_factor, rng)
+    make_session_key_pair_with_proof(
+        global,
+        context,
+        secret,
+        blinding,
+        make_attribute_rekey_factor,
+        rng,
+    )
 }
 
 #[cfg(test)]

@@ -18,7 +18,7 @@ pub mod py;
 pub mod wasm;
 
 // Re-export types
-pub use types::{TranscryptorId, Transcryptor};
+pub use types::{Transcryptor, TranscryptorId};
 
 // Re-export functions
 pub use functions::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};

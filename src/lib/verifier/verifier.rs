@@ -9,12 +9,12 @@
 
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::core::proved::{
-    PseudonymizationFactorCommitments, RekeyFactorCommitments, RSKFactorsProof, VerifiableRekey,
-    VerifiableRSK,
+    PseudonymizationFactorCommitments, RSKFactorsProof, RekeyFactorCommitments, VerifiableRSK,
+    VerifiableRekey,
 };
+use crate::data::records::{EncryptedRecord, RecordTranscryptionProof};
 use crate::data::simple::{ElGamalEncrypted, EncryptedPseudonym};
 use crate::data::traits::{Pseudonymizable, Rekeyable};
-use crate::data::records::{EncryptedRecord, RecordTranscryptionProof};
 use crate::factors::{
     EncryptionContext, ProvedPseudonymizationCommitments, ProvedRekeyCommitments,
     ProvedReshuffleCommitments, PseudonymizationDomain,
@@ -90,7 +90,8 @@ impl Verifier {
             panic!("Invalid reshuffle commitments proof");
         }
 
-        self.reshuffle_cache.store((transcryptor_id, domain), *commitments);
+        self.reshuffle_cache
+            .store((transcryptor_id, domain), *commitments);
     }
 
     /// Store pseudonym rekey commitments for a transcryptor and context after validation.
@@ -114,7 +115,8 @@ impl Verifier {
             panic!("Invalid pseudonym rekey commitments proof");
         }
 
-        self.pseudonym_rekey_cache.store((transcryptor_id, context), *commitments);
+        self.pseudonym_rekey_cache
+            .store((transcryptor_id, context), *commitments);
     }
 
     /// Store attribute rekey commitments for a transcryptor and context after validation.
@@ -138,7 +140,8 @@ impl Verifier {
             panic!("Invalid attribute rekey commitments proof");
         }
 
-        self.attribute_rekey_cache.store((transcryptor_id, context), *commitments);
+        self.attribute_rekey_cache
+            .store((transcryptor_id, context), *commitments);
     }
 
     // ========================================
@@ -147,20 +150,35 @@ impl Verifier {
 
     /// Check if reshuffle commitments exist for a transcryptor and domain.
     #[must_use]
-    pub fn has_reshuffle_commitments(&self, transcryptor_id: &str, domain: &PseudonymizationDomain) -> bool {
-        self.reshuffle_cache.has(&(transcryptor_id.to_string(), domain.clone()))
+    pub fn has_reshuffle_commitments(
+        &self,
+        transcryptor_id: &str,
+        domain: &PseudonymizationDomain,
+    ) -> bool {
+        self.reshuffle_cache
+            .has(&(transcryptor_id.to_string(), domain.clone()))
     }
 
     /// Check if pseudonym rekey commitments exist for a transcryptor and context.
     #[must_use]
-    pub fn has_pseudonym_rekey_commitments(&self, transcryptor_id: &str, context: &EncryptionContext) -> bool {
-        self.pseudonym_rekey_cache.has(&(transcryptor_id.to_string(), context.clone()))
+    pub fn has_pseudonym_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context: &EncryptionContext,
+    ) -> bool {
+        self.pseudonym_rekey_cache
+            .has(&(transcryptor_id.to_string(), context.clone()))
     }
 
     /// Check if attribute rekey commitments exist for a transcryptor and context.
     #[must_use]
-    pub fn has_attribute_rekey_commitments(&self, transcryptor_id: &str, context: &EncryptionContext) -> bool {
-        self.attribute_rekey_cache.has(&(transcryptor_id.to_string(), context.clone()))
+    pub fn has_attribute_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context: &EncryptionContext,
+    ) -> bool {
+        self.attribute_rekey_cache
+            .has(&(transcryptor_id.to_string(), context.clone()))
     }
 
     // ========================================
@@ -197,15 +215,29 @@ impl Verifier {
         let tid = transcryptor_id.clone();
 
         if !self.has_reshuffle_commitments(transcryptor_id, domain_from) {
-            self.store_reshuffle_commitments(tid.clone(), domain_from.clone(), &reshuffle_commitments);
+            self.store_reshuffle_commitments(
+                tid.clone(),
+                domain_from.clone(),
+                &reshuffle_commitments,
+            );
         }
         if domain_from != domain_to && !self.has_reshuffle_commitments(transcryptor_id, domain_to) {
-            self.store_reshuffle_commitments(tid.clone(), domain_to.clone(), &reshuffle_commitments);
+            self.store_reshuffle_commitments(
+                tid.clone(),
+                domain_to.clone(),
+                &reshuffle_commitments,
+            );
         }
         if !self.has_pseudonym_rekey_commitments(transcryptor_id, context_from) {
-            self.store_pseudonym_rekey_commitments(tid.clone(), context_from.clone(), &rekey_commitments);
+            self.store_pseudonym_rekey_commitments(
+                tid.clone(),
+                context_from.clone(),
+                &rekey_commitments,
+            );
         }
-        if context_from != context_to && !self.has_pseudonym_rekey_commitments(transcryptor_id, context_to) {
+        if context_from != context_to
+            && !self.has_pseudonym_rekey_commitments(transcryptor_id, context_to)
+        {
             self.store_pseudonym_rekey_commitments(tid, context_to.clone(), &rekey_commitments);
         }
     }
@@ -224,7 +256,9 @@ impl Verifier {
         if !self.has_attribute_rekey_commitments(transcryptor_id, context_from) {
             self.store_attribute_rekey_commitments(tid.clone(), context_from.clone(), &commitments);
         }
-        if context_from != context_to && !self.has_attribute_rekey_commitments(transcryptor_id, context_to) {
+        if context_from != context_to
+            && !self.has_attribute_rekey_commitments(transcryptor_id, context_to)
+        {
             self.store_attribute_rekey_commitments(tid, context_to.clone(), &commitments);
         }
     }
@@ -234,7 +268,9 @@ impl Verifier {
     /// Note: This method is deprecated in the new architecture. Commitments are stored
     /// separately per domain/context, not as bundled transitions. This always returns None.
     #[must_use]
-    #[deprecated(note = "Commitments are now stored per domain/context, use has_reshuffle_commitments and has_pseudonym_rekey_commitments instead")]
+    #[deprecated(
+        note = "Commitments are now stored per domain/context, use has_reshuffle_commitments and has_pseudonym_rekey_commitments instead"
+    )]
     pub fn get_pseudonymization_commitments(
         &self,
         _domain_from: &PseudonymizationDomain,
@@ -259,7 +295,9 @@ impl Verifier {
         commitments
             .reshuffle_proof
             .verify(&commitments.reshuffle_commitments)
-            && commitments.rekey_proof.verify(&commitments.rekey_commitments)
+            && commitments
+                .rekey_proof
+                .verify(&commitments.rekey_commitments)
     }
 
     /// Verify that rekey commitments are correctly constructed.
@@ -309,7 +347,10 @@ impl Verifier {
         E: ElGamalEncrypted + Pseudonymizable,
     {
         // Verify factors proof against commitments
-        if !factors_proof.verify(&commitments.reshuffle_commitments, &commitments.rekey_commitments) {
+        if !factors_proof.verify(
+            &commitments.reshuffle_commitments,
+            &commitments.rekey_commitments,
+        ) {
             return false;
         }
 
@@ -453,27 +494,38 @@ impl Verifier {
         let transcryptor_id = transcryptor_id.to_string();
 
         // Retrieve commitments from cache
-        let Some(reshuffle_from) = self.reshuffle_cache.retrieve(&(transcryptor_id.clone(), domain_from.clone())) else {
+        let Some(reshuffle_from) = self
+            .reshuffle_cache
+            .retrieve(&(transcryptor_id.clone(), domain_from.clone()))
+        else {
             return false;
         };
-        let Some(reshuffle_to) = self.reshuffle_cache.retrieve(&(transcryptor_id.clone(), domain_to.clone())) else {
+        let Some(reshuffle_to) = self
+            .reshuffle_cache
+            .retrieve(&(transcryptor_id.clone(), domain_to.clone()))
+        else {
             return false;
         };
-        let Some(rekey_from) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id.clone(), context_from.clone())) else {
+        let Some(rekey_from) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
+        else {
             return false;
         };
-        let Some(rekey_to) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id, context_to.clone())) else {
+        let Some(rekey_to) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id, context_to.clone()))
+        else {
             return false;
         };
 
         // Construct combined commitments for the transition
         // For reshuffle: use inv from source domain, val from target domain
-        let reshuffle_commitments = PseudonymizationFactorCommitments::from(
-            crate::core::proved::FactorCommitments {
+        let reshuffle_commitments =
+            PseudonymizationFactorCommitments::from(crate::core::proved::FactorCommitments {
                 inv: reshuffle_from.commitments.inv,
                 val: reshuffle_to.commitments.val,
-            },
-        );
+            });
 
         // For rekey: use val from source context, inv from target context
         let rekey_commitments = Self::combine_rekey_commitments(rekey_from, rekey_to);
@@ -484,12 +536,14 @@ impl Verifier {
         }
 
         // Verify the operation proof
-        operation_proof.verified_reconstruct(
-            original.value(),
-            factors_proof,
-            &reshuffle_commitments,
-            &rekey_commitments,
-        ).is_some()
+        operation_proof
+            .verified_reconstruct(
+                original.value(),
+                factors_proof,
+                &reshuffle_commitments,
+                &rekey_commitments,
+            )
+            .is_some()
     }
 
     /// Verify a pseudonym rekey operation using cached commitments.
@@ -508,10 +562,16 @@ impl Verifier {
     {
         let transcryptor_id = transcryptor_id.to_string();
 
-        let Some(rekey_from) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id.clone(), context_from.clone())) else {
+        let Some(rekey_from) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
+        else {
             return false;
         };
-        let Some(rekey_to) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id, context_to.clone())) else {
+        let Some(rekey_to) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id, context_to.clone()))
+        else {
             return false;
         };
 
@@ -538,10 +598,16 @@ impl Verifier {
     {
         let transcryptor_id = transcryptor_id.to_string();
 
-        let Some(rekey_from) = self.attribute_rekey_cache.retrieve(&(transcryptor_id.clone(), context_from.clone())) else {
+        let Some(rekey_from) = self
+            .attribute_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
+        else {
             return false;
         };
-        let Some(rekey_to) = self.attribute_rekey_cache.retrieve(&(transcryptor_id, context_to.clone())) else {
+        let Some(rekey_to) = self
+            .attribute_rekey_cache
+            .retrieve(&(transcryptor_id, context_to.clone()))
+        else {
             return false;
         };
 
@@ -569,33 +635,51 @@ impl Verifier {
         let transcryptor_id = transcryptor_id.to_string();
 
         // Retrieve commitments from cache
-        let Some(reshuffle_from) = self.reshuffle_cache.retrieve(&(transcryptor_id.clone(), domain_from.clone())) else {
+        let Some(reshuffle_from) = self
+            .reshuffle_cache
+            .retrieve(&(transcryptor_id.clone(), domain_from.clone()))
+        else {
             return false;
         };
-        let Some(reshuffle_to) = self.reshuffle_cache.retrieve(&(transcryptor_id.clone(), domain_to.clone())) else {
+        let Some(reshuffle_to) = self
+            .reshuffle_cache
+            .retrieve(&(transcryptor_id.clone(), domain_to.clone()))
+        else {
             return false;
         };
-        let Some(pseudonym_rekey_from) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id.clone(), context_from.clone())) else {
+        let Some(pseudonym_rekey_from) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
+        else {
             return false;
         };
-        let Some(pseudonym_rekey_to) = self.pseudonym_rekey_cache.retrieve(&(transcryptor_id.clone(), context_to.clone())) else {
+        let Some(pseudonym_rekey_to) = self
+            .pseudonym_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_to.clone()))
+        else {
             return false;
         };
-        let Some(attribute_rekey_from) = self.attribute_rekey_cache.retrieve(&(transcryptor_id.clone(), context_from.clone())) else {
+        let Some(attribute_rekey_from) = self
+            .attribute_rekey_cache
+            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
+        else {
             return false;
         };
-        let Some(attribute_rekey_to) = self.attribute_rekey_cache.retrieve(&(transcryptor_id, context_to.clone())) else {
+        let Some(attribute_rekey_to) = self
+            .attribute_rekey_cache
+            .retrieve(&(transcryptor_id, context_to.clone()))
+        else {
             return false;
         };
 
         // Construct combined commitments for pseudonym operations
-        let reshuffle_commitments = PseudonymizationFactorCommitments::from(
-            crate::core::proved::FactorCommitments {
+        let reshuffle_commitments =
+            PseudonymizationFactorCommitments::from(crate::core::proved::FactorCommitments {
                 inv: reshuffle_from.commitments.inv,
                 val: reshuffle_to.commitments.val,
-            },
-        );
-        let pseudonym_rekey_commitments = Self::combine_rekey_commitments(pseudonym_rekey_from, pseudonym_rekey_to);
+            });
+        let pseudonym_rekey_commitments =
+            Self::combine_rekey_commitments(pseudonym_rekey_from, pseudonym_rekey_to);
 
         // Verify pseudonym factors proof
         if !proof
@@ -626,7 +710,8 @@ impl Verifier {
         }
 
         // Construct combined commitments for attribute operations
-        let attribute_rekey_commitments = Self::combine_rekey_commitments(attribute_rekey_from, attribute_rekey_to);
+        let attribute_rekey_commitments =
+            Self::combine_rekey_commitments(attribute_rekey_from, attribute_rekey_to);
 
         // Verify each attribute operation
         for ((orig_attr, _result_attr), op_proof) in original
@@ -657,7 +742,10 @@ impl Verifier {
         commitments: &ProvedPseudonymizationCommitments,
     ) -> bool {
         // Verify factors proof
-        if !factors_proof.verify(&commitments.reshuffle_commitments, &commitments.rekey_commitments) {
+        if !factors_proof.verify(
+            &commitments.reshuffle_commitments,
+            &commitments.rekey_commitments,
+        ) {
             return false;
         }
 

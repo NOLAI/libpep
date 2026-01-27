@@ -148,10 +148,7 @@ pub struct BlindingCommitments {
 
 impl BlindingCommitments {
     /// Create blinding commitments from blinding factors.
-    pub fn new(
-        pseudonym_blinding: &ScalarNonZero,
-        attribute_blinding: &ScalarNonZero,
-    ) -> Self {
+    pub fn new(pseudonym_blinding: &ScalarNonZero, attribute_blinding: &ScalarNonZero) -> Self {
         Self {
             pseudonym: BlindingCommitment::new(pseudonym_blinding),
             attribute: BlindingCommitment::new(attribute_blinding),
@@ -185,7 +182,8 @@ mod tests {
         let rekey_commitment = rekey_factor * G;
 
         // Create proof
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof =
+            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
 
         // Verify proof
         assert!(proof.verify(&blinding_commitment, &rekey_commitment));
@@ -206,7 +204,8 @@ mod tests {
         let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
         let rekey_commitment = rekey_factor * G;
 
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof =
+            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
 
         // Should fail with wrong blinding commitment
         assert!(!proof.verify(&wrong_commitment, &rekey_commitment));
@@ -224,7 +223,8 @@ mod tests {
         let rekey_commitment = rekey_factor * G;
         let wrong_rekey_commitment = wrong_rekey_factor * G;
 
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof =
+            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
 
         // Should fail with wrong rekey commitment
         assert!(!proof.verify(&blinding_commitment, &wrong_rekey_commitment));

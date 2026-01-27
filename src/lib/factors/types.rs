@@ -1,8 +1,11 @@
 //! Cryptographic factor types for rerandomization, reshuffling, and rekeying operations.
 
 use crate::arithmetic::scalars::ScalarNonZero;
+use crate::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    EncryptionContext, EncryptionSecret, PseudonymizationDomain, PseudonymizationSecret,
+};
 use derive_more::From;
-use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor, EncryptionContext, EncryptionSecret, PseudonymizationDomain, PseudonymizationSecret};
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]

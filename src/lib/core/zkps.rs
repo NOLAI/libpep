@@ -41,12 +41,12 @@ use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha512};
 use std::fmt::Formatter;
 
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use base64::engine::general_purpose;
 use base64::Engine;
 use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 
 /// A zero-knowledge proof demonstrating knowledge of a discrete logarithm.
 ///
@@ -119,7 +119,7 @@ impl Proof {
 
     /// Encodes the proof as a URL-safe base64 string.
     pub fn to_base64(&self) -> String {
-        general_purpose::URL_SAFE.encode(&self.encode())
+        general_purpose::URL_SAFE.encode(self.encode())
     }
 
     /// Decodes a proof from a URL-safe base64 string.
@@ -138,7 +138,7 @@ impl Serialize for Proof {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.to_base64().as_str())
+        serializer.serialize_str(self.to_base64().as_str())
     }
 }
 
@@ -158,7 +158,7 @@ impl<'de> Deserialize<'de> for Proof {
             where
                 E: Error,
             {
-                Proof::from_base64(&v)
+                Proof::from_base64(v)
                     .ok_or_else(|| E::custom(format!("invalid base64 encoded string: {}", v)))
             }
         }

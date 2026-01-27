@@ -11,6 +11,7 @@
 //! Each cache stores both `val` and `inv` for the factor commitments.
 
 pub mod cache;
+#[allow(clippy::module_inception)]
 pub mod verifier;
 
 pub use cache::{

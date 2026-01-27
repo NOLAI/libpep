@@ -1,12 +1,11 @@
-use rand_core::{CryptoRng, RngCore};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::commitments::RekeyFactorCommitments;
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
-use super::commitments::RekeyFactorCommitments;
-
+use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// Second GroupElement is `k*G` if verifiable_rekey with `k` is called.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -220,7 +219,7 @@ impl Rekey2FactorsProof {
     ) -> Self {
         #[cfg(feature = "elgamal3")]
         let (_gk_to, pk) = create_proof(&from.invert(), &(to * G), rng);
-        let (_gki_to, pki) = create_proof(&from, &(to.invert() * G), rng);
+        let (_gki_to, pki) = create_proof(from, &(to.invert() * G), rng);
         Self {
             #[cfg(feature = "elgamal3")]
             pk,

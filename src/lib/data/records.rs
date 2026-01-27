@@ -10,7 +10,7 @@ use crate::keys::{GlobalPublicKeys, SessionKeys};
 use rand_core::{CryptoRng, RngCore};
 
 #[cfg(feature = "verifiable")]
-use crate::core::proved::{RSKFactorsProof, VerifiableRekey, VerifiableRSK};
+use crate::core::proved::{RSKFactorsProof, VerifiableRSK, VerifiableRekey};
 #[cfg(feature = "verifiable")]
 use crate::data::traits::VerifiableTranscryptable;
 
@@ -585,7 +585,8 @@ impl VerifiableTranscryptable for EncryptedRecord {
         }
 
         // Generate shared factors proof once (not message-specific)
-        let pseudonym_factors_proof = RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
+        let pseudonym_factors_proof =
+            RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
 
         // Generate proofs for all attributes
         let mut attribute_operation_proofs = Vec::with_capacity(self.attributes.len());
@@ -623,7 +624,8 @@ impl VerifiableTranscryptable for LongEncryptedRecord {
         }
 
         // Generate shared factors proof once (not message-specific)
-        let pseudonym_factors_proof = RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
+        let pseudonym_factors_proof =
+            RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
 
         // Generate proofs for all long attributes (returns Vec<VerifiableRekey> per attribute)
         let mut attribute_operation_proofs = Vec::with_capacity(self.attributes.len());

@@ -5,7 +5,9 @@
 
 use libpep::client::{decrypt, encrypt};
 use libpep::data::simple::*;
-use libpep::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable, VerifiableTranscryptable};
+use libpep::data::traits::{
+    VerifiablePseudonymizable, VerifiableRekeyable, VerifiableTranscryptable,
+};
 use libpep::factors::contexts::*;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;
@@ -92,21 +94,17 @@ fn test_verifiable_pseudonym_rekey() {
 
     // Transcryptor: Perform verifiable rekey
     let operation_proof = enc_pseudo.verifiable_rekey(&info, rng);
-    let result = EncryptedPseudonym::from_value(operation_proof.result(&enc_pseudo.value()));
+    let result = EncryptedPseudonym::from_value(operation_proof.result(enc_pseudo.value()));
 
     // Verifier: Verify commitments and operation
     let verifier = Verifier::new();
     assert!(verifier.verify_rekey_commitments(&commitments));
-    assert!(verifier.verify_pseudonym_rekey(
-        &enc_pseudo,
-        &result,
-        &operation_proof,
-        &commitments,
-    ));
+    assert!(verifier.verify_pseudonym_rekey(&enc_pseudo, &result, &operation_proof, &commitments,));
 
     // Client: Verify result decrypts correctly (same plaintext, different session)
     #[cfg(feature = "elgamal3")]
-    let decrypted = decrypt(&result, &pseudonym_session2_secret).expect("decryption should succeed");
+    let decrypted =
+        decrypt(&result, &pseudonym_session2_secret).expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
     let decrypted = decrypt(&result, &pseudonym_session2_secret);
 
@@ -147,21 +145,17 @@ fn test_verifiable_attribute_rekey() {
 
     // Transcryptor: Perform verifiable rekey
     let operation_proof = enc_attr.verifiable_rekey(&info, rng);
-    let result = EncryptedAttribute::from_value(operation_proof.result(&enc_attr.value()));
+    let result = EncryptedAttribute::from_value(operation_proof.result(enc_attr.value()));
 
     // Verifier: Verify commitments and operation
     let verifier = Verifier::new();
     assert!(verifier.verify_rekey_commitments(&commitments));
-    assert!(verifier.verify_attribute_rekey(
-        &enc_attr,
-        &result,
-        &operation_proof,
-        &commitments,
-    ));
+    assert!(verifier.verify_attribute_rekey(&enc_attr, &result, &operation_proof, &commitments,));
 
     // Client: Verify result decrypts correctly
     #[cfg(feature = "elgamal3")]
-    let decrypted = decrypt(&result, &attribute_session2_secret).expect("decryption should succeed");
+    let decrypted =
+        decrypt(&result, &attribute_session2_secret).expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
     let decrypted = decrypt(&result, &attribute_session2_secret);
 
@@ -332,7 +326,8 @@ fn test_verifiable_long_pseudonym_pseudonymization() {
 
     // Verify result decrypts correctly
     #[cfg(feature = "elgamal3")]
-    let _decrypted = decrypt(&result, &pseudonym_session2_secret).expect("decryption should succeed");
+    let _decrypted =
+        decrypt(&result, &pseudonym_session2_secret).expect("decryption should succeed");
     #[cfg(not(feature = "elgamal3"))]
     let _decrypted = decrypt(&result, &pseudonym_session2_secret);
 
@@ -370,11 +365,11 @@ fn test_verifiable_record_transcryption() {
     let session1_keys = libpep::keys::SessionKeys {
         pseudonym: libpep::keys::PseudonymSessionKeys {
             public: pseudonym_session1_public,
-            secret: pseudonym_session2_secret.clone(),
+            secret: pseudonym_session2_secret,
         },
         attribute: libpep::keys::AttributeSessionKeys {
             public: attribute_session1_public,
-            secret: attribute_session2_secret.clone(),
+            secret: attribute_session2_secret,
         },
     };
 
@@ -382,15 +377,22 @@ fn test_verifiable_record_transcryption() {
     use libpep::data::records::{EncryptedRecord, Record};
     let record = Record::new(
         vec![Pseudonym::random(rng), Pseudonym::random(rng)],
-        vec![Attribute::random(rng), Attribute::random(rng), Attribute::random(rng)],
+        vec![
+            Attribute::random(rng),
+            Attribute::random(rng),
+            Attribute::random(rng),
+        ],
     );
 
     let enc_record = encrypt(&record, &session1_keys, rng);
 
     // Generate transcryption info and commitments
-    let transcryption_info = transcryptor.transcryption_info(&domain1, &domain2, &session1, &session2);
-    let pseudonym_commitments = Transcryptor::pseudonymization_commitments(&transcryption_info.pseudonym, rng);
-    let attribute_commitments = Transcryptor::attribute_rekey_commitments(&transcryption_info.attribute, rng);
+    let transcryption_info =
+        transcryptor.transcryption_info(&domain1, &domain2, &session1, &session2);
+    let pseudonym_commitments =
+        Transcryptor::pseudonymization_commitments(&transcryption_info.pseudonym, rng);
+    let attribute_commitments =
+        Transcryptor::attribute_rekey_commitments(&transcryption_info.attribute, rng);
 
     // Perform verifiable transcryption
     use libpep::data::traits::VerifiableTranscryptable;
@@ -398,10 +400,14 @@ fn test_verifiable_record_transcryption() {
 
     // Extract result from proof
     let result = EncryptedRecord::new(
-        proof.pseudonym_operation_proofs.iter()
+        proof
+            .pseudonym_operation_proofs
+            .iter()
             .map(|p| EncryptedPseudonym::from_value(p.result()))
             .collect(),
-        proof.attribute_operation_proofs.iter()
+        proof
+            .attribute_operation_proofs
+            .iter()
             .zip(enc_record.attributes.iter())
             .map(|(p, orig)| EncryptedAttribute::from_value(p.result(orig.value())))
             .collect(),
@@ -467,7 +473,12 @@ fn test_verifier_cache() {
 
     let transcryptor_id = String::from("transcryptor1");
     verifier.register_pseudonymization_commitments(
-        &transcryptor_id, &domain1, &domain2, &session1, &session2, commitments
+        &transcryptor_id,
+        &domain1,
+        &domain2,
+        &session1,
+        &session2,
+        commitments,
     );
 
     assert!(!verifier.cache().is_empty());
@@ -520,7 +531,6 @@ fn test_verifier_cache() {
     assert_eq!(verifier.cache().total_count(), 0);
 }
 
-
 #[test]
 fn test_two_transcryptors_with_verification() {
     // Demonstrates distributed transcryption with two transcryptors performing
@@ -557,21 +567,25 @@ fn test_two_transcryptors_with_verification() {
     let session2 = EncryptionContext::from("session2");
 
     // Setup: Reconstruct session1 keys from both transcryptors' shares
-    let session1_shares = vec![
+    let session1_shares = [
         transcryptor1.session_key_shares(&session1),
         transcryptor2.session_key_shares(&session1),
     ];
 
-    let (pseudonym_session1_public, _pseudonym_session1_secret) =
-        make_pseudonym_session_key(
-            blinded_global_keys.pseudonym,
-            &session1_shares.iter().map(|s| s.pseudonym).collect::<Vec<_>>(),
-        );
-    let (attribute_session1_public, _attribute_session1_secret) =
-        make_attribute_session_key(
-            blinded_global_keys.attribute,
-            &session1_shares.iter().map(|s| s.attribute).collect::<Vec<_>>(),
-        );
+    let (pseudonym_session1_public, _pseudonym_session1_secret) = make_pseudonym_session_key(
+        blinded_global_keys.pseudonym,
+        &session1_shares
+            .iter()
+            .map(|s| s.pseudonym)
+            .collect::<Vec<_>>(),
+    );
+    let (attribute_session1_public, _attribute_session1_secret) = make_attribute_session_key(
+        blinded_global_keys.attribute,
+        &session1_shares
+            .iter()
+            .map(|s| s.attribute)
+            .collect::<Vec<_>>(),
+    );
 
     // Client: Encrypt data and create record
     let pseudo = Pseudonym::random(rng);
@@ -586,10 +600,8 @@ fn test_two_transcryptors_with_verification() {
 
     // Transcryptor1: Generate commitments and perform partial transformation
     let info1 = transcryptor1.transcryption_info(&domain_a, &domain_b, &session1, &session2);
-    let pseudonym_commitments1 =
-        Transcryptor::pseudonymization_commitments(&info1.pseudonym, rng);
-    let attribute_commitments1 =
-        Transcryptor::attribute_rekey_commitments(&info1.attribute, rng);
+    let pseudonym_commitments1 = Transcryptor::pseudonymization_commitments(&info1.pseudonym, rng);
+    let attribute_commitments1 = Transcryptor::attribute_rekey_commitments(&info1.attribute, rng);
 
     let proof1 = record.verifiable_transcrypt(&info1, rng);
     let result1 = EncryptedRecord::new(
@@ -618,7 +630,12 @@ fn test_two_transcryptors_with_verification() {
         &session2,
         pseudonym_commitments1,
     );
-    verifier.register_attribute_rekey_commitments(&transcryptor1_id, &session1, &session2, attribute_commitments1);
+    verifier.register_attribute_rekey_commitments(
+        &transcryptor1_id,
+        &session1,
+        &session2,
+        attribute_commitments1,
+    );
 
     assert!(verifier.verify_pseudonymization_commitments(&pseudonym_commitments1));
     assert!(verifier.verify_rekey_commitments(&attribute_commitments1));
@@ -632,10 +649,8 @@ fn test_two_transcryptors_with_verification() {
 
     // Transcryptor2: Generate commitments and perform another partial transformation
     let info2 = transcryptor2.transcryption_info(&domain_a, &domain_b, &session1, &session2);
-    let pseudonym_commitments2 =
-        Transcryptor::pseudonymization_commitments(&info2.pseudonym, rng);
-    let attribute_commitments2 =
-        Transcryptor::attribute_rekey_commitments(&info2.attribute, rng);
+    let pseudonym_commitments2 = Transcryptor::pseudonymization_commitments(&info2.pseudonym, rng);
+    let attribute_commitments2 = Transcryptor::attribute_rekey_commitments(&info2.attribute, rng);
 
     let proof2 = result1.verifiable_transcrypt(&info2, rng);
     let result2 = EncryptedRecord::new(
@@ -667,27 +682,30 @@ fn test_two_transcryptors_with_verification() {
     // Client: Decrypt final result using reconstructed session2 keys
     #[cfg(feature = "elgamal3")]
     {
-        let session2_shares = vec![
+        let session2_shares = [
             transcryptor1.session_key_shares(&session2),
             transcryptor2.session_key_shares(&session2),
         ];
 
-        let (_pseudonym_session2_public, pseudonym_session2_secret) =
-            make_pseudonym_session_key(
-                blinded_global_keys.pseudonym,
-                &session2_shares.iter().map(|s| s.pseudonym).collect::<Vec<_>>(),
-            );
-        let (_attribute_session2_public, attribute_session2_secret) =
-            make_attribute_session_key(
-                blinded_global_keys.attribute,
-                &session2_shares.iter().map(|s| s.attribute).collect::<Vec<_>>(),
-            );
+        let (_pseudonym_session2_public, pseudonym_session2_secret) = make_pseudonym_session_key(
+            blinded_global_keys.pseudonym,
+            &session2_shares
+                .iter()
+                .map(|s| s.pseudonym)
+                .collect::<Vec<_>>(),
+        );
+        let (_attribute_session2_public, attribute_session2_secret) = make_attribute_session_key(
+            blinded_global_keys.attribute,
+            &session2_shares
+                .iter()
+                .map(|s| s.attribute)
+                .collect::<Vec<_>>(),
+        );
 
-        let _final_pseudo =
-            decrypt(&result2.pseudonyms[0], &pseudonym_session2_secret).expect("decrypt final pseudonym failed");
-        let final_attr =
-            decrypt(&result2.attributes[0], &attribute_session2_secret).expect("decrypt final attribute failed");
+        let _final_pseudo = decrypt(&result2.pseudonyms[0], &pseudonym_session2_secret)
+            .expect("decrypt final pseudonym failed");
+        let final_attr = decrypt(&result2.attributes[0], &attribute_session2_secret)
+            .expect("decrypt final attribute failed");
         assert_eq!(final_attr, attr);
     }
 }
-

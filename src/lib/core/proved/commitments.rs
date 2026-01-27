@@ -1,10 +1,10 @@
+use crate::arithmetic::group_elements::{GroupElement, G};
+use crate::arithmetic::scalars::ScalarNonZero;
+use crate::core::zkps::{create_proof, verify_proof, Proof};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, RngCore};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::zkps::{create_proof, verify_proof, Proof};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -84,6 +84,9 @@ impl PseudonymizationFactorCommitments {
         rng: &mut R,
     ) -> (Self, PseudonymizationFactorCommitmentsProof) {
         let (commitments, proof) = FactorCommitments::new(a, rng);
-        (Self(commitments), PseudonymizationFactorCommitmentsProof(proof))
+        (
+            Self(commitments),
+            PseudonymizationFactorCommitmentsProof(proof),
+        )
     }
 }

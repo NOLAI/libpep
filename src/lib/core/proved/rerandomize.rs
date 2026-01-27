@@ -1,10 +1,10 @@
-use rand_core::{CryptoRng, RngCore};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
+use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// RERANDOMIZE
 // We are re-using some variables from the Proof to reconstruct the Rerandomize operation.

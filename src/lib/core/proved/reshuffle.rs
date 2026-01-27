@@ -1,11 +1,11 @@
-use rand_core::{CryptoRng, RngCore};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::commitments::PseudonymizationFactorCommitments;
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
-use super::commitments::PseudonymizationFactorCommitments;
+use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// RESHUFFLE
 
@@ -75,7 +75,13 @@ impl VerifiableReshuffle {
             &self.pc,
         );
         #[cfg(not(feature = "elgamal3"))]
-        Self::verify_split(&original.gb, &original.gc, &commitments.0.val, &self.pb, &self.pc)
+        Self::verify_split(
+            &original.gb,
+            &original.gc,
+            &commitments.0.val,
+            &self.pb,
+            &self.pc,
+        )
     }
     #[must_use]
     pub fn verify_reshuffle(

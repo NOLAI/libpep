@@ -1,14 +1,13 @@
-use rand_core::{CryptoRng, RngCore};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::commitments::{PseudonymizationFactorCommitments, RekeyFactorCommitments};
+use super::rekey::Rekey2FactorsProof;
+use super::reshuffle::Reshuffle2FactorsProof;
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
-use super::commitments::{PseudonymizationFactorCommitments, RekeyFactorCommitments};
-use super::reshuffle::Reshuffle2FactorsProof;
-use super::rekey::Rekey2FactorsProof;
-
+use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -40,7 +39,11 @@ impl RSKFactorsProof {
         reshuffle_commitments: &PseudonymizationFactorCommitments,
         rekey_commitments: &RekeyFactorCommitments,
     ) -> bool {
-        verify_proof(&rekey_commitments.0.inv, &reshuffle_commitments.0.val, &self.pski)
+        verify_proof(
+            &rekey_commitments.0.inv,
+            &reshuffle_commitments.0.val,
+            &self.pski,
+        )
     }
 }
 
@@ -81,7 +84,12 @@ impl VerifiableRSK {
         reshuffle_commitments: &PseudonymizationFactorCommitments,
         rekey_commitments: &RekeyFactorCommitments,
     ) -> Option<ElGamal> {
-        if self.verify(original, rsk_proof, reshuffle_commitments, rekey_commitments) {
+        if self.verify(
+            original,
+            rsk_proof,
+            reshuffle_commitments,
+            rekey_commitments,
+        ) {
             Some(self.reconstruct())
         } else {
             None
@@ -148,13 +156,21 @@ impl VerifiableRSK {
         rekey_commitments: &RekeyFactorCommitments,
     ) -> bool {
         #[cfg(feature = "elgamal3")]
-        return self.verify(original, rsk_proof, reshuffle_commitments, rekey_commitments)
-            && new.gb == *self.pb
+        return self.verify(
+            original,
+            rsk_proof,
+            reshuffle_commitments,
+            rekey_commitments,
+        ) && new.gb == *self.pb
             && new.gc == *self.pc
             && new.gy == *self.py;
         #[cfg(not(feature = "elgamal3"))]
-        return self.verify(original, rsk_proof, reshuffle_commitments, rekey_commitments)
-            && new.gb == *self.pb
+        return self.verify(
+            original,
+            rsk_proof,
+            reshuffle_commitments,
+            rekey_commitments,
+        ) && new.gb == *self.pb
             && new.gc == *self.pc;
     }
     #[cfg(not(feature = "elgamal3"))]
@@ -167,12 +183,17 @@ impl VerifiableRSK {
         reshuffle_commitments: &PseudonymizationFactorCommitments,
         rekey_commitments: &RekeyFactorCommitments,
     ) -> bool {
-        self.verify(original, rsk_proof, reshuffle_commitments, rekey_commitments)
-            && new.gb == *self.pb
+        self.verify(
+            original,
+            rsk_proof,
+            reshuffle_commitments,
+            rekey_commitments,
+        ) && new.gb == *self.pb
             && new.gc == *self.pc
     }
     #[cfg(feature = "elgamal3")]
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     fn verify_split(
         gb: &GroupElement,
         gc: &GroupElement,
@@ -345,7 +366,7 @@ impl RSK2FactorsProof {
             gs: *gs,
             gk: *gk,
         };
-        if x.verify(&reshuffle2_proof, &rekey2_proof) {
+        if x.verify(reshuffle2_proof, rekey2_proof) {
             Some(x)
         } else {
             None
@@ -362,7 +383,7 @@ impl RSK2FactorsProof {
             pski: *pski,
             gs: *gs,
         };
-        if x.verify(&reshuffle2_proof, &rekey2_proof) {
+        if x.verify(reshuffle2_proof, rekey2_proof) {
             Some(x)
         } else {
             None
