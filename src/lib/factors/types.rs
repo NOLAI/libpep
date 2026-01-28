@@ -1,6 +1,10 @@
 //! Cryptographic factor types for rerandomization, reshuffling, and rekeying operations.
 
 use crate::arithmetic::scalars::ScalarNonZero;
+use crate::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    EncryptionContext, EncryptionSecret, PseudonymizationDomain, PseudonymizationSecret,
+};
 use derive_more::From;
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
@@ -75,15 +79,80 @@ pub struct TranscryptionInfo {
     pub attribute: AttributeRekeyInfo,
 }
 
+impl PseudonymizationInfo {
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
+        let reshuffle_factor = ReshuffleFactor(s_from.0.invert() * s_to.0);
+        let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
+        Self {
+            s: reshuffle_factor,
+            k: rekey_factor,
+        }
+    }
+
+    /// Reverse the pseudonymization info (i.e., switch the direction of the pseudonymization).
+    pub fn reverse(&self) -> Self {
+        Self {
+            s: ReshuffleFactor(self.s.0.invert()),
+            k: PseudonymRekeyFactor(self.k.0.invert()),
+        }
+    }
+}
+
+impl PseudonymRekeyInfo {
+    /// Compute the rekey info for pseudonyms given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
+        PseudonymRekeyFactor(k_from.0.invert() * k_to.0)
+    }
+
+    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
+    pub fn reverse(&self) -> Self {
+        PseudonymRekeyFactor(self.0.invert())
+    }
+}
+
+impl AttributeRekeyInfo {
+    /// Compute the rekey info for attributes given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
+        AttributeRekeyFactor(k_from.0.invert() * k_to.0)
+    }
+
+    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
+    pub fn reverse(&self) -> Self {
+        AttributeRekeyFactor(self.0.invert())
+    }
+}
+
 impl TranscryptionInfo {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
     pub fn new(
-        domain_from: &crate::factors::contexts::PseudonymizationDomain,
-        domain_to: &crate::factors::contexts::PseudonymizationDomain,
-        session_from: &crate::factors::contexts::EncryptionContext,
-        session_to: &crate::factors::contexts::EncryptionContext,
-        pseudonymization_secret: &crate::factors::PseudonymizationSecret,
-        encryption_secret: &crate::factors::EncryptionSecret,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
     ) -> Self {
         Self {
             pseudonym: PseudonymizationInfo::new(

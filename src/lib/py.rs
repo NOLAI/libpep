@@ -11,6 +11,9 @@ pub use crate::factors::py as factors;
 pub use crate::keys::py as keys;
 pub use crate::transcryptor::py as transcryptor;
 
+#[cfg(feature = "verifiable")]
+pub use crate::verifier::py as verifier;
+
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -92,10 +95,23 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     factors::contexts::register(&factors_module)?;
     factors::types::register(&factors_module)?;
     factors::secrets::register(&factors_module)?;
+    #[cfg(feature = "verifiable")]
+    factors::commitments::register_commitment_module(&factors_module)?;
     m.add_submodule(&factors_module)?;
     py.import("sys")?
         .getattr("modules")?
         .set_item("libpep.factors", &factors_module)?;
+
+    // Register verifier as submodule
+    #[cfg(feature = "verifiable")]
+    {
+        let verifier_module = PyModule::new(py, "verifier")?;
+        verifier::register_verifier_module(&verifier_module)?;
+        m.add_submodule(&verifier_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.verifier", &verifier_module)?;
+    }
 
     Ok(())
 }

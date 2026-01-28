@@ -4,6 +4,9 @@ pub mod contexts;
 pub mod secrets;
 pub mod types;
 
+#[cfg(feature = "verifiable")]
+pub mod commitments;
+
 pub use contexts::{
     PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymizationDomain, PyPseudonymizationInfo,
     PyTranscryptionInfo,
@@ -14,4 +17,9 @@ pub use secrets::{
 };
 pub use types::{
     PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyRerandomizeFactor, PyReshuffleFactor,
+};
+
+#[cfg(feature = "verifiable")]
+pub use commitments::{
+    PyProvedPseudonymizationCommitments, PyProvedRekeyCommitments, PyProvedReshuffleCommitments,
 };

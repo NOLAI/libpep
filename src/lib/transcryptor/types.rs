@@ -8,6 +8,9 @@ use crate::factors::{
 };
 use rand_core::{CryptoRng, RngCore};
 
+/// Transcryptor identifier for distributed PEP systems.
+pub type TranscryptorId = String;
+
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymisation secret and a rekeying secret.
 #[derive(Clone)]

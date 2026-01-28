@@ -8,6 +8,9 @@ pub mod functions;
 pub mod prelude;
 pub mod types;
 
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
+
 #[cfg(feature = "python")]
 pub mod py;
 
@@ -15,7 +18,7 @@ pub mod py;
 pub mod wasm;
 
 // Re-export types
-pub use types::Transcryptor;
+pub use types::{Transcryptor, TranscryptorId};
 
 // Re-export functions
 pub use functions::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};

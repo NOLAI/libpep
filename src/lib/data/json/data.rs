@@ -508,6 +508,86 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
     }
 }
 
+// Verifiable transcryption for JSON
+
+/// Proof for verifiable transcryption of a PEP JSON value.
+///
+/// The structure mirrors the JSON value structure:
+/// - Null has no proof
+/// - Primitives (Bool, Number, String) contain attribute rekey proofs
+/// - Pseudonyms contain pseudonymization proofs (RSK)
+/// - Arrays and Objects contain nested proofs
+#[cfg(feature = "verifiable")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum JSONTranscryptionProof {
+    Null,
+    Bool(crate::core::proved::VerifiableRekey),
+    Number(crate::core::proved::VerifiableRekey),
+    String(Vec<crate::core::proved::VerifiableRekey>),
+    Pseudonym {
+        operation_proofs: Vec<crate::core::proved::VerifiableRSK>,
+        factors_proof: crate::core::proved::RSKFactorsProof,
+    },
+    Array(Vec<Box<JSONTranscryptionProof>>),
+    Object(HashMap<String, Box<JSONTranscryptionProof>>),
+}
+
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiableTranscryptable for EncryptedPEPJSONValue {
+    type TranscryptionProof = JSONTranscryptionProof;
+
+    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+        &self,
+        info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof {
+        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+
+        match self {
+            EncryptedPEPJSONValue::Null => JSONTranscryptionProof::Null,
+            EncryptedPEPJSONValue::Bool(enc) => {
+                let proof = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::Bool(proof)
+            }
+            EncryptedPEPJSONValue::Number(enc) => {
+                let proof = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::Number(proof)
+            }
+            EncryptedPEPJSONValue::String(enc) => {
+                let proofs = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::String(proofs)
+            }
+            EncryptedPEPJSONValue::Pseudonym(enc) => {
+                let operation_proofs = enc.verifiable_pseudonymize(&info.pseudonym, rng);
+                let factors_proof = crate::core::proved::RSKFactorsProof::new(
+                    &info.pseudonym.s.0,
+                    &info.pseudonym.k.0,
+                    rng,
+                );
+                JSONTranscryptionProof::Pseudonym {
+                    operation_proofs,
+                    factors_proof,
+                }
+            }
+            EncryptedPEPJSONValue::Array(arr) => {
+                let proofs = arr
+                    .iter()
+                    .map(|x| Box::new(x.verifiable_transcrypt(info, rng)))
+                    .collect();
+                JSONTranscryptionProof::Array(proofs)
+            }
+            EncryptedPEPJSONValue::Object(obj) => {
+                let proofs = obj
+                    .iter()
+                    .map(|(k, v)| (k.clone(), Box::new(v.verifiable_transcrypt(info, rng))))
+                    .collect();
+                JSONTranscryptionProof::Object(proofs)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {

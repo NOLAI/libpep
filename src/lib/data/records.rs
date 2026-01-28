@@ -14,6 +14,11 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
 
+#[cfg(feature = "verifiable")]
+use crate::core::proved::{RSKFactorsProof, VerifiableRSK, VerifiableRekey};
+#[cfg(feature = "verifiable")]
+use crate::data::traits::VerifiableTranscryptable;
+
 #[cfg(feature = "long")]
 use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
@@ -728,6 +733,115 @@ impl HasStructure for LongEncryptedRecord {
         LongRecordStructure {
             pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
             attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
+        }
+    }
+}
+
+// Verifiable transcryption
+
+/// Proof bundle for verifiable transcryption of a simple record.
+///
+/// Contains proofs for both pseudonymization and attribute rekeying.
+#[cfg(feature = "verifiable")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecordTranscryptionProof {
+    /// Operation proofs for each pseudonym (RSK proofs)
+    pub pseudonym_operation_proofs: Vec<VerifiableRSK>,
+    /// Shared factors proof for all pseudonyms
+    pub pseudonym_factors_proof: RSKFactorsProof,
+    /// Operation proofs for each attribute (Rekey proofs)
+    pub attribute_operation_proofs: Vec<VerifiableRekey>,
+}
+
+/// Proof bundle for verifiable transcryption of a long record.
+///
+/// Contains proofs for both pseudonymization and attribute rekeying,
+/// with multiple proofs per long pseudonym/attribute (one per block).
+#[cfg(feature = "verifiable")]
+#[cfg(feature = "long")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LongRecordTranscryptionProof {
+    /// Operation proofs for each long pseudonym (vectors of RSK proofs)
+    pub pseudonym_operation_proofs: Vec<Vec<VerifiableRSK>>,
+    /// Shared factors proof for all pseudonyms
+    pub pseudonym_factors_proof: RSKFactorsProof,
+    /// Operation proofs for each long attribute (vectors of Rekey proofs)
+    pub attribute_operation_proofs: Vec<Vec<VerifiableRekey>>,
+}
+
+#[cfg(feature = "verifiable")]
+impl VerifiableTranscryptable for EncryptedRecord {
+    type TranscryptionProof = RecordTranscryptionProof;
+
+    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+        &self,
+        info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof {
+        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+
+        let mut pseudonym_operation_proofs = Vec::with_capacity(self.pseudonyms.len());
+
+        // Generate proofs for all pseudonyms
+        for pseudonym in &self.pseudonyms {
+            let operation_proof = pseudonym.verifiable_pseudonymize(&info.pseudonym, rng);
+            pseudonym_operation_proofs.push(operation_proof);
+        }
+
+        // Generate shared factors proof once (not message-specific)
+        let pseudonym_factors_proof =
+            RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
+
+        // Generate proofs for all attributes
+        let mut attribute_operation_proofs = Vec::with_capacity(self.attributes.len());
+        for attribute in &self.attributes {
+            let operation_proof = attribute.verifiable_rekey(&info.attribute, rng);
+            attribute_operation_proofs.push(operation_proof);
+        }
+
+        RecordTranscryptionProof {
+            pseudonym_operation_proofs,
+            pseudonym_factors_proof,
+            attribute_operation_proofs,
+        }
+    }
+}
+
+#[cfg(feature = "verifiable")]
+#[cfg(feature = "long")]
+impl VerifiableTranscryptable for LongEncryptedRecord {
+    type TranscryptionProof = LongRecordTranscryptionProof;
+
+    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+        &self,
+        info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof {
+        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+
+        let mut pseudonym_operation_proofs = Vec::with_capacity(self.pseudonyms.len());
+
+        // Generate proofs for all long pseudonyms (returns Vec<VerifiableRSK> per pseudonym)
+        for pseudonym in &self.pseudonyms {
+            let operation_proofs = pseudonym.verifiable_pseudonymize(&info.pseudonym, rng);
+            pseudonym_operation_proofs.push(operation_proofs);
+        }
+
+        // Generate shared factors proof once (not message-specific)
+        let pseudonym_factors_proof =
+            RSKFactorsProof::new(&info.pseudonym.s.0, &info.pseudonym.k.0, rng);
+
+        // Generate proofs for all long attributes (returns Vec<VerifiableRekey> per attribute)
+        let mut attribute_operation_proofs = Vec::with_capacity(self.attributes.len());
+        for attribute in &self.attributes {
+            let operation_proofs = attribute.verifiable_rekey(&info.attribute, rng);
+            attribute_operation_proofs.push(operation_proofs);
+        }
+
+        LongRecordTranscryptionProof {
+            pseudonym_operation_proofs,
+            pseudonym_factors_proof,
+            attribute_operation_proofs,
         }
     }
 }

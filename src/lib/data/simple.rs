@@ -495,6 +495,47 @@ impl Transcryptable for EncryptedAttribute {
         self.rekey(&info.attribute)
     }
 }
+
+// Verifiable operations - trait implementations
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiablePseudonymizable for EncryptedPseudonym {
+    type PseudonymizationProof = crate::core::proved::VerifiableRSK;
+
+    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+        &self,
+        info: &crate::factors::PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof {
+        crate::core::proved::VerifiableRSK::new(self.value(), &info.s.0, &info.k.0, rng)
+    }
+}
+
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiableRekeyable for EncryptedPseudonym {
+    type RekeyProof = crate::core::proved::VerifiableRekey;
+
+    fn verifiable_rekey<R: RngCore + CryptoRng>(
+        &self,
+        info: &Self::RekeyInfo,
+        rng: &mut R,
+    ) -> Self::RekeyProof {
+        crate::core::proved::VerifiableRekey::new(self.value(), &info.0, rng)
+    }
+}
+
+#[cfg(feature = "verifiable")]
+impl crate::data::traits::VerifiableRekeyable for EncryptedAttribute {
+    type RekeyProof = crate::core::proved::VerifiableRekey;
+
+    fn verifiable_rekey<R: RngCore + CryptoRng>(
+        &self,
+        info: &Self::RekeyInfo,
+        rng: &mut R,
+    ) -> Self::RekeyProof {
+        crate::core::proved::VerifiableRekey::new(self.value(), &info.0, rng)
+    }
+}
+
 #[cfg(feature = "batch")]
 impl crate::data::traits::HasStructure for EncryptedPseudonym {
     type Structure = ();

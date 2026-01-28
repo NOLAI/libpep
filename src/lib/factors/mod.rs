@@ -10,11 +10,13 @@
 //! - [`contexts`]: Context types (PseudonymizationDomain, EncryptionContext)
 //! - [`secrets`]: Secret types (PseudonymizationSecret, EncryptionSecret)
 //! - [`types`]: Factor types and Info type aliases
-//! - [`derivation`]: Functions for deriving factors from contexts and secrets
 
 pub mod contexts;
 pub mod secrets;
 pub mod types;
+
+#[cfg(feature = "verifiable")]
+pub mod commitments;
 
 #[cfg(feature = "python")]
 pub mod py;
@@ -32,4 +34,9 @@ pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
     PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor,
     TranscryptionInfo,
+};
+
+#[cfg(feature = "verifiable")]
+pub use commitments::{
+    ProvedPseudonymizationCommitments, ProvedRekeyCommitments, ProvedReshuffleCommitments,
 };

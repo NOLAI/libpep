@@ -46,6 +46,9 @@ pub mod keys;
 pub mod prelude;
 pub mod transcryptor;
 
+#[cfg(feature = "verifiable")]
+pub mod verifier;
+
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;
 

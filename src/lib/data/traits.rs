@@ -162,3 +162,91 @@ pub trait HasStructure {
     /// Get the structure of this encrypted value.
     fn structure(&self) -> Self::Structure;
 }
+
+// Verifiable operation traits
+
+/// A trait for encrypted pseudonyms that support verifiable pseudonymization.
+///
+/// This trait extends [`Pseudonymizable`] to provide zero-knowledge proofs
+/// that pseudonymization operations were performed correctly.
+///
+/// The proof contains the result, which can be extracted via `.result()`.
+#[cfg(feature = "verifiable")]
+pub trait VerifiablePseudonymizable: Pseudonymizable {
+    /// The proof type for pseudonymization operations.
+    /// - Simple types use a single proof
+    /// - Long types use `Vec` of proofs
+    type PseudonymizationProof;
+
+    /// Pseudonymize with proof generation.
+    ///
+    /// Returns an operation proof which contains the result.
+    /// The result can be extracted from the operation proof via `.result()`.
+    ///
+    /// Note: The factors proof (RSKFactorsProof) is not message-specific and should
+    /// be generated once per pseudonymization info, not per message.
+    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+        &self,
+        info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof;
+}
+
+/// A trait for encrypted types that support verifiable rekeying.
+///
+/// This trait extends [`Rekeyable`] to provide zero-knowledge proofs
+/// that rekey operations were performed correctly.
+///
+/// The proof contains the result, which can be extracted via `.result(original)`.
+#[cfg(feature = "verifiable")]
+pub trait VerifiableRekeyable: Rekeyable {
+    /// The proof type for rekey operations.
+    /// - Simple types use a single proof
+    /// - Long types use `Vec` of proofs
+    type RekeyProof;
+
+    /// Rekey with proof generation.
+    ///
+    /// Returns an operation proof which contains the result.
+    /// The result can be extracted from the proof via `.result(original)`.
+    fn verifiable_rekey<R: RngCore + CryptoRng>(
+        &self,
+        info: &Self::RekeyInfo,
+        rng: &mut R,
+    ) -> Self::RekeyProof;
+}
+
+/// A trait for encrypted types that support verifiable transcryption.
+///
+/// This trait extends [`Transcryptable`] to provide zero-knowledge proofs
+/// that transcryption operations were performed correctly.
+///
+/// Transcryption combines:
+/// - For pseudonyms: verifiable pseudonymization (reshuffle + rekey with proofs)
+/// - For attributes: verifiable rekeying (rekey with proofs)
+/// - For composite types (JSON, Records): recursive verifiable transcryption
+///
+/// The proof structure varies by type:
+/// - Simple records: contains vectors of proofs for pseudonyms and attributes
+/// - Long records: contains vectors of vectors of proofs
+/// - JSON values: nested proof structure matching the JSON shape
+#[cfg(feature = "verifiable")]
+pub trait VerifiableTranscryptable: Transcryptable {
+    /// The proof type for transcryption operations.
+    /// Structure depends on the complexity of the data type.
+    type TranscryptionProof;
+
+    /// Transcrypt with proof generation.
+    ///
+    /// Returns a proof bundle containing:
+    /// - Operation proofs for pseudonymization (RSK proofs)
+    /// - Factors proof for pseudonymization
+    /// - Operation proofs for rekeying attributes
+    ///
+    /// The result can be extracted from the proofs.
+    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+        &self,
+        info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof;
+}
