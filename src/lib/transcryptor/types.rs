@@ -1,6 +1,6 @@
 //! Transcryptor type definitions.
 
-use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
+use crate::data::traits::{Pseudonymizable, Rekeyable, RekeyInfoSource, Transcryptable};
 use crate::factors::contexts::*;
 use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
@@ -182,5 +182,25 @@ impl Transcryptor {
         R: RngCore + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
+    }
+}
+
+impl RekeyInfoSource<AttributeRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> AttributeRekeyInfo {
+        self.attribute_rekey_info(session_from, session_to)
+    }
+}
+
+impl RekeyInfoSource<PseudonymRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> PseudonymRekeyInfo {
+        self.pseudonym_rekey_info(session_from, session_to)
     }
 }
