@@ -10,7 +10,6 @@
 //! - [`contexts`]: Context types (PseudonymizationDomain, EncryptionContext)
 //! - [`secrets`]: Secret types (PseudonymizationSecret, EncryptionSecret)
 //! - [`types`]: Factor types and Info type aliases
-//! - [`derivation`]: Functions for deriving factors from contexts and secrets
 
 pub mod contexts;
 pub mod secrets;
@@ -30,6 +29,6 @@ pub use secrets::{
 };
 pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
-    PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor,
-    TranscryptionInfo,
+    PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RekeyInfoProvider, RerandomizeFactor,
+    ReshuffleFactor, TranscryptionInfo,
 };

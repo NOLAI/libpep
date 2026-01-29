@@ -2,6 +2,7 @@
 
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::contexts::*;
+use crate::factors::types::RekeyInfoProvider;
 use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
@@ -182,5 +183,25 @@ impl Transcryptor {
         R: RngCore + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
+    }
+}
+
+impl RekeyInfoProvider<AttributeRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> AttributeRekeyInfo {
+        self.attribute_rekey_info(session_from, session_to)
+    }
+}
+
+impl RekeyInfoProvider<PseudonymRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> PseudonymRekeyInfo {
+        self.pseudonym_rekey_info(session_from, session_to)
     }
 }
