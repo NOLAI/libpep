@@ -30,6 +30,6 @@ pub use secrets::{
 };
 pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
-    PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor,
-    TranscryptionInfo,
+    PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RekeyInfoProvider, RerandomizeFactor,
+    ReshuffleFactor, TranscryptionInfo,
 };

@@ -1,12 +1,13 @@
 //! Transcryptor type definitions.
 
-use crate::data::traits::{Pseudonymizable, RekeyInfoSource, Rekeyable, Transcryptable};
+use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::contexts::*;
 use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
 use rand_core::{CryptoRng, RngCore};
+use crate::factors::types::RekeyInfoProvider;
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymisation secret and a rekeying secret.
@@ -185,7 +186,7 @@ impl Transcryptor {
     }
 }
 
-impl RekeyInfoSource<AttributeRekeyInfo> for Transcryptor {
+impl RekeyInfoProvider<AttributeRekeyInfo> for Transcryptor {
     fn rekey_info(
         &self,
         session_from: &EncryptionContext,
@@ -195,7 +196,7 @@ impl RekeyInfoSource<AttributeRekeyInfo> for Transcryptor {
     }
 }
 
-impl RekeyInfoSource<PseudonymRekeyInfo> for Transcryptor {
+impl RekeyInfoProvider<PseudonymRekeyInfo> for Transcryptor {
     fn rekey_info(
         &self,
         session_from: &EncryptionContext,

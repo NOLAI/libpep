@@ -1,6 +1,5 @@
 //! Core traits for encryption and decryption operations.
 
-use crate::factors::contexts::EncryptionContext;
 use crate::factors::TranscryptionInfo;
 use crate::factors::{PseudonymizationInfo, RerandomizeFactor};
 use rand_core::{CryptoRng, RngCore};
@@ -127,23 +126,6 @@ pub trait Pseudonymizable: Encrypted {
     fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self;
 }
 
-/// A trait for types that can provide rekey information for a specific rekey info type.
-///
-/// This trait is parameterized by the rekey info type, allowing different implementations
-/// for different encrypted types (e.g., `AttributeRekeyInfo` vs `PseudonymRekeyInfo`).
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// // Transcryptor implements RekeyInfoSource for both types
-/// let attr_info: AttributeRekeyInfo = transcryptor.rekey_info(&from_ctx, &to_ctx);
-/// let pseudo_info: PseudonymRekeyInfo = transcryptor.rekey_info(&from_ctx, &to_ctx);
-/// ```
-pub trait RekeyInfoSource<Info> {
-    /// Get the rekey information for transcryption between encryption contexts.
-    fn rekey_info(&self, session_from: &EncryptionContext, session_to: &EncryptionContext) -> Info;
-}
-
 /// A trait for encrypted types that can be rekeyed (encryption context change).
 ///
 /// Rekeying changes the encryption context without changing the underlying value.
@@ -155,28 +137,6 @@ pub trait Rekeyable: Encrypted {
 
     /// Rekey this encrypted value from one encryption context to another.
     fn rekey(&self, info: &Self::RekeyInfo) -> Self;
-
-    /// Get the rekey information from a source (e.g., a PEP transcryptor) for transcryption between sessions.
-    ///
-    /// This is a convenience method that allows getting the appropriate rekey info type
-    /// automatically based on the encrypted type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,ignore
-    /// // For EncryptedAttribute, this returns AttributeRekeyInfo
-    /// let info = EncryptedAttribute::get_rekey_info(&transcryptor, &from_ctx, &to_ctx);
-    ///
-    /// // For EncryptedPseudonym, this returns PseudonymRekeyInfo
-    /// let info = EncryptedPseudonym::get_rekey_info(&transcryptor, &from_ctx, &to_ctx);
-    /// ```
-    fn get_rekey_info<S: RekeyInfoSource<Self::RekeyInfo>>(
-        source: &S,
-        session_from: &EncryptionContext,
-        session_to: &EncryptionContext,
-    ) -> Self::RekeyInfo {
-        source.rekey_info(session_from, session_to)
-    }
 }
 
 /// A trait for encrypted types that can be transcrypted.

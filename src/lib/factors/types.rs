@@ -2,6 +2,7 @@
 
 use crate::arithmetic::scalars::ScalarNonZero;
 use derive_more::From;
+use crate::factors::EncryptionContext;
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
@@ -105,4 +106,22 @@ impl TranscryptionInfo {
             attribute: self.attribute.reverse(),
         }
     }
+}
+
+
+/// A trait for types that can provide rekey information for a specific rekey info type.
+///
+/// This trait is parameterized by the rekey info type, allowing different implementations
+/// for different encrypted types (e.g., `AttributeRekeyInfo` vs `PseudonymRekeyInfo`).
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// // Transcryptor implements RekeyInfoProvider for both types
+/// let attr_info: AttributeRekeyInfo = transcryptor.rekey_info(&from_ctx, &to_ctx);
+/// let pseudo_info: PseudonymRekeyInfo = transcryptor.rekey_info(&from_ctx, &to_ctx);
+/// ```
+pub trait RekeyInfoProvider<Info> {
+    /// Get the rekey information for transcryption between encryption contexts.
+    fn rekey_info(&self, session_from: &EncryptionContext, session_to: &EncryptionContext) -> Info;
 }
