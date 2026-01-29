@@ -31,8 +31,10 @@ impl EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::Null => JSONStructure::Null,
             EncryptedPEPJSONValue::Bool(_) => JSONStructure::Bool,
             EncryptedPEPJSONValue::Number(_) => JSONStructure::Number,
-            EncryptedPEPJSONValue::String(enc) => JSONStructure::String(enc.len()),
-            EncryptedPEPJSONValue::Pseudonym(enc) => JSONStructure::Pseudonym(enc.len()),
+            EncryptedPEPJSONValue::String(_enc) => JSONStructure::String(1),
+            EncryptedPEPJSONValue::LongString(enc) => JSONStructure::String(enc.len()),
+            EncryptedPEPJSONValue::Pseudonym(_enc) => JSONStructure::Pseudonym(1),
+            EncryptedPEPJSONValue::LongPseudonym(enc) => JSONStructure::Pseudonym(enc.len()),
             EncryptedPEPJSONValue::Array(arr) => {
                 JSONStructure::Array(arr.iter().map(|item| item.structure()).collect())
             }
