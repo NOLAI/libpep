@@ -1,8 +1,8 @@
 //! Cryptographic factor types for rerandomization, reshuffling, and rekeying operations.
 
 use crate::arithmetic::scalars::ScalarNonZero;
-use derive_more::From;
 use crate::factors::EncryptionContext;
+use derive_more::From;
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
@@ -107,7 +107,6 @@ impl TranscryptionInfo {
         }
     }
 }
-
 
 /// A trait for types that can provide rekey information for a specific rekey info type.
 ///
