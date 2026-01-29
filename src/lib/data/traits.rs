@@ -141,8 +141,7 @@ pub trait Pseudonymizable: Encrypted {
 /// ```
 pub trait RekeyInfoSource<Info> {
     /// Get the rekey information for transcryption between encryption contexts.
-    fn rekey_info(&self, session_from: &EncryptionContext, session_to: &EncryptionContext)
-        -> Info;
+    fn rekey_info(&self, session_from: &EncryptionContext, session_to: &EncryptionContext) -> Info;
 }
 
 /// A trait for encrypted types that can be rekeyed (encryption context change).

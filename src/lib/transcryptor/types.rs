@@ -1,6 +1,6 @@
 //! Transcryptor type definitions.
 
-use crate::data::traits::{Pseudonymizable, Rekeyable, RekeyInfoSource, Transcryptable};
+use crate::data::traits::{Pseudonymizable, RekeyInfoSource, Rekeyable, Transcryptable};
 use crate::factors::contexts::*;
 use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
