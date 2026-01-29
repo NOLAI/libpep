@@ -21,8 +21,8 @@ fn test_json_transcryption_with_macro() {
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
-    let domain_a = PseudonymizationDomain::from("hospital-a");
-    let domain_b = PseudonymizationDomain::from("hospital-b");
+    let domain_a = PseudonymizationDomain::from("domain-a");
+    let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
@@ -49,7 +49,7 @@ fn test_json_transcryption_with_macro() {
     assert_eq!(json_original["patient_id"], "patient-12345");
     assert_eq!(json_original["diagnosis"], "Flu");
 
-    // Transcrypt from hospital A to hospital B
+    // Transcrypt from domain A to domain B
     let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
@@ -339,8 +339,8 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
-    let domain_a = PseudonymizationDomain::from("hospital-a");
-    let domain_b = PseudonymizationDomain::from("hospital-b");
+    let domain_a = PseudonymizationDomain::from("domain-a");
+    let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
     let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
@@ -380,7 +380,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     assert_eq!(json_original["diagnosis"], "Healthy");
     assert_eq!(json_original["temperature"].as_f64().unwrap(), 36.6);
 
-    // Transcrypt from hospital A to hospital B using the transcryptor
+    // Transcrypt from domain A to domain B using the transcryptor
     let transcryption_info =
         transcryptor.transcryption_info(&domain_a, &domain_b, &session, &session);
 
@@ -411,4 +411,343 @@ fn test_json_transcryption_with_client_and_transcryptor() {
         json_transcrypted["patient_id"], "patient-54321",
         "Pseudonym should be different after cross-domain transcryption"
     );
+}
+
+/// Test full round-trip: PEPJSON → Encrypt → Transcrypt → Decrypt → JSON → PEPJSON → Repeat
+///
+/// This test demonstrates that pseudonyms maintain their correct type (short vs long)
+/// after transcryption and JSON serialization round-trips.
+#[test]
+fn test_pseudonym_roundtrip_with_json_serialization() {
+    let mut rng = rand::rng();
+
+    // Setup keys and secrets
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
+    let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
+
+    let session = EncryptionContext::from("session-1");
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+
+    // Create client and transcryptor
+    let client = libpep::client::Client::new(session_keys);
+    let transcryptor = libpep::transcryptor::Transcryptor::new(
+        pseudonymization_secret.clone(),
+        encryption_secret.clone(),
+    );
+
+    // Create PEPJSON with both short and long pseudonyms using pep_json! macro
+    let original_pep = pep_json!({
+        "short_id": pseudonym("john"),  // 4 bytes → single Pseudonym
+        "long_id": pseudonym("user@example.com"),  // 17 bytes → LongPseudonym (2 blocks)
+        "name": "Alice",
+        "age": 30
+    });
+
+    // 1. Encrypt the PEPJSON using the client
+    let encrypted = client.encrypt(&original_pep, &mut rng);
+
+    // 2. Transcrypt (pseudonymize + rekey) the pseudonyms
+    let domain_from = PseudonymizationDomain::from("domain-a");
+    let domain_to = PseudonymizationDomain::from("domain-b");
+
+    let transcryption_info =
+        transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
+
+    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+
+    // 3. Decrypt back to PEPJSONValue using the client
+    #[cfg(feature = "elgamal3")]
+    let decrypted = client.decrypt(&transcrypted).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted = client.decrypt(&transcrypted);
+
+    // Verify structure is preserved (name and age should still be there)
+    let json_value = decrypted.to_value().unwrap();
+    assert_eq!(json_value["name"], "Alice");
+    assert_eq!(json_value["age"], 30);
+
+    // Pseudonyms should be hex-encoded (64 chars for short, 128 for long)
+    let short_id_hex = json_value["short_id"].as_str().unwrap();
+    let long_id_hex = json_value["long_id"].as_str().unwrap();
+    assert_eq!(
+        short_id_hex.len(),
+        64,
+        "Short pseudonym should be 64 hex chars"
+    );
+    assert_eq!(
+        long_id_hex.len(),
+        128,
+        "Long pseudonym should be 128 hex chars"
+    );
+
+    // 4. Create PEPJSON from the hex values using pep_json! macro
+    let transcrypted_pep = pep_json!({
+        "short_id": pseudonym(short_id_hex),  // Reconstructs as Pseudonym (1 block)
+        "long_id": pseudonym(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
+        "name": "Alice",
+        "age": 30
+    });
+
+    // 5. Encrypt the transcrypted PEPJSON
+    let encrypted_b = client.encrypt(&transcrypted_pep, &mut rng);
+
+    // 6. Transcrypt back (domain-b → domain-a)
+    let transcryption_info_back =
+        transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
+
+    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+
+    // 7. Decrypt and verify we get back the original values
+    #[cfg(feature = "elgamal3")]
+    let decrypted_back = client.decrypt(&transcrypted_back).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_back = client.decrypt(&transcrypted_back);
+
+    let json_back = decrypted_back.to_value().unwrap();
+
+    // Should have the original pseudonym values
+    assert_eq!(json_back["short_id"], "john");
+    assert_eq!(json_back["long_id"], "user@example.com");
+    assert_eq!(json_back["name"], "Alice");
+    assert_eq!(json_back["age"], 30);
+}
+
+/// Test full round-trip using PEPJSONBuilder: Build → Encrypt → Transcrypt → Decrypt → Build → Repeat
+///
+/// This test demonstrates the same flow as test_pseudonym_roundtrip_with_json_serialization
+/// but uses the builder API instead of the pep_json! macro.
+#[test]
+fn test_pseudonym_roundtrip_with_builder() {
+    use libpep::data::json::data::PEPJSONValue;
+
+    let mut rng = rand::rng();
+
+    // Setup keys and secrets
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
+    let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
+
+    let session = EncryptionContext::from("session-1");
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+
+    // Create client and transcryptor
+    let client = libpep::client::Client::new(session_keys);
+    let transcryptor = libpep::transcryptor::Transcryptor::new(
+        pseudonymization_secret.clone(),
+        encryption_secret.clone(),
+    );
+
+    // 1. Create PEPJSON with both short and long pseudonyms using the builder
+    let original_pep = PEPJSONBuilder::new()
+        .pseudonym("short_id", "john") // 4 bytes → Pseudonym (1 block)
+        .pseudonym("long_id", "user@example.com") // 17 bytes → LongPseudonym (2 blocks)
+        .attribute("name", json!("Alice"))
+        .attribute("age", json!(30))
+        .build();
+
+    // Verify the types are correct after initial construction
+    if let PEPJSONValue::Object(fields) = &original_pep {
+        assert!(matches!(
+            fields.get("short_id"),
+            Some(PEPJSONValue::Pseudonym(_))
+        ));
+        assert!(
+            matches!(fields.get("long_id"), Some(PEPJSONValue::LongPseudonym(lp)) if lp.len() == 2)
+        );
+    }
+
+    // 2. Encrypt the PEPJSON using the client
+    let encrypted = client.encrypt(&original_pep, &mut rng);
+
+    // 3. Transcrypt (pseudonymize + rekey) the pseudonyms
+    let domain_from = PseudonymizationDomain::from("domain-a");
+    let domain_to = PseudonymizationDomain::from("domain-b");
+
+    let transcryption_info =
+        transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
+
+    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+
+    // 4. Decrypt back to PEPJSONValue using the client
+    #[cfg(feature = "elgamal3")]
+    let decrypted = client.decrypt(&transcrypted).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted = client.decrypt(&transcrypted);
+
+    // Verify structure is preserved (name and age should still be there)
+    let json_value = decrypted.to_value().unwrap();
+    assert_eq!(json_value["name"], "Alice");
+    assert_eq!(json_value["age"], 30);
+
+    // Pseudonyms should be hex-encoded (64 chars for short, 128 for long)
+    let short_id_hex = json_value["short_id"].as_str().unwrap();
+    let long_id_hex = json_value["long_id"].as_str().unwrap();
+    assert_eq!(
+        short_id_hex.len(),
+        64,
+        "Short pseudonym should be 64 hex chars"
+    );
+    assert_eq!(
+        long_id_hex.len(),
+        128,
+        "Long pseudonym should be 128 hex chars"
+    );
+
+    // 5. Rebuild PEPJSON from the hex values using the builder
+    let transcrypted_pep = PEPJSONBuilder::new()
+        .pseudonym("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
+        .pseudonym("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
+        .attribute("name", json!("Alice"))
+        .attribute("age", json!(30))
+        .build();
+
+    // Verify the types are correct after reconstruction
+    if let PEPJSONValue::Object(fields) = &transcrypted_pep {
+        assert!(matches!(
+            fields.get("short_id"),
+            Some(PEPJSONValue::Pseudonym(_))
+        ));
+        assert!(matches!(
+            fields.get("long_id"),
+            Some(PEPJSONValue::LongPseudonym(lp)) if lp.len() == 2
+        ));
+    }
+
+    // 6. Encrypt the transcrypted PEPJSON
+    let encrypted_b = client.encrypt(&transcrypted_pep, &mut rng);
+
+    // 7. Transcrypt back (domain-b → domain-a)
+    let transcryption_info_back =
+        transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
+
+    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+
+    // 8. Decrypt and verify we get back the original values
+    #[cfg(feature = "elgamal3")]
+    let decrypted_back = client.decrypt(&transcrypted_back).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_back = client.decrypt(&transcrypted_back);
+
+    let json_back = decrypted_back.to_value().unwrap();
+
+    // Should have the original pseudonym values
+    assert_eq!(json_back["short_id"], "john");
+    assert_eq!(json_back["long_id"], "user@example.com");
+    assert_eq!(json_back["name"], "Alice");
+    assert_eq!(json_back["age"], 30);
+}
+
+/// Test that unicode characters work correctly in pseudonyms and attributes
+#[test]
+fn test_unicode_pseudonyms_and_attributes() {
+    let mut rng = rand::rng();
+
+    // Setup keys and secrets
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
+    let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
+
+    let session = EncryptionContext::from("session-1");
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+
+    // Create client and transcryptor
+    let client = libpep::client::Client::new(session_keys);
+    let transcryptor = libpep::transcryptor::Transcryptor::new(
+        pseudonymization_secret.clone(),
+        encryption_secret.clone(),
+    );
+
+    // Create PEPJSON with unicode characters
+    let original_pep = pep_json!({
+        "emoji_id": pseudonym("🔒👤"),  // Emoji (short, 8 bytes UTF-8)
+        "chinese_id": pseudonym("用户@例子.中国"),  // Chinese email (long, ~21 bytes)
+        "arabic_name": "مرحبا بك",  // Arabic attribute
+        "cyrillic_name": "Здравствуй",  // Cyrillic attribute
+        "mixed": "Café™ ñoño 你好 🏥",  // Mixed unicode attribute
+        "age": 25
+    });
+
+    // 1. Encrypt
+    let encrypted = client.encrypt(&original_pep, &mut rng);
+
+    // 2. Transcrypt to another domain
+    let domain_from = PseudonymizationDomain::from("domain-a");
+    let domain_to = PseudonymizationDomain::from("domain-b");
+
+    let transcryption_info =
+        transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
+
+    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+
+    // 3. Decrypt
+    #[cfg(feature = "elgamal3")]
+    let decrypted = client.decrypt(&transcrypted).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted = client.decrypt(&transcrypted);
+
+    let json_value = decrypted.to_value().unwrap();
+
+    // Verify attributes with unicode preserved
+    assert_eq!(json_value["arabic_name"], "مرحبا بك");
+    assert_eq!(json_value["cyrillic_name"], "Здравствуй");
+    assert_eq!(json_value["mixed"], "Café™ ñoño 你好 🏥");
+    assert_eq!(json_value["age"], 25);
+
+    // Pseudonyms should be hex-encoded
+    let emoji_id_hex = json_value["emoji_id"].as_str().unwrap();
+    let chinese_id_hex = json_value["chinese_id"].as_str().unwrap();
+
+    // Emoji fits in 1 block (8 bytes UTF-8)
+    assert_eq!(
+        emoji_id_hex.len(),
+        64,
+        "Emoji pseudonym should be 64 hex chars"
+    );
+
+    // Chinese email is longer and needs multiple blocks
+    assert!(
+        chinese_id_hex.len() >= 64,
+        "Chinese email should need at least 1 block"
+    );
+    assert_eq!(
+        chinese_id_hex.len() % 64,
+        0,
+        "Should be multiple of 64 chars"
+    );
+
+    // 4. Reconstruct PEPJSON from hex values
+    let transcrypted_pep = pep_json!({
+        "emoji_id": pseudonym(emoji_id_hex),
+        "chinese_id": pseudonym(chinese_id_hex),
+        "arabic_name": "مرحبا بك",
+        "cyrillic_name": "Здравствуй",
+        "mixed": "Café™ ñoño 你好 🏥",
+        "age": 25
+    });
+
+    // 5. Encrypt again
+    let encrypted_b = client.encrypt(&transcrypted_pep, &mut rng);
+
+    // 6. Transcrypt back
+    let transcryption_info_back =
+        transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
+
+    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+
+    // 7. Decrypt and verify original unicode values restored
+    #[cfg(feature = "elgamal3")]
+    let decrypted_back = client.decrypt(&transcrypted_back).unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted_back = client.decrypt(&transcrypted_back);
+
+    let json_back = decrypted_back.to_value().unwrap();
+
+    // Verify all unicode preserved through full round-trip
+    assert_eq!(json_back["emoji_id"], "🔒👤");
+    assert_eq!(json_back["chinese_id"], "用户@例子.中国");
+    assert_eq!(json_back["arabic_name"], "مرحبا بك");
+    assert_eq!(json_back["cyrillic_name"], "Здравствуй");
+    assert_eq!(json_back["mixed"], "Café™ ñoño 你好 🏥");
+    assert_eq!(json_back["age"], 25);
 }

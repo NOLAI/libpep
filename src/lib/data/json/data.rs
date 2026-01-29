@@ -7,7 +7,7 @@ use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use crate::data::padding::Padded;
-use crate::data::simple::{Attribute, EncryptedAttribute};
+use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
@@ -60,8 +60,14 @@ pub enum PEPJSONValue {
     Null,
     Bool(Attribute),
     Number(Attribute),
-    String(LongAttribute),
-    Pseudonym(LongPseudonym),
+    /// Short string that fits in a single block (≤15 bytes)
+    String(Attribute),
+    /// Long string that requires multiple blocks
+    LongString(LongAttribute),
+    /// Short pseudonym from 32-byte value
+    Pseudonym(Pseudonym),
+    /// Long pseudonym (multiple 32-byte values or lizard-encoded)
+    LongPseudonym(LongPseudonym),
     Array(Vec<PEPJSONValue>),
     Object(HashMap<String, PEPJSONValue>),
 }
@@ -83,8 +89,14 @@ pub enum EncryptedPEPJSONValue {
     Null,
     Bool(EncryptedAttribute),
     Number(EncryptedAttribute),
-    String(LongEncryptedAttribute),
-    Pseudonym(LongEncryptedPseudonym),
+    /// Short string that fits in a single block (≤15 bytes)
+    String(EncryptedAttribute),
+    /// Long string that requires multiple blocks
+    LongString(LongEncryptedAttribute),
+    /// Short pseudonym from 32-byte value
+    Pseudonym(EncryptedPseudonym),
+    /// Long pseudonym (multiple 32-byte values or lizard-encoded)
+    LongPseudonym(LongEncryptedPseudonym),
     Array(Vec<EncryptedPEPJSONValue>),
     Object(HashMap<String, EncryptedPEPJSONValue>),
 }
@@ -126,7 +138,19 @@ impl PEPJSONValue {
                     .map_err(|e| JsonError::StringPadding(format!("{e:?}")))?;
                 Ok(Value::String(string_val))
             }
+            Self::LongString(attr) => {
+                let string_val = attr
+                    .to_string_padded()
+                    .map_err(|e| JsonError::StringPadding(format!("{e:?}")))?;
+                Ok(Value::String(string_val))
+            }
             Self::Pseudonym(pseudo) => {
+                let string_val = pseudo
+                    .to_string_padded()
+                    .unwrap_or_else(|_| pseudo.to_hex());
+                Ok(Value::String(string_val))
+            }
+            Self::LongPseudonym(pseudo) => {
                 let string_val = pseudo
                     .to_string_padded()
                     .unwrap_or_else(|_| pseudo.to_hex());
@@ -172,7 +196,19 @@ impl PEPJSONValue {
                     .expect("9 bytes always fits in 16-byte block");
                 Self::Number(attr)
             }
-            Value::String(s) => Self::String(LongAttribute::from_string_padded(s)),
+            Value::String(s) => {
+                // Check if string fits in a single block (≤15 bytes with PKCS#7 padding)
+                if s.len() <= 15 {
+                    // Try to create a short string
+                    match Attribute::from_string_padded(s) {
+                        Ok(attr) => Self::String(attr),
+                        Err(_) => Self::LongString(LongAttribute::from_string_padded(s)),
+                    }
+                } else {
+                    // Use long string for strings > 15 bytes
+                    Self::LongString(LongAttribute::from_string_padded(s))
+                }
+            }
             Value::Array(arr) => {
                 let mut out = Vec::with_capacity(arr.len());
                 out.extend(arr.iter().map(Self::from_value));
@@ -207,12 +243,18 @@ impl Encryptable for PEPJSONValue {
             PEPJSONValue::Number(attr) => {
                 EncryptedPEPJSONValue::Number(attr.encrypt(&keys.attribute.public, rng))
             }
-            PEPJSONValue::String(long_attr) => {
-                EncryptedPEPJSONValue::String(long_attr.encrypt(&keys.attribute.public, rng))
+            PEPJSONValue::String(attr) => {
+                EncryptedPEPJSONValue::String(attr.encrypt(&keys.attribute.public, rng))
             }
-            PEPJSONValue::Pseudonym(long_pseudo) => {
-                EncryptedPEPJSONValue::Pseudonym(long_pseudo.encrypt(&keys.pseudonym.public, rng))
+            PEPJSONValue::LongString(long_attr) => {
+                EncryptedPEPJSONValue::LongString(long_attr.encrypt(&keys.attribute.public, rng))
             }
+            PEPJSONValue::Pseudonym(pseudo) => {
+                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt(&keys.pseudonym.public, rng))
+            }
+            PEPJSONValue::LongPseudonym(long_pseudo) => EncryptedPEPJSONValue::LongPseudonym(
+                long_pseudo.encrypt(&keys.pseudonym.public, rng),
+            ),
             PEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
                 arr.iter().map(|item| item.encrypt(keys, rng)).collect(),
             ),
@@ -237,10 +279,16 @@ impl Encryptable for PEPJSONValue {
             PEPJSONValue::Number(attr) => {
                 EncryptedPEPJSONValue::Number(attr.encrypt_global(&public_key.attribute, rng))
             }
-            PEPJSONValue::String(long_attr) => {
-                EncryptedPEPJSONValue::String(long_attr.encrypt_global(&public_key.attribute, rng))
+            PEPJSONValue::String(attr) => {
+                EncryptedPEPJSONValue::String(attr.encrypt_global(&public_key.attribute, rng))
             }
-            PEPJSONValue::Pseudonym(long_pseudo) => EncryptedPEPJSONValue::Pseudonym(
+            PEPJSONValue::LongString(long_attr) => EncryptedPEPJSONValue::LongString(
+                long_attr.encrypt_global(&public_key.attribute, rng),
+            ),
+            PEPJSONValue::Pseudonym(pseudo) => {
+                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt_global(&public_key.pseudonym, rng))
+            }
+            PEPJSONValue::LongPseudonym(long_pseudo) => EncryptedPEPJSONValue::LongPseudonym(
                 long_pseudo.encrypt_global(&public_key.pseudonym, rng),
             ),
             PEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
@@ -277,7 +325,13 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => {
                 Some(PEPJSONValue::String(enc.decrypt(&keys.attribute.secret)?))
             }
+            EncryptedPEPJSONValue::LongString(enc) => Some(PEPJSONValue::LongString(
+                enc.decrypt(&keys.attribute.secret)?,
+            )),
             EncryptedPEPJSONValue::Pseudonym(enc) => Some(PEPJSONValue::Pseudonym(
+                enc.decrypt(&keys.pseudonym.secret)?,
+            )),
+            EncryptedPEPJSONValue::LongPseudonym(enc) => Some(PEPJSONValue::LongPseudonym(
                 enc.decrypt(&keys.pseudonym.secret)?,
             )),
             EncryptedPEPJSONValue::Array(arr) => {
@@ -309,8 +363,14 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => {
                 PEPJSONValue::String(enc.decrypt(&keys.attribute.secret))
             }
+            EncryptedPEPJSONValue::LongString(enc) => {
+                PEPJSONValue::LongString(enc.decrypt(&keys.attribute.secret))
+            }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
                 PEPJSONValue::Pseudonym(enc.decrypt(&keys.pseudonym.secret))
+            }
+            EncryptedPEPJSONValue::LongPseudonym(enc) => {
+                PEPJSONValue::LongPseudonym(enc.decrypt(&keys.pseudonym.secret))
             }
             EncryptedPEPJSONValue::Array(arr) => {
                 PEPJSONValue::Array(arr.iter().map(|x| x.decrypt(keys)).collect())
@@ -340,7 +400,13 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => Some(PEPJSONValue::String(
                 enc.decrypt_global(&secret_key.attribute)?,
             )),
+            EncryptedPEPJSONValue::LongString(enc) => Some(PEPJSONValue::LongString(
+                enc.decrypt_global(&secret_key.attribute)?,
+            )),
             EncryptedPEPJSONValue::Pseudonym(enc) => Some(PEPJSONValue::Pseudonym(
+                enc.decrypt_global(&secret_key.pseudonym)?,
+            )),
+            EncryptedPEPJSONValue::LongPseudonym(enc) => Some(PEPJSONValue::LongPseudonym(
                 enc.decrypt_global(&secret_key.pseudonym)?,
             )),
             EncryptedPEPJSONValue::Array(arr) => {
@@ -374,8 +440,14 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => {
                 PEPJSONValue::String(enc.decrypt_global(&secret_key.attribute))
             }
+            EncryptedPEPJSONValue::LongString(enc) => {
+                PEPJSONValue::LongString(enc.decrypt_global(&secret_key.attribute))
+            }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
                 PEPJSONValue::Pseudonym(enc.decrypt_global(&secret_key.pseudonym))
+            }
+            EncryptedPEPJSONValue::LongPseudonym(enc) => {
+                PEPJSONValue::LongPseudonym(enc.decrypt_global(&secret_key.pseudonym))
             }
             EncryptedPEPJSONValue::Array(arr) => {
                 PEPJSONValue::Array(arr.iter().map(|x| x.decrypt_global(secret_key)).collect())
@@ -423,8 +495,14 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => {
                 EncryptedPEPJSONValue::String(enc.rerandomize_known(factor))
             }
+            EncryptedPEPJSONValue::LongString(enc) => {
+                EncryptedPEPJSONValue::LongString(enc.rerandomize_known(factor))
+            }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
                 EncryptedPEPJSONValue::Pseudonym(enc.rerandomize_known(factor))
+            }
+            EncryptedPEPJSONValue::LongPseudonym(enc) => {
+                EncryptedPEPJSONValue::LongPseudonym(enc.rerandomize_known(factor))
             }
             EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
                 arr.iter().map(|x| x.rerandomize_known(factor)).collect(),
@@ -454,7 +532,13 @@ impl Encrypted for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => EncryptedPEPJSONValue::String(
                 enc.rerandomize_known(&public_key.attribute.public, factor),
             ),
+            EncryptedPEPJSONValue::LongString(enc) => EncryptedPEPJSONValue::LongString(
+                enc.rerandomize_known(&public_key.attribute.public, factor),
+            ),
             EncryptedPEPJSONValue::Pseudonym(enc) => EncryptedPEPJSONValue::Pseudonym(
+                enc.rerandomize_known(&public_key.pseudonym.public, factor),
+            ),
+            EncryptedPEPJSONValue::LongPseudonym(enc) => EncryptedPEPJSONValue::LongPseudonym(
                 enc.rerandomize_known(&public_key.pseudonym.public, factor),
             ),
             EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
@@ -484,8 +568,14 @@ impl Transcryptable for EncryptedPEPJSONValue {
             EncryptedPEPJSONValue::String(enc) => {
                 EncryptedPEPJSONValue::String(enc.transcrypt(info))
             }
+            EncryptedPEPJSONValue::LongString(enc) => {
+                EncryptedPEPJSONValue::LongString(enc.transcrypt(info))
+            }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
                 EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info))
+            }
+            EncryptedPEPJSONValue::LongPseudonym(enc) => {
+                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt(info))
             }
             EncryptedPEPJSONValue::Array(arr) => {
                 EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info)).collect())

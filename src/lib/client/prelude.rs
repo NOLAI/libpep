@@ -6,6 +6,5 @@ pub use super::{decrypt, encrypt, Client};
 #[cfg(feature = "offline")]
 pub use super::{encrypt_global, OfflineClient};
 pub use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-pub use crate::factors::contexts::EncryptionContext;
-pub use crate::factors::EncryptionSecret;
+pub use crate::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 pub use crate::keys::{GlobalPublicKeys, SessionKeys};

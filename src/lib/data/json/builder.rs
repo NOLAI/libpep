@@ -90,9 +90,101 @@ impl PEPJSONBuilder {
 
     /// Add a string field as a pseudonym.
     pub fn pseudonym(mut self, key: &str, value: &str) -> Self {
-        let pseudo = LongPseudonym::from_string_padded(value);
-        self.fields
-            .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+        use crate::data::padding::Padded;
+        use crate::data::simple::{ElGamalEncryptable, Pseudonym};
+
+        // Try to decode as a direct 32-byte pseudonym value (hex string)
+        if let Some(pseudo) = Pseudonym::from_hex(value) {
+            self.fields
+                .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+            return self;
+        }
+
+        // Try to decode as multi-block pseudonym (hex string with multiple 64-char blocks)
+        // Each block is 32 bytes = 64 hex chars
+        if value.len() > 64 && value.len().is_multiple_of(64) {
+            let num_blocks = value.len() / 64;
+            let mut blocks = Vec::with_capacity(num_blocks);
+            let mut all_decoded = true;
+
+            for i in 0..num_blocks {
+                let start = i * 64;
+                let end = start + 64;
+                if let Some(block) = Pseudonym::from_hex(&value[start..end]) {
+                    blocks.push(block);
+                } else {
+                    all_decoded = false;
+                    break;
+                }
+            }
+
+            if all_decoded {
+                self.fields.insert(
+                    key.to_string(),
+                    PEPJSONValue::LongPseudonym(LongPseudonym(blocks)),
+                );
+                return self;
+            }
+        }
+
+        // Try to decode as 32 raw bytes
+        if value.len() == 32 {
+            if let Some(pseudo) = Pseudonym::from_slice(value.as_bytes()) {
+                self.fields
+                    .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+                return self;
+            }
+        }
+
+        // Try to decode as multi-block pseudonym (raw bytes, multiple of 32)
+        let bytes = value.as_bytes();
+        if bytes.len() > 32 && bytes.len().is_multiple_of(32) {
+            let num_blocks = bytes.len() / 32;
+            let mut blocks = Vec::with_capacity(num_blocks);
+            let mut all_decoded = true;
+
+            for i in 0..num_blocks {
+                let start = i * 32;
+                let end = start + 32;
+                if let Some(block) = Pseudonym::from_slice(&bytes[start..end]) {
+                    blocks.push(block);
+                } else {
+                    all_decoded = false;
+                    break;
+                }
+            }
+
+            if all_decoded {
+                self.fields.insert(
+                    key.to_string(),
+                    PEPJSONValue::LongPseudonym(LongPseudonym(blocks)),
+                );
+                return self;
+            }
+        }
+
+        // Check if it fits in a single block with PKCS#7 padding (≤15 bytes)
+        if bytes.len() <= 15 {
+            // Use PKCS#7 padding for short strings
+            match Pseudonym::from_string_padded(value) {
+                Ok(pseudo) => {
+                    self.fields
+                        .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+                }
+                Err(_) => {
+                    // Fallback to long pseudonym if padding fails
+                    let pseudo = LongPseudonym::from_string_padded(value);
+                    self.fields
+                        .insert(key.to_string(), PEPJSONValue::LongPseudonym(pseudo));
+                }
+            }
+        } else {
+            // Use long pseudonym for strings > 15 bytes
+            let pseudo = LongPseudonym::from_string_padded(value);
+            self.fields
+                .insert(key.to_string(), PEPJSONValue::LongPseudonym(pseudo));
+        }
+
         self
     }
 
