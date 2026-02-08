@@ -64,7 +64,7 @@ thiserror = "2.0.18"
 [dev-dependencies]
 serde_json = "^1.0"
 rand = "0.10.0-rc.7"
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 energy-bench = "^0.1"
 
 [[bench]]
