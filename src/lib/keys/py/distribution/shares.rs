@@ -21,7 +21,7 @@ use pyo3::Py;
 
 /// A pseudonym session key share.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "PseudonymSessionKeyShare")]
+#[pyclass(name = "PseudonymSessionKeyShare", from_py_object)]
 pub struct PyPseudonymSessionKeyShare(pub(crate) PseudonymSessionKeyShare);
 
 #[pymethods]
@@ -68,7 +68,7 @@ impl PyPseudonymSessionKeyShare {
 
 /// An attribute session key share.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "AttributeSessionKeyShare")]
+#[pyclass(name = "AttributeSessionKeyShare", from_py_object)]
 pub struct PyAttributeSessionKeyShare(pub(crate) AttributeSessionKeyShare);
 
 #[pymethods]
@@ -115,7 +115,7 @@ impl PyAttributeSessionKeyShare {
 
 /// A pair of session key shares.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "SessionKeyShares")]
+#[pyclass(name = "SessionKeyShares", from_py_object)]
 pub struct PySessionKeyShares {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymSessionKeyShare,
@@ -148,7 +148,7 @@ impl PySessionKeyShares {
 
 /// Session public keys pair.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "SessionPublicKeys")]
+#[pyclass(name = "SessionPublicKeys", from_py_object)]
 pub struct PySessionPublicKeys {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymSessionPublicKey,
@@ -181,7 +181,7 @@ impl PySessionPublicKeys {
 
 /// Session secret keys pair.
 #[derive(Copy, Clone, Debug, From, Into)]
-#[pyclass(name = "SessionSecretKeys")]
+#[pyclass(name = "SessionSecretKeys", from_py_object)]
 pub struct PySessionSecretKeys {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymSessionSecretKey,
@@ -208,7 +208,7 @@ impl PySessionSecretKeys {
 /// This is an alternative structure that splits by public/secret instead of pseudonym/attribute.
 /// Note: Not registered as "SessionKeys" to avoid conflict with the main SessionKeys type in types.rs.
 #[derive(Clone, From, Into)]
-#[pyclass(name = "SessionKeysPublicSecret")]
+#[pyclass(name = "SessionKeysPublicSecret", from_py_object)]
 pub struct PySessionKeys {
     #[pyo3(get)]
     pub public: PySessionPublicKeys,
@@ -232,7 +232,7 @@ impl PySessionKeys {
 }
 
 // Key pair types
-#[pyclass(name = "PseudonymSessionKeyPair")]
+#[pyclass(name = "PseudonymSessionKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyPseudonymSessionKeyPair {
     #[pyo3(get)]
@@ -241,7 +241,7 @@ pub struct PyPseudonymSessionKeyPair {
     pub secret: PyPseudonymSessionSecretKey,
 }
 
-#[pyclass(name = "AttributeSessionKeyPair")]
+#[pyclass(name = "AttributeSessionKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyAttributeSessionKeyPair {
     #[pyo3(get)]

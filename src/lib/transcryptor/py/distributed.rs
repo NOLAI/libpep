@@ -28,7 +28,7 @@ use pyo3::IntoPyObjectExt;
 
 /// A distributed PEP transcryptor system with blinding factor support.
 #[derive(Clone, From, Into, Deref)]
-#[pyclass(name = "DistributedTranscryptor")]
+#[pyclass(name = "DistributedTranscryptor", from_py_object)]
 pub struct PyDistributedTranscryptor(pub(crate) DistributedTranscryptor);
 
 #[pymethods]

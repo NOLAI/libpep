@@ -2,13 +2,14 @@
 
 #![allow(clippy::expect_used)]
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::client::{Client, Distributed};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
+use std::hint::black_box;
 
 #[cfg(feature = "long")]
 use libpep::data::long::{LongAttribute, LongPseudonym};

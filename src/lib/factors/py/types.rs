@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
 #[derive(Copy, Clone, From, Into, Deref)]
-#[pyclass(name = "RerandomizeFactor")]
+#[pyclass(name = "RerandomizeFactor", from_py_object)]
 pub struct PyRerandomizeFactor(pub(crate) RerandomizeFactor);
 
 #[pymethods]
@@ -25,7 +25,7 @@ impl PyRerandomizeFactor {
 
 /// A factor used to reshuffle an ElGamal ciphertext.
 #[derive(Copy, Clone, From, Into, Deref)]
-#[pyclass(name = "ReshuffleFactor")]
+#[pyclass(name = "ReshuffleFactor", from_py_object)]
 pub struct PyReshuffleFactor(pub(crate) ReshuffleFactor);
 
 #[pymethods]
@@ -43,7 +43,7 @@ impl PyReshuffleFactor {
 
 /// A factor used to rekey pseudonyms between sessions.
 #[derive(Copy, Clone, From, Into, Deref)]
-#[pyclass(name = "PseudonymRekeyFactor")]
+#[pyclass(name = "PseudonymRekeyFactor", from_py_object)]
 pub struct PyPseudonymRekeyFactor(pub(crate) PseudonymRekeyFactor);
 
 #[pymethods]
@@ -61,7 +61,7 @@ impl PyPseudonymRekeyFactor {
 
 /// A factor used to rekey attributes between sessions.
 #[derive(Copy, Clone, From, Into, Deref)]
-#[pyclass(name = "AttributeRekeyFactor")]
+#[pyclass(name = "AttributeRekeyFactor", from_py_object)]
 pub struct PyAttributeRekeyFactor(pub(crate) AttributeRekeyFactor);
 
 #[pymethods]
@@ -79,7 +79,7 @@ impl PyAttributeRekeyFactor {
 
 /// Factors for pseudonymization containing reshuffle and rekey factors.
 #[derive(Clone, Copy)]
-#[pyclass(name = "PseudonymRSKFactors")]
+#[pyclass(name = "PseudonymRSKFactors", from_py_object)]
 pub struct PyPseudonymRSKFactors {
     #[pyo3(get, set)]
     pub s: PyReshuffleFactor,

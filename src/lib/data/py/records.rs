@@ -16,7 +16,7 @@ use crate::keys::types::SessionKeys;
 use pyo3::prelude::*;
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
-#[pyclass(name = "Record")]
+#[pyclass(name = "Record", from_py_object)]
 #[derive(Clone)]
 pub struct PyRecord(pub(crate) Record);
 
@@ -53,7 +53,7 @@ impl PyRecord {
 }
 
 /// An encrypted record containing multiple encrypted pseudonyms and attributes.
-#[pyclass(name = "EncryptedRecord")]
+#[pyclass(name = "EncryptedRecord", from_py_object)]
 #[derive(Clone)]
 pub struct PyEncryptedRecord(pub(crate) EncryptedRecord);
 
@@ -134,7 +134,7 @@ pub fn py_decrypt_record(encrypted: &PyEncryptedRecord, session_keys: &PySession
 
 #[cfg(feature = "long")]
 /// A long record containing multiple long pseudonyms and attributes for a single entity.
-#[pyclass(name = "LongRecord")]
+#[pyclass(name = "LongRecord", from_py_object)]
 #[derive(Clone)]
 pub struct PyLongRecord(pub(crate) LongRecord);
 
@@ -181,7 +181,7 @@ impl PyLongRecord {
 
 #[cfg(feature = "long")]
 /// An encrypted long record containing multiple encrypted long pseudonyms and attributes.
-#[pyclass(name = "LongEncryptedRecord")]
+#[pyclass(name = "LongEncryptedRecord", from_py_object)]
 #[derive(Clone)]
 pub struct PyLongEncryptedRecord(pub(crate) LongEncryptedRecord);
 

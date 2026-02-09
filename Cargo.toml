@@ -41,7 +41,7 @@ name = "peppy"
 required-features = ["build-binary"]
 
 [dependencies]
-curve25519-dalek = { version = "=5.0.0-pre.6", features = ["rand_core", "lizard"] }
+curve25519-dalek = { version = "^5.0.0-pre.6", features = ["rand_core", "lizard"] }
 rand_core = "^0.10"
 rand = { version = "^0.10", optional = true }
 sha2 = "^0.11.0-rc.5"
@@ -51,20 +51,20 @@ hex = "^0.4"
 base64 = "^0.22"
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0", optional = true }
-wasm-bindgen = { version = "0.2", optional = true }
-serde-wasm-bindgen = { version = "0.6", optional = true }
-js-sys = { version = "0.3", optional = true }
+wasm-bindgen = { version = "^0.2", optional = true }
+serde-wasm-bindgen = { version = "^0.6", optional = true }
+js-sys = { version = "^0.3", optional = true }
 getrandom = { version = "^0.4", features = ["wasm_js"], optional = true }
 pyo3 = { version = "0.28", features = ["extension-module"], optional = true }
-buildinfy = { version = "^0.1", optional = true }
+buildinfy = { version = "^0.2", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
-thiserror = "2.0.18"
+thiserror = "^2.0"
 
 [dev-dependencies]
 serde_json = "^1.0"
 rand = "^0.10"
-criterion = { version = "0.8", features = ["html_reports"] }
+criterion = { version = "^0.8", features = ["html_reports"] }
 energy-bench = "^0.2.0"
 
 [[bench]]

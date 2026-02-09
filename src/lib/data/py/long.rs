@@ -25,7 +25,7 @@ use pyo3::Py;
 ///
 /// The length (number of blocks) of a `LongPseudonym` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
-#[pyclass(name = "LongPseudonym")]
+#[pyclass(name = "LongPseudonym", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongPseudonym(pub(crate) LongPseudonym);
 
@@ -95,7 +95,7 @@ impl PyLongPseudonym {
 ///
 /// The length (number of blocks) of a `LongAttribute` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
-#[pyclass(name = "LongAttribute")]
+#[pyclass(name = "LongAttribute", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongAttribute(pub(crate) LongAttribute);
 
@@ -160,7 +160,7 @@ impl PyLongAttribute {
 }
 
 /// A collection of encrypted pseudonyms that can be serialized as a pipe-delimited string.
-#[pyclass(name = "LongEncryptedPseudonym")]
+#[pyclass(name = "LongEncryptedPseudonym", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongEncryptedPseudonym(pub(crate) LongEncryptedPseudonym);
 
@@ -212,7 +212,7 @@ impl PyLongEncryptedPseudonym {
 }
 
 /// A collection of encrypted attributes that can be serialized as a pipe-delimited string.
-#[pyclass(name = "LongEncryptedAttribute")]
+#[pyclass(name = "LongEncryptedAttribute", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongEncryptedAttribute(pub(crate) LongEncryptedAttribute);
 

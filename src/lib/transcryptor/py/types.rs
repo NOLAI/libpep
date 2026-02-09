@@ -25,7 +25,7 @@ use pyo3::IntoPyObjectExt;
 
 /// A PEP transcryptor system.
 #[derive(Clone, From, Into, Deref)]
-#[pyclass(name = "Transcryptor")]
+#[pyclass(name = "Transcryptor", from_py_object)]
 pub struct PyTranscryptor(pub(crate) Transcryptor);
 
 #[pymethods]

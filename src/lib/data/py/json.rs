@@ -32,7 +32,7 @@ use serde_json::Value;
 /// A PEP JSON value that can be encrypted.
 ///
 /// This wraps JSON values where primitive types are stored as unencrypted PEP types.
-#[pyclass(name = "PEPJSONValue")]
+#[pyclass(name = "PEPJSONValue", from_py_object)]
 #[derive(Clone)]
 pub struct PyPEPJSONValue(pub(crate) PEPJSONValue);
 
@@ -69,7 +69,7 @@ impl PyPEPJSONValue {
 /// An encrypted PEP JSON value.
 ///
 /// This wraps JSON values where primitive types are encrypted as PEP types.
-#[pyclass(name = "EncryptedPEPJSONValue")]
+#[pyclass(name = "EncryptedPEPJSONValue", from_py_object)]
 #[derive(Clone)]
 pub struct PyEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
@@ -146,7 +146,7 @@ impl PyEncryptedPEPJSONValue {
 }
 
 /// A JSON structure descriptor that describes the shape of an EncryptedPEPJSONValue.
-#[pyclass(name = "JSONStructure")]
+#[pyclass(name = "JSONStructure", from_py_object)]
 #[derive(Clone)]
 pub struct PyJSONStructure(pub(crate) JSONStructure);
 
@@ -174,7 +174,7 @@ impl PyJSONStructure {
 }
 
 /// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.
-#[pyclass(name = "PEPJSONBuilder")]
+#[pyclass(name = "PEPJSONBuilder", skip_from_py_object)]
 pub struct PyPEPJSONBuilder {
     builder: PEPJSONBuilder,
 }

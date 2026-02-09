@@ -10,27 +10,27 @@ use pyo3::Py;
 
 /// A pseudonym session secret key used to decrypt pseudonyms with.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "PseudonymSessionSecretKey")]
+#[pyclass(name = "PseudonymSessionSecretKey", from_py_object)]
 pub struct PyPseudonymSessionSecretKey(pub PyScalarNonZero);
 
 /// An attribute session secret key used to decrypt attributes with.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "AttributeSessionSecretKey")]
+#[pyclass(name = "AttributeSessionSecretKey", from_py_object)]
 pub struct PyAttributeSessionSecretKey(pub PyScalarNonZero);
 
 /// A pseudonym global secret key from which pseudonym session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
-#[pyclass(name = "PseudonymGlobalSecretKey")]
+#[pyclass(name = "PseudonymGlobalSecretKey", from_py_object)]
 pub struct PyPseudonymGlobalSecretKey(pub PyScalarNonZero);
 
 /// An attribute global secret key from which attribute session keys are derived.
 #[derive(Copy, Clone, Debug, From)]
-#[pyclass(name = "AttributeGlobalSecretKey")]
+#[pyclass(name = "AttributeGlobalSecretKey", from_py_object)]
 pub struct PyAttributeGlobalSecretKey(pub PyScalarNonZero);
 
 /// A pseudonym session public key used to encrypt pseudonyms against.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "PseudonymSessionPublicKey")]
+#[pyclass(name = "PseudonymSessionPublicKey", from_py_object)]
 pub struct PyPseudonymSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
@@ -71,7 +71,7 @@ impl PyPseudonymSessionPublicKey {
 
 /// An attribute session public key used to encrypt attributes against.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "AttributeSessionPublicKey")]
+#[pyclass(name = "AttributeSessionPublicKey", from_py_object)]
 pub struct PyAttributeSessionPublicKey(pub PyGroupElement);
 
 #[pymethods]
@@ -114,7 +114,7 @@ impl PyAttributeSessionPublicKey {
 /// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
 /// key may leak information.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, From)]
-#[pyclass(name = "PseudonymGlobalPublicKey")]
+#[pyclass(name = "PseudonymGlobalPublicKey", from_py_object)]
 pub struct PyPseudonymGlobalPublicKey(pub PyGroupElement);
 
 #[pymethods]
@@ -172,7 +172,7 @@ impl PyPseudonymGlobalPublicKey {
 /// Can also be used to encrypt attributes against, if no session key is available or using a session
 /// key may leak information.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, From)]
-#[pyclass(name = "AttributeGlobalPublicKey")]
+#[pyclass(name = "AttributeGlobalPublicKey", from_py_object)]
 pub struct PyAttributeGlobalPublicKey(pub PyGroupElement);
 
 #[pymethods]
@@ -228,7 +228,7 @@ impl PyAttributeGlobalPublicKey {
 
 /// A pair of global public keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-#[pyclass(name = "GlobalPublicKeys")]
+#[pyclass(name = "GlobalPublicKeys", from_py_object)]
 pub struct PyGlobalPublicKeys {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymGlobalPublicKey,
@@ -262,7 +262,7 @@ impl PyGlobalPublicKeys {
 
 /// A pair of global secret keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Debug)]
-#[pyclass(name = "GlobalSecretKeys")]
+#[pyclass(name = "GlobalSecretKeys", from_py_object)]
 pub struct PyGlobalSecretKeys {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymGlobalSecretKey,
@@ -289,13 +289,13 @@ impl PyGlobalSecretKeys {
 /// Pseudonymization secret used to derive a reshuffle factor from a pseudonymization domain (see [`crate::factors::ReshuffleFactor`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
-#[pyclass(name = "PseudonymizationSecret")]
+#[pyclass(name = "PseudonymizationSecret", from_py_object)]
 pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
 
 /// Encryption secret used to derive rekey factors from an encryption context (see [`crate::factors::PseudonymRekeyInfo`] and [`crate::factors::AttributeRekeyInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
-#[pyclass(name = "EncryptionSecret")]
+#[pyclass(name = "EncryptionSecret", from_py_object)]
 pub struct PyEncryptionSecret(pub(crate) EncryptionSecret);
 
 #[pymethods]
@@ -327,7 +327,7 @@ impl PyEncryptionSecret {
 }
 
 // Pseudonym global key pair
-#[pyclass(name = "PseudonymGlobalKeyPair")]
+#[pyclass(name = "PseudonymGlobalKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyPseudonymGlobalKeyPair {
     #[pyo3(get)]
@@ -337,7 +337,7 @@ pub struct PyPseudonymGlobalKeyPair {
 }
 
 // Attribute global key pair
-#[pyclass(name = "AttributeGlobalKeyPair")]
+#[pyclass(name = "AttributeGlobalKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyAttributeGlobalKeyPair {
     #[pyo3(get)]
@@ -347,7 +347,7 @@ pub struct PyAttributeGlobalKeyPair {
 }
 
 // Pseudonym session key pair
-#[pyclass(name = "PseudonymSessionKeyPair")]
+#[pyclass(name = "PseudonymSessionKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyPseudonymSessionKeyPair {
     #[pyo3(get)]
@@ -357,7 +357,7 @@ pub struct PyPseudonymSessionKeyPair {
 }
 
 // Attribute session key pair
-#[pyclass(name = "AttributeSessionKeyPair")]
+#[pyclass(name = "AttributeSessionKeyPair", from_py_object)]
 #[derive(Copy, Clone, Debug)]
 pub struct PyAttributeSessionKeyPair {
     #[pyo3(get)]
@@ -367,7 +367,7 @@ pub struct PyAttributeSessionKeyPair {
 }
 
 /// Pseudonym session keys containing both public and secret keys.
-#[pyclass(name = "PseudonymSessionKeys")]
+#[pyclass(name = "PseudonymSessionKeys", from_py_object)]
 #[derive(Clone, Copy)]
 pub struct PyPseudonymSessionKeys {
     #[pyo3(get)]
@@ -392,7 +392,7 @@ impl PyPseudonymSessionKeys {
 }
 
 /// Attribute session keys containing both public and secret keys.
-#[pyclass(name = "AttributeSessionKeys")]
+#[pyclass(name = "AttributeSessionKeys", from_py_object)]
 #[derive(Clone, Copy)]
 pub struct PyAttributeSessionKeys {
     #[pyo3(get)]
@@ -418,7 +418,7 @@ impl PyAttributeSessionKeys {
 
 /// Session keys for encrypting and decrypting data.
 /// Contains both pseudonym and attribute session keys (public and secret).
-#[pyclass(name = "SessionKeys")]
+#[pyclass(name = "SessionKeys", from_py_object)]
 #[derive(Clone)]
 pub struct PySessionKeys {
     #[pyo3(get)]

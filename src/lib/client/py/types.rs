@@ -25,7 +25,7 @@ use pyo3::IntoPyObjectExt;
 /// An offline PEP client that can only encrypt (not decrypt).
 #[cfg(feature = "offline")]
 #[derive(Clone, From, Into, Deref)]
-#[pyclass(name = "OfflineClient")]
+#[pyclass(name = "OfflineClient", from_py_object)]
 pub struct PyOfflineClient(pub(crate) OfflineClient);
 
 #[cfg(feature = "offline")]

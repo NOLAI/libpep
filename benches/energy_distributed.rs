@@ -1,8 +1,7 @@
 mod distributed;
 
 use distributed::*;
-use energy_bench::EnergyBenchBuilder;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use energy_bench::{EnergyBench, EnergyBenchConfig};
 
 struct BenchMetadata {
     operation: &'static str,
@@ -35,9 +34,8 @@ impl energy_bench::Metadata<5> for BenchMetadata {
 }
 
 fn main() {
-    let mut builder = EnergyBenchBuilder::new("libpep_distributed_operations");
-    builder.set_number_of_runs(10);
-    let mut bench = builder.build();
+    let config = EnergyBenchConfig::default();
+    let mut bench = EnergyBench::<BenchMetadata, 5>::new("libpep_distributed_operations", config);
 
     // Benchmark distributed transcrypt with individual operations
     for num_servers in BENCHMARK_SERVERS {
@@ -62,11 +60,11 @@ fn main() {
                     num_attributes_per_entity,
                 };
 
-                bench.benchmark::<(), ()>(metadata, &|| {
+                bench.benchmark(metadata, &|| {
                     process_entities_individually(
                         &entities, &systems, &domain_a, &domain_b, &session_a, &session_b,
                     );
-                    Ok(())
+                    Ok::<_, ()>(())
                 });
             }
         }
@@ -80,16 +78,12 @@ fn main() {
                     setup_distributed_system(num_servers);
 
                 // Pre-generate entity tuples for benchmarking
-                let encrypted_data_batch: Vec<_> = (0..10)
-                    .map(|_| {
-                        generate_entities(
-                            num_entities,
-                            num_pseudonyms_per_entity,
-                            num_attributes_per_entity,
-                            &client_a,
-                        )
-                    })
-                    .collect();
+                let encrypted_data = generate_entities(
+                    num_entities,
+                    num_pseudonyms_per_entity,
+                    num_attributes_per_entity,
+                    &client_a,
+                );
 
                 let metadata = BenchMetadata {
                     operation: "distributed_transcrypt_batch",
@@ -99,10 +93,7 @@ fn main() {
                     num_attributes_per_entity,
                 };
 
-                let counter = AtomicUsize::new(0);
-                bench.benchmark::<(), ()>(metadata, &|| {
-                    let idx = counter.fetch_add(1, Ordering::Relaxed);
-                    let encrypted_data = &encrypted_data_batch[idx % encrypted_data_batch.len()];
+                bench.benchmark(metadata, &|| {
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
@@ -111,7 +102,7 @@ fn main() {
                         &session_a,
                         &session_b,
                     );
-                    Ok(())
+                    Ok::<_, ()>(())
                 });
             }
         }

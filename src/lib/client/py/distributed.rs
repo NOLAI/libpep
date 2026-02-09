@@ -32,7 +32,7 @@ use pyo3::IntoPyObjectExt;
 
 /// A PEP client.
 #[derive(Clone, From, Into, Deref)]
-#[pyclass(name = "Client")]
+#[pyclass(name = "Client", from_py_object)]
 pub struct PyClient(Client);
 
 #[pymethods]
