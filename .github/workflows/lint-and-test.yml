@@ -32,7 +32,7 @@ jobs:
             name: "default+wasm+elgamal3"
     name: cargo clippy (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --features "${{ matrix.features }}" -- -D warnings
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     name: cargo fmt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo fmt -- --check
 
@@ -71,7 +71,7 @@ jobs:
             name: "default+wasm+elgamal3"
     name: cargo test (${{ matrix.name }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
 
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     name: test python bindings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v5
@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     name: test wasm bindings
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
