@@ -7,6 +7,7 @@ use serde::de::{Error, Visitor};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::Sha256;
+#[cfg(feature = "serde")]
 use std::fmt::Formatter;
 use std::hash::Hash;
 
@@ -317,6 +318,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn serde_json_roundtrip() {
         let mut rng = rand::rng();
         let original = GroupElement::random(&mut rng);

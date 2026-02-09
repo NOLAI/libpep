@@ -7,6 +7,7 @@ use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
+#[cfg(feature = "batch")]
 use rand_core::{CryptoRng, Rng};
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on

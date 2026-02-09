@@ -621,6 +621,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn encrypted_attribute_serde_json() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_attribute_global_keys(&mut rng);

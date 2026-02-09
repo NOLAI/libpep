@@ -1,7 +1,9 @@
 //! Client type definitions.
 
 use crate::data::traits::{Encryptable, Encrypted};
-use crate::keys::{GlobalPublicKeys, KeyProvider, SessionKeys};
+use crate::keys::{KeyProvider, SessionKeys};
+#[cfg(feature = "offline")]
+use crate::keys::GlobalPublicKeys;
 use rand_core::{CryptoRng, Rng};
 
 /// A PEP client that can encrypt and decrypt data, based on session key pairs for pseudonyms and attributes.

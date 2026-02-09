@@ -226,6 +226,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn session_secret_key_serde() {
         let mut rng = rand::rng();
         let (_global_pk, global_sk) = make_global_keys(&mut rng);

@@ -1,7 +1,9 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::client::{decrypt, encrypt};
+#[cfg(feature = "long")]
 use libpep::data::long::{LongAttribute, LongPseudonym};
+#[cfg(feature = "long")]
 use libpep::data::records::LongEncryptedRecord;
 use libpep::data::simple::*;
 use libpep::factors::contexts::*;
@@ -113,6 +115,7 @@ fn test_core_flow() {
     assert_eq!(pseudo, rev_pseudonymized_dec);
 }
 #[test]
+#[cfg(feature = "batch")]
 fn test_batch() {
     let rng = &mut rand::rng();
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
@@ -187,6 +190,7 @@ fn test_batch() {
 }
 
 #[test]
+#[cfg(all(feature = "batch", feature = "long"))]
 fn test_batch_long() {
     let rng = &mut rand::rng();
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
