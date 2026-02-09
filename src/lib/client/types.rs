@@ -2,7 +2,7 @@
 
 use crate::data::traits::{Encryptable, Encrypted};
 use crate::keys::{GlobalPublicKeys, KeyProvider, SessionKeys};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// A PEP client that can encrypt and decrypt data, based on session key pairs for pseudonyms and attributes.
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl Client {
     where
         M: Encryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         message.encrypt(self.keys.get_key(), rng)
     }
@@ -71,7 +71,7 @@ impl Client {
     where
         M: Encryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::encrypt_batch(messages, self.keys.get_key(), rng)
     }
@@ -129,7 +129,7 @@ impl OfflineClient {
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         message.encrypt_global(self.global_public_keys.get_key(), rng)
     }
@@ -145,7 +145,7 @@ impl OfflineClient {
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::encrypt_global_batch(messages, self.global_public_keys.get_key(), rng)
     }

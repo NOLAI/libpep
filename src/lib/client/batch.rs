@@ -2,7 +2,7 @@
 
 use crate::data::traits::{Encryptable, Encrypted};
 use crate::transcryptor::batch::BatchError;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic batch encryption.
 ///
@@ -19,7 +19,7 @@ pub fn encrypt_batch<M, R>(
 ) -> Result<Vec<M::EncryptedType>, BatchError>
 where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     Ok(messages
         .iter()
@@ -43,7 +43,7 @@ pub fn encrypt_global_batch<M, R>(
 ) -> Result<Vec<M::EncryptedType>, BatchError>
 where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     Ok(messages
         .iter()

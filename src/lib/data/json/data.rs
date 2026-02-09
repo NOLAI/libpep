@@ -16,7 +16,7 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -230,7 +230,7 @@ impl Encryptable for PEPJSONValue {
     #[cfg(feature = "offline")]
     type GlobalPublicKeyType = GlobalPublicKeys;
 
-    fn encrypt<R: RngCore + CryptoRng>(
+    fn encrypt<R: Rng + CryptoRng>(
         &self,
         keys: &Self::PublicKeyType,
         rng: &mut R,
@@ -266,7 +266,7 @@ impl Encryptable for PEPJSONValue {
         }
     }
     #[cfg(feature = "offline")]
-    fn encrypt_global<R: RngCore + CryptoRng>(
+    fn encrypt_global<R: Rng + CryptoRng>(
         &self,
         public_key: &Self::GlobalPublicKeyType,
         rng: &mut R,
@@ -463,7 +463,7 @@ impl Encrypted for EncryptedPEPJSONValue {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -476,7 +476,7 @@ impl Encrypted for EncryptedPEPJSONValue {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))

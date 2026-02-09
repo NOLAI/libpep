@@ -1,7 +1,7 @@
 //! Polymorphic encryption and decryption helper functions for client operations.
 
 use crate::data::traits::{Encryptable, Encrypted};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic encrypt function that works for any encryptable type.
 ///
@@ -14,7 +14,7 @@ use rand_core::{CryptoRng, RngCore};
 pub fn encrypt<M, R>(message: &M, public_key: &M::PublicKeyType, rng: &mut R) -> M::EncryptedType
 where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     message.encrypt(public_key, rng)
 }
@@ -64,7 +64,7 @@ pub fn encrypt_global<M, R>(
 ) -> M::EncryptedType
 where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     message.encrypt_global(public_key, rng)
 }

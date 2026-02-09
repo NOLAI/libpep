@@ -2,7 +2,7 @@
 
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 use thiserror::Error;
 
 /// Error type for batch operation failures.
@@ -24,7 +24,7 @@ pub enum BatchError {
 }
 
 /// Fisher-Yates shuffle using rand_core
-fn shuffle<T, R: RngCore>(slice: &mut [T], rng: &mut R) {
+fn shuffle<T, R: Rng + CryptoRng>(slice: &mut [T], rng: &mut R) {
     for i in (1..slice.len()).rev() {
         let j = (rng.next_u64() as usize) % (i + 1);
         slice.swap(i, j);
@@ -74,7 +74,7 @@ pub fn pseudonymize_batch<E, R>(
 ) -> Result<Box<[E]>, BatchError>
 where
     E: Pseudonymizable + HasStructure + Clone,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
@@ -103,7 +103,7 @@ pub fn rekey_batch<E, R>(
 where
     E: Rekeyable + HasStructure + Clone,
     E::RekeyInfo: Copy,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
@@ -131,7 +131,7 @@ pub fn transcrypt_batch<E, R>(
 ) -> Result<Box<[E]>, BatchError>
 where
     E: Transcryptable + HasStructure + Clone,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);

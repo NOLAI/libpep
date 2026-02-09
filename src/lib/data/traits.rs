@@ -2,7 +2,7 @@
 
 use crate::factors::TranscryptionInfo;
 use crate::factors::{PseudonymizationInfo, RerandomizeFactor};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
 ///
@@ -37,7 +37,7 @@ pub trait Encryptable: Sized {
     /// Encrypt this value using a session key.
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Encrypt this value using a global key (offline encryption).
     #[cfg(feature = "offline")]
@@ -47,7 +47,7 @@ pub trait Encryptable: Sized {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
@@ -87,7 +87,7 @@ pub trait Encrypted: Sized {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Rerandomize this encrypted value, creating a binary unlinkable copy of the same message.
     #[cfg(not(feature = "elgamal3"))]
@@ -97,7 +97,7 @@ pub trait Encrypted: Sized {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Rerandomize this encrypted value using a known rerandomization factor.
     #[cfg(feature = "elgamal3")]

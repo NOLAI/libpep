@@ -6,7 +6,7 @@
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::keys::*;
 use derive_more::{Deref, From};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// A blinding factor used to blind a global secret key during system setup.
 #[derive(Copy, Clone, Debug, From, Deref)]
@@ -38,7 +38,7 @@ pub struct BlindedGlobalKeys {
 
 impl BlindingFactor {
     /// Create a random blinding factor.
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         loop {
             let scalar = ScalarNonZero::random(rng);
             if scalar != ScalarNonZero::one() {

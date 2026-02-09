@@ -11,7 +11,7 @@ use crate::factors::{
 };
 use crate::keys::*;
 use derive_more::{Deref, From};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -112,7 +112,7 @@ pub trait ElGamalEncryptable: Encryptable {
     }
 
     /// Create with a random value.
-    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self
+    fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self
     where
         Self: Sized,
     {
@@ -187,7 +187,7 @@ impl Encryptable for Pseudonym {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -203,7 +203,7 @@ impl Encryptable for Pseudonym {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -221,7 +221,7 @@ impl Encryptable for Attribute {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -237,7 +237,7 @@ impl Encryptable for Attribute {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -309,7 +309,7 @@ impl Encrypted for EncryptedPseudonym {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -322,7 +322,7 @@ impl Encrypted for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))
@@ -388,7 +388,7 @@ impl Encrypted for EncryptedAttribute {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -401,7 +401,7 @@ impl Encrypted for EncryptedAttribute {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))

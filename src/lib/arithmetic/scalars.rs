@@ -1,5 +1,5 @@
 use curve25519_dalek::scalar::Scalar;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
 #[cfg(feature = "serde")]
@@ -22,7 +22,7 @@ pub struct ScalarNonZero(pub(crate) Scalar);
 impl ScalarNonZero {
     /// Always return a random non-zero scalar.
     #[must_use]
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         loop {
             let r = ScalarCanBeZero::random(rng);
             if let Ok(s) = r.try_into() {
@@ -83,7 +83,7 @@ pub struct ScalarCanBeZero(pub(crate) Scalar);
 impl ScalarCanBeZero {
     /// Generate a random scalar.
     #[must_use]
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self(Scalar::random(rng))
     }
 

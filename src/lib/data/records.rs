@@ -9,7 +9,7 @@ use crate::data::simple::{
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::keys::{GlobalPublicKeys, SessionKeys};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
@@ -271,7 +271,7 @@ impl Encryptable for Record {
 
     fn encrypt<R>(&self, keys: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -294,7 +294,7 @@ impl Encryptable for Record {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -389,7 +389,7 @@ impl Encrypted for EncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.rerandomize(rng)).collect(),
@@ -400,7 +400,7 @@ impl Encrypted for EncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -493,7 +493,7 @@ impl Encryptable for LongRecord {
 
     fn encrypt<R>(&self, keys: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -516,7 +516,7 @@ impl Encryptable for LongRecord {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -613,7 +613,7 @@ impl Encrypted for LongEncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.rerandomize(rng)).collect(),
@@ -624,7 +624,7 @@ impl Encrypted for LongEncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self

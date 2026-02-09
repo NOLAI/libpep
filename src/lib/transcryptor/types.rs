@@ -7,7 +7,7 @@ use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymisation secret and a rekeying secret.
@@ -140,7 +140,7 @@ impl Transcryptor {
     where
         E: Rekeyable + crate::data::traits::HasStructure + Clone,
         E::RekeyInfo: Copy,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::rekey_batch(encrypted, rekey_info, rng)
     }
@@ -160,7 +160,7 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
@@ -180,7 +180,7 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Transcryptable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
     }

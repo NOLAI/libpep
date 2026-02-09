@@ -18,7 +18,7 @@ use crate::keys::{
     PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey,
 };
 use derive_more::{Deref, From};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
@@ -444,7 +444,7 @@ impl Encryptable for LongPseudonym {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let encrypted_blocks = self
             .blocks()
@@ -461,7 +461,7 @@ impl Encryptable for LongPseudonym {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let encrypted_blocks = self
             .blocks()
@@ -497,7 +497,7 @@ impl Encryptable for LongAttribute {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let encrypted_blocks = self
             .blocks()
@@ -514,7 +514,7 @@ impl Encryptable for LongAttribute {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let encrypted_blocks = self
             .blocks()
@@ -636,7 +636,7 @@ impl Encrypted for LongEncryptedPseudonym {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -649,7 +649,7 @@ impl Encrypted for LongEncryptedPseudonym {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))
@@ -733,7 +733,7 @@ impl Encrypted for LongEncryptedAttribute {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -746,7 +746,7 @@ impl Encrypted for LongEncryptedAttribute {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))

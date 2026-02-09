@@ -7,13 +7,13 @@ use crate::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
 use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic function to generate a global key pair.
 /// Automatically works for both pseudonym and attribute keys based on the types.
 pub fn make_global_key_pair<R, PK, SK>(rng: &mut R) -> (PK, SK)
 where
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
     PK: From<GroupElement>,
     SK: From<ScalarNonZero>,
 {
@@ -28,9 +28,7 @@ where
 }
 
 /// Generate new global key pairs for both pseudonyms and attributes.
-pub fn make_global_keys<R: RngCore + CryptoRng>(
-    rng: &mut R,
-) -> (GlobalPublicKeys, GlobalSecretKeys) {
+pub fn make_global_keys<R: Rng + CryptoRng>(rng: &mut R) -> (GlobalPublicKeys, GlobalSecretKeys) {
     let (pseudonym_pk, pseudonym_sk) = make_global_key_pair(rng);
     let (attribute_pk, attribute_sk) = make_global_key_pair(rng);
     (
@@ -47,7 +45,7 @@ pub fn make_global_keys<R: RngCore + CryptoRng>(
 
 /// Generate a new global key pair for pseudonyms.
 /// This is a convenience wrapper around [`make_global_key_pair`].
-pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
+pub fn make_pseudonym_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
     make_global_key_pair(rng)
@@ -55,7 +53,7 @@ pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
 
 /// Generate a new global key pair for attributes.
 /// This is a convenience wrapper around [`make_global_key_pair`].
-pub fn make_attribute_global_keys<R: RngCore + CryptoRng>(
+pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (AttributeGlobalPublicKey, AttributeGlobalSecretKey) {
     make_global_key_pair(rng)

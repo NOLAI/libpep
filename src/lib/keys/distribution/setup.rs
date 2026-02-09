@@ -4,7 +4,7 @@
 
 use super::blinding::*;
 use crate::keys::*;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Generic function to setup a distributed system with global keys, blinded global secret key and blinding factors.
 fn make_distributed_global_keys_generic<R, PK, SK, F>(
@@ -14,7 +14,7 @@ fn make_distributed_global_keys_generic<R, PK, SK, F>(
     make_blinded: fn(&SK, &[BlindingFactor]) -> Option<SK::BlindedType>,
 ) -> (PK, SK::BlindedType, Vec<BlindingFactor>)
 where
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
     F: Fn(&mut R) -> (PK, SK),
     SK: BlindableGlobalSecretKey,
 {
@@ -31,7 +31,7 @@ where
 /// blinding factors for pseudonyms.
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::core::transcryptor::DistributedTranscryptor)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`Client`](crate::core::client::Client)s.
-pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_pseudonym_global_keys<R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
@@ -51,7 +51,7 @@ pub fn make_distributed_pseudonym_global_keys<R: RngCore + CryptoRng>(
 /// blinding factors for attributes.
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::core::transcryptor::DistributedTranscryptor)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`Client`](crate::core::client::Client)s.
-pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
@@ -74,7 +74,7 @@ pub fn make_distributed_attribute_global_keys<R: RngCore + CryptoRng>(
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::core::transcryptor::DistributedTranscryptor)s),
 /// the global public keys and blinded global secret keys can be publicly shared with anyone and are
 /// required by [`Client`](crate::core::client::Client)s.
-pub fn make_distributed_global_keys<R: RngCore + CryptoRng>(
+pub fn make_distributed_global_keys<R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (GlobalPublicKeys, BlindedGlobalKeys, Vec<BlindingFactor>) {
