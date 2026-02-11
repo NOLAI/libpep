@@ -8,9 +8,9 @@ use crate::data::simple::{
 };
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
-use crate::keys::SessionKeys;
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
+use crate::keys::SessionKeys;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
