@@ -30,6 +30,18 @@
 /// ```
 #[macro_export]
 macro_rules! pep_json {
+    // Entry point for standalone pseudonym
+    (pseudonym($value:expr)) => {{
+        let s = $value;
+        // Always try short first, then fall back to long if needed
+        match $crate::data::simple::Pseudonym::from_string_padded(s) {
+            Ok(pseudo) => $crate::data::json::data::PEPJSONValue::Pseudonym(pseudo),
+            Err(_) => $crate::data::json::data::PEPJSONValue::LongPseudonym(
+                $crate::data::long::LongPseudonym::from_string_padded(s)
+            )
+        }
+    }};
+
     // Entry point for object
     ({ $($tt:tt)* }) => {{
         let builder = $crate::data::json::builder::PEPJSONBuilder::new();

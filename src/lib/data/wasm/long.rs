@@ -50,6 +50,31 @@ impl WASMLongPseudonym {
             .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
     }
 
+    /// Pads this LongPseudonym to a target number of blocks for batch unlinkability.
+    ///
+    /// In batch transcryption, all values must have identical structure to prevent
+    /// linkability attacks. This method adds external padding blocks to normalize
+    /// different-sized pseudonyms to the same structure.
+    ///
+    /// # Arguments
+    ///
+    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
+    ///
+    /// # Returns
+    ///
+    /// A new LongPseudonym padded to the target number of blocks
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current number of blocks exceeds the target
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongPseudonym, JsError> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
+    }
+
     /// Get the underlying pseudonyms.
     #[wasm_bindgen(getter)]
     pub fn pseudonyms(&self) -> Vec<WASMPseudonym> {
@@ -109,6 +134,30 @@ impl WASMLongAttribute {
         self.0
             .to_bytes_padded()
             .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
+    }
+
+    /// Pads this LongAttribute to a target number of blocks for batch operations.
+    ///
+    /// This is useful for batch operations where all attributes must have the same structure.
+    /// The padding blocks are automatically detected and skipped during decoding.
+    ///
+    /// # Arguments
+    ///
+    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
+    ///
+    /// # Returns
+    ///
+    /// A new LongAttribute padded to the target number of blocks
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current number of blocks exceeds the target
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongAttribute, JsError> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
     }
 
     /// Get the underlying attributes.

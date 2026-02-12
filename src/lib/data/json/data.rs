@@ -44,6 +44,15 @@ pub enum JsonError {
 
     #[error("failed to parse string: {0}")]
     StringPadding(String),
+
+    #[error("structure mismatch: expected {expected:?}, got {got:?}")]
+    StructureMismatch {
+        expected: super::structure::JSONStructure,
+        got: super::structure::JSONStructure,
+    },
+
+    #[error("cannot normalize: current size {current} exceeds target size {target}")]
+    SizeExceedsTarget { current: usize, target: usize },
 }
 /// A JSON value where primitive types are stored as unencrypted PEP types.
 ///
@@ -218,6 +227,229 @@ impl PEPJSONValue {
                 let mut out = HashMap::with_capacity(obj.len());
                 out.extend(obj.iter().map(|(k, v)| (k.clone(), Self::from_value(v))));
                 Self::Object(out)
+            }
+        }
+    }
+
+    /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// `LongString` and `LongPseudonym` variants to ensure all instances have the same
+    /// number of blocks when encrypted. This is necessary for batch transcryption where
+    /// all values must have identical structure.
+    ///
+    /// The padding uses full PKCS#7 padding blocks which are automatically detected and
+    /// stripped during decoding, ensuring the original values are perfectly preserved.
+    ///
+    /// # Parameters
+    ///
+    /// - `structure`: The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// Returns a padded `PEPJSONValue` with padding blocks added where necessary.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The current structure doesn't match the target structure type
+    /// - The current size exceeds the target size (cannot pad by removing blocks)
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::data::json::data::PEPJSONValue;
+    /// use libpep::data::json::structure::JSONStructure;
+    /// use serde_json::json;
+    ///
+    /// let value1 = PEPJSONValue::from_value(&json!("hi"));
+    /// let value2 = PEPJSONValue::from_value(&json!("hello world"));
+    ///
+    /// // value2 has more blocks than value1
+    /// // Pad value1 to match value2's structure
+    /// let target = JSONStructure::String(2);
+    /// let padded = value1.pad_to(&target).unwrap();
+    /// ```
+    pub fn pad_to(&self, structure: &super::structure::JSONStructure) -> Result<Self, JsonError> {
+        use super::structure::JSONStructure;
+
+        match (self, structure) {
+            (Self::Null, JSONStructure::Null) => Ok(Self::Null),
+            (Self::Bool(attr), JSONStructure::Bool) => Ok(Self::Bool(*attr)),
+            (Self::Number(attr), JSONStructure::Number) => Ok(Self::Number(*attr)),
+
+            // Short string (1 block)
+            (Self::String(attr), JSONStructure::String(1)) => Ok(Self::String(*attr)),
+
+            // Short string needs to be expanded to long string
+            #[cfg(feature = "long")]
+            (Self::String(attr), JSONStructure::String(target_blocks)) if *target_blocks > 1 => {
+                // Convert to LongAttribute with 1 block, then pad
+                let long_attr = LongAttribute::from(vec![*attr]);
+                let padded = long_attr.pad_to(*target_blocks).map_err(|e| {
+                    if e.kind() == std::io::ErrorKind::InvalidInput {
+                        JsonError::SizeExceedsTarget {
+                            current: long_attr.len(),
+                            target: *target_blocks,
+                        }
+                    } else {
+                        JsonError::StringPadding(format!("{e:?}"))
+                    }
+                })?;
+                Ok(Self::LongString(padded))
+            }
+
+            // Long string normalization
+            #[cfg(feature = "long")]
+            (Self::LongString(long_attr), JSONStructure::String(target_blocks)) => {
+                let padded = long_attr.pad_to(*target_blocks).map_err(|e| {
+                    if e.kind() == std::io::ErrorKind::InvalidInput {
+                        JsonError::SizeExceedsTarget {
+                            current: long_attr.len(),
+                            target: *target_blocks,
+                        }
+                    } else {
+                        JsonError::StringPadding(format!("{e:?}"))
+                    }
+                })?;
+                Ok(Self::LongString(padded))
+            }
+
+            // Short pseudonym (1 block)
+            (Self::Pseudonym(pseudo), JSONStructure::Pseudonym(1)) => Ok(Self::Pseudonym(*pseudo)),
+
+            // Short pseudonym needs to be expanded to long pseudonym
+            #[cfg(feature = "long")]
+            (Self::Pseudonym(pseudo), JSONStructure::Pseudonym(target_blocks))
+                if *target_blocks > 1 =>
+            {
+                // Convert to LongPseudonym with 1 block, then pad
+                let long_pseudo = LongPseudonym::from(vec![*pseudo]);
+                let padded = long_pseudo.pad_to(*target_blocks).map_err(|e| {
+                    if e.kind() == std::io::ErrorKind::InvalidInput {
+                        JsonError::SizeExceedsTarget {
+                            current: long_pseudo.len(),
+                            target: *target_blocks,
+                        }
+                    } else {
+                        JsonError::StringPadding(format!("{e:?}"))
+                    }
+                })?;
+                Ok(Self::LongPseudonym(padded))
+            }
+
+            // Long pseudonym normalization
+            #[cfg(feature = "long")]
+            (Self::LongPseudonym(long_pseudo), JSONStructure::Pseudonym(target_blocks)) => {
+                let padded = long_pseudo.pad_to(*target_blocks).map_err(|e| {
+                    if e.kind() == std::io::ErrorKind::InvalidInput {
+                        JsonError::SizeExceedsTarget {
+                            current: long_pseudo.len(),
+                            target: *target_blocks,
+                        }
+                    } else {
+                        JsonError::StringPadding(format!("{e:?}"))
+                    }
+                })?;
+                Ok(Self::LongPseudonym(padded))
+            }
+
+            // Array padding - recursively pad each element
+            (Self::Array(arr), JSONStructure::Array(target_structures)) => {
+                if arr.len() != target_structures.len() {
+                    return Err(JsonError::StructureMismatch {
+                        expected: structure.clone(),
+                        got: self.structure(),
+                    });
+                }
+
+                let padded: Result<Vec<_>, _> = arr
+                    .iter()
+                    .zip(target_structures.iter())
+                    .map(|(value, target)| value.pad_to(target))
+                    .collect();
+
+                Ok(Self::Array(padded?))
+            }
+
+            // Object padding - recursively pad each field
+            (Self::Object(obj), JSONStructure::Object(target_fields)) => {
+                let mut padded = HashMap::new();
+
+                for (key, target_struct) in target_fields {
+                    match obj.get(key) {
+                        Some(value) => {
+                            padded.insert(key.clone(), value.pad_to(target_struct)?);
+                        }
+                        None => {
+                            return Err(JsonError::StructureMismatch {
+                                expected: structure.clone(),
+                                got: self.structure(),
+                            });
+                        }
+                    }
+                }
+
+                // Check for extra fields in the object
+                if obj.len() != target_fields.len() {
+                    return Err(JsonError::StructureMismatch {
+                        expected: structure.clone(),
+                        got: self.structure(),
+                    });
+                }
+
+                Ok(Self::Object(padded))
+            }
+
+            // Mismatched structure types
+            _ => Err(JsonError::StructureMismatch {
+                expected: structure.clone(),
+                got: self.structure(),
+            }),
+        }
+    }
+
+    /// Get the structure/shape of this PEPJSONValue.
+    ///
+    /// This returns a structure descriptor that captures the type and block count
+    /// of each field, without including the actual data values.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::data::json::data::PEPJSONValue;
+    /// use libpep::data::json::structure::JSONStructure;
+    /// use serde_json::json;
+    ///
+    /// let value = PEPJSONValue::from_value(&json!({
+    ///     "name": "Alice",
+    ///     "age": 30
+    /// }));
+    ///
+    /// let structure = value.structure();
+    /// // structure describes the shape: Object with String(1) and Number fields
+    /// ```
+    pub fn structure(&self) -> super::structure::JSONStructure {
+        use super::structure::JSONStructure;
+
+        match self {
+            Self::Null => JSONStructure::Null,
+            Self::Bool(_) => JSONStructure::Bool,
+            Self::Number(_) => JSONStructure::Number,
+            Self::String(_) => JSONStructure::String(1),
+            #[cfg(feature = "long")]
+            Self::LongString(long_attr) => JSONStructure::String(long_attr.len()),
+            Self::Pseudonym(_) => JSONStructure::Pseudonym(1),
+            #[cfg(feature = "long")]
+            Self::LongPseudonym(long_pseudo) => JSONStructure::Pseudonym(long_pseudo.len()),
+            Self::Array(arr) => JSONStructure::Array(arr.iter().map(|v| v.structure()).collect()),
+            Self::Object(obj) => {
+                let mut fields: Vec<_> = obj
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.structure()))
+                    .collect();
+                fields.sort_by(|a, b| a.0.cmp(&b.0));
+                JSONStructure::Object(fields)
             }
         }
     }
@@ -947,5 +1179,333 @@ mod tests {
         #[cfg(not(feature = "elgamal3"))]
         let decrypted2 = decrypt(&encrypted2, &keys);
         assert_eq!(decrypted1, decrypted2);
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_short_string_to_long() {
+        use super::super::structure::JSONStructure;
+
+        // Short string (1 block)
+        let short_value = PEPJSONValue::from_value(&json!("hi"));
+        assert_eq!(short_value.structure(), JSONStructure::String(1));
+
+        // Normalize to 3 blocks
+        let normalized = short_value.pad_to(&JSONStructure::String(3)).unwrap();
+        assert_eq!(normalized.structure(), JSONStructure::String(3));
+
+        // Verify it's now a LongString
+        match normalized {
+            PEPJSONValue::LongString(ref long_attr) => {
+                assert_eq!(long_attr.len(), 3);
+            }
+            _ => panic!("Expected LongString after normalization"),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_long_string_adds_padding() {
+        use super::super::structure::JSONStructure;
+
+        // Long string (2 blocks)
+        let long_value = PEPJSONValue::from_value(&json!("This is a longer string"));
+        let initial_structure = long_value.structure();
+
+        // Get current block count
+        let current_blocks = match initial_structure {
+            JSONStructure::String(n) => n,
+            _ => panic!("Expected String structure"),
+        };
+
+        // Normalize to more blocks
+        let target_blocks = current_blocks + 2;
+        let normalized = long_value
+            .pad_to(&JSONStructure::String(target_blocks))
+            .unwrap();
+        assert_eq!(normalized.structure(), JSONStructure::String(target_blocks));
+
+        // Verify block count increased
+        match normalized {
+            PEPJSONValue::LongString(ref long_attr) => {
+                assert_eq!(long_attr.len(), target_blocks);
+            }
+            _ => panic!("Expected LongString"),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_strings_different_sizes_encrypt_decrypt() {
+        let mut rng = rand::rng();
+        let keys = make_test_keys();
+
+        // Create strings of different sizes
+        let short = PEPJSONValue::from_value(&json!("hi"));
+        let medium = PEPJSONValue::from_value(&json!("hello world"));
+        let long =
+            PEPJSONValue::from_value(&json!("This is a much longer string with more content"));
+
+        // Find the maximum block count
+        let max_blocks = [&short, &medium, &long]
+            .iter()
+            .map(|v| match v.structure() {
+                super::super::structure::JSONStructure::String(n) => n,
+                _ => 0,
+            })
+            .max()
+            .unwrap();
+
+        // Normalize all to the same structure
+        let target = super::super::structure::JSONStructure::String(max_blocks);
+        let short_normalized = short.pad_to(&target).unwrap();
+        let medium_normalized = medium.pad_to(&target).unwrap();
+        let long_normalized = long.pad_to(&target).unwrap();
+
+        // All should have the same structure now
+        assert_eq!(short_normalized.structure(), target);
+        assert_eq!(medium_normalized.structure(), target);
+        assert_eq!(long_normalized.structure(), target);
+
+        // Encrypt all values
+        let short_encrypted = encrypt(&short_normalized, &keys, &mut rng);
+        let medium_encrypted = encrypt(&medium_normalized, &keys, &mut rng);
+        let long_encrypted = encrypt(&long_normalized, &keys, &mut rng);
+
+        // All encrypted values should have the same structure
+        assert_eq!(short_encrypted.structure(), medium_encrypted.structure());
+        assert_eq!(medium_encrypted.structure(), long_encrypted.structure());
+
+        // Decrypt and verify original values are preserved
+        #[cfg(feature = "elgamal3")]
+        {
+            let short_decrypted = decrypt(&short_encrypted, &keys).unwrap();
+            let medium_decrypted = decrypt(&medium_encrypted, &keys).unwrap();
+            let long_decrypted = decrypt(&long_encrypted, &keys).unwrap();
+
+            assert_eq!(json!("hi"), short_decrypted.to_value().unwrap());
+            assert_eq!(json!("hello world"), medium_decrypted.to_value().unwrap());
+            assert_eq!(
+                json!("This is a much longer string with more content"),
+                long_decrypted.to_value().unwrap()
+            );
+        }
+
+        #[cfg(not(feature = "elgamal3"))]
+        {
+            let short_decrypted = decrypt(&short_encrypted, &keys);
+            let medium_decrypted = decrypt(&medium_encrypted, &keys);
+            let long_decrypted = decrypt(&long_encrypted, &keys);
+
+            assert_eq!(json!("hi"), short_decrypted.to_value().unwrap());
+            assert_eq!(json!("hello world"), medium_decrypted.to_value().unwrap());
+            assert_eq!(
+                json!("This is a much longer string with more content"),
+                long_decrypted.to_value().unwrap()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_pseudonyms_different_sizes() {
+        use super::super::structure::JSONStructure;
+        use crate::pep_json;
+
+        let mut rng = rand::rng();
+        let keys = make_test_keys();
+
+        // Create pseudonyms of different sizes
+        let short_pseudo = pep_json!(pseudonym("user123"));
+        let long_pseudo = pep_json!(pseudonym("user@example.com.with.a.very.long.domain"));
+
+        // Find the maximum block count
+        let max_blocks = [&short_pseudo, &long_pseudo]
+            .iter()
+            .map(|v| match v.structure() {
+                JSONStructure::Pseudonym(n) => n,
+                _ => 0,
+            })
+            .max()
+            .unwrap();
+
+        // Normalize both to the same structure
+        let target = JSONStructure::Pseudonym(max_blocks);
+        let short_normalized = short_pseudo.pad_to(&target).unwrap();
+        let long_normalized = long_pseudo.pad_to(&target).unwrap();
+
+        // Both should have the same structure now
+        assert_eq!(short_normalized.structure(), target);
+        assert_eq!(long_normalized.structure(), target);
+
+        // Encrypt and verify structures match
+        let short_encrypted = encrypt(&short_normalized, &keys, &mut rng);
+        let long_encrypted = encrypt(&long_normalized, &keys, &mut rng);
+
+        assert_eq!(short_encrypted.structure(), long_encrypted.structure());
+
+        // Decrypt and verify original values are preserved
+        #[cfg(feature = "elgamal3")]
+        {
+            let short_decrypted = decrypt(&short_encrypted, &keys).unwrap();
+            let long_decrypted = decrypt(&long_encrypted, &keys).unwrap();
+
+            assert_eq!(json!("user123"), short_decrypted.to_value().unwrap());
+            assert_eq!(
+                json!("user@example.com.with.a.very.long.domain"),
+                long_decrypted.to_value().unwrap()
+            );
+        }
+
+        #[cfg(not(feature = "elgamal3"))]
+        {
+            let short_decrypted = decrypt(&short_encrypted, &keys);
+            let long_decrypted = decrypt(&long_encrypted, &keys);
+
+            assert_eq!(json!("user123"), short_decrypted.to_value().unwrap());
+            assert_eq!(
+                json!("user@example.com.with.a.very.long.domain"),
+                long_decrypted.to_value().unwrap()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_nested_objects_different_string_sizes() {
+        use super::super::structure::JSONStructure;
+
+        let mut rng = rand::rng();
+        let keys = make_test_keys();
+
+        // Create two objects with strings of different sizes
+        let obj1 = PEPJSONValue::from_value(&json!({
+            "name": "Alice",
+            "email": "a@b.c"
+        }));
+
+        let obj2 = PEPJSONValue::from_value(&json!({
+            "name": "Bob",
+            "email": "bob.smith@example.com"
+        }));
+
+        // Get structures
+        let struct1 = obj1.structure();
+        let struct2 = obj2.structure();
+
+        // Use the public unify_structures function
+        let unified = super::super::structure::unify_structures(&[struct1, struct2]).unwrap();
+
+        // Normalize both objects
+        let obj1_normalized = obj1.pad_to(&unified).unwrap();
+        let obj2_normalized = obj2.pad_to(&unified).unwrap();
+
+        // Both should have the same structure now
+        assert_eq!(obj1_normalized.structure(), obj2_normalized.structure());
+
+        // Encrypt both
+        let obj1_encrypted = encrypt(&obj1_normalized, &keys, &mut rng);
+        let obj2_encrypted = encrypt(&obj2_normalized, &keys, &mut rng);
+
+        // Structures should match
+        assert_eq!(obj1_encrypted.structure(), obj2_encrypted.structure());
+
+        // Decrypt and verify original values
+        #[cfg(feature = "elgamal3")]
+        {
+            let obj1_decrypted = decrypt(&obj1_encrypted, &keys).unwrap();
+            let obj2_decrypted = decrypt(&obj2_encrypted, &keys).unwrap();
+
+            assert_eq!(
+                json!({"name": "Alice", "email": "a@b.c"}),
+                obj1_decrypted.to_value().unwrap()
+            );
+            assert_eq!(
+                json!({"name": "Bob", "email": "bob.smith@example.com"}),
+                obj2_decrypted.to_value().unwrap()
+            );
+        }
+
+        #[cfg(not(feature = "elgamal3"))]
+        {
+            let obj1_decrypted = decrypt(&obj1_encrypted, &keys);
+            let obj2_decrypted = decrypt(&obj2_encrypted, &keys);
+
+            assert_eq!(
+                json!({"name": "Alice", "email": "a@b.c"}),
+                obj1_decrypted.to_value().unwrap()
+            );
+            assert_eq!(
+                json!({"name": "Bob", "email": "bob.smith@example.com"}),
+                obj2_decrypted.to_value().unwrap()
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_errors_when_size_exceeds_target() {
+        use super::super::structure::JSONStructure;
+
+        // Create a long string (multiple blocks)
+        let long_value = PEPJSONValue::from_value(&json!(
+            "This is a very long string that will take multiple blocks"
+        ));
+
+        let current_blocks = match long_value.structure() {
+            JSONStructure::String(n) => n,
+            _ => panic!("Expected String structure"),
+        };
+
+        // Try to normalize to fewer blocks - should fail
+        let result = long_value.pad_to(&JSONStructure::String(current_blocks - 1));
+        assert!(result.is_err());
+
+        match result {
+            Err(JsonError::SizeExceedsTarget { current, target }) => {
+                assert_eq!(current, current_blocks);
+                assert_eq!(target, current_blocks - 1);
+            }
+            _ => panic!("Expected SizeExceedsTarget error"),
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "long")]
+    fn normalize_errors_on_structure_mismatch() {
+        use super::super::structure::JSONStructure;
+
+        // Create a string value
+        let string_value = PEPJSONValue::from_value(&json!("hello"));
+
+        // Try to normalize to a number structure - should fail
+        let result = string_value.pad_to(&JSONStructure::Number);
+        assert!(result.is_err());
+
+        match result {
+            Err(JsonError::StructureMismatch { expected, got }) => {
+                assert_eq!(expected, JSONStructure::Number);
+                assert_eq!(got, JSONStructure::String(1));
+            }
+            _ => panic!("Expected StructureMismatch error"),
+        }
+    }
+
+    #[test]
+    fn normalize_preserves_primitives() {
+        use super::super::structure::JSONStructure;
+
+        // Test that null, bool, and number normalization works
+        let null_value = PEPJSONValue::from_value(&json!(null));
+        let bool_value = PEPJSONValue::from_value(&json!(true));
+        let number_value = PEPJSONValue::from_value(&json!(42));
+
+        let null_normalized = null_value.pad_to(&JSONStructure::Null).unwrap();
+        let bool_normalized = bool_value.pad_to(&JSONStructure::Bool).unwrap();
+        let number_normalized = number_value.pad_to(&JSONStructure::Number).unwrap();
+
+        assert_eq!(null_normalized, null_value);
+        assert_eq!(bool_normalized, bool_value);
+        assert_eq!(number_normalized, number_value);
     }
 }

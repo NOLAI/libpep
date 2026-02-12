@@ -185,6 +185,84 @@ impl LongRecord {
             attributes,
         }
     }
+
+    /// Pads this LongRecord to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// each pseudonym and attribute to ensure all records have the same structure.
+    /// This is necessary for batch transcryption where all values must have identical
+    /// structure to prevent linkability attacks.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded LongRecord with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of pseudonyms doesn't match the structure
+    /// - The number of attributes doesn't match the structure
+    /// - Any pseudonym or attribute exceeds its target size
+    pub fn pad_to(&self, structure: &LongRecordStructure) -> Result<Self, Error> {
+        // Validate counts
+        if self.pseudonyms.len() != structure.pseudonym_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Pseudonym count mismatch: record has {} but structure expects {}",
+                    self.pseudonyms.len(),
+                    structure.pseudonym_blocks.len()
+                ),
+            ));
+        }
+
+        if self.attributes.len() != structure.attribute_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Attribute count mismatch: record has {} but structure expects {}",
+                    self.attributes.len(),
+                    structure.attribute_blocks.len()
+                ),
+            ));
+        }
+
+        // Pad pseudonyms
+        let padded_pseudonyms: Result<Vec<_>, _> = self
+            .pseudonyms
+            .iter()
+            .zip(structure.pseudonym_blocks.iter())
+            .map(|(p, &target_blocks)| p.pad_to(target_blocks))
+            .collect();
+
+        // Pad attributes
+        let padded_attributes: Result<Vec<_>, _> = self
+            .attributes
+            .iter()
+            .zip(structure.attribute_blocks.iter())
+            .map(|(a, &target_blocks)| a.pad_to(target_blocks))
+            .collect();
+
+        Ok(LongRecord {
+            pseudonyms: padded_pseudonyms?,
+            attributes: padded_attributes?,
+        })
+    }
+
+    /// Get the structure of this LongRecord.
+    ///
+    /// Returns a `LongRecordStructure` describing the number of blocks in each
+    /// pseudonym and attribute.
+    pub fn structure(&self) -> LongRecordStructure {
+        LongRecordStructure {
+            pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
+            attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
+        }
+    }
 }
 
 #[cfg(feature = "long")]
