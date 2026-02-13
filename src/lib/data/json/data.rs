@@ -233,13 +233,16 @@ impl PEPJSONValue {
 
     /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
     ///
-    /// This method adds external padding blocks (separate from PKCS#7 padding) to
-    /// `LongString` and `LongPseudonym` variants to ensure all instances have the same
-    /// number of blocks when encrypted. This is necessary for batch transcryption where
-    /// all values must have identical structure.
+    /// This method adds external padding blocks (separate from any internal PKCS#7-style
+    /// padding used inside individual ciphertext blocks) to `LongString` and
+    /// `LongPseudonym` variants to ensure all instances have the same number of blocks
+    /// when encrypted. This is necessary for batch transcryption where all encrypted values must
+    /// have identical structure to prevent linkability.
     ///
-    /// The padding uses full PKCS#7 padding blocks which are automatically detected and
-    /// stripped during decoding, ensuring the original values are perfectly preserved.
+    /// The external padding blocks are special marker blocks that contain a magic byte
+    /// pattern (for example `[0xFF, 0xEE, 0xDD, 0xCC, ...]`) and no user data. These
+    /// marker blocks are automatically detected as padding and stripped during decoding,
+    /// ensuring the original values are perfectly preserved.
     ///
     /// # Parameters
     ///
