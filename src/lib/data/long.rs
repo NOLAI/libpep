@@ -3,72 +3,15 @@
 //! This module provides support for multi-block pseudonyms and attributes that can hold
 //! more than 16 bytes of data.
 //!
-//! # Two Types of Padding
+//! # Padding
 //!
-//! This module handles **two distinct types of padding**:
+//! Long data types use PKCS#7 padding (internal padding) automatically for the last block.
+//! They also support optional external padding via the `pad_to()` method for batch unlinkability.
 //!
-//! ## 1. Internal Padding (PKCS#7)
-//!
-//! Standard PKCS#7 padding is applied **within** the last data block. This is handled
-//! automatically during encoding/decoding:
-//! - Ensures data fills complete 16-byte blocks
-//! - The padding byte value indicates the number of padding bytes
-//! - Always applied, even if data is exactly a multiple of 16 bytes
-//!
-//! **Examples:**
-//!
-//! ```text
-//! "hello" (5 bytes):
-//! Block 1: [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]
-//!          └─ data ─┘ └──────────────── 11 padding bytes ────────────────────┘
-//!          (padding value = 11 because we need 11 bytes to fill the block)
-//!
-//! "0123456789ABCDEF" (exactly 16 bytes):
-//! Block 1: [0 1 2 3 4 5 6 7 8 9 A B C D E F]  ← full data block
-//! Block 2: [0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10 0x10]
-//!          └──────────────────── full padding block (16 bytes) ───────────────────────────┘
-//!
-//! "hello world!" (12 bytes):
-//! Block 1: [h e l l o   w o r l d ! | 0x04 0x04 0x04 0x04]
-//!          └────────── data ──────────┘ └── 4 padding bytes ──┘
-//! ```
-//!
-//! ## 2. External Padding (for Batch Unlinkability)
-//!
-//! External padding adds **full blocks** to ensure all values in a batch have identical
-//! structure, which is required for unlinkable batch transcryption:
-//! - Added using the `pad_to(n)` method (optional, not automatic)
-//! - Each padding block contains a magic marker and metadata about the original data size
-//! - Format: `[0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes u64 LE), 0x00, 0x00, 0x00, 0x00]`
-//! - The magic marker is impossible in PKCS#7 (valid padding bytes are 0x01-0x10), making it unambiguous
-//! - Automatically detected and removed during decoding
-//!
-//! **Example:** Padding "hello" from 1 block to 3 blocks:
-//!
-//! ```text
-//! Original (1 block):
-//! Block 1: [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]
-//!
-//! After pad_to(3):
-//! Block 1: [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]  ← original data
-//! Block 2: [0xFF 0xEE 0xDD 0xCC | 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0x00 | 0x00 0x00 0x00 0x00]
-//!          └─── magic marker ──┘ └─── original_count=1 (u64 LE) ────┘ └── zeros ──┘
-//! Block 3: [0xFF 0xEE 0xDD 0xCC | 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0x00 | 0x00 0x00 0x00 0x00]
-//!          └────────────────── external padding block (same pattern) ──────────────────────┘
-//! ```
-//!
-//! **Why external padding?** In batch transcryption, all values must have identical structure
-//! to prevent linkability attacks. External padding normalizes different-sized values to the
-//! same structure without modifying their content.
-//!
-//! **Batch use case:**
-//! ```text
-//! User A: "id123"              → 1 block → pad_to(3) → 3 blocks
-//! User B: "user@example.com"   → 2 blocks → pad_to(3) → 3 blocks
-//! Both now have identical structure (3 blocks), preventing linkability during batch transcryption.
-//! ```
+//! For detailed information about the two types of padding, see the [`padding`](crate::data::padding) module.
 
 use crate::arithmetic::scalars::ScalarNonZero;
+use crate::data::padding::external::{create_external_padding_block, is_external_padding_block};
 use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
@@ -1078,65 +1021,6 @@ fn from_bytes_padded_impl<T: ElGamalEncryptable>(data: &[u8]) -> Vec<T> {
     result.push(T::from_lizard(&last_block));
 
     result
-}
-
-/// Magic marker for external padding blocks.
-/// This sequence is impossible in valid PKCS#7 padding for 16-byte blocks
-/// (valid padding bytes are 0x01-0x10, so 0xFF is impossible).
-const EXTERNAL_PADDING_MAGIC: [u8; 4] = [0xFF, 0xEE, 0xDD, 0xCC];
-
-/// Creates an external padding block with metadata about the original block count.
-///
-/// Format: [0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes as u64 LE), 0x00, 0x00, 0x00, 0x00]
-///
-/// The magic marker (0xFF, 0xEE, 0xDD, 0xCC) is impossible in PKCS#7 padding for 16-byte blocks,
-/// making this unambiguous. The original block count allows the decoder to know exactly where
-/// the real data ends and external padding begins.
-fn create_external_padding_block(original_block_count: usize) -> [u8; 16] {
-    let mut block = [0u8; 16];
-    block[0..4].copy_from_slice(&EXTERNAL_PADDING_MAGIC);
-    block[4..12].copy_from_slice(&(original_block_count as u64).to_le_bytes());
-    // Remaining 4 bytes stay as 0x00
-    block
-}
-
-/// Checks if a block is an external padding block and extracts the original block count.
-///
-/// Returns `Some(original_block_count)` if this is an external padding block,
-/// or `None` if this is a regular data block.
-///
-/// # Disambiguation Guarantee
-///
-/// - External padding blocks **always** end with `[0x00, 0x00, 0x00, 0x00]`
-/// - PKCS#7 data blocks **never** have `0x00` in the last byte (valid padding: `0x01`-`0x10`)
-///
-/// This means **ALL possible byte sequences can be encoded without ambiguity**, including:
-/// - Data starting with the magic marker `[0xFF, 0xEE, 0xDD, 0xCC]`
-/// - Data exactly matching the external padding pattern
-/// - Any combination of bytes whatsoever
-fn is_external_padding_block(block: &[u8]) -> Option<usize> {
-    if block.len() != 16 {
-        return None;
-    }
-
-    // Check magic marker
-    if block[0..4] != EXTERNAL_PADDING_MAGIC {
-        return None;
-    }
-
-    // Check that last 4 bytes are zeros (as created by create_external_padding_block)
-    // This prevents false positives where legitimate data happens to start with the magic marker
-    if block[12..16] != [0x00, 0x00, 0x00, 0x00] {
-        return None;
-    }
-
-    // Extract original block count
-    let count_bytes: [u8; 8] = match block[4..12].try_into() {
-        Ok(bytes) => bytes,
-        Err(_) => return None,
-    };
-
-    Some(u64::from_le_bytes(count_bytes) as usize)
 }
 
 /// Internal helper function to decode padded bytes.

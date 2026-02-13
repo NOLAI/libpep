@@ -32,8 +32,9 @@
 macro_rules! pep_json {
     // Entry point for standalone pseudonym
     (pseudonym($value:expr)) => {{
-        let s = &$value;
-        let s_str: &str = s.as_ref();
+        use $crate::data::padding::Padded;
+        let value = $value;
+        let s_str: &str = value.as_ref();
         // Always try short first, then fall back to long if needed
         match $crate::data::simple::Pseudonym::from_string_padded(s_str) {
             Ok(pseudo) => $crate::data::json::data::PEPJSONValue::Pseudonym(pseudo),
@@ -56,12 +57,14 @@ macro_rules! pep_json {
 
     // Pseudonym field (last field, no trailing comma)
     (@object $builder:ident, $key:literal : pseudonym($value:expr)) => {{
-        $builder.pseudonym($key, $value).build()
+        let value = $value;
+        $builder.pseudonym($key, value.as_ref()).build()
     }};
 
     // Pseudonym field with more fields following
     (@object $builder:ident, $key:literal : pseudonym($value:expr), $($rest:tt)*) => {{
-        let builder = $builder.pseudonym($key, $value);
+        let value = $value;
+        let builder = $builder.pseudonym($key, value.as_ref());
         pep_json!(@object builder, $($rest)*)
     }};
 
@@ -257,5 +260,48 @@ mod tests {
         });
 
         assert_eq!(expected, decrypted.to_value().unwrap());
+    }
+
+    #[test]
+    fn macro_with_string_variables() {
+        let mut rng = rand::rng();
+        let keys = make_test_keys();
+
+        // Test with String variables (not just string literals)
+        let user_id = String::from("user@example.com");
+        let pep_value = pep_json!({
+            "id": pseudonym(user_id)
+        });
+
+        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        #[cfg(feature = "elgamal3")]
+        let decrypted = decrypt(&encrypted, &keys).unwrap();
+
+        #[cfg(not(feature = "elgamal3"))]
+        let decrypted = decrypt(&encrypted, &keys);
+
+        let expected = json!({
+            "id": "user@example.com"
+        });
+
+        assert_eq!(expected, decrypted.to_value().unwrap());
+    }
+
+    #[test]
+    fn macro_standalone_pseudonym_with_string() {
+        // Test standalone pseudonym with String variable
+        let user_id = String::from("test@example.com");
+        let pep_value = pep_json!(pseudonym(user_id));
+
+        // Verify it creates the correct variant
+        match pep_value {
+            crate::data::json::data::PEPJSONValue::Pseudonym(_) => {
+                // Expected for short pseudonyms
+            }
+            crate::data::json::data::PEPJSONValue::LongPseudonym(_) => {
+                // Also acceptable if string is long
+            }
+            _ => panic!("Expected Pseudonym or LongPseudonym variant"),
+        }
     }
 }
