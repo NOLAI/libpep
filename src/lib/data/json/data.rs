@@ -239,9 +239,8 @@ impl PEPJSONValue {
     /// when encrypted. This is necessary for batch transcryption where all encrypted values must
     /// have identical structure to prevent linkability.
     ///
-    /// The external padding blocks are special marker blocks that contain a magic byte
-    /// pattern (for example `[0xFF, 0xEE, 0xDD, 0xCC, ...]`) and no user data. These
-    /// marker blocks are automatically detected as padding and stripped during decoding,
+    /// The external padding blocks are all-zero blocks `[0x00, 0x00, ...]` that contain no user data.
+    /// These padding blocks are automatically detected and removed during decoding,
     /// ensuring the original values are perfectly preserved.
     ///
     /// # Parameters

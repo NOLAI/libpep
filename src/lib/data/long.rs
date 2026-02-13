@@ -182,11 +182,10 @@ impl LongPseudonym {
     ///
     /// ## How it Works
     ///
-    /// - Appends one or more **external padding blocks** after the data blocks
-    ///   using a magic marker pattern:
-    ///   `[0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes u64 LE), 0x00, 0x00, 0x00, 0x00]`
+    /// - Appends one or more **all-zero external padding blocks** after the data blocks:
+    ///   `[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]`
     /// - These blocks are **separate from** the internal PKCS#7 padding within blocks
-    /// - External padding is automatically detected and removed during decoding
+    /// - During decoding, scans backwards removing all-zero blocks until finding the data
     /// - The original pseudonym value is perfectly preserved
     ///
     /// ## Parameters
@@ -239,8 +238,8 @@ impl LongPseudonym {
             return Ok(self.clone());
         }
 
-        // Create external padding blocks with metadata about the original block count
-        let padding_pattern = create_external_padding_block(current_blocks);
+        // Create external padding blocks (all zeros)
+        let padding_pattern = create_external_padding_block();
         let padding_block = Pseudonym::from_lizard(&padding_pattern);
 
         let mut blocks = self.0.clone();
@@ -329,9 +328,9 @@ impl LongAttribute {
     /// Pads this `LongAttribute` to a target number of blocks.
     ///
     /// This is useful for batch operations where all attributes must have the same structure.
-    /// Any additional padding blocks use a special magic-marker format
-    /// `[0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes u64 LE), 0x00, 0x00, 0x00, 0x00]`
-    /// and are automatically detected and skipped during decoding.
+    /// Additional padding blocks are all-zero blocks:
+    /// `[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]`
+    /// which are automatically detected and removed during decoding.
     ///
     /// # Parameters
     ///
@@ -375,8 +374,8 @@ impl LongAttribute {
             return Ok(self.clone());
         }
 
-        // Create external padding blocks with metadata about the original block count
-        let padding_pattern = create_external_padding_block(current_blocks);
+        // Create external padding blocks (all zeros)
+        let padding_pattern = create_external_padding_block();
         let padding_block = Attribute::from_lizard(&padding_pattern);
 
         let mut blocks = self.0.clone();
@@ -1025,11 +1024,11 @@ fn from_bytes_padded_impl<T: ElGamalEncryptable>(data: &[u8]) -> Vec<T> {
 
 /// Internal helper function to decode padded bytes.
 ///
-/// This function automatically detects and skips external padding blocks
+/// This function automatically detects and removes external padding blocks
 /// created by `pad_to()`, ensuring that normalized values decode correctly.
 ///
-/// External padding uses a magic marker `[0xFF, 0xEE, 0xDD, 0xCC, ...]` which is
-/// impossible in valid PKCS#7 padding (valid padding bytes are 0x01-0x10).
+/// External padding uses all-zero blocks `[0x00, ...]` which are impossible
+/// in valid PKCS#7 padding (valid padding bytes are 0x01-0x10).
 fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, Error> {
     if items.is_empty() {
         return Err(Error::new(
@@ -1038,31 +1037,27 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
         ));
     }
 
-    // Check if there are external padding blocks at the end
-    // If so, extract the original block count from them
-    let last_data_block_idx = if !items.is_empty() {
-        let last_block = items[items.len() - 1].to_lizard().ok_or(Error::new(
+    // Scan backwards from the end to remove external padding blocks (all-zero blocks)
+    // Stop when we find a non-padding block (which will have PKCS#7 padding)
+    if items.is_empty() {
+        return Err(Error::new(ErrorKind::InvalidData, "Empty data"));
+    }
+
+    let mut last_data_block_idx = items.len() - 1;
+    while last_data_block_idx > 0 {
+        let block = items[last_data_block_idx].to_lizard().ok_or(Error::new(
             ErrorKind::InvalidData,
             "Encryptable conversion to bytes failed",
         ))?;
 
-        if let Some(original_count) = is_external_padding_block(&last_block) {
-            // We have external padding, use the encoded original block count
-            // Check for underflow: original_count must be at least 1
-            if original_count == 0 || original_count > items.len() {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "External padding contains invalid block count",
-                ));
-            }
-            original_count - 1 // -1 because we use it as an index
+        if is_external_padding_block(&block) {
+            // This is external padding, continue scanning backwards
+            last_data_block_idx -= 1;
         } else {
-            // No external padding, last block is the last data block
-            items.len() - 1
+            // Found a data block, stop scanning
+            break;
         }
-    } else {
-        return Err(Error::new(ErrorKind::InvalidData, "Empty data"));
-    };
+    }
 
     let mut result = Vec::with_capacity((last_data_block_idx + 1) * 16);
 
@@ -1623,9 +1618,8 @@ mod tests {
 
     #[test]
     fn long_attribute_data_containing_magic_marker_multiblock() {
-        // Edge case: Data that contains the magic marker bytes [0xFF, 0xEE, 0xDD, 0xCC]
-        // CAN be encoded if it spans multiple blocks (>16 bytes).
-        // The magic marker check only applies to the last block.
+        // Edge case: Data that contains bytes [0xFF, 0xEE, 0xDD, 0xCC]
+        // CAN be encoded regardless - external padding is all zeros now.
         let data = vec![
             0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
             0xAA, 0xBB, 0xCC,
@@ -1634,100 +1628,90 @@ mod tests {
         let decoded = attr.to_bytes_padded().unwrap();
         assert_eq!(
             data, decoded,
-            "Multi-block data containing magic marker should roundtrip correctly"
+            "Multi-block data with any bytes should roundtrip correctly"
         );
     }
 
     #[test]
     fn long_attribute_single_block_with_magic_marker() {
-        // Edge case: Data starting with magic marker CAN now be encoded
-        // because we check that the last 4 bytes are zeros.
-        //
-        // After PKCS#7: [0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08]
-        // Last 4 bytes are [0x08, 0x08, 0x08, 0x08], not [0x00, 0x00, 0x00, 0x00]
-        // So this is NOT detected as external padding and roundtrips correctly.
+        // Edge case: Data starting with [0xFF, 0xEE, 0xDD, 0xCC] works fine.
+        // After PKCS#7, the last byte will be 0x08 (padding), not 0x00.
+        // External padding is all zeros, so this won't be confused.
         let data = vec![0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66];
         let attr = LongAttribute::from_bytes_padded(&data);
 
         let decoded = attr.to_bytes_padded().unwrap();
         assert_eq!(
             data, decoded,
-            "Single-block data starting with magic marker should roundtrip correctly"
+            "Single-block data with any bytes should roundtrip correctly"
         );
     }
 
     #[test]
     fn long_attribute_data_exactly_matching_external_padding_pattern() {
-        // Edge case: Data that exactly matches our external padding block format.
-        // After PKCS#7 encoding, this should still work correctly.
+        // Edge case: Data that is all zeros.
+        // After PKCS#7 encoding, the last byte will be a padding value (0x01-0x10), not 0x00.
         let data = vec![
-            0xFF, 0xEE, 0xDD, 0xCC, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00,
         ];
         let attr = LongAttribute::from_bytes_padded(&data);
 
-        // After PKCS#7: will be 2 blocks: [data][full padding block]
-        // The last block will be [0x10×16], not the magic marker
-        assert_eq!(attr.len(), 2);
+        // After PKCS#7: will be 1 block with last byte = 0x01
+        // Not all zeros, so won't be confused with external padding
+        assert_eq!(attr.len(), 1);
 
         let decoded = attr.to_bytes_padded().unwrap();
-        assert_eq!(
-            data, decoded,
-            "Data matching external padding pattern should roundtrip correctly"
-        );
+        assert_eq!(data, decoded, "All-zero data should roundtrip correctly");
     }
 
     #[test]
-    fn long_attribute_double_pad_to_fails() {
-        // Edge case: Calling pad_to() multiple times should fail to decode
-        // because the decoder will find nested external padding blocks.
+    fn long_attribute_double_pad_to_works() {
+        // With all-zero external padding, calling pad_to() multiple times works correctly.
+        // The decoder scans backwards removing all zero blocks until it finds the data block.
         let attr = LongAttribute::from_string_padded("test");
         let padded_once = attr.pad_to(2).unwrap();
         let padded_twice = padded_once.pad_to(3).unwrap();
 
-        // This should fail because block 1 (external padding with count=1)
-        // doesn't have valid PKCS#7 padding
+        // This should succeed - all zero blocks are removed, leaving just the data
         let result = padded_twice.to_string_padded();
-        assert!(result.is_err(), "Double pad_to should fail to decode");
+        assert!(
+            result.is_ok(),
+            "Double pad_to should succeed with all-zero padding"
+        );
+        assert_eq!(result.unwrap(), "test");
     }
 
     #[test]
     fn verify_no_ambiguous_edge_cases() {
         // Comprehensive verification that ALL data can be encoded without ambiguity
-        // This test confirms the fix for the edge case where single-block data
-        // starting with the magic marker [0xFF, 0xEE, 0xDD, 0xCC] previously failed.
+        // External padding is all-zero blocks, and PKCS#7 ensures the last byte is never 0x00.
 
-        // Test 1: Single-block data starting with magic marker (previously failed)
+        // Test 1: Arbitrary data
         let data1 = vec![0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66];
         let attr1 = LongAttribute::from_bytes_padded(&data1);
         let decoded1 = attr1.to_bytes_padded().unwrap();
-        assert_eq!(
-            data1, decoded1,
-            "Single-block data with magic marker should work"
-        );
+        assert_eq!(data1, decoded1, "Arbitrary data should work");
 
-        // Test 2: Exact external padding pattern as data (with PKCS#7, last block differs)
+        // Test 2: All-zero data (PKCS#7 adds non-zero padding)
         let data2 = vec![
-            0xFF, 0xEE, 0xDD, 0xCC, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00,
         ];
         let attr2 = LongAttribute::from_bytes_padded(&data2);
         let decoded2 = attr2.to_bytes_padded().unwrap();
-        assert_eq!(
-            data2, decoded2,
-            "Data matching external padding pattern should work"
-        );
+        assert_eq!(data2, decoded2, "All-zero data should work");
 
-        // Test 3: Magic marker in middle of multi-block data
+        // Test 3: Mixed zeros and non-zeros
         let data3 = vec![
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFF, 0xEE, 0xDD, 0xCC, 0x11, 0x12,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x11, 0x12,
             0x13, 0x14, 0x15, 0x16,
         ];
         let attr3 = LongAttribute::from_bytes_padded(&data3);
         let decoded3 = attr3.to_bytes_padded().unwrap();
-        assert_eq!(data3, decoded3, "Magic marker in middle should work");
+        assert_eq!(data3, decoded3, "Mixed data should work");
 
-        // Test 4: pad_to() still works correctly
+        // Test 4: pad_to() works correctly
         let attr4 = LongAttribute::from_string_padded("hello");
         let padded = attr4.pad_to(3).unwrap();
         assert_eq!(
@@ -1738,19 +1722,14 @@ mod tests {
         let decoded4 = padded.to_string_padded().unwrap();
         assert_eq!("hello", decoded4, "pad_to should preserve original data");
 
-        // Test 5: Various lengths starting with magic marker
+        // Test 5: Various lengths with different byte patterns
         for len in 1..=32 {
-            let mut data = vec![0xFF, 0xEE, 0xDD, 0xCC];
-            data.extend(vec![0xAB; len]);
+            let mut data = vec![0x00; len]; // All zeros
+            data[0] = 0xFF; // Make first byte non-zero
 
             let attr = LongAttribute::from_bytes_padded(&data);
             let decoded = attr.to_bytes_padded().unwrap();
-            assert_eq!(
-                data,
-                decoded,
-                "Data of length {} starting with magic marker should work",
-                len + 4
-            );
+            assert_eq!(data, decoded, "Data of length {} should work", len);
         }
     }
 }
