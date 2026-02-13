@@ -239,7 +239,9 @@ impl LongPseudonym {
     ///
     /// ## How it Works
     ///
-    /// - Adds full blocks of `0x10` (external padding) after the data blocks
+    /// - Appends one or more **external padding blocks** after the data blocks
+    ///   using a magic marker pattern:
+    ///   `[0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes u64 LE), 0x00, 0x00, 0x00, 0x00]`
     /// - These blocks are **separate from** the internal PKCS#7 padding within blocks
     /// - External padding is automatically detected and removed during decoding
     /// - The original pseudonym value is perfectly preserved
@@ -384,8 +386,9 @@ impl LongAttribute {
     /// Pads this `LongAttribute` to a target number of blocks.
     ///
     /// This is useful for batch operations where all attributes must have the same structure.
-    /// The padding blocks are full PKCS#7 padding blocks (all bytes = 0x10) which are
-    /// automatically detected and skipped during decoding.
+    /// Any additional padding blocks use a special magic-marker format
+    /// `[0xFF, 0xEE, 0xDD, 0xCC, original_count (8 bytes u64 LE), 0x00, 0x00, 0x00, 0x00]`
+    /// and are automatically detected and skipped during decoding.
     ///
     /// # Parameters
     ///
