@@ -548,7 +548,7 @@ mod tests {
     #[test]
     fn unify_single_structure() {
         let s = JSONStructure::String(5);
-        let unified = unify_structures(&[s.clone()]).unwrap();
+        let unified = unify_structures(std::slice::from_ref(&s)).unwrap();
         assert_eq!(unified, s);
     }
 

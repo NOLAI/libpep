@@ -1373,8 +1373,6 @@ mod tests {
     #[test]
     #[cfg(feature = "long")]
     fn normalize_nested_objects_different_string_sizes() {
-        use super::super::structure::JSONStructure;
-
         let mut rng = rand::rng();
         let keys = make_test_keys();
 

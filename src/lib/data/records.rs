@@ -232,24 +232,24 @@ impl LongRecord {
         }
 
         // Pad pseudonyms
-        let padded_pseudonyms: Result<Vec<_>, _> = self
+        let padded_pseudonyms: Vec<_> = self
             .pseudonyms
             .iter()
             .zip(structure.pseudonym_blocks.iter())
             .map(|(p, &target_blocks)| p.pad_to(target_blocks))
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         // Pad attributes
-        let padded_attributes: Result<Vec<_>, _> = self
+        let padded_attributes: Vec<_> = self
             .attributes
             .iter()
             .zip(structure.attribute_blocks.iter())
             .map(|(a, &target_blocks)| a.pad_to(target_blocks))
-            .collect();
+            .collect::<Result<_, _>>()?;
 
         Ok(LongRecord {
-            pseudonyms: padded_pseudonyms?,
-            attributes: padded_attributes?,
+            pseudonyms: padded_pseudonyms,
+            attributes: padded_attributes,
         })
     }
 
