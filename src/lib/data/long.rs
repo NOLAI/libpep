@@ -78,12 +78,12 @@ use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
+#[cfg(feature = "offline")]
+use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 use crate::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
-#[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -1164,7 +1164,8 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
 
         if let Some(original_count) = is_external_padding_block(&last_block) {
             // We have external padding, use the encoded original block count
-            if original_count > items.len() {
+            // Check for underflow: original_count must be at least 1
+            if original_count == 0 || original_count > items.len() {
                 return Err(Error::new(
                     ErrorKind::InvalidData,
                     "External padding contains invalid block count",
