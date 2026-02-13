@@ -155,9 +155,11 @@ fn unify_two_structures(
 
         // Objects: must have same fields, unify field-wise
         (JSONStructure::Object(fields1), JSONStructure::Object(fields2)) => {
-            // Convert to HashMaps for easier lookup
-            let map1: HashMap<_, _> = fields1.iter().map(|(k, v)| (k, v)).collect();
-            let map2: HashMap<_, _> = fields2.iter().map(|(k, v)| (k, v)).collect();
+            // Convert to HashMaps for easier lookup (using owned String keys)
+            let map1: HashMap<String, &JSONStructure> =
+                fields1.iter().map(|(k, v)| (k.clone(), v)).collect();
+            let map2: HashMap<String, &JSONStructure> =
+                fields2.iter().map(|(k, v)| (k.clone(), v)).collect();
 
             // Check that both objects have the same set of keys
             if map1.len() != map2.len() {
@@ -169,7 +171,7 @@ fn unify_two_structures(
                 match map2.get(key) {
                     Some(val2) => {
                         let unified_val = unify_two_structures(val1, val2)?;
-                        unified_fields.push(((*key).clone(), unified_val));
+                        unified_fields.push((key.clone(), unified_val));
                     }
                     None => return Err(UnifyError::ObjectFieldMismatch),
                 }

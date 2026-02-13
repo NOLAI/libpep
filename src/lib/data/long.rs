@@ -1039,10 +1039,6 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
 
     // Scan backwards from the end to remove external padding blocks (all-zero blocks)
     // Stop when we find a non-padding block (which will have PKCS#7 padding)
-    if items.is_empty() {
-        return Err(Error::new(ErrorKind::InvalidData, "Empty data"));
-    }
-
     let mut last_data_block_idx = items.len() - 1;
     while last_data_block_idx > 0 {
         let block = items[last_data_block_idx].to_lizard().ok_or(Error::new(
