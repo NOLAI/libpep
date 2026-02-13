@@ -10,7 +10,7 @@ use crate::data::py::simple::{
 };
 use crate::data::records::{EncryptedRecord, Record};
 #[cfg(feature = "long")]
-use crate::data::records::{LongEncryptedRecord, LongRecord};
+use crate::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
 use crate::keys::py::PySessionKeys;
 use crate::keys::types::SessionKeys;
 use pyo3::prelude::*;
@@ -177,6 +177,39 @@ impl PyLongRecord {
             self.0.attributes.len()
         )
     }
+
+    /// Get the structure of this LongRecord.
+    ///
+    /// Returns:
+    ///     A LongRecordStructure describing the number of blocks in each pseudonym and attribute
+    #[pyo3(name = "structure")]
+    fn structure(&self) -> PyLongRecordStructure {
+        PyLongRecordStructure(self.0.structure())
+    }
+
+    /// Pads this LongRecord to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// each pseudonym and attribute to ensure all records have the same structure.
+    /// This is necessary for batch transcryption where all values must have identical
+    /// structure to prevent linkability attacks.
+    ///
+    /// Args:
+    ///     structure: The target structure specifying the number of blocks for each field
+    ///
+    /// Returns:
+    ///     A padded LongRecord with padding blocks added where necessary
+    ///
+    /// Raises:
+    ///     ValueError: If the number of pseudonyms/attributes doesn't match the structure
+    ///                 or if any field exceeds its target size
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, structure: &PyLongRecordStructure) -> PyResult<Self> {
+        self.0
+            .pad_to(&structure.0)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}")))
+    }
 }
 
 #[cfg(feature = "long")]
@@ -268,6 +301,48 @@ pub fn py_decrypt_long_record(
     PyLongRecord(decrypt(&encrypted.0, &keys))
 }
 
+#[cfg(feature = "long")]
+/// Structure descriptor for LongRecords - describes the shape including block counts.
+#[pyclass(name = "LongRecordStructure", from_py_object)]
+#[derive(Clone)]
+pub struct PyLongRecordStructure(pub(crate) LongRecordStructure);
+
+#[cfg(feature = "long")]
+#[pymethods]
+impl PyLongRecordStructure {
+    /// Create a new LongRecordStructure with block counts for pseudonyms and attributes.
+    ///
+    /// Args:
+    ///     pseudonym_blocks: List of block counts for each pseudonym
+    ///     attribute_blocks: List of block counts for each attribute
+    #[new]
+    pub fn new(pseudonym_blocks: Vec<usize>, attribute_blocks: Vec<usize>) -> Self {
+        PyLongRecordStructure(LongRecordStructure {
+            pseudonym_blocks,
+            attribute_blocks,
+        })
+    }
+
+    /// Get the block counts for pseudonyms.
+    #[getter]
+    pub fn pseudonym_blocks(&self) -> Vec<usize> {
+        self.0.pseudonym_blocks.clone()
+    }
+
+    /// Get the block counts for attributes.
+    #[getter]
+    pub fn attribute_blocks(&self) -> Vec<usize> {
+        self.0.attribute_blocks.clone()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "LongRecordStructure(pseudonym_blocks={:?}, attribute_blocks={:?})",
+            self.0.pseudonym_blocks, self.0.attribute_blocks
+        )
+    }
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register Record types
     m.add_class::<PyRecord>()?;
@@ -278,6 +353,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     {
         m.add_class::<PyLongRecord>()?;
         m.add_class::<PyLongEncryptedRecord>()?;
+        m.add_class::<PyLongRecordStructure>()?;
     }
 
     Ok(())

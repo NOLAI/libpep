@@ -1,7 +1,8 @@
 //! WASM bindings for distributed transcryptor.
 
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "batch"))]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "batch")]
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};

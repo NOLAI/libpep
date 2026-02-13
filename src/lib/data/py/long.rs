@@ -69,6 +69,28 @@ impl PyLongPseudonym {
         Ok(PyBytes::new(py, &result).into())
     }
 
+    /// Pads this LongPseudonym to a target number of blocks for batch unlinkability.
+    ///
+    /// In batch transcryption, all values must have identical structure to prevent
+    /// linkability attacks. This method adds external padding blocks to normalize
+    /// different-sized pseudonyms to the same structure.
+    ///
+    /// Args:
+    ///     target_blocks: The desired number of blocks (must be >= current block count)
+    ///
+    /// Returns:
+    ///     A new LongPseudonym padded to the target number of blocks
+    ///
+    /// Raises:
+    ///     ValueError: If the current number of blocks exceeds the target
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, target_blocks: usize) -> PyResult<Self> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}")))
+    }
+
     /// Get the underlying pseudonyms.
     #[pyo3(name = "pseudonyms")]
     fn pseudonyms(&self) -> Vec<PyPseudonym> {
@@ -137,6 +159,27 @@ impl PyLongAttribute {
             pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
         })?;
         Ok(PyBytes::new(py, &result).into())
+    }
+
+    /// Pads this LongAttribute to a target number of blocks for batch operations.
+    ///
+    /// This is useful for batch operations where all attributes must have the same structure.
+    /// The padding blocks are automatically detected and skipped during decoding.
+    ///
+    /// Args:
+    ///     target_blocks: The desired number of blocks (must be >= current block count)
+    ///
+    /// Returns:
+    ///     A new LongAttribute padded to the target number of blocks
+    ///
+    /// Raises:
+    ///     ValueError: If the current number of blocks exceeds the target
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, target_blocks: usize) -> PyResult<Self> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}")))
     }
 
     /// Get the underlying attributes.

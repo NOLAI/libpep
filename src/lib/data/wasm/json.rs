@@ -66,6 +66,43 @@ impl WASMPEPJSONValue {
         serde_wasm_bindgen::to_value(&json_value)
             .map_err(|e| JsValue::from_str(&format!("Failed to convert to JS: {}", e)))
     }
+
+    /// Get the structure/shape of this PEPJSONValue.
+    ///
+    /// # Returns
+    ///
+    /// A JSONStructure describing the shape
+    #[wasm_bindgen]
+    pub fn structure(&self) -> WASMJSONStructure {
+        WASMJSONStructure(self.0.structure())
+    }
+
+    /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// LongString and LongPseudonym variants to ensure all instances have the same
+    /// number of blocks when encrypted. This is necessary for batch transcryption where
+    /// all values must have identical structure.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded PEPJSONValue with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current structure doesn't match the target structure type
+    /// or if the current size exceeds the target size
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, structure: &WASMJSONStructure) -> Result<WASMPEPJSONValue, JsValue> {
+        self.0
+            .pad_to(&structure.0)
+            .map(Self)
+            .map_err(|e| JsValue::from_str(&format!("Padding failed: {}", e)))
+    }
 }
 
 /// An encrypted PEP JSON value.
@@ -414,4 +451,31 @@ pub fn wasm_bytes_to_number(bytes: Vec<u8>) -> Result<f64, JsValue> {
         .map_err(|_| JsValue::from_str("Invalid byte array"))?;
     let num = utils::bytes_to_number(&arr);
     Ok(num.as_f64().unwrap_or(0.0))
+}
+
+/// Unifies multiple JSON structures by taking the maximum block count for each field.
+///
+/// This function is useful for batch operations where you need to normalize multiple
+/// values to have the same structure. It recursively unifies nested structures,
+/// taking the maximum block count for strings and pseudonyms.
+///
+/// # Arguments
+///
+/// * `structures` - An array of JSONStructure objects to unify
+///
+/// # Returns
+///
+/// A unified JSONStructure where string and pseudonym fields have maximum block counts
+///
+/// # Errors
+///
+/// Returns an error if the structures are incompatible (different types, array lengths, or object fields)
+#[wasm_bindgen(js_name = unifyStructures)]
+pub fn wasm_unify_structures(
+    structures: Vec<WASMJSONStructure>,
+) -> Result<WASMJSONStructure, JsValue> {
+    let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
+    crate::data::json::structure::unify_structures(&rust_structures)
+        .map(WASMJSONStructure)
+        .map_err(|e| JsValue::from_str(&format!("Unification failed: {}", e)))
 }

@@ -1,12 +1,75 @@
-//! PKCS#7 padding support for single-block (16 byte) encoding.
+//! Internal PKCS#7 padding for single-block (16 byte) encoding.
 //!
-//! This module provides the `Padded` trait for encoding data up to 15 bytes using PKCS#7 padding.
-//! For multi-block data, see the `long` module.
+//! This module provides the [`Padded`] trait for encoding data up to 15 bytes using PKCS#7 padding.
+//!
+//! # Purpose
+//!
+//! PKCS#7 padding ensures data fills complete 16-byte blocks during encryption.
+//!
+//! # When Used
+//!
+//! - Automatically applied during encoding/decoding
+//! - For single-block data (up to 15 bytes) via the [`Padded`] trait
+//! - For multi-block data within the last block (see [`long`](crate::data::long) module)
+//!
+//! # How It Works
+//!
+//! - The padding byte value indicates the number of padding bytes
+//! - Valid padding bytes are `0x01`-`0x10`
+//! - Always applied, even if data is exactly a multiple of 16 bytes
+//!
+//! # Example
+//!
+//! ```text
+//! "hello" (5 bytes):
+//! [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]
+//!  └─ data ─┘ └──────────────── 11 padding bytes ────────────────────┘
+//! ```
+//!
+//! # Order of Operations
+//!
+//! PKCS#7 padding is always applied **before** external padding (see [`external`](crate::data::padding::external))
+//! and removed **after** external padding is removed during decoding. This ordering is critical for
+//! disambiguation - even if data matches the external padding pattern, PKCS#7 will change the last
+//! byte to `0x01`-`0x10`, guaranteeing correct detection.
+//!
+//! # Disambiguation Guarantee
+//!
+//! PKCS#7 padding uses bytes `0x01`-`0x10`, so the last byte is **never** `0x00`.
+//! This makes it completely unambiguous from external padding blocks, which are **all zeros**.
+//!
+//! This means **ALL possible byte sequences can be encoded without ambiguity**.
 
 use crate::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use std::io::{Error, ErrorKind};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
+///
+/// This trait provides methods to encode data up to 15 bytes using PKCS#7 padding,
+/// which fills the remaining bytes of a 16-byte block with padding bytes.
+///
+/// # Padding Format
+///
+/// - For `n` bytes of data (0 ≤ n ≤ 15), add `16 - n` padding bytes
+/// - Each padding byte has the value `16 - n`
+/// - This allows unambiguous removal of padding during decoding
+///
+/// # Examples
+///
+/// ```ignore
+/// use libpep::data::padding::Padded;
+/// use libpep::data::simple::Attribute;
+///
+/// // Encode a string
+/// let attr = Attribute::from_string_padded("hello")?;
+/// let decoded = attr.to_string_padded()?;
+/// assert_eq!(decoded, "hello");
+///
+/// // Encode bytes
+/// let attr = Attribute::from_bytes_padded(b"data")?;
+/// let decoded = attr.to_bytes_padded()?;
+/// assert_eq!(decoded, b"data");
+/// ```
 pub trait Padded: ElGamalEncryptable {
     /// Encodes an arbitrary byte array using PKCS#7 padding.
     ///
