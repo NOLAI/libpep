@@ -284,9 +284,13 @@ impl WASMLongEncryptedAttribute {
 }
 
 /// WASM bindings for batch operations on long (multi-block) data types.
+#[cfg(feature = "batch")]
 use crate::data::records::LongEncryptedRecord;
+#[cfg(feature = "batch")]
 use crate::factors::wasm::contexts::WASMTranscryptionInfo;
+#[cfg(feature = "batch")]
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
+#[cfg(feature = "batch")]
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "batch")]
 use crate::transcryptor::{rekey_batch, transcrypt_batch};

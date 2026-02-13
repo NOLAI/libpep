@@ -79,9 +79,11 @@ use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::{
-    AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
 };
+#[cfg(feature = "offline")]
+use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -1101,8 +1103,6 @@ fn create_external_padding_block(original_block_count: usize) -> [u8; 16] {
 /// or `None` if this is a regular data block.
 ///
 /// # Disambiguation Guarantee
-///
-/// This function **guarantees 100% accurate detection** with no false positives:
 ///
 /// - External padding blocks **always** end with `[0x00, 0x00, 0x00, 0x00]`
 /// - PKCS#7 data blocks **never** have `0x00` in the last byte (valid padding: `0x01`-`0x10`)

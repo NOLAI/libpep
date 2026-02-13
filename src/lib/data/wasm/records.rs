@@ -164,7 +164,7 @@ impl WASMLongRecord {
     /// A LongRecordStructure describing the number of blocks in each pseudonym and attribute
     #[wasm_bindgen]
     pub fn structure(&self) -> WASMLongRecordStructure {
-        let rust_record: LongRecord = self.clone().into();
+        let rust_record: LongRecord = self.into();
         WASMLongRecordStructure(rust_record.structure())
     }
 
@@ -189,7 +189,7 @@ impl WASMLongRecord {
     /// or if any field exceeds its target size
     #[wasm_bindgen(js_name = padTo)]
     pub fn pad_to(&self, structure: &WASMLongRecordStructure) -> Result<WASMLongRecord, JsValue> {
-        let rust_record: LongRecord = self.clone().into();
+        let rust_record: LongRecord = self.into();
         rust_record
             .pad_to(&structure.0)
             .map(WASMLongRecord::from)
@@ -203,6 +203,16 @@ impl From<WASMLongRecord> for LongRecord {
         LongRecord::new(
             record.pseudonyms.into_iter().map(|p| p.0).collect(),
             record.attributes.into_iter().map(|a| a.0).collect(),
+        )
+    }
+}
+
+#[cfg(feature = "long")]
+impl From<&WASMLongRecord> for LongRecord {
+    fn from(record: &WASMLongRecord) -> Self {
+        LongRecord::new(
+            record.pseudonyms.iter().map(|p| p.0.clone()).collect(),
+            record.attributes.iter().map(|a| a.0.clone()).collect(),
         )
     }
 }

@@ -2,21 +2,27 @@
 
 #[cfg(feature = "offline")]
 use crate::client::OfflineClient;
-#[cfg(feature = "json")]
+#[cfg(all(feature = "offline", feature = "json"))]
 use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
-#[cfg(feature = "long")]
+#[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
-#[cfg(feature = "long")]
+#[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
+#[cfg(feature = "offline")]
 use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
+#[cfg(feature = "offline")]
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+#[cfg(feature = "offline")]
 use crate::keys::wasm::types::WASMGlobalPublicKeys;
+#[cfg(feature = "offline")]
 use crate::keys::*;
+#[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
+#[cfg(feature = "offline")]
 use wasm_bindgen::prelude::*;
 
 /// An offline PEP client.
