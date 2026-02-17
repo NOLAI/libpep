@@ -7,7 +7,7 @@ use crate::data::wasm::simple::{
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "long")]
-use crate::data::records::{LongEncryptedRecord, LongRecord};
+use crate::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -156,6 +156,45 @@ impl WASMLongRecord {
     pub fn attributes(&self) -> Vec<WASMLongAttribute> {
         self.attributes.clone()
     }
+
+    /// Get the structure of this LongRecord.
+    ///
+    /// # Returns
+    ///
+    /// A LongRecordStructure describing the number of blocks in each pseudonym and attribute
+    #[wasm_bindgen]
+    pub fn structure(&self) -> WASMLongRecordStructure {
+        let rust_record: LongRecord = self.into();
+        WASMLongRecordStructure(rust_record.structure())
+    }
+
+    /// Pads this LongRecord to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// each pseudonym and attribute to ensure all records have the same structure.
+    /// This is necessary for batch transcryption where all values must have identical
+    /// structure to prevent linkability attacks.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded LongRecord with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the number of pseudonyms/attributes doesn't match the structure
+    /// or if any field exceeds its target size
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, structure: &WASMLongRecordStructure) -> Result<WASMLongRecord, JsValue> {
+        let rust_record: LongRecord = self.into();
+        rust_record
+            .pad_to(&structure.0)
+            .map(WASMLongRecord::from)
+            .map_err(|e| JsValue::from_str(&format!("Padding failed: {e}")))
+    }
 }
 
 #[cfg(feature = "long")]
@@ -164,6 +203,16 @@ impl From<WASMLongRecord> for LongRecord {
         LongRecord::new(
             record.pseudonyms.into_iter().map(|p| p.0).collect(),
             record.attributes.into_iter().map(|a| a.0).collect(),
+        )
+    }
+}
+
+#[cfg(feature = "long")]
+impl From<&WASMLongRecord> for LongRecord {
+    fn from(record: &WASMLongRecord) -> Self {
+        LongRecord::new(
+            record.pseudonyms.iter().map(|p| p.0.clone()).collect(),
+            record.attributes.iter().map(|a| a.0.clone()).collect(),
         )
     }
 }
@@ -248,5 +297,40 @@ impl From<WASMLongRecordEncrypted> for LongEncryptedRecord {
             record.pseudonyms.into_iter().map(|p| p.0).collect(),
             record.attributes.into_iter().map(|a| a.0).collect(),
         )
+    }
+}
+
+#[cfg(feature = "long")]
+/// Structure descriptor for LongRecords - describes the shape including block counts.
+#[wasm_bindgen(js_name = LongRecordStructure)]
+pub struct WASMLongRecordStructure(pub(crate) LongRecordStructure);
+
+#[cfg(feature = "long")]
+#[wasm_bindgen(js_class = LongRecordStructure)]
+impl WASMLongRecordStructure {
+    /// Create a new LongRecordStructure with block counts for pseudonyms and attributes.
+    ///
+    /// # Arguments
+    ///
+    /// * `pseudonymBlocks` - Array of block counts for each pseudonym
+    /// * `attributeBlocks` - Array of block counts for each attribute
+    #[wasm_bindgen(constructor)]
+    pub fn new(pseudonym_blocks: Vec<usize>, attribute_blocks: Vec<usize>) -> Self {
+        WASMLongRecordStructure(LongRecordStructure {
+            pseudonym_blocks,
+            attribute_blocks,
+        })
+    }
+
+    /// Get the block counts for pseudonyms.
+    #[wasm_bindgen(getter, js_name = pseudonymBlocks)]
+    pub fn pseudonym_blocks(&self) -> Vec<usize> {
+        self.0.pseudonym_blocks.clone()
+    }
+
+    /// Get the block counts for attributes.
+    #[wasm_bindgen(getter, js_name = attributeBlocks)]
+    pub fn attribute_blocks(&self) -> Vec<usize> {
+        self.0.attribute_blocks.clone()
     }
 }

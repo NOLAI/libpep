@@ -4,12 +4,15 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
-use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::data::traits::{
+    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
+};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::*;
+use crate::transcryptor::BatchError;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -507,6 +510,20 @@ impl crate::data::traits::HasStructure for EncryptedAttribute {
     type Structure = ();
 
     fn structure(&self) -> Self::Structure {}
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Pseudonym {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Attribute {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
 }
 
 #[cfg(test)]

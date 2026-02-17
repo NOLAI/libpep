@@ -6,7 +6,7 @@
 use crate::data::simple::{
     Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
-use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
+use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
@@ -23,6 +23,7 @@ use crate::data::long::{
 
 #[cfg(feature = "batch")]
 use crate::data::traits::HasStructure;
+use crate::transcryptor::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,6 +184,84 @@ impl LongRecord {
         Self {
             pseudonyms,
             attributes,
+        }
+    }
+
+    /// Pads this LongRecord to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// each pseudonym and attribute to ensure all records have the same structure.
+    /// This is necessary for batch transcryption where all values must have identical
+    /// structure to prevent linkability attacks.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded LongRecord with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of pseudonyms doesn't match the structure
+    /// - The number of attributes doesn't match the structure
+    /// - Any pseudonym or attribute exceeds its target size
+    pub fn pad_to(&self, structure: &LongRecordStructure) -> Result<Self, Error> {
+        // Validate counts
+        if self.pseudonyms.len() != structure.pseudonym_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Pseudonym count mismatch: record has {} but structure expects {}",
+                    self.pseudonyms.len(),
+                    structure.pseudonym_blocks.len()
+                ),
+            ));
+        }
+
+        if self.attributes.len() != structure.attribute_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Attribute count mismatch: record has {} but structure expects {}",
+                    self.attributes.len(),
+                    structure.attribute_blocks.len()
+                ),
+            ));
+        }
+
+        // Pad pseudonyms
+        let padded_pseudonyms: Vec<_> = self
+            .pseudonyms
+            .iter()
+            .zip(structure.pseudonym_blocks.iter())
+            .map(|(p, &target_blocks)| p.pad_to(target_blocks))
+            .collect::<Result<_, _>>()?;
+
+        // Pad attributes
+        let padded_attributes: Vec<_> = self
+            .attributes
+            .iter()
+            .zip(structure.attribute_blocks.iter())
+            .map(|(a, &target_blocks)| a.pad_to(target_blocks))
+            .collect::<Result<_, _>>()?;
+
+        Ok(LongRecord {
+            pseudonyms: padded_pseudonyms,
+            attributes: padded_attributes,
+        })
+    }
+
+    /// Get the structure of this LongRecord.
+    ///
+    /// Returns a `LongRecordStructure` describing the number of blocks in each
+    /// pseudonym and attribute.
+    pub fn structure(&self) -> LongRecordStructure {
+        LongRecordStructure {
+            pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
+            attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
         }
     }
 }
@@ -731,5 +810,19 @@ impl HasStructure for LongEncryptedRecord {
             pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
             attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
         }
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Record {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for LongRecord {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
     }
 }

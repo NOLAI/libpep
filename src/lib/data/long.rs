@@ -1,21 +1,33 @@
 //! Long (multi-block) data types for pseudonyms and attributes.
 //!
 //! This module provides support for multi-block pseudonyms and attributes that can hold
-//! more than 16 bytes of data. These types are built on top of PKCS#7 padding.
+//! more than 16 bytes of data.
+//!
+//! # Padding
+//!
+//! Long data types use PKCS#7 padding (internal padding) automatically for the last block.
+//! They also support optional external padding via the `pad_to()` method for batch unlinkability.
+//!
+//! For detailed information about the two types of padding, see the [`padding`](crate::data::padding) module.
 
 use crate::arithmetic::scalars::ScalarNonZero;
+use crate::data::padding::external::{create_external_padding_block, is_external_padding_block};
 use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::data::traits::{
+    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
+};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
+#[cfg(feature = "offline")]
+use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 use crate::keys::{
-    AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
 };
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
@@ -25,6 +37,7 @@ use std::io::{Error, ErrorKind};
 
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::transcryptor::BatchError;
 
 /// A collection of [Pseudonym]s that together represent a larger pseudonym value using PKCS#7 padding.
 ///
@@ -161,6 +174,82 @@ impl LongPseudonym {
             .collect::<Vec<_>>()
             .join("")
     }
+
+    /// Adds **external padding** to reach a target number of blocks for batch unlinkability.
+    ///
+    /// ## Purpose: Batch Transcryption Unlinkability
+    ///
+    /// In batch transcryption, all values **must have identical structure** to prevent
+    /// linkability attacks. This method adds full padding blocks (external padding) to
+    /// normalize different-sized pseudonyms to the same structure without modifying content.
+    ///
+    /// ## How it Works
+    ///
+    /// - Appends one or more **all-zero external padding blocks** after the data blocks:
+    ///   `[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]`
+    /// - These blocks are **separate from** the internal PKCS#7 padding within blocks
+    /// - During decoding, scans backwards removing all-zero blocks until finding the data
+    /// - The original pseudonym value is perfectly preserved
+    ///
+    /// ## Parameters
+    ///
+    /// - `target_blocks`: The desired number of blocks (must be >= current block count)
+    ///
+    /// ## Returns
+    ///
+    /// Returns a new `LongPseudonym` padded to the target number of blocks.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if:
+    /// - The current number of blocks exceeds the target
+    ///
+    /// ## Example: Normalizing for Batch Processing
+    ///
+    /// ```no_run
+    /// use libpep::data::long::LongPseudonym;
+    ///
+    /// let short_pseudo = LongPseudonym::from_string_padded("user123");  // 1 block
+    /// let long_pseudo = LongPseudonym::from_string_padded("user@example.com");  // 2 blocks
+    ///
+    /// // Normalize both to 2 blocks for unlinkable batch transcryption
+    /// let short_padded = short_pseudo.pad_to(2).unwrap();
+    /// let long_padded = long_pseudo.pad_to(2).unwrap();
+    ///
+    /// // Both now have identical structure (2 blocks)
+    /// assert_eq!(short_padded.len(), 2);
+    /// assert_eq!(long_padded.len(), 2);
+    ///
+    /// // Original values are preserved when decoded
+    /// assert_eq!(short_padded.to_string_padded().unwrap(), "user123");
+    /// assert_eq!(long_padded.to_string_padded().unwrap(), "user@example.com");
+    /// ```
+    pub fn pad_to(&self, target_blocks: usize) -> Result<Self, Error> {
+        let current_blocks = self.0.len();
+
+        if current_blocks > target_blocks {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Cannot pad: current blocks ({}) exceeds target ({})",
+                    current_blocks, target_blocks
+                ),
+            ));
+        }
+
+        if current_blocks == target_blocks {
+            return Ok(self.clone());
+        }
+
+        // Create external padding blocks (all zeros)
+        let padding_pattern = create_external_padding_block();
+        let padding_block = Pseudonym::from_lizard(&padding_pattern);
+
+        let mut blocks = self.0.clone();
+        blocks.resize(target_blocks, padding_block);
+
+        Ok(LongPseudonym(blocks))
+    }
 }
 
 impl LongAttribute {
@@ -237,6 +326,65 @@ impl LongAttribute {
             .map(|attribute| attribute.to_hex())
             .collect::<Vec<_>>()
             .join("")
+    }
+
+    /// Pads this `LongAttribute` to a target number of blocks.
+    ///
+    /// This is useful for batch operations where all attributes must have the same structure.
+    /// Additional padding blocks are all-zero blocks:
+    /// `[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]`
+    /// which are automatically detected and removed during decoding.
+    ///
+    /// # Parameters
+    ///
+    /// - `target_blocks`: The desired number of blocks (must be >= current block count)
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `LongAttribute` padded to the target number of blocks.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The current number of blocks exceeds the target
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::data::long::LongAttribute;
+    ///
+    /// let attr = LongAttribute::from_string_padded("hello");
+    /// // Pad to 3 blocks for batch processing
+    /// let padded = attr.pad_to(3).unwrap();
+    /// assert_eq!(padded.len(), 3);
+    /// // Decoding still returns the original string
+    /// assert_eq!(padded.to_string_padded().unwrap(), "hello");
+    /// ```
+    pub fn pad_to(&self, target_blocks: usize) -> Result<Self, Error> {
+        let current_blocks = self.0.len();
+
+        if current_blocks > target_blocks {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Cannot pad: current blocks ({}) exceeds target ({})",
+                    current_blocks, target_blocks
+                ),
+            ));
+        }
+
+        if current_blocks == target_blocks {
+            return Ok(self.clone());
+        }
+
+        // Create external padding blocks (all zeros)
+        let padding_pattern = create_external_padding_block();
+        let padding_block = Attribute::from_lizard(&padding_pattern);
+
+        let mut blocks = self.0.clone();
+        blocks.resize(target_blocks, padding_block);
+
+        Ok(LongAttribute(blocks))
     }
 }
 
@@ -846,6 +994,20 @@ impl crate::data::traits::HasStructure for LongEncryptedAttribute {
     }
 }
 
+#[cfg(feature = "batch")]
+impl BatchEncryptable for LongPseudonym {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for LongAttribute {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
 /// Internal helper function to encode bytes with PKCS#7 padding
 fn from_bytes_padded_impl<T: ElGamalEncryptable>(data: &[u8]) -> Vec<T> {
     // Calculate number of full blocks
@@ -877,7 +1039,13 @@ fn from_bytes_padded_impl<T: ElGamalEncryptable>(data: &[u8]) -> Vec<T> {
     result
 }
 
-/// Internal helper function to decode padded bytes
+/// Internal helper function to decode padded bytes.
+///
+/// This function automatically detects and removes external padding blocks
+/// created by `pad_to()`, ensuring that normalized values decode correctly.
+///
+/// External padding uses all-zero blocks `[0x00, ...]` which are impossible
+/// in valid PKCS#7 padding (valid padding bytes are 0x01-0x10).
 fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, Error> {
     if items.is_empty() {
         return Err(Error::new(
@@ -886,10 +1054,28 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
         ));
     }
 
-    let mut result = Vec::with_capacity(items.len() * 16);
+    // Scan backwards from the end to remove external padding blocks (all-zero blocks)
+    // Stop when we find a non-padding block (which will have PKCS#7 padding)
+    let mut last_data_block_idx = items.len() - 1;
+    while last_data_block_idx > 0 {
+        let block = items[last_data_block_idx].to_lizard().ok_or(Error::new(
+            ErrorKind::InvalidData,
+            "Encryptable conversion to bytes failed",
+        ))?;
 
-    // Copy all blocks except the last one
-    for item in items.iter().take(items.len() - 1) {
+        if is_external_padding_block(&block) {
+            // This is external padding, continue scanning backwards
+            last_data_block_idx -= 1;
+        } else {
+            // Found a data block, stop scanning
+            break;
+        }
+    }
+
+    let mut result = Vec::with_capacity((last_data_block_idx + 1) * 16);
+
+    // Copy all blocks except the last data block
+    for item in items.iter().take(last_data_block_idx) {
         let block = item.to_lizard().ok_or(Error::new(
             ErrorKind::InvalidData,
             "Encryptable conversion to bytes failed",
@@ -897,10 +1083,8 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
         result.extend_from_slice(&block);
     }
 
-    // Process the last block and validate padding
-    // Unwrap is safe: we already checked items.is_empty() above
-    #[allow(clippy::unwrap_used)]
-    let last_block = items.last().unwrap().to_lizard().ok_or(Error::new(
+    // Process the last data block and validate PKCS#7 padding
+    let last_block = items[last_data_block_idx].to_lizard().ok_or(Error::new(
         ErrorKind::InvalidData,
         "Last encryptable conversion to bytes failed",
     ))?;
@@ -1235,5 +1419,330 @@ mod tests {
         let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
         assert_eq!(1, deserialized.len());
         assert_eq!(long_encrypted[0], deserialized[0]);
+    }
+
+    #[test]
+    fn long_attribute_null_bytes_in_middle() {
+        // Test string with null bytes in the middle
+        let str_with_nulls = "hello\0world";
+        let attr = LongAttribute::from_string_padded(str_with_nulls);
+        let decoded = attr.to_string_padded().unwrap();
+        assert_eq!(str_with_nulls, decoded);
+    }
+
+    #[test]
+    fn long_attribute_null_bytes_at_end() {
+        // Test string ending with null bytes
+        let str_ending_nulls = "test\0\0";
+        let attr = LongAttribute::from_string_padded(str_ending_nulls);
+        let decoded = attr.to_string_padded().unwrap();
+        assert_eq!(str_ending_nulls, decoded);
+    }
+
+    #[test]
+    fn long_attribute_empty_string() {
+        // Test empty string
+        let empty = "";
+        let attr = LongAttribute::from_string_padded(empty);
+        let decoded = attr.to_string_padded().unwrap();
+        assert_eq!(empty, decoded);
+    }
+
+    #[test]
+    fn long_attribute_strings_ending_with_many_null_bytes() {
+        // Test various counts of trailing null bytes
+        for null_count in 1..=20 {
+            let mut test_str = String::from("test");
+            test_str.push_str(&"\0".repeat(null_count));
+
+            let attr = LongAttribute::from_string_padded(&test_str);
+            let decoded = attr.to_string_padded().unwrap();
+
+            assert_eq!(test_str, decoded, "Failed for {} null bytes", null_count);
+        }
+    }
+
+    #[test]
+    fn long_attribute_only_null_bytes() {
+        // Test strings that are only null bytes
+        for null_count in 1..=20 {
+            let test_str = "\0".repeat(null_count);
+
+            let attr = LongAttribute::from_string_padded(&test_str);
+            let decoded = attr.to_string_padded().unwrap();
+
+            assert_eq!(
+                test_str, decoded,
+                "Failed for string of {} null bytes",
+                null_count
+            );
+        }
+    }
+
+    #[test]
+    fn long_attribute_edge_case_15_and_16_null_bytes() {
+        // 15 null bytes - exactly fits in one block with 1 byte padding
+        let str_15 = "\0".repeat(15);
+        let attr_15 = LongAttribute::from_string_padded(&str_15);
+        let decoded_15 = attr_15.to_string_padded().unwrap();
+        assert_eq!(str_15, decoded_15);
+
+        // 16 null bytes - requires 2 blocks (first full, second with 15 bytes data + 1 padding)
+        let str_16 = "\0".repeat(16);
+        let attr_16 = LongAttribute::from_string_padded(&str_16);
+        let decoded_16 = attr_16.to_string_padded().unwrap();
+        assert_eq!(str_16, decoded_16);
+
+        // 17 null bytes
+        let str_17 = "\0".repeat(17);
+        let attr_17 = LongAttribute::from_string_padded(&str_17);
+        let decoded_17 = attr_17.to_string_padded().unwrap();
+        assert_eq!(str_17, decoded_17);
+    }
+
+    #[test]
+    fn long_attribute_pad_to_with_null_bytes() {
+        // Create a string with null bytes
+        let str_with_nulls = "data\0\0end";
+        let attr = LongAttribute::from_string_padded(str_with_nulls);
+
+        // Pad to more blocks
+        let padded = attr.pad_to(3).unwrap();
+
+        // Should preserve the null bytes in the original string
+        let decoded = padded.to_string_padded().unwrap();
+        assert_eq!(str_with_nulls, decoded);
+    }
+
+    #[test]
+    fn long_attribute_pad_to_only_null_bytes() {
+        // Test strings that are only null bytes, then padded
+        for null_count in 1..=10 {
+            let test_str = "\0".repeat(null_count);
+
+            let attr = LongAttribute::from_string_padded(&test_str);
+            let padded = attr.pad_to(5).unwrap();
+
+            let decoded = padded.to_string_padded().unwrap();
+            assert_eq!(
+                test_str, decoded,
+                "Failed for padded string of {} null bytes",
+                null_count
+            );
+        }
+    }
+
+    #[test]
+    fn long_attribute_pad_to_empty_string() {
+        // Test empty string with padding
+        let empty = "";
+        let attr = LongAttribute::from_string_padded(empty);
+        let padded = attr.pad_to(2).unwrap();
+
+        let decoded = padded.to_string_padded().unwrap();
+        assert_eq!(empty, decoded);
+    }
+
+    #[test]
+    fn long_pseudonym_null_bytes_roundtrip() {
+        // Test pseudonym with null bytes
+        let str_with_nulls = "user\0\0id";
+        let pseudo = LongPseudonym::from_string_padded(str_with_nulls);
+        let decoded = pseudo.to_string_padded().unwrap();
+        assert_eq!(str_with_nulls, decoded);
+    }
+
+    #[test]
+    fn long_pseudonym_pad_to_with_null_bytes() {
+        // Test pseudonym with null bytes after padding
+        let str_with_nulls = "id\0\0x";
+        let pseudo = LongPseudonym::from_string_padded(str_with_nulls);
+        let padded = pseudo.pad_to(3).unwrap();
+
+        let decoded = padded.to_string_padded().unwrap();
+        assert_eq!(str_with_nulls, decoded);
+    }
+
+    #[test]
+    fn long_attribute_data_ending_with_full_0x10_block() {
+        // Regression test for external padding detection:
+        // Plaintext containing a full block of 0x10 bytes should roundtrip correctly.
+        // After PKCS#7 encoding, this becomes [0x10×16][0x10×16] (data block + padding block).
+        // The decoder must correctly identify the second block as legitimate PKCS#7 padding,
+        // not external padding added by pad_to().
+        let data = vec![0x10u8; 16];
+        let attr = LongAttribute::from_bytes_padded(&data);
+        let decoded = attr.to_bytes_padded().unwrap();
+        assert_eq!(
+            data, decoded,
+            "Data ending with full 0x10 block should roundtrip correctly"
+        );
+    }
+
+    #[test]
+    fn long_attribute_ascending_sequence_data() {
+        // Regression test: ensure data containing ascending sequence [0,1,2,...,15]
+        // can be encoded and decoded correctly even though it looks like a pattern.
+        let data: Vec<u8> = (0..16).collect();
+        let attr = LongAttribute::from_bytes_padded(&data);
+        let decoded = attr.to_bytes_padded().unwrap();
+        assert_eq!(
+            data, decoded,
+            "Ascending sequence data should roundtrip correctly"
+        );
+    }
+
+    #[test]
+    fn long_attribute_pad_to_preserves_data() {
+        // Test that pad_to correctly preserves data when adding external padding
+        let attr = LongAttribute::from_string_padded("hello");
+        let original_len = attr.len();
+
+        let padded = attr.pad_to(original_len + 2).unwrap();
+        assert_eq!(
+            padded.len(),
+            original_len + 2,
+            "Padded length should match target"
+        );
+
+        let decoded = padded.to_string_padded().unwrap();
+        assert_eq!(decoded, "hello", "pad_to should preserve original data");
+    }
+
+    #[test]
+    fn long_pseudonym_pad_to_preserves_data() {
+        // Test that pad_to correctly preserves data for pseudonyms
+        let pseudo = LongPseudonym::from_string_padded("test-user-id");
+        let original_len = pseudo.len();
+
+        let padded = pseudo.pad_to(original_len + 3).unwrap();
+        assert_eq!(
+            padded.len(),
+            original_len + 3,
+            "Padded length should match target"
+        );
+
+        let decoded = padded.to_string_padded().unwrap();
+        assert_eq!(
+            decoded, "test-user-id",
+            "pad_to should preserve original data"
+        );
+    }
+
+    #[test]
+    fn long_attribute_data_containing_magic_marker_multiblock() {
+        // Edge case: Data that contains bytes [0xFF, 0xEE, 0xDD, 0xCC]
+        // CAN be encoded regardless - external padding is all zeros now.
+        let data = vec![
+            0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
+            0xAA, 0xBB, 0xCC,
+        ];
+        let attr = LongAttribute::from_bytes_padded(&data);
+        let decoded = attr.to_bytes_padded().unwrap();
+        assert_eq!(
+            data, decoded,
+            "Multi-block data with any bytes should roundtrip correctly"
+        );
+    }
+
+    #[test]
+    fn long_attribute_single_block_with_magic_marker() {
+        // Edge case: Data starting with [0xFF, 0xEE, 0xDD, 0xCC] works fine.
+        // After PKCS#7, the last byte will be 0x08 (padding), not 0x00.
+        // External padding is all zeros, so this won't be confused.
+        let data = vec![0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66];
+        let attr = LongAttribute::from_bytes_padded(&data);
+
+        let decoded = attr.to_bytes_padded().unwrap();
+        assert_eq!(
+            data, decoded,
+            "Single-block data with any bytes should roundtrip correctly"
+        );
+    }
+
+    #[test]
+    fn long_attribute_data_exactly_matching_external_padding_pattern() {
+        // Edge case: Data that is all zeros.
+        // After PKCS#7 encoding, the last byte will be a padding value (0x01-0x10), not 0x00.
+        let data = vec![
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00,
+        ];
+        let attr = LongAttribute::from_bytes_padded(&data);
+
+        // After PKCS#7: will be 1 block with last byte = 0x01
+        // Not all zeros, so won't be confused with external padding
+        assert_eq!(attr.len(), 1);
+
+        let decoded = attr.to_bytes_padded().unwrap();
+        assert_eq!(data, decoded, "All-zero data should roundtrip correctly");
+    }
+
+    #[test]
+    fn long_attribute_double_pad_to_works() {
+        // With all-zero external padding, calling pad_to() multiple times works correctly.
+        // The decoder scans backwards removing all zero blocks until it finds the data block.
+        let attr = LongAttribute::from_string_padded("test");
+        let padded_once = attr.pad_to(2).unwrap();
+        let padded_twice = padded_once.pad_to(3).unwrap();
+
+        // This should succeed - all zero blocks are removed, leaving just the data
+        let result = padded_twice.to_string_padded();
+        assert!(
+            result.is_ok(),
+            "Double pad_to should succeed with all-zero padding"
+        );
+        assert_eq!(result.unwrap(), "test");
+    }
+
+    #[test]
+    fn verify_no_ambiguous_edge_cases() {
+        // Comprehensive verification that ALL data can be encoded without ambiguity
+        // External padding is all-zero blocks, and PKCS#7 ensures the last byte is never 0x00.
+
+        // Test 1: Arbitrary data
+        let data1 = vec![0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66];
+        let attr1 = LongAttribute::from_bytes_padded(&data1);
+        let decoded1 = attr1.to_bytes_padded().unwrap();
+        assert_eq!(data1, decoded1, "Arbitrary data should work");
+
+        // Test 2: All-zero data (PKCS#7 adds non-zero padding)
+        let data2 = vec![
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00,
+        ];
+        let attr2 = LongAttribute::from_bytes_padded(&data2);
+        let decoded2 = attr2.to_bytes_padded().unwrap();
+        assert_eq!(data2, decoded2, "All-zero data should work");
+
+        // Test 3: Mixed zeros and non-zeros
+        let data3 = vec![
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x11, 0x12,
+            0x13, 0x14, 0x15, 0x16,
+        ];
+        let attr3 = LongAttribute::from_bytes_padded(&data3);
+        let decoded3 = attr3.to_bytes_padded().unwrap();
+        assert_eq!(data3, decoded3, "Mixed data should work");
+
+        // Test 4: pad_to() works correctly
+        let attr4 = LongAttribute::from_string_padded("hello");
+        let padded = attr4.pad_to(3).unwrap();
+        assert_eq!(
+            padded.len(),
+            3,
+            "pad_to should create correct number of blocks"
+        );
+        let decoded4 = padded.to_string_padded().unwrap();
+        assert_eq!("hello", decoded4, "pad_to should preserve original data");
+
+        // Test 5: Various lengths with different byte patterns
+        for len in 1..=32 {
+            let mut data = vec![0x00; len]; // All zeros
+            data[0] = 0xFF; // Make first byte non-zero
+
+            let attr = LongAttribute::from_bytes_padded(&data);
+            let decoded = attr.to_bytes_padded().unwrap();
+            assert_eq!(data, decoded, "Data of length {} should work", len);
+        }
     }
 }

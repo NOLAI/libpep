@@ -162,3 +162,10 @@ pub trait HasStructure {
     /// Get the structure of this encrypted value.
     fn structure(&self) -> Self::Structure;
 }
+
+#[cfg(feature = "batch")]
+pub trait BatchEncryptable: Encryptable + Clone {
+    fn preprocess_batch(
+        items: &[Self],
+    ) -> Result<Vec<Self>, crate::transcryptor::batch::BatchError>;
+}
