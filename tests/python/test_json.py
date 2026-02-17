@@ -294,12 +294,14 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             # Verify output
             self.assertEqual(len(transcrypted_batch), 2)
 
-            # Decrypt and check data integrity
-            dec_json1 = decrypt(transcrypted_batch[0], session_keys).to_json()
-            dec_json2 = decrypt(transcrypted_batch[1], session_keys).to_json()
+            # Decrypt and check data integrity (order may be shuffled by batch transcryption)
+            decrypted_jsons = [
+                decrypt(v, session_keys).to_json() for v in transcrypted_batch
+            ]
+            diagnoses = {d["diagnosis"] for d in decrypted_jsons}
 
-            self.assertEqual(dec_json1["diagnosis"], "Flu")
-            self.assertEqual(dec_json2["diagnosis"], "Flu with a very long description to ensure structure length differs")
+            self.assertIn("Flu", diagnoses)
+            self.assertIn("Flu with a very long description to ensure structure length differs", diagnoses)
 
 
 if __name__ == "__main__":

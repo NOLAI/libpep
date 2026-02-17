@@ -18,7 +18,9 @@ use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
 #[cfg(feature = "offline")]
-use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey, PyGlobalPublicKeys};
+use crate::keys::py::types::{
+    PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
+};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
 use crate::keys::py::PySessionKeys;
@@ -30,7 +32,10 @@ use crate::keys::py::{
 use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::{AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys};
+use crate::keys::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys,
+    PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -370,7 +375,7 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
         if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
             let keys = GlobalPublicKeys {
                 pseudonym: PseudonymGlobalPublicKey(*pk.pseudonym.0),
-                attribute: AttributeGlobalPublicKey(*pk.attribute.0)
+                attribute: AttributeGlobalPublicKey(*pk.attribute.0),
             };
             let result = encrypt_global(&json.0, &keys, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());

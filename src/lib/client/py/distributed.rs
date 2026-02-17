@@ -444,7 +444,8 @@ impl PyClient {
         #[cfg(feature = "json")]
         if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
             let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
-            let result = self                .0
+            let result = self
+                .0
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();
@@ -512,7 +513,8 @@ impl PyClient {
         #[cfg(feature = "json")]
         if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
             let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
-            let result = self                .0
+            let result = self
+                .0
                 .decrypt_batch(&enc)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();

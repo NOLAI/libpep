@@ -1,6 +1,6 @@
 //! WASM bindings for PEP JSON encryption.
 
-use crate::client::{decrypt, encrypt, encrypt_batch, decrypt_batch};
+use crate::client::{decrypt, decrypt_batch, encrypt, encrypt_batch};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::client::{decrypt_global, encrypt_global};
 use crate::data::json::builder::PEPJSONBuilder;
@@ -395,13 +395,10 @@ pub fn wasm_decrypt_json_batch(
 ) -> Result<Vec<WASMPEPJSONValue>, JsValue> {
     let keys: SessionKeys = (*session_keys).into();
     let rust_encrypted: Vec<EncryptedPEPJSONValue> = encrypted.into_iter().map(|v| v.0).collect();
-    let decrypted = decrypt_batch(&rust_encrypted, &keys)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+    let decrypted =
+        decrypt_batch(&rust_encrypted, &keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
-    Ok(decrypted
-        .into_iter()
-        .map(WASMPEPJSONValue)
-        .collect())
+    Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
 }
 
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
