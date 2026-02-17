@@ -2,13 +2,14 @@
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
+use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
 use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
+use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -16,12 +17,14 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
+use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
+
 #[derive(Debug, Error)]
 pub enum JsonError {
     #[error("invalid boolean byte value: 0x{got:02x}. expected 0x00 or 0x01")]
@@ -829,6 +832,25 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
 
     fn structure(&self) -> Self::Structure {
         self.structure()
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for PEPJSONValue {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Collect and unify structures
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+
+        // Pad each item to unified structure
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
     }
 }
 

@@ -1,6 +1,6 @@
 //! Client type definitions.
 
-use crate::data::traits::{Encryptable, Encrypted};
+use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted};
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
 use crate::keys::{KeyProvider, SessionKeys};
@@ -71,11 +71,26 @@ impl Client {
         rng: &mut R,
     ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
     where
-        M: Encryptable,
+        M: BatchEncryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {
         super::batch::encrypt_batch(messages, self.keys.get_key(), rng)
+    }
+
+    /// Encrypt a batch of messages without padding or preprocessing.
+    #[cfg(feature = "insecure")]
+    pub fn encrypt_batch_raw<M, R>(
+        &self,
+        messages: &[M],
+        rng: &mut R,
+    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    where
+        M: Encryptable,
+        SessionKeys: KeyProvider<M::PublicKeyType>,
+        R: Rng + CryptoRng,
+    {
+        super::batch::encrypt_batch_raw(messages, self.keys.get_key(), rng)
     }
 
     /// Decrypt a batch of encrypted messages with the appropriate session secret key.

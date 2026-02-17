@@ -1,6 +1,6 @@
 //! WASM bindings for PEP JSON encryption.
 
-use crate::client::{decrypt, encrypt};
+use crate::client::{decrypt, encrypt, encrypt_batch, decrypt_batch};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::client::{decrypt_global, encrypt_global};
 use crate::data::json::builder::PEPJSONBuilder;
@@ -326,6 +326,32 @@ pub fn wasm_encrypt_json(
     WASMEncryptedPEPJSONValue(encrypted)
 }
 
+/// Batch encrypt a list of PEPJSONValues using session keys.
+/// All values must have the same structure, and the resulting encrypted values will be padded to match the maximum block counts for that structure.
+///
+/// # Arguments
+/// * `values` - Array of PEPJSONValue objects to encrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+///
+/// # Returns
+/// An array of EncryptedPEPJSONValue objects, all with the same structure and padded to match the maximum block counts for that structure
+#[cfg(feature = "batch")]
+#[wasm_bindgen(js_name = encryptJsonBatch)]
+pub fn wasm_encrypt_json_batch(
+    values: Vec<WASMPEPJSONValue>,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
+    let mut rng = rand::rng();
+    let keys: SessionKeys = (*session_keys).into();
+    let rust_values: Vec<PEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let encrypted = encrypt_batch(&rust_values, &keys, &mut rng)
+        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(encrypted
+        .into_iter()
+        .map(WASMEncryptedPEPJSONValue)
+        .collect())
+}
 /// Decrypt an EncryptedPEPJSONValue using session keys.
 ///
 /// # Arguments
@@ -348,6 +374,34 @@ pub fn wasm_decrypt_json(
     #[cfg(not(feature = "elgamal3"))]
     let decrypted = decrypt(&encrypted.0, &keys);
     Ok(WASMPEPJSONValue(decrypted))
+}
+
+/// Decrypt a batch of EncryptedPEPJSONValues using session keys.
+///
+/// # Arguments
+///
+/// * `encrypted` - Array of EncryptedPEPJSONValue objects to decrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+///
+/// # Returns
+/// An array of PEPJSONValue objects
+/// # Errors
+/// Returns an error if any value fails to decrypt
+#[cfg(feature = "batch")]
+#[wasm_bindgen(js_name = decryptJsonBatch)]
+pub fn wasm_decrypt_json_batch(
+    encrypted: Vec<WASMEncryptedPEPJSONValue>,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMPEPJSONValue>, JsValue> {
+    let keys: SessionKeys = (*session_keys).into();
+    let rust_encrypted: Vec<EncryptedPEPJSONValue> = encrypted.into_iter().map(|v| v.0).collect();
+    let decrypted = decrypt_batch(&rust_encrypted, &keys)
+        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(decrypted
+        .into_iter()
+        .map(WASMPEPJSONValue)
+        .collect())
 }
 
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.

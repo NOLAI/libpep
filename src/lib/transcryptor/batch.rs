@@ -1,5 +1,6 @@
 //! Batch operations for pseudonymization, rekeying, and transcryption with shuffling.
 
+use crate::data::json::{JsonError, UnifyError};
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use rand_core::{CryptoRng, Rng};
@@ -21,6 +22,10 @@ pub enum BatchError {
         expected_structure: String,
         actual_structure: String,
     },
+    #[error(transparent)]
+    UnifyError(#[from] UnifyError),
+    #[error(transparent)]
+    JsonError(#[from] JsonError),
 }
 
 /// Fisher-Yates shuffle using rand_core

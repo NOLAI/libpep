@@ -370,8 +370,21 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
+        // Try Vec<PEPJSONValue> - uses SessionKeys directly
+        #[cfg(feature = "json")]
+        if let Ok(las) = messages.extract::<Vec<PyPEPJSONValue>>() {
+            let msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
+            let result = self
+                .0
+                .encrypt_batch(&msgs, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let py_result: Vec<PyEncryptedPEPJSONValue> =
+                result.into_iter().map(PyEncryptedPEPJSONValue).collect();
+            return py_result.into_py_any(py);
+        }
+
         Err(PyTypeError::new_err(
-            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute]",
+            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute], or Vec[PEPJSONValue]",
         ))
     }
 
@@ -427,8 +440,19 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
+        // Try Vec<EncryptedPEPJSONValue> - uses SessionKeys directly
+        #[cfg(feature = "json")]
+        if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+            let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
+            let result = self                .0
+                .decrypt_batch(&enc)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();
+            return py_result.into_py_any(py);
+        }
+
         Err(PyTypeError::new_err(
-            "decrypt_batch() requires Vec[EncryptedPseudonym], Vec[EncryptedAttribute], Vec[LongEncryptedPseudonym], or Vec[LongEncryptedAttribute]",
+            "decrypt_batch() requires Vec[EncryptedPseudonym], Vec[EncryptedAttribute], Vec[LongEncryptedPseudonym], or Vec[LongEncryptedAttribute], or Vec[EncryptedPEPJSONValue]",
         ))
     }
 
@@ -484,8 +508,19 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
+        // Try Vec<EncryptedPEPJSONValue> - uses SessionKeys directly
+        #[cfg(feature = "json")]
+        if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+            let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
+            let result = self                .0
+                .decrypt_batch(&enc)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();
+            return py_result.into_py_any(py);
+        }
+
         Err(PyTypeError::new_err(
-            "decrypt_batch() requires Vec[EncryptedPseudonym], Vec[EncryptedAttribute], Vec[LongEncryptedPseudonym], or Vec[LongEncryptedAttribute]",
+            "decrypt_batch() requires Vec[EncryptedPseudonym], Vec[EncryptedAttribute], Vec[LongEncryptedPseudonym], or Vec[LongEncryptedAttribute], or Vec[EncryptedPEPJSONValue]",
         ))
     }
 

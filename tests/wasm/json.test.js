@@ -9,7 +9,7 @@ const {
     PseudonymizationSecret,
     EncryptionSecret,
     PseudonymizationDomain,
-    EncryptionContext,
+    EncryptionContext, encryptJsonBatch,
 } = require("../../pkg/libpep.js");
 
 test('test json transcryption with builder', async () => {
@@ -202,4 +202,66 @@ test('test json batch transcryption different structures', async () => {
     expect(() => {
         transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo);
     }).toThrow(/Inconsistent structure in batch/);
+});
+
+
+test('test json batch transcryption same structure different lengths', async () => {
+    // Setup keys and secrets
+    const globalKeys = makeGlobalKeys();
+    const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
+    const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
+
+    const domainA = new PseudonymizationDomain("domain-a");
+    const domainB = new PseudonymizationDomain("domain-b");
+    const session = new EncryptionContext("session-1");
+
+    const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
+
+    // Create two JSON values with DIFFERENT structures using JavaScript objects
+    const data1 = {
+        patient_id: "patient-001",
+        diagnosis: "Flu",
+        temperature: 38.5
+    };
+
+    const data2 = {
+        patient_id: "patient-002 with a very long ID that makes the structure different",
+        diagnosis: "Flu but with very long description that makes the structure different",
+        temperature: 38.5
+    };
+
+    // Convert to PEP JSON with different pseudonym fields
+    const record1 = PEPJSONBuilder.fromJson(data1, ["patient_id"]).build();
+    const record2 = PEPJSONBuilder.fromJson(data2, ["patient_id"]).build();
+
+    // Encrypt both records
+    const encrypted1 = encryptJson(record1, sessionKeys);
+    const encrypted2 = encryptJson(record2, sessionKeys);
+
+    // Verify they have different structures
+    const structure1 = encrypted1.structure();
+    const structure2 = encrypted2.structure();
+    expect(structure1.equals(structure2)).toBe(false);
+
+    // Attempt batch transcryption (this should throw an error because structures don't match)
+    const transcryptionInfo = new TranscryptionInfo(
+        domainA,
+        domainB,
+        session,
+        session,
+        pseudoSecret,
+        encSecret
+    );
+
+    // Verify we get an error about structure mismatch
+    expect(() => {
+        transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo);
+    }).toThrow(/Inconsistent structure in batch/);
+
+    // We can encrypt them in a batch which automatically adds padding to make structures consistent
+    const encryptedBatch = encryptJsonBatch([record1, record2], sessionKeys);
+    const transcryptedBatch = transcryptJsonBatch(encryptedBatch, transcryptionInfo);
+
+    // Verify we got 2 records back
+    expect(transcryptedBatch.length).toBe(2);
 });

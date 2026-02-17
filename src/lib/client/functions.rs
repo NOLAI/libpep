@@ -40,7 +40,8 @@ where
 /// # Examples
 /// ```rust,ignore
 /// let pseudonym = decrypt(&encrypted_pseudonym, &pseudonym_key);
-/// let attribute = decrypt(&encrypted_attribute, &attribute_key);
+/// let attribute = decrypt(&encrypted_attribute,
+/// &attribute_key);
 /// ```
 #[cfg(not(feature = "elgamal3"))]
 pub fn decrypt<E>(encrypted: &E, secret_key: &E::SecretKeyType) -> E::UnencryptedType

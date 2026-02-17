@@ -18,7 +18,7 @@ use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
 #[cfg(feature = "offline")]
-use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
+use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey, PyGlobalPublicKeys};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
 use crate::keys::py::PySessionKeys;
@@ -30,10 +30,7 @@ use crate::keys::py::{
 use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, SessionKeys,
-};
+use crate::keys::{AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -367,6 +364,19 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
         }
     }
 
+    // Try PEPJSONValue with SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(json) = message.extract::<PyPEPJSONValue>() {
+        if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
+            let keys = GlobalPublicKeys {
+                pseudonym: PseudonymGlobalPublicKey(*pk.pseudonym.0),
+                attribute: AttributeGlobalPublicKey(*pk.attribute.0)
+            };
+            let result = encrypt_global(&json.0, &keys, &mut rng);
+            return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
+        }
+    }
+
     Err(PyTypeError::new_err(
         "encrypt_global() requires (unencrypted_type, matching_global_public_key)",
     ))
@@ -430,6 +440,18 @@ pub fn py_decrypt_global(
         }
     }
 
+    // Try EncryptedPEPJSONValue with SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
+        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
+            let keys: SessionKeys = sk.clone().into();
+            if let Some(result) = decrypt_global(&ej.0, &keys) {
+                return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
+            }
+            return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
+        }
+    }
+
     Err(PyTypeError::new_err(
         "decrypt_global() requires (encrypted_type, matching_global_secret_key)",
     ))
@@ -481,6 +503,16 @@ pub fn py_decrypt_global(
             let key = AttributeGlobalSecretKey(sk.0 .0);
             let result = decrypt_global(&lea.0, &key);
             return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
+        }
+    }
+
+    // Try EncryptedPEPJSONValue with SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
+        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
+            let keys: SessionKeys = sk.clone().into();
+            let result = decrypt_global(&ej.0, &keys);
+            return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
     }
 
@@ -628,6 +660,32 @@ pub fn py_encrypt_batch(
         }
     }
 
+    // Try PEPJSONValue + SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(sk) = key.extract::<PySessionKeys>() {
+        if messages[0].extract::<PyPEPJSONValue>().is_ok() {
+            let rust_msgs: Vec<_> = messages
+                .iter()
+                .map(|m| {
+                    m.extract::<PyPEPJSONValue>()
+                        .expect("type already validated")
+                        .0
+                })
+                .collect();
+            let keys: SessionKeys = sk.clone().into();
+            let encrypted = encrypt_batch(&rust_msgs, &keys, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(encrypted
+                .into_iter()
+                .map(|e| {
+                    Py::new(py, PyEncryptedPEPJSONValue(e))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
     Err(PyTypeError::new_err(
         "encrypt_batch() requires list of (Pseudonym|Attribute|LongPseudonym|LongAttribute) and matching key",
     ))
@@ -748,6 +806,32 @@ pub fn py_decrypt_batch(
         }
     }
 
+    // Try EncryptedPEPJSONValue + SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(sk) = key.extract::<PySessionKeys>() {
+        if encrypted[0].extract::<PyEncryptedPEPJSONValue>().is_ok() {
+            let rust_encs: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyEncryptedPEPJSONValue>()
+                        .expect("type already validated")
+                        .0
+                })
+                .collect();
+            let keys: SessionKeys = sk.clone().into();
+            let decrypted = decrypt_batch(&rust_encs, &keys)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(decrypted
+                .into_iter()
+                .map(|d| {
+                    Py::new(py, PyPEPJSONValue(d))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
     Err(PyTypeError::new_err(
         "decrypt_batch() requires list of encrypted types and matching key",
     ))
@@ -861,6 +945,32 @@ pub fn py_decrypt_batch(
                 .into_iter()
                 .map(|d| {
                     Py::new(py, PyLongAttribute(d))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
+    // Try EncryptedPEPJSONValue + SessionKeys
+    #[cfg(feature = "json")]
+    if let Ok(sk) = key.extract::<PySessionKeys>() {
+        if encrypted[0].extract::<PyEncryptedPEPJSONValue>().is_ok() {
+            let rust_encs: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyEncryptedPEPJSONValue>()
+                        .expect("type already validated")
+                        .0
+                })
+                .collect();
+            let keys: SessionKeys = sk.clone().into();
+            let decrypted = decrypt_batch(&rust_encs, &keys)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(decrypted
+                .into_iter()
+                .map(|d| {
+                    Py::new(py, PyPEPJSONValue(d))
                         .expect("PyO3 allocation failed")
                         .into_any()
                 })

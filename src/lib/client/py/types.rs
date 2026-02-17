@@ -72,7 +72,7 @@ impl PyOfflineClient {
         }
 
         Err(PyTypeError::new_err(
-            "encrypt() requires Pseudonym, Attribute, LongPseudonym, or LongAttribute",
+            "encrypt() requires Pseudonym, Attribute, LongPseudonym, or LongAttribute, or PEPJSONValue",
         ))
     }
 
@@ -133,8 +133,21 @@ impl PyOfflineClient {
             return py_result.into_py_any(py);
         }
 
+        // Try Vec<PEPJSONValue>
+        #[cfg(feature = "json")]
+        if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
+            let msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
+            let result = self
+                .0
+                .encrypt_batch(&msgs, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let py_result: Vec<PyEncryptedPEPJSONValue> =
+                result.into_iter().map(PyEncryptedPEPJSONValue).collect();
+            return py_result.into_py_any(py);
+        }
+
         Err(PyTypeError::new_err(
-            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute]",
+            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute], or Vec[PEPJSONValue]",
         ))
     }
 
