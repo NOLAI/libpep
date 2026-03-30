@@ -90,14 +90,14 @@ jobs:
           rm -f /tmp/individual_results.txt /tmp/batch_results.txt /tmp/individual_sorted.txt /tmp/batch_sorted.txt
 
       - name: Upload benchmark tables
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-tables-elaborate-${{ github.sha }}
           path: benchmark_tables/
           retention-days: 90
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-results-elaborate-${{ github.sha }}
           path: target/criterion/
