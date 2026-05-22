@@ -230,12 +230,13 @@ pub fn create_proof<R: Rng + CryptoRng>(
     )
 }
 
-/// Creates two zero-knowledge proofs with the same scalar, optimized to share computations.
+/// Creates two zero-knowledge proofs with the same scalar, sharing the
+/// public key `ga = a*G` computation.
 ///
-/// This function is more efficient than calling `create_proof` twice because:
-/// - It only computes `ga = a * G` once (shared between both proofs)
-/// - It uses the same random value `r`, saving one RNG call
-/// - The challenge computation uses the same `ga`, reducing redundant operations
+/// Each proof uses an **independent** random nonce. Reusing a nonce across
+/// two proofs with the same witness `a` but different bases `gm1`, `gm2`
+/// would let any verifier solve `a = (s1 - s2) / (e1 - e2)` from the
+/// published responses.
 ///
 /// # Arguments
 /// * `a` - The secret scalar (same for both proofs)
@@ -254,13 +255,13 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
     gm2: &GroupElement,
     rng: &mut R,
 ) -> (GroupElement, Proof, Proof) {
-    let r = ScalarNonZero::random(rng);
     let ga = a * G;
 
     // First proof
+    let r1 = ScalarNonZero::random(rng);
     let gn1 = a * gm1;
-    let gc1_1 = r * G;
-    let gc2_1 = r * gm1;
+    let gc1_1 = r1 * G;
+    let gc2_1 = r1 * gm1;
 
     let mut hasher = Sha512::new();
     hasher.update(ga.to_bytes());
@@ -271,7 +272,7 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e1 = ScalarNonZero::from_hash(&bytes);
-    let s1 = ScalarCanBeZero((a * e1).0) + ScalarCanBeZero(r.0);
+    let s1 = ScalarCanBeZero((a * e1).0) + ScalarCanBeZero(r1.0);
 
     let proof1 = Proof {
         n: gn1,
@@ -280,10 +281,11 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
         s: s1,
     };
 
-    // Second proof
+    // Second proof, with a fresh independent nonce
+    let r2 = ScalarNonZero::random(rng);
     let gn2 = a * gm2;
-    let gc1_2 = r * G;
-    let gc2_2 = r * gm2;
+    let gc1_2 = r2 * G;
+    let gc2_2 = r2 * gm2;
 
     let mut hasher = Sha512::new();
     hasher.update(ga.to_bytes());
@@ -294,7 +296,7 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e2 = ScalarNonZero::from_hash(&bytes);
-    let s2 = ScalarCanBeZero((a * e2).0) + ScalarCanBeZero(r.0);
+    let s2 = ScalarCanBeZero((a * e2).0) + ScalarCanBeZero(r2.0);
 
     let proof2 = Proof {
         n: gn2,
@@ -567,7 +569,9 @@ pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Si
 mod tests {
     use crate::arithmetic::group_elements::{GroupElement, G};
     use crate::arithmetic::scalars::ScalarNonZero;
-    use crate::core::zkps::{create_proof, sign, sign_unlinkable, verify, verify_proof};
+    use crate::core::zkps::{
+        create_proof, create_proofs_same_scalar, sign, sign_unlinkable, verify, verify_proof,
+    };
 
     #[test]
     fn elgamal_signature() {
@@ -601,6 +605,25 @@ mod tests {
 
         // verifier
         assert!(verify_proof(&ga, &gm, &p));
+    }
+
+    #[test]
+    fn create_proofs_same_scalar_uses_independent_nonces() {
+        // Regression test: if both proofs reused the same nonce r, then their
+        // r*G commitments would be equal and an attacker could recover the
+        // witness a from (s1 - s2) / (e1 - e2). Verify the nonces differ and
+        // that the naive witness-recovery attack does not succeed.
+        let mut rng = rand::rng();
+        let a = ScalarNonZero::random(&mut rng);
+        let gm1 = GroupElement::random(&mut rng);
+        let gm2 = GroupElement::random(&mut rng);
+
+        let (ga, p1, p2) = create_proofs_same_scalar(&a, &gm1, &gm2, &mut rng);
+
+        assert!(verify_proof(&ga, &gm1, &p1));
+        assert!(verify_proof(&ga, &gm2, &p2));
+        // Nonces must be independent: r1*G != r2*G with overwhelming probability.
+        assert_ne!(p1.c1, p2.c1);
     }
 
     #[test]
