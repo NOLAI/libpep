@@ -499,11 +499,10 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
 }
 
 // ---------------------------------------------------------------------------
-// VRR (insecure only — bare rerandomize is unbound to any factor, so it is
-// only useful for testing in `insecure` builds).
+// VRR — verifiable rerandomize.
 // ---------------------------------------------------------------------------
 
-#[cfg(all(feature = "verifiable", feature = "insecure"))]
+#[cfg(feature = "verifiable")]
 fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
     use libpep::core::verifiable::VerifiableRerandomize;
     c.bench_function("verifiable_rerandomize_create", |b| {
@@ -522,7 +521,7 @@ fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(feature = "verifiable", feature = "insecure"))]
+#[cfg(feature = "verifiable")]
 fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
     use libpep::core::primitives::rerandomize;
     use libpep::core::verifiable::VerifiableRerandomize;
@@ -718,7 +717,7 @@ fn bench_baseline_rrsk2(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(feature = "verifiable", feature = "insecure"))]
+#[cfg(feature = "verifiable")]
 fn bench_baseline_rerandomize(c: &mut Criterion) {
     use libpep::core::primitives::rerandomize;
     c.bench_function("baseline_rerandomize", |b| {
@@ -747,41 +746,12 @@ fn bench_baseline_rerandomize(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(feature = "verifiable", feature = "insecure"))]
+#[cfg(feature = "verifiable")]
 criterion_group!(
     benches,
-    bench_baseline_reshuffle,
-    bench_verifiable_reshuffle_create,
-    bench_verifiable_reshuffle_verify,
-    bench_baseline_rekey,
-    bench_verifiable_rekey_create,
-    bench_verifiable_rekey_verify,
-    bench_baseline_rsk,
-    bench_verifiable_rsk_create,
-    bench_verifiable_rsk_verify,
-    bench_baseline_reshuffle2,
-    bench_verifiable_reshuffle2_create,
-    bench_verifiable_reshuffle2_verify,
-    bench_baseline_rekey2,
-    bench_verifiable_rekey2_create,
-    bench_verifiable_rekey2_verify,
-    bench_baseline_rsk2,
-    bench_verifiable_rsk2_create,
-    bench_verifiable_rsk2_verify,
-    bench_baseline_rrsk,
-    bench_verifiable_rrsk_create,
-    bench_verifiable_rrsk_verify,
-    bench_baseline_rrsk2,
-    bench_verifiable_rrsk2_create,
-    bench_verifiable_rrsk2_verify,
     bench_baseline_rerandomize,
     bench_verifiable_rerandomize_create,
     bench_verifiable_rerandomize_verify,
-);
-
-#[cfg(all(feature = "verifiable", not(feature = "insecure")))]
-criterion_group!(
-    benches,
     bench_baseline_reshuffle,
     bench_verifiable_reshuffle_create,
     bench_verifiable_reshuffle_verify,
