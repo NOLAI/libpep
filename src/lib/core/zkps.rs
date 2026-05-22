@@ -355,30 +355,6 @@ pub fn verify_proof_split(
     // FIXME speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
     // FIXME check if a faster non-constant time equality can be used
     s * G == e * ga + gc1 && s * gm == e * gn + gc2
-    // (a*e + r)*G = e*a*G + r*G
-    // (a*e + r)*gm == e*a*gm + r*gm
-
-    // Optimized using multiscalar multiplication:
-    // Check: s*G - e*ga - gc1 == 0 and s*gm - e*gn - gc2 == 0
-    // This is faster than computing s*G, e*ga, and gc1 separately
-    // use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
-    // use curve25519_dalek::ristretto::RistrettoPoint;
-    // use curve25519_dalek::Scalar;
-    // let s_scalar = Scalar::from_bytes_mod_order(s.to_bytes());
-    // let e_scalar = Scalar::from_bytes_mod_order(e.to_bytes());
-    // let neg_e = -e_scalar;
-    // let neg_one = -Scalar::ONE;
-    //
-    // let check1 = RistrettoPoint::vartime_multiscalar_mul(
-    //     &[s_scalar, neg_e, neg_one],
-    //     &[G.0, ga.0, gc1.0]
-    // );
-    // let check2 = RistrettoPoint::vartime_multiscalar_mul(
-    //     &[s_scalar, neg_e, neg_one],
-    //     &[gm.0, gn.0, gc2.0]
-    // );
-    //
-    // check1.is_identity() && check2.is_identity()
 }
 
 /// Verifies a zero-knowledge proof.
@@ -471,10 +447,10 @@ pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) 
 
 /// Creates a deterministic unlinkable proof.
 ///
-/// Unlike [`create_proof`], this function uses a deterministic nonce derived from the message
-/// rather than a random one. This means:
+/// Unlike [`create_proof`], this function uses a deterministic nonce derived from the
+/// (secret, message) pair rather than a random one. This means:
 /// - The same inputs always produce the same proof (deterministic)
-/// - Multiple signatures of the same message are identical
+/// - Multiple signatures of the same message under the same key are identical
 /// - The nonce cannot be used to link different proofs (unlinkable)
 ///
 /// This is useful when you want consistent proofs but don't want random values that could
@@ -493,9 +469,12 @@ pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) 
 ///
 /// # Security Note
 ///
-/// The deterministic nonce is derived by hashing the message, following the Fiat-Shamir transform.
+/// The deterministic nonce is derived (EdDSA-style) by hashing the secret scalar together
+/// with the message, so distinct (secret, message) pairs produce distinct nonces. The
+/// nonce hash is domain-separated from the Fiat-Shamir challenge hash.
 pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupElement, Proof) {
     let mut hasher = Sha512::new();
+    hasher.update(a.to_bytes());
     hasher.update(gm.to_bytes());
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(hasher.finalize().as_slice());
@@ -570,7 +549,8 @@ mod tests {
     use crate::arithmetic::group_elements::{GroupElement, G};
     use crate::arithmetic::scalars::ScalarNonZero;
     use crate::core::zkps::{
-        create_proof, create_proofs_same_scalar, sign, sign_unlinkable, verify, verify_proof,
+        create_proof, create_proof_unlinkable, create_proofs_same_scalar, sign, sign_unlinkable,
+        verify, verify_proof,
     };
 
     #[test]
@@ -641,5 +621,25 @@ mod tests {
         let sig2 = sign_unlinkable(&v, &s);
         assert!(verify(&v, &sig2, &gp));
         assert_eq!(sig1, sig2);
+    }
+
+    #[test]
+    fn create_proof_unlinkable_nonce_binds_to_secret() {
+        // Regression test: the deterministic nonce must depend on the secret
+        // scalar, not just the message. Two distinct keys signing the same
+        // message must produce distinct r*G commitments.
+        let mut rng = rand::rng();
+        let a1 = ScalarNonZero::random(&mut rng);
+        let a2 = ScalarNonZero::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
+
+        let (_, p1) = create_proof_unlinkable(&a1, &gm);
+        let (_, p2) = create_proof_unlinkable(&a2, &gm);
+
+        assert_ne!(p1.c1, p2.c1);
+
+        // Determinism: same (a, gm) still produces the same proof.
+        let (_, p1_again) = create_proof_unlinkable(&a1, &gm);
+        assert_eq!(p1, p1_again);
     }
 }
