@@ -26,6 +26,14 @@ from libpep.data import json as pepjson
 from libpep.data.json import transcrypt_json_batch, PEPJSONBuilder
 
 
+def _transcrypt_json_batch(values, info, session_keys):
+    """Cross-feature wrapper: elgamal3 takes (values, info), non-elgamal3 also needs session_keys."""
+    try:
+        return transcrypt_json_batch(values, info)
+    except TypeError:
+        return transcrypt_json_batch(values, info, session_keys)
+
+
 class TestJSONTranscryption(unittest.TestCase):
     def test_json_transcryption_with_builder(self):
         """Test JSON encryption/decryption/transcryption with existing JSON data"""
@@ -131,7 +139,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             enc_secret,
         )
 
-        transcrypted_batch = transcrypt_json_batch(
+        transcrypted_batch = _transcrypt_json_batch(
             [encrypted1, encrypted2], transcryption_info, session_keys
         )
 
@@ -216,7 +224,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
         # Verify we get an error about structure mismatch
         with self.assertRaises(Exception) as context:
-            transcrypt_json_batch([encrypted1, encrypted2], transcryption_info, session_keys)
+            _transcrypt_json_batch([encrypted1, encrypted2], transcryption_info, session_keys)
 
         # Error message may vary, just check that it mentions structure or inconsistency
         error_msg = str(context.exception).lower()
@@ -273,7 +281,9 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
             # 2. Attempt batch transcryption (should fail because structures are not identical)
             with self.assertRaises(Exception) as cm:
-                transcrypt_json_batch([encrypted1, encrypted2], transcryption_info)
+                _transcrypt_json_batch(
+                    [encrypted1, encrypted2], transcryption_info, session_keys
+                )
 
             self.assertIn("structure", str(cm.exception).lower())
 
@@ -289,7 +299,9 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             )
 
             # 4. Batch transcrypt the normalized records (should succeed)
-            transcrypted_batch = transcrypt_json_batch(encrypted_batch, transcryption_info)
+            transcrypted_batch = _transcrypt_json_batch(
+                encrypted_batch, transcryption_info, session_keys
+            )
 
             # Verify output
             self.assertEqual(len(transcrypted_batch), 2)
