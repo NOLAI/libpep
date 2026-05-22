@@ -3,7 +3,11 @@ use libpep::client::{Client, Distributed};
 use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+#[cfg(not(feature = "elgamal3"))]
+use libpep::factors::RekeyFactor;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::PublicKey;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
 
@@ -117,21 +121,46 @@ pub fn process_entities_individually(
         Vec<libpep::data::simple::EncryptedAttribute>,
     )],
     systems: &[DistributedTranscryptor],
+    client_a: &Client,
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
+    let _ = client_a; // unused in elgamal3
     for (pseudonyms, attributes) in entities {
         // Process all pseudonyms for this entity
         for encrypted in pseudonyms {
-            let _ = systems
-                .iter()
-                .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
-                    let transcryption_info =
-                        system.transcryption_info(domain_a, domain_b, session_a, session_b);
-                    system.transcrypt(&acc, &transcryption_info)
-                });
+            #[cfg(feature = "elgamal3")]
+            {
+                let _ = systems
+                    .iter()
+                    .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
+                        let transcryption_info =
+                            system.transcryption_info(domain_a, domain_b, session_a, session_b);
+                        system.transcrypt(&acc, &transcryption_info, &mut rand::rng())
+                    });
+            }
+            #[cfg(not(feature = "elgamal3"))]
+            {
+                let initial_pk = *client_a.dump().pseudonym.public.value();
+                let _ = systems.iter().fold(
+                    (*encrypted, initial_pk),
+                    |(acc, pk), system: &DistributedTranscryptor| {
+                        let transcryption_info =
+                            system.transcryption_info(domain_a, domain_b, session_a, session_b);
+                        let k = transcryption_info.pseudonym.k.scalar();
+                        let pk_typed = libpep::keys::PseudonymSessionPublicKey::from(pk);
+                        let next = system.transcrypt(
+                            &acc,
+                            &transcryption_info,
+                            &pk_typed,
+                            &mut rand::rng(),
+                        );
+                        (next, k * pk)
+                    },
+                );
+            }
         }
         // Process all attributes for this entity
         for encrypted in attributes {
@@ -152,28 +181,65 @@ pub fn process_entities_batch(
         Vec<libpep::data::simple::EncryptedAttribute>,
     )>,
     systems: &[DistributedTranscryptor],
+    client_a: &Client,
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
-    // Convert entity tuples to EncryptedRecord
+    let _ = client_a; // unused in elgamal3
+                      // Convert entity tuples to EncryptedRecord
     let mut batch: Vec<EncryptedRecord> = entities
         .into_iter()
         .map(|(pseudonyms, attributes)| EncryptedRecord::new(pseudonyms, attributes))
         .collect();
 
     let mut batch_rng = rand::rng();
+    #[cfg(not(feature = "elgamal3"))]
+    let mut current_keys = *client_a.dump();
 
     for system in systems {
         let transcryption_info =
             system.transcryption_info(domain_a, domain_b, session_a, session_b);
-        batch = match system.transcrypt_batch(&mut batch, &transcryption_info, &mut batch_rng) {
-            Ok(result) => result.to_vec(),
-            Err(e) => {
-                panic!("Batch transcryption failed during benchmark: {e:?}");
-            }
-        };
+        #[cfg(feature = "elgamal3")]
+        {
+            batch = match system.transcrypt_batch(&mut batch, &transcryption_info, &mut batch_rng) {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    panic!("Batch transcryption failed during benchmark: {e:?}");
+                }
+            };
+        }
+        #[cfg(not(feature = "elgamal3"))]
+        {
+            let kp = transcryption_info.pseudonym.k.scalar();
+            let ka = transcryption_info.attribute.scalar();
+            batch = match system.transcrypt_batch(
+                &mut batch,
+                &transcryption_info,
+                &current_keys,
+                &mut batch_rng,
+            ) {
+                Ok(result) => result.to_vec(),
+                Err(e) => {
+                    panic!("Batch transcryption failed during benchmark: {e:?}");
+                }
+            };
+            current_keys = libpep::keys::SessionKeys {
+                pseudonym: libpep::keys::PseudonymSessionKeys {
+                    public: libpep::keys::PseudonymSessionPublicKey::from(
+                        kp * *current_keys.pseudonym.public.value(),
+                    ),
+                    secret: current_keys.pseudonym.secret,
+                },
+                attribute: libpep::keys::AttributeSessionKeys {
+                    public: libpep::keys::AttributeSessionPublicKey::from(
+                        ka * *current_keys.attribute.public.value(),
+                    ),
+                    secret: current_keys.attribute.secret,
+                },
+            };
+        }
     }
 }
 
@@ -224,6 +290,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
                             process_entities_individually(
                                 black_box(&entities),
                                 black_box(&systems),
+                                black_box(&client_a),
                                 black_box(&domain_a),
                                 black_box(&domain_b),
                                 black_box(&session_a),
@@ -286,7 +353,8 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                             || encrypted_data.clone(),
                             |data| {
                                 process_entities_batch(
-                                    data, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                                    data, &systems, &client_a, &domain_a, &domain_b, &session_a,
+                                    &session_b,
                                 );
                             },
                             criterion::BatchSize::LargeInput,
@@ -322,41 +390,7 @@ fn bench_verifiable_commitment_generation(c: &mut Criterion) {
                 );
                 (info, rng)
             },
-            |(info, mut rng)| {
-                black_box(Transcryptor::pseudonymization_commitments(&info, &mut rng))
-            },
-            criterion::BatchSize::SmallInput,
-        )
-    });
-}
-
-#[cfg(feature = "verifiable")]
-#[allow(dead_code)]
-fn bench_verifiable_commitment_verification(c: &mut Criterion) {
-    c.bench_function("verifiable_commitment_verification", |b| {
-        b.iter_batched(
-            || {
-                let mut rng = rand::rng();
-                let ps_secret = PseudonymizationSecret::from(b"pseudonymization-secret".to_vec());
-                let enc_secret = EncryptionSecret::from(b"encryption-secret".to_vec());
-                let transcryptor = Transcryptor::new(ps_secret.clone(), enc_secret.clone());
-                let domain_from = PseudonymizationDomain::from("domain-a");
-                let domain_to = PseudonymizationDomain::from("domain-b");
-                let session_from = EncryptionContext::from("session-a");
-                let session_to = EncryptionContext::from("session-b");
-                let info = transcryptor.pseudonymization_info(
-                    &domain_from,
-                    &domain_to,
-                    &session_from,
-                    &session_to,
-                );
-                let commitments = Transcryptor::pseudonymization_commitments(&info, &mut rng);
-                let verifier = Verifier::new();
-                (commitments, verifier)
-            },
-            |(commitments, verifier)| {
-                black_box(verifier.verify_pseudonymization_commitments(&commitments))
-            },
+            |(info, _rng)| black_box(Transcryptor::pseudonymization_commitment(&info)),
             criterion::BatchSize::SmallInput,
         )
     });
@@ -396,10 +430,22 @@ fn bench_verifiable_pseudonymization(c: &mut Criterion) {
                     &session_from,
                     &session_to,
                 );
-                (encrypted, info, rng)
+                #[cfg(feature = "elgamal3")]
+                {
+                    (encrypted, info, rng)
+                }
+                #[cfg(not(feature = "elgamal3"))]
+                {
+                    (encrypted, info, client.dump().pseudonym.public, rng)
+                }
             },
+            #[cfg(feature = "elgamal3")]
             |(encrypted, info, mut rng)| {
                 black_box(encrypted.verifiable_pseudonymize(&info, &mut rng))
+            },
+            #[cfg(not(feature = "elgamal3"))]
+            |(encrypted, info, pk, mut rng)| {
+                black_box(encrypted.verifiable_pseudonymize(&info, &pk, &mut rng))
             },
             criterion::BatchSize::SmallInput,
         )
@@ -476,27 +522,55 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
                     &session_to,
                 );
 
+                #[cfg(feature = "elgamal3")]
                 let operation_proof = encrypted.verifiable_pseudonymize(&info, &mut rng);
-                let factors_proof = Transcryptor::pseudonymization_factors_proof(&info, &mut rng);
-                let result = encrypted.pseudonymize(&info);
-                let commitments = Transcryptor::pseudonymization_commitments(&info, &mut rng);
+                #[cfg(not(feature = "elgamal3"))]
+                let operation_proof = encrypted.verifiable_pseudonymize(
+                    &info,
+                    &client.dump().pseudonym.public,
+                    &mut rng,
+                );
+                #[cfg(feature = "elgamal3")]
+                let result = encrypted.pseudonymize(&info, &mut rng);
+                #[cfg(not(feature = "elgamal3"))]
+                let result =
+                    encrypted.pseudonymize(&info, &client.dump().pseudonym.public, &mut rng);
+                let commitments = Transcryptor::pseudonymization_commitment(&info);
                 let verifier = Verifier::new();
 
-                (
-                    encrypted,
-                    result,
-                    operation_proof,
-                    factors_proof,
-                    commitments,
-                    verifier,
-                )
+                #[cfg(feature = "elgamal3")]
+                {
+                    (encrypted, result, operation_proof, commitments, verifier)
+                }
+                #[cfg(not(feature = "elgamal3"))]
+                {
+                    (
+                        encrypted,
+                        result,
+                        operation_proof,
+                        client.dump().pseudonym.public,
+                        commitments,
+                        verifier,
+                    )
+                }
             },
-            |(original, result, operation_proof, factors_proof, commitments, verifier)| {
+            #[cfg(feature = "elgamal3")]
+            |(original, result, operation_proof, commitments, verifier)| {
                 black_box(verifier.verify_pseudonymization(
                     &original,
                     &result,
                     &operation_proof,
-                    &factors_proof,
+                    &commitments,
+                ))
+            },
+            #[cfg(not(feature = "elgamal3"))]
+            |(original, result, operation_proof, pk, commitments, verifier)| {
+                use libpep::keys::PublicKey;
+                black_box(verifier.verify_pseudonymization(
+                    &original,
+                    &result,
+                    &operation_proof,
+                    pk.value(),
                     &commitments,
                 ))
             },
@@ -511,7 +585,6 @@ criterion_group!(
     bench_distributed_transcrypt,
     bench_distributed_transcrypt_batch,
     bench_verifiable_commitment_generation,
-    bench_verifiable_commitment_verification,
     bench_verifiable_pseudonymization,
     bench_verifiable_rekey,
     bench_verifiable_pseudonymization_verify

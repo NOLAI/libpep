@@ -2,7 +2,7 @@
 
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::commitments::{
-    PyProvedPseudonymizationCommitments, PyProvedRekeyCommitments,
+    PyVerifiablePseudonymizationCommitments, PyVerifiableRekeyCommitments,
 };
 use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::verifier::Verifier;
@@ -10,7 +10,7 @@ use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 
 #[cfg(feature = "verifiable")]
-use crate::core::py::proved::{PyRSKFactorsProof, PyVerifiableRSK, PyVerifiableRekey};
+use crate::core::py::verifiable::{PyVerifiableRSK, PyVerifiableRekey};
 
 /// A verifier for verifiable transcryption operations (Python).
 #[derive(From, Into, Deref)]
@@ -25,21 +25,10 @@ impl PyVerifier {
         Self(Verifier::new())
     }
 
-    /// Verify pseudonymization commitments.
-    fn verify_pseudonymization_commitments(
-        &self,
-        commitments: &PyProvedPseudonymizationCommitments,
-    ) -> bool {
-        self.0
-            .verify_pseudonymization_commitments(&commitments.inner)
-    }
-
-    /// Verify rekey commitments.
-    fn verify_rekey_commitments(&self, commitments: &PyProvedRekeyCommitments) -> bool {
-        self.0.verify_rekey_commitments(&commitments.inner)
-    }
-
-    /// Register pseudonymization commitments for caching.
+    /// Register pseudonymization commitments (combined per transition) for
+    /// caching. With the forward-only construction there is no separate
+    /// proof-of-well-formedness to verify; the per-message proofs bind the
+    /// operation directly to these commitments.
     fn register_pseudonymization_commitments(
         &mut self,
         transcryptor_id: &str,
@@ -47,7 +36,7 @@ impl PyVerifier {
         domain_to: &PyPseudonymizationDomain,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
-        commitments: &PyProvedPseudonymizationCommitments,
+        commitments: &PyVerifiablePseudonymizationCommitments,
     ) {
         self.0.register_pseudonymization_commitments(
             &transcryptor_id.to_string(),
@@ -65,7 +54,7 @@ impl PyVerifier {
         transcryptor_id: &str,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
-        commitments: &PyProvedRekeyCommitments,
+        commitments: &PyVerifiableRekeyCommitments,
     ) {
         self.0.register_attribute_rekey_commitments(
             &transcryptor_id.to_string(),
@@ -75,33 +64,60 @@ impl PyVerifier {
         );
     }
 
-    /// Check if reshuffle commitments exist in cache.
-    fn has_reshuffle_commitments(
-        &self,
+    /// Register pseudonym rekey commitments for caching.
+    fn register_pseudonym_rekey_commitments(
+        &mut self,
         transcryptor_id: &str,
-        domain: &PyPseudonymizationDomain,
-    ) -> bool {
-        self.0.has_reshuffle_commitments(transcryptor_id, &domain.0)
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+        commitments: &PyVerifiableRekeyCommitments,
+    ) {
+        self.0.register_pseudonym_rekey_commitments(
+            &transcryptor_id.to_string(),
+            &context_from.0,
+            &context_to.0,
+            commitments.inner,
+        );
     }
 
-    /// Check if pseudonym rekey commitments exist in cache.
+    /// Check if pseudonymization commitments exist for a transition.
+    fn has_pseudonymization_commitments(
+        &self,
+        transcryptor_id: &str,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+    ) -> bool {
+        self.0.has_pseudonymization_commitments(
+            transcryptor_id,
+            &domain_from.0,
+            &domain_to.0,
+            &context_from.0,
+            &context_to.0,
+        )
+    }
+
+    /// Check if pseudonym rekey commitments exist for a transition.
     fn has_pseudonym_rekey_commitments(
         &self,
         transcryptor_id: &str,
-        context: &PyEncryptionContext,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
     ) -> bool {
         self.0
-            .has_pseudonym_rekey_commitments(transcryptor_id, &context.0)
+            .has_pseudonym_rekey_commitments(transcryptor_id, &context_from.0, &context_to.0)
     }
 
-    /// Check if attribute rekey commitments exist in cache.
+    /// Check if attribute rekey commitments exist for a transition.
     fn has_attribute_rekey_commitments(
         &self,
         transcryptor_id: &str,
-        context: &PyEncryptionContext,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
     ) -> bool {
         self.0
-            .has_attribute_rekey_commitments(transcryptor_id, &context.0)
+            .has_attribute_rekey_commitments(transcryptor_id, &context_from.0, &context_to.0)
     }
 
     /// Clear all cached commitments.
@@ -114,46 +130,68 @@ impl PyVerifier {
         self.0.cache().total_count()
     }
 
-    /// Verify a pseudonymization operation with commitments.
-    #[cfg(feature = "verifiable")]
+    /// Verify a pseudonymization operation against the combined commitments.
+    #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
         result: &PyEncryptedPseudonym,
         operation_proof: &PyVerifiableRSK,
-        factors_proof: &PyRSKFactorsProof,
-        commitments: &PyProvedPseudonymizationCommitments,
+        commitments: &PyVerifiablePseudonymizationCommitments,
     ) -> bool {
         self.0.verify_pseudonymization(
             &original.0,
             &result.0,
             &operation_proof.inner,
-            &factors_proof.inner,
             &commitments.inner,
         )
     }
 
-    /// Verify a pseudonym rekey operation with commitments.
+    /// Verify a pseudonymization operation against the combined commitments.
+    /// In non-elgamal3 builds the recipient public key the original ciphertext
+    /// was encrypted under must be supplied so that the inner rerandomize step
+    /// can be verified.
+    #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]
+    fn verify_pseudonymization(
+        &self,
+        original: &PyEncryptedPseudonym,
+        result: &PyEncryptedPseudonym,
+        operation_proof: &PyVerifiableRSK,
+        public_key: &crate::keys::py::PyPseudonymSessionPublicKey,
+        commitments: &PyVerifiablePseudonymizationCommitments,
+    ) -> bool {
+        use crate::keys::PublicKey;
+        let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+        self.0.verify_pseudonymization(
+            &original.0,
+            &result.0,
+            &operation_proof.inner,
+            pk.value(),
+            &commitments.inner,
+        )
+    }
+
+    /// Verify a pseudonym rekey operation against the rekey commitment.
     #[cfg(feature = "verifiable")]
     fn verify_pseudonym_rekey(
         &self,
         original: &PyEncryptedPseudonym,
         result: &PyEncryptedPseudonym,
         proof: &PyVerifiableRekey,
-        commitments: &PyProvedRekeyCommitments,
+        commitments: &PyVerifiableRekeyCommitments,
     ) -> bool {
         self.0
             .verify_pseudonym_rekey(&original.0, &result.0, &proof.inner, &commitments.inner)
     }
 
-    /// Verify an attribute rekey operation with commitments.
+    /// Verify an attribute rekey operation against the rekey commitment.
     #[cfg(feature = "verifiable")]
     fn verify_attribute_rekey(
         &self,
         original: &PyEncryptedAttribute,
         result: &PyEncryptedAttribute,
         proof: &PyVerifiableRekey,
-        commitments: &PyProvedRekeyCommitments,
+        commitments: &PyVerifiableRekeyCommitments,
     ) -> bool {
         self.0
             .verify_attribute_rekey(&original.0, &result.0, &proof.inner, &commitments.inner)
@@ -166,6 +204,7 @@ impl Default for PyVerifier {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn register_verifier_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     parent_module.add_class::<PyVerifier>()?;
     Ok(())

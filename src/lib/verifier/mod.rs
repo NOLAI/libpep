@@ -1,14 +1,8 @@
 //! Verifier for verifiable transcryption operations.
 //!
-//! The verifier enforces integrity by ensuring transcryptors use consistent factors
-//! for each user (domain) and session (context).
-//!
-//! # Cache Organization
-//!
-//! - **Reshuffle commitments**: Per pseudonymization domain (user-specific)
-//! - **Rekey commitments**: Per encryption context (session-specific)
-//!
-//! Each cache stores both `val` and `inv` for the factor commitments.
+//! With the forward-only constructions, commitments are stored per
+//! *transition* (`(d_from, d_to, c_from, c_to)` for pseudonymization,
+//! `(c_from, c_to)` for rekeying) and already encode the combined factor.
 
 pub mod cache;
 #[allow(clippy::module_inception)]
@@ -22,7 +16,7 @@ pub mod py;
 
 pub use cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache, InMemoryCommitmentsCache,
-    PseudonymRekeyCommitmentsCache, ReshuffleCommitmentsCache,
+    PseudonymRekeyCommitmentsCache, PseudonymizationCommitmentsCache,
 };
 pub use verifier::Verifier;
 

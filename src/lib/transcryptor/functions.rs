@@ -8,24 +8,32 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Polymorphic pseudonymize function for encrypted pseudonyms.
 ///
-/// # Examples
-/// ```rust,ignore
-/// let pseudonymized = pseudonymize(&encrypted_pseudonym, &pseudonymization_info);
-/// ```
-pub fn pseudonymize<E>(encrypted: &E, info: &PseudonymizationInfo) -> E
+/// Internally uses RRSK with a freshly sampled rerandomize factor, so the
+/// same pseudonym pseudonymized twice produces two unlinkable ciphertexts.
+#[cfg(feature = "elgamal3")]
+pub fn pseudonymize<R, E>(encrypted: &E, info: &PseudonymizationInfo, rng: &mut R) -> E
 where
     E: Pseudonymizable,
+    R: RngCore + CryptoRng,
 {
-    encrypted.pseudonymize(info)
+    encrypted.pseudonymize(info, rng)
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn pseudonymize<R, E>(
+    encrypted: &E,
+    info: &PseudonymizationInfo,
+    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> E
+where
+    E: Pseudonymizable,
+    R: RngCore + CryptoRng,
+{
+    encrypted.pseudonymize(info, public_key, rng)
 }
 
 /// Polymorphic rekey function for any encrypted type.
-///
-/// # Examples
-/// ```rust,ignore
-/// let rekeyed_pseudonym = rekey(&encrypted_pseudonym, &pseudonym_rekey_info);
-/// let rekeyed_attribute = rekey(&encrypted_attribute, &attribute_rekey_info);
-/// ```
 pub fn rekey<E>(encrypted: &E, info: &E::RekeyInfo) -> E
 where
     E: Rekeyable,
@@ -35,17 +43,29 @@ where
 
 /// Polymorphic transcrypt function for any encrypted type.
 ///
-/// # Examples
-/// ```rust,ignore
-/// let transcrypted_pseudonym = transcrypt(&encrypted_pseudonym, &transcryption_info);
-/// let transcrypted_attribute = transcrypt(&encrypted_attribute, &transcryption_info);
-/// let transcrypted_json = transcrypt(&encrypted_json_value, &transcryption_info);
-/// ```
-pub fn transcrypt<E>(encrypted: &E, info: &TranscryptionInfo) -> E
+/// Pseudonyms inside the encrypted value are rerandomized + reshuffled +
+/// rekeyed with a freshly sampled `r` per pseudonym; attributes are rekeyed.
+#[cfg(feature = "elgamal3")]
+pub fn transcrypt<R, E>(encrypted: &E, info: &TranscryptionInfo, rng: &mut R) -> E
 where
     E: Transcryptable,
+    R: RngCore + CryptoRng,
 {
-    encrypted.transcrypt(info)
+    encrypted.transcrypt(info, rng)
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn transcrypt<R, E>(
+    encrypted: &E,
+    info: &TranscryptionInfo,
+    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> E
+where
+    E: Transcryptable,
+    R: RngCore + CryptoRng,
+{
+    encrypted.transcrypt(info, public_key, rng)
 }
 
 /// Rerandomize an encrypted message, creating a binary unlinkable copy of the same message.

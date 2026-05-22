@@ -1,6 +1,6 @@
 //! Python bindings for verifiable proofs.
 
-use crate::core::proved::{RSKFactorsProof, VerifiableRSK, VerifiableRekey, VerifiableReshuffle};
+use crate::core::verifiable::{VerifiableRRSK, VerifiableRekey, VerifiableReshuffle};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -56,11 +56,13 @@ impl PyVerifiableRekey {
     }
 }
 
-/// A verifiable proof for RSK (reshuffle-shift-rekey) operations.
+/// A verifiable proof for RRSK (rerandomize + reshuffle + rekey) operations.
+/// Used for verifiable pseudonymization, which always rerandomizes alongside
+/// the reshuffle/rekey to keep ciphertexts unlinkable.
 #[pyclass(name = "VerifiableRSK")]
 #[derive(Clone)]
 pub struct PyVerifiableRSK {
-    pub(crate) inner: VerifiableRSK,
+    pub(crate) inner: VerifiableRRSK,
 }
 
 #[pymethods]
@@ -82,37 +84,10 @@ impl PyVerifiableRSK {
     }
 }
 
-/// A proof for RSK factors.
-#[pyclass(name = "RSKFactorsProof")]
-#[derive(Clone)]
-pub struct PyRSKFactorsProof {
-    pub(crate) inner: RSKFactorsProof,
-}
-
-#[pymethods]
-impl PyRSKFactorsProof {
-    /// Serialize to JSON string.
-    #[cfg(feature = "serde")]
-    fn to_json(&self) -> PyResult<String> {
-        serde_json::to_string(&self.inner)
-            .map_err(|e| PyValueError::new_err(format!("Failed to serialize: {}", e)))
-    }
-
-    /// Deserialize from JSON string.
-    #[cfg(feature = "serde")]
-    #[staticmethod]
-    fn from_json(json: &str) -> PyResult<Self> {
-        serde_json::from_str(json)
-            .map(|inner| Self { inner })
-            .map_err(|e| PyValueError::new_err(format!("Failed to deserialize: {}", e)))
-    }
-}
-
-/// Register the proved module.
+/// Register the verifiable module.
 pub fn register_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     parent_module.add_class::<PyVerifiableReshuffle>()?;
     parent_module.add_class::<PyVerifiableRekey>()?;
     parent_module.add_class::<PyVerifiableRSK>()?;
-    parent_module.add_class::<PyRSKFactorsProof>()?;
     Ok(())
 }

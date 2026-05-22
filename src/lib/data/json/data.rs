@@ -473,25 +473,61 @@ impl Encrypted for EncryptedPEPJSONValue {
 // Transcryption trait implementation for JSON
 
 impl Transcryptable for EncryptedPEPJSONValue {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: rand_core::RngCore + rand_core::CryptoRng,
+    {
         match self {
             EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => EncryptedPEPJSONValue::Bool(enc.transcrypt(info)),
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.transcrypt(info, rng))
+            }
             EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Number(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.transcrypt(info))
+                EncryptedPEPJSONValue::String(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
-                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::Array(arr) => {
-                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info)).collect())
+                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info, rng)).collect())
             }
             EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
                 obj.iter()
-                    .map(|(k, v)| (k.clone(), v.transcrypt(info)))
+                    .map(|(k, v)| (k.clone(), v.transcrypt(info, rng)))
+                    .collect(),
+            ),
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
+    where
+        R: rand_core::RngCore + rand_core::CryptoRng,
+    {
+        match self {
+            EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::Number(enc) => {
+                EncryptedPEPJSONValue::Number(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::String(enc) => {
+                EncryptedPEPJSONValue::String(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::Pseudonym(enc) => {
+                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info, &keys.pseudonym.public, rng))
+            }
+            EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+                arr.iter().map(|x| x.transcrypt(info, keys, rng)).collect(),
+            ),
+            EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.transcrypt(info, keys, rng)))
                     .collect(),
             ),
         }
@@ -521,12 +557,11 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum JSONTranscryptionProof {
     Null,
-    Bool(crate::core::proved::VerifiableRekey),
-    Number(crate::core::proved::VerifiableRekey),
-    String(Vec<crate::core::proved::VerifiableRekey>),
+    Bool(crate::core::verifiable::VerifiableRekey),
+    Number(crate::core::verifiable::VerifiableRekey),
+    String(Vec<crate::core::verifiable::VerifiableRekey>),
     Pseudonym {
-        operation_proofs: Vec<crate::core::proved::VerifiableRSK>,
-        factors_proof: crate::core::proved::RSKFactorsProof,
+        operation_proofs: Vec<crate::core::verifiable::VerifiableRRSK>,
     },
     Array(Vec<Box<JSONTranscryptionProof>>),
     Object(HashMap<String, Box<JSONTranscryptionProof>>),
@@ -536,11 +571,15 @@ pub enum JSONTranscryptionProof {
 impl crate::data::traits::VerifiableTranscryptable for EncryptedPEPJSONValue {
     type TranscryptionProof = JSONTranscryptionProof;
 
-    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+    #[cfg(feature = "elgamal3")]
+    fn verifiable_transcrypt<R>(
         &self,
         info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Self::TranscryptionProof {
+    ) -> Self::TranscryptionProof
+    where
+        R: RngCore + CryptoRng,
+    {
         use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 
         match self {
@@ -559,15 +598,7 @@ impl crate::data::traits::VerifiableTranscryptable for EncryptedPEPJSONValue {
             }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
                 let operation_proofs = enc.verifiable_pseudonymize(&info.pseudonym, rng);
-                let factors_proof = crate::core::proved::RSKFactorsProof::new(
-                    &info.pseudonym.s.0,
-                    &info.pseudonym.k.0,
-                    rng,
-                );
-                JSONTranscryptionProof::Pseudonym {
-                    operation_proofs,
-                    factors_proof,
-                }
+                JSONTranscryptionProof::Pseudonym { operation_proofs }
             }
             EncryptedPEPJSONValue::Array(arr) => {
                 let proofs = arr
@@ -580,6 +611,59 @@ impl crate::data::traits::VerifiableTranscryptable for EncryptedPEPJSONValue {
                 let proofs = obj
                     .iter()
                     .map(|(k, v)| (k.clone(), Box::new(v.verifiable_transcrypt(info, rng))))
+                    .collect();
+                JSONTranscryptionProof::Object(proofs)
+            }
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        keys: &SessionKeys,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof
+    where
+        R: RngCore + CryptoRng,
+    {
+        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+
+        match self {
+            EncryptedPEPJSONValue::Null => JSONTranscryptionProof::Null,
+            EncryptedPEPJSONValue::Bool(enc) => {
+                let proof = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::Bool(proof)
+            }
+            EncryptedPEPJSONValue::Number(enc) => {
+                let proof = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::Number(proof)
+            }
+            EncryptedPEPJSONValue::String(enc) => {
+                let proofs = enc.verifiable_rekey(&info.attribute, rng);
+                JSONTranscryptionProof::String(proofs)
+            }
+            EncryptedPEPJSONValue::Pseudonym(enc) => {
+                let operation_proofs =
+                    enc.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym.public, rng);
+                JSONTranscryptionProof::Pseudonym { operation_proofs }
+            }
+            EncryptedPEPJSONValue::Array(arr) => {
+                let proofs = arr
+                    .iter()
+                    .map(|x| Box::new(x.verifiable_transcrypt(info, keys, rng)))
+                    .collect();
+                JSONTranscryptionProof::Array(proofs)
+            }
+            EncryptedPEPJSONValue::Object(obj) => {
+                let proofs = obj
+                    .iter()
+                    .map(|(k, v)| {
+                        (
+                            k.clone(),
+                            Box::new(v.verifiable_transcrypt(info, keys, rng)),
+                        )
+                    })
                     .collect();
                 JSONTranscryptionProof::Object(proofs)
             }

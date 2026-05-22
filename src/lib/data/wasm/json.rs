@@ -7,7 +7,6 @@ use crate::data::json::builder::PEPJSONBuilder;
 use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
 use crate::data::json::utils;
-use crate::data::traits::Transcryptable;
 use crate::factors::wasm::contexts::{
     WASMEncryptionContext, WASMPseudonymizationDomain, WASMTranscryptionInfo,
 };
@@ -100,6 +99,7 @@ impl WASMEncryptedPEPJSONValue {
     /// # Returns
     ///
     /// A transcrypted EncryptedPEPJSONValue
+    #[cfg(feature = "elgamal3")]
     #[wasm_bindgen]
     pub fn transcrypt(
         &self,
@@ -110,6 +110,8 @@ impl WASMEncryptedPEPJSONValue {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+        use crate::data::traits::Transcryptable;
+        let mut rng = rand::rng();
         let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
@@ -119,7 +121,37 @@ impl WASMEncryptedPEPJSONValue {
             &encryption_secret.0,
         );
 
-        let transcrypted = self.0.transcrypt(&transcryption_info);
+        let transcrypted = self.0.transcrypt(&transcryption_info, &mut rng);
+        Ok(WASMEncryptedPEPJSONValue(transcrypted))
+    }
+
+    /// In non-elgamal3 mode this requires the recipient SessionKeys.
+    #[cfg(not(feature = "elgamal3"))]
+    #[wasm_bindgen]
+    #[allow(clippy::too_many_arguments)]
+    pub fn transcrypt(
+        &self,
+        from_domain: &WASMPseudonymizationDomain,
+        to_domain: &WASMPseudonymizationDomain,
+        from_session: &WASMEncryptionContext,
+        to_session: &WASMEncryptionContext,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
+        session_keys: &crate::keys::wasm::types::WASMSessionKeys,
+    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+        use crate::data::traits::Transcryptable;
+        let mut rng = rand::rng();
+        let transcryption_info = TranscryptionInfo::new(
+            &from_domain.0,
+            &to_domain.0,
+            &from_session.0,
+            &to_session.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        );
+
+        let keys: crate::keys::SessionKeys = (*session_keys).into();
+        let transcrypted = self.0.transcrypt(&transcryption_info, &keys, &mut rng);
         Ok(WASMEncryptedPEPJSONValue(transcrypted))
     }
 
@@ -326,6 +358,7 @@ pub fn wasm_decrypt_json(
 /// # Errors
 ///
 /// Returns an error if the values don't all have the same structure
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptJsonBatch)]
 pub fn wasm_transcrypt_json_batch(
     values: Vec<WASMEncryptedPEPJSONValue>,
@@ -334,6 +367,26 @@ pub fn wasm_transcrypt_json_batch(
     let mut rng = rand::rng();
     let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &mut rng)
+        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(transcrypted
+        .into_vec()
+        .into_iter()
+        .map(WASMEncryptedPEPJSONValue)
+        .collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptJsonBatch)]
+pub fn wasm_transcrypt_json_batch(
+    values: Vec<WASMEncryptedPEPJSONValue>,
+    transcryption_info: &WASMTranscryptionInfo,
+    session_keys: &crate::keys::wasm::types::WASMSessionKeys,
+) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
+    let mut rng = rand::rng();
+    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let keys: crate::keys::SessionKeys = (*session_keys).into();
+    let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &keys, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(transcrypted

@@ -1,7 +1,7 @@
 [package]
 name = "libpep"
 edition = "2021"
-version = "0.9.0"
+version = "0.13.0"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 homepage = "https://github.com/NOLAI/libpep"
 repository = "https://github.com/NOLAI/libpep"
@@ -16,6 +16,7 @@ readme = "README.md"
 default = ["build-binary", "long", "offline", "batch", "serde", "json", "verifiable"]
 serde = ["dep:serde", "dep:serde_json"] # For (de)serialization support via Serde
 verifiable = [] # Enable verifiable operations with zero-knowledge proofs
+verifiable-derivation = ["verifiable"] # Enable Carter-Wegman verifiable factor derivation (O(1) storage vs O(n))
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
@@ -86,6 +87,10 @@ harness = false
 
 [[bench]]
 name = "energy_distributed"
+harness = false
+
+[[bench]]
+name = "verifiable"
 harness = false
 
 [package.metadata.deb]

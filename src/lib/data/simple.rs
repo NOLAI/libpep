@@ -459,9 +459,36 @@ impl ElGamalEncrypted for EncryptedAttribute {
 // Transcryption trait implementations
 
 impl Pseudonymizable for EncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rsk(
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        let r = ScalarNonZero::random(rng);
+        EncryptedPseudonym::from_value(crate::core::primitives::rrsk(
             self.value(),
+            &r,
+            &info.s.0,
+            &info.k.0,
+        ))
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        use crate::keys::PublicKey as _;
+        let r = ScalarNonZero::random(rng);
+        EncryptedPseudonym::from_value(crate::core::primitives::rrsk(
+            self.value(),
+            public_key.value(),
+            &r,
             &info.s.0,
             &info.k.0,
         ))
@@ -485,13 +512,48 @@ impl Rekeyable for EncryptedAttribute {
 }
 
 impl Transcryptable for EncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, public_key, rng)
     }
 }
 
 impl Transcryptable for EncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    // Attributes have no rerandomize step in `transcrypt` — rekey alone.
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, _rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.rekey(&info.attribute)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        _public_key: &AttributeSessionPublicKey,
+        _rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
         self.rekey(&info.attribute)
     }
 }
@@ -499,40 +561,74 @@ impl Transcryptable for EncryptedAttribute {
 // Verifiable operations - trait implementations
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiablePseudonymizable for EncryptedPseudonym {
-    type PseudonymizationProof = crate::core::proved::VerifiableRSK;
+    type PseudonymizationProof = crate::core::verifiable::VerifiableRRSK;
 
-    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+    #[cfg(feature = "elgamal3")]
+    fn verifiable_pseudonymize<R>(
         &self,
         info: &crate::factors::PseudonymizationInfo,
         rng: &mut R,
-    ) -> Self::PseudonymizationProof {
-        crate::core::proved::VerifiableRSK::new(self.value(), &info.s.0, &info.k.0, rng)
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng,
+    {
+        let r = ScalarNonZero::random(rng);
+        crate::core::verifiable::VerifiableRRSK::new(
+            self.value(),
+            &self.value().gy,
+            &r,
+            &info.s.0,
+            &info.k.0,
+            rng,
+        )
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_pseudonymize<R>(
+        &self,
+        info: &crate::factors::PseudonymizationInfo,
+        public_key: &PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng,
+    {
+        use crate::keys::PublicKey as _;
+        let r = ScalarNonZero::random(rng);
+        crate::core::verifiable::VerifiableRRSK::new(
+            self.value(),
+            public_key.value(),
+            &r,
+            &info.s.0,
+            &info.k.0,
+            rng,
+        )
     }
 }
 
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiableRekeyable for EncryptedPseudonym {
-    type RekeyProof = crate::core::proved::VerifiableRekey;
+    type RekeyProof = crate::core::verifiable::VerifiableRekey;
 
     fn verifiable_rekey<R: RngCore + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
     ) -> Self::RekeyProof {
-        crate::core::proved::VerifiableRekey::new(self.value(), &info.0, rng)
+        crate::core::verifiable::VerifiableRekey::new(self.value(), &info.0, rng)
     }
 }
 
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiableRekeyable for EncryptedAttribute {
-    type RekeyProof = crate::core::proved::VerifiableRekey;
+    type RekeyProof = crate::core::verifiable::VerifiableRekey;
 
     fn verifiable_rekey<R: RngCore + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
     ) -> Self::RekeyProof {
-        crate::core::proved::VerifiableRekey::new(self.value(), &info.0, rng)
+        crate::core::verifiable::VerifiableRekey::new(self.value(), &info.0, rng)
     }
 }
 

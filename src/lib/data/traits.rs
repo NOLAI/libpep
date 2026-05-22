@@ -114,16 +114,39 @@ pub trait Encrypted: Sized {
 
 // Transcryption traits
 
-/// A trait for encrypted pseudonyms that can be pseudonymized (reshuffled + rekeyed).
+/// A trait for encrypted pseudonyms that can be pseudonymized (rerandomized,
+/// reshuffled, and rekeyed via [`rrsk`](crate::core::primitives::rrsk)).
 ///
-/// Pseudonymization applies both a reshuffle operation (to change the pseudonymization domain)
-/// and a rekey operation (to change the encryption context).
+/// Pseudonymization rerandomizes the ciphertext with a fresh randomiser `r`
+/// (so the same pseudonym pseudonymized twice produces two unlinkable
+/// ciphertexts), changes the pseudonymization domain via the reshuffle
+/// factor, and rekeys to the destination encryption context.
 ///
-/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and [`LongEncryptedPseudonym`](super::long::LongEncryptedPseudonym),
-/// as attributes cannot be reshuffled (they have no pseudonymization domain).
+/// This trait is only implemented by
+/// [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and
+/// [`LongEncryptedPseudonym`](super::long::LongEncryptedPseudonym), as
+/// attributes cannot be reshuffled (they have no pseudonymization domain).
 pub trait Pseudonymizable: Encrypted {
-    /// Pseudonymize this encrypted pseudonym from one domain and context to another.
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self;
+    /// Pseudonymize from one domain and context to another, with a freshly
+    /// sampled rerandomize factor.
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng;
+
+    /// Pseudonymize from one domain and context to another, with a freshly
+    /// sampled rerandomize factor. `public_key` is the recipient public key
+    /// the ciphertext was encrypted under (needed for the rerandomize step
+    /// when the ciphertext does not carry it).
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng;
 }
 
 /// A trait for encrypted types that can be rekeyed (encryption context change).
@@ -142,12 +165,29 @@ pub trait Rekeyable: Encrypted {
 /// A trait for encrypted types that can be transcrypted.
 ///
 /// Transcryption combines domain change and encryption context change:
-/// - For pseudonyms: applies both pseudonymization (reshuffle + rekey)
-/// - For attributes: applies only rekeying (no reshuffle possible)
-/// - For JSON values: recursively transcrypts all nested values
+/// - For pseudonyms: rerandomize + reshuffle + rekey ([`rrsk`](crate::core::primitives::rrsk))
+/// - For attributes: rekey only (no rerandomize, no reshuffle)
+/// - For JSON values / records: recursively transcrypts all nested values
 pub trait Transcryptable: Encrypted {
-    /// Transcrypt this encrypted value from one domain and context to another.
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self;
+    /// Transcrypt this encrypted value from one domain and context to another,
+    /// rerandomizing pseudonyms with a freshly sampled factor.
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng;
+
+    /// Transcrypt this encrypted value. `public_key` is the recipient public
+    /// key the ciphertext was encrypted under (needed for the rerandomize
+    /// step on pseudonyms when the ciphertext does not carry it).
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng;
 }
 
 /// A trait for encrypted types that have a structure that must be validated during batch operations.
@@ -167,29 +207,41 @@ pub trait HasStructure {
 
 /// A trait for encrypted pseudonyms that support verifiable pseudonymization.
 ///
-/// This trait extends [`Pseudonymizable`] to provide zero-knowledge proofs
-/// that pseudonymization operations were performed correctly.
-///
-/// The proof contains the result, which can be extracted via `.result()`.
+/// Like [`Pseudonymizable`], this rerandomizes + reshuffles + rekeys (RRSK)
+/// per ciphertext, producing a self-contained [`VerifiableRRSK`](crate::core::verifiable::VerifiableRRSK)
+/// proof. The forward-direction proof is verified against the combined
+/// `(S, K)` commitments published for the transition (plus the recipient
+/// public key `Y` it was encrypted under).
 #[cfg(feature = "verifiable")]
 pub trait VerifiablePseudonymizable: Pseudonymizable {
     /// The proof type for pseudonymization operations.
-    /// - Simple types use a single proof
-    /// - Long types use `Vec` of proofs
+    /// - Simple types use a single [`VerifiableRRSK`](crate::core::verifiable::VerifiableRRSK).
+    /// - Long types use `Vec<VerifiableRRSK>` (one per block).
     type PseudonymizationProof;
 
-    /// Pseudonymize with proof generation.
-    ///
-    /// Returns an operation proof which contains the result.
-    /// The result can be extracted from the operation proof via `.result()`.
-    ///
-    /// Note: The factors proof (RSKFactorsProof) is not message-specific and should
-    /// be generated once per pseudonymization info, not per message.
-    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+    /// Pseudonymize with proof generation, in elgamal3 mode (the recipient
+    /// public key `Y` is carried by the ciphertext).
+    #[cfg(feature = "elgamal3")]
+    fn verifiable_pseudonymize<R>(
         &self,
         info: &PseudonymizationInfo,
         rng: &mut R,
-    ) -> Self::PseudonymizationProof;
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng;
+
+    /// Pseudonymize with proof generation. `public_key` is the recipient
+    /// public key the ciphertext was encrypted under, used by the rerandomize
+    /// step and as the base for the `pi_y_r` proof inside `VerifiableRRSK`.
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng;
 }
 
 /// A trait for encrypted types that support verifiable rekeying.
@@ -218,35 +270,36 @@ pub trait VerifiableRekeyable: Rekeyable {
 
 /// A trait for encrypted types that support verifiable transcryption.
 ///
-/// This trait extends [`Transcryptable`] to provide zero-knowledge proofs
-/// that transcryption operations were performed correctly.
-///
-/// Transcryption combines:
-/// - For pseudonyms: verifiable pseudonymization (reshuffle + rekey with proofs)
-/// - For attributes: verifiable rekeying (rekey with proofs)
-/// - For composite types (JSON, Records): recursive verifiable transcryption
-///
-/// The proof structure varies by type:
-/// - Simple records: contains vectors of proofs for pseudonyms and attributes
-/// - Long records: contains vectors of vectors of proofs
-/// - JSON values: nested proof structure matching the JSON shape
+/// Combines verifiable pseudonymization (RRSK, with rerandomization) for
+/// pseudonyms and verifiable rekeying for attributes. Composite types
+/// (records, JSON) bundle the per-element proofs in a structure that
+/// matches the input.
 #[cfg(feature = "verifiable")]
 pub trait VerifiableTranscryptable: Transcryptable {
     /// The proof type for transcryption operations.
     /// Structure depends on the complexity of the data type.
     type TranscryptionProof;
 
-    /// Transcrypt with proof generation.
-    ///
-    /// Returns a proof bundle containing:
-    /// - Operation proofs for pseudonymization (RSK proofs)
-    /// - Factors proof for pseudonymization
-    /// - Operation proofs for rekeying attributes
-    ///
-    /// The result can be extracted from the proofs.
-    fn verifiable_transcrypt<R: RngCore + CryptoRng>(
+    /// Transcrypt with proof generation, in elgamal3 mode.
+    #[cfg(feature = "elgamal3")]
+    fn verifiable_transcrypt<R>(
         &self,
         info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Self::TranscryptionProof;
+    ) -> Self::TranscryptionProof
+    where
+        R: RngCore + CryptoRng;
+
+    /// Transcrypt with proof generation. `public_key` is the recipient
+    /// public key the ciphertext was encrypted under (needed by the
+    /// rerandomize step on pseudonyms).
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof
+    where
+        R: RngCore + CryptoRng;
 }

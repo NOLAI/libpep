@@ -3,7 +3,11 @@
 use libpep::client::{Client, Distributed};
 use libpep::data::simple::*;
 use libpep::factors::contexts::*;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::factors::RekeyFactor;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::PublicKey;
 use libpep::transcryptor::DistributedTranscryptor;
 
 #[test]
@@ -59,11 +63,31 @@ fn n_pep() {
     let enc_pseudo = client_a.encrypt(&pseudonym, rng);
     let enc_data = client_a.encrypt(&data, rng);
 
+    #[cfg(feature = "elgamal3")]
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let transcryption_info =
             system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
-        system.transcrypt(&acc, &transcryption_info)
+        system.transcrypt(&acc, &transcryption_info, rng)
     });
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted_pseudo = {
+        // For each system step, the rerandomize sub-step needs the recipient public key
+        // the ciphertext is currently encrypted under. After rekey by k_i the pk is k_i * pk.
+        let initial_pk = *client_a.dump().pseudonym.public.value();
+        let (transcrypted, _final_pk) =
+            systems
+                .iter()
+                .fold((enc_pseudo, initial_pk), |(acc, current_pk), system| {
+                    let transcryption_info =
+                        system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
+                    let k = transcryption_info.pseudonym.k.scalar();
+                    let pseudonym_pk = libpep::keys::PseudonymSessionPublicKey::from(current_pk);
+                    let next = system.transcrypt(&acc, &transcryption_info, &pseudonym_pk, rng);
+                    let next_pk = k * current_pk;
+                    (next, next_pk)
+                });
+        transcrypted
+    };
 
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
         let rekey_info = system.attribute_rekey_info(&session_a1, &session_b1);
@@ -91,11 +115,31 @@ fn n_pep() {
         assert_ne!(pseudonym, dec_pseudo);
     }
 
+    #[cfg(feature = "elgamal3")]
     let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
         let pseudo_info =
             system.pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1);
-        system.pseudonymize(&acc, &pseudo_info.reverse())
+        system.pseudonymize(&acc, &pseudo_info.reverse(), rng)
     });
+    #[cfg(not(feature = "elgamal3"))]
+    let rev_pseudonymized = {
+        // After the forward chain the pseudonym is now encrypted under client_b's pk.
+        let initial_pk = *client_b.dump().pseudonym.public.value();
+        let (rev, _final_pk) = systems.iter().fold(
+            (transcrypted_pseudo, initial_pk),
+            |(acc, current_pk), system| {
+                let pseudo_info =
+                    system.pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1);
+                let reversed = pseudo_info.reverse();
+                let k = reversed.k.scalar();
+                let pseudonym_pk = libpep::keys::PseudonymSessionPublicKey::from(current_pk);
+                let next = system.pseudonymize(&acc, &reversed, &pseudonym_pk, rng);
+                let next_pk = k * current_pk;
+                (next, next_pk)
+            },
+        );
+        rev
+    };
 
     #[cfg(feature = "elgamal3")]
     let rev_dec_pseudo = client_a

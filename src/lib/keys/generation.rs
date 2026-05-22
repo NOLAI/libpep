@@ -136,7 +136,7 @@ pub fn make_attribute_session_keys(
 // Verifiable session key generation with proofs
 
 #[cfg(feature = "verifiable")]
-use crate::core::proved::RekeyFactorCommitments;
+use crate::core::verifiable::RekeyFactorCommitment;
 #[cfg(feature = "verifiable")]
 use crate::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 
@@ -197,10 +197,10 @@ where
     let blinding_commitment = BlindingCommitment::new(blinding);
 
     // Create rekey factor commitment K_i = k_i * G
-    let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), rng);
+    let rekey_commitment = RekeyFactorCommitment::new(&k.scalar());
 
     // Create proof that u_i = b_i * k_i
-    let proof = SessionKeyShareProof::new(blinding, &k.scalar(), &rekey_commitment.val, rng);
+    let proof = SessionKeyShareProof::new(blinding, &k.scalar(), &rekey_commitment.0 .0, rng);
 
     (PK::from(pk), SK::from(sk), proof, blinding_commitment)
 }
@@ -273,7 +273,7 @@ mod tests {
     use super::*;
 
     #[cfg(feature = "verifiable")]
-    use crate::core::proved::RekeyFactorCommitments;
+    use crate::core::verifiable::RekeyFactorCommitment;
 
     #[test]
     fn make_global_keys_creates_valid_keypairs() {
@@ -385,10 +385,10 @@ mod tests {
 
         // Create rekey factor commitment for verification
         let k = make_pseudonym_rekey_factor(&secret, &context);
-        let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), &mut rng);
+        let rekey_commitment = RekeyFactorCommitment::new(&k.scalar());
 
         // Verify the proof
-        assert!(proof.verify(&blinding_commitment, &rekey_commitment.val));
+        assert!(proof.verify(&blinding_commitment, &rekey_commitment.0 .0));
 
         // Verify the commitment matches
         assert_eq!(*blinding_commitment.value(), blinding * G);
@@ -415,10 +415,10 @@ mod tests {
 
         // Create rekey factor commitment for verification
         let k = make_attribute_rekey_factor(&secret, &context);
-        let (rekey_commitment, _) = RekeyFactorCommitments::new(&k.scalar(), &mut rng);
+        let rekey_commitment = RekeyFactorCommitment::new(&k.scalar());
 
         // Verify the proof
-        assert!(proof.verify(&blinding_commitment, &rekey_commitment.val));
+        assert!(proof.verify(&blinding_commitment, &rekey_commitment.0 .0));
 
         // Verify the commitment matches
         assert_eq!(*blinding_commitment.value(), blinding * G);

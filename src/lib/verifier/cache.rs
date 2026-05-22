@@ -9,7 +9,8 @@
 //! for each factor after verification.
 
 use crate::factors::{
-    EncryptionContext, ProvedRekeyCommitments, ProvedReshuffleCommitments, PseudonymizationDomain,
+    EncryptionContext, PseudonymizationDomain, VerifiablePseudonymizationCommitment,
+    VerifiableRekeyCommitment,
 };
 use std::collections::HashMap;
 use std::hash::Hash;
@@ -140,17 +141,32 @@ where
 
 use crate::transcryptor::TranscryptorId;
 
-/// Type alias for reshuffle commitments cache (indexed by transcryptor ID and domain).
-pub type ReshuffleCommitmentsCache =
-    InMemoryCommitmentsCache<(TranscryptorId, PseudonymizationDomain), ProvedReshuffleCommitments>;
+/// Cache keyed by `(transcryptor, domain_from, domain_to, context_from, context_to)`
+/// storing the combined pseudonymization commitments for a transition.
+pub type PseudonymizationCommitmentsCache = InMemoryCommitmentsCache<
+    (
+        TranscryptorId,
+        PseudonymizationDomain,
+        PseudonymizationDomain,
+        EncryptionContext,
+        EncryptionContext,
+    ),
+    VerifiablePseudonymizationCommitment,
+>;
 
-/// Type alias for pseudonym rekey commitments cache (indexed by transcryptor ID and context).
-pub type PseudonymRekeyCommitmentsCache =
-    InMemoryCommitmentsCache<(TranscryptorId, EncryptionContext), ProvedRekeyCommitments>;
+/// Cache keyed by `(transcryptor, context_from, context_to)` storing the
+/// combined pseudonym-rekey commitment for a transition.
+pub type PseudonymRekeyCommitmentsCache = InMemoryCommitmentsCache<
+    (TranscryptorId, EncryptionContext, EncryptionContext),
+    VerifiableRekeyCommitment,
+>;
 
-/// Type alias for attribute rekey commitments cache (indexed by transcryptor ID and context).
-pub type AttributeRekeyCommitmentsCache =
-    InMemoryCommitmentsCache<(TranscryptorId, EncryptionContext), ProvedRekeyCommitments>;
+/// Cache keyed by `(transcryptor, context_from, context_to)` storing the
+/// combined attribute-rekey commitment for a transition.
+pub type AttributeRekeyCommitmentsCache = InMemoryCommitmentsCache<
+    (TranscryptorId, EncryptionContext, EncryptionContext),
+    VerifiableRekeyCommitment,
+>;
 
 #[cfg(test)]
 mod tests {

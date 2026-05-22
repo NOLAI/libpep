@@ -67,6 +67,7 @@ fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(), BatchError
 /// ```rust,ignore
 /// let pseudonymized = pseudonymize_batch(&mut encrypted_pseudonyms, &info, &mut rng)?;
 /// ```
+#[cfg(feature = "elgamal3")]
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
     info: &crate::factors::PseudonymizationInfo,
@@ -78,7 +79,29 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|x| x.pseudonymize(info)).collect())
+    Ok(encrypted
+        .iter()
+        .map(|x| x.pseudonymize(info, rng))
+        .collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn pseudonymize_batch<E, R>(
+    encrypted: &mut [E],
+    info: &crate::factors::PseudonymizationInfo,
+    public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> Result<Box<[E]>, BatchError>
+where
+    E: Pseudonymizable + HasStructure + Clone,
+    R: RngCore + CryptoRng,
+{
+    validate_structure(encrypted)?;
+    shuffle(encrypted, rng);
+    Ok(encrypted
+        .iter()
+        .map(|x| x.pseudonymize(info, public_key, rng))
+        .collect())
 }
 
 /// Polymorphic batch rekeying with structure validation and shuffling.
@@ -124,6 +147,7 @@ where
 /// ```rust,ignore
 /// let transcrypted = transcrypt_batch(&mut encrypted_records, &info, &mut rng)?;
 /// ```
+#[cfg(feature = "elgamal3")]
 pub fn transcrypt_batch<E, R>(
     encrypted: &mut [E],
     info: &TranscryptionInfo,
@@ -135,5 +159,24 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|x| x.transcrypt(info)).collect())
+    Ok(encrypted.iter().map(|x| x.transcrypt(info, rng)).collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn transcrypt_batch<E, R>(
+    encrypted: &mut [E],
+    info: &TranscryptionInfo,
+    public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> Result<Box<[E]>, BatchError>
+where
+    E: Transcryptable + HasStructure + Clone,
+    R: RngCore + CryptoRng,
+{
+    validate_structure(encrypted)?;
+    shuffle(encrypted, rng);
+    Ok(encrypted
+        .iter()
+        .map(|x| x.transcrypt(info, public_key, rng))
+        .collect())
 }

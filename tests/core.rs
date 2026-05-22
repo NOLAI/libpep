@@ -94,7 +94,15 @@ fn test_core_flow() {
 
     assert_eq!(data, rekeyed_dec);
 
-    let pseudonymized = transcrypt(&enc_pseudo, &transcryption_info);
+    #[cfg(feature = "elgamal3")]
+    let pseudonymized = transcrypt(&enc_pseudo, &transcryption_info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let pseudonymized = transcrypt(
+        &enc_pseudo,
+        &transcryption_info,
+        &pseudonym_session1_public,
+        rng,
+    );
     #[cfg(feature = "elgamal3")]
     let pseudonymized_dec =
         decrypt(&pseudonymized, &pseudonym_session2_secret).expect("decryption should succeed");
@@ -103,7 +111,20 @@ fn test_core_flow() {
 
     assert_ne!(pseudo, pseudonymized_dec);
 
-    let rev_pseudonymized = transcrypt(&pseudonymized, &transcryption_info.reverse());
+    #[cfg(feature = "elgamal3")]
+    let rev_pseudonymized = transcrypt(&pseudonymized, &transcryption_info.reverse(), rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let rev_pseudonymized = {
+        // After forward transcryption the pseudonym is now encrypted under session2's public key.
+        let (pseudonym_session2_public, _) =
+            make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
+        transcrypt(
+            &pseudonymized,
+            &transcryption_info.reverse(),
+            &pseudonym_session2_public,
+            rng,
+        )
+    };
     #[cfg(feature = "elgamal3")]
     let rev_pseudonymized_dec =
         decrypt(&rev_pseudonymized, &pseudonym_session1_secret).expect("decryption should succeed");
@@ -161,7 +182,15 @@ fn test_batch() {
     let attribute_rekey_info = transcryption_info.attribute;
 
     let _rekeyed = rekey_batch(&mut attributes, &attribute_rekey_info, rng);
+    #[cfg(feature = "elgamal3")]
     let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info.pseudonym, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let _pseudonymized = pseudonymize_batch(
+        &mut pseudonyms,
+        &transcryption_info.pseudonym,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     let mut data: Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)> = vec![];
     for _ in 0..10 {
@@ -199,11 +228,13 @@ fn test_batch_long() {
     let domain2 = PseudonymizationDomain::from("domain2");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, _pseudonym_session1_secret) =
+    #[cfg_attr(feature = "elgamal3", allow(unused_variables))]
+    let (pseudonym_session1_public, pseudonym_session1_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
     let (_pseudonym_session2_public, pseudonym_session2_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
-    let (attribute_session1_public, _attribute_session1_secret) =
+    #[cfg_attr(feature = "elgamal3", allow(unused_variables))]
+    let (attribute_session1_public, attribute_session1_secret) =
         make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
     let (_attribute_session2_public, attribute_session2_secret) =
         make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
@@ -270,9 +301,18 @@ fn test_batch_long() {
     }
 
     // Test batch pseudonymization of long pseudonyms
+    #[cfg(feature = "elgamal3")]
     let pseudonymized = pseudonymize_batch(
         &mut long_pseudonyms.clone(),
         &transcryption_info.pseudonym,
+        rng,
+    )
+    .unwrap();
+    #[cfg(not(feature = "elgamal3"))]
+    let pseudonymized = pseudonymize_batch(
+        &mut long_pseudonyms.clone(),
+        &transcryption_info.pseudonym,
+        &pseudonym_session1_public,
         rng,
     )
     .unwrap();
@@ -310,7 +350,22 @@ fn test_batch_long() {
         .collect();
 
     let mut data_slice: Vec<_> = data.into_iter().collect();
+    #[cfg(feature = "elgamal3")]
     let transcrypted = transcrypt_batch(&mut data_slice, &transcryption_info, rng)
+        .expect("Batch transcryption should succeed");
+    #[cfg(not(feature = "elgamal3"))]
+    let session_keys_1 = SessionKeys {
+        pseudonym: PseudonymSessionKeys {
+            public: pseudonym_session1_public,
+            secret: pseudonym_session1_secret,
+        },
+        attribute: AttributeSessionKeys {
+            public: attribute_session1_public,
+            secret: attribute_session1_secret,
+        },
+    };
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted = transcrypt_batch(&mut data_slice, &transcryption_info, &session_keys_1, rng)
         .expect("Batch transcryption should succeed");
     assert_eq!(transcrypted.len(), 3);
 
@@ -358,7 +413,10 @@ fn test_pseudonymize_changes_encryption_context() {
         &pseudo_secret,
         &enc_secret,
     );
-    let pseudonymized = pseudonymize(&encrypted, &info);
+    #[cfg(feature = "elgamal3")]
+    let pseudonymized = pseudonymize(&encrypted, &info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let pseudonymized = pseudonymize(&encrypted, &info, &from_session.pseudonym.public, &mut rng);
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&pseudonymized, &to_session.pseudonym.secret).expect("decrypt failed");
@@ -440,7 +498,10 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
         &pseudo_secret,
         &enc_secret,
     );
-    let transcrypted = transcrypt(&encrypted, &info);
+    #[cfg(feature = "elgamal3")]
+    let transcrypted = transcrypt(&encrypted, &info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted = transcrypt(&encrypted, &info, &from_session.pseudonym.public, &mut rng);
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&transcrypted, &to_session.pseudonym.secret).expect("decrypt failed");
@@ -474,7 +535,10 @@ fn test_transcrypt_attribute_rekeys_only() {
         &pseudo_secret,
         &enc_secret,
     );
-    let transcrypted = transcrypt(&encrypted, &info);
+    #[cfg(feature = "elgamal3")]
+    let transcrypted = transcrypt(&encrypted, &info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted = transcrypt(&encrypted, &info, &from_session.attribute.public, &mut rng);
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&transcrypted, &to_session.attribute.secret).expect("decrypt failed");

@@ -1,6 +1,7 @@
 //! WASM bindings for batch transcryption operations.
 
 use crate::data::records::EncryptedRecord;
+#[cfg(feature = "long")]
 use crate::data::records::LongEncryptedRecord;
 #[cfg(feature = "json")]
 use crate::data::wasm::json::WASMEncryptedPEPJSONValue;
@@ -14,10 +15,15 @@ use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::wasm::types::{
+    WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionKeys,
+};
 use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use wasm_bindgen::prelude::*;
 
 /// Batch pseudonymize encrypted pseudonyms.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = pseudonymizeBatch)]
 pub fn wasm_pseudonymize_batch(
     encrypted: Vec<WASMEncryptedPseudonym>,
@@ -30,8 +36,28 @@ pub fn wasm_pseudonymize_batch(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = pseudonymizeBatch)]
+pub fn wasm_pseudonymize_batch(
+    encrypted: Vec<WASMEncryptedPseudonym>,
+    info: &WASMPseudonymizationInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> Result<Vec<WASMEncryptedPseudonym>, String> {
+    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
+    let mut rng = rand::rng();
+    let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+    pseudonymize_batch(
+        &mut rust_enc,
+        &PseudonymizationInfo::from(info.0),
+        &pk,
+        &mut rng,
+    )
+    .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
+    .map_err(|e| e.to_string())
+}
+
 /// Batch pseudonymize encrypted long pseudonyms.
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = pseudonymizeLongBatch)]
 pub fn wasm_pseudonymize_long_batch(
     encrypted: Vec<WASMLongEncryptedPseudonym>,
@@ -42,6 +68,26 @@ pub fn wasm_pseudonymize_long_batch(
     pseudonymize_batch(&mut rust_enc, &PseudonymizationInfo::from(info.0), &mut rng)
         .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
         .map_err(|e| e.to_string())
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = pseudonymizeLongBatch)]
+pub fn wasm_pseudonymize_long_batch(
+    encrypted: Vec<WASMLongEncryptedPseudonym>,
+    info: &WASMPseudonymizationInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> Result<Vec<WASMLongEncryptedPseudonym>, String> {
+    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
+    let mut rng = rand::rng();
+    let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+    pseudonymize_batch(
+        &mut rust_enc,
+        &PseudonymizationInfo::from(info.0),
+        &pk,
+        &mut rng,
+    )
+    .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
+    .map_err(|e| e.to_string())
 }
 
 /// Batch rekey encrypted attributes.
@@ -72,6 +118,7 @@ pub fn wasm_rekey_long_attribute_batch(
 }
 
 /// Batch transcrypt encrypted pseudonyms.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptPseudonymBatch)]
 pub fn wasm_transcrypt_pseudonym_batch(
     encrypted: Vec<WASMEncryptedPseudonym>,
@@ -84,7 +131,23 @@ pub fn wasm_transcrypt_pseudonym_batch(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptPseudonymBatch)]
+pub fn wasm_transcrypt_pseudonym_batch(
+    encrypted: Vec<WASMEncryptedPseudonym>,
+    info: &WASMTranscryptionInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> Result<Vec<WASMEncryptedPseudonym>, String> {
+    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
+    let mut rng = rand::rng();
+    let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+    transcrypt_batch(&mut rust_enc, &info.0, &pk, &mut rng)
+        .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
+        .map_err(|e| e.to_string())
+}
+
 /// Batch transcrypt encrypted attributes.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptAttributeBatch)]
 pub fn wasm_transcrypt_attribute_batch(
     encrypted: Vec<WASMEncryptedAttribute>,
@@ -97,7 +160,23 @@ pub fn wasm_transcrypt_attribute_batch(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptAttributeBatch)]
+pub fn wasm_transcrypt_attribute_batch(
+    encrypted: Vec<WASMEncryptedAttribute>,
+    info: &WASMTranscryptionInfo,
+    public_key: &WASMAttributeSessionPublicKey,
+) -> Result<Vec<WASMEncryptedAttribute>, String> {
+    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
+    let mut rng = rand::rng();
+    let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
+    transcrypt_batch(&mut rust_enc, &info.0, &pk, &mut rng)
+        .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
+        .map_err(|e| e.to_string())
+}
+
 /// Batch transcrypt encrypted records.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptRecordBatch)]
 pub fn wasm_transcrypt_record_batch(
     encrypted: Vec<WASMRecordEncrypted>,
@@ -119,8 +198,32 @@ pub fn wasm_transcrypt_record_batch(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptRecordBatch)]
+pub fn wasm_transcrypt_record_batch(
+    encrypted: Vec<WASMRecordEncrypted>,
+    info: &WASMTranscryptionInfo,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMRecordEncrypted>, String> {
+    let mut rust_enc: Vec<_> = encrypted
+        .into_iter()
+        .map(|e: WASMRecordEncrypted| EncryptedRecord::from(e))
+        .collect();
+    let mut rng = rand::rng();
+    let keys: crate::keys::SessionKeys = (*session_keys).into();
+    transcrypt_batch(&mut rust_enc, &info.0, &keys, &mut rng)
+        .map(|result: Box<[_]>| {
+            result
+                .into_vec()
+                .into_iter()
+                .map(WASMRecordEncrypted::from)
+                .collect()
+        })
+        .map_err(|e| e.to_string())
+}
+
 /// Batch transcrypt encrypted long records.
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
 pub fn wasm_transcrypt_long_record_batch(
     encrypted: Vec<WASMLongRecordEncrypted>,
@@ -142,8 +245,32 @@ pub fn wasm_transcrypt_long_record_batch(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(all(feature = "long", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = transcryptLongRecordBatch)]
+pub fn wasm_transcrypt_long_record_batch(
+    encrypted: Vec<WASMLongRecordEncrypted>,
+    info: &WASMTranscryptionInfo,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMLongRecordEncrypted>, String> {
+    let mut rust_enc: Vec<_> = encrypted
+        .into_iter()
+        .map(|e: WASMLongRecordEncrypted| LongEncryptedRecord::from(e))
+        .collect();
+    let mut rng = rand::rng();
+    let keys: crate::keys::SessionKeys = (*session_keys).into();
+    transcrypt_batch(&mut rust_enc, &info.0, &keys, &mut rng)
+        .map(|result: Box<[_]>| {
+            result
+                .into_vec()
+                .into_iter()
+                .map(WASMLongRecordEncrypted::from)
+                .collect()
+        })
+        .map_err(|e| e.to_string())
+}
+
 /// Batch transcrypt encrypted JSON values.
-#[cfg(feature = "json")]
+#[cfg(all(feature = "json", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptJSONBatch)]
 pub fn wasm_transcrypt_json_batch(
     encrypted: Vec<WASMEncryptedPEPJSONValue>,
@@ -152,6 +279,27 @@ pub fn wasm_transcrypt_json_batch(
     let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
     let mut rng = rand::rng();
     transcrypt_batch(&mut rust_enc, &info.0, &mut rng)
+        .map(|result| {
+            result
+                .into_vec()
+                .into_iter()
+                .map(WASMEncryptedPEPJSONValue)
+                .collect()
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(all(feature = "json", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = transcryptJSONBatch)]
+pub fn wasm_transcrypt_json_batch(
+    encrypted: Vec<WASMEncryptedPEPJSONValue>,
+    info: &WASMTranscryptionInfo,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMEncryptedPEPJSONValue>, String> {
+    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
+    let mut rng = rand::rng();
+    let keys: crate::keys::SessionKeys = (*session_keys).into();
+    transcrypt_batch(&mut rust_enc, &info.0, &keys, &mut rng)
         .map(|result| {
             result
                 .into_vec()

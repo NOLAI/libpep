@@ -63,7 +63,7 @@ class TestJSONTranscryption(unittest.TestCase):
 
         # Transcrypt from clinic A to clinic B
         transcrypted = encrypted.transcrypt(
-            domain_a, domain_b, session, session, pseudo_secret, enc_secret
+            domain_a, domain_b, session, session, pseudo_secret, enc_secret, session_keys
         )
 
         # Verify that the encrypted structures are different after transcryption
@@ -131,7 +131,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         )
 
         transcrypted_batch = transcrypt_json_batch(
-            [encrypted1, encrypted2], transcryption_info
+            [encrypted1, encrypted2], transcryption_info, session_keys
         )
 
         # Verify we got 2 records back
@@ -215,7 +215,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
         # Verify we get an error about structure mismatch
         with self.assertRaises(Exception) as context:
-            transcrypt_json_batch([encrypted1, encrypted2], transcryption_info)
+            transcrypt_json_batch([encrypted1, encrypted2], transcryption_info, session_keys)
 
         # Error message may vary, just check that it mentions structure or inconsistency
         error_msg = str(context.exception).lower()

@@ -15,6 +15,6 @@ pub mod py;
 pub mod wasm;
 
 #[cfg(feature = "verifiable")]
-pub mod proved;
+pub mod verifiable;
 #[cfg(feature = "verifiable")]
 pub mod zkps;

@@ -2,7 +2,7 @@
 
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::commitments::{
-    WASMProvedPseudonymizationCommitments, WASMProvedRekeyCommitments,
+    WASMVerifiablePseudonymizationCommitments, WASMVerifiableRekeyCommitments,
 };
 use crate::factors::wasm::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::verifier::Verifier;
@@ -24,23 +24,7 @@ impl WASMVerifier {
         }
     }
 
-    /// Verify pseudonymization commitments.
-    #[wasm_bindgen(js_name = verifyPseudonymizationCommitments)]
-    pub fn verify_pseudonymization_commitments(
-        &self,
-        commitments: &WASMProvedPseudonymizationCommitments,
-    ) -> bool {
-        self.inner
-            .verify_pseudonymization_commitments(&commitments.0)
-    }
-
-    /// Verify rekey commitments.
-    #[wasm_bindgen(js_name = verifyRekeyCommitments)]
-    pub fn verify_rekey_commitments(&self, commitments: &WASMProvedRekeyCommitments) -> bool {
-        self.inner.verify_rekey_commitments(&commitments.0)
-    }
-
-    /// Register pseudonymization commitments for caching.
+    /// Register pseudonymization commitments for a transition.
     #[wasm_bindgen(js_name = registerPseudonymizationCommitments)]
     pub fn register_pseudonymization_commitments(
         &mut self,
@@ -49,7 +33,7 @@ impl WASMVerifier {
         domain_to: &WASMPseudonymizationDomain,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
-        commitments: &WASMProvedPseudonymizationCommitments,
+        commitments: &WASMVerifiablePseudonymizationCommitments,
     ) {
         self.inner.register_pseudonymization_commitments(
             &transcryptor_id.to_string(),
@@ -61,14 +45,14 @@ impl WASMVerifier {
         );
     }
 
-    /// Register attribute rekey commitments for caching.
+    /// Register attribute rekey commitments for a transition.
     #[wasm_bindgen(js_name = registerAttributeRekeyCommitments)]
     pub fn register_attribute_rekey_commitments(
         &mut self,
         transcryptor_id: &str,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
-        commitments: &WASMProvedRekeyCommitments,
+        commitments: &WASMVerifiableRekeyCommitments,
     ) {
         self.inner.register_attribute_rekey_commitments(
             &transcryptor_id.to_string(),
@@ -78,37 +62,64 @@ impl WASMVerifier {
         );
     }
 
-    /// Check if reshuffle commitments exist in cache.
-    #[wasm_bindgen(js_name = hasReshuffleCommitments)]
-    pub fn has_reshuffle_commitments(
-        &self,
+    /// Register pseudonym rekey commitments for a transition.
+    #[wasm_bindgen(js_name = registerPseudonymRekeyCommitments)]
+    pub fn register_pseudonym_rekey_commitments(
+        &mut self,
         transcryptor_id: &str,
-        domain: &WASMPseudonymizationDomain,
-    ) -> bool {
-        self.inner
-            .has_reshuffle_commitments(transcryptor_id, &domain.0)
+        context_from: &WASMEncryptionContext,
+        context_to: &WASMEncryptionContext,
+        commitments: &WASMVerifiableRekeyCommitments,
+    ) {
+        self.inner.register_pseudonym_rekey_commitments(
+            &transcryptor_id.to_string(),
+            &context_from.0,
+            &context_to.0,
+            commitments.0,
+        );
     }
 
-    /// Check if pseudonym rekey commitments exist in cache.
+    /// Check if pseudonymization commitments exist for a transition.
+    #[wasm_bindgen(js_name = hasPseudonymizationCommitments)]
+    pub fn has_pseudonymization_commitments(
+        &self,
+        transcryptor_id: &str,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        context_from: &WASMEncryptionContext,
+        context_to: &WASMEncryptionContext,
+    ) -> bool {
+        self.inner.has_pseudonymization_commitments(
+            transcryptor_id,
+            &domain_from.0,
+            &domain_to.0,
+            &context_from.0,
+            &context_to.0,
+        )
+    }
+
+    /// Check if pseudonym rekey commitments exist for a transition.
     #[wasm_bindgen(js_name = hasPseudonymRekeyCommitments)]
     pub fn has_pseudonym_rekey_commitments(
         &self,
         transcryptor_id: &str,
-        context: &WASMEncryptionContext,
+        context_from: &WASMEncryptionContext,
+        context_to: &WASMEncryptionContext,
     ) -> bool {
         self.inner
-            .has_pseudonym_rekey_commitments(transcryptor_id, &context.0)
+            .has_pseudonym_rekey_commitments(transcryptor_id, &context_from.0, &context_to.0)
     }
 
-    /// Check if attribute rekey commitments exist in cache.
+    /// Check if attribute rekey commitments exist for a transition.
     #[wasm_bindgen(js_name = hasAttributeRekeyCommitments)]
     pub fn has_attribute_rekey_commitments(
         &self,
         transcryptor_id: &str,
-        context: &WASMEncryptionContext,
+        context_from: &WASMEncryptionContext,
+        context_to: &WASMEncryptionContext,
     ) -> bool {
         self.inner
-            .has_attribute_rekey_commitments(transcryptor_id, &context.0)
+            .has_attribute_rekey_commitments(transcryptor_id, &context_from.0, &context_to.0)
     }
 
     /// Clear all cached commitments.
@@ -123,36 +134,61 @@ impl WASMVerifier {
         self.inner.cache().total_count()
     }
 
-    /// Verify a pseudonymization operation with commitments.
+    /// Verify a pseudonymization operation against the combined commitments.
     ///
-    /// Note: Proofs must be passed as JSON strings (due to WASM limitations).
-    #[cfg(feature = "serde")]
+    /// The proof is passed as a JSON string due to WASM limitations.
+    #[cfg(all(feature = "serde", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = verifyPseudonymization)]
     pub fn verify_pseudonymization(
         &self,
         original: &WASMEncryptedPseudonym,
         result: &WASMEncryptedPseudonym,
         operation_proof_json: &str,
-        factors_proof_json: &str,
-        commitments: &WASMProvedPseudonymizationCommitments,
+        commitments: &WASMVerifiablePseudonymizationCommitments,
     ) -> Result<bool, JsValue> {
-        use crate::core::proved::{RSKFactorsProof, VerifiableRSK};
+        use crate::core::verifiable::VerifiableRRSK;
 
-        let operation_proof: VerifiableRSK = serde_json::from_str(operation_proof_json)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-        let factors_proof: RSKFactorsProof = serde_json::from_str(factors_proof_json)
+        let operation_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
         Ok(self.inner.verify_pseudonymization(
             &original.0,
             &result.0,
             &operation_proof,
-            &factors_proof,
             &commitments.0,
         ))
     }
 
-    /// Verify a pseudonym rekey operation with commitments.
+    /// Verify a pseudonymization operation against the combined commitments.
+    /// In non-elgamal3 builds the recipient public key the original ciphertext
+    /// was encrypted under must be supplied.
+    #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = verifyPseudonymization)]
+    pub fn verify_pseudonymization(
+        &self,
+        original: &WASMEncryptedPseudonym,
+        result: &WASMEncryptedPseudonym,
+        operation_proof_json: &str,
+        public_key: &crate::keys::wasm::types::WASMPseudonymSessionPublicKey,
+        commitments: &WASMVerifiablePseudonymizationCommitments,
+    ) -> Result<bool, JsValue> {
+        use crate::core::verifiable::VerifiableRRSK;
+        use crate::keys::PublicKey;
+
+        let operation_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
+            .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+
+        Ok(self.inner.verify_pseudonymization(
+            &original.0,
+            &result.0,
+            &operation_proof,
+            pk.value(),
+            &commitments.0,
+        ))
+    }
+
+    /// Verify a pseudonym rekey operation against the rekey commitment.
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyPseudonymRekey)]
     pub fn verify_pseudonym_rekey(
@@ -160,9 +196,9 @@ impl WASMVerifier {
         original: &WASMEncryptedPseudonym,
         result: &WASMEncryptedPseudonym,
         proof_json: &str,
-        commitments: &WASMProvedRekeyCommitments,
+        commitments: &WASMVerifiableRekeyCommitments,
     ) -> Result<bool, JsValue> {
-        use crate::core::proved::VerifiableRekey;
+        use crate::core::verifiable::VerifiableRekey;
 
         let proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
@@ -172,7 +208,7 @@ impl WASMVerifier {
             .verify_pseudonym_rekey(&original.0, &result.0, &proof, &commitments.0))
     }
 
-    /// Verify an attribute rekey operation with commitments.
+    /// Verify an attribute rekey operation against the rekey commitment.
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyAttributeRekey)]
     pub fn verify_attribute_rekey(
@@ -180,9 +216,9 @@ impl WASMVerifier {
         original: &WASMEncryptedAttribute,
         result: &WASMEncryptedAttribute,
         proof_json: &str,
-        commitments: &WASMProvedRekeyCommitments,
+        commitments: &WASMVerifiableRekeyCommitments,
     ) -> Result<bool, JsValue> {
-        use crate::core::proved::VerifiableRekey;
+        use crate::core::verifiable::VerifiableRekey;
 
         let proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(|e| JsValue::from_str(&format!("{}", e)))?;

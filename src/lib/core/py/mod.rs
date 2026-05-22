@@ -2,7 +2,7 @@ pub mod elgamal;
 pub mod primitives;
 
 #[cfg(feature = "verifiable")]
-pub mod proved;
+pub mod verifiable;
 
 #[cfg(feature = "verifiable")]
 pub mod zkps;
@@ -34,7 +34,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
             .getattr("modules")?
             .set_item("libpep.core.zkps", &zkps_module)?;
 
-        proved::register_module(m)?;
+        verifiable::register_module(m)?;
     }
 
     Ok(())

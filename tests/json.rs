@@ -59,7 +59,10 @@ fn test_json_transcryption_with_macro() {
         &enc_secret,
     );
 
-    let transcrypted = encrypted.transcrypt(&transcryption_info);
+    #[cfg(feature = "elgamal3")]
+    let transcrypted = encrypted.transcrypt(&transcryption_info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted = encrypted.transcrypt(&transcryption_info, &session_keys, &mut rng);
 
     // Verify that the encrypted structures are different after transcryption
     // (The pseudonym has been transformed)
@@ -125,7 +128,10 @@ fn test_json_transcryption_with_builder() {
         &enc_secret,
     );
 
-    let transcrypted = encrypted.transcrypt(&transcryption_info);
+    #[cfg(feature = "elgamal3")]
+    let transcrypted = encrypted.transcrypt(&transcryption_info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted = encrypted.transcrypt(&transcryption_info, &session_keys, &mut rng);
 
     // Decrypt transcrypted data
     #[cfg(feature = "elgamal3")]
@@ -204,9 +210,15 @@ fn test_json_batch_transcryption_same_structure() {
     );
 
     let mut batch = vec![encrypted1.clone(), encrypted2.clone()];
+    #[cfg(feature = "elgamal3")]
     let transcrypted_batch = transcrypt_batch(&mut batch, &transcryption_info, &mut rng)
         .unwrap()
         .into_vec();
+    #[cfg(not(feature = "elgamal3"))]
+    let transcrypted_batch =
+        transcrypt_batch(&mut batch, &transcryption_info, &session_keys, &mut rng)
+            .unwrap()
+            .into_vec();
 
     // Verify we got 2 records back
     assert_eq!(transcrypted_batch.len(), 2);
@@ -318,7 +330,10 @@ fn test_json_batch_transcryption_different_structures() {
 
     // Attempt batch transcryption (this should fail because structures don't match)
     let mut batch = vec![encrypted1, encrypted2];
+    #[cfg(feature = "elgamal3")]
     let result = transcrypt_batch(&mut batch, &transcryption_info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let result = transcrypt_batch(&mut batch, &transcryption_info, &session_keys, &mut rng);
 
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");

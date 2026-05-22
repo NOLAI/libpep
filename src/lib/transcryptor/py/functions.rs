@@ -1,10 +1,11 @@
 //! Python bindings for transcryption functions.
 
 use crate::arithmetic::py::PyScalarNonZero;
-#[cfg(feature = "json")]
+#[cfg(all(feature = "json", feature = "elgamal3"))]
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+#[cfg(feature = "elgamal3")]
 use crate::data::py::records::PyEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
@@ -22,6 +23,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
 /// Polymorphic pseudonymize - works with EncryptedPseudonym or LongEncryptedPseudonym.
+#[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "pseudonymize")]
 pub fn py_pseudonymize(
@@ -29,18 +31,50 @@ pub fn py_pseudonymize(
     pseudonymization_info: &PyPseudonymizationInfo,
 ) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
+    let mut rng = rand::rng();
     let info = PseudonymizationInfo::from(pseudonymization_info);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        let result = pseudonymize(&ep.0, &info);
+        let result = pseudonymize(&ep.0, &info, &mut rng);
         return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
     }
 
     // Try LongEncryptedPseudonym
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-        let result = pseudonymize(&lep.0, &info);
+        let result = pseudonymize(&lep.0, &info, &mut rng);
+        return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
+    }
+
+    Err(PyTypeError::new_err(
+        "pseudonymize() requires EncryptedPseudonym or LongEncryptedPseudonym",
+    ))
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[pyfunction]
+#[pyo3(name = "pseudonymize")]
+pub fn py_pseudonymize(
+    encrypted: &Bound<PyAny>,
+    pseudonymization_info: &PyPseudonymizationInfo,
+    public_key: &PyPseudonymSessionPublicKey,
+) -> PyResult<Py<PyAny>> {
+    let py = encrypted.py();
+    let mut rng = rand::rng();
+    let info = PseudonymizationInfo::from(pseudonymization_info);
+    let pk = PseudonymSessionPublicKey::from(public_key.0 .0);
+
+    // Try EncryptedPseudonym
+    if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
+        let result = pseudonymize(&ep.0, &info, &pk, &mut rng);
+        return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
+    }
+
+    // Try LongEncryptedPseudonym
+    #[cfg(feature = "long")]
+    if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
+        let result = pseudonymize(&lep.0, &info, &pk, &mut rng);
         return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
     }
 
@@ -98,39 +132,89 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
     ))
 }
 /// Polymorphic transcrypt function - works with any transcryptable type.
+#[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "transcrypt")]
 pub fn py_transcrypt(encrypted: &Bound<PyAny>, info: &PyTranscryptionInfo) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
+    let mut rng = rand::rng();
     let transcryption_info = TranscryptionInfo::from(info);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        let transcrypted = transcrypt(&ep.0, &transcryption_info);
+        let transcrypted = transcrypt(&ep.0, &transcryption_info, &mut rng);
         return Ok(Py::new(py, PyEncryptedPseudonym(transcrypted))?.into_any());
     }
 
     // Try EncryptedAttribute
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
-        let transcrypted = transcrypt(&ea.0, &transcryption_info);
+        let transcrypted = transcrypt(&ea.0, &transcryption_info, &mut rng);
         return Ok(Py::new(py, PyEncryptedAttribute(transcrypted))?.into_any());
     }
 
     // Try EncryptedRecord
     if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-        let transcrypted = transcrypt(&er.0, &transcryption_info);
+        let transcrypted = transcrypt(&er.0, &transcryption_info, &mut rng);
         return Ok(Py::new(py, PyEncryptedRecord(transcrypted))?.into_any());
     }
 
     // Try EncryptedPEPJSONValue
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        let transcrypted = transcrypt(&ej.0, &transcryption_info);
+        let transcrypted = transcrypt(&ej.0, &transcryption_info, &mut rng);
         return Ok(Py::new(py, PyEncryptedPEPJSONValue(transcrypted))?.into_any());
     }
 
     Err(PyTypeError::new_err(
         "transcrypt() requires a transcryptable encrypted type",
+    ))
+}
+
+/// Polymorphic transcrypt function - works with any transcryptable type.
+/// In non-elgamal3 builds the recipient public key must be supplied so that
+/// the inner rerandomize step can produce a fresh ciphertext.
+#[cfg(not(feature = "elgamal3"))]
+#[pyfunction]
+#[pyo3(name = "transcrypt")]
+pub fn py_transcrypt(
+    encrypted: &Bound<PyAny>,
+    info: &PyTranscryptionInfo,
+    public_key: &Bound<PyAny>,
+) -> PyResult<Py<PyAny>> {
+    let py = encrypted.py();
+    let mut rng = rand::rng();
+    let transcryption_info = TranscryptionInfo::from(info);
+
+    // Try EncryptedPseudonym (needs pseudonym session pk)
+    if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
+        if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
+            let transcrypted = transcrypt(
+                &ep.0,
+                &transcryption_info,
+                &PseudonymSessionPublicKey::from(pk.0 .0),
+                &mut rng,
+            );
+            return Ok(Py::new(py, PyEncryptedPseudonym(transcrypted))?.into_any());
+        }
+    }
+
+    // Try EncryptedAttribute (needs attribute session pk; attributes only rekey, but the
+    // trait still takes a key in non-elgamal3 mode)
+    if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
+        if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
+            let transcrypted = transcrypt(
+                &ea.0,
+                &transcryption_info,
+                &AttributeSessionPublicKey::from(pk.0 .0),
+                &mut rng,
+            );
+            return Ok(Py::new(py, PyEncryptedAttribute(transcrypted))?.into_any());
+        }
+    }
+
+    // EncryptedRecord and EncryptedPEPJSONValue both need SessionKeys (both pseudonym and attribute keys)
+    Err(PyTypeError::new_err(
+        "transcrypt() requires a transcryptable encrypted type and matching public_key (in non-elgamal3 mode, records/json need session keys via the typed bindings instead)",
     ))
 }
 /// Polymorphic rerandomize function - works with any encrypted type.

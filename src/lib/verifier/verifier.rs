@@ -1,195 +1,153 @@
 //! Verifier for verifiable transcryption operations.
 //!
-//! The verifier enforces integrity by ensuring transcryptors use consistent factors
-//! for each user (domain) and session (context), as described in the paper.
+//! The verifier checks that operations were performed against published
+//! forward commitments. Concretely:
 //!
-//! This implementation follows the pattern from the distributed verifier, storing
-//! verified commitments per individual domain/context and combining them for
-//! verification of transitions.
+//!   * For a pseudonymization transition `(d_from, d_to, c_from, c_to)` the
+//!     transcryptor publishes the *combined* commitments
+//!     `S = (s_from⁻¹ · s_to)·G` and `K = (k_from⁻¹ · k_to)·G`. The verifier
+//!     stores them under the chosen transition key.
+//!   * For an attribute rekey transition `(c_from, c_to)` the transcryptor
+//!     publishes the combined commitment `K = (k_from⁻¹ · k_to)·G`.
+//!   * Per-message [`VerifiableRRSK`] / [`VerifiableRekey`] proofs are verified
+//!     against those combined commitments.
+//!
+//! No proof of well-formedness of the commitments themselves is needed any
+//! more: every per-message proof binds the operation to the forward
+//! commitment directly.
 
 use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::core::proved::{
-    PseudonymizationFactorCommitments, RSKFactorsProof, RekeyFactorCommitments, VerifiableRSK,
-    VerifiableRekey,
-};
-use crate::data::records::{EncryptedRecord, RecordTranscryptionProof};
-use crate::data::simple::{ElGamalEncrypted, EncryptedPseudonym};
+use crate::core::verifiable::{VerifiableRRSK, VerifiableRekey};
+use crate::data::simple::ElGamalEncrypted;
 use crate::data::traits::{Pseudonymizable, Rekeyable};
 use crate::factors::{
-    EncryptionContext, ProvedPseudonymizationCommitments, ProvedRekeyCommitments,
-    ProvedReshuffleCommitments, PseudonymizationDomain,
+    EncryptionContext, PseudonymizationDomain, VerifiablePseudonymizationCommitment,
+    VerifiableRekeyCommitment,
 };
+use crate::keys::distribution::BlindingCommitments;
 use crate::transcryptor::TranscryptorId;
+use std::collections::HashMap;
+
+#[cfg(feature = "verifiable-derivation")]
+use crate::factors::{MasterPseudonymizationPublicKey, MasterRekeyingPublicKey};
 
 use super::cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache as CommitmentsCacheTrait,
-    PseudonymRekeyCommitmentsCache, ReshuffleCommitmentsCache,
+    PseudonymRekeyCommitmentsCache, PseudonymizationCommitmentsCache,
 };
 
-/// A verifier for verifiable transcryption operations with commitment caching.
+/// A verifier with per-transition commitment caching.
 ///
-/// The verifier ensures integrity by checking that transcryptors use consistent
-/// factors for each user and session:
-/// - **Reshuffle factors** must be consistent per pseudonymization domain (user-specific)
-/// - **Rekey factors** must be consistent per encryption context (session-specific)
-///
-/// # Cache Organization
-///
-/// The verifier maintains three separate caches:
-/// - Reshuffle commitments indexed by `PseudonymizationDomain`
-/// - Pseudonym rekey commitments indexed by `EncryptionContext`
-/// - Attribute rekey commitments indexed by `EncryptionContext`
-///
-/// Each cache stores both `val` and `inv` for the factor commitments.
+/// Stored commitments are *combined* for a given transition (i.e. already
+/// encode the `s_from⁻¹·s_to` / `k_from⁻¹·k_to` product). Verification of
+/// individual transcryption operations then reduces to a single
+/// [`VerifiableRRSK`] or [`VerifiableRekey`] check against these commitments.
 pub struct Verifier {
-    reshuffle_cache: ReshuffleCommitmentsCache,
+    pseudonymization_cache: PseudonymizationCommitmentsCache,
     pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache,
     attribute_rekey_cache: AttributeRekeyCommitmentsCache,
+    /// Blinding commitments per transcryptor, for session-key-share verification.
+    blinding_commitments: HashMap<TranscryptorId, BlindingCommitments>,
+    #[cfg(feature = "verifiable-derivation")]
+    master_pseudonym_keys: HashMap<TranscryptorId, MasterPseudonymizationPublicKey>,
+    #[cfg(feature = "verifiable-derivation")]
+    master_rekey_keys: HashMap<TranscryptorId, MasterRekeyingPublicKey>,
 }
 
+/// Key identifying a pseudonymization transition.
+pub type PseudonymizationKey = (
+    TranscryptorId,
+    PseudonymizationDomain,
+    PseudonymizationDomain,
+    EncryptionContext,
+    EncryptionContext,
+);
+
+/// Key identifying a rekey transition.
+pub type RekeyTransitionKey = (TranscryptorId, EncryptionContext, EncryptionContext);
+
 impl Verifier {
-    /// Create a new verifier with empty caches.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            reshuffle_cache: ReshuffleCommitmentsCache::new(),
+            pseudonymization_cache: PseudonymizationCommitmentsCache::new(),
             pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::new(),
             attribute_rekey_cache: AttributeRekeyCommitmentsCache::new(),
+            blinding_commitments: HashMap::new(),
+            #[cfg(feature = "verifiable-derivation")]
+            master_pseudonym_keys: HashMap::new(),
+            #[cfg(feature = "verifiable-derivation")]
+            master_rekey_keys: HashMap::new(),
         }
     }
 
-    // ========================================
-    // Commitment validation and storage
-    // ========================================
+    // ------------------------------------------------------------------
+    // Blinding commitments (for session key share verification)
+    // ------------------------------------------------------------------
 
-    /// Validate that commitments are not weak (identity or G).
+    pub fn register_blinding_commitments(
+        &mut self,
+        transcryptor_id: TranscryptorId,
+        commitments: BlindingCommitments,
+    ) {
+        self.blinding_commitments
+            .insert(transcryptor_id, commitments);
+    }
+
+    pub fn get_blinding_commitments(&self, transcryptor_id: &str) -> Option<&BlindingCommitments> {
+        self.blinding_commitments.get(transcryptor_id)
+    }
+
+    pub fn has_blinding_commitments(&self, transcryptor_id: &str) -> bool {
+        self.blinding_commitments.contains_key(transcryptor_id)
+    }
+
+    // ------------------------------------------------------------------
+    // Master keys (verifiable-derivation only)
+    // ------------------------------------------------------------------
+
+    #[cfg(feature = "verifiable-derivation")]
+    pub fn register_master_keys(
+        &mut self,
+        transcryptor_id: TranscryptorId,
+        pseudonym_master_key: MasterPseudonymizationPublicKey,
+        rekey_master_key: MasterRekeyingPublicKey,
+    ) {
+        self.master_pseudonym_keys
+            .insert(transcryptor_id.clone(), pseudonym_master_key);
+        self.master_rekey_keys
+            .insert(transcryptor_id, rekey_master_key);
+    }
+
+    #[cfg(feature = "verifiable-derivation")]
+    pub fn get_master_pseudonym_key(
+        &self,
+        transcryptor_id: &str,
+    ) -> Option<&MasterPseudonymizationPublicKey> {
+        self.master_pseudonym_keys.get(transcryptor_id)
+    }
+
+    #[cfg(feature = "verifiable-derivation")]
+    pub fn get_master_rekey_key(&self, transcryptor_id: &str) -> Option<&MasterRekeyingPublicKey> {
+        self.master_rekey_keys.get(transcryptor_id)
+    }
+
+    #[cfg(feature = "verifiable-derivation")]
+    pub fn has_master_keys(&self, transcryptor_id: &str) -> bool {
+        self.master_pseudonym_keys.contains_key(transcryptor_id)
+            && self.master_rekey_keys.contains_key(transcryptor_id)
+    }
+
+    // ------------------------------------------------------------------
+    // Commitment validation
+    // ------------------------------------------------------------------
+
     fn validate_not_weak(val: &GroupElement, commitment_type: &str) {
         if *val == GroupElement::identity() || *val == G {
             panic!("Weak {commitment_type} commitments are not allowed");
         }
     }
 
-    /// Store reshuffle commitments for a transcryptor and domain after validation.
-    ///
-    /// This validates that:
-    /// 1. The commitments are not weak (not identity or G)
-    /// 2. The proof correctly verifies the commitments
-    ///
-    /// # Panics
-    ///
-    /// Panics if the commitments are weak or the proof is invalid.
-    pub fn store_reshuffle_commitments(
-        &mut self,
-        transcryptor_id: TranscryptorId,
-        domain: PseudonymizationDomain,
-        commitments: &ProvedReshuffleCommitments,
-    ) {
-        Self::validate_not_weak(&commitments.commitments.val, "reshuffle");
-
-        if !commitments.proof.verify(&commitments.commitments) {
-            panic!("Invalid reshuffle commitments proof");
-        }
-
-        self.reshuffle_cache
-            .store((transcryptor_id, domain), *commitments);
-    }
-
-    /// Store pseudonym rekey commitments for a transcryptor and context after validation.
-    ///
-    /// This validates that:
-    /// 1. The commitments are not weak (not identity or G)
-    /// 2. The proof correctly verifies the commitments
-    ///
-    /// # Panics
-    ///
-    /// Panics if the commitments are weak or the proof is invalid.
-    pub fn store_pseudonym_rekey_commitments(
-        &mut self,
-        transcryptor_id: TranscryptorId,
-        context: EncryptionContext,
-        commitments: &ProvedRekeyCommitments,
-    ) {
-        Self::validate_not_weak(&commitments.commitments.val, "pseudonym rekey");
-
-        if !commitments.proof.verify(&commitments.commitments) {
-            panic!("Invalid pseudonym rekey commitments proof");
-        }
-
-        self.pseudonym_rekey_cache
-            .store((transcryptor_id, context), *commitments);
-    }
-
-    /// Store attribute rekey commitments for a transcryptor and context after validation.
-    ///
-    /// This validates that:
-    /// 1. The commitments are not weak (not identity or G)
-    /// 2. The proof correctly verifies the commitments
-    ///
-    /// # Panics
-    ///
-    /// Panics if the commitments are weak or the proof is invalid.
-    pub fn store_attribute_rekey_commitments(
-        &mut self,
-        transcryptor_id: TranscryptorId,
-        context: EncryptionContext,
-        commitments: &ProvedRekeyCommitments,
-    ) {
-        Self::validate_not_weak(&commitments.commitments.val, "attribute rekey");
-
-        if !commitments.proof.verify(&commitments.commitments) {
-            panic!("Invalid attribute rekey commitments proof");
-        }
-
-        self.attribute_rekey_cache
-            .store((transcryptor_id, context), *commitments);
-    }
-
-    // ========================================
-    // Cache queries
-    // ========================================
-
-    /// Check if reshuffle commitments exist for a transcryptor and domain.
-    #[must_use]
-    pub fn has_reshuffle_commitments(
-        &self,
-        transcryptor_id: &str,
-        domain: &PseudonymizationDomain,
-    ) -> bool {
-        self.reshuffle_cache
-            .has(&(transcryptor_id.to_string(), domain.clone()))
-    }
-
-    /// Check if pseudonym rekey commitments exist for a transcryptor and context.
-    #[must_use]
-    pub fn has_pseudonym_rekey_commitments(
-        &self,
-        transcryptor_id: &str,
-        context: &EncryptionContext,
-    ) -> bool {
-        self.pseudonym_rekey_cache
-            .has(&(transcryptor_id.to_string(), context.clone()))
-    }
-
-    /// Check if attribute rekey commitments exist for a transcryptor and context.
-    #[must_use]
-    pub fn has_attribute_rekey_commitments(
-        &self,
-        transcryptor_id: &str,
-        context: &EncryptionContext,
-    ) -> bool {
-        self.attribute_rekey_cache
-            .has(&(transcryptor_id.to_string(), context.clone()))
-    }
-
-    // ========================================
-    // Commitment registration (for test compatibility)
-    // ========================================
-
-    /// Register pseudonymization commitments for a domain/context transition.
-    ///
-    /// Note: Transition commitments are already combined (inv from source, val from target).
-    /// This method stores them such that they can be used for verifying this specific transition.
-    /// The commitments are stored once and shared between source/target domains and contexts.
     pub fn register_pseudonymization_commitments(
         &mut self,
         transcryptor_id: &TranscryptorId,
@@ -197,581 +155,202 @@ impl Verifier {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-        commitments: ProvedPseudonymizationCommitments,
+        commitments: VerifiablePseudonymizationCommitment,
     ) {
-        // Transition commitments are already combined, so we store them once
-        // They will work for verifying the specific transition domain_from→domain_to, context_from→context_to
-        let reshuffle_commitments = ProvedReshuffleCommitments {
-            commitments: commitments.reshuffle_commitments,
-            proof: commitments.reshuffle_proof,
-        };
-
-        let rekey_commitments = ProvedRekeyCommitments {
-            commitments: commitments.rekey_commitments,
-            proof: commitments.rekey_proof,
-        };
-
-        // Store once for each unique domain/context (avoid duplicates)
-        let tid = transcryptor_id.clone();
-
-        if !self.has_reshuffle_commitments(transcryptor_id, domain_from) {
-            self.store_reshuffle_commitments(
-                tid.clone(),
-                domain_from.clone(),
-                &reshuffle_commitments,
-            );
-        }
-        if domain_from != domain_to && !self.has_reshuffle_commitments(transcryptor_id, domain_to) {
-            self.store_reshuffle_commitments(
-                tid.clone(),
-                domain_to.clone(),
-                &reshuffle_commitments,
-            );
-        }
-        if !self.has_pseudonym_rekey_commitments(transcryptor_id, context_from) {
-            self.store_pseudonym_rekey_commitments(
-                tid.clone(),
-                context_from.clone(),
-                &rekey_commitments,
-            );
-        }
-        if context_from != context_to
-            && !self.has_pseudonym_rekey_commitments(transcryptor_id, context_to)
-        {
-            self.store_pseudonym_rekey_commitments(tid, context_to.clone(), &rekey_commitments);
-        }
+        Self::validate_not_weak(&commitments.reshuffle_commitment.0 .0, "reshuffle");
+        Self::validate_not_weak(&commitments.rekey_commitment.0 .0, "rekey");
+        let key: PseudonymizationKey = (
+            transcryptor_id.clone(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonymization_cache.store(key, commitments);
     }
 
-    /// Register attribute rekey commitments for a transcryptor's context transition.
+    pub fn register_pseudonym_rekey_commitments(
+        &mut self,
+        transcryptor_id: &TranscryptorId,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+        commitments: VerifiableRekeyCommitment,
+    ) {
+        Self::validate_not_weak(&commitments.commitment.0 .0, "pseudonym rekey");
+        let key: RekeyTransitionKey = (
+            transcryptor_id.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonym_rekey_cache.store(key, commitments);
+    }
+
     pub fn register_attribute_rekey_commitments(
         &mut self,
         transcryptor_id: &TranscryptorId,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-        commitments: ProvedRekeyCommitments,
+        commitments: VerifiableRekeyCommitment,
     ) {
-        // Store for both source and target if not already present
-        let tid = transcryptor_id.clone();
-
-        if !self.has_attribute_rekey_commitments(transcryptor_id, context_from) {
-            self.store_attribute_rekey_commitments(tid.clone(), context_from.clone(), &commitments);
-        }
-        if context_from != context_to
-            && !self.has_attribute_rekey_commitments(transcryptor_id, context_to)
-        {
-            self.store_attribute_rekey_commitments(tid, context_to.clone(), &commitments);
-        }
+        Self::validate_not_weak(&commitments.commitment.0 .0, "attribute rekey");
+        let key: RekeyTransitionKey = (
+            transcryptor_id.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.attribute_rekey_cache.store(key, commitments);
     }
 
-    /// Get cached pseudonymization commitments for a transition (if registered).
-    ///
-    /// Note: This method is deprecated in the new architecture. Commitments are stored
-    /// separately per domain/context, not as bundled transitions. This always returns None.
-    #[must_use]
-    #[deprecated(
-        note = "Commitments are now stored per domain/context, use has_reshuffle_commitments and has_pseudonym_rekey_commitments instead"
-    )]
-    pub fn get_pseudonymization_commitments(
+    pub fn has_pseudonymization_commitments(
         &self,
-        _domain_from: &PseudonymizationDomain,
-        _domain_to: &PseudonymizationDomain,
-        _context_from: &EncryptionContext,
-        _context_to: &EncryptionContext,
-    ) -> Option<&ProvedPseudonymizationCommitments> {
-        // Commitments are stored separately per domain/context in the new architecture
-        None
-    }
-
-    // ========================================
-    // Commitment verification
-    // ========================================
-
-    /// Verify that pseudonymization commitments (reshuffle + rekey) are correctly constructed.
-    #[must_use]
-    pub fn verify_pseudonymization_commitments(
-        &self,
-        commitments: &ProvedPseudonymizationCommitments,
+        transcryptor_id: &str,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
     ) -> bool {
-        commitments
-            .reshuffle_proof
-            .verify(&commitments.reshuffle_commitments)
-            && commitments
-                .rekey_proof
-                .verify(&commitments.rekey_commitments)
+        let key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonymization_cache.has(&key)
     }
 
-    /// Verify that rekey commitments are correctly constructed.
-    #[must_use]
-    pub fn verify_rekey_commitments(&self, commitments: &ProvedRekeyCommitments) -> bool {
-        commitments.proof.verify(&commitments.commitments)
+    pub fn has_pseudonym_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> bool {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonym_rekey_cache.has(&key)
     }
 
-    // ========================================
-    // Cache management
-    // ========================================
+    pub fn has_attribute_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> bool {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.attribute_rekey_cache.has(&key)
+    }
 
-    /// Access the internal cache (read-only).
     pub fn cache(&self) -> VerifierCache<'_> {
         VerifierCache {
-            reshuffle: &self.reshuffle_cache,
+            pseudonymization: &self.pseudonymization_cache,
             pseudonym_rekey: &self.pseudonym_rekey_cache,
             attribute_rekey: &self.attribute_rekey_cache,
         }
     }
 
-    /// Clear all cached commitments.
     pub fn clear_cache(&mut self) {
-        self.reshuffle_cache.clear();
+        self.pseudonymization_cache.clear();
         self.pseudonym_rekey_cache.clear();
         self.attribute_rekey_cache.clear();
     }
 
-    // ========================================
-    // Operation verification with commitments
-    // ========================================
+    // ------------------------------------------------------------------
+    // Operation verification with explicit commitments
+    // ------------------------------------------------------------------
 
-    /// Verify a pseudonymization operation (RSK) with commitments passed directly.
-    ///
-    /// This is the primary verification method used by most code. It verifies that
-    /// the operation was performed correctly using the provided commitments.
+    /// Verify a per-message [`VerifiableRRSK`] proof against the combined
+    /// pseudonymization commitments. The caller is responsible for ensuring
+    /// the commitments correspond to the intended transition (e.g. by going
+    /// through the registration / cache lookup APIs).
+    #[cfg(feature = "elgamal3")]
     #[must_use]
     pub fn verify_pseudonymization<E>(
         &self,
         original: &E,
-        _result: &E,
-        operation_proof: &VerifiableRSK,
-        factors_proof: &RSKFactorsProof,
-        commitments: &ProvedPseudonymizationCommitments,
+        result: &E,
+        operation_proof: &VerifiableRRSK,
+        commitments: &VerifiablePseudonymizationCommitment,
     ) -> bool
     where
         E: ElGamalEncrypted + Pseudonymizable,
     {
-        // Verify factors proof against commitments
-        if !factors_proof.verify(
-            &commitments.reshuffle_commitments,
-            &commitments.rekey_commitments,
-        ) {
-            return false;
-        }
-
-        // Verify operation proof
-        operation_proof
-            .verified_reconstruct(
-                original.value(),
-                factors_proof,
-                &commitments.reshuffle_commitments,
-                &commitments.rekey_commitments,
-            )
-            .is_some()
+        operation_proof.verify_rrsk(
+            original.value(),
+            result.value(),
+            &original.value().gy,
+            &commitments.reshuffle_commitment,
+            &commitments.rekey_commitment,
+        )
     }
 
-    /// Verify a pseudonym rekey operation with commitments passed directly.
+    /// Verify a per-message [`VerifiableRRSK`] proof against the combined
+    /// pseudonymization commitments. `gy` is the recipient public key the
+    /// original ciphertext was encrypted under (needed for the rerandomize
+    /// step in non-elgamal3 mode where the ciphertext does not carry it).
+    #[cfg(not(feature = "elgamal3"))]
+    #[must_use]
+    pub fn verify_pseudonymization<E>(
+        &self,
+        original: &E,
+        result: &E,
+        operation_proof: &VerifiableRRSK,
+        gy: &GroupElement,
+        commitments: &VerifiablePseudonymizationCommitment,
+    ) -> bool
+    where
+        E: ElGamalEncrypted + Pseudonymizable,
+    {
+        operation_proof.verify_rrsk(
+            original.value(),
+            result.value(),
+            gy,
+            &commitments.reshuffle_commitment,
+            &commitments.rekey_commitment,
+        )
+    }
+
+    /// Verify a per-message [`VerifiableRekey`] against a rekey commitment.
     #[must_use]
     pub fn verify_pseudonym_rekey<E>(
         &self,
         original: &E,
-        _result: &E,
+        result: &E,
         proof: &VerifiableRekey,
-        commitments: &ProvedRekeyCommitments,
+        commitments: &VerifiableRekeyCommitment,
     ) -> bool
     where
         E: ElGamalEncrypted + Rekeyable,
     {
-        proof
-            .verified_reconstruct(original.value(), &commitments.commitments)
-            .is_some()
+        proof.verify_rekey(original.value(), result.value(), &commitments.commitment)
     }
 
-    /// Verify an attribute rekey operation with commitments passed directly.
+    /// Verify a per-message attribute [`VerifiableRekey`].
     #[must_use]
     pub fn verify_attribute_rekey<E>(
         &self,
         original: &E,
-        _result: &E,
+        result: &E,
         proof: &VerifiableRekey,
-        commitments: &ProvedRekeyCommitments,
+        commitments: &VerifiableRekeyCommitment,
     ) -> bool
     where
         E: ElGamalEncrypted + Rekeyable,
     {
-        proof
-            .verified_reconstruct(original.value(), &commitments.commitments)
-            .is_some()
+        proof.verify_rekey(original.value(), result.value(), &commitments.commitment)
     }
 
-    /// Verify a complete record transcryption with commitments passed directly.
-    #[must_use]
-    pub fn verify_record_transcryption(
-        &self,
-        original: &EncryptedRecord,
-        result: &EncryptedRecord,
-        proof: &RecordTranscryptionProof,
-        pseudonym_commitments: &ProvedPseudonymizationCommitments,
-        attribute_commitments: &ProvedRekeyCommitments,
-    ) -> bool {
-        // Verify pseudonym factors proof
-        if !proof.pseudonym_factors_proof.verify(
-            &pseudonym_commitments.reshuffle_commitments,
-            &pseudonym_commitments.rekey_commitments,
-        ) {
-            return false;
-        }
-
-        // Verify each pseudonym operation
-        for ((orig_pseudo, _result_pseudo), op_proof) in original
-            .pseudonyms
-            .iter()
-            .zip(result.pseudonyms.iter())
-            .zip(proof.pseudonym_operation_proofs.iter())
-        {
-            if op_proof
-                .verified_reconstruct(
-                    orig_pseudo.value(),
-                    &proof.pseudonym_factors_proof,
-                    &pseudonym_commitments.reshuffle_commitments,
-                    &pseudonym_commitments.rekey_commitments,
-                )
-                .is_none()
-            {
-                return false;
-            }
-        }
-
-        // Verify each attribute operation
-        for ((orig_attr, _result_attr), op_proof) in original
-            .attributes
-            .iter()
-            .zip(result.attributes.iter())
-            .zip(proof.attribute_operation_proofs.iter())
-        {
-            if op_proof
-                .verified_reconstruct(orig_attr.value(), &attribute_commitments.commitments)
-                .is_none()
-            {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    // ========================================
+    // ------------------------------------------------------------------
     // Operation verification using cached commitments
-    // ========================================
+    // ------------------------------------------------------------------
 
-    /// Helper: Combine rekey commitments for a transition (val from source, inv from target).
-    fn combine_rekey_commitments(
-        from: &ProvedRekeyCommitments,
-        to: &ProvedRekeyCommitments,
-    ) -> RekeyFactorCommitments {
-        RekeyFactorCommitments::from(crate::core::proved::FactorCommitments {
-            val: from.commitments.val,
-            inv: to.commitments.inv,
-        })
-    }
-
-    /// Verify a pseudonymization operation using cached commitments.
-    ///
-    /// This verifies a transition from domain_from→domain_to and context_from→context_to
-    /// using commitments previously stored in the cache.
-    #[must_use]
-    #[allow(clippy::too_many_arguments)]
-    pub fn verify_pseudonymization_from_cache<E>(
-        &self,
-        transcryptor_id: &str,
-        original: &E,
-        _result: &E,
-        operation_proof: &VerifiableRSK,
-        factors_proof: &RSKFactorsProof,
-        domain_from: &PseudonymizationDomain,
-        domain_to: &PseudonymizationDomain,
-        context_from: &EncryptionContext,
-        context_to: &EncryptionContext,
-    ) -> bool
-    where
-        E: ElGamalEncrypted + Pseudonymizable,
-    {
-        let transcryptor_id = transcryptor_id.to_string();
-
-        // Retrieve commitments from cache
-        let Some(reshuffle_from) = self
-            .reshuffle_cache
-            .retrieve(&(transcryptor_id.clone(), domain_from.clone()))
-        else {
-            return false;
-        };
-        let Some(reshuffle_to) = self
-            .reshuffle_cache
-            .retrieve(&(transcryptor_id.clone(), domain_to.clone()))
-        else {
-            return false;
-        };
-        let Some(rekey_from) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
-        else {
-            return false;
-        };
-        let Some(rekey_to) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id, context_to.clone()))
-        else {
-            return false;
-        };
-
-        // Construct combined commitments for the transition
-        // For reshuffle: use inv from source domain, val from target domain
-        let reshuffle_commitments =
-            PseudonymizationFactorCommitments::from(crate::core::proved::FactorCommitments {
-                inv: reshuffle_from.commitments.inv,
-                val: reshuffle_to.commitments.val,
-            });
-
-        // For rekey: use val from source context, inv from target context
-        let rekey_commitments = Self::combine_rekey_commitments(rekey_from, rekey_to);
-
-        // Verify the factors proof (S, K^-1, T)
-        if !factors_proof.verify(&reshuffle_commitments, &rekey_commitments) {
-            return false;
-        }
-
-        // Verify the operation proof
-        operation_proof
-            .verified_reconstruct(
-                original.value(),
-                factors_proof,
-                &reshuffle_commitments,
-                &rekey_commitments,
-            )
-            .is_some()
-    }
-
-    /// Verify a pseudonym rekey operation using cached commitments.
-    #[must_use]
-    pub fn verify_pseudonym_rekey_from_cache<E>(
-        &self,
-        transcryptor_id: &str,
-        original: &E,
-        _result: &E,
-        proof: &VerifiableRekey,
-        context_from: &EncryptionContext,
-        context_to: &EncryptionContext,
-    ) -> bool
-    where
-        E: ElGamalEncrypted + Rekeyable,
-    {
-        let transcryptor_id = transcryptor_id.to_string();
-
-        let Some(rekey_from) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
-        else {
-            return false;
-        };
-        let Some(rekey_to) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id, context_to.clone()))
-        else {
-            return false;
-        };
-
-        let rekey_commitments = Self::combine_rekey_commitments(rekey_from, rekey_to);
-
-        proof
-            .verified_reconstruct(original.value(), &rekey_commitments)
-            .is_some()
-    }
-
-    /// Verify an attribute rekey operation using cached commitments.
-    #[must_use]
-    pub fn verify_attribute_rekey_from_cache<E>(
-        &self,
-        transcryptor_id: &str,
-        original: &E,
-        _result: &E,
-        proof: &VerifiableRekey,
-        context_from: &EncryptionContext,
-        context_to: &EncryptionContext,
-    ) -> bool
-    where
-        E: ElGamalEncrypted + Rekeyable,
-    {
-        let transcryptor_id = transcryptor_id.to_string();
-
-        let Some(rekey_from) = self
-            .attribute_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
-        else {
-            return false;
-        };
-        let Some(rekey_to) = self
-            .attribute_rekey_cache
-            .retrieve(&(transcryptor_id, context_to.clone()))
-        else {
-            return false;
-        };
-
-        let rekey_commitments = Self::combine_rekey_commitments(rekey_from, rekey_to);
-
-        proof
-            .verified_reconstruct(original.value(), &rekey_commitments)
-            .is_some()
-    }
-
-    /// Verify a complete record transcryption using cached commitments.
-    #[must_use]
-    #[allow(clippy::too_many_arguments)]
-    pub fn verify_record_transcryption_from_cache(
-        &self,
-        transcryptor_id: &str,
-        original: &EncryptedRecord,
-        result: &EncryptedRecord,
-        proof: &RecordTranscryptionProof,
-        domain_from: &PseudonymizationDomain,
-        domain_to: &PseudonymizationDomain,
-        context_from: &EncryptionContext,
-        context_to: &EncryptionContext,
-    ) -> bool {
-        let transcryptor_id = transcryptor_id.to_string();
-
-        // Retrieve commitments from cache
-        let Some(reshuffle_from) = self
-            .reshuffle_cache
-            .retrieve(&(transcryptor_id.clone(), domain_from.clone()))
-        else {
-            return false;
-        };
-        let Some(reshuffle_to) = self
-            .reshuffle_cache
-            .retrieve(&(transcryptor_id.clone(), domain_to.clone()))
-        else {
-            return false;
-        };
-        let Some(pseudonym_rekey_from) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
-        else {
-            return false;
-        };
-        let Some(pseudonym_rekey_to) = self
-            .pseudonym_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_to.clone()))
-        else {
-            return false;
-        };
-        let Some(attribute_rekey_from) = self
-            .attribute_rekey_cache
-            .retrieve(&(transcryptor_id.clone(), context_from.clone()))
-        else {
-            return false;
-        };
-        let Some(attribute_rekey_to) = self
-            .attribute_rekey_cache
-            .retrieve(&(transcryptor_id, context_to.clone()))
-        else {
-            return false;
-        };
-
-        // Construct combined commitments for pseudonym operations
-        let reshuffle_commitments =
-            PseudonymizationFactorCommitments::from(crate::core::proved::FactorCommitments {
-                inv: reshuffle_from.commitments.inv,
-                val: reshuffle_to.commitments.val,
-            });
-        let pseudonym_rekey_commitments =
-            Self::combine_rekey_commitments(pseudonym_rekey_from, pseudonym_rekey_to);
-
-        // Verify pseudonym factors proof
-        if !proof
-            .pseudonym_factors_proof
-            .verify(&reshuffle_commitments, &pseudonym_rekey_commitments)
-        {
-            return false;
-        }
-
-        // Verify each pseudonym operation
-        for ((orig_pseudo, _result_pseudo), op_proof) in original
-            .pseudonyms
-            .iter()
-            .zip(result.pseudonyms.iter())
-            .zip(proof.pseudonym_operation_proofs.iter())
-        {
-            if op_proof
-                .verified_reconstruct(
-                    orig_pseudo.value(),
-                    &proof.pseudonym_factors_proof,
-                    &reshuffle_commitments,
-                    &pseudonym_rekey_commitments,
-                )
-                .is_none()
-            {
-                return false;
-            }
-        }
-
-        // Construct combined commitments for attribute operations
-        let attribute_rekey_commitments =
-            Self::combine_rekey_commitments(attribute_rekey_from, attribute_rekey_to);
-
-        // Verify each attribute operation
-        for ((orig_attr, _result_attr), op_proof) in original
-            .attributes
-            .iter()
-            .zip(result.attributes.iter())
-            .zip(proof.attribute_operation_proofs.iter())
-        {
-            if op_proof
-                .verified_reconstruct(orig_attr.value(), &attribute_rekey_commitments)
-                .is_none()
-            {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Verify long pseudonym pseudonymization with commitments.
-    #[must_use]
-    pub fn verify_pseudonymization_long(
-        &self,
-        originals: &[EncryptedPseudonym],
-        results: &[EncryptedPseudonym],
-        operation_proofs: &[VerifiableRSK],
-        factors_proof: &RSKFactorsProof,
-        commitments: &ProvedPseudonymizationCommitments,
-    ) -> bool {
-        // Verify factors proof
-        if !factors_proof.verify(
-            &commitments.reshuffle_commitments,
-            &commitments.rekey_commitments,
-        ) {
-            return false;
-        }
-
-        // Verify each block
-        for ((orig, _result), op_proof) in originals
-            .iter()
-            .zip(results.iter())
-            .zip(operation_proofs.iter())
-        {
-            if op_proof
-                .verified_reconstruct(
-                    orig.value(),
-                    factors_proof,
-                    &commitments.reshuffle_commitments,
-                    &commitments.rekey_commitments,
-                )
-                .is_none()
-            {
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Verify pseudonymization using cached commitments (convenience method).
+    #[cfg(feature = "elgamal3")]
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     pub fn verify_pseudonymization_cached<E>(
@@ -779,8 +358,7 @@ impl Verifier {
         transcryptor_id: &str,
         original: &E,
         result: &E,
-        operation_proof: &VerifiableRSK,
-        factors_proof: &RSKFactorsProof,
+        operation_proof: &VerifiableRRSK,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
@@ -789,56 +367,183 @@ impl Verifier {
     where
         E: ElGamalEncrypted + Pseudonymizable,
     {
-        self.verify_pseudonymization_from_cache(
-            transcryptor_id,
-            original,
-            result,
-            operation_proof,
-            factors_proof,
-            domain_from,
-            domain_to,
-            context_from,
-            context_to,
-        )
+        let key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let Some(commitments) = self.pseudonymization_cache.retrieve(&key) else {
+            return false;
+        };
+        self.verify_pseudonymization(original, result, operation_proof, commitments)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub fn verify_pseudonymization_cached<E>(
+        &self,
+        transcryptor_id: &str,
+        original: &E,
+        result: &E,
+        operation_proof: &VerifiableRRSK,
+        gy: &GroupElement,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> bool
+    where
+        E: ElGamalEncrypted + Pseudonymizable,
+    {
+        let key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let Some(commitments) = self.pseudonymization_cache.retrieve(&key) else {
+            return false;
+        };
+        self.verify_pseudonymization(original, result, operation_proof, gy, commitments)
+    }
+
+    #[must_use]
+    pub fn verify_pseudonym_rekey_cached<E>(
+        &self,
+        transcryptor_id: &str,
+        original: &E,
+        result: &E,
+        proof: &VerifiableRekey,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> bool
+    where
+        E: ElGamalEncrypted + Rekeyable,
+    {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let Some(commitments) = self.pseudonym_rekey_cache.retrieve(&key) else {
+            return false;
+        };
+        self.verify_pseudonym_rekey(original, result, proof, commitments)
+    }
+
+    #[must_use]
+    pub fn verify_attribute_rekey_cached<E>(
+        &self,
+        transcryptor_id: &str,
+        original: &E,
+        result: &E,
+        proof: &VerifiableRekey,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> bool
+    where
+        E: ElGamalEncrypted + Rekeyable,
+    {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let Some(commitments) = self.attribute_rekey_cache.retrieve(&key) else {
+            return false;
+        };
+        self.verify_attribute_rekey(original, result, proof, commitments)
+    }
+
+    // ------------------------------------------------------------------
+    // Session key share verification
+    // ------------------------------------------------------------------
+
+    #[must_use]
+    pub fn verify_pseudonym_session_key_share(
+        &self,
+        transcryptor_id: &str,
+        _session: &EncryptionContext,
+        proof: &crate::keys::distribution::SessionKeyShareProof,
+    ) -> bool {
+        let Some(blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
+            return false;
+        };
+        // The session-specific rekey commitment is no longer cached by the
+        // verifier on a per-context basis (commitments are now per-transition).
+        // Callers that need session key share verification should pass the
+        // session-level rekey commitment explicitly via
+        // [`verify_session_key_share_with_commitment`].
+        let _ = proof;
+        let _ = blinding_commitments;
+        false
+    }
+
+    #[must_use]
+    pub fn verify_attribute_session_key_share(
+        &self,
+        transcryptor_id: &str,
+        _session: &EncryptionContext,
+        proof: &crate::keys::distribution::SessionKeyShareProof,
+    ) -> bool {
+        let Some(_blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
+            return false;
+        };
+        let _ = proof;
+        false
+    }
+
+    /// Verify a session-key-share proof with an explicitly supplied rekey commitment.
+    #[must_use]
+    pub fn verify_session_key_share_with_commitment(
+        &self,
+        transcryptor_id: &str,
+        rekey_commitment: &GroupElement,
+        for_pseudonym: bool,
+        proof: &crate::keys::distribution::SessionKeyShareProof,
+    ) -> bool {
+        let Some(blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
+            return false;
+        };
+        let bc = if for_pseudonym {
+            &blinding_commitments.pseudonym
+        } else {
+            &blinding_commitments.attribute
+        };
+        proof.verify(bc, rekey_commitment)
     }
 }
 
 /// Read-only view of the verifier's cache.
 pub struct VerifierCache<'a> {
-    reshuffle: &'a ReshuffleCommitmentsCache,
+    pseudonymization: &'a PseudonymizationCommitmentsCache,
     pseudonym_rekey: &'a PseudonymRekeyCommitmentsCache,
     attribute_rekey: &'a AttributeRekeyCommitmentsCache,
 }
 
 impl<'a> VerifierCache<'a> {
-    /// Check if the cache is empty.
     pub fn is_empty(&self) -> bool {
-        self.reshuffle.is_empty()
+        self.pseudonymization.is_empty()
             && self.pseudonym_rekey.is_empty()
             && self.attribute_rekey.is_empty()
     }
 
-    /// Get total count of cached commitments.
     pub fn total_count(&self) -> usize {
-        self.reshuffle.len() + self.pseudonym_rekey.len() + self.attribute_rekey.len()
+        self.pseudonymization.len() + self.pseudonym_rekey.len() + self.attribute_rekey.len()
     }
 
-    /// Get count of cached pseudonymization commitments.
     pub fn pseudonymization_count(&self) -> usize {
-        self.reshuffle.len() + self.pseudonym_rekey.len()
+        self.pseudonymization.len()
     }
 
-    /// Get count of cached reshuffle commitments.
-    pub fn reshuffle_count(&self) -> usize {
-        self.reshuffle.len()
-    }
-
-    /// Get count of cached pseudonym rekey commitments.
     pub fn pseudonym_rekey_count(&self) -> usize {
         self.pseudonym_rekey.len()
     }
 
-    /// Get count of cached attribute rekey commitments.
     pub fn attribute_rekey_count(&self) -> usize {
         self.attribute_rekey.len()
     }

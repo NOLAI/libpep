@@ -109,21 +109,66 @@ impl Transcryptor {
     }
 
     /// Pseudonymize encrypted data from one domain/session to another.
-    /// Automatically works with any pseudonymizable type (pseudonyms, long pseudonyms, etc.)
-    pub fn pseudonymize<E>(&self, encrypted: &E, pseudonymization_info: &PseudonymizationInfo) -> E
+    /// Internally uses RRSK with a freshly sampled rerandomize factor.
+    #[cfg(feature = "elgamal3")]
+    pub fn pseudonymize<E, R>(
+        &self,
+        encrypted: &E,
+        pseudonymization_info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> E
     where
         E: Pseudonymizable,
+        R: RngCore + CryptoRng,
     {
-        super::functions::pseudonymize(encrypted, pseudonymization_info)
+        super::functions::pseudonymize(encrypted, pseudonymization_info, rng)
     }
 
-    /// Transcrypt (rekey or pseudonymize) encrypted data from one domain/session to another.
-    /// Automatically works with any transcryptable type (pseudonyms, attributes, JSON values, records, etc.)
-    pub fn transcrypt<E>(&self, encrypted: &E, transcryption_info: &TranscryptionInfo) -> E
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn pseudonymize<E, R>(
+        &self,
+        encrypted: &E,
+        pseudonymization_info: &PseudonymizationInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> E
+    where
+        E: Pseudonymizable,
+        R: RngCore + CryptoRng,
+    {
+        super::functions::pseudonymize(encrypted, pseudonymization_info, public_key, rng)
+    }
+
+    /// Transcrypt encrypted data from one domain/session to another.
+    /// Internally pseudonyms use RRSK (rerandomize+reshuffle+rekey) with a
+    /// freshly sampled factor, attributes use rekey only.
+    #[cfg(feature = "elgamal3")]
+    pub fn transcrypt<E, R>(
+        &self,
+        encrypted: &E,
+        transcryption_info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> E
     where
         E: Transcryptable,
+        R: RngCore + CryptoRng,
     {
-        super::functions::transcrypt(encrypted, transcryption_info)
+        super::functions::transcrypt(encrypted, transcryption_info, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn transcrypt<E, R>(
+        &self,
+        encrypted: &E,
+        transcryption_info: &TranscryptionInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> E
+    where
+        E: Transcryptable,
+        R: RngCore + CryptoRng,
+    {
+        super::functions::transcrypt(encrypted, transcryption_info, public_key, rng)
     }
 
     /// Rekey a batch of encrypted data from one session to another.
@@ -153,7 +198,7 @@ impl Transcryptor {
     /// # Errors
     ///
     /// Returns an error if the encrypted data do not all have the same structure.
-    #[cfg(feature = "batch")]
+    #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn pseudonymize_batch<E, R>(
         &self,
         encrypted: &mut [E],
@@ -167,13 +212,28 @@ impl Transcryptor {
         super::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
 
+    #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
+    pub fn pseudonymize_batch<E, R>(
+        &self,
+        encrypted: &mut [E],
+        pseudonymization_info: &PseudonymizationInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Result<Box<[E]>, super::batch::BatchError>
+    where
+        E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
+        R: RngCore + CryptoRng,
+    {
+        super::batch::pseudonymize_batch(encrypted, pseudonymization_info, public_key, rng)
+    }
+
     /// Transcrypt a batch of encrypted data from one domain/session to another.
     /// Automatically works with any transcryptable type (records, JSON values, long records, etc.)
     ///
     /// # Errors
     ///
     /// Returns an error if the encrypted data do not all have the same structure.
-    #[cfg(feature = "batch")]
+    #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn transcrypt_batch<E, R>(
         &self,
         encrypted: &mut [E],
@@ -185,5 +245,20 @@ impl Transcryptor {
         R: RngCore + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
+    }
+
+    #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
+    pub fn transcrypt_batch<E, R>(
+        &self,
+        encrypted: &mut [E],
+        transcryption_info: &TranscryptionInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Result<Box<[E]>, super::batch::BatchError>
+    where
+        E: Transcryptable + crate::data::traits::HasStructure + Clone,
+        R: RngCore + CryptoRng,
+    {
+        super::batch::transcrypt_batch(encrypted, transcryption_info, public_key, rng)
     }
 }

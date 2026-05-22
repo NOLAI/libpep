@@ -3,6 +3,7 @@
 
 use commandy_macros::*;
 use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::core::primitives::{rekey as core_rekey, rsk as core_rsk};
 #[cfg(feature = "json")]
 use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
 use libpep::data::long::{
@@ -14,6 +15,7 @@ use libpep::data::simple::{
 };
 use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::RekeyFactor;
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
@@ -25,7 +27,6 @@ use libpep::keys::{
     GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,
     PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey, SecretKey,
 };
-use libpep::transcryptor::transcrypt;
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]
@@ -504,7 +505,19 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = LongEncryptedPseudonym(
+                ciphertext
+                    .0
+                    .iter()
+                    .map(|b| {
+                        EncryptedPseudonym::from_value(core_rsk(
+                            b.value(),
+                            &transcryption_info.pseudonym.s.0,
+                            &transcryption_info.pseudonym.k.scalar(),
+                        ))
+                    })
+                    .collect(),
+            );
             eprint!("Transcrypted ciphertext (serialized): ");
             println!("{}", transcrypted.serialize());
         }
@@ -557,7 +570,18 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = LongEncryptedAttribute(
+                ciphertext
+                    .0
+                    .iter()
+                    .map(|b| {
+                        EncryptedAttribute::from_value(core_rekey(
+                            b.value(),
+                            &transcryption_info.attribute.scalar(),
+                        ))
+                    })
+                    .collect(),
+            );
             eprint!("Transcrypted ciphertext (serialized): ");
             println!("{}", transcrypted.serialize());
         }
@@ -596,7 +620,11 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = EncryptedPseudonym::from_value(core_rsk(
+                ciphertext.value(),
+                &transcryption_info.pseudonym.s.0,
+                &transcryption_info.pseudonym.k.scalar(),
+            ));
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.to_base64());
         }
@@ -617,7 +645,11 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = EncryptedPseudonym::from_value(core_rsk(
+                ciphertext.value(),
+                &transcryption_info.pseudonym.s.0,
+                &transcryption_info.pseudonym.k.scalar(),
+            ));
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.to_base64());
         }
@@ -638,7 +670,11 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = EncryptedPseudonym::from_value(core_rsk(
+                ciphertext.value(),
+                &transcryption_info.pseudonym.s.0,
+                &transcryption_info.pseudonym.k.scalar(),
+            ));
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.to_base64());
         }
@@ -660,7 +696,10 @@ fn main() {
                 &pseudonymization_secret,
                 &encryption_secret,
             );
-            let transcrypted = transcrypt(&ciphertext, &transcryption_info);
+            let transcrypted = EncryptedAttribute::from_value(core_rekey(
+                ciphertext.value(),
+                &transcryption_info.attribute.scalar(),
+            ));
             eprint!("Transcrypted ciphertext: ");
             println!("{}", &transcrypted.to_base64());
         }
@@ -772,8 +811,68 @@ fn main() {
                 &encryption_secret,
             );
 
-            // Transcrypt
-            let transcrypted = transcrypt(&encrypted, &transcryption_info);
+            // Transcrypt (CLI: non-rerandomizing variant; mirrors the
+            // pre-RRSK behaviour. The library's high-level `transcrypt` uses
+            // RRSK by default and would require the recipient session
+            // public key in non-elgamal3 mode, which the CLI does not have.)
+            fn cli_transcrypt(
+                v: &EncryptedPEPJSONValue,
+                info: &TranscryptionInfo,
+            ) -> EncryptedPEPJSONValue {
+                match v {
+                    EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
+                    EncryptedPEPJSONValue::Bool(enc) => {
+                        EncryptedPEPJSONValue::Bool(EncryptedAttribute::from_value(core_rekey(
+                            enc.value(),
+                            &info.attribute.scalar(),
+                        )))
+                    }
+                    EncryptedPEPJSONValue::Number(enc) => {
+                        EncryptedPEPJSONValue::Number(EncryptedAttribute::from_value(core_rekey(
+                            enc.value(),
+                            &info.attribute.scalar(),
+                        )))
+                    }
+                    EncryptedPEPJSONValue::String(blocks) => {
+                        EncryptedPEPJSONValue::String(LongEncryptedAttribute(
+                            blocks
+                                .0
+                                .iter()
+                                .map(|b| {
+                                    EncryptedAttribute::from_value(core_rekey(
+                                        b.value(),
+                                        &info.attribute.scalar(),
+                                    ))
+                                })
+                                .collect(),
+                        ))
+                    }
+                    EncryptedPEPJSONValue::Pseudonym(blocks) => {
+                        EncryptedPEPJSONValue::Pseudonym(LongEncryptedPseudonym(
+                            blocks
+                                .0
+                                .iter()
+                                .map(|b| {
+                                    EncryptedPseudonym::from_value(core_rsk(
+                                        b.value(),
+                                        &info.pseudonym.s.0,
+                                        &info.pseudonym.k.scalar(),
+                                    ))
+                                })
+                                .collect(),
+                        ))
+                    }
+                    EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+                        arr.iter().map(|x| cli_transcrypt(x, info)).collect(),
+                    ),
+                    EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+                        obj.iter()
+                            .map(|(k, v)| (k.clone(), cli_transcrypt(v, info)))
+                            .collect(),
+                    ),
+                }
+            }
+            let transcrypted = cli_transcrypt(&encrypted, &transcryption_info);
 
             // Serialize to JSON
             let transcrypted_json =

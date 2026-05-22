@@ -780,11 +780,33 @@ impl Encrypted for LongEncryptedAttribute {
 // Transcryption trait implementations for long types
 
 impl Pseudonymizable for LongEncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
         let pseudonymized_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.pseudonymize(info))
+            .map(|block| block.pseudonymize(info, rng))
+            .collect();
+        LongEncryptedPseudonym(pseudonymized_blocks)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        let pseudonymized_blocks: Vec<_> = self
+            .encrypted_blocks()
+            .iter()
+            .map(|block| block.pseudonymize(info, public_key, rng))
             .collect();
         LongEncryptedPseudonym(pseudonymized_blocks)
     }
@@ -817,13 +839,47 @@ impl Rekeyable for LongEncryptedAttribute {
 }
 
 impl Transcryptable for LongEncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, public_key, rng)
     }
 }
 
 impl Transcryptable for LongEncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, _rng: &mut R) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.rekey(&info.attribute)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        _public_key: &crate::keys::AttributeSessionPublicKey,
+        _rng: &mut R,
+    ) -> Self
+    where
+        R: RngCore + CryptoRng,
+    {
         self.rekey(&info.attribute)
     }
 }
@@ -831,23 +887,43 @@ impl Transcryptable for LongEncryptedAttribute {
 // Verifiable operations for long types - trait implementations
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiablePseudonymizable for LongEncryptedPseudonym {
-    type PseudonymizationProof = Vec<crate::core::proved::VerifiableRSK>;
+    type PseudonymizationProof = Vec<crate::core::verifiable::VerifiableRRSK>;
 
-    fn verifiable_pseudonymize<R: RngCore + CryptoRng>(
+    #[cfg(feature = "elgamal3")]
+    fn verifiable_pseudonymize<R>(
         &self,
         info: &crate::factors::PseudonymizationInfo,
         rng: &mut R,
-    ) -> Self::PseudonymizationProof {
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng,
+    {
         self.0
             .iter()
             .map(|block| block.verifiable_pseudonymize(info, rng))
+            .collect()
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_pseudonymize<R>(
+        &self,
+        info: &crate::factors::PseudonymizationInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self::PseudonymizationProof
+    where
+        R: RngCore + CryptoRng,
+    {
+        self.0
+            .iter()
+            .map(|block| block.verifiable_pseudonymize(info, public_key, rng))
             .collect()
     }
 }
 
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiableRekeyable for LongEncryptedPseudonym {
-    type RekeyProof = Vec<crate::core::proved::VerifiableRekey>;
+    type RekeyProof = Vec<crate::core::verifiable::VerifiableRekey>;
 
     fn verifiable_rekey<R: RngCore + CryptoRng>(
         &self,
@@ -863,7 +939,7 @@ impl crate::data::traits::VerifiableRekeyable for LongEncryptedPseudonym {
 
 #[cfg(feature = "verifiable")]
 impl crate::data::traits::VerifiableRekeyable for LongEncryptedAttribute {
-    type RekeyProof = Vec<crate::core::proved::VerifiableRekey>;
+    type RekeyProof = Vec<crate::core::verifiable::VerifiableRekey>;
 
     fn verifiable_rekey<R: RngCore + CryptoRng>(
         &self,

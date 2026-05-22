@@ -64,7 +64,8 @@ fn main() {
 
                 bench.benchmark::<(), ()>(metadata, &|| {
                     process_entities_individually(
-                        &entities, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                        &entities, &systems, &client_a, &domain_a, &domain_b, &session_a,
+                        &session_b,
                     );
                     Ok(())
                 });
@@ -106,6 +107,7 @@ fn main() {
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
+                        &client_a,
                         &domain_a,
                         &domain_b,
                         &session_a,
