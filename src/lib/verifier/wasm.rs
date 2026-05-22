@@ -34,15 +34,17 @@ impl WASMVerifier {
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
         commitments: &WASMVerifiablePseudonymizationCommitments,
-    ) {
-        self.inner.register_pseudonymization_commitments(
-            &transcryptor_id.to_string(),
-            &domain_from.0,
-            &domain_to.0,
-            &context_from.0,
-            &context_to.0,
-            commitments.0,
-        );
+    ) -> Result<(), JsValue> {
+        self.inner
+            .register_pseudonymization_commitments(
+                &transcryptor_id.to_string(),
+                &domain_from.0,
+                &domain_to.0,
+                &context_from.0,
+                &context_to.0,
+                commitments.0,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Register attribute rekey commitments for a transition.
@@ -53,13 +55,15 @@ impl WASMVerifier {
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
         commitments: &WASMVerifiableRekeyCommitments,
-    ) {
-        self.inner.register_attribute_rekey_commitments(
-            &transcryptor_id.to_string(),
-            &context_from.0,
-            &context_to.0,
-            commitments.0,
-        );
+    ) -> Result<(), JsValue> {
+        self.inner
+            .register_attribute_rekey_commitments(
+                &transcryptor_id.to_string(),
+                &context_from.0,
+                &context_to.0,
+                commitments.0,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Register pseudonym rekey commitments for a transition.
@@ -70,13 +74,15 @@ impl WASMVerifier {
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
         commitments: &WASMVerifiableRekeyCommitments,
-    ) {
-        self.inner.register_pseudonym_rekey_commitments(
-            &transcryptor_id.to_string(),
-            &context_from.0,
-            &context_to.0,
-            commitments.0,
-        );
+    ) -> Result<(), JsValue> {
+        self.inner
+            .register_pseudonym_rekey_commitments(
+                &transcryptor_id.to_string(),
+                &context_from.0,
+                &context_to.0,
+                commitments.0,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     /// Check if pseudonymization commitments exist for a transition.

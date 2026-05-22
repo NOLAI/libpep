@@ -36,6 +36,12 @@ use super::cache::{
     PseudonymRekeyCommitmentsCache, PseudonymizationCommitmentsCache,
 };
 
+/// A commitment was the identity or the generator `G`, which would let any
+/// per-message proof trivially "verify" without binding anything.
+#[derive(thiserror::Error, Debug, Clone, Copy, Eq, PartialEq)]
+#[error("weak {0} commitment is not allowed")]
+pub struct WeakCommitmentError(pub &'static str);
+
 /// A verifier with per-transition commitment caching.
 ///
 /// Stored commitments are *combined* for a given transition (i.e. already
@@ -142,9 +148,14 @@ impl Verifier {
     // Commitment validation
     // ------------------------------------------------------------------
 
-    fn validate_not_weak(val: &GroupElement, commitment_type: &str) {
+    fn validate_not_weak(
+        val: &GroupElement,
+        commitment_type: &'static str,
+    ) -> Result<(), WeakCommitmentError> {
         if *val == GroupElement::identity() || *val == G {
-            panic!("Weak {commitment_type} commitments are not allowed");
+            Err(WeakCommitmentError(commitment_type))
+        } else {
+            Ok(())
         }
     }
 
@@ -156,9 +167,9 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiablePseudonymizationCommitment,
-    ) {
-        Self::validate_not_weak(&commitments.reshuffle_commitment.0 .0, "reshuffle");
-        Self::validate_not_weak(&commitments.rekey_commitment.0 .0, "rekey");
+    ) -> Result<(), WeakCommitmentError> {
+        Self::validate_not_weak(&commitments.reshuffle_commitment.0 .0, "reshuffle")?;
+        Self::validate_not_weak(&commitments.rekey_commitment.0 .0, "rekey")?;
         let key: PseudonymizationKey = (
             transcryptor_id.clone(),
             domain_from.clone(),
@@ -167,6 +178,7 @@ impl Verifier {
             context_to.clone(),
         );
         self.pseudonymization_cache.store(key, commitments);
+        Ok(())
     }
 
     pub fn register_pseudonym_rekey_commitments(
@@ -175,14 +187,15 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiableRekeyCommitment,
-    ) {
-        Self::validate_not_weak(&commitments.commitment.0 .0, "pseudonym rekey");
+    ) -> Result<(), WeakCommitmentError> {
+        Self::validate_not_weak(&commitments.commitment.0 .0, "pseudonym rekey")?;
         let key: RekeyTransitionKey = (
             transcryptor_id.clone(),
             context_from.clone(),
             context_to.clone(),
         );
         self.pseudonym_rekey_cache.store(key, commitments);
+        Ok(())
     }
 
     pub fn register_attribute_rekey_commitments(
@@ -191,14 +204,15 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiableRekeyCommitment,
-    ) {
-        Self::validate_not_weak(&commitments.commitment.0 .0, "attribute rekey");
+    ) -> Result<(), WeakCommitmentError> {
+        Self::validate_not_weak(&commitments.commitment.0 .0, "attribute rekey")?;
         let key: RekeyTransitionKey = (
             transcryptor_id.clone(),
             context_from.clone(),
             context_to.clone(),
         );
         self.attribute_rekey_cache.store(key, commitments);
+        Ok(())
     }
 
     pub fn has_pseudonymization_commitments(
@@ -463,39 +477,10 @@ impl Verifier {
     // Session key share verification
     // ------------------------------------------------------------------
 
-    #[must_use]
-    pub fn verify_pseudonym_session_key_share(
-        &self,
-        transcryptor_id: &str,
-        _session: &EncryptionContext,
-        proof: &crate::keys::distribution::SessionKeyShareProof,
-    ) -> bool {
-        let Some(blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
-            return false;
-        };
-        // The session-specific rekey commitment is no longer cached by the
-        // verifier on a per-context basis (commitments are now per-transition).
-        // Callers that need session key share verification should pass the
-        // session-level rekey commitment explicitly via
-        // [`verify_session_key_share_with_commitment`].
-        let _ = proof;
-        let _ = blinding_commitments;
-        false
-    }
-
-    #[must_use]
-    pub fn verify_attribute_session_key_share(
-        &self,
-        transcryptor_id: &str,
-        _session: &EncryptionContext,
-        proof: &crate::keys::distribution::SessionKeyShareProof,
-    ) -> bool {
-        let Some(_blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
-            return false;
-        };
-        let _ = proof;
-        false
-    }
+    // Note: session-share verification requires the session-level rekey
+    // commitment, which the verifier no longer caches per-context (commitments
+    // are now per-transition). Use [`verify_session_key_share_with_commitment`]
+    // and supply the rekey commitment explicitly.
 
     /// Verify a session-key-share proof with an explicitly supplied rekey commitment.
     #[must_use]
@@ -552,5 +537,48 @@ impl<'a> VerifierCache<'a> {
 impl Default for Verifier {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::core::verifiable::{
+        FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
+    };
+
+    fn weak_pseudonymization_commitments(
+        weak: GroupElement,
+    ) -> VerifiablePseudonymizationCommitment {
+        VerifiablePseudonymizationCommitment {
+            reshuffle_commitment: PseudonymizationFactorCommitment(FactorCommitment(weak)),
+            rekey_commitment: RekeyFactorCommitment(FactorCommitment(weak)),
+        }
+    }
+
+    #[test]
+    fn register_rejects_weak_commitments_without_panicking() {
+        let mut verifier = Verifier::new();
+        let id = String::from("t1");
+        let d1 = PseudonymizationDomain::from("d1");
+        let d2 = PseudonymizationDomain::from("d2");
+        let c1 = EncryptionContext::from("c1");
+        let c2 = EncryptionContext::from("c2");
+
+        // Identity commitments must be rejected with an Err, not a panic.
+        let identity_commitments = weak_pseudonymization_commitments(GroupElement::identity());
+        assert!(verifier
+            .register_pseudonymization_commitments(&id, &d1, &d2, &c1, &c2, identity_commitments)
+            .is_err());
+
+        // Generator-equal commitments must also be rejected.
+        let g_commitments = weak_pseudonymization_commitments(G);
+        assert!(verifier
+            .register_pseudonymization_commitments(&id, &d1, &d2, &c1, &c2, g_commitments)
+            .is_err());
+
+        // Cache must remain untouched after a failed registration.
+        assert!(verifier.cache().is_empty());
     }
 }

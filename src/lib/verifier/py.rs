@@ -7,6 +7,7 @@ use crate::factors::py::commitments::{
 use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::verifier::Verifier;
 use derive_more::{Deref, From, Into};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 #[cfg(feature = "verifiable")]
@@ -37,15 +38,17 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
         commitments: &PyVerifiablePseudonymizationCommitments,
-    ) {
-        self.0.register_pseudonymization_commitments(
-            &transcryptor_id.to_string(),
-            &domain_from.0,
-            &domain_to.0,
-            &context_from.0,
-            &context_to.0,
-            commitments.inner,
-        );
+    ) -> PyResult<()> {
+        self.0
+            .register_pseudonymization_commitments(
+                &transcryptor_id.to_string(),
+                &domain_from.0,
+                &domain_to.0,
+                &context_from.0,
+                &context_to.0,
+                commitments.inner,
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Register attribute rekey commitments for caching.
@@ -55,13 +58,15 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
         commitments: &PyVerifiableRekeyCommitments,
-    ) {
-        self.0.register_attribute_rekey_commitments(
-            &transcryptor_id.to_string(),
-            &context_from.0,
-            &context_to.0,
-            commitments.inner,
-        );
+    ) -> PyResult<()> {
+        self.0
+            .register_attribute_rekey_commitments(
+                &transcryptor_id.to_string(),
+                &context_from.0,
+                &context_to.0,
+                commitments.inner,
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Register pseudonym rekey commitments for caching.
@@ -71,13 +76,15 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
         commitments: &PyVerifiableRekeyCommitments,
-    ) {
-        self.0.register_pseudonym_rekey_commitments(
-            &transcryptor_id.to_string(),
-            &context_from.0,
-            &context_to.0,
-            commitments.inner,
-        );
+    ) -> PyResult<()> {
+        self.0
+            .register_pseudonym_rekey_commitments(
+                &transcryptor_id.to_string(),
+                &context_from.0,
+                &context_to.0,
+                commitments.inner,
+            )
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Check if pseudonymization commitments exist for a transition.

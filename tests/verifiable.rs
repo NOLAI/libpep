@@ -171,14 +171,16 @@ fn test_verifier_cache_pseudonymization() {
 
     let mut verifier = Verifier::new();
     let transcryptor_id = String::from("transcryptor1");
-    verifier.register_pseudonymization_commitments(
-        &transcryptor_id,
-        &domain1,
-        &domain2,
-        &session1,
-        &session2,
-        commitments,
-    );
+    verifier
+        .register_pseudonymization_commitments(
+            &transcryptor_id,
+            &domain1,
+            &domain2,
+            &session1,
+            &session2,
+            commitments,
+        )
+        .expect("commitments should not be weak");
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
