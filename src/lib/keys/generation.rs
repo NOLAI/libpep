@@ -7,13 +7,13 @@ use crate::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
 use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic function to generate a global key pair.
 /// Automatically works for both pseudonym and attribute keys based on the types.
 pub fn make_global_key_pair<R, PK, SK>(rng: &mut R) -> (PK, SK)
 where
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
     PK: From<GroupElement>,
     SK: From<ScalarNonZero>,
 {
@@ -28,9 +28,7 @@ where
 }
 
 /// Generate new global key pairs for both pseudonyms and attributes.
-pub fn make_global_keys<R: RngCore + CryptoRng>(
-    rng: &mut R,
-) -> (GlobalPublicKeys, GlobalSecretKeys) {
+pub fn make_global_keys<R: Rng + CryptoRng>(rng: &mut R) -> (GlobalPublicKeys, GlobalSecretKeys) {
     let (pseudonym_pk, pseudonym_sk) = make_global_key_pair(rng);
     let (attribute_pk, attribute_sk) = make_global_key_pair(rng);
     (
@@ -47,7 +45,7 @@ pub fn make_global_keys<R: RngCore + CryptoRng>(
 
 /// Generate a new global key pair for pseudonyms.
 /// This is a convenience wrapper around [`make_global_key_pair`].
-pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
+pub fn make_pseudonym_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
     make_global_key_pair(rng)
@@ -55,7 +53,7 @@ pub fn make_pseudonym_global_keys<R: RngCore + CryptoRng>(
 
 /// Generate a new global key pair for attributes.
 /// This is a convenience wrapper around [`make_global_key_pair`].
-pub fn make_attribute_global_keys<R: RngCore + CryptoRng>(
+pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (AttributeGlobalPublicKey, AttributeGlobalSecretKey) {
     make_global_key_pair(rng)
@@ -181,7 +179,7 @@ where
     SK: From<ScalarNonZero>,
     RF: RekeyFactor,
     F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     // Compute rekey factor k_i
     let k = rekey_fn(secret, context);
@@ -214,7 +212,7 @@ where
 /// The returned proof should only be shared with the user requesting the session key,
 /// not publicly, as it contains information about the session key share.
 #[cfg(feature = "verifiable")]
-pub fn make_pseudonym_session_keys_with_proof<R: RngCore + CryptoRng>(
+pub fn make_pseudonym_session_keys_with_proof<R: Rng + CryptoRng>(
     global: &PseudonymGlobalSecretKey,
     context: &EncryptionContext,
     secret: &EncryptionSecret,
@@ -245,7 +243,7 @@ pub fn make_pseudonym_session_keys_with_proof<R: RngCore + CryptoRng>(
 /// The returned proof should only be shared with the user requesting the session key,
 /// not publicly, as it contains information about the session key share.
 #[cfg(feature = "verifiable")]
-pub fn make_attribute_session_keys_with_proof<R: RngCore + CryptoRng>(
+pub fn make_attribute_session_keys_with_proof<R: Rng + CryptoRng>(
     global: &AttributeGlobalSecretKey,
     context: &EncryptionContext,
     secret: &EncryptionSecret,
@@ -425,6 +423,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn session_secret_key_serde() {
         let mut rng = rand::rng();
         let (_global_pk, global_sk) = make_global_keys(&mut rng);

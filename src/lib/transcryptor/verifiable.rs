@@ -7,7 +7,7 @@ use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo,
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 use super::types::Transcryptor;
 
@@ -55,7 +55,7 @@ impl Transcryptor {
     ) -> E::PseudonymizationProof
     where
         E: crate::data::traits::VerifiablePseudonymizable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, rng)
     }
@@ -70,7 +70,7 @@ impl Transcryptor {
     ) -> E::PseudonymizationProof
     where
         E: crate::data::traits::VerifiablePseudonymizable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, public_key, rng)
     }
@@ -86,7 +86,7 @@ impl Transcryptor {
     ) -> E::RekeyProof
     where
         E: crate::data::traits::VerifiableRekeyable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         encrypted.verifiable_rekey(info, rng)
     }

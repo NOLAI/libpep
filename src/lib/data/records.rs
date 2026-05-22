@@ -3,11 +3,20 @@
 //! A `Record` represents a collection of pseudonyms and attributes that belong to the same entity.
 //! When encrypted, it becomes an `EncryptedRecord`.
 
-use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+use crate::data::simple::{
+    Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
+};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
-use crate::keys::{GlobalPublicKeys, SessionKeys};
-use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "offline")]
+use crate::keys::GlobalPublicKeys;
+use crate::keys::SessionKeys;
+use rand_core::{CryptoRng, Rng};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::io::{Error, ErrorKind};
 
 #[cfg(feature = "verifiable")]
 use crate::core::verifiable::{VerifiableRRSK, VerifiableRekey};
@@ -21,6 +30,8 @@ use crate::data::long::{
 
 #[cfg(feature = "batch")]
 use crate::data::traits::HasStructure;
+#[cfg(feature = "batch")]
+use crate::transcryptor::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,6 +65,7 @@ pub struct EncryptedRecord {
 }
 
 /// A long record containing multiple long pseudonyms and attributes for a single entity.
+#[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LongRecord {
     pub pseudonyms: Vec<LongPseudonym>,
@@ -61,6 +73,7 @@ pub struct LongRecord {
 }
 
 /// An encrypted long record containing multiple encrypted long pseudonyms and attributes.
+#[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LongEncryptedRecord {
     pub pseudonyms: Vec<LongEncryptedPseudonym>,
@@ -85,8 +98,94 @@ impl EncryptedRecord {
             attributes,
         }
     }
+
+    /// Serializes an `EncryptedRecord` to a string.
+    ///
+    /// Individual items are base64-encoded and joined with `"|"`.
+    /// Pseudonyms and attributes are separated by `";"`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use libpep::data::records::EncryptedRecord;
+    ///
+    /// let record = EncryptedRecord::new(vec![/* ... */], vec![/* ... */]);
+    /// let serialized = record.serialize();
+    /// ```
+    pub fn serialize(&self) -> String {
+        let pseudonyms = self
+            .pseudonyms
+            .iter()
+            .map(|p| p.to_base64())
+            .collect::<Vec<_>>()
+            .join("|");
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|a| a.to_base64())
+            .collect::<Vec<_>>()
+            .join("|");
+        format!("{};{}", pseudonyms, attributes)
+    }
+
+    /// Deserializes an `EncryptedRecord` from a string.
+    ///
+    /// Expects the format produced by [`serialize`](Self::serialize):
+    /// pseudonyms and attributes separated by `";"`, with individual items
+    /// separated by `"|"`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format is invalid or any base64-encoded part cannot be decoded.
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        let parts: Vec<&str> = s.splitn(2, ';').collect();
+        if parts.len() != 2 {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Expected pseudonyms and attributes separated by ';'",
+            ));
+        }
+
+        let pseudonyms = if parts[0].is_empty() {
+            vec![]
+        } else {
+            parts[0]
+                .split('|')
+                .map(|part| {
+                    EncryptedPseudonym::from_base64(part).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid base64 encoding: {}", part),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        let attributes = if parts[1].is_empty() {
+            vec![]
+        } else {
+            parts[1]
+                .split('|')
+                .map(|part| {
+                    EncryptedAttribute::from_base64(part).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid base64 encoding: {}", part),
+                        )
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        Ok(EncryptedRecord {
+            pseudonyms,
+            attributes,
+        })
+    }
 }
 
+#[cfg(feature = "long")]
 impl LongRecord {
     /// Create a new LongRecord with the given long pseudonyms and attributes.
     pub fn new(pseudonyms: Vec<LongPseudonym>, attributes: Vec<LongAttribute>) -> Self {
@@ -95,8 +194,87 @@ impl LongRecord {
             attributes,
         }
     }
+
+    /// Pads this LongRecord to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// each pseudonym and attribute to ensure all records have the same structure.
+    /// This is necessary for batch transcryption where all values must have identical
+    /// structure to prevent linkability attacks.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded LongRecord with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The number of pseudonyms doesn't match the structure
+    /// - The number of attributes doesn't match the structure
+    /// - Any pseudonym or attribute exceeds its target size
+    pub fn pad_to(&self, structure: &LongRecordStructure) -> Result<Self, Error> {
+        // Validate counts
+        if self.pseudonyms.len() != structure.pseudonym_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Pseudonym count mismatch: record has {} but structure expects {}",
+                    self.pseudonyms.len(),
+                    structure.pseudonym_blocks.len()
+                ),
+            ));
+        }
+
+        if self.attributes.len() != structure.attribute_blocks.len() {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                format!(
+                    "Attribute count mismatch: record has {} but structure expects {}",
+                    self.attributes.len(),
+                    structure.attribute_blocks.len()
+                ),
+            ));
+        }
+
+        // Pad pseudonyms
+        let padded_pseudonyms: Vec<_> = self
+            .pseudonyms
+            .iter()
+            .zip(structure.pseudonym_blocks.iter())
+            .map(|(p, &target_blocks)| p.pad_to(target_blocks))
+            .collect::<Result<_, _>>()?;
+
+        // Pad attributes
+        let padded_attributes: Vec<_> = self
+            .attributes
+            .iter()
+            .zip(structure.attribute_blocks.iter())
+            .map(|(a, &target_blocks)| a.pad_to(target_blocks))
+            .collect::<Result<_, _>>()?;
+
+        Ok(LongRecord {
+            pseudonyms: padded_pseudonyms,
+            attributes: padded_attributes,
+        })
+    }
+
+    /// Get the structure of this LongRecord.
+    ///
+    /// Returns a `LongRecordStructure` describing the number of blocks in each
+    /// pseudonym and attribute.
+    pub fn structure(&self) -> LongRecordStructure {
+        LongRecordStructure {
+            pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
+            attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
+        }
+    }
 }
 
+#[cfg(feature = "long")]
 impl LongEncryptedRecord {
     /// Create a new LongEncryptedRecord with the given encrypted long pseudonyms and attributes.
     pub fn new(
@@ -107,6 +285,69 @@ impl LongEncryptedRecord {
             pseudonyms,
             attributes,
         }
+    }
+
+    /// Serializes a `LongEncryptedRecord` to a string.
+    ///
+    /// Each long encrypted item is serialized using its own `serialize` method (which uses `"|"`).
+    /// Items within the same group are separated by `"~"`.
+    /// Pseudonyms and attributes groups are separated by `";"`.
+    pub fn serialize(&self) -> String {
+        let pseudonyms = self
+            .pseudonyms
+            .iter()
+            .map(|p| p.serialize())
+            .collect::<Vec<_>>()
+            .join("~");
+        let attributes = self
+            .attributes
+            .iter()
+            .map(|a| a.serialize())
+            .collect::<Vec<_>>()
+            .join("~");
+        format!("{};{}", pseudonyms, attributes)
+    }
+
+    /// Deserializes a `LongEncryptedRecord` from a string.
+    ///
+    /// Expects the format produced by [`serialize`](Self::serialize):
+    /// pseudonyms and attributes separated by `";"`, with individual long items
+    /// separated by `"~"`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format is invalid or any part cannot be decoded.
+    pub fn deserialize(s: &str) -> Result<Self, Error> {
+        let parts: Vec<&str> = s.splitn(2, ';').collect();
+        if parts.len() != 2 {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Expected pseudonyms and attributes separated by ';'",
+            ));
+        }
+
+        let pseudonyms = if parts[0].is_empty() {
+            vec![]
+        } else {
+            parts[0]
+                .split('~')
+                .map(LongEncryptedPseudonym::deserialize)
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        let attributes = if parts[1].is_empty() {
+            vec![]
+        } else {
+            parts[1]
+                .split('~')
+                .map(LongEncryptedAttribute::deserialize)
+                .collect::<Result<Vec<_>, _>>()?
+        };
+
+        Ok(LongEncryptedRecord {
+            pseudonyms,
+            attributes,
+        })
     }
 }
 
@@ -119,7 +360,7 @@ impl Encryptable for Record {
 
     fn encrypt<R>(&self, keys: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -142,7 +383,7 @@ impl Encryptable for Record {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -237,7 +478,7 @@ impl Encrypted for EncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.rerandomize(rng)).collect(),
@@ -248,7 +489,7 @@ impl Encrypted for EncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -305,7 +546,7 @@ impl Transcryptable for EncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -324,7 +565,7 @@ impl Transcryptable for EncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedRecord {
             pseudonyms: self
@@ -341,6 +582,28 @@ impl Transcryptable for EncryptedRecord {
     }
 }
 
+#[cfg(feature = "serde")]
+impl Serialize for EncryptedRecord {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for EncryptedRecord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "long")]
 impl Encryptable for LongRecord {
     type EncryptedType = LongEncryptedRecord;
     type PublicKeyType = SessionKeys;
@@ -350,7 +613,7 @@ impl Encryptable for LongRecord {
 
     fn encrypt<R>(&self, keys: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -373,7 +636,7 @@ impl Encryptable for LongRecord {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -391,6 +654,7 @@ impl Encryptable for LongRecord {
 }
 
 // Implement Encrypted for LongEncryptedRecord
+#[cfg(feature = "long")]
 impl Encrypted for LongEncryptedRecord {
     type UnencryptedType = LongRecord;
     type SecretKeyType = SessionKeys;
@@ -469,7 +733,7 @@ impl Encrypted for LongEncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self.pseudonyms.iter().map(|p| p.rerandomize(rng)).collect(),
@@ -480,7 +744,7 @@ impl Encrypted for LongEncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -533,11 +797,12 @@ impl Encrypted for LongEncryptedRecord {
     }
 }
 
+#[cfg(feature = "long")]
 impl Transcryptable for LongEncryptedRecord {
     #[cfg(feature = "elgamal3")]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -556,7 +821,7 @@ impl Transcryptable for LongEncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         LongEncryptedRecord {
             pseudonyms: self
@@ -573,6 +838,28 @@ impl Transcryptable for LongEncryptedRecord {
     }
 }
 
+#[cfg(all(feature = "serde", feature = "long"))]
+impl Serialize for LongEncryptedRecord {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.serialize())
+    }
+}
+
+#[cfg(all(feature = "serde", feature = "long"))]
+impl<'de> Deserialize<'de> for LongEncryptedRecord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::deserialize(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "batch")]
 impl HasStructure for EncryptedRecord {
     type Structure = RecordStructure;
 
@@ -584,6 +871,7 @@ impl HasStructure for EncryptedRecord {
     }
 }
 
+#[cfg(all(feature = "batch", feature = "long"))]
 impl HasStructure for LongEncryptedRecord {
     type Structure = LongRecordStructure;
 
@@ -636,7 +924,7 @@ impl VerifiableTranscryptable for EncryptedRecord {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 
@@ -666,7 +954,7 @@ impl VerifiableTranscryptable for EncryptedRecord {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 
@@ -701,7 +989,7 @@ impl VerifiableTranscryptable for LongEncryptedRecord {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 
@@ -731,7 +1019,7 @@ impl VerifiableTranscryptable for LongEncryptedRecord {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 
@@ -751,5 +1039,19 @@ impl VerifiableTranscryptable for LongEncryptedRecord {
             pseudonym_operation_proofs,
             attribute_operation_proofs,
         }
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Record {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+#[cfg(all(feature = "batch", feature = "long"))]
+impl BatchEncryptable for LongRecord {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
     }
 }

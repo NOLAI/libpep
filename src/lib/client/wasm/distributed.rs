@@ -396,6 +396,25 @@ impl WASMClient {
         WASMEncryptedPEPJSONValue(encrypted)
     }
 
+    /// Encrypt a PEPJSONValue using session keys.
+    #[cfg(all(feature = "json", feature = "batch"))]
+    #[wasm_bindgen(js_name = encryptJSONBatch)]
+    pub fn wasm_encrypt_json_batch(
+        &self,
+        values: Vec<WASMPEPJSONValue>,
+    ) -> Result<Vec<WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
+        let mut rng = rand::rng();
+        let rust_values: Vec<_> = values.into_iter().map(|m| m.0).collect();
+        let encrypted = self
+            .0
+            .encrypt_batch(&rust_values, &mut rng)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+        Ok(encrypted
+            .into_iter()
+            .map(WASMEncryptedPEPJSONValue)
+            .collect())
+    }
+
     /// Decrypt an encrypted PEPJSONValue using session keys.
     #[cfg(all(feature = "json", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = decryptJSON)]
@@ -413,5 +432,35 @@ impl WASMClient {
     pub fn wasm_decrypt_json(&self, encrypted: WASMEncryptedPEPJSONValue) -> WASMPEPJSONValue {
         use crate::data::traits::Encrypted;
         WASMPEPJSONValue(encrypted.0.decrypt(&self.0.keys))
+    }
+
+    /// Decrypt a batch of encrypted PEPJSONValues using session keys.
+    #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
+    #[wasm_bindgen(js_name = decryptJSONBatch)]
+    pub fn wasm_decrypt_json_batch(
+        &self,
+        encrypted: Vec<WASMEncryptedPEPJSONValue>,
+    ) -> Result<Vec<WASMPEPJSONValue>, wasm_bindgen::JsValue> {
+        let rust_encrypted: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+        let decrypted = self
+            .0
+            .decrypt_batch(&rust_encrypted)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+        Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
+    }
+
+    /// Decrypt a batch of encrypted PEPJSONValues using session keys.
+    #[cfg(all(feature = "json", feature = "batch", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = decryptJSONBatch)]
+    pub fn wasm_decrypt_json_batch(
+        &self,
+        encrypted: Vec<WASMEncryptedPEPJSONValue>,
+    ) -> Result<Vec<WASMPEPJSONValue>, wasm_bindgen::JsValue> {
+        let rust_encrypted: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+        let decrypted = self
+            .0
+            .decrypt_batch(&rust_encrypted)
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+        Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
     }
 }

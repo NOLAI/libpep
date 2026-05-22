@@ -2,11 +2,12 @@
 
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::contexts::*;
+use crate::factors::types::RekeyInfoProvider;
 use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Transcryptor identifier for distributed PEP systems.
 pub type TranscryptorId = String;
@@ -119,7 +120,7 @@ impl Transcryptor {
     ) -> E
     where
         E: Pseudonymizable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::functions::pseudonymize(encrypted, pseudonymization_info, rng)
     }
@@ -134,7 +135,7 @@ impl Transcryptor {
     ) -> E
     where
         E: Pseudonymizable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::functions::pseudonymize(encrypted, pseudonymization_info, public_key, rng)
     }
@@ -151,7 +152,7 @@ impl Transcryptor {
     ) -> E
     where
         E: Transcryptable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::functions::transcrypt(encrypted, transcryption_info, rng)
     }
@@ -166,7 +167,7 @@ impl Transcryptor {
     ) -> E
     where
         E: Transcryptable,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::functions::transcrypt(encrypted, transcryption_info, public_key, rng)
     }
@@ -187,7 +188,7 @@ impl Transcryptor {
     where
         E: Rekeyable + crate::data::traits::HasStructure + Clone,
         E::RekeyInfo: Copy,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::rekey_batch(encrypted, rekey_info, rng)
     }
@@ -207,7 +208,7 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
     }
@@ -222,7 +223,7 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::pseudonymize_batch(encrypted, pseudonymization_info, public_key, rng)
     }
@@ -242,7 +243,7 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Transcryptable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
     }
@@ -257,8 +258,28 @@ impl Transcryptor {
     ) -> Result<Box<[E]>, super::batch::BatchError>
     where
         E: Transcryptable + crate::data::traits::HasStructure + Clone,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::transcrypt_batch(encrypted, transcryption_info, public_key, rng)
+    }
+}
+
+impl RekeyInfoProvider<AttributeRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> AttributeRekeyInfo {
+        self.attribute_rekey_info(session_from, session_to)
+    }
+}
+
+impl RekeyInfoProvider<PseudonymRekeyInfo> for Transcryptor {
+    fn rekey_info(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> PseudonymRekeyInfo {
+        self.pseudonym_rekey_info(session_from, session_to)
     }
 }

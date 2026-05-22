@@ -1,3 +1,4 @@
+#![cfg(feature = "long")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::data::long::LongPseudonym;

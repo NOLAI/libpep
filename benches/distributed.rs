@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use libpep::client::{Client, Distributed};
+#[cfg(feature = "batch")]
 use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
@@ -10,6 +11,7 @@ use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::PublicKey;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
+use std::hint::black_box;
 
 #[cfg(feature = "verifiable")]
 use libpep::data::traits::{Pseudonymizable, VerifiablePseudonymizable, VerifiableRekeyable};
@@ -175,6 +177,7 @@ pub fn process_entities_individually(
 }
 
 /// Process entities using batch operations
+#[cfg(feature = "batch")]
 pub fn process_entities_batch(
     entities: Vec<(
         Vec<libpep::data::simple::EncryptedPseudonym>,
@@ -307,6 +310,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
 }
 
 // Functions are used by criterion_group! macro, but compiler doesn't recognize this
+#[cfg(feature = "batch")]
 #[allow(dead_code)]
 fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
     let mut group = c.benchmark_group("distributed_transcrypt_batch");
@@ -579,7 +583,7 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
+#[cfg(all(feature = "verifiable", feature = "batch"))]
 criterion_group!(
     benches,
     bench_distributed_transcrypt,
@@ -590,11 +594,24 @@ criterion_group!(
     bench_verifiable_pseudonymization_verify
 );
 
-#[cfg(not(feature = "verifiable"))]
+#[cfg(all(feature = "verifiable", not(feature = "batch")))]
+criterion_group!(
+    benches,
+    bench_distributed_transcrypt,
+    bench_verifiable_commitment_generation,
+    bench_verifiable_pseudonymization,
+    bench_verifiable_rekey,
+    bench_verifiable_pseudonymization_verify
+);
+
+#[cfg(all(not(feature = "verifiable"), feature = "batch"))]
 criterion_group!(
     benches,
     bench_distributed_transcrypt,
     bench_distributed_transcrypt_batch
 );
+
+#[cfg(all(not(feature = "verifiable"), not(feature = "batch")))]
+criterion_group!(benches, bench_distributed_transcrypt);
 
 criterion_main!(benches);

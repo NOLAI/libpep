@@ -89,50 +89,47 @@ The library is organized into the following main modules, each providing a diffe
 | Module | Description |
 |--------|-------------|
 | `arithmetic` | Basic arithmetic operations on scalars and group elements using Curve25519 |
-| `base` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
-| `core` | High-level API for `Pseudonym` and `Attribute` types with transcryption operations |
+| `core` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
+| `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
+| `keys` | Key management: global keys, session keys, key generation, and distributed key setup |
+| `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
+| `transcryptor` | Transcryptor for pseudonymization and rekeying operations |
+| `client` | Client-side encryption and decryption using session keys |
 
-### Core Module Structure
+### Keys Module (`keys`)
 
-The `core` module is further organized into specialized submodules:
+- `keys::types` - Key type definitions (GlobalPublicKeys, SessionKeys, etc.)
+- `keys::generation` - Functions for generating global and session keys
+- `keys::traits` - Traits for key types
+- `keys::distribution` - Distributed key generation and setup for multi-party transcryptors
 
-| Submodule | Description |
-|-----------|-------------|
-| `core::data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
-| `core::keys` | Key management: global keys, session keys, key generation, and distributed key setup |
-| `core::factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
-| `core::contexts` | Encryption contexts and pseudonymization domains for factor derivation |
-| `core::transcryptor` | Transcryptor for pseudonymization and rekeying operations |
-| `core::client` | Client-side encryption and decryption using session keys |
-| `core::functions` | High-level convenience functions for common operations |
+### Factors Module (`factors`)
 
-#### Keys Module (`core::keys`)
+- `factors::types` - Factor types (ReshuffleFactor, RekeyFactor, RerandomizeFactor) and Info type aliases
+- `factors::secrets` - Secret types and derivation functions (PseudonymizationSecret, EncryptionSecret)
+- `factors::contexts` - Context types (PseudonymizationDomain, EncryptionContext)
 
-- `core::keys::types` - Key type definitions (GlobalPublicKeys, SessionKeys, etc.)
-- `core::keys::generation` - Functions for generating global and session keys
-- `core::keys::distribution::blinding` - Blinding factors for distributed transcryptors
-- `core::keys::distribution::shares` - Session key shares for distributed key derivation
-- `core::keys::distribution::setup` - Setup functions for distributed transcryptor systems
+### Data Module (`data`)
 
-#### Factors Module (`core::factors`)
+- `data::simple` - Simple `Pseudonym` and `Attribute` types (up to 15 bytes)
+- `data::padding` - Padding utilities for data types
+- `data::long` - Long pseudonyms and attributes (over 15 bytes with PKCS#7 padding) (requires `long` feature)
+- `data::records` - Record types for batch operations
+- `data::json` - JSON structured data with nested pseudonyms and attributes (requires `json` feature)
+- `data::traits` - Common traits for data types
 
-- `core::factors::types` - Factor types (ReshuffleFactor, PseudonymRekeyFactor, AttributeRekeyFactor, RerandomizeFactor)
-- `core::factors::secrets` - Secret types (PseudonymizationSecret, EncryptionSecret)
-- `core::factors::derivation` - Functions for deriving factors from secrets and contexts
+### Prelude
 
-#### Data Module (`core::data`)
+The library provides convenient prelude modules for common operations:
 
-- `core::data::simple` - Simple `Pseudonym` and `Attribute` types (up to 15 bytes)
-- `core::data::long` - Long pseudonyms and attributes (over 15 bytes with PKCS#7 padding) (requires `long` feature)
-- `core::data::json` - JSON structured data with nested pseudonyms and attributes (requires `json` feature)
-- `core::data::records` - Record types for batch operations
-- `core::data::padding` - Padding utilities for data types
+- `prelude::client` - Re-exports for client-side encryption/decryption operations
+- `prelude::transcryptor` - Re-exports for transcryptor operations (pseudonymization, rekeying, transcryption)
 
-#### Distributed Transcryptors
+### Distributed Transcryptors
 
-The library supports distributed n-PEP operations where multiple transcryptors cooperatively perform pseudonymization and rekeying without any single party having access to the global secret keys. This functionality is integrated into the `core` module:
+The library supports distributed n-PEP operations where multiple transcryptors cooperatively perform pseudonymization and rekeying without any single party having access to the global secret keys:
 
-- Key distribution setup is in `core::keys::distribution`
+- Key distribution setup is in `keys::distribution`
 - The distributed transcryptor implementation can be found in distributed server/client components
 
 For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep)

@@ -21,6 +21,7 @@ use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::GlobalSecretKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -30,7 +31,7 @@ use serde_json::Value;
 /// A PEP JSON value that can be encrypted.
 ///
 /// This wraps JSON values where primitive types are stored as unencrypted PEP types.
-#[pyclass(name = "PEPJSONValue")]
+#[pyclass(name = "PEPJSONValue", from_py_object)]
 #[derive(Clone)]
 pub struct PyPEPJSONValue(pub(crate) PEPJSONValue);
 
@@ -62,12 +63,45 @@ impl PyPEPJSONValue {
             .map_err(|e| PyValueError::new_err(format!("Conversion failed: {}", e)))?;
         Python::attach(|py| json_to_python(py, &json_value))
     }
+
+    /// Get the structure/shape of this PEPJSONValue.
+    ///
+    /// Returns:
+    ///     A JSONStructure describing the shape
+    #[pyo3(name = "structure")]
+    fn structure(&self) -> PyJSONStructure {
+        PyJSONStructure(self.0.structure())
+    }
+
+    /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// LongString and LongPseudonym variants to ensure all instances have the same
+    /// number of blocks when encrypted. This is necessary for batch transcryption where
+    /// all values must have identical structure.
+    ///
+    /// Args:
+    ///     structure: The target structure specifying the number of blocks for each field
+    ///
+    /// Returns:
+    ///     A padded PEPJSONValue with padding blocks added where necessary
+    ///
+    /// Raises:
+    ///     ValueError: If the current structure doesn't match the target structure type
+    ///                 or if the current size exceeds the target size
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, structure: &PyJSONStructure) -> PyResult<Self> {
+        self.0
+            .pad_to(&structure.0)
+            .map(Self)
+            .map_err(|e| PyValueError::new_err(format!("Padding failed: {}", e)))
+    }
 }
 
 /// An encrypted PEP JSON value.
 ///
 /// This wraps JSON values where primitive types are encrypted as PEP types.
-#[pyclass(name = "EncryptedPEPJSONValue")]
+#[pyclass(name = "EncryptedPEPJSONValue", from_py_object)]
 #[derive(Clone)]
 pub struct PyEncryptedPEPJSONValue(pub(crate) EncryptedPEPJSONValue);
 
@@ -168,7 +202,7 @@ impl PyEncryptedPEPJSONValue {
 }
 
 /// A JSON structure descriptor that describes the shape of an EncryptedPEPJSONValue.
-#[pyclass(name = "JSONStructure")]
+#[pyclass(name = "JSONStructure", from_py_object)]
 #[derive(Clone)]
 pub struct PyJSONStructure(pub(crate) JSONStructure);
 
@@ -196,7 +230,7 @@ impl PyJSONStructure {
 }
 
 /// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.
-#[pyclass(name = "PEPJSONBuilder")]
+#[pyclass(name = "PEPJSONBuilder", skip_from_py_object)]
 pub struct PyPEPJSONBuilder {
     builder: PEPJSONBuilder,
 }
@@ -286,7 +320,7 @@ impl PyPEPJSONBuilder {
 ///
 /// Returns:
 ///     A shuffled list of transcrypted EncryptedPEPJSONValue objects
-#[cfg(feature = "elgamal3")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
 pub fn py_transcrypt_batch(
@@ -306,7 +340,7 @@ pub fn py_transcrypt_batch(
         .collect())
 }
 
-#[cfg(not(feature = "elgamal3"))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
 pub fn py_transcrypt_batch(
@@ -331,7 +365,7 @@ pub fn py_transcrypt_batch(
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// This is a simpler version that accepts a PyTranscryptionInfo.
-#[cfg(feature = "elgamal3")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[pyfunction]
 #[pyo3(name = "transcrypt_json_batch")]
 pub fn py_transcrypt_json_batch(
@@ -351,7 +385,7 @@ pub fn py_transcrypt_json_batch(
         .collect())
 }
 
-#[cfg(not(feature = "elgamal3"))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
 #[pyfunction]
 #[pyo3(name = "transcrypt_json_batch")]
 pub fn py_transcrypt_json_batch(
@@ -521,6 +555,29 @@ pub fn py_bytes_to_number(bytes: [u8; 9]) -> f64 {
     num.as_f64().unwrap_or(0.0)
 }
 
+/// Unifies multiple JSON structures by taking the maximum block count for each field.
+///
+/// This function is useful for batch operations where you need to normalize multiple
+/// values to have the same structure. It recursively unifies nested structures,
+/// taking the maximum block count for strings and pseudonyms.
+///
+/// Args:
+///     structures: A list of JSONStructure objects to unify
+///
+/// Returns:
+///     A unified JSONStructure where string and pseudonym fields have maximum block counts
+///
+/// Raises:
+///     ValueError: If the structures are incompatible (different types, array lengths, or object fields)
+#[pyfunction]
+#[pyo3(name = "unify_structures")]
+pub fn py_unify_structures(structures: Vec<PyJSONStructure>) -> PyResult<PyJSONStructure> {
+    let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
+    crate::data::json::structure::unify_structures(&rust_structures)
+        .map(PyJSONStructure)
+        .map_err(|e| PyValueError::new_err(format!("Unification failed: {}", e)))
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register main JSON types at json module level
     m.add_class::<PyPEPJSONValue>()?;
@@ -529,8 +586,11 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPEPJSONBuilder>()?;
 
     // Batch transcryption functions
-    m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+    #[cfg(feature = "batch")]
+    {
+        m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
+        m.add_function(wrap_pyfunction!(py_transcrypt_json_batch, m)?)?;
+    }
 
     // Global key functions (offline feature)
     #[cfg(feature = "offline")]
@@ -543,6 +603,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_byte_to_bool, m)?)?;
     m.add_function(wrap_pyfunction!(py_number_to_bytes, m)?)?;
     m.add_function(wrap_pyfunction!(py_bytes_to_number, m)?)?;
+    m.add_function(wrap_pyfunction!(py_unify_structures, m)?)?;
 
     Ok(())
 }

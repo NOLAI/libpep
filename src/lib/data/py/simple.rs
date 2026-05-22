@@ -9,7 +9,7 @@ use pyo3::Py;
 
 /// A pseudonym that can be used to identify a user
 /// within a specific domain, which can be encrypted, rekeyed and reshuffled.
-#[pyclass(name = "Pseudonym")]
+#[pyclass(name = "Pseudonym", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyPseudonym(pub(crate) Pseudonym);
 
@@ -151,7 +151,7 @@ impl PyPseudonym {
 
 /// An attribute which should not be identifiable
 /// and can be encrypted and rekeyed, but not reshuffled.
-#[pyclass(name = "Attribute")]
+#[pyclass(name = "Attribute", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyAttribute(pub(crate) Attribute);
 
@@ -292,7 +292,7 @@ impl PyAttribute {
 }
 
 /// An encrypted pseudonym, which is an [`PyElGamal`] encryption of a [`PyPseudonym`].
-#[pyclass(name = "EncryptedPseudonym")]
+#[pyclass(name = "EncryptedPseudonym", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyEncryptedPseudonym(pub(crate) EncryptedPseudonym);
 
@@ -345,7 +345,7 @@ impl PyEncryptedPseudonym {
 }
 
 /// An encrypted attribute, which is an [`PyElGamal`] encryption of a [`PyAttribute`].
-#[pyclass(name = "EncryptedAttribute")]
+#[pyclass(name = "EncryptedAttribute", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyEncryptedAttribute(pub(crate) EncryptedAttribute);
 

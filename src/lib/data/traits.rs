@@ -2,7 +2,7 @@
 
 use crate::factors::TranscryptionInfo;
 use crate::factors::{PseudonymizationInfo, RerandomizeFactor};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
 ///
@@ -37,7 +37,7 @@ pub trait Encryptable: Sized {
     /// Encrypt this value using a session key.
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Encrypt this value using a global key (offline encryption).
     #[cfg(feature = "offline")]
@@ -47,7 +47,7 @@ pub trait Encryptable: Sized {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
@@ -87,7 +87,7 @@ pub trait Encrypted: Sized {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Rerandomize this encrypted value, creating a binary unlinkable copy of the same message.
     #[cfg(not(feature = "elgamal3"))]
@@ -97,7 +97,7 @@ pub trait Encrypted: Sized {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Rerandomize this encrypted value using a known rerandomization factor.
     #[cfg(feature = "elgamal3")]
@@ -132,7 +132,7 @@ pub trait Pseudonymizable: Encrypted {
     #[cfg(feature = "elgamal3")]
     fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Pseudonymize from one domain and context to another, with a freshly
     /// sampled rerandomize factor. `public_key` is the recipient public key
@@ -146,7 +146,7 @@ pub trait Pseudonymizable: Encrypted {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted types that can be rekeyed (encryption context change).
@@ -174,7 +174,7 @@ pub trait Transcryptable: Encrypted {
     #[cfg(feature = "elgamal3")]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Transcrypt this encrypted value. `public_key` is the recipient public
     /// key the ciphertext was encrypted under (needed for the rerandomize
@@ -187,7 +187,7 @@ pub trait Transcryptable: Encrypted {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted types that have a structure that must be validated during batch operations.
@@ -228,7 +228,7 @@ pub trait VerifiablePseudonymizable: Pseudonymizable {
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Pseudonymize with proof generation. `public_key` is the recipient
     /// public key the ciphertext was encrypted under, used by the rerandomize
@@ -241,7 +241,7 @@ pub trait VerifiablePseudonymizable: Pseudonymizable {
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted types that support verifiable rekeying.
@@ -261,7 +261,7 @@ pub trait VerifiableRekeyable: Rekeyable {
     ///
     /// Returns an operation proof which contains the result.
     /// The result can be extracted from the proof via `.result(original)`.
-    fn verifiable_rekey<R: RngCore + CryptoRng>(
+    fn verifiable_rekey<R: Rng + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
@@ -288,7 +288,7 @@ pub trait VerifiableTranscryptable: Transcryptable {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
 
     /// Transcrypt with proof generation. `public_key` is the recipient
     /// public key the ciphertext was encrypted under (needed by the
@@ -301,5 +301,12 @@ pub trait VerifiableTranscryptable: Transcryptable {
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
-        R: RngCore + CryptoRng;
+        R: Rng + CryptoRng;
+}
+
+#[cfg(feature = "batch")]
+pub trait BatchEncryptable: Encryptable + Clone {
+    fn preprocess_batch(
+        items: &[Self],
+    ) -> Result<Vec<Self>, crate::transcryptor::batch::BatchError>;
 }

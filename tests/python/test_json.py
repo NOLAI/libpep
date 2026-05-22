@@ -19,6 +19,7 @@ from libpep.factors import (
 )
 from libpep.client import (
     encrypt,
+    encrypt_batch,
     decrypt,
 )
 from libpep.data import json as pepjson
@@ -223,6 +224,84 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             "structure" in error_msg or "inconsistent" in error_msg,
             f"Error should mention structure mismatch, got: {context.exception}",
         )
+
+    def test_json_batch_transcryption_same_structure_different_lengths(self):
+            """
+            Test JSON batch transcryption where structures differ in length.
+            Individual encryptions will fail in a batch, but encrypt_json_batch
+            should succeed by normalizing/padding the structures.
+            """
+            # Setup keys and secrets
+            global_keys = make_global_keys()
+            pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
+            enc_secret = EncryptionSecret(b"encryption-secret")
+
+            domain_a = PseudonymizationDomain("domain-a")
+            domain_b = PseudonymizationDomain("domain-b")
+            session = EncryptionContext("session-1")
+
+            # global_keys[1] is the Public Key
+            session_keys = make_session_keys(global_keys[1], session, enc_secret)
+
+            # Create two JSON values with same keys but different string lengths
+            data1 = {
+                "patient_id": "p1",
+                "diagnosis": "Flu",
+                "temperature": 38.5
+            }
+
+            data2 = {
+                "patient_id": "patient-002-with-a-very-long-id-that-changes-length",
+                "diagnosis": "Flu with a very long description to ensure structure length differs",
+                "temperature": 38.5
+            }
+
+            # Convert to PEP JSON
+            record1 = PEPJSONBuilder.from_json(data1, ["patient_id"]).build()
+            record2 = PEPJSONBuilder.from_json(data2, ["patient_id"]).build()
+
+            # 1. Encrypt separately
+            encrypted1 = encrypt(record1, session_keys)
+            encrypted2 = encrypt(record2, session_keys)
+
+            # Verify they have different structures due to length
+            self.assertNotEqual(encrypted1.structure(), encrypted2.structure())
+
+            transcryption_info = TranscryptionInfo(
+                domain_a, domain_b, session, session, pseudo_secret, enc_secret
+            )
+
+            # 2. Attempt batch transcryption (should fail because structures are not identical)
+            with self.assertRaises(Exception) as cm:
+                transcrypt_json_batch([encrypted1, encrypted2], transcryption_info)
+
+            self.assertIn("structure", str(cm.exception).lower())
+
+            # 3. Use encrypt_json_batch (this automatically pads both to the same structure)
+            # Note: Depending on your specific pyo3 mapping, this might be in pepjson or client
+            encrypted_batch = encrypt_batch([record1, record2], session_keys)
+
+            # Verify that the padded structures are now identical
+            self.assertEqual(
+                encrypted_batch[0].structure(),
+                encrypted_batch[1].structure(),
+                "encrypt_json_batch should have unified the structures via padding"
+            )
+
+            # 4. Batch transcrypt the normalized records (should succeed)
+            transcrypted_batch = transcrypt_json_batch(encrypted_batch, transcryption_info)
+
+            # Verify output
+            self.assertEqual(len(transcrypted_batch), 2)
+
+            # Decrypt and check data integrity (order may be shuffled by batch transcryption)
+            decrypted_jsons = [
+                decrypt(v, session_keys).to_json() for v in transcrypted_batch
+            ]
+            diagnoses = {d["diagnosis"] for d in decrypted_jsons}
+
+            self.assertIn("Flu", diagnoses)
+            self.assertIn("Flu with a very long description to ensure structure length differs", diagnoses)
 
 
 if __name__ == "__main__":

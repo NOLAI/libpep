@@ -8,7 +8,7 @@
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -75,7 +75,7 @@ impl SessionKeyShareProof {
     ///
     /// A proof that can be verified by the user to confirm the session key share
     /// was constructed correctly.
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         blinding: &ScalarNonZero,
         rekey_factor: &ScalarNonZero,
         rekey_commitment: &GroupElement,

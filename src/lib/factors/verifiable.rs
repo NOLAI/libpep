@@ -21,7 +21,7 @@
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero};
 use crate::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 
 /// Extract the payload of a pseudonymization domain, returning `None` for the
@@ -103,7 +103,7 @@ fn cw_combine(
 
 impl MasterPseudonymizationSecret {
     /// Generate a new random master pseudonymization secret.
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self {
             x1: ScalarNonZero::random(rng),
             x2: ScalarNonZero::random(rng),
@@ -134,7 +134,7 @@ impl MasterPseudonymizationSecret {
 
 impl MasterRekeyingSecret {
     /// Generate a new random master rekeying secret.
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self {
             y1: ScalarNonZero::random(rng),
             y2: ScalarNonZero::random(rng),

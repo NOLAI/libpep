@@ -4,7 +4,7 @@
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic pseudonymize function for encrypted pseudonyms.
 ///
@@ -14,7 +14,7 @@ use rand_core::{CryptoRng, RngCore};
 pub fn pseudonymize<R, E>(encrypted: &E, info: &PseudonymizationInfo, rng: &mut R) -> E
 where
     E: Pseudonymizable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.pseudonymize(info, rng)
 }
@@ -28,7 +28,7 @@ pub fn pseudonymize<R, E>(
 ) -> E
 where
     E: Pseudonymizable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.pseudonymize(info, public_key, rng)
 }
@@ -49,7 +49,7 @@ where
 pub fn transcrypt<R, E>(encrypted: &E, info: &TranscryptionInfo, rng: &mut R) -> E
 where
     E: Transcryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.transcrypt(info, rng)
 }
@@ -63,7 +63,7 @@ pub fn transcrypt<R, E>(
 ) -> E
 where
     E: Transcryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.transcrypt(info, public_key, rng)
 }
@@ -78,7 +78,7 @@ where
 pub fn rerandomize<R, E>(encrypted: &E, rng: &mut R) -> E
 where
     E: Encrypted,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.rerandomize(rng)
 }
@@ -97,7 +97,7 @@ pub fn rerandomize<R, E>(
 ) -> E
 where
     E: Encrypted,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     encrypted.rerandomize(public_key, rng)
 }

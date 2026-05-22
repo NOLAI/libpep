@@ -2,7 +2,7 @@
 
 #![allow(clippy::expect_used)]
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::client::{Client, Distributed};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
@@ -13,6 +13,7 @@ use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::PublicKey;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
+use std::hint::black_box;
 
 #[cfg(feature = "long")]
 use libpep::data::long::{LongAttribute, LongPseudonym};
@@ -389,7 +390,7 @@ fn bench_json_roundtrip(c: &mut Criterion) {
         .collect();
     let encrypted: Vec<_> = json_values
         .iter()
-        .map(|j| client_a.encrypt_json(j, rng))
+        .map(|j| client_a.encrypt(j, rng))
         .collect();
 
     c.bench_function("json_roundtrip_100", |b| {
@@ -458,7 +459,7 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
         .collect();
     let encrypted_base: Vec<_> = json_values
         .iter()
-        .map(|j| client_a.encrypt_json(j, rng_setup))
+        .map(|j| client_a.encrypt(j, rng_setup))
         .collect();
 
     c.bench_function("json_roundtrip_batch_100", |b| {

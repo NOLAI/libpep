@@ -1,8 +1,8 @@
 //! Batch operations for encryption and decryption.
 
-use crate::data::traits::{Encryptable, Encrypted};
+use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted};
 use crate::transcryptor::batch::BatchError;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic batch encryption.
 ///
@@ -18,8 +18,25 @@ pub fn encrypt_batch<M, R>(
     rng: &mut R,
 ) -> Result<Vec<M::EncryptedType>, BatchError>
 where
+    M: BatchEncryptable,
+    R: Rng + CryptoRng,
+{
+    let preprocessed = M::preprocess_batch(messages)?;
+    Ok(preprocessed
+        .iter()
+        .map(|x| x.encrypt(public_key, rng))
+        .collect())
+}
+
+#[cfg(feature = "insecure")]
+pub fn encrypt_batch_raw<M, R>(
+    messages: &[M],
+    public_key: &M::PublicKeyType,
+    rng: &mut R,
+) -> Result<Vec<M::EncryptedType>, BatchError>
+where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     Ok(messages
         .iter()
@@ -43,7 +60,7 @@ pub fn encrypt_global_batch<M, R>(
 ) -> Result<Vec<M::EncryptedType>, BatchError>
 where
     M: Encryptable,
-    R: RngCore + CryptoRng,
+    R: Rng + CryptoRng,
 {
     Ok(messages
         .iter()

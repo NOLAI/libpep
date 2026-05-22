@@ -8,7 +8,7 @@ use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 
 #[derive(Clone, Debug)]
-#[pyclass(name = "PseudonymizationDomain")]
+#[pyclass(name = "PseudonymizationDomain", from_py_object)]
 pub struct PyPseudonymizationDomain(pub(crate) PseudonymizationDomain);
 
 #[pymethods]
@@ -34,7 +34,7 @@ impl PyPseudonymizationDomain {
 }
 
 #[derive(Clone, Debug)]
-#[pyclass(name = "EncryptionContext")]
+#[pyclass(name = "EncryptionContext", from_py_object)]
 pub struct PyEncryptionContext(pub(crate) EncryptionContext);
 
 #[pymethods]
@@ -60,19 +60,19 @@ impl PyEncryptionContext {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-#[pyclass(name = "ReshuffleFactor")]
+#[pyclass(name = "ReshuffleFactor", from_py_object)]
 pub struct PyReshuffleFactor(pub(crate) ReshuffleFactor);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-#[pyclass(name = "PseudonymRekeyFactor")]
+#[pyclass(name = "PseudonymRekeyFactor", from_py_object)]
 pub struct PyPseudonymRekeyFactor(pub(crate) PseudonymRekeyFactor);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-#[pyclass(name = "AttributeRekeyFactor")]
+#[pyclass(name = "AttributeRekeyFactor", from_py_object)]
 pub struct PyAttributeRekeyFactor(pub(crate) AttributeRekeyFactor);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "PseudonymRSKFactors")]
+#[pyclass(name = "PseudonymRSKFactors", from_py_object)]
 pub struct PyPseudonymRSKFactors {
     #[pyo3(get)]
     pub s: PyReshuffleFactor,
@@ -81,15 +81,15 @@ pub struct PyPseudonymRSKFactors {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "PseudonymizationInfo")]
+#[pyclass(name = "PseudonymizationInfo", from_py_object)]
 pub struct PyPseudonymizationInfo(pub PyPseudonymRSKFactors);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "AttributeRekeyInfo")]
+#[pyclass(name = "AttributeRekeyInfo", from_py_object)]
 pub struct PyAttributeRekeyInfo(pub PyAttributeRekeyFactor);
 
 #[derive(Copy, Clone, Debug)]
-#[pyclass(name = "TranscryptionInfo")]
+#[pyclass(name = "TranscryptionInfo", from_py_object)]
 pub struct PyTranscryptionInfo {
     #[pyo3(get)]
     pub pseudonym: PyPseudonymizationInfo,

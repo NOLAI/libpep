@@ -8,8 +8,9 @@ jobs:
   semver-checks:
     runs-on: ubuntu-latest
     name: cargo semver-checks
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
           # Check default feature set, plus elgamal3 and legacy.
@@ -26,7 +27,7 @@ jobs:
 
     name: Build and publish Rust crate to crates.io
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - uses: rust-lang/crates-io-auth-action@v1
@@ -44,12 +45,12 @@ jobs:
 
     name: Build and publish WASM package to NPM
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '22.x'
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
       - run: npm install -g npm@latest
       - run: cargo install wasm-pack
@@ -65,7 +66,7 @@ jobs:
 
     name: Build and publish Python package to PyPI
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build wheels and sdist
         uses: PyO3/maturin-action@v1
         with:

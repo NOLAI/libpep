@@ -10,7 +10,7 @@ use pyo3::types::PyBytes;
 /// A zero-knowledge proof demonstrating knowledge of a discrete logarithm.
 ///
 /// This proof shows that `N = a*M` for some secret scalar `a` without revealing `a`.
-#[pyclass(name = "Proof")]
+#[pyclass(name = "Proof", from_py_object)]
 #[derive(Clone)]
 pub struct PyProof {
     pub(crate) inner: Proof,

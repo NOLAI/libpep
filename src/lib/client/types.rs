@@ -1,8 +1,12 @@
 //! Client type definitions.
 
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted};
-use crate::keys::{GlobalPublicKeys, KeyProvider, SessionKeys};
-use rand_core::{CryptoRng, RngCore};
+#[cfg(feature = "offline")]
+use crate::keys::GlobalPublicKeys;
+use crate::keys::{KeyProvider, SessionKeys};
+use rand_core::{CryptoRng, Rng};
 
 /// A PEP client that can encrypt and decrypt data, based on session key pairs for pseudonyms and attributes.
 #[derive(Clone)]
@@ -32,7 +36,7 @@ impl Client {
     where
         M: Encryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         message.encrypt(self.keys.get_key(), rng)
     }
@@ -60,40 +64,6 @@ impl Client {
         encrypted.decrypt(self.keys.get_key())
     }
 
-    /// Encrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(feature = "json")]
-    pub fn encrypt_json<R>(
-        &self,
-        message: &crate::data::json::data::PEPJSONValue,
-        rng: &mut R,
-    ) -> crate::data::json::data::EncryptedPEPJSONValue
-    where
-        R: RngCore + CryptoRng,
-    {
-        message.encrypt(&self.keys, rng)
-    }
-
-    /// Decrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(all(feature = "json", feature = "elgamal3"))]
-    pub fn decrypt_json(
-        &self,
-        encrypted: &crate::data::json::data::EncryptedPEPJSONValue,
-    ) -> Option<crate::data::json::data::PEPJSONValue> {
-        encrypted.decrypt(&self.keys)
-    }
-
-    /// Decrypt a JSON value with the session keys.
-    /// JSON values require the full SessionKeys struct, not individual keys.
-    #[cfg(all(feature = "json", not(feature = "elgamal3")))]
-    pub fn decrypt_json(
-        &self,
-        encrypted: &crate::data::json::data::EncryptedPEPJSONValue,
-    ) -> crate::data::json::data::PEPJSONValue {
-        encrypted.decrypt(&self.keys)
-    }
-
     /// Encrypt a batch of messages with the appropriate session public key.
     /// Automatically selects the correct key (pseudonym or attribute) based on the message type.
     #[cfg(feature = "batch")]
@@ -103,11 +73,26 @@ impl Client {
         rng: &mut R,
     ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
     where
-        M: Encryptable,
+        M: BatchEncryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::encrypt_batch(messages, self.keys.get_key(), rng)
+    }
+
+    /// Encrypt a batch of messages without padding or preprocessing.
+    #[cfg(feature = "insecure")]
+    pub fn encrypt_batch_raw<M, R>(
+        &self,
+        messages: &[M],
+        rng: &mut R,
+    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    where
+        M: Encryptable,
+        SessionKeys: KeyProvider<M::PublicKeyType>,
+        R: Rng + CryptoRng,
+    {
+        super::batch::encrypt_batch_raw(messages, self.keys.get_key(), rng)
     }
 
     /// Decrypt a batch of encrypted messages with the appropriate session secret key.
@@ -163,7 +148,7 @@ impl OfflineClient {
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         message.encrypt_global(self.global_public_keys.get_key(), rng)
     }
@@ -179,7 +164,7 @@ impl OfflineClient {
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         super::batch::encrypt_global_batch(messages, self.global_public_keys.get_key(), rng)
     }

@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
 
 /// Pseudonymization factor commitments with proofs (Python).
-#[pyclass(name = "VerifiablePseudonymizationCommitments")]
+#[pyclass(name = "VerifiablePseudonymizationCommitments", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiablePseudonymizationCommitments {
     pub(crate) inner: VerifiablePseudonymizationCommitment,
@@ -39,7 +39,7 @@ impl From<VerifiablePseudonymizationCommitment> for PyVerifiablePseudonymization
 }
 
 /// Rekey factor commitments with proof (Python).
-#[pyclass(name = "VerifiableRekeyCommitments")]
+#[pyclass(name = "VerifiableRekeyCommitments", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableRekeyCommitments {
     pub(crate) inner: VerifiableRekeyCommitment,

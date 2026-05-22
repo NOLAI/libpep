@@ -6,7 +6,7 @@ use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
 /// An ElGamal ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "ElGamal")]
+#[pyclass(name = "ElGamal", from_py_object)]
 pub struct PyElGamal(pub(crate) ElGamal);
 
 #[pymethods]

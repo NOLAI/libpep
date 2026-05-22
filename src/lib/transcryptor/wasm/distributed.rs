@@ -1,7 +1,8 @@
 //! WASM bindings for distributed transcryptor.
 
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "batch"))]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "batch")]
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
@@ -161,6 +162,7 @@ impl WASMDistributedTranscryptor {
         ))
     }
 
+    #[cfg(feature = "batch")]
     #[wasm_bindgen(js_name = rekeyBatch)]
     pub fn wasm_rekey_batch(
         &self,
@@ -183,7 +185,7 @@ impl WASMDistributedTranscryptor {
             .collect())
     }
 
-    #[cfg(feature = "elgamal3")]
+    #[cfg(all(feature = "batch", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = pseudonymizeBatch)]
     pub fn wasm_pseudonymize_batch(
         &self,
@@ -206,7 +208,7 @@ impl WASMDistributedTranscryptor {
             .collect())
     }
 
-    #[cfg(not(feature = "elgamal3"))]
+    #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = pseudonymizeBatch)]
     pub fn wasm_pseudonymize_batch(
         &self,

@@ -833,8 +833,14 @@ fn main() {
                             &info.attribute.scalar(),
                         )))
                     }
-                    EncryptedPEPJSONValue::String(blocks) => {
-                        EncryptedPEPJSONValue::String(LongEncryptedAttribute(
+                    EncryptedPEPJSONValue::String(enc) => {
+                        EncryptedPEPJSONValue::String(EncryptedAttribute::from_value(core_rekey(
+                            enc.value(),
+                            &info.attribute.scalar(),
+                        )))
+                    }
+                    EncryptedPEPJSONValue::LongString(blocks) => {
+                        EncryptedPEPJSONValue::LongString(LongEncryptedAttribute(
                             blocks
                                 .0
                                 .iter()
@@ -847,8 +853,15 @@ fn main() {
                                 .collect(),
                         ))
                     }
-                    EncryptedPEPJSONValue::Pseudonym(blocks) => {
-                        EncryptedPEPJSONValue::Pseudonym(LongEncryptedPseudonym(
+                    EncryptedPEPJSONValue::Pseudonym(enc) => {
+                        EncryptedPEPJSONValue::Pseudonym(EncryptedPseudonym::from_value(core_rsk(
+                            enc.value(),
+                            &info.pseudonym.s.0,
+                            &info.pseudonym.k.scalar(),
+                        )))
+                    }
+                    EncryptedPEPJSONValue::LongPseudonym(blocks) => {
+                        EncryptedPEPJSONValue::LongPseudonym(LongEncryptedPseudonym(
                             blocks
                                 .0
                                 .iter()

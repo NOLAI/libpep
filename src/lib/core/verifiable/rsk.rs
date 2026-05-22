@@ -31,7 +31,7 @@ use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,7 @@ pub struct VerifiableRSK {
 }
 
 impl VerifiableRSK {
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s: &ScalarNonZero,
         k: &ScalarNonZero,
@@ -181,7 +181,7 @@ pub struct VerifiableRSK2 {
 }
 
 impl VerifiableRSK2 {
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s_from: &ScalarNonZero,
         s_to: &ScalarNonZero,
@@ -312,7 +312,7 @@ impl VerifiableRSK2 {
     }
 }
 
-pub fn verifiable_rsk<R: RngCore + CryptoRng>(
+pub fn verifiable_rsk<R: Rng + CryptoRng>(
     m: &ElGamal,
     s: &ScalarNonZero,
     k: &ScalarNonZero,
@@ -321,7 +321,7 @@ pub fn verifiable_rsk<R: RngCore + CryptoRng>(
     VerifiableRSK::new(m, s, k, rng)
 }
 
-pub fn verifiable_rsk2<R: RngCore + CryptoRng>(
+pub fn verifiable_rsk2<R: Rng + CryptoRng>(
     m: &ElGamal,
     s_from: &ScalarNonZero,
     s_to: &ScalarNonZero,

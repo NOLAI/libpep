@@ -12,7 +12,7 @@ use pyo3::Py;
 
 /// A blinding factor used to blind a global secret key during system setup.
 #[derive(Copy, Clone, Debug, From, Into, Deref)]
-#[pyclass(name = "BlindingFactor")]
+#[pyclass(name = "BlindingFactor", from_py_object)]
 pub struct PyBlindingFactor(pub(crate) BlindingFactor);
 
 #[pymethods]
@@ -73,7 +73,7 @@ impl PyBlindingFactor {
 
 /// A blinded pseudonym global secret key.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "BlindedPseudonymGlobalSecretKey")]
+#[pyclass(name = "BlindedPseudonymGlobalSecretKey", from_py_object)]
 pub struct PyBlindedPseudonymGlobalSecretKey(pub(crate) BlindedPseudonymGlobalSecretKey);
 
 #[pymethods]
@@ -120,7 +120,7 @@ impl PyBlindedPseudonymGlobalSecretKey {
 
 /// A blinded attribute global secret key.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "BlindedAttributeGlobalSecretKey")]
+#[pyclass(name = "BlindedAttributeGlobalSecretKey", from_py_object)]
 pub struct PyBlindedAttributeGlobalSecretKey(pub(crate) BlindedAttributeGlobalSecretKey);
 
 #[pymethods]
@@ -167,7 +167,7 @@ impl PyBlindedAttributeGlobalSecretKey {
 
 /// A pair of blinded global secret keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "BlindedGlobalKeys")]
+#[pyclass(name = "BlindedGlobalKeys", from_py_object)]
 pub struct PyBlindedGlobalKeys {
     #[pyo3(get)]
     pub pseudonym: PyBlindedPseudonymGlobalSecretKey,

@@ -27,7 +27,7 @@ use super::rsk::{VerifiableRSK, VerifiableRSK2};
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -46,7 +46,7 @@ impl VerifiableRRSK {
     /// `gy` is the recipient public key against which the ciphertext was
     /// encrypted (in `elgamal3` mode this equals `v.gy`; in the default mode
     /// the caller supplies it explicitly).
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         gy: &GroupElement,
         r: &ScalarNonZero,
@@ -116,7 +116,7 @@ pub struct VerifiableRRSK2 {
 
 impl VerifiableRRSK2 {
     #[allow(clippy::too_many_arguments)]
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         gy: &GroupElement,
         r: &ScalarNonZero,
@@ -188,7 +188,7 @@ impl VerifiableRRSK2 {
     }
 }
 
-pub fn verifiable_rrsk<R: RngCore + CryptoRng>(
+pub fn verifiable_rrsk<R: Rng + CryptoRng>(
     m: &ElGamal,
     gy: &GroupElement,
     r: &ScalarNonZero,
@@ -200,7 +200,7 @@ pub fn verifiable_rrsk<R: RngCore + CryptoRng>(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn verifiable_rrsk2<R: RngCore + CryptoRng>(
+pub fn verifiable_rrsk2<R: Rng + CryptoRng>(
     m: &ElGamal,
     gy: &GroupElement,
     r: &ScalarNonZero,

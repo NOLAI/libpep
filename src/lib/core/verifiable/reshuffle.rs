@@ -22,7 +22,7 @@ use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,7 @@ pub struct VerifiableReshuffle {
 }
 
 impl VerifiableReshuffle {
-    pub fn new<R: RngCore + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
+    pub fn new<R: Rng + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
         let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar(s, &v.gb, &v.gc, rng);
         Self {
             p_gb_prime,
@@ -114,7 +114,7 @@ pub struct VerifiableReshuffle2 {
 }
 
 impl VerifiableReshuffle2 {
-    pub fn new<R: RngCore + CryptoRng>(
+    pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s_from: &ScalarNonZero,
         s_to: &ScalarNonZero,
@@ -195,7 +195,7 @@ impl VerifiableReshuffle2 {
     }
 }
 
-pub fn verifiable_reshuffle<R: RngCore + CryptoRng>(
+pub fn verifiable_reshuffle<R: Rng + CryptoRng>(
     m: &ElGamal,
     s: &ScalarNonZero,
     rng: &mut R,
@@ -203,7 +203,7 @@ pub fn verifiable_reshuffle<R: RngCore + CryptoRng>(
     VerifiableReshuffle::new(m, s, rng)
 }
 
-pub fn verifiable_reshuffle2<R: RngCore + CryptoRng>(
+pub fn verifiable_reshuffle2<R: Rng + CryptoRng>(
     m: &ElGamal,
     s_from: &ScalarNonZero,
     s_to: &ScalarNonZero,

@@ -4,14 +4,18 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::*;
+#[cfg(feature = "batch")]
+use crate::transcryptor::BatchError;
 use derive_more::{Deref, From};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -112,7 +116,7 @@ pub trait ElGamalEncryptable: Encryptable {
     }
 
     /// Create with a random value.
-    fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self
+    fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self
     where
         Self: Sized,
     {
@@ -187,7 +191,7 @@ impl Encryptable for Pseudonym {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -203,7 +207,7 @@ impl Encryptable for Pseudonym {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -221,7 +225,7 @@ impl Encryptable for Attribute {
 
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -237,7 +241,7 @@ impl Encryptable for Attribute {
         rng: &mut R,
     ) -> Self::EncryptedType
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
             self.value(),
@@ -309,7 +313,7 @@ impl Encrypted for EncryptedPseudonym {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -322,7 +326,7 @@ impl Encrypted for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))
@@ -388,7 +392,7 @@ impl Encrypted for EncryptedAttribute {
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(&RerandomizeFactor(r))
@@ -401,7 +405,7 @@ impl Encrypted for EncryptedAttribute {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         self.rerandomize_known(public_key, &RerandomizeFactor(r))
@@ -462,7 +466,7 @@ impl Pseudonymizable for EncryptedPseudonym {
     #[cfg(feature = "elgamal3")]
     fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         EncryptedPseudonym::from_value(crate::core::primitives::rrsk(
@@ -481,7 +485,7 @@ impl Pseudonymizable for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::keys::PublicKey as _;
         let r = ScalarNonZero::random(rng);
@@ -515,7 +519,7 @@ impl Transcryptable for EncryptedPseudonym {
     #[cfg(feature = "elgamal3")]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         self.pseudonymize(&info.pseudonym, rng)
     }
@@ -528,7 +532,7 @@ impl Transcryptable for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         self.pseudonymize(&info.pseudonym, public_key, rng)
     }
@@ -539,7 +543,7 @@ impl Transcryptable for EncryptedAttribute {
     #[cfg(feature = "elgamal3")]
     fn transcrypt<R>(&self, info: &TranscryptionInfo, _rng: &mut R) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         self.rekey(&info.attribute)
     }
@@ -552,7 +556,7 @@ impl Transcryptable for EncryptedAttribute {
         _rng: &mut R,
     ) -> Self
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         self.rekey(&info.attribute)
     }
@@ -570,7 +574,7 @@ impl crate::data::traits::VerifiablePseudonymizable for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let r = ScalarNonZero::random(rng);
         crate::core::verifiable::VerifiableRRSK::new(
@@ -591,7 +595,7 @@ impl crate::data::traits::VerifiablePseudonymizable for EncryptedPseudonym {
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         use crate::keys::PublicKey as _;
         let r = ScalarNonZero::random(rng);
@@ -610,7 +614,7 @@ impl crate::data::traits::VerifiablePseudonymizable for EncryptedPseudonym {
 impl crate::data::traits::VerifiableRekeyable for EncryptedPseudonym {
     type RekeyProof = crate::core::verifiable::VerifiableRekey;
 
-    fn verifiable_rekey<R: RngCore + CryptoRng>(
+    fn verifiable_rekey<R: Rng + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
@@ -623,7 +627,7 @@ impl crate::data::traits::VerifiableRekeyable for EncryptedPseudonym {
 impl crate::data::traits::VerifiableRekeyable for EncryptedAttribute {
     type RekeyProof = crate::core::verifiable::VerifiableRekey;
 
-    fn verifiable_rekey<R: RngCore + CryptoRng>(
+    fn verifiable_rekey<R: Rng + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
@@ -644,6 +648,20 @@ impl crate::data::traits::HasStructure for EncryptedAttribute {
     type Structure = ();
 
     fn structure(&self) -> Self::Structure {}
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Pseudonym {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+#[cfg(feature = "batch")]
+impl BatchEncryptable for Attribute {
+    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
 }
 
 #[cfg(test)]
@@ -758,6 +776,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn encrypted_attribute_serde_json() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_attribute_global_keys(&mut rng);

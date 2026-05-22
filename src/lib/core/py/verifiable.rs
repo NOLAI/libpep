@@ -5,7 +5,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 /// A verifiable proof for reshuffle operations.
-#[pyclass(name = "VerifiableReshuffle")]
+#[pyclass(name = "VerifiableReshuffle", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableReshuffle {
     pub(crate) inner: VerifiableReshuffle,
@@ -31,7 +31,7 @@ impl PyVerifiableReshuffle {
 }
 
 /// A verifiable proof for rekey operations.
-#[pyclass(name = "VerifiableRekey")]
+#[pyclass(name = "VerifiableRekey", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableRekey {
     pub(crate) inner: VerifiableRekey,
@@ -59,7 +59,7 @@ impl PyVerifiableRekey {
 /// A verifiable proof for RRSK (rerandomize + reshuffle + rekey) operations.
 /// Used for verifiable pseudonymization, which always rerandomizes alongside
 /// the reshuffle/rekey to keep ciphertexts unlinkable.
-#[pyclass(name = "VerifiableRSK")]
+#[pyclass(name = "VerifiableRSK", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableRSK {
     pub(crate) inner: VerifiableRRSK,

@@ -1,4 +1,4 @@
-use energy_bench::EnergyBenchBuilder;
+use energy_bench::{EnergyBench, EnergyBenchConfig};
 use libpep::arithmetic::group_elements::{GroupElement, G};
 use libpep::arithmetic::scalars::ScalarNonZero;
 use libpep::core::elgamal::{decrypt, encrypt};
@@ -30,9 +30,8 @@ fn setup_keys() -> (ScalarNonZero, GroupElement) {
 }
 
 fn main() {
-    let mut builder = EnergyBenchBuilder::new("libpep_base_operations");
-    builder.set_number_of_runs(10);
-    let mut bench = builder.build();
+    let config = EnergyBenchConfig::default();
+    let mut bench = EnergyBench::<BenchMetadata, 2>::new("libpep_base_operations", config);
 
     let iterations = 10_000;
 
@@ -47,12 +46,12 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let mut rng_inner = rand::rng();
                 let _ = encrypt(&message, &public_key, &mut rng_inner);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -68,11 +67,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = decrypt(&encrypted, &secret_key);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -89,14 +88,14 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rerandomize(&encrypted, &r);
                 #[cfg(not(feature = "elgamal3"))]
                 let _ = rerandomize(&encrypted, &public_key, &r);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -113,11 +112,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = reshuffle(&encrypted, &s);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -134,11 +133,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = rekey(&encrypted, &k);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -156,11 +155,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = rsk(&encrypted, &s, &k);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -179,14 +178,14 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rrsk(&encrypted, &r, &s, &k);
                 #[cfg(not(feature = "elgamal3"))]
                 let _ = rrsk(&encrypted, &public_key, &r, &s, &k);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -204,11 +203,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = reshuffle2(&encrypted, &s_from, &s_to);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -226,11 +225,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = rekey2(&encrypted, &k_from, &k_to);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -250,11 +249,11 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 let _ = rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 
@@ -275,14 +274,14 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark::<(), ()>(metadata, &|| {
+        bench.benchmark(metadata, &|| {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rrsk2(&encrypted, &r, &s_from, &s_to, &k_from, &k_to);
                 #[cfg(not(feature = "elgamal3"))]
                 let _ = rrsk2(&encrypted, &public_key, &r, &s_from, &s_to, &k_from, &k_to);
             }
-            Ok(())
+            Ok::<_, ()>(())
         });
     }
 }

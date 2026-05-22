@@ -15,7 +15,7 @@ use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::ElGamal;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ pub struct VerifiableRerandomize {
 }
 
 impl VerifiableRerandomize {
-    pub fn new<R: RngCore + CryptoRng>(gy: &GroupElement, r: &ScalarNonZero, rng: &mut R) -> Self {
+    pub fn new<R: Rng + CryptoRng>(gy: &GroupElement, r: &ScalarNonZero, rng: &mut R) -> Self {
         let (gr, p_gy_r) = create_proof(r, gy, rng);
         Self { gr, p_gy_r }
     }
@@ -88,7 +88,7 @@ impl VerifiableRerandomize {
 }
 
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
-pub fn verifiable_rerandomize<R: RngCore + CryptoRng>(
+pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
     original: &ElGamal,
     r: &ScalarNonZero,
     rng: &mut R,
@@ -99,7 +99,7 @@ pub fn verifiable_rerandomize<R: RngCore + CryptoRng>(
 }
 
 #[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
-pub fn verifiable_rerandomize<R: RngCore + CryptoRng>(
+pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
     original: &ElGamal,
     gy: &GroupElement,
     r: &ScalarNonZero,

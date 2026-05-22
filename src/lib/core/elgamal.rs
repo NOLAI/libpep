@@ -4,7 +4,7 @@ use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
 use base64::engine::general_purpose;
 use base64::Engine;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
 #[cfg(feature = "serde")]
@@ -121,11 +121,7 @@ impl<'de> Deserialize<'de> for ElGamal {
 /// The randomness is generated using the provided random number generator `rng`.
 ///
 /// Encryption may **not** be done with public key [`GroupElement::identity`], which is checked with an assertion.
-pub fn encrypt<R: RngCore + CryptoRng>(
-    gm: &GroupElement,
-    gy: &GroupElement,
-    rng: &mut R,
-) -> ElGamal {
+pub fn encrypt<R: Rng + CryptoRng>(gm: &GroupElement, gy: &GroupElement, rng: &mut R) -> ElGamal {
     assert_ne!(gy, &GroupElement::identity()); // we should not encrypt anything with an empty public key, as this will result in plain text sent over the line
     let r = ScalarNonZero::random(rng); // random() should never return a zero scalar
     ElGamal {

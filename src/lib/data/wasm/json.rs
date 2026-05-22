@@ -1,6 +1,6 @@
 //! WASM bindings for PEP JSON encryption.
 
-use crate::client::{decrypt, encrypt};
+use crate::client::{decrypt, decrypt_batch, encrypt, encrypt_batch};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::client::{decrypt_global, encrypt_global};
 use crate::data::json::builder::PEPJSONBuilder;
@@ -20,6 +20,7 @@ use crate::keys::wasm::types::WASMSessionKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalPublicKeys;
 use crate::keys::SessionKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::transcrypt_batch;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
@@ -63,6 +64,43 @@ impl WASMPEPJSONValue {
 
         serde_wasm_bindgen::to_value(&json_value)
             .map_err(|e| JsValue::from_str(&format!("Failed to convert to JS: {}", e)))
+    }
+
+    /// Get the structure/shape of this PEPJSONValue.
+    ///
+    /// # Returns
+    ///
+    /// A JSONStructure describing the shape
+    #[wasm_bindgen]
+    pub fn structure(&self) -> WASMJSONStructure {
+        WASMJSONStructure(self.0.structure())
+    }
+
+    /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
+    ///
+    /// This method adds external padding blocks (separate from PKCS#7 padding) to
+    /// LongString and LongPseudonym variants to ensure all instances have the same
+    /// number of blocks when encrypted. This is necessary for batch transcryption where
+    /// all values must have identical structure.
+    ///
+    /// # Arguments
+    ///
+    /// * `structure` - The target structure specifying the number of blocks for each field
+    ///
+    /// # Returns
+    ///
+    /// A padded PEPJSONValue with padding blocks added where necessary
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current structure doesn't match the target structure type
+    /// or if the current size exceeds the target size
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, structure: &WASMJSONStructure) -> Result<WASMPEPJSONValue, JsValue> {
+        self.0
+            .pad_to(&structure.0)
+            .map(Self)
+            .map_err(|e| JsValue::from_str(&format!("Padding failed: {}", e)))
     }
 }
 
@@ -320,6 +358,32 @@ pub fn wasm_encrypt_json(
     WASMEncryptedPEPJSONValue(encrypted)
 }
 
+/// Batch encrypt a list of PEPJSONValues using session keys.
+/// All values must have the same structure, and the resulting encrypted values will be padded to match the maximum block counts for that structure.
+///
+/// # Arguments
+/// * `values` - Array of PEPJSONValue objects to encrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+///
+/// # Returns
+/// An array of EncryptedPEPJSONValue objects, all with the same structure and padded to match the maximum block counts for that structure
+#[cfg(feature = "batch")]
+#[wasm_bindgen(js_name = encryptJsonBatch)]
+pub fn wasm_encrypt_json_batch(
+    values: Vec<WASMPEPJSONValue>,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
+    let mut rng = rand::rng();
+    let keys: SessionKeys = (*session_keys).into();
+    let rust_values: Vec<PEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let encrypted = encrypt_batch(&rust_values, &keys, &mut rng)
+        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(encrypted
+        .into_iter()
+        .map(WASMEncryptedPEPJSONValue)
+        .collect())
+}
 /// Decrypt an EncryptedPEPJSONValue using session keys.
 ///
 /// # Arguments
@@ -344,6 +408,31 @@ pub fn wasm_decrypt_json(
     Ok(WASMPEPJSONValue(decrypted))
 }
 
+/// Decrypt a batch of EncryptedPEPJSONValues using session keys.
+///
+/// # Arguments
+///
+/// * `encrypted` - Array of EncryptedPEPJSONValue objects to decrypt
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+///
+/// # Returns
+/// An array of PEPJSONValue objects
+/// # Errors
+/// Returns an error if any value fails to decrypt
+#[cfg(feature = "batch")]
+#[wasm_bindgen(js_name = decryptJsonBatch)]
+pub fn wasm_decrypt_json_batch(
+    encrypted: Vec<WASMEncryptedPEPJSONValue>,
+    session_keys: &WASMSessionKeys,
+) -> Result<Vec<WASMPEPJSONValue>, JsValue> {
+    let keys: SessionKeys = (*session_keys).into();
+    let rust_encrypted: Vec<EncryptedPEPJSONValue> = encrypted.into_iter().map(|v| v.0).collect();
+    let decrypted =
+        decrypt_batch(&rust_encrypted, &keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
+}
+
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// # Arguments
@@ -358,7 +447,7 @@ pub fn wasm_decrypt_json(
 /// # Errors
 ///
 /// Returns an error if the values don't all have the same structure
-#[cfg(feature = "elgamal3")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptJsonBatch)]
 pub fn wasm_transcrypt_json_batch(
     values: Vec<WASMEncryptedPEPJSONValue>,
@@ -376,7 +465,7 @@ pub fn wasm_transcrypt_json_batch(
         .collect())
 }
 
-#[cfg(not(feature = "elgamal3"))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = transcryptJsonBatch)]
 pub fn wasm_transcrypt_json_batch(
     values: Vec<WASMEncryptedPEPJSONValue>,
@@ -465,4 +554,31 @@ pub fn wasm_bytes_to_number(bytes: Vec<u8>) -> Result<f64, JsValue> {
         .map_err(|_| JsValue::from_str("Invalid byte array"))?;
     let num = utils::bytes_to_number(&arr);
     Ok(num.as_f64().unwrap_or(0.0))
+}
+
+/// Unifies multiple JSON structures by taking the maximum block count for each field.
+///
+/// This function is useful for batch operations where you need to normalize multiple
+/// values to have the same structure. It recursively unifies nested structures,
+/// taking the maximum block count for strings and pseudonyms.
+///
+/// # Arguments
+///
+/// * `structures` - An array of JSONStructure objects to unify
+///
+/// # Returns
+///
+/// A unified JSONStructure where string and pseudonym fields have maximum block counts
+///
+/// # Errors
+///
+/// Returns an error if the structures are incompatible (different types, array lengths, or object fields)
+#[wasm_bindgen(js_name = unifyStructures)]
+pub fn wasm_unify_structures(
+    structures: Vec<WASMJSONStructure>,
+) -> Result<WASMJSONStructure, JsValue> {
+    let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
+    crate::data::json::structure::unify_structures(&rust_structures)
+        .map(WASMJSONStructure)
+        .map_err(|e| JsValue::from_str(&format!("Unification failed: {}", e)))
 }

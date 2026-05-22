@@ -4,7 +4,9 @@
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::{PyEncryptedRecord, PyLongEncryptedRecord};
+use crate::data::py::records::PyEncryptedRecord;
+#[cfg(feature = "long")]
+use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
     PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,
@@ -25,7 +27,7 @@ use pyo3::IntoPyObjectExt;
 
 /// A PEP transcryptor system.
 #[derive(Clone, From, Into, Deref)]
-#[pyclass(name = "Transcryptor")]
+#[pyclass(name = "Transcryptor", from_py_object)]
 pub struct PyTranscryptor(pub(crate) Transcryptor);
 
 #[pymethods]

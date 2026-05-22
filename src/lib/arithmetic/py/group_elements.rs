@@ -8,7 +8,7 @@ use pyo3::Py;
 /// Element on a group. Can not be converted to a scalar. Supports addition and subtraction. Multiplication by a scalar is supported.
 /// We use ristretto points to discard unsafe points and safely use the group operations in higher level protocols without any other cryptographic assumptions.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "GroupElement")]
+#[pyclass(name = "GroupElement", from_py_object)]
 pub struct PyGroupElement(pub(crate) GroupElement);
 
 #[pymethods]

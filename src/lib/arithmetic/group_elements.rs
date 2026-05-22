@@ -1,12 +1,13 @@
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::de::{Error, Visitor};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::Sha256;
+#[cfg(feature = "serde")]
 use std::fmt::Formatter;
 use std::hash::Hash;
 
@@ -26,7 +27,7 @@ pub struct GroupElement(pub(crate) RistrettoPoint);
 impl GroupElement {
     /// Generate a random `GroupElement`. This is the preferred way of generating pseudonyms.
     #[must_use]
-    pub fn random<R: RngCore + CryptoRng>(rng: &mut R) -> Self {
+    pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self(RistrettoPoint::random(rng))
     }
 
@@ -306,7 +307,6 @@ impl std::ops::Mul<GroupElement> for ScalarCanBeZero {
 mod tests {
     use super::*;
     use crate::arithmetic::scalars::ScalarNonZero;
-    use rand_core::RngCore;
 
     #[test]
     fn encode_decode() {
@@ -318,6 +318,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn serde_json_roundtrip() {
         let mut rng = rand::rng();
         let original = GroupElement::random(&mut rng);

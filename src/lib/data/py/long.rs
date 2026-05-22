@@ -25,7 +25,7 @@ use pyo3::Py;
 ///
 /// The length (number of blocks) of a `LongPseudonym` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
-#[pyclass(name = "LongPseudonym")]
+#[pyclass(name = "LongPseudonym", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongPseudonym(pub(crate) LongPseudonym);
 
@@ -69,6 +69,28 @@ impl PyLongPseudonym {
         Ok(PyBytes::new(py, &result).into())
     }
 
+    /// Pads this LongPseudonym to a target number of blocks for batch unlinkability.
+    ///
+    /// In batch transcryption, all values must have identical structure to prevent
+    /// linkability attacks. This method adds external padding blocks to normalize
+    /// different-sized pseudonyms to the same structure.
+    ///
+    /// Args:
+    ///     target_blocks: The desired number of blocks (must be >= current block count)
+    ///
+    /// Returns:
+    ///     A new LongPseudonym padded to the target number of blocks
+    ///
+    /// Raises:
+    ///     ValueError: If the current number of blocks exceeds the target
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, target_blocks: usize) -> PyResult<Self> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}")))
+    }
+
     /// Get the underlying pseudonyms.
     #[pyo3(name = "pseudonyms")]
     fn pseudonyms(&self) -> Vec<PyPseudonym> {
@@ -95,7 +117,7 @@ impl PyLongPseudonym {
 ///
 /// The length (number of blocks) of a `LongAttribute` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
-#[pyclass(name = "LongAttribute")]
+#[pyclass(name = "LongAttribute", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongAttribute(pub(crate) LongAttribute);
 
@@ -139,6 +161,27 @@ impl PyLongAttribute {
         Ok(PyBytes::new(py, &result).into())
     }
 
+    /// Pads this LongAttribute to a target number of blocks for batch operations.
+    ///
+    /// This is useful for batch operations where all attributes must have the same structure.
+    /// The padding blocks are automatically detected and skipped during decoding.
+    ///
+    /// Args:
+    ///     target_blocks: The desired number of blocks (must be >= current block count)
+    ///
+    /// Returns:
+    ///     A new LongAttribute padded to the target number of blocks
+    ///
+    /// Raises:
+    ///     ValueError: If the current number of blocks exceeds the target
+    #[pyo3(name = "pad_to")]
+    fn pad_to(&self, target_blocks: usize) -> PyResult<Self> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}")))
+    }
+
     /// Get the underlying attributes.
     #[pyo3(name = "attributes")]
     fn attributes(&self) -> Vec<PyAttribute> {
@@ -160,7 +203,7 @@ impl PyLongAttribute {
 }
 
 /// A collection of encrypted pseudonyms that can be serialized as a pipe-delimited string.
-#[pyclass(name = "LongEncryptedPseudonym")]
+#[pyclass(name = "LongEncryptedPseudonym", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongEncryptedPseudonym(pub(crate) LongEncryptedPseudonym);
 
@@ -212,7 +255,7 @@ impl PyLongEncryptedPseudonym {
 }
 
 /// A collection of encrypted attributes that can be serialized as a pipe-delimited string.
-#[pyclass(name = "LongEncryptedAttribute")]
+#[pyclass(name = "LongEncryptedAttribute", from_py_object)]
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 pub struct PyLongEncryptedAttribute(pub(crate) LongEncryptedAttribute);
 

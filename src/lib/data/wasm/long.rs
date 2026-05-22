@@ -50,6 +50,31 @@ impl WASMLongPseudonym {
             .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
     }
 
+    /// Pads this LongPseudonym to a target number of blocks for batch unlinkability.
+    ///
+    /// In batch transcryption, all values must have identical structure to prevent
+    /// linkability attacks. This method adds external padding blocks to normalize
+    /// different-sized pseudonyms to the same structure.
+    ///
+    /// # Arguments
+    ///
+    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
+    ///
+    /// # Returns
+    ///
+    /// A new LongPseudonym padded to the target number of blocks
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current number of blocks exceeds the target
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongPseudonym, JsError> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
+    }
+
     /// Get the underlying pseudonyms.
     #[wasm_bindgen(getter)]
     pub fn pseudonyms(&self) -> Vec<WASMPseudonym> {
@@ -109,6 +134,30 @@ impl WASMLongAttribute {
         self.0
             .to_bytes_padded()
             .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
+    }
+
+    /// Pads this LongAttribute to a target number of blocks for batch operations.
+    ///
+    /// This is useful for batch operations where all attributes must have the same structure.
+    /// The padding blocks are automatically detected and skipped during decoding.
+    ///
+    /// # Arguments
+    ///
+    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
+    ///
+    /// # Returns
+    ///
+    /// A new LongAttribute padded to the target number of blocks
+    ///
+    /// # Errors
+    ///
+    /// Throws an error if the current number of blocks exceeds the target
+    #[wasm_bindgen(js_name = padTo)]
+    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongAttribute, JsError> {
+        self.0
+            .pad_to(target_blocks)
+            .map(Self)
+            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
     }
 
     /// Get the underlying attributes.
@@ -235,14 +284,20 @@ impl WASMLongEncryptedAttribute {
 }
 
 /// WASM bindings for batch operations on long (multi-block) data types.
+#[cfg(feature = "batch")]
 use crate::data::records::LongEncryptedRecord;
+#[cfg(feature = "batch")]
 use crate::factors::wasm::contexts::WASMTranscryptionInfo;
+#[cfg(feature = "batch")]
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
+#[cfg(feature = "batch")]
 use crate::factors::TranscryptionInfo;
+#[cfg(feature = "batch")]
 use crate::transcryptor::{rekey_batch, transcrypt_batch};
 
 /// Batch rekeying of long encrypted pseudonyms.
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.
+#[cfg(feature = "batch")]
 #[wasm_bindgen(js_name = rekeyLongPseudonymBatch)]
 pub fn wasm_rekey_long_pseudonym_batch(
     encrypted: Vec<WASMLongEncryptedPseudonym>,
@@ -297,7 +352,7 @@ impl WASMLongEncryptedRecord {
 /// # Errors
 ///
 /// Throws an error if the encrypted data do not all have the same structure.
-#[cfg(feature = "elgamal3")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
     encrypted: Vec<WASMLongEncryptedRecord>,
@@ -335,7 +390,7 @@ pub fn wasm_transcrypt_long_batch(
         .collect())
 }
 
-#[cfg(not(feature = "elgamal3"))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
     encrypted: Vec<WASMLongEncryptedRecord>,

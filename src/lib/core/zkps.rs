@@ -37,7 +37,7 @@
 //! ```
 
 use derive_more::Deref;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 use std::fmt::Formatter;
 
@@ -197,7 +197,7 @@ impl<'de> Deserialize<'de> for Proof {
 /// let (public_key, proof) = create_proof(&secret, &message, &mut rng);
 /// assert!(verify_proof(&public_key, &message, &proof));
 /// ```
-pub fn create_proof<R: RngCore + CryptoRng>(
+pub fn create_proof<R: Rng + CryptoRng>(
     a: &ScalarNonZero,
     gm: &GroupElement,
     rng: &mut R,
@@ -248,7 +248,7 @@ pub fn create_proof<R: RngCore + CryptoRng>(
 /// - The shared public key `ga`
 /// - First proof for `gm1`
 /// - Second proof for `gm2`
-pub fn create_proofs_same_scalar<R: RngCore + CryptoRng>(
+pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
     a: &ScalarNonZero,
     gm1: &GroupElement,
     gm2: &GroupElement,
@@ -443,7 +443,7 @@ type Signature = Proof;
 /// let signature = sign(&message, &secret_key, &mut rng);
 /// assert!(verify(&message, &signature, &public_key));
 /// ```
-pub fn sign<R: RngCore + CryptoRng>(
+pub fn sign<R: Rng + CryptoRng>(
     message: &GroupElement,
     secret_key: &ScalarNonZero,
     rng: &mut R,

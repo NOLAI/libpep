@@ -6,7 +6,7 @@ use pyo3::Py;
 
 /// Non-zero scalar. Supports addition, subtraction, multiplication, and inversion. Can be converted to a scalar that can be zero.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "ScalarNonZero")]
+#[pyclass(name = "ScalarNonZero", from_py_object)]
 pub struct PyScalarNonZero(pub(crate) ScalarNonZero);
 
 #[pymethods]
@@ -103,7 +103,7 @@ impl PyScalarNonZero {
 
 /// Scalar that can be zero. Supports addition and subtraction, but not multiplication or inversion.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
-#[pyclass(name = "ScalarCanBeZero")]
+#[pyclass(name = "ScalarCanBeZero", from_py_object)]
 pub struct PyScalarCanBeZero(pub(crate) ScalarCanBeZero);
 
 #[pymethods]
