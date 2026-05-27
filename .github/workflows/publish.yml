@@ -71,7 +71,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --sdist --out dist --features python
+          args: --release --sdist --out dist --features pyo3/extension-module,python
           sccache: 'true'
           manylinux: auto
       - name: Publish to PyPI

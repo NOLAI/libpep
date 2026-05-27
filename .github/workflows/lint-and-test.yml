@@ -94,7 +94,7 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install maturin pytest
-          maturin develop --features python
+          maturin develop --features pyo3/extension-module,python
       - name: Run Python tests
         run: |
           source .venv/bin/activate

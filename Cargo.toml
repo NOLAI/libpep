@@ -29,7 +29,14 @@ insecure = [] # Enable insecure methods that typically should not be used in pro
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
 wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys", "getrandom", "rand"] # For building WebAssembly bindings via wasm-bindgen
-python = ["pyo3", "rand"] # For building Python bindings via PyO3
+python = ["pyo3", "pyo3/multiple-pymethods", "rand"] # For building Python bindings via PyO3.
+# Note on `pyo3/extension-module`: this PyO3 sub-feature disables libpython linking
+# and is required when building the cdylib that Python loads at runtime (via
+# `maturin build`/`develop`). It is *not* compatible with `cargo test`/`cargo build`
+# of binaries, because those need libpython to be linked. So `extension-module` is
+# deliberately NOT pulled in by the `python` feature here — maturin enables it
+# explicitly via `--features pyo3/extension-module` (see pyproject.toml's
+# `[tool.maturin] features` and the publish/test workflows).
 # Note: python and wasm are mutually exclusive and should not be enabled together.
 # PyO3 builds a cdylib that links to the Python interpreter, while wasm-bindgen builds
 # a cdylib targeting WebAssembly - they have incompatible linking requirements.
@@ -58,7 +65,7 @@ wasm-bindgen = { version = "^0.2", optional = true }
 serde-wasm-bindgen = { version = "^0.6", optional = true }
 js-sys = { version = "^0.3", optional = true }
 getrandom = { version = "^0.4", features = ["wasm_js"], optional = true }
-pyo3 = { version = "0.28", features = ["extension-module", "multiple-pymethods"], optional = true }
+pyo3 = { version = "0.28", optional = true }
 buildinfy = { version = "^0.2", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
