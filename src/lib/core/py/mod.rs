@@ -34,6 +34,7 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
             .getattr("modules")?
             .set_item("libpep.core.zkps", &zkps_module)?;
 
+        // Registers `libpep.core.verifiable` as a proper submodule.
         verifiable::register_module(m)?;
     }
 

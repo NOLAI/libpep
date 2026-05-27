@@ -16,9 +16,7 @@ use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use crate::data::traits::{
-    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -37,7 +35,6 @@ use std::io::{Error, ErrorKind};
 
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::transcryptor::BatchError;
 
 /// A collection of [Pseudonym]s that together represent a larger pseudonym value using PKCS#7 padding.
 ///
@@ -1032,75 +1029,6 @@ impl Transcryptable for LongEncryptedAttribute {
     }
 }
 
-// Verifiable operations for long types - trait implementations
-#[cfg(feature = "verifiable")]
-impl crate::data::traits::VerifiablePseudonymizable for LongEncryptedPseudonym {
-    type PseudonymizationProof = Vec<crate::core::verifiable::VerifiableRRSK>;
-
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_pseudonymize<R>(
-        &self,
-        info: &crate::factors::PseudonymizationInfo,
-        rng: &mut R,
-    ) -> Self::PseudonymizationProof
-    where
-        R: Rng + CryptoRng,
-    {
-        self.0
-            .iter()
-            .map(|block| block.verifiable_pseudonymize(info, rng))
-            .collect()
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_pseudonymize<R>(
-        &self,
-        info: &crate::factors::PseudonymizationInfo,
-        public_key: &crate::keys::PseudonymSessionPublicKey,
-        rng: &mut R,
-    ) -> Self::PseudonymizationProof
-    where
-        R: Rng + CryptoRng,
-    {
-        self.0
-            .iter()
-            .map(|block| block.verifiable_pseudonymize(info, public_key, rng))
-            .collect()
-    }
-}
-
-#[cfg(feature = "verifiable")]
-impl crate::data::traits::VerifiableRekeyable for LongEncryptedPseudonym {
-    type RekeyProof = Vec<crate::core::verifiable::VerifiableRekey>;
-
-    fn verifiable_rekey<R: Rng + CryptoRng>(
-        &self,
-        info: &Self::RekeyInfo,
-        rng: &mut R,
-    ) -> Self::RekeyProof {
-        self.0
-            .iter()
-            .map(|block| block.verifiable_rekey(info, rng))
-            .collect()
-    }
-}
-
-#[cfg(feature = "verifiable")]
-impl crate::data::traits::VerifiableRekeyable for LongEncryptedAttribute {
-    type RekeyProof = Vec<crate::core::verifiable::VerifiableRekey>;
-
-    fn verifiable_rekey<R: Rng + CryptoRng>(
-        &self,
-        info: &Self::RekeyInfo,
-        rng: &mut R,
-    ) -> Self::RekeyProof {
-        self.0
-            .iter()
-            .map(|block| block.verifiable_rekey(info, rng))
-            .collect()
-    }
-}
-
 #[cfg(feature = "batch")]
 impl crate::data::traits::HasStructure for LongEncryptedPseudonym {
     type Structure = usize;
@@ -1116,20 +1044,6 @@ impl crate::data::traits::HasStructure for LongEncryptedAttribute {
 
     fn structure(&self) -> Self::Structure {
         self.0.len()
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for LongPseudonym {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for LongAttribute {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
     }
 }
 

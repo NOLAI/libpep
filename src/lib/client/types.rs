@@ -1,7 +1,5 @@
 //! Client type definitions.
 
-#[cfg(feature = "batch")]
-use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted};
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
@@ -65,15 +63,21 @@ impl Client {
     }
 
     /// Encrypt a batch of messages with the appropriate session public key.
-    /// Automatically selects the correct key (pseudonym or attribute) based on the message type.
+    /// Automatically selects the correct key (pseudonym or attribute) based
+    /// on the message type. Returns an
+    /// [`EncryptedBatch`](crate::data::batch::EncryptedBatch) that carries the
+    /// recipient public key alongside the items (under `elgamal2`) so
+    /// downstream batch operations need no extra arguments.
     #[cfg(feature = "batch")]
     pub fn encrypt_batch<M, R>(
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<crate::data::batch::EncryptedBatch<M::EncryptedType>, crate::data::batch::BatchError>
     where
-        M: BatchEncryptable,
+        M: Encryptable + Clone,
+        M::PublicKeyType: Clone,
+        M::EncryptedType: crate::data::traits::HasStructure,
         SessionKeys: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {
@@ -86,7 +90,7 @@ impl Client {
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<M::EncryptedType>, crate::data::batch::BatchError>
     where
         M: Encryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
@@ -98,11 +102,14 @@ impl Client {
     /// Decrypt a batch of encrypted messages with the appropriate session secret key.
     /// Automatically selects the correct key (pseudonym or attribute) based on the encrypted type.
     /// With the `elgamal3` feature, returns an error if any decryption fails.
+    ///
+    /// Accepts either a `&[E]` slice or
+    /// `&EncryptedBatch<E>` via `AsRef<[E]>`.
     #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn decrypt_batch<E>(
         &self,
         encrypted: &[E],
-    ) -> Result<Vec<E::UnencryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<E::UnencryptedType>, crate::data::batch::BatchError>
     where
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
@@ -116,7 +123,7 @@ impl Client {
     pub fn decrypt_batch<E>(
         &self,
         encrypted: &[E],
-    ) -> Result<Vec<E::UnencryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<E::UnencryptedType>, crate::data::batch::BatchError>
     where
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
@@ -154,13 +161,15 @@ impl OfflineClient {
     }
 
     /// Encrypt a batch of messages with the appropriate global public key.
-    /// Automatically selects the correct key (pseudonym or attribute) based on the message type.
+    /// Automatically selects the correct key (pseudonym or attribute) based
+    /// on the message type. Returns a raw `Vec` because the recipient session
+    /// public key is not known at the offline client.
     #[cfg(feature = "batch")]
     pub fn encrypt_batch<M, R>(
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<M::EncryptedType>, crate::data::batch::BatchError>
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,

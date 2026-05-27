@@ -131,8 +131,6 @@ pub fn make_attribute_session_keys(
     make_session_key_pair(global, context, secret, make_attribute_rekey_factor)
 }
 
-// Verifiable session key generation with proofs
-
 #[cfg(feature = "verifiable")]
 use crate::core::verifiable::RekeyFactorCommitment;
 #[cfg(feature = "verifiable")]

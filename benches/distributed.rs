@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use libpep::client::{Client, Distributed};
 #[cfg(feature = "batch")]
@@ -14,7 +16,9 @@ use rand::rng;
 use std::hint::black_box;
 
 #[cfg(feature = "verifiable")]
-use libpep::data::traits::{Pseudonymizable, VerifiablePseudonymizable, VerifiableRekeyable};
+use libpep::data::traits::Pseudonymizable;
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 #[cfg(feature = "verifiable")]
 use libpep::transcryptor::Transcryptor;
 #[cfg(feature = "verifiable")]
@@ -190,58 +194,26 @@ pub fn process_entities_batch(
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
+    use libpep::data::batch::EncryptedBatch;
+
     let _ = client_a; // unused in elgamal3
-                      // Convert entity tuples to EncryptedRecord
-    let mut batch: Vec<EncryptedRecord> = entities
+
+    let items: Vec<EncryptedRecord> = entities
         .into_iter()
         .map(|(pseudonyms, attributes)| EncryptedRecord::new(pseudonyms, attributes))
         .collect();
 
     let mut batch_rng = rand::rng();
+    #[cfg(feature = "elgamal3")]
+    let mut batch = EncryptedBatch::new(items).expect("batch construction");
     #[cfg(not(feature = "elgamal3"))]
-    let mut current_keys = *client_a.dump();
+    let mut batch = EncryptedBatch::new(items, *client_a.dump()).expect("batch construction");
 
     for system in systems {
         let transcryption_info =
             system.transcryption_info(domain_a, domain_b, session_a, session_b);
-        #[cfg(feature = "elgamal3")]
-        {
-            batch = match system.transcrypt_batch(&mut batch, &transcryption_info, &mut batch_rng) {
-                Ok(result) => result.to_vec(),
-                Err(e) => {
-                    panic!("Batch transcryption failed during benchmark: {e:?}");
-                }
-            };
-        }
-        #[cfg(not(feature = "elgamal3"))]
-        {
-            let kp = transcryption_info.pseudonym.k.scalar();
-            let ka = transcryption_info.attribute.scalar();
-            batch = match system.transcrypt_batch(
-                &mut batch,
-                &transcryption_info,
-                &current_keys,
-                &mut batch_rng,
-            ) {
-                Ok(result) => result.to_vec(),
-                Err(e) => {
-                    panic!("Batch transcryption failed during benchmark: {e:?}");
-                }
-            };
-            current_keys = libpep::keys::SessionKeys {
-                pseudonym: libpep::keys::PseudonymSessionKeys {
-                    public: libpep::keys::PseudonymSessionPublicKey::from(
-                        kp * *current_keys.pseudonym.public.value(),
-                    ),
-                    secret: current_keys.pseudonym.secret,
-                },
-                attribute: libpep::keys::AttributeSessionKeys {
-                    public: libpep::keys::AttributeSessionPublicKey::from(
-                        ka * *current_keys.attribute.public.value(),
-                    ),
-                    secret: current_keys.attribute.secret,
-                },
-            };
+        if let Err(e) = batch.transcrypt(&transcryption_info, &mut batch_rng) {
+            panic!("Batch transcryption failed during benchmark: {e:?}");
         }
     }
 }
@@ -559,24 +531,25 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
                 }
             },
             #[cfg(feature = "elgamal3")]
-            |(original, result, operation_proof, commitments, verifier)| {
-                black_box(verifier.verify_pseudonymization(
-                    &original,
-                    &result,
-                    &operation_proof,
-                    &commitments,
-                ))
+            |(original, _result, operation_proof, commitments, verifier)| {
+                let r: Option<libpep::data::simple::EncryptedPseudonym> = verifier
+                    .verified_reconstruct_pseudonymization(
+                        &original,
+                        &operation_proof,
+                        &commitments,
+                    );
+                black_box(r)
             },
             #[cfg(not(feature = "elgamal3"))]
-            |(original, result, operation_proof, pk, commitments, verifier)| {
-                use libpep::keys::PublicKey;
-                black_box(verifier.verify_pseudonymization(
-                    &original,
-                    &result,
-                    &operation_proof,
-                    pk.value(),
-                    &commitments,
-                ))
+            |(original, _result, operation_proof, pk, commitments, verifier)| {
+                let r: Option<libpep::data::simple::EncryptedPseudonym> = verifier
+                    .verified_reconstruct_pseudonymization(
+                        &original,
+                        &operation_proof,
+                        &pk,
+                        &commitments,
+                    );
+                black_box(r)
             },
             criterion::BatchSize::SmallInput,
         )

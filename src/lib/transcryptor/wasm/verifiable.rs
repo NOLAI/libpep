@@ -68,7 +68,7 @@ impl WASMTranscryptor {
         encrypted: &WASMEncryptedPseudonym,
         pseudo_info: &WASMPseudonymizationInfo,
     ) -> Result<String, JsValue> {
-        use crate::data::traits::VerifiablePseudonymizable;
+        use crate::data::verifiable::traits::VerifiablePseudonymizable;
 
         let mut rng = rand::rng();
         let operation_proof = encrypted
@@ -86,7 +86,7 @@ impl WASMTranscryptor {
         pseudo_info: &WASMPseudonymizationInfo,
         public_key: &crate::keys::wasm::types::WASMPseudonymSessionPublicKey,
     ) -> Result<String, JsValue> {
-        use crate::data::traits::VerifiablePseudonymizable;
+        use crate::data::verifiable::traits::VerifiablePseudonymizable;
 
         let mut rng = rand::rng();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
@@ -107,7 +107,7 @@ impl WASMTranscryptor {
         encrypted: &WASMEncryptedAttribute,
         rekey_info: &WASMAttributeRekeyInfo,
     ) -> Result<String, JsValue> {
-        use crate::data::traits::VerifiableRekeyable;
+        use crate::data::verifiable::traits::VerifiableRekeyable;
 
         let mut rng = rand::rng();
         let operation_proof = encrypted.0.verifiable_rekey(&rekey_info.0, &mut rng);
@@ -126,7 +126,7 @@ impl WASMTranscryptor {
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
     ) -> Result<String, JsValue> {
-        use crate::data::traits::VerifiableRekeyable;
+        use crate::data::verifiable::traits::VerifiableRekeyable;
 
         let mut rng = rand::rng();
         let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);

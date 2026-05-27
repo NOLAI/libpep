@@ -149,3 +149,63 @@ fn n_pep() {
     let rev_dec_pseudo = client_a.decrypt(&rev_pseudonymized);
     assert_eq!(pseudonym, rev_dec_pseudo);
 }
+
+/// Confirm that distributed batch transcryption works end-to-end through
+/// [`EncryptedBatch`], with the batch-level `Y` (the recipient session
+/// public key) updated in lockstep with each transcryptor's rekey factor in
+/// elgamal2 mode.
+#[test]
+#[cfg(all(feature = "batch", feature = "batch-pk"))]
+fn n_pep_batch_distributed() {
+    use libpep::data::batch::EncryptedBatch;
+
+    let n = 3;
+    let rng = &mut rand::rng();
+
+    let (_global_public_keys, blinded_global_keys, blinding_factors) =
+        libpep::keys::distribution::make_distributed_global_keys(n, rng);
+
+    let systems = (0..n)
+        .map(|i| {
+            DistributedTranscryptor::new(
+                PseudonymizationSecret::from(format!("ps-{i}").as_bytes().into()),
+                EncryptionSecret::from(format!("es-{i}").as_bytes().into()),
+                blinding_factors[i],
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let domain_a = PseudonymizationDomain::from("a");
+    let domain_b = PseudonymizationDomain::from("b");
+    let session_a = EncryptionContext::from("sa");
+    let session_b = EncryptionContext::from("sb");
+
+    let sks_a = systems
+        .iter()
+        .map(|s| s.session_key_shares(&session_a))
+        .collect::<Vec<_>>();
+    let sks_b = systems
+        .iter()
+        .map(|s| s.session_key_shares(&session_b))
+        .collect::<Vec<_>>();
+
+    let client_a = Client::from_shares(blinded_global_keys, &sks_a);
+    let client_b = Client::from_shares(blinded_global_keys, &sks_b);
+
+    let pseudonyms: Vec<Pseudonym> = (0..5).map(|_| Pseudonym::random(rng)).collect();
+    let mut batch: EncryptedBatch<EncryptedPseudonym> = client_a
+        .encrypt_batch(&pseudonyms, rng)
+        .expect("encrypt batch");
+
+    // The new API: per-message `current_pk` tracking is gone, the batch
+    // updates its `public_key` field in lockstep with the rekey factor.
+    for system in &systems {
+        let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
+        batch.transcrypt(&info, rng).expect("transcrypt batch");
+    }
+
+    let decrypted = client_b
+        .decrypt_batch(batch.as_items())
+        .expect("decrypt batch");
+    assert_eq!(decrypted.len(), pseudonyms.len());
+}

@@ -9,20 +9,40 @@
 //!     stores them under the chosen transition key.
 //!   * For an attribute rekey transition `(c_from, c_to)` the transcryptor
 //!     publishes the combined commitment `K = (k_from⁻¹ · k_to)·G`.
-//!   * Per-message [`VerifiableRRSK`] / [`VerifiableRekey`] proofs are verified
-//!     against those combined commitments.
+//!   * Per-message verifiable proofs are verified against those combined
+//!     commitments.
 //!
 //! No proof of well-formedness of the commitments themselves is needed any
 //! more: every per-message proof binds the operation to the forward
 //! commitment directly.
+//!
+//! # Per-message vs batch verification
+//!
+//! This module exposes verification for *per-message* proofs:
+//! [`verify_pseudonymization`](Verifier::verify_pseudonymization),
+//! [`verify_pseudonym_rekey`](Verifier::verify_pseudonym_rekey),
+//! [`verify_attribute_rekey`](Verifier::verify_attribute_rekey), and
+//! [`verify_transcryption`](Verifier::verify_transcryption) (for composite
+//! record/JSON values). Each is polymorphic over any encrypted type
+//! implementing the matching `Verifiable*` trait (simple values, long
+//! values, records, JSON).
+//!
+//! Batch proofs are verified through the
+//! [`EncryptedBatch`](crate::data::batch::EncryptedBatch) type directly
+//! (`batch.verified_reconstruct_pseudonymize`, `verified_reconstruct_rekey`,
+//! `verified_reconstruct_transcrypt`). Those methods take commitments
+//! explicitly; if you want cached-commitment lookup at batch level, fetch
+//! the commitments from this verifier's cache (`has_*_commitments` query
+//! APIs) and pass them into the batch method.
 
 use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::core::verifiable::{VerifiableRRSK, VerifiableRekey};
-use crate::data::simple::ElGamalEncrypted;
-use crate::data::traits::{Pseudonymizable, Rekeyable};
+use crate::data::verifiable::traits::{
+    VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
+    VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
+};
 use crate::factors::{
     EncryptionContext, PseudonymizationDomain, VerifiablePseudonymizationCommitment,
-    VerifiableRekeyCommitment,
+    VerifiableRekeyCommitment, VerifiableTranscryptionCommitment,
 };
 use crate::keys::distribution::BlindingCommitments;
 use crate::transcryptor::TranscryptorId;
@@ -279,107 +299,165 @@ impl Verifier {
     // Operation verification with explicit commitments
     // ------------------------------------------------------------------
 
-    /// Verify a per-message [`VerifiableRRSK`] proof against the combined
-    /// pseudonymization commitments. The caller is responsible for ensuring
-    /// the commitments correspond to the intended transition (e.g. by going
-    /// through the registration / cache lookup APIs).
+    // ----- Rekey -----
+
+    pub fn verify_rekey<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        commitments: &VerifiableRekeyCommitment,
+    ) -> bool
+    where
+        P: VerifiableRekeyProof,
+    {
+        proof.verify(original, commitments)
+    }
+
+    pub fn verified_reconstruct_rekey<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        commitments: &VerifiableRekeyCommitment,
+    ) -> Option<P::Output>
+    where
+        P: VerifiableRekeyProof,
+    {
+        proof.verified_reconstruct(original, commitments)
+    }
+
+    // ----- Pseudonymization -----
+
     #[cfg(feature = "elgamal3")]
-    #[must_use]
-    pub fn verify_pseudonymization<E>(
+    pub fn verify_pseudonymization<P>(
         &self,
-        original: &E,
-        result: &E,
-        operation_proof: &VerifiableRRSK,
+        original: &P::DataType,
+        proof: &P,
         commitments: &VerifiablePseudonymizationCommitment,
     ) -> bool
     where
-        E: ElGamalEncrypted + Pseudonymizable,
+        P: VerifiablePseudonymizationProof,
     {
-        operation_proof.verify_rrsk(
-            original.value(),
-            result.value(),
-            &original.value().gy,
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
+        proof.verify(original, commitments)
     }
 
-    /// Verify a per-message [`VerifiableRRSK`] proof against the combined
-    /// pseudonymization commitments. `gy` is the recipient public key the
-    /// original ciphertext was encrypted under (needed for the rerandomize
-    /// step in non-elgamal3 mode where the ciphertext does not carry it).
     #[cfg(not(feature = "elgamal3"))]
-    #[must_use]
-    pub fn verify_pseudonymization<E>(
+    pub fn verify_pseudonymization<P>(
         &self,
-        original: &E,
-        result: &E,
-        operation_proof: &VerifiableRRSK,
-        gy: &GroupElement,
+        original: &P::DataType,
+        proof: &P,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
         commitments: &VerifiablePseudonymizationCommitment,
     ) -> bool
     where
-        E: ElGamalEncrypted + Pseudonymizable,
+        P: VerifiablePseudonymizationProof,
     {
-        operation_proof.verify_rrsk(
-            original.value(),
-            result.value(),
-            gy,
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
+        proof.verify(original, public_key, commitments)
     }
 
-    /// Verify a per-message [`VerifiableRekey`] against a rekey commitment.
-    #[must_use]
-    pub fn verify_pseudonym_rekey<E>(
+    #[cfg(feature = "elgamal3")]
+    pub fn verified_reconstruct_pseudonymization<P>(
         &self,
-        original: &E,
-        result: &E,
-        proof: &VerifiableRekey,
-        commitments: &VerifiableRekeyCommitment,
-    ) -> bool
+        original: &P::DataType,
+        proof: &P,
+        commitments: &VerifiablePseudonymizationCommitment,
+    ) -> Option<P::Output>
     where
-        E: ElGamalEncrypted + Rekeyable,
+        P: VerifiablePseudonymizationProof,
     {
-        proof.verify_rekey(original.value(), result.value(), &commitments.commitment)
+        proof.verified_reconstruct(original, commitments)
     }
 
-    /// Verify a per-message attribute [`VerifiableRekey`].
-    #[must_use]
-    pub fn verify_attribute_rekey<E>(
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn verified_reconstruct_pseudonymization<P>(
         &self,
-        original: &E,
-        result: &E,
-        proof: &VerifiableRekey,
-        commitments: &VerifiableRekeyCommitment,
+        original: &P::DataType,
+        proof: &P,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        commitments: &VerifiablePseudonymizationCommitment,
+    ) -> Option<P::Output>
+    where
+        P: VerifiablePseudonymizationProof,
+    {
+        proof.verified_reconstruct(original, public_key, commitments)
+    }
+
+    // ----- Transcryption (composite) -----
+
+    #[cfg(feature = "elgamal3")]
+    pub fn verify_transcryption<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        commitments: &VerifiableTranscryptionCommitment,
     ) -> bool
     where
-        E: ElGamalEncrypted + Rekeyable,
+        P: VerifiableTranscryptionProof,
     {
-        proof.verify_rekey(original.value(), result.value(), &commitments.commitment)
+        proof.verify(original, commitments)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn verify_transcryption<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        public_key: &crate::keys::SessionKeys,
+        commitments: &VerifiableTranscryptionCommitment,
+    ) -> bool
+    where
+        P: VerifiableTranscryptionProof,
+    {
+        proof.verify(original, public_key, commitments)
+    }
+
+    #[cfg(feature = "elgamal3")]
+    pub fn verified_reconstruct_transcryption<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        commitments: &VerifiableTranscryptionCommitment,
+    ) -> Option<P::Output>
+    where
+        P: VerifiableTranscryptionProof,
+    {
+        proof.verified_reconstruct(original, commitments)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn verified_reconstruct_transcryption<P>(
+        &self,
+        original: &P::DataType,
+        proof: &P,
+        public_key: &crate::keys::SessionKeys,
+        commitments: &VerifiableTranscryptionCommitment,
+    ) -> Option<P::Output>
+    where
+        P: VerifiableTranscryptionProof,
+    {
+        proof.verified_reconstruct(original, public_key, commitments)
     }
 
     // ------------------------------------------------------------------
     // Operation verification using cached commitments
     // ------------------------------------------------------------------
 
+    /// Verify a pseudonymization proof using cached commitments for the
+    /// given transition.
     #[cfg(feature = "elgamal3")]
-    #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn verify_pseudonymization_cached<E>(
+    pub fn verified_reconstruct_pseudonymization_cached<E>(
         &self,
         transcryptor_id: &str,
         original: &E,
-        result: &E,
-        operation_proof: &VerifiableRRSK,
+        proof: &E::PseudonymizationProof,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> bool
+    ) -> Option<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output>
     where
-        E: ElGamalEncrypted + Pseudonymizable,
+        E: VerifiablePseudonymizable,
+        E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
     {
         let key: PseudonymizationKey = (
             transcryptor_id.to_string(),
@@ -388,29 +466,30 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let Some(commitments) = self.pseudonymization_cache.retrieve(&key) else {
-            return false;
-        };
-        self.verify_pseudonymization(original, result, operation_proof, commitments)
+        let commitments = self.pseudonymization_cache.retrieve(&key)?;
+        self.verified_reconstruct_pseudonymization::<E::PseudonymizationProof>(
+            original,
+            proof,
+            commitments,
+        )
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn verify_pseudonymization_cached<E>(
+    pub fn verified_reconstruct_pseudonymization_cached<E>(
         &self,
         transcryptor_id: &str,
         original: &E,
-        result: &E,
-        operation_proof: &VerifiableRRSK,
-        gy: &GroupElement,
+        proof: &E::PseudonymizationProof,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> bool
+    ) -> Option<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output>
     where
-        E: ElGamalEncrypted + Pseudonymizable,
+        E: VerifiablePseudonymizable,
+        E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
     {
         let key: PseudonymizationKey = (
             transcryptor_id.to_string(),
@@ -419,58 +498,140 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let Some(commitments) = self.pseudonymization_cache.retrieve(&key) else {
-            return false;
-        };
-        self.verify_pseudonymization(original, result, operation_proof, gy, commitments)
+        let commitments = self.pseudonymization_cache.retrieve(&key)?;
+        self.verified_reconstruct_pseudonymization::<E::PseudonymizationProof>(
+            original,
+            proof,
+            public_key,
+            commitments,
+        )
     }
 
-    #[must_use]
-    pub fn verify_pseudonym_rekey_cached<E>(
+    pub fn verified_reconstruct_pseudonym_rekey_cached<E>(
         &self,
         transcryptor_id: &str,
         original: &E,
-        result: &E,
-        proof: &VerifiableRekey,
+        proof: &E::RekeyProof,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> bool
+    ) -> Option<<E::RekeyProof as VerifiableRekeyProof>::Output>
     where
-        E: ElGamalEncrypted + Rekeyable,
+        E: VerifiableRekeyable,
+        E::RekeyProof: VerifiableRekeyProof<DataType = E>,
     {
         let key: RekeyTransitionKey = (
             transcryptor_id.to_string(),
             context_from.clone(),
             context_to.clone(),
         );
-        let Some(commitments) = self.pseudonym_rekey_cache.retrieve(&key) else {
-            return false;
-        };
-        self.verify_pseudonym_rekey(original, result, proof, commitments)
+        let commitments = self.pseudonym_rekey_cache.retrieve(&key)?;
+        self.verified_reconstruct_rekey::<E::RekeyProof>(original, proof, commitments)
     }
 
-    #[must_use]
-    pub fn verify_attribute_rekey_cached<E>(
+    pub fn verified_reconstruct_attribute_rekey_cached<E>(
         &self,
         transcryptor_id: &str,
         original: &E,
-        result: &E,
-        proof: &VerifiableRekey,
+        proof: &E::RekeyProof,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> bool
+    ) -> Option<<E::RekeyProof as VerifiableRekeyProof>::Output>
     where
-        E: ElGamalEncrypted + Rekeyable,
+        E: VerifiableRekeyable,
+        E::RekeyProof: VerifiableRekeyProof<DataType = E>,
     {
         let key: RekeyTransitionKey = (
             transcryptor_id.to_string(),
             context_from.clone(),
             context_to.clone(),
         );
-        let Some(commitments) = self.attribute_rekey_cache.retrieve(&key) else {
-            return false;
+        let commitments = self.attribute_rekey_cache.retrieve(&key)?;
+        self.verified_reconstruct_rekey::<E::RekeyProof>(original, proof, commitments)
+    }
+
+    /// Verify a composite-value transcryption proof using cached commitments.
+    #[cfg(feature = "elgamal3")]
+    #[allow(clippy::too_many_arguments)]
+    pub fn verified_reconstruct_transcryption_cached<E>(
+        &self,
+        transcryptor_id: &str,
+        original: &E,
+        proof: &E::TranscryptionProof,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> Option<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output>
+    where
+        E: VerifiableTranscryptable,
+        E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
+    {
+        let pseudo_key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let attr_key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let pseudonym = *self.pseudonymization_cache.retrieve(&pseudo_key)?;
+        let attribute = *self.attribute_rekey_cache.retrieve(&attr_key)?;
+        let commitments = VerifiableTranscryptionCommitment {
+            pseudonym,
+            attribute,
         };
-        self.verify_attribute_rekey(original, result, proof, commitments)
+        self.verified_reconstruct_transcryption::<E::TranscryptionProof>(
+            original,
+            proof,
+            &commitments,
+        )
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn verified_reconstruct_transcryption_cached<E>(
+        &self,
+        transcryptor_id: &str,
+        original: &E,
+        proof: &E::TranscryptionProof,
+        public_key: &crate::keys::SessionKeys,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> Option<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output>
+    where
+        E: VerifiableTranscryptable,
+        E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
+    {
+        let pseudo_key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let attr_key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        let pseudonym = *self.pseudonymization_cache.retrieve(&pseudo_key)?;
+        let attribute = *self.attribute_rekey_cache.retrieve(&attr_key)?;
+        let commitments = VerifiableTranscryptionCommitment {
+            pseudonym,
+            attribute,
+        };
+        self.verified_reconstruct_transcryption::<E::TranscryptionProof>(
+            original,
+            proof,
+            public_key,
+            &commitments,
+        )
     }
 
     // ------------------------------------------------------------------

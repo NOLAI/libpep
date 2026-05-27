@@ -48,6 +48,17 @@ pub trait Encryptable: Sized {
     ) -> Self::EncryptedType
     where
         R: Rng + CryptoRng;
+
+    /// Hook for batch-level preprocessing before encryption. Default is a
+    /// pass-through; override when the encrypted batch needs items to share
+    /// a uniform shape (e.g. JSON values padded to a unified structure).
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, crate::data::batch::BatchError>
+    where
+        Self: Clone,
+    {
+        Ok(items.to_vec())
+    }
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
@@ -201,112 +212,4 @@ pub trait HasStructure {
 
     /// Get the structure of this encrypted value.
     fn structure(&self) -> Self::Structure;
-}
-
-// Verifiable operation traits
-
-/// A trait for encrypted pseudonyms that support verifiable pseudonymization.
-///
-/// Like [`Pseudonymizable`], this rerandomizes + reshuffles + rekeys (RRSK)
-/// per ciphertext, producing a self-contained [`VerifiableRRSK`](crate::core::verifiable::VerifiableRRSK)
-/// proof. The forward-direction proof is verified against the combined
-/// `(S, K)` commitments published for the transition (plus the recipient
-/// public key `Y` it was encrypted under).
-#[cfg(feature = "verifiable")]
-pub trait VerifiablePseudonymizable: Pseudonymizable {
-    /// The proof type for pseudonymization operations.
-    /// - Simple types use a single [`VerifiableRRSK`](crate::core::verifiable::VerifiableRRSK).
-    /// - Long types use `Vec<VerifiableRRSK>` (one per block).
-    type PseudonymizationProof;
-
-    /// Pseudonymize with proof generation, in elgamal3 mode (the recipient
-    /// public key `Y` is carried by the ciphertext).
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_pseudonymize<R>(
-        &self,
-        info: &PseudonymizationInfo,
-        rng: &mut R,
-    ) -> Self::PseudonymizationProof
-    where
-        R: Rng + CryptoRng;
-
-    /// Pseudonymize with proof generation. `public_key` is the recipient
-    /// public key the ciphertext was encrypted under, used by the rerandomize
-    /// step and as the base for the `pi_y_r` proof inside `VerifiableRRSK`.
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_pseudonymize<R>(
-        &self,
-        info: &PseudonymizationInfo,
-        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
-        rng: &mut R,
-    ) -> Self::PseudonymizationProof
-    where
-        R: Rng + CryptoRng;
-}
-
-/// A trait for encrypted types that support verifiable rekeying.
-///
-/// This trait extends [`Rekeyable`] to provide zero-knowledge proofs
-/// that rekey operations were performed correctly.
-///
-/// The proof contains the result, which can be extracted via `.result(original)`.
-#[cfg(feature = "verifiable")]
-pub trait VerifiableRekeyable: Rekeyable {
-    /// The proof type for rekey operations.
-    /// - Simple types use a single proof
-    /// - Long types use `Vec` of proofs
-    type RekeyProof;
-
-    /// Rekey with proof generation.
-    ///
-    /// Returns an operation proof which contains the result.
-    /// The result can be extracted from the proof via `.result(original)`.
-    fn verifiable_rekey<R: Rng + CryptoRng>(
-        &self,
-        info: &Self::RekeyInfo,
-        rng: &mut R,
-    ) -> Self::RekeyProof;
-}
-
-/// A trait for encrypted types that support verifiable transcryption.
-///
-/// Combines verifiable pseudonymization (RRSK, with rerandomization) for
-/// pseudonyms and verifiable rekeying for attributes. Composite types
-/// (records, JSON) bundle the per-element proofs in a structure that
-/// matches the input.
-#[cfg(feature = "verifiable")]
-pub trait VerifiableTranscryptable: Transcryptable {
-    /// The proof type for transcryption operations.
-    /// Structure depends on the complexity of the data type.
-    type TranscryptionProof;
-
-    /// Transcrypt with proof generation, in elgamal3 mode.
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng;
-
-    /// Transcrypt with proof generation. `public_key` is the recipient
-    /// public key the ciphertext was encrypted under (needed by the
-    /// rerandomize step on pseudonyms).
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng;
-}
-
-#[cfg(feature = "batch")]
-pub trait BatchEncryptable: Encryptable + Clone {
-    fn preprocess_batch(
-        items: &[Self],
-    ) -> Result<Vec<Self>, crate::transcryptor::batch::BatchError>;
 }

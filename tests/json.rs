@@ -1,6 +1,8 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+#[cfg(feature = "batch")]
+use libpep::data::batch::EncryptedBatch;
 use libpep::data::json::builder::PEPJSONBuilder;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
@@ -8,8 +10,6 @@ use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::factors::TranscryptionInfo;
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
-#[cfg(feature = "batch")]
-use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
 
 #[test]
@@ -152,7 +152,7 @@ fn test_json_transcryption_with_builder() {
     );
 }
 
-#[cfg(feature = "batch")]
+#[cfg(all(feature = "batch", feature = "batch-pk"))]
 #[test]
 fn test_json_batch_transcryption_same_structure() {
     let mut rng = rand::rng();
@@ -209,16 +209,15 @@ fn test_json_batch_transcryption_same_structure() {
         &enc_secret,
     );
 
-    let mut batch = vec![encrypted1.clone(), encrypted2.clone()];
+    let items = vec![encrypted1.clone(), encrypted2.clone()];
     #[cfg(feature = "elgamal3")]
-    let transcrypted_batch = transcrypt_batch(&mut batch, &transcryption_info, &mut rng)
-        .unwrap()
-        .into_vec();
+    let mut batch = EncryptedBatch::new(items).expect("structure");
     #[cfg(not(feature = "elgamal3"))]
-    let transcrypted_batch =
-        transcrypt_batch(&mut batch, &transcryption_info, &session_keys, &mut rng)
-            .unwrap()
-            .into_vec();
+    let mut batch = EncryptedBatch::new(items, session_keys).expect("structure");
+    batch
+        .transcrypt(&transcryption_info, &mut rng)
+        .expect("transcrypt");
+    let transcrypted_batch = batch.into_items();
 
     // Verify we got 2 records back
     assert_eq!(transcrypted_batch.len(), 2);
@@ -267,7 +266,7 @@ fn test_json_batch_transcryption_same_structure() {
     );
 }
 
-#[cfg(feature = "batch")]
+#[cfg(all(feature = "batch", feature = "batch-pk"))]
 #[test]
 fn test_json_batch_transcryption_different_structures() {
     let mut rng = rand::rng();
@@ -329,16 +328,17 @@ fn test_json_batch_transcryption_different_structures() {
     );
 
     // Attempt batch transcryption (this should fail because structures don't match)
-    let mut batch = vec![encrypted1, encrypted2];
+    let items = vec![encrypted1, encrypted2];
+    let _ = &transcryption_info; // touch in case of all-elgamal3 build below
     #[cfg(feature = "elgamal3")]
-    let result = transcrypt_batch(&mut batch, &transcryption_info, &mut rng);
+    let result = EncryptedBatch::new(items);
     #[cfg(not(feature = "elgamal3"))]
-    let result = transcrypt_batch(&mut batch, &transcryption_info, &session_keys, &mut rng);
+    let result = EncryptedBatch::new(items, session_keys);
 
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");
     match result {
-        Err(libpep::transcryptor::BatchError::InconsistentStructure { .. }) => {
+        Err(libpep::data::batch::BatchError::InconsistentStructure { .. }) => {
             // Expected error
         }
         _ => panic!("Expected InconsistentStructure error"),

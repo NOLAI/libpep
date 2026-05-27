@@ -7,7 +7,7 @@ use crate::data::simple::{
     Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
 #[cfg(feature = "batch")]
-use crate::data::traits::BatchEncryptable;
+use crate::data::traits::HasStructure;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -18,20 +18,10 @@ use rand_core::{CryptoRng, Rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
 
-#[cfg(feature = "verifiable")]
-use crate::core::verifiable::{VerifiableRRSK, VerifiableRekey};
-#[cfg(feature = "verifiable")]
-use crate::data::traits::VerifiableTranscryptable;
-
 #[cfg(feature = "long")]
 use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-
-#[cfg(feature = "batch")]
-use crate::data::traits::HasStructure;
-#[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -880,178 +870,5 @@ impl HasStructure for LongEncryptedRecord {
             pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
             attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
         }
-    }
-}
-
-// Verifiable transcryption
-
-/// Proof bundle for verifiable transcryption of a simple record.
-///
-/// Contains proofs for both pseudonymization and attribute rekeying.
-#[cfg(feature = "verifiable")]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RecordTranscryptionProof {
-    /// One [`VerifiableRRSK`] per pseudonym (RRSK includes a fresh
-    /// per-message rerandomize step).
-    pub pseudonym_operation_proofs: Vec<VerifiableRRSK>,
-    /// One [`VerifiableRekey`] per attribute, verified against the combined
-    /// attribute-rekey commitment published per transition.
-    pub attribute_operation_proofs: Vec<VerifiableRekey>,
-}
-
-/// Proof bundle for verifiable transcryption of a long record.
-///
-/// Contains proofs for both pseudonymization and attribute rekeying,
-/// with multiple proofs per long pseudonym/attribute (one per block).
-#[cfg(feature = "verifiable")]
-#[cfg(feature = "long")]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LongRecordTranscryptionProof {
-    /// One block-vector of [`VerifiableRRSK`] per long pseudonym.
-    pub pseudonym_operation_proofs: Vec<Vec<VerifiableRRSK>>,
-    /// One block-vector of [`VerifiableRekey`] per long attribute.
-    pub attribute_operation_proofs: Vec<Vec<VerifiableRekey>>,
-}
-
-#[cfg(feature = "verifiable")]
-impl VerifiableTranscryptable for EncryptedRecord {
-    type TranscryptionProof = RecordTranscryptionProof;
-
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        let pseudonym_operation_proofs = self
-            .pseudonyms
-            .iter()
-            .map(|p| p.verifiable_pseudonymize(&info.pseudonym, rng))
-            .collect();
-
-        let attribute_operation_proofs = self
-            .attributes
-            .iter()
-            .map(|a| a.verifiable_rekey(&info.attribute, rng))
-            .collect();
-
-        RecordTranscryptionProof {
-            pseudonym_operation_proofs,
-            attribute_operation_proofs,
-        }
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        keys: &SessionKeys,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        let pseudonym_operation_proofs = self
-            .pseudonyms
-            .iter()
-            .map(|p| p.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym.public, rng))
-            .collect();
-
-        let attribute_operation_proofs = self
-            .attributes
-            .iter()
-            .map(|a| a.verifiable_rekey(&info.attribute, rng))
-            .collect();
-
-        RecordTranscryptionProof {
-            pseudonym_operation_proofs,
-            attribute_operation_proofs,
-        }
-    }
-}
-
-#[cfg(feature = "verifiable")]
-#[cfg(feature = "long")]
-impl VerifiableTranscryptable for LongEncryptedRecord {
-    type TranscryptionProof = LongRecordTranscryptionProof;
-
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        let pseudonym_operation_proofs = self
-            .pseudonyms
-            .iter()
-            .map(|p| p.verifiable_pseudonymize(&info.pseudonym, rng))
-            .collect();
-
-        let attribute_operation_proofs = self
-            .attributes
-            .iter()
-            .map(|a| a.verifiable_rekey(&info.attribute, rng))
-            .collect();
-
-        LongRecordTranscryptionProof {
-            pseudonym_operation_proofs,
-            attribute_operation_proofs,
-        }
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        keys: &SessionKeys,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        let pseudonym_operation_proofs = self
-            .pseudonyms
-            .iter()
-            .map(|p| p.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym.public, rng))
-            .collect();
-
-        let attribute_operation_proofs = self
-            .attributes
-            .iter()
-            .map(|a| a.verifiable_rekey(&info.attribute, rng))
-            .collect();
-
-        LongRecordTranscryptionProof {
-            pseudonym_operation_proofs,
-            attribute_operation_proofs,
-        }
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for Record {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
-#[cfg(all(feature = "batch", feature = "long"))]
-impl BatchEncryptable for LongRecord {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
     }
 }

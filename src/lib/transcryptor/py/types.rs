@@ -1,11 +1,12 @@
 //! Python bindings for transcryptor types.
 
-#[cfg(feature = "json")]
+#[cfg(all(feature = "json", feature = "elgamal3"))]
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+#[cfg(feature = "elgamal3")]
 use crate::data::py::records::PyEncryptedRecord;
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "elgamal3"))]
 use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
@@ -23,7 +24,6 @@ use derive_more::{Deref, From, Into};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-use pyo3::IntoPyObjectExt;
 
 /// A PEP transcryptor system.
 #[derive(Clone, From, Into, Deref)]
@@ -309,274 +309,6 @@ impl PyTranscryptor {
         ))
     }
 
-    /// Polymorphic batch rekeying.
-    #[cfg(feature = "batch")]
-    #[pyo3(name = "rekey_batch")]
-    fn py_rekey_batch(
-        &self,
-        encrypted: &Bound<PyAny>,
-        rekey_info: &Bound<PyAny>,
-    ) -> PyResult<Py<PyAny>> {
-        let py = encrypted.py();
-        let mut rng = rand::rng();
-
-        // Try Vec<EncryptedAttribute> with AttributeRekeyInfo
-        if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-            if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-                let mut enc: Vec<_> = eas.into_iter().map(|e| e.0).collect();
-                let result = self
-                    .0
-                    .rekey_batch(&mut enc, &AttributeRekeyInfo::from(&info), &mut rng)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-                let py_result: Vec<PyEncryptedAttribute> = result
-                    .into_vec()
-                    .into_iter()
-                    .map(PyEncryptedAttribute)
-                    .collect();
-                return py_result.into_py_any(py);
-            }
-        }
-
-        // Try Vec<LongEncryptedAttribute> with AttributeRekeyInfo
-        #[cfg(feature = "long")]
-        if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-            if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-                let mut enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
-                let result = self
-                    .0
-                    .rekey_batch(&mut enc, &AttributeRekeyInfo::from(&info), &mut rng)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-                let py_result: Vec<PyLongEncryptedAttribute> = result
-                    .into_vec()
-                    .into_iter()
-                    .map(PyLongEncryptedAttribute)
-                    .collect();
-                return py_result.into_py_any(py);
-            }
-        }
-
-        Err(PyTypeError::new_err(
-            "rekey_batch() requires (Vec[EncryptedAttribute] | Vec[LongEncryptedAttribute], AttributeRekeyInfo)",
-        ))
-    }
-
-    /// Polymorphic batch pseudonymization.
-    #[cfg(all(feature = "batch", feature = "elgamal3"))]
-    #[pyo3(name = "pseudonymize_batch")]
-    fn py_pseudonymize_batch(
-        &self,
-        encrypted: &Bound<PyAny>,
-        pseudonymization_info: &PyPseudonymizationInfo,
-    ) -> PyResult<Py<PyAny>> {
-        let py = encrypted.py();
-        let mut rng = rand::rng();
-        let info = PseudonymizationInfo::from(pseudonymization_info);
-
-        if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-            let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPseudonym)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "long")]
-        if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-            let mut enc: Vec<_> = leps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedPseudonym)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        Err(PyTypeError::new_err(
-            "pseudonymize_batch() requires Vec[EncryptedPseudonym] or Vec[LongEncryptedPseudonym]",
-        ))
-    }
-
-    #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
-    #[pyo3(name = "pseudonymize_batch")]
-    fn py_pseudonymize_batch(
-        &self,
-        encrypted: &Bound<PyAny>,
-        pseudonymization_info: &PyPseudonymizationInfo,
-        public_key: &PyPseudonymSessionPublicKey,
-    ) -> PyResult<Py<PyAny>> {
-        let py = encrypted.py();
-        let mut rng = rand::rng();
-        let info = PseudonymizationInfo::from(pseudonymization_info);
-        let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-
-        if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-            let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &pk, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPseudonym)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "long")]
-        if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-            let mut enc: Vec<_> = leps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &pk, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedPseudonym)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        Err(PyTypeError::new_err(
-            "pseudonymize_batch() requires Vec[EncryptedPseudonym] or Vec[LongEncryptedPseudonym]",
-        ))
-    }
-
-    /// Polymorphic batch transcryption.
-    #[cfg(all(feature = "batch", feature = "elgamal3"))]
-    #[pyo3(name = "transcrypt_batch")]
-    fn py_transcrypt_batch(
-        &self,
-        encrypted: &Bound<PyAny>,
-        transcryption_info: &PyTranscryptionInfo,
-    ) -> PyResult<Py<PyAny>> {
-        let py = encrypted.py();
-        let mut rng = rand::rng();
-        let info = TranscryptionInfo::from(transcryption_info);
-
-        if let Ok(ers) = encrypted.extract::<Vec<PyEncryptedRecord>>() {
-            let mut enc: Vec<_> = ers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedRecord)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "long")]
-        if let Ok(lers) = encrypted.extract::<Vec<PyLongEncryptedRecord>>() {
-            let mut enc: Vec<_> = lers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedRecord)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "json")]
-        if let Ok(ejs) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-            let mut enc: Vec<_> = ejs.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPEPJSONValue> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPEPJSONValue)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        Err(PyTypeError::new_err(
-            "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
-        ))
-    }
-
-    /// Polymorphic batch transcryption (non-elgamal3): requires session keys.
-    #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
-    #[pyo3(name = "transcrypt_batch_with_keys")]
-    fn py_transcrypt_batch_no_e3(
-        &self,
-        encrypted: &Bound<PyAny>,
-        transcryption_info: &PyTranscryptionInfo,
-        session_keys: &crate::keys::py::PySessionKeys,
-    ) -> PyResult<Py<PyAny>> {
-        let py = encrypted.py();
-        let mut rng = rand::rng();
-        let info = TranscryptionInfo::from(transcryption_info);
-        let keys: crate::keys::SessionKeys = session_keys.clone().into();
-
-        if let Ok(ers) = encrypted.extract::<Vec<PyEncryptedRecord>>() {
-            let mut enc: Vec<_> = ers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedRecord)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "long")]
-        if let Ok(lers) = encrypted.extract::<Vec<PyLongEncryptedRecord>>() {
-            let mut enc: Vec<_> = lers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedRecord)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        #[cfg(feature = "json")]
-        if let Ok(ejs) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-            let mut enc: Vec<_> = ejs.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPEPJSONValue> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPEPJSONValue)
-                .collect();
-            return py_result.into_py_any(py);
-        }
-
-        Err(PyTypeError::new_err(
-            "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
-        ))
-    }
-
     /// Generate commitment proofs for pseudonymization factors.
     #[cfg(feature = "verifiable")]
     fn pseudonymization_commitments(
@@ -635,15 +367,15 @@ impl PyTranscryptor {
         &self,
         encrypted: &PyEncryptedPseudonym,
         pseudo_info: &PyPseudonymizationInfo,
-    ) -> crate::core::py::verifiable::PyVerifiableRSK {
-        use crate::data::traits::VerifiablePseudonymizable;
+    ) -> crate::core::py::verifiable::PyVerifiableRRSK {
+        use crate::data::verifiable::traits::VerifiablePseudonymizable;
 
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(pseudo_info);
         let operation_proof = encrypted.0.verifiable_pseudonymize(&info, &mut rng);
 
-        crate::core::py::verifiable::PyVerifiableRSK {
-            inner: operation_proof,
+        crate::core::py::verifiable::PyVerifiableRRSK {
+            inner: operation_proof.0,
         }
     }
 
@@ -653,16 +385,16 @@ impl PyTranscryptor {
         encrypted: &PyEncryptedPseudonym,
         pseudo_info: &PyPseudonymizationInfo,
         public_key: &PyPseudonymSessionPublicKey,
-    ) -> crate::core::py::verifiable::PyVerifiableRSK {
-        use crate::data::traits::VerifiablePseudonymizable;
+    ) -> crate::core::py::verifiable::PyVerifiableRRSK {
+        use crate::data::verifiable::traits::VerifiablePseudonymizable;
 
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(pseudo_info);
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let operation_proof = encrypted.0.verifiable_pseudonymize(&info, &pk, &mut rng);
 
-        crate::core::py::verifiable::PyVerifiableRSK {
-            inner: operation_proof,
+        crate::core::py::verifiable::PyVerifiableRRSK {
+            inner: operation_proof.0,
         }
     }
 
@@ -675,14 +407,14 @@ impl PyTranscryptor {
         encrypted: &PyEncryptedAttribute,
         rekey_info: &PyAttributeRekeyInfo,
     ) -> crate::core::py::verifiable::PyVerifiableRekey {
-        use crate::data::traits::VerifiableRekeyable;
+        use crate::data::verifiable::traits::VerifiableRekeyable;
 
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(rekey_info);
         let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
 
         crate::core::py::verifiable::PyVerifiableRekey {
-            inner: operation_proof,
+            inner: operation_proof.0,
         }
     }
 
@@ -696,14 +428,14 @@ impl PyTranscryptor {
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
     ) -> crate::core::py::verifiable::PyVerifiableRekey {
-        use crate::data::traits::VerifiableRekeyable;
+        use crate::data::verifiable::traits::VerifiableRekeyable;
 
         let mut rng = rand::rng();
         let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
         let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
 
         crate::core::py::verifiable::PyVerifiableRekey {
-            inner: operation_proof,
+            inner: operation_proof.0,
         }
     }
 }

@@ -198,7 +198,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedAttribute::from)
@@ -217,7 +218,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .into_items();
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
 
@@ -263,7 +265,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedAttribute::from)
@@ -282,7 +285,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
@@ -408,7 +412,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_values, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedPEPJSONValue)

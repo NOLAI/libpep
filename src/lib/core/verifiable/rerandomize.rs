@@ -34,56 +34,44 @@ impl VerifiableRerandomize {
         Self { gr, p_gy_r }
     }
 
-    /// The rerandomized first ciphertext component, `B_r = R + B`.
-    pub fn b_rerandomized(&self, original: &ElGamal) -> GroupElement {
-        self.gr + original.gb
-    }
-
-    /// The rerandomized second ciphertext component, `C_r = Y_r + C`.
-    pub fn c_rerandomized(&self, original: &ElGamal) -> GroupElement {
-        *self.p_gy_r + original.gc
-    }
-
-    /// Rebuild the full rerandomized ciphertext.
-    pub fn result(&self, original: &ElGamal) -> ElGamal {
+    /// Reconstruct the rerandomized ciphertext from this proof, **without
+    /// verifying** it. Internal prover-side use only — public callers should
+    /// use [`verified_reconstruct`](Self::verified_reconstruct).
+    ///
+    /// `B_r = R + B`, `C_r = Y_r + C`, `Y_r = Y` (elgamal3).
+    pub(crate) fn result(&self, original: &ElGamal) -> ElGamal {
         ElGamal {
-            gb: self.b_rerandomized(original),
-            gc: self.c_rerandomized(original),
+            gb: self.gr + original.gb,
+            gc: *self.p_gy_r + original.gc,
             #[cfg(feature = "elgamal3")]
             gy: original.gy,
         }
     }
 
-    /// Verify the rerandomize proof. `gy` is the recipient public key the
-    /// original ciphertext was encrypted under.
+    /// Verify the rerandomize proof against the recipient public key `gy`
+    /// the original ciphertext was encrypted under.
+    ///
+    /// Note: rerandomize proofs are independent of the original ciphertext
+    /// (the proof binds `R = r·G` to `gy` only), so no `original` argument
+    /// is needed for verification.
     #[must_use]
     pub fn verify(&self, gy: &GroupElement) -> bool {
         verify_proof(&self.gr, gy, &self.p_gy_r)
     }
 
-    /// Full check: verify the proof and that `new` is the ciphertext it
-    /// implicitly reconstructs.
-    #[must_use]
-    pub fn verify_rerandomized(
-        &self,
-        original: &ElGamal,
-        new: &ElGamal,
-        gy: &GroupElement,
-    ) -> bool {
-        if !self.verify(gy) {
-            return false;
+    /// Verify the proof against `original` and `gy`, returning the
+    /// reconstructed rerandomized ciphertext.
+    pub fn verified_reconstruct(&self, original: &ElGamal, gy: &GroupElement) -> Option<ElGamal> {
+        if self.verify(gy) {
+            Some(self.result(original))
+        } else {
+            None
         }
-        if new.gb != self.b_rerandomized(original) {
-            return false;
-        }
-        if new.gc != self.c_rerandomized(original) {
-            return false;
-        }
-        #[cfg(feature = "elgamal3")]
-        if new.gy != original.gy {
-            return false;
-        }
-        true
+    }
+
+    #[cfg(feature = "insecure")]
+    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+        self.result(original)
     }
 }
 
@@ -126,13 +114,6 @@ mod tests {
         (encrypt(&m, &pk, &mut rng), pk)
     }
 
-    fn tamper(c: &ElGamal) -> ElGamal {
-        let mut rng = rand::rng();
-        let mut t = *c;
-        t.gb = t.gb + GroupElement::random(&mut rng);
-        t
-    }
-
     #[test]
     fn vrr_honest_verifies() {
         let mut rng = rand::rng();
@@ -140,37 +121,20 @@ mod tests {
         let r = ScalarNonZero::random(&mut rng);
         let proof = VerifiableRerandomize::new(&pk, &r, &mut rng);
         #[cfg(feature = "elgamal3")]
-        let result = rerandomize(&c, &r);
+        let expected = rerandomize(&c, &r);
         #[cfg(not(feature = "elgamal3"))]
-        let result = rerandomize(&c, &pk, &r);
-        assert!(proof.verify_rerandomized(&c, &result, &pk));
-    }
-
-    #[test]
-    fn vrr_tampered_output_fails() {
-        let mut rng = rand::rng();
-        let (c, pk) = setup_ct_and_pk();
-        let r = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRerandomize::new(&pk, &r, &mut rng);
-        #[cfg(feature = "elgamal3")]
-        let real = rerandomize(&c, &r);
-        #[cfg(not(feature = "elgamal3"))]
-        let real = rerandomize(&c, &pk, &r);
-        let bad = tamper(&real);
-        assert!(!proof.verify_rerandomized(&c, &bad, &pk));
+        let expected = rerandomize(&c, &pk, &r);
+        assert!(proof.verify(&pk));
+        assert_eq!(proof.verified_reconstruct(&c, &pk), Some(expected));
     }
 
     #[test]
     fn vrr_tampered_proof_fails() {
         let mut rng = rand::rng();
-        let (c, pk) = setup_ct_and_pk();
+        let (_c, pk) = setup_ct_and_pk();
         let r = ScalarNonZero::random(&mut rng);
         let mut proof = VerifiableRerandomize::new(&pk, &r, &mut rng);
-        #[cfg(feature = "elgamal3")]
-        let result = rerandomize(&c, &r);
-        #[cfg(not(feature = "elgamal3"))]
-        let result = rerandomize(&c, &pk, &r);
         proof.p_gy_r.c1 = proof.p_gy_r.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify_rerandomized(&c, &result, &pk));
+        assert!(!proof.verify(&pk));
     }
 }

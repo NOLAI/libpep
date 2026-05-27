@@ -575,6 +575,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPseudonym(e))
@@ -603,6 +604,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedAttribute(e))
@@ -633,6 +635,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedPseudonym(e))
@@ -663,6 +666,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedAttribute(e))
@@ -689,6 +693,7 @@ pub fn py_encrypt_batch(
             let encrypted = encrypt_batch(&rust_msgs, &keys, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPEPJSONValue(e))

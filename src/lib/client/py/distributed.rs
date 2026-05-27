@@ -326,7 +326,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedPseudonym> =
                 result.into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -338,7 +339,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedAttribute> =
                 result.into_iter().map(PyEncryptedAttribute).collect();
             return py_result.into_py_any(py);
@@ -351,7 +353,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyLongEncryptedPseudonym> =
                 result.into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -364,7 +367,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyLongEncryptedAttribute> =
                 result.into_iter().map(PyLongEncryptedAttribute).collect();
             return py_result.into_py_any(py);
@@ -377,7 +381,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedPEPJSONValue> =
                 result.into_iter().map(PyEncryptedPEPJSONValue).collect();
             return py_result.into_py_any(py);

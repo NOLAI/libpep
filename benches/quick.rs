@@ -22,7 +22,7 @@ use libpep::data::long::{LongAttribute, LongPseudonym};
 use libpep::data::json::PEPJSONValue;
 
 #[cfg(feature = "verifiable")]
-use libpep::data::traits::VerifiablePseudonymizable;
+use libpep::data::verifiable::traits::VerifiablePseudonymizable;
 #[cfg(feature = "verifiable")]
 use libpep::transcryptor::Transcryptor;
 
@@ -140,31 +140,20 @@ fn bench_pseudonym_roundtrip_batch(c: &mut Criterion) {
 
     c.bench_function("pseudonym_roundtrip_batch_100", |b| {
         b.iter(|| {
+            use libpep::data::batch::EncryptedBatch;
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
+            #[cfg(feature = "elgamal3")]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone()).expect("batch construction");
             #[cfg(not(feature = "elgamal3"))]
-            let mut current_pk = *client_a.dump().pseudonym.public.value();
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone(), client_a.dump().pseudonym.public)
+                    .expect("batch construction");
             for system in &systems {
                 let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                #[cfg(feature = "elgamal3")]
-                {
-                    working = system
-                        .transcrypt_batch(&mut working, &info, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                }
-                #[cfg(not(feature = "elgamal3"))]
-                {
-                    let k = info.pseudonym.k.scalar();
-                    let pk_typed = libpep::keys::PseudonymSessionPublicKey::from(current_pk);
-                    working = system
-                        .transcrypt_batch(&mut working, &info, &pk_typed, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                    current_pk = k * current_pk;
-                }
+                batch.transcrypt(&info, rng).expect("transcrypt batch");
             }
-            black_box(working);
+            black_box(batch);
         })
     });
 }
@@ -209,16 +198,20 @@ fn bench_attribute_roundtrip_batch(c: &mut Criterion) {
 
     c.bench_function("attribute_roundtrip_batch_100", |b| {
         b.iter(|| {
+            use libpep::data::batch::EncryptedBatch;
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
+            #[cfg(feature = "elgamal3")]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone()).expect("batch construction");
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone(), client_a.dump().attribute.public)
+                    .expect("batch construction");
             for system in &systems {
                 let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system
-                    .rekey_batch(&mut working, &info, rng)
-                    .expect("rekey batch")
-                    .to_vec();
+                batch.rekey(&info, rng).expect("rekey batch");
             }
-            black_box(working);
+            black_box(batch);
         })
     });
 }
@@ -286,31 +279,20 @@ fn bench_long_pseudonym_roundtrip_batch(c: &mut Criterion) {
 
     c.bench_function("long_pseudonym_roundtrip_batch_100", |b| {
         b.iter(|| {
+            use libpep::data::batch::EncryptedBatch;
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
+            #[cfg(feature = "elgamal3")]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone()).expect("batch construction");
             #[cfg(not(feature = "elgamal3"))]
-            let mut current_pk = *client_a.dump().pseudonym.public.value();
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone(), client_a.dump().pseudonym.public)
+                    .expect("batch construction");
             for system in &systems {
                 let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                #[cfg(feature = "elgamal3")]
-                {
-                    working = system
-                        .transcrypt_batch(&mut working, &info, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                }
-                #[cfg(not(feature = "elgamal3"))]
-                {
-                    let k = info.pseudonym.k.scalar();
-                    let pk_typed = libpep::keys::PseudonymSessionPublicKey::from(current_pk);
-                    working = system
-                        .transcrypt_batch(&mut working, &info, &pk_typed, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                    current_pk = k * current_pk;
-                }
+                batch.transcrypt(&info, rng).expect("transcrypt batch");
             }
-            black_box(working);
+            black_box(batch);
         })
     });
 }
@@ -358,16 +340,20 @@ fn bench_long_attribute_roundtrip_batch(c: &mut Criterion) {
 
     c.bench_function("long_attribute_roundtrip_batch_100", |b| {
         b.iter(|| {
+            use libpep::data::batch::EncryptedBatch;
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
+            #[cfg(feature = "elgamal3")]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone()).expect("batch construction");
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone(), client_a.dump().attribute.public)
+                    .expect("batch construction");
             for system in &systems {
                 let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system
-                    .rekey_batch(&mut working, &info, rng)
-                    .expect("rekey batch")
-                    .to_vec();
+                batch.rekey(&info, rng).expect("rekey batch");
             }
-            black_box(working);
+            black_box(batch);
         })
     });
 }
@@ -464,44 +450,19 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
 
     c.bench_function("json_roundtrip_batch_100", |b| {
         b.iter(|| {
+            use libpep::data::batch::EncryptedBatch;
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
+            #[cfg(feature = "elgamal3")]
+            let mut batch =
+                EncryptedBatch::new(encrypted_base.clone()).expect("batch construction");
             #[cfg(not(feature = "elgamal3"))]
-            let mut current_keys = *client_a.dump();
+            let mut batch = EncryptedBatch::new(encrypted_base.clone(), *client_a.dump())
+                .expect("batch construction");
             for system in &systems {
                 let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                #[cfg(feature = "elgamal3")]
-                {
-                    working = system
-                        .transcrypt_batch(&mut working, &info, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                }
-                #[cfg(not(feature = "elgamal3"))]
-                {
-                    let kp = info.pseudonym.k.scalar();
-                    let ka = info.attribute.scalar();
-                    working = system
-                        .transcrypt_batch(&mut working, &info, &current_keys, rng)
-                        .expect("transcrypt batch")
-                        .to_vec();
-                    current_keys = libpep::keys::SessionKeys {
-                        pseudonym: libpep::keys::PseudonymSessionKeys {
-                            public: libpep::keys::PseudonymSessionPublicKey::from(
-                                kp * *current_keys.pseudonym.public.value(),
-                            ),
-                            secret: current_keys.pseudonym.secret,
-                        },
-                        attribute: libpep::keys::AttributeSessionKeys {
-                            public: libpep::keys::AttributeSessionPublicKey::from(
-                                ka * *current_keys.attribute.public.value(),
-                            ),
-                            secret: current_keys.attribute.secret,
-                        },
-                    };
-                }
+                batch.transcrypt(&info, rng).expect("transcrypt batch");
             }
-            black_box(working);
+            black_box(batch);
         })
     });
 }

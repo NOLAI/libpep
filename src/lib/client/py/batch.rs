@@ -1,19 +1,15 @@
-//! Python bindings for batch transcryption operations.
+//! Python bindings for batch encryption / decryption.
+//!
+//! The transcryptor-side batch operations (`pseudonymize_batch`,
+//! `rekey_batch`, `transcrypt_batch`) live in
+//! [`crate::transcryptor::py::batch`] — they're registered into the
+//! transcryptor module of the Python package. This file only handles
+//! encryption-side batch wrappers.
 
 use crate::client::{decrypt_batch, encrypt_batch};
-use crate::data::py::records::PyEncryptedRecord;
-#[cfg(feature = "long")]
-use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
-#[cfg(feature = "elgamal3")]
-use crate::data::records::EncryptedRecord;
-use crate::factors::py::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
-};
-use crate::factors::TranscryptionInfo;
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
 use crate::keys::py::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyGlobalPublicKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
@@ -22,7 +18,6 @@ use crate::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
@@ -43,344 +38,13 @@ use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 use crate::keys::types::{AttributeGlobalSecretKey, GlobalSecretKeys, PseudonymGlobalSecretKey};
 
 #[cfg(feature = "long")]
-use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "long")]
 use crate::data::py::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-#[cfg(feature = "long")]
-use crate::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
 use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 use crate::keys::{GlobalPublicKeys, SessionKeys};
-
-/// Polymorphic batch pseudonymization of a list of encrypted pseudonyms.
-/// Works with both EncryptedPseudonym and LongEncryptedPseudonym.
-/// The order of the pseudonyms is randomly shuffled to avoid linking them.
-#[cfg(feature = "elgamal3")]
-#[pyfunction]
-#[pyo3(name = "pseudonymize_batch")]
-pub fn py_pseudonymize_batch(
-    encrypted: &Bound<PyAny>,
-    pseudonymization_info: &PyPseudonymizationInfo,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-    let mut rng = rand::rng();
-    let info = PseudonymizationInfo::from(pseudonymization_info);
-
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPseudonym)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        let mut enc: Vec<LongEncryptedPseudonym> = leps.into_iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedPseudonym)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    Err(PyTypeError::new_err(
-        "pseudonymize_batch() requires Vec[EncryptedPseudonym] or Vec[LongEncryptedPseudonym]",
-    ))
-}
-
-#[cfg(not(feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "pseudonymize_batch")]
-pub fn py_pseudonymize_batch(
-    encrypted: &Bound<PyAny>,
-    pseudonymization_info: &PyPseudonymizationInfo,
-    public_key: &PyPseudonymSessionPublicKey,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-    let mut rng = rand::rng();
-    let info = PseudonymizationInfo::from(pseudonymization_info);
-    let pk = PseudonymSessionPublicKey::from(public_key.0 .0);
-
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut enc, &info, &pk, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPseudonym)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        let mut enc: Vec<LongEncryptedPseudonym> = leps.into_iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut enc, &info, &pk, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedPseudonym)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    Err(PyTypeError::new_err(
-        "pseudonymize_batch() requires Vec[EncryptedPseudonym] or Vec[LongEncryptedPseudonym]",
-    ))
-}
-
-/// Polymorphic batch rekeying of a list of encrypted attributes.
-/// Works with both EncryptedAttribute and LongEncryptedAttribute.
-/// The order of the attributes is randomly shuffled to avoid linking them.
-#[pyfunction]
-#[pyo3(name = "rekey_batch")]
-pub fn py_rekey_batch(
-    encrypted: &Bound<PyAny>,
-    rekey_info: &PyAttributeRekeyInfo,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-    let mut rng = rand::rng();
-    let info = AttributeRekeyInfo::from(rekey_info);
-
-    // Try Vec<EncryptedAttribute>
-    if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-        let mut enc: Vec<_> = eas.into_iter().map(|e| e.0).collect();
-        let result = rekey_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedAttribute> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedAttribute)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    // Try Vec<LongEncryptedAttribute>
-    #[cfg(feature = "long")]
-    if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-        let mut enc: Vec<LongEncryptedAttribute> = leas.into_iter().map(|e| e.0).collect();
-        let result = rekey_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedAttribute> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedAttribute)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    Err(PyTypeError::new_err(
-        "rekey_batch() requires Vec[EncryptedAttribute] or Vec[LongEncryptedAttribute]",
-    ))
-}
-
-/// Polymorphic batch transcryption of a list of encrypted data.
-/// Works with EncryptedRecord, LongEncryptedRecord, EncryptedPEPJSONValue, or tuples.
-/// The order of items is randomly shuffled to avoid linking them.
-///
-/// # Errors
-///
-/// Raises a ValueError if the encrypted data do not all have the same structure.
-#[cfg(feature = "elgamal3")]
-#[pyfunction]
-#[pyo3(name = "transcrypt_batch")]
-pub fn py_transcrypt_batch(
-    encrypted: &Bound<PyAny>,
-    transcryption_info: &PyTranscryptionInfo,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-    let mut rng = rand::rng();
-    let info = TranscryptionInfo::from(transcryption_info);
-
-    // Try Vec<EncryptedRecord>
-    if let Ok(recs) = encrypted.extract::<Vec<PyEncryptedRecord>>() {
-        let mut enc: Vec<_> = recs.into_iter().map(|r| r.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedRecord)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    // Try Vec<LongEncryptedRecord>
-    #[cfg(feature = "long")]
-    if let Ok(lrecs) = encrypted.extract::<Vec<PyLongEncryptedRecord>>() {
-        let mut enc: Vec<LongEncryptedRecord> = lrecs.into_iter().map(|r| r.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedRecord)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    // Try Vec<EncryptedPEPJSONValue>
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        let mut enc: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPEPJSONValue> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPEPJSONValue)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    // Try Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)>
-    if let Ok(recs) =
-        encrypted.extract::<Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)>>()
-    {
-        let mut enc: Vec<_> = recs
-            .into_iter()
-            .map(|(ps, attrs)| {
-                EncryptedRecord::new(
-                    ps.into_iter().map(|p| p.0).collect(),
-                    attrs.into_iter().map(|a| a.0).collect(),
-                )
-            })
-            .collect();
-        let result = transcrypt_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)> = result
-            .into_vec()
-            .into_iter()
-            .map(|record| {
-                (
-                    record
-                        .pseudonyms
-                        .into_iter()
-                        .map(PyEncryptedPseudonym)
-                        .collect(),
-                    record
-                        .attributes
-                        .into_iter()
-                        .map(PyEncryptedAttribute)
-                        .collect(),
-                )
-            })
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    // Try Vec<(Vec<LongEncryptedPseudonym>, Vec<LongEncryptedAttribute>)>
-    #[cfg(feature = "long")]
-    if let Ok(lrecs) =
-        encrypted.extract::<Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)>>()
-    {
-        let mut enc: Vec<LongEncryptedRecord> = lrecs
-            .into_iter()
-            .map(|(ps, attrs)| {
-                LongEncryptedRecord::new(
-                    ps.into_iter().map(|p| p.0).collect(),
-                    attrs.into_iter().map(|a| a.0).collect(),
-                )
-            })
-            .collect();
-        let result = transcrypt_batch(&mut enc, &info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)> = result
-            .into_vec()
-            .into_iter()
-            .map(|record| {
-                (
-                    record
-                        .pseudonyms
-                        .into_iter()
-                        .map(PyLongEncryptedPseudonym)
-                        .collect(),
-                    record
-                        .attributes
-                        .into_iter()
-                        .map(PyLongEncryptedAttribute)
-                        .collect(),
-                )
-            })
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    Err(PyTypeError::new_err(
-        "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], Vec[EncryptedPEPJSONValue], or tuple-based variants"
-    ))
-}
-
-/// Polymorphic batch transcryption (non-elgamal3 mode): requires the recipient
-/// session keys (record/json) or session public key (pseudonyms/attributes).
-#[cfg(not(feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "transcrypt_batch")]
-pub fn py_transcrypt_batch(
-    encrypted: &Bound<PyAny>,
-    transcryption_info: &PyTranscryptionInfo,
-    session_keys: &crate::keys::py::PySessionKeys,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-    let mut rng = rand::rng();
-    let info = TranscryptionInfo::from(transcryption_info);
-    let keys: crate::keys::SessionKeys = session_keys.clone().into();
-
-    if let Ok(recs) = encrypted.extract::<Vec<PyEncryptedRecord>>() {
-        let mut enc: Vec<_> = recs.into_iter().map(|r| r.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedRecord)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    #[cfg(feature = "long")]
-    if let Ok(lrecs) = encrypted.extract::<Vec<PyLongEncryptedRecord>>() {
-        let mut enc: Vec<LongEncryptedRecord> = lrecs.into_iter().map(|r| r.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedRecord)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        let mut enc: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
-        let result = transcrypt_batch(&mut enc, &info, &keys, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPEPJSONValue> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPEPJSONValue)
-            .collect();
-        return py_result.into_py_any(py);
-    }
-
-    Err(PyTypeError::new_err(
-        "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
-    ))
-}
 
 /// Polymorphic batch encryption.
 /// Encrypts a list of unencrypted messages with a session public key.
@@ -398,7 +62,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
 
             // True Batch: Shuffles and encrypts
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
 
             let py_result: Vec<PyEncryptedPseudonym> =
                 result.into_iter().map(PyEncryptedPseudonym).collect();
@@ -413,7 +78,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
             let rust_msgs: Vec<_> = attrs.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
 
             let py_result: Vec<PyEncryptedAttribute> =
                 result.into_iter().map(PyEncryptedAttribute).collect();
@@ -429,7 +95,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
             let rust_msgs: Vec<_> = lps.into_iter().map(|p| p.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
 
             let py_result: Vec<PyLongEncryptedPseudonym> =
                 result.into_iter().map(PyLongEncryptedPseudonym).collect();
@@ -445,7 +112,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
             let rust_msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
 
             let py_result: Vec<PyLongEncryptedAttribute> =
                 result.into_iter().map(PyLongEncryptedAttribute).collect();
@@ -462,7 +130,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
 
             // True Batch: Calculates unified padding for JSON structures
             let result = encrypt_batch(&rust_msgs, &keys, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
 
             let py_result: Vec<PyEncryptedPEPJSONValue> =
                 result.into_iter().map(PyEncryptedPEPJSONValue).collect();
@@ -931,9 +600,6 @@ pub fn py_decrypt_global_batch(
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(py_pseudonymize_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(py_rekey_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_encrypt_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_decrypt_batch, m)?)?;
 

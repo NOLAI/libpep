@@ -31,7 +31,13 @@ pub fn wasm_encrypt_pseudonym_batch(
         &PseudonymSessionPublicKey::from(key.0 .0),
         &mut rng,
     )
-    .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
+    .map(|encrypted| {
+        encrypted
+            .into_items()
+            .into_iter()
+            .map(|e| e.into())
+            .collect()
+    })
     .map_err(|e| e.to_string())
 }
 
@@ -74,7 +80,13 @@ pub fn wasm_encrypt_attribute_batch(
         &AttributeSessionPublicKey::from(key.0 .0),
         &mut rng,
     )
-    .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
+    .map(|encrypted| {
+        encrypted
+            .into_items()
+            .into_iter()
+            .map(|e| e.into())
+            .collect()
+    })
     .map_err(|e| e.to_string())
 }
 
@@ -118,7 +130,13 @@ pub fn wasm_encrypt_long_pseudonym_batch(
         &PseudonymSessionPublicKey::from(key.0 .0),
         &mut rng,
     )
-    .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
+    .map(|encrypted| {
+        encrypted
+            .into_items()
+            .into_iter()
+            .map(|e| e.into())
+            .collect()
+    })
     .map_err(|e| e.to_string())
 }
 
@@ -162,7 +180,13 @@ pub fn wasm_encrypt_long_attribute_batch(
         &AttributeSessionPublicKey::from(key.0 .0),
         &mut rng,
     )
-    .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
+    .map(|encrypted| {
+        encrypted
+            .into_items()
+            .into_iter()
+            .map(|e| e.into())
+            .collect()
+    })
     .map_err(|e| e.to_string())
 }
 

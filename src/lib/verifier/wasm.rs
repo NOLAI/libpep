@@ -140,7 +140,9 @@ impl WASMVerifier {
         self.inner.cache().total_count()
     }
 
-    /// Verify a pseudonymization operation against the combined commitments.
+    /// Verify a pseudonymization operation against the combined commitments,
+    /// returning the reconstructed pseudonym on success or `null` on
+    /// failure.
     ///
     /// The proof is passed as a JSON string due to WASM limitations.
     #[cfg(all(feature = "serde", feature = "elgamal3"))]
@@ -148,90 +150,89 @@ impl WASMVerifier {
     pub fn verify_pseudonymization(
         &self,
         original: &WASMEncryptedPseudonym,
-        result: &WASMEncryptedPseudonym,
         operation_proof_json: &str,
         commitments: &WASMVerifiablePseudonymizationCommitments,
-    ) -> Result<bool, JsValue> {
+    ) -> Result<Option<WASMEncryptedPseudonym>, JsValue> {
         use crate::core::verifiable::VerifiableRRSK;
 
-        let operation_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
+        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
 
-        Ok(self.inner.verify_pseudonymization(
-            &original.0,
-            &result.0,
-            &operation_proof,
-            &commitments.0,
-        ))
+        Ok(self
+            .inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.0)
+            .map(WASMEncryptedPseudonym))
     }
 
-    /// Verify a pseudonymization operation against the combined commitments.
-    /// In non-elgamal3 builds the recipient public key the original ciphertext
-    /// was encrypted under must be supplied.
+    /// Verify a pseudonymization operation against the combined commitments,
+    /// returning the reconstructed pseudonym on success. In non-elgamal3
+    /// builds the recipient public key the original ciphertext was encrypted
+    /// under must be supplied.
     #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = verifyPseudonymization)]
     pub fn verify_pseudonymization(
         &self,
         original: &WASMEncryptedPseudonym,
-        result: &WASMEncryptedPseudonym,
         operation_proof_json: &str,
         public_key: &crate::keys::wasm::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitments,
-    ) -> Result<bool, JsValue> {
+    ) -> Result<Option<WASMEncryptedPseudonym>, JsValue> {
         use crate::core::verifiable::VerifiableRRSK;
-        use crate::keys::PublicKey;
 
-        let operation_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
+        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
 
-        Ok(self.inner.verify_pseudonymization(
-            &original.0,
-            &result.0,
-            &operation_proof,
-            pk.value(),
-            &commitments.0,
-        ))
+        Ok(self
+            .inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.0)
+            .map(WASMEncryptedPseudonym))
     }
 
-    /// Verify a pseudonym rekey operation against the rekey commitment.
+    /// Verify a pseudonym rekey operation, returning the reconstructed
+    /// pseudonym on success.
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyPseudonymRekey)]
     pub fn verify_pseudonym_rekey(
         &self,
         original: &WASMEncryptedPseudonym,
-        result: &WASMEncryptedPseudonym,
         proof_json: &str,
         commitments: &WASMVerifiableRekeyCommitments,
-    ) -> Result<bool, JsValue> {
+    ) -> Result<Option<WASMEncryptedPseudonym>, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
 
-        let proof: VerifiableRekey =
+        let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let proof = crate::data::verifiable::simple::PseudonymRekeyProof(core_proof);
 
         Ok(self
             .inner
-            .verify_pseudonym_rekey(&original.0, &result.0, &proof, &commitments.0))
+            .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
+            .map(WASMEncryptedPseudonym))
     }
 
-    /// Verify an attribute rekey operation against the rekey commitment.
+    /// Verify an attribute rekey operation, returning the reconstructed
+    /// attribute on success.
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyAttributeRekey)]
     pub fn verify_attribute_rekey(
         &self,
         original: &WASMEncryptedAttribute,
-        result: &WASMEncryptedAttribute,
         proof_json: &str,
         commitments: &WASMVerifiableRekeyCommitments,
-    ) -> Result<bool, JsValue> {
+    ) -> Result<Option<WASMEncryptedAttribute>, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
 
-        let proof: VerifiableRekey =
+        let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let proof = crate::data::verifiable::simple::AttributeRekeyProof(core_proof);
 
         Ok(self
             .inner
-            .verify_attribute_rekey(&original.0, &result.0, &proof, &commitments.0))
+            .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
+            .map(WASMEncryptedAttribute))
     }
 }
 

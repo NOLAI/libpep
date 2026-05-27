@@ -60,8 +60,10 @@ impl VerifiableRRSK {
         Self { rerandomize, rsk }
     }
 
-    /// The final RSK'd ciphertext.
-    pub fn result(&self) -> ElGamal {
+    /// Reconstruct the RRSK'd ciphertext from this proof, **without
+    /// verifying** it. Internal prover-side use only — public callers should
+    /// use [`verified_reconstruct`](Self::verified_reconstruct).
+    pub(crate) fn result(&self) -> ElGamal {
         self.rsk.result()
     }
 
@@ -72,26 +74,23 @@ impl VerifiableRRSK {
         reshuffle_commitment: &PseudonymizationFactorCommitment,
         rekey_commitment: &RekeyFactorCommitment,
     ) -> Option<ElGamal> {
-        if self.verify_rrsk(
-            original,
-            &self.result(),
-            gy,
-            reshuffle_commitment,
-            rekey_commitment,
-        ) {
+        if self.verify(original, gy, reshuffle_commitment, rekey_commitment) {
             Some(self.result())
         } else {
             None
         }
     }
 
-    /// Full check: verify the proof and that `new` is the ciphertext it
-    /// implicitly reconstructs.
+    #[cfg(feature = "insecure")]
+    pub fn unverified_reconstruct(&self) -> ElGamal {
+        self.result()
+    }
+
+    /// Verify the proof against `original` and `gy`.
     #[must_use]
-    pub fn verify_rrsk(
+    pub fn verify(
         &self,
         original: &ElGamal,
-        new: &ElGamal,
         gy: &GroupElement,
         reshuffle_commitment: &PseudonymizationFactorCommitment,
         rekey_commitment: &RekeyFactorCommitment,
@@ -101,7 +100,7 @@ impl VerifiableRRSK {
         }
         let rerandomized = self.rerandomize.result(original);
         self.rsk
-            .verify_rsk(&rerandomized, new, reshuffle_commitment, rekey_commitment)
+            .verify(&rerandomized, reshuffle_commitment, rekey_commitment)
     }
 }
 
@@ -132,7 +131,9 @@ impl VerifiableRRSK2 {
         Self { rerandomize, rsk2 }
     }
 
-    pub fn result(&self) -> ElGamal {
+    /// Reconstruct the RRSK-2'd ciphertext from this proof, **without
+    /// verifying** it. Internal prover-side use only.
+    pub(crate) fn result(&self) -> ElGamal {
         self.rsk2.result()
     }
 
@@ -146,9 +147,8 @@ impl VerifiableRRSK2 {
         k_from_commitments: &RekeyFactorCommitment,
         k_to_commitments: &RekeyFactorCommitment,
     ) -> Option<ElGamal> {
-        if self.verify_rrsk2(
+        if self.verify(
             original,
-            &self.result(),
             gy,
             s_from_commitments,
             s_to_commitments,
@@ -161,12 +161,16 @@ impl VerifiableRRSK2 {
         }
     }
 
+    #[cfg(feature = "insecure")]
+    pub fn unverified_reconstruct(&self) -> ElGamal {
+        self.result()
+    }
+
     #[must_use]
     #[allow(clippy::too_many_arguments)]
-    pub fn verify_rrsk2(
+    pub fn verify(
         &self,
         original: &ElGamal,
-        new: &ElGamal,
         gy: &GroupElement,
         s_from_commitments: &PseudonymizationFactorCommitment,
         s_to_commitments: &PseudonymizationFactorCommitment,
@@ -177,9 +181,8 @@ impl VerifiableRRSK2 {
             return false;
         }
         let rerandomized = self.rerandomize.result(original);
-        self.rsk2.verify_rsk2(
+        self.rsk2.verify(
             &rerandomized,
-            new,
             s_from_commitments,
             s_to_commitments,
             k_from_commitments,
@@ -230,13 +233,6 @@ mod tests {
         (pk, c)
     }
 
-    fn tamper(c: &ElGamal) -> ElGamal {
-        let mut rng = rand::rng();
-        let mut t = *c;
-        t.gb = t.gb + GroupElement::random(&mut rng);
-        t
-    }
-
     fn run_rrsk(
         c: &ElGamal,
         gy: &GroupElement,
@@ -283,26 +279,15 @@ mod tests {
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
         let proof = VerifiableRRSK::new(&c, &pk, &r, &s, &k, &mut rng);
-        let result = run_rrsk(&c, &pk, &r, &s, &k);
+        let expected = run_rrsk(&c, &pk, &r, &s, &k);
         let rs = PseudonymizationFactorCommitment::new(&s);
         let rk = RekeyFactorCommitment::new(&k);
-        assert_eq!(proof.result(), result);
-        assert!(proof.verify_rrsk(&c, &result, &pk, &rs, &rk));
-    }
-
-    #[test]
-    fn vrrsk_tampered_output_fails() {
-        let mut rng = rand::rng();
-        let (pk, c) = make_pk_ct();
-        let r = ScalarNonZero::random(&mut rng);
-        let s = ScalarNonZero::random(&mut rng);
-        let k = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRRSK::new(&c, &pk, &r, &s, &k, &mut rng);
-        let real = run_rrsk(&c, &pk, &r, &s, &k);
-        let bad = tamper(&real);
-        let rs = PseudonymizationFactorCommitment::new(&s);
-        let rk = RekeyFactorCommitment::new(&k);
-        assert!(!proof.verify_rrsk(&c, &bad, &pk, &rs, &rk));
+        assert_eq!(proof.result(), expected);
+        assert!(proof.verify(&c, &pk, &rs, &rk));
+        assert_eq!(
+            proof.verified_reconstruct(&c, &pk, &rs, &rk),
+            Some(expected)
+        );
     }
 
     #[test]
@@ -313,11 +298,10 @@ mod tests {
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
         let mut proof = VerifiableRRSK::new(&c, &pk, &r, &s, &k, &mut rng);
-        let result = run_rrsk(&c, &pk, &r, &s, &k);
         let rs = PseudonymizationFactorCommitment::new(&s);
         let rk = RekeyFactorCommitment::new(&k);
         proof.rerandomize.p_gy_r.c1 = proof.rerandomize.p_gy_r.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify_rrsk(&c, &result, &pk, &rs, &rk));
+        assert!(!proof.verify(&c, &pk, &rs, &rk));
     }
 
     #[test]
@@ -330,48 +314,17 @@ mod tests {
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
         let proof = VerifiableRRSK2::new(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
-        let result = run_rrsk2(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to);
+        let expected = run_rrsk2(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
-        assert_eq!(proof.result(), result);
-        assert!(proof.verify_rrsk2(
-            &c,
-            &result,
-            &pk,
-            &s_from_com,
-            &s_to_com,
-            &k_from_com,
-            &k_to_com,
-        ));
-    }
-
-    #[test]
-    fn vrrsk2_tampered_output_fails() {
-        let mut rng = rand::rng();
-        let (pk, c) = make_pk_ct();
-        let r = ScalarNonZero::random(&mut rng);
-        let s_from = ScalarNonZero::random(&mut rng);
-        let s_to = ScalarNonZero::random(&mut rng);
-        let k_from = ScalarNonZero::random(&mut rng);
-        let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRRSK2::new(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
-        let real = run_rrsk2(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to);
-        let bad = tamper(&real);
-        let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
-        let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
-        let k_from_com = RekeyFactorCommitment::new(&k_from);
-        let k_to_com = RekeyFactorCommitment::new(&k_to);
-        assert!(!proof.verify_rrsk2(
-            &c,
-            &bad,
-            &pk,
-            &s_from_com,
-            &s_to_com,
-            &k_from_com,
-            &k_to_com,
-        ));
+        assert_eq!(proof.result(), expected);
+        assert!(proof.verify(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
+        assert_eq!(
+            proof.verified_reconstruct(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com),
+            Some(expected)
+        );
     }
 
     #[test]
@@ -384,21 +337,12 @@ mod tests {
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
         let mut proof = VerifiableRRSK2::new(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
-        let result = run_rrsk2(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
-        proof.rsk2.inner.p_gb_prime.c1 =
-            proof.rsk2.inner.p_gb_prime.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify_rrsk2(
-            &c,
-            &result,
-            &pk,
-            &s_from_com,
-            &s_to_com,
-            &k_from_com,
-            &k_to_com,
-        ));
+        proof.rsk2.inner.inner.p_gb_prime.c1 =
+            proof.rsk2.inner.inner.p_gb_prime.c1 + GroupElement::random(&mut rng);
+        assert!(!proof.verify(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
     }
 }

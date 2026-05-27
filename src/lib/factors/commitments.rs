@@ -29,3 +29,16 @@ pub struct VerifiableRekeyCommitment {
     /// Public commitment to the rekey factor: `K = k·G`.
     pub commitment: RekeyFactorCommitment,
 }
+
+/// Transcryption commitments bundling the pseudonym (RRSK) and attribute
+/// (rekey) factor commitments. Used to verify proofs over composite values
+/// (records, JSON) that touch both pseudonyms and attributes in one go.
+#[cfg(feature = "verifiable")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct VerifiableTranscryptionCommitment {
+    /// Pseudonymization commitments (`S = s·G`, `K_pseudo = k·G`).
+    pub pseudonym: VerifiablePseudonymizationCommitment,
+    /// Attribute rekey commitment (`K_attr = k·G`).
+    pub attribute: VerifiableRekeyCommitment,
+}

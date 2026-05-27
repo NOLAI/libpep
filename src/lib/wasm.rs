@@ -4,6 +4,7 @@
 
 // Re-export from submodules
 pub use crate::client::wasm as client;
+pub use crate::core::wasm as core;
 pub use crate::data::wasm as data;
 pub use crate::factors::wasm as factors;
 pub use crate::keys::wasm as keys;

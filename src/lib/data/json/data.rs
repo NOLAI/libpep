@@ -2,6 +2,7 @@
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
+#[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -9,7 +10,7 @@ use crate::data::long::{
 };
 use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
+use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -17,6 +18,7 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -540,6 +542,19 @@ impl Encryptable for PEPJSONValue {
             ),
         }
     }
+
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
+    }
 }
 
 impl Encrypted for EncryptedPEPJSONValue {
@@ -874,173 +889,6 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
 
     fn structure(&self) -> Self::Structure {
         self.structure()
-    }
-}
-
-// Verifiable transcryption for JSON
-
-/// Proof for verifiable transcryption of a PEP JSON value.
-///
-/// The structure mirrors the JSON value structure:
-/// - Null has no proof
-/// - Primitives (Bool, Number, String) contain attribute rekey proofs
-/// - Pseudonyms contain pseudonymization proofs (RSK)
-/// - Arrays and Objects contain nested proofs
-#[cfg(feature = "verifiable")]
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[allow(clippy::large_enum_variant)]
-pub enum JSONTranscryptionProof {
-    Null,
-    Bool(crate::core::verifiable::VerifiableRekey),
-    Number(crate::core::verifiable::VerifiableRekey),
-    String(crate::core::verifiable::VerifiableRekey),
-    LongString(Vec<crate::core::verifiable::VerifiableRekey>),
-    Pseudonym(crate::core::verifiable::VerifiableRRSK),
-    LongPseudonym {
-        operation_proofs: Vec<crate::core::verifiable::VerifiableRRSK>,
-    },
-    Array(Vec<Box<JSONTranscryptionProof>>),
-    Object(HashMap<String, Box<JSONTranscryptionProof>>),
-}
-
-#[cfg(feature = "verifiable")]
-impl crate::data::traits::VerifiableTranscryptable for EncryptedPEPJSONValue {
-    type TranscryptionProof = JSONTranscryptionProof;
-
-    #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        match self {
-            EncryptedPEPJSONValue::Null => JSONTranscryptionProof::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::Bool(proof)
-            }
-            EncryptedPEPJSONValue::Number(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::Number(proof)
-            }
-            EncryptedPEPJSONValue::String(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::String(proof)
-            }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                let proofs = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::LongString(proofs)
-            }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                let proof = enc.verifiable_pseudonymize(&info.pseudonym, rng);
-                JSONTranscryptionProof::Pseudonym(proof)
-            }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                let operation_proofs = enc.verifiable_pseudonymize(&info.pseudonym, rng);
-                JSONTranscryptionProof::LongPseudonym { operation_proofs }
-            }
-            EncryptedPEPJSONValue::Array(arr) => {
-                let proofs = arr
-                    .iter()
-                    .map(|x| Box::new(x.verifiable_transcrypt(info, rng)))
-                    .collect();
-                JSONTranscryptionProof::Array(proofs)
-            }
-            EncryptedPEPJSONValue::Object(obj) => {
-                let proofs = obj
-                    .iter()
-                    .map(|(k, v)| (k.clone(), Box::new(v.verifiable_transcrypt(info, rng))))
-                    .collect();
-                JSONTranscryptionProof::Object(proofs)
-            }
-        }
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo,
-        keys: &SessionKeys,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        use crate::data::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-
-        match self {
-            EncryptedPEPJSONValue::Null => JSONTranscryptionProof::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::Bool(proof)
-            }
-            EncryptedPEPJSONValue::Number(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::Number(proof)
-            }
-            EncryptedPEPJSONValue::String(enc) => {
-                let proof = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::String(proof)
-            }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                let proofs = enc.verifiable_rekey(&info.attribute, rng);
-                JSONTranscryptionProof::LongString(proofs)
-            }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                let proof =
-                    enc.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym.public, rng);
-                JSONTranscryptionProof::Pseudonym(proof)
-            }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                let operation_proofs =
-                    enc.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym.public, rng);
-                JSONTranscryptionProof::LongPseudonym { operation_proofs }
-            }
-            EncryptedPEPJSONValue::Array(arr) => {
-                let proofs = arr
-                    .iter()
-                    .map(|x| Box::new(x.verifiable_transcrypt(info, keys, rng)))
-                    .collect();
-                JSONTranscryptionProof::Array(proofs)
-            }
-            EncryptedPEPJSONValue::Object(obj) => {
-                let proofs = obj
-                    .iter()
-                    .map(|(k, v)| {
-                        (
-                            k.clone(),
-                            Box::new(v.verifiable_transcrypt(info, keys, rng)),
-                        )
-                    })
-                    .collect();
-                JSONTranscryptionProof::Object(proofs)
-            }
-        }
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for PEPJSONValue {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        if items.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Collect and unify structures
-        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
-        let unified = unify_structures(&structures)?;
-
-        // Pad each item to unified structure
-        Ok(items
-            .iter()
-            .map(|item| item.pad_to(&unified))
-            .collect::<Result<Vec<_>, _>>()?)
     }
 }
 

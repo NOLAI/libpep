@@ -4,6 +4,8 @@
 use crate::client::decrypt_global;
 #[cfg(feature = "offline")]
 use crate::client::encrypt_global;
+#[cfg(feature = "batch")]
+use crate::data::batch::EncryptedBatch;
 use crate::data::json::builder::PEPJSONBuilder;
 use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
@@ -21,8 +23,6 @@ use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::GlobalSecretKeys;
-#[cfg(feature = "batch")]
-use crate::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList};
@@ -328,13 +328,15 @@ pub fn py_transcrypt_batch(
     transcryption_info: &PyTranscryptionInfo,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &mut rng)
+    let mut batch = EncryptedBatch::new(rust_values)
+        .map_err(|e| PyValueError::new_err(format!("Batch construction failed: {}", e)))?;
+    batch
+        .transcrypt(&info, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
-
-    Ok(transcrypted
-        .into_vec()
+    Ok(batch
+        .into_items()
         .into_iter()
         .map(PyEncryptedPEPJSONValue)
         .collect())
@@ -349,14 +351,16 @@ pub fn py_transcrypt_batch(
     session_keys: &crate::keys::py::PySessionKeys,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
     let keys: crate::keys::SessionKeys = session_keys.clone().into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &keys, &mut rng)
+    let mut batch = EncryptedBatch::new(rust_values, keys)
+        .map_err(|e| PyValueError::new_err(format!("Batch construction failed: {}", e)))?;
+    batch
+        .transcrypt(&info, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
-
-    Ok(transcrypted
-        .into_vec()
+    Ok(batch
+        .into_items()
         .into_iter()
         .map(PyEncryptedPEPJSONValue)
         .collect())
@@ -372,17 +376,7 @@ pub fn py_transcrypt_json_batch(
     values: Vec<PyEncryptedPEPJSONValue>,
     transcryption_info: &PyTranscryptionInfo,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
-    let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &mut rng)
-        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
-
-    Ok(transcrypted
-        .into_vec()
-        .into_iter()
-        .map(PyEncryptedPEPJSONValue)
-        .collect())
+    py_transcrypt_batch(values, transcryption_info)
 }
 
 #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
@@ -393,18 +387,7 @@ pub fn py_transcrypt_json_batch(
     transcryption_info: &PyTranscryptionInfo,
     session_keys: &crate::keys::py::PySessionKeys,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
-    let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let info: TranscryptionInfo = transcryption_info.into();
-    let keys: crate::keys::SessionKeys = session_keys.clone().into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &keys, &mut rng)
-        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
-
-    Ok(transcrypted
-        .into_vec()
-        .into_iter()
-        .map(PyEncryptedPEPJSONValue)
-        .collect())
+    py_transcrypt_batch(values, transcryption_info, session_keys)
 }
 
 // Helper functions to convert between Python and serde_json::Value

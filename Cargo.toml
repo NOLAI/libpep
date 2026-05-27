@@ -13,13 +13,14 @@ description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
 
 [features]
-default = ["build-binary", "long", "offline", "batch", "serde", "json", "verifiable"]
+default = ["build-binary", "long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
 serde = ["dep:serde", "dep:serde_json"] # For (de)serialization support via Serde
 verifiable = [] # Enable verifiable operations with zero-knowledge proofs
 verifiable-derivation = ["verifiable"] # Enable Carter-Wegman verifiable factor derivation (O(1) storage vs O(n))
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
+batch-pk = ["batch"] # Carry the recipient public key inside EncryptedBatch (elgamal2 only); enables convenience batch ops that don't require a caller-supplied pk. No effect under elgamal3.
 long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption support
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
@@ -57,7 +58,7 @@ wasm-bindgen = { version = "^0.2", optional = true }
 serde-wasm-bindgen = { version = "^0.6", optional = true }
 js-sys = { version = "^0.3", optional = true }
 getrandom = { version = "^0.4", features = ["wasm_js"], optional = true }
-pyo3 = { version = "0.28", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.28", features = ["extension-module", "multiple-pymethods"], optional = true }
 buildinfy = { version = "^0.2", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }

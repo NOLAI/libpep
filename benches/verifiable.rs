@@ -72,10 +72,6 @@ fn rrsk2_primitive(
     }
 }
 
-// ---------------------------------------------------------------------------
-// VRS
-// ---------------------------------------------------------------------------
-
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
     c.bench_function("verifiable_reshuffle_create", |b| {
@@ -109,17 +105,11 @@ fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
                 let commitments = PseudonymizationFactorCommitment::new(&s);
                 (encrypted, result, proof, commitments)
             },
-            |(encrypted, result, proof, commitments)| {
-                proof.verify_reshuffle(&encrypted, &result, &commitments)
-            },
+            |(encrypted, _result, proof, commitments)| proof.verify(&encrypted, &commitments),
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRK
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey_create(c: &mut Criterion) {
@@ -154,17 +144,11 @@ fn bench_verifiable_rekey_verify(c: &mut Criterion) {
                 let commitments = RekeyFactorCommitment::new(&k);
                 (encrypted, result, proof, commitments)
             },
-            |(encrypted, result, proof, commitments)| {
-                proof.verify_rekey(&encrypted, &result, &commitments)
-            },
+            |(encrypted, _result, proof, commitments)| proof.verify(&encrypted, &commitments),
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRSK
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk_create(c: &mut Criterion) {
@@ -202,15 +186,11 @@ fn bench_verifiable_rsk_verify(c: &mut Criterion) {
                 let rk = RekeyFactorCommitment::new(&k);
                 (encrypted, result, proof, rs, rk)
             },
-            |(encrypted, result, proof, rs, rk)| proof.verify_rsk(&encrypted, &result, &rs, &rk),
+            |(encrypted, _result, proof, rs, rk)| proof.verify(&encrypted, &rs, &rk),
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRS2
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle2_create(c: &mut Criterion) {
@@ -250,17 +230,13 @@ fn bench_verifiable_reshuffle2_verify(c: &mut Criterion) {
                 let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
                 (encrypted, result, proof, s_from_com, s_to_com)
             },
-            |(encrypted, result, proof, s_from_com, s_to_com)| {
-                proof.verify_reshuffle2(&encrypted, &result, &s_from_com, &s_to_com)
+            |(encrypted, _result, proof, s_from_com, s_to_com)| {
+                proof.verify(&encrypted, &s_from_com, &s_to_com)
             },
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRK2
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey2_create(c: &mut Criterion) {
@@ -300,17 +276,13 @@ fn bench_verifiable_rekey2_verify(c: &mut Criterion) {
                 let k_to_com = RekeyFactorCommitment::new(&k_to);
                 (encrypted, result, proof, k_from_com, k_to_com)
             },
-            |(encrypted, result, proof, k_from_com, k_to_com)| {
-                proof.verify_rekey2(&encrypted, &result, &k_from_com, &k_to_com)
+            |(encrypted, _result, proof, k_from_com, k_to_com)| {
+                proof.verify(&encrypted, &k_from_com, &k_to_com)
             },
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRSK2
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk2_create(c: &mut Criterion) {
@@ -359,24 +331,13 @@ fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
                     encrypted, result, proof, s_from_com, s_to_com, k_from_com, k_to_com,
                 )
             },
-            |(encrypted, result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
-                proof.verify_rsk2(
-                    &encrypted,
-                    &result,
-                    &s_from_com,
-                    &s_to_com,
-                    &k_from_com,
-                    &k_to_com,
-                )
+            |(encrypted, _result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
+                proof.verify(&encrypted, &s_from_com, &s_to_com, &k_from_com, &k_to_com)
             },
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRRSK
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk_create(c: &mut Criterion) {
@@ -418,17 +379,11 @@ fn bench_verifiable_rrsk_verify(c: &mut Criterion) {
                 let rk = RekeyFactorCommitment::new(&k);
                 (encrypted, pk, result, proof, rs, rk)
             },
-            |(encrypted, pk, result, proof, rs, rk)| {
-                proof.verify_rrsk(&encrypted, &result, &pk, &rs, &rk)
-            },
+            |(encrypted, pk, _result, proof, rs, rk)| proof.verify(&encrypted, &pk, &rs, &rk),
             criterion::BatchSize::SmallInput,
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRRSK2
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk2_create(c: &mut Criterion) {
@@ -482,10 +437,9 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
                     encrypted, pk, result, proof, s_from_com, s_to_com, k_from_com, k_to_com,
                 )
             },
-            |(encrypted, pk, result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
-                proof.verify_rrsk2(
+            |(encrypted, pk, _result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
+                proof.verify(
                     &encrypted,
-                    &result,
                     &pk,
                     &s_from_com,
                     &s_to_com,
@@ -497,10 +451,6 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
         )
     });
 }
-
-// ---------------------------------------------------------------------------
-// VRR — verifiable rerandomize.
-// ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
 fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
@@ -540,13 +490,12 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
                 let result = rerandomize(&encrypted, &pk, &r);
                 (encrypted, pk, result, proof)
             },
-            |(encrypted, pk, result, proof)| proof.verify_rerandomized(&encrypted, &result, &pk),
+            |(_encrypted, pk, _result, proof)| proof.verify(&pk),
             criterion::BatchSize::SmallInput,
         )
     });
 }
 
-// ---------------------------------------------------------------------------
 // Non-verifiable baseline benchmarks
 //
 // Each verifiable operation has a non-verifiable counterpart (just the
@@ -555,8 +504,6 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
 // numbers are directly comparable: a `baseline_rsk` run measures just the
 // `rsk(...)` primitive call, whereas `verifiable_rsk_create` measures
 // `VerifiableRSK::new(...)` which is the same primitive plus the proof.
-// ---------------------------------------------------------------------------
-
 #[cfg(feature = "verifiable")]
 fn bench_baseline_reshuffle(c: &mut Criterion) {
     c.bench_function("baseline_reshuffle", |b| {

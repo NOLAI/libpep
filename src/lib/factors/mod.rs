@@ -40,7 +40,10 @@ pub use types::{
 };
 
 #[cfg(feature = "verifiable")]
-pub use commitments::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
+pub use commitments::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
+};
 
 #[cfg(feature = "verifiable-derivation")]
 pub use verifiable::{

@@ -11,7 +11,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 #[cfg(feature = "verifiable")]
-use crate::core::py::verifiable::{PyVerifiableRSK, PyVerifiableRekey};
+use crate::core::py::verifiable::{PyVerifiableRRSK, PyVerifiableRekey};
 
 /// A verifier for verifiable transcryption operations (Python).
 #[derive(From, Into, Deref)]
@@ -137,45 +137,41 @@ impl PyVerifier {
         self.0.cache().total_count()
     }
 
-    /// Verify a pseudonymization operation against the combined commitments.
+    /// Verify a pseudonymization operation against the combined commitments,
+    /// returning the reconstructed pseudonym on success or None on failure.
     #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
-        result: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRSK,
+        operation_proof: &PyVerifiableRRSK,
         commitments: &PyVerifiablePseudonymizationCommitments,
-    ) -> bool {
-        self.0.verify_pseudonymization(
-            &original.0,
-            &result.0,
-            &operation_proof.inner,
-            &commitments.inner,
-        )
+    ) -> Option<PyEncryptedPseudonym> {
+        let proof =
+            crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        self.0
+            .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.inner)
+            .map(PyEncryptedPseudonym)
     }
 
-    /// Verify a pseudonymization operation against the combined commitments.
-    /// In non-elgamal3 builds the recipient public key the original ciphertext
-    /// was encrypted under must be supplied so that the inner rerandomize step
-    /// can be verified.
+    /// Verify a pseudonymization operation against the combined commitments,
+    /// returning the reconstructed pseudonym on success. In non-elgamal3
+    /// builds the recipient public key the original ciphertext was encrypted
+    /// under must be supplied so that the inner rerandomize step can be
+    /// verified.
     #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
-        result: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRSK,
+        operation_proof: &PyVerifiableRRSK,
         public_key: &crate::keys::py::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitments,
-    ) -> bool {
-        use crate::keys::PublicKey;
+    ) -> Option<PyEncryptedPseudonym> {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-        self.0.verify_pseudonymization(
-            &original.0,
-            &result.0,
-            &operation_proof.inner,
-            pk.value(),
-            &commitments.inner,
-        )
+        let proof =
+            crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        self.0
+            .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.inner)
+            .map(PyEncryptedPseudonym)
     }
 
     /// Verify a pseudonym rekey operation against the rekey commitment.
@@ -183,12 +179,13 @@ impl PyVerifier {
     fn verify_pseudonym_rekey(
         &self,
         original: &PyEncryptedPseudonym,
-        result: &PyEncryptedPseudonym,
         proof: &PyVerifiableRekey,
         commitments: &PyVerifiableRekeyCommitments,
-    ) -> bool {
+    ) -> Option<PyEncryptedPseudonym> {
+        let wrapped = crate::data::verifiable::simple::PseudonymRekeyProof(proof.inner);
         self.0
-            .verify_pseudonym_rekey(&original.0, &result.0, &proof.inner, &commitments.inner)
+            .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
+            .map(PyEncryptedPseudonym)
     }
 
     /// Verify an attribute rekey operation against the rekey commitment.
@@ -196,12 +193,13 @@ impl PyVerifier {
     fn verify_attribute_rekey(
         &self,
         original: &PyEncryptedAttribute,
-        result: &PyEncryptedAttribute,
         proof: &PyVerifiableRekey,
         commitments: &PyVerifiableRekeyCommitments,
-    ) -> bool {
+    ) -> Option<PyEncryptedAttribute> {
+        let wrapped = crate::data::verifiable::simple::AttributeRekeyProof(proof.inner);
         self.0
-            .verify_attribute_rekey(&original.0, &result.0, &proof.inner, &commitments.inner)
+            .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
+            .map(PyEncryptedAttribute)
     }
 }
 

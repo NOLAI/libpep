@@ -1,22 +1,27 @@
 //! Python bindings for batch transcryption operations.
+//!
+//! These wrap [`EncryptedBatch`](crate::data::batch::EncryptedBatch) so the
+//! Python surface stays close to the original `*_batch` free functions but
+//! benefits from the new struct's lockstep public-key updates internally.
 
+use crate::data::batch::EncryptedBatch;
 #[cfg(feature = "json")]
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::py::records::PyEncryptedRecord;
+#[cfg(feature = "long")]
+use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
 /// Polymorphic batch pseudonymization.
-/// Accepts a mutable list of encrypted pseudonyms and pseudonymization info.
 #[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "pseudonymize_batch")]
@@ -29,20 +34,24 @@ pub fn py_pseudonymize_batch(
     if encrypted.is_empty() {
         return Ok(Vec::new());
     }
-
     let mut rng = rand::rng();
     let pseudonymization_info = PseudonymizationInfo::from(info);
 
     if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| e.extract::<PyEncryptedPseudonym>())
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &mut rng)
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|e| e.0)
+            .collect();
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .pseudonymize(&pseudonymization_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPseudonym(e))
@@ -54,15 +63,20 @@ pub fn py_pseudonymize_batch(
 
     #[cfg(feature = "long")]
     if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
-        let encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| e.extract::<PyLongEncryptedPseudonym>())
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0.clone()).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &mut rng)
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|e| e.0)
+            .collect();
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .pseudonymize(&pseudonymization_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyLongEncryptedPseudonym(e))
@@ -90,21 +104,25 @@ pub fn py_pseudonymize_batch(
     if encrypted.is_empty() {
         return Ok(Vec::new());
     }
-
     let mut rng = rand::rng();
     let pseudonymization_info = PseudonymizationInfo::from(info);
     let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
 
     if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| e.extract::<PyEncryptedPseudonym>())
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &pk, &mut rng)
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|e| e.0)
+            .collect();
+        let mut batch = EncryptedBatch::new(items, pk)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .pseudonymize(&pseudonymization_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPseudonym(e))
@@ -116,15 +134,20 @@ pub fn py_pseudonymize_batch(
 
     #[cfg(feature = "long")]
     if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
-        let encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| e.extract::<PyLongEncryptedPseudonym>())
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0.clone()).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &pk, &mut rng)
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|e| e.0)
+            .collect();
+        let mut batch = EncryptedBatch::new(items, pk)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .pseudonymize(&pseudonymization_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyLongEncryptedPseudonym(e))
@@ -139,8 +162,8 @@ pub fn py_pseudonymize_batch(
     ))
 }
 
-/// Polymorphic batch rekeying.
-/// Accepts a mutable list of encrypted values and rekey info.
+/// Polymorphic batch rekeying. (Rekey does not require Y, so the same
+/// signature works in both modes.)
 #[pyfunction]
 #[pyo3(name = "rekey_batch")]
 #[allow(clippy::expect_used)]
@@ -152,13 +175,12 @@ pub fn py_rekey_batch(
     if encrypted.is_empty() {
         return Ok(Vec::new());
     }
-
     let mut rng = rand::rng();
 
-    // Try EncryptedPseudonym with PseudonymRekeyFactor
+    // EncryptedPseudonym × PseudonymRekeyFactor
     if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
         if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let items: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyEncryptedPseudonym>()
@@ -166,10 +188,20 @@ pub fn py_rekey_batch(
                         .0
                 })
                 .collect();
-            let result = rekey_batch(&mut rust_encs, &info.0, &mut rng)
+            #[cfg(feature = "elgamal3")]
+            let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            return Ok(result
-                .into_vec()
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch = EncryptedBatch::new(
+                items,
+                crate::keys::PseudonymSessionPublicKey::from(crate::arithmetic::group_elements::G),
+            )
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&info.0, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPseudonym(e))
@@ -180,11 +212,10 @@ pub fn py_rekey_batch(
         }
     }
 
-    // Try LongEncryptedPseudonym with PseudonymRekeyFactor
     #[cfg(feature = "long")]
     if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
         if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let items: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyLongEncryptedPseudonym>()
@@ -193,10 +224,20 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            let result = rekey_batch(&mut rust_encs, &info.0, &mut rng)
+            #[cfg(feature = "elgamal3")]
+            let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            return Ok(result
-                .into_vec()
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch = EncryptedBatch::new(
+                items,
+                crate::keys::PseudonymSessionPublicKey::from(crate::arithmetic::group_elements::G),
+            )
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&info.0, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedPseudonym(e))
@@ -207,10 +248,9 @@ pub fn py_rekey_batch(
         }
     }
 
-    // Try EncryptedAttribute with AttributeRekeyInfo
     if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
         if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let items: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyEncryptedAttribute>()
@@ -219,10 +259,20 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = rekey_batch(&mut rust_encs, &rust_info, &mut rng)
+            #[cfg(feature = "elgamal3")]
+            let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            return Ok(result
-                .into_vec()
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch = EncryptedBatch::new(
+                items,
+                crate::keys::AttributeSessionPublicKey::from(crate::arithmetic::group_elements::G),
+            )
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&rust_info, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedAttribute(e))
@@ -233,11 +283,10 @@ pub fn py_rekey_batch(
         }
     }
 
-    // Try LongEncryptedAttribute with AttributeRekeyInfo
     #[cfg(feature = "long")]
     if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
         if encrypted[0].extract::<PyLongEncryptedAttribute>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let items: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyLongEncryptedAttribute>()
@@ -247,10 +296,20 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = rekey_batch(&mut rust_encs, &rust_info, &mut rng)
+            #[cfg(feature = "elgamal3")]
+            let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            return Ok(result
-                .into_vec()
+            #[cfg(not(feature = "elgamal3"))]
+            let mut batch = EncryptedBatch::new(
+                items,
+                crate::keys::AttributeSessionPublicKey::from(crate::arithmetic::group_elements::G),
+            )
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&rust_info, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedAttribute(e))
@@ -266,8 +325,7 @@ pub fn py_rekey_batch(
     ))
 }
 
-/// Polymorphic batch transcryption.
-/// Accepts a mutable list of encrypted values and transcryption info.
+/// Polymorphic batch transcryption (elgamal3 mode — no public key needed).
 #[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
@@ -280,13 +338,11 @@ pub fn py_transcrypt_batch(
     if encrypted.is_empty() {
         return Ok(Vec::new());
     }
-
     let mut rng = rand::rng();
     let transcryption_info = TranscryptionInfo::from(info);
 
-    // Try EncryptedPseudonym
     if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedPseudonym>()
@@ -294,10 +350,13 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPseudonym(e))
@@ -307,9 +366,8 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
-    // Try EncryptedAttribute
     if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedAttribute>()
@@ -317,10 +375,13 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedAttribute(e))
@@ -330,21 +391,22 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
-    // Try EncryptedRecord
     if encrypted[0].extract::<PyEncryptedRecord>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedRecord>()
                     .expect("type already validated")
                     .0
-                    .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedRecord(e))
@@ -354,22 +416,49 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
-    // Try EncryptedPEPJSONValue
+    #[cfg(feature = "long")]
+    if encrypted[0].extract::<PyLongEncryptedRecord>().is_ok() {
+        let items: Vec<_> = encrypted
+            .iter()
+            .map(|e| {
+                e.extract::<PyLongEncryptedRecord>()
+                    .expect("type already validated")
+                    .0
+            })
+            .collect();
+        let mut batch = EncryptedBatch::new(items)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
+            .into_iter()
+            .map(|e| {
+                Py::new(py, PyLongEncryptedRecord(e))
+                    .expect("PyO3 allocation failed")
+                    .into_any()
+            })
+            .collect());
+    }
+
     #[cfg(feature = "json")]
     if encrypted[0].extract::<PyEncryptedPEPJSONValue>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedPEPJSONValue>()
                     .expect("type already validated")
                     .0
-                    .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let mut batch = EncryptedBatch::new(items)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPEPJSONValue(e))
@@ -384,8 +473,9 @@ pub fn py_transcrypt_batch(
     ))
 }
 
-/// Polymorphic batch transcryption (non-elgamal3): requires session keys (for
-/// records/json) or a matching session public key (pseudonyms/attributes).
+/// Polymorphic batch transcryption (elgamal2 mode — requires session keys
+/// for pseudonyms/attributes, or full `SessionKeys` for record / JSON
+/// payloads).
 #[cfg(not(feature = "elgamal3"))]
 #[pyfunction]
 #[pyo3(name = "transcrypt_batch")]
@@ -394,22 +484,24 @@ pub fn py_transcrypt_batch(
     py: Python,
     encrypted: Vec<Bound<PyAny>>,
     info: &PyTranscryptionInfo,
-    public_key: &Bound<PyAny>,
+    key: &Bound<PyAny>,
 ) -> PyResult<Vec<Py<PyAny>>> {
     if encrypted.is_empty() {
         return Ok(Vec::new());
     }
-
     let mut rng = rand::rng();
     let transcryption_info = TranscryptionInfo::from(info);
 
-    // EncryptedPseudonym + PyPseudonymSessionPublicKey
     if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let pk = public_key
+        let pk = key
             .extract::<crate::keys::py::PyPseudonymSessionPublicKey>()
-            .map_err(|_| PyTypeError::new_err("expected PseudonymSessionPublicKey"))?;
+            .map_err(|_| {
+                PyTypeError::new_err(
+                    "transcrypt_batch on pseudonyms requires PseudonymSessionPublicKey",
+                )
+            })?;
         let pk = crate::keys::PseudonymSessionPublicKey::from(pk.0 .0);
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedPseudonym>()
@@ -417,10 +509,13 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &pk, &mut rng)
+        let mut batch = EncryptedBatch::new(items, pk)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPseudonym(e))
@@ -430,13 +525,16 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
-    // EncryptedAttribute + PyAttributeSessionPublicKey
     if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-        let pk = public_key
+        let pk = key
             .extract::<crate::keys::py::PyAttributeSessionPublicKey>()
-            .map_err(|_| PyTypeError::new_err("expected AttributeSessionPublicKey"))?;
+            .map_err(|_| {
+                PyTypeError::new_err(
+                    "transcrypt_batch on attributes requires AttributeSessionPublicKey",
+                )
+            })?;
         let pk = crate::keys::AttributeSessionPublicKey::from(pk.0 .0);
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedAttribute>()
@@ -444,10 +542,13 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &pk, &mut rng)
+        let mut batch = EncryptedBatch::new(items, pk)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedAttribute(e))
@@ -457,25 +558,30 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
-    // EncryptedRecord + PySessionKeys
+    // Record / JSON paths require SessionKeys.
+    let session_keys = key
+        .extract::<crate::keys::py::PySessionKeys>()
+        .map_err(|_| {
+            PyTypeError::new_err("transcrypt_batch on records or JSON requires SessionKeys")
+        })?;
+    let session_keys: crate::keys::SessionKeys = session_keys.clone().into();
+
     if encrypted[0].extract::<PyEncryptedRecord>().is_ok() {
-        let keys = public_key
-            .extract::<crate::keys::py::PySessionKeys>()
-            .map_err(|_| PyTypeError::new_err("expected SessionKeys"))?;
-        let keys: crate::keys::SessionKeys = keys.into();
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedRecord>()
                     .expect("type already validated")
                     .0
-                    .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &keys, &mut rng)
+        let mut batch = EncryptedBatch::new(items, session_keys)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedRecord(e))
@@ -485,25 +591,49 @@ pub fn py_transcrypt_batch(
             .collect());
     }
 
+    #[cfg(feature = "long")]
+    if encrypted[0].extract::<PyLongEncryptedRecord>().is_ok() {
+        let items: Vec<_> = encrypted
+            .iter()
+            .map(|e| {
+                e.extract::<PyLongEncryptedRecord>()
+                    .expect("type already validated")
+                    .0
+            })
+            .collect();
+        let mut batch = EncryptedBatch::new(items, session_keys)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
+            .into_iter()
+            .map(|e| {
+                Py::new(py, PyLongEncryptedRecord(e))
+                    .expect("PyO3 allocation failed")
+                    .into_any()
+            })
+            .collect());
+    }
+
     #[cfg(feature = "json")]
     if encrypted[0].extract::<PyEncryptedPEPJSONValue>().is_ok() {
-        let keys = public_key
-            .extract::<crate::keys::py::PySessionKeys>()
-            .map_err(|_| PyTypeError::new_err("expected SessionKeys"))?;
-        let keys: crate::keys::SessionKeys = keys.into();
-        let mut rust_encs: Vec<_> = encrypted
+        let items: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedPEPJSONValue>()
                     .expect("type already validated")
                     .0
-                    .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &keys, &mut rng)
+        let mut batch = EncryptedBatch::new(items, session_keys)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        return Ok(result
-            .into_vec()
+        batch
+            .transcrypt(&transcryption_info, &mut rng)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        return Ok(batch
+            .into_items()
             .into_iter()
             .map(|e| {
                 Py::new(py, PyEncryptedPEPJSONValue(e))
@@ -518,7 +648,8 @@ pub fn py_transcrypt_batch(
     ))
 }
 
-pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn register(m: &Bound<'_, pyo3::types::PyModule>) -> PyResult<()> {
+    use pyo3::wrap_pyfunction;
     m.add_function(wrap_pyfunction!(py_pseudonymize_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_rekey_batch, m)?)?;
     m.add_function(wrap_pyfunction!(py_transcrypt_batch, m)?)?;
