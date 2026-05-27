@@ -12,7 +12,7 @@ use crate::transcryptor::wasm::types::WASMTranscryptor;
 use crate::transcryptor::Transcryptor;
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = Transcryptor)]
 impl WASMTranscryptor {
     /// Generate the public commitments (combined per transition) for a
     /// pseudonymization info.
