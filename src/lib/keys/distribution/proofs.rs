@@ -94,7 +94,11 @@ pub struct SessionKeyShareProof {
     /// The proof's `n` field equals `U_i = u_i · G`, the public commitment
     /// to the session-key share. It is checked against `b_i · K_i` by
     /// [`SessionKeyShareProof::verify`].
-    pub proof: Proof,
+    ///
+    /// Kept private so that a verifier handed a `SessionKeyShareProof` cannot
+    /// have its inner proof swapped after the fact; read-only access is via
+    /// [`SessionKeyShareProof::proof`] and [`SessionKeyShareProof::share_commitment`].
+    proof: Proof,
 }
 
 impl SessionKeyShareProof {
@@ -105,9 +109,6 @@ impl SessionKeyShareProof {
     /// # Arguments
     ///
     /// * `blinding` - The blinding factor b_i (kept secret by transcryptor)
-    /// * `_rekey_factor` - Currently unused (kept for API stability — the proof
-    ///   is constructed against `rekey_commitment = k_i · G`, so the scalar
-    ///   `k_i` itself is not needed).
     /// * `rekey_commitment` - Public commitment K_i = k_i * G
     /// * `rng` - Random number generator
     ///
@@ -117,7 +118,6 @@ impl SessionKeyShareProof {
     /// was constructed correctly.
     pub fn new<R: Rng + CryptoRng>(
         blinding: &ScalarNonZero,
-        _rekey_factor: &ScalarNonZero,
         rekey_commitment: &GroupElement,
         rng: &mut R,
     ) -> Self {
@@ -127,6 +127,11 @@ impl SessionKeyShareProof {
         let (_, proof) = create_proof(blinding, rekey_commitment, rng);
 
         Self { proof }
+    }
+
+    /// The underlying zero-knowledge proof.
+    pub fn proof(&self) -> &Proof {
+        &self.proof
     }
 
     /// Verify a session key share proof.
@@ -156,12 +161,12 @@ impl SessionKeyShareProof {
 
     /// Get the public commitment to the session key share.
     ///
-    /// Returns U_i = u_i * G. This is simply `self.proof.n`: in the honest
+    /// Returns U_i = u_i * G. This is `self.proof.n()`: in the honest
     /// construction the proof's `n` value IS the share commitment.
     ///
     /// The user should verify the proof before relying on this value.
     pub fn share_commitment(&self) -> &GroupElement {
-        &self.proof.n
+        self.proof.n()
     }
 }
 
@@ -214,8 +219,7 @@ mod tests {
         let rekey_commitment = rekey_factor * G;
 
         // Create proof
-        let proof =
-            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
 
         // Verify proof
         assert!(proof.verify(&blinding_commitment, &rekey_commitment));
@@ -228,18 +232,17 @@ mod tests {
     #[test]
     fn test_share_commitment_equals_proof_n() {
         // Regression test for the removed redundant `share_commitment` field.
-        // `share_commitment()` MUST return `&self.proof.n` so a malicious
-        // prover cannot publish a different value via the public getter than
-        // what the proof actually proves.
+        // `share_commitment()` MUST return the inner proof's `n` so a
+        // malicious prover cannot publish a different value via the public
+        // getter than what the proof actually proves.
         let mut rng = rand::rng();
         let blinding = ScalarNonZero::random(&mut rng);
         let rekey_factor = ScalarNonZero::random(&mut rng);
         let rekey_commitment = rekey_factor * G;
 
-        let proof =
-            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
 
-        assert_eq!(proof.share_commitment(), &proof.proof.n);
+        assert_eq!(proof.share_commitment(), proof.proof().n());
     }
 
     #[test]
@@ -253,8 +256,7 @@ mod tests {
         let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
         let rekey_commitment = rekey_factor * G;
 
-        let proof =
-            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
 
         // Should fail with wrong blinding commitment
         assert!(!proof.verify(&wrong_commitment, &rekey_commitment));
@@ -272,8 +274,7 @@ mod tests {
         let rekey_commitment = rekey_factor * G;
         let wrong_rekey_commitment = wrong_rekey_factor * G;
 
-        let proof =
-            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
 
         // Should fail with wrong rekey commitment
         assert!(!proof.verify(&blinding_commitment, &wrong_rekey_commitment));

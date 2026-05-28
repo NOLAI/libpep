@@ -76,11 +76,6 @@ pub struct Proof {
 }
 
 impl Proof {
-    /// Construct a `Proof` from its raw components.
-    pub fn new(n: GroupElement, c1: GroupElement, c2: GroupElement, s: ScalarCanBeZero) -> Self {
-        Self { n, c1, c2, s }
-    }
-
     /// The claimed result `N = a*M`.
     pub fn n(&self) -> &GroupElement {
         &self.n
@@ -340,8 +335,8 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
 
 /// Verifies a zero-knowledge proof with all components provided separately.
 ///
-/// This is a low-level verification function that takes all proof components as separate
-/// arguments. Most users should use [`verify_proof`] instead.
+/// Internal use only: most callers should use [`verify_proof`]. The split
+/// form exists because the tests exercise tampered components directly.
 ///
 /// # Arguments
 ///
@@ -364,12 +359,15 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
 ///
 /// where `e` is the challenge derived from hashing all public values.
 ///
-/// Also guards against trivially insecure inputs: rejects if `gm` or `ga`
-/// is the identity element (in which case the verification equations
-/// would be vacuous and an attacker could forge proofs without knowing
-/// the witness).
+/// Also guards against trivially insecure inputs: rejects if any of
+/// `gm`, `ga`, `gn`, `gc1`, `gc2` is the identity element. With an
+/// identity base the verification equations become vacuous and an
+/// attacker could forge proofs without knowing the witness; with an
+/// identity `gn`/`gc1`/`gc2` the proof would not meaningfully bind to
+/// the claimed result. ([`Proof::decode`] already rejects identity
+/// `n`/`c1`/`c2`; this is defense in depth at the verification layer.)
 #[must_use]
-pub fn verify_proof_split(
+pub(crate) fn verify_proof_split(
     ga: &GroupElement,
     gm: &GroupElement,
     gn: &GroupElement,
@@ -377,10 +375,13 @@ pub fn verify_proof_split(
     gc2: &GroupElement,
     s: &ScalarCanBeZero,
 ) -> bool {
-    // Reject identity bases: the equation `s*M == e*N + c2` becomes
-    // vacuous when M is the identity, and similarly for ga.
     let identity = GroupElement::identity();
-    if gm == &identity || ga == &identity {
+    if gm == &identity
+        || ga == &identity
+        || gn == &identity
+        || gc1 == &identity
+        || gc2 == &identity
+    {
         return false;
     }
 
@@ -760,5 +761,27 @@ mod tests {
             *byte = 0;
         }
         assert!(Proof::decode(&buf3).is_none());
+    }
+
+    #[test]
+    fn verify_rejects_identity_proof_components() {
+        // Defense in depth: even when a `Proof` is constructed via
+        // `Proof::new` (bypassing `decode`'s identity guard), the verifier
+        // must reject identity values in `n`, `c1`, or `c2`.
+        let mut rng = rand::rng();
+        let a = ScalarNonZero::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
+        let (ga, p) = create_proof(&a, &gm, &mut rng);
+        let identity = GroupElement::identity();
+
+        assert!(!verify_proof_split(
+            &ga, &gm, &identity, &p.c1, &p.c2, &p.s
+        ));
+        assert!(!verify_proof_split(
+            &ga, &gm, &p.n, &identity, &p.c2, &p.s
+        ));
+        assert!(!verify_proof_split(
+            &ga, &gm, &p.n, &p.c1, &identity, &p.s
+        ));
     }
 }

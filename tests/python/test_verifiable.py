@@ -7,6 +7,9 @@ and Rust APIs read the same; each test below corresponds to a same-named
 Rust test. The transcryptor produces commitments + per-operation ZK proofs;
 a separate `Verifier` checks each proof against the published commitments
 and recovers the transformed ciphertext, which the recipient then decrypts.
+
+These tests target the default feature set only (`batch`, `batch-pk`,
+`verifiable`, no `elgamal3`).
 """
 
 import json
@@ -17,6 +20,8 @@ from libpep.data import (
     Pseudonym,
     Record,
     EncryptedRecord,
+    EncryptedPseudonymBatch,
+    PseudonymPseudonymizationBatchProof,
     encrypt_record,
 )
 from libpep.keys import (
@@ -30,7 +35,6 @@ from libpep.keys import (
     SessionKeys,
 )
 from libpep.factors import (
-    PseudonymizationSecret,
     EncryptionSecret,
     PseudonymizationDomain,
     EncryptionContext,
@@ -39,62 +43,8 @@ from libpep.client import Client, encrypt, decrypt
 from libpep.transcryptor import DistributedTranscryptor, Transcryptor
 from libpep.verifier import Verifier
 
-try:
-    from libpep.data import (
-        EncryptedPseudonymBatch,
-        PseudonymPseudonymizationBatchProof,
-    )
-    _BATCH_AVAILABLE = True
-except ImportError:  # build without `batch`/`verifiable`
-    _BATCH_AVAILABLE = False
-
-
-def _detect_batch_pk():
-    """Return True if the build enabled `batch-pk` (the no-pk batch constructor
-    will be rejected) — needed to choose the right per-call signatures."""
-    if not _BATCH_AVAILABLE:
-        return False
-    try:
-        EncryptedPseudonymBatch([])  # type: ignore[call-arg]
-        return False
-    except TypeError:
-        return True
-    except Exception:
-        return True
-
-
-_BATCH_PK = _detect_batch_pk()
-
 
 SECRET = b"secret"
-
-
-def _verifiable_pseudonymize(transcryptor, enc_pseudo, info, session_pub):
-    """Cross-feature wrapper: elgamal3 takes (enc, info); non-elgamal3 also needs the pseudonym session pk."""
-    try:
-        return transcryptor.verifiable_pseudonymize(enc_pseudo, info)
-    except TypeError:
-        return transcryptor.verifiable_pseudonymize(enc_pseudo, info, session_pub)
-
-
-def _verify_pseudonymization(verifier, enc_pseudo, proof, session_pub, commitments):
-    try:
-        return verifier.verify_pseudonymization(enc_pseudo, proof, commitments)
-    except TypeError:
-        return verifier.verify_pseudonymization(enc_pseudo, proof, session_pub, commitments)
-
-
-def _verify_pseudonymization_cached(
-    verifier, t_id, enc_pseudo, proof, session_pub, d_from, d_to, s_from, s_to,
-):
-    try:
-        return verifier.verify_pseudonymization_cached(
-            t_id, enc_pseudo, proof, d_from, d_to, s_from, s_to,
-        )
-    except TypeError:
-        return verifier.verify_pseudonymization_cached(
-            t_id, enc_pseudo, proof, session_pub, d_from, d_to, s_from, s_to,
-        )
 
 
 class TestVerifiable(unittest.TestCase):
@@ -102,7 +52,6 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_pseudonymization_simple(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         domain1 = PseudonymizationDomain("domain1")
@@ -126,13 +75,13 @@ class TestVerifiable(unittest.TestCase):
             domain1, domain2, session1, session2,
         )
 
-        operation_proof = _verifiable_pseudonymize(
-            transcryptor, enc_pseudo, info, pseudonym_session1_keys.public,
+        operation_proof = transcryptor.verifiable_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
         )
 
         verifier = Verifier()
-        result = _verify_pseudonymization(
-            verifier, enc_pseudo, operation_proof, pseudonym_session1_keys.public, commitments,
+        result = verifier.verify_pseudonymization(
+            enc_pseudo, operation_proof, pseudonym_session1_keys.public, commitments,
         )
 
         # Decrypting under the target session must succeed.
@@ -141,7 +90,6 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         session1 = EncryptionContext("session1")
@@ -171,7 +119,6 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         session1 = EncryptionContext("session1")
@@ -206,7 +153,6 @@ class TestVerifiable(unittest.TestCase):
         # and `Verifier.verify_record_transcryption` (verifier).
         global_pseudonym_keys = make_pseudonym_global_keys()
         global_attribute_keys = make_attribute_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         domain_a = PseudonymizationDomain("a")
@@ -242,30 +188,20 @@ class TestVerifiable(unittest.TestCase):
             domain_a, domain_b, session_a, session_b,
         )
 
-        # The verifiable_record_transcrypt elgamal2 variant needs the session
-        # keys the record was encrypted under so the inner rerandomize steps
-        # can be proven; elgamal3 doesn't.
-        try:
-            proof = transcryptor.verifiable_record_transcrypt(enc_record, info)
-        except TypeError:
-            proof = transcryptor.verifiable_record_transcrypt(enc_record, info, session_a_keys)
+        # `verifiable_record_transcrypt` needs the session keys the record was
+        # encrypted under so the inner rerandomize steps can be proven.
+        proof = transcryptor.verifiable_record_transcrypt(enc_record, info, session_a_keys)
 
         verifier = Verifier()
-        try:
-            reconstructed = verifier.verify_record_transcryption(
-                enc_record, proof, commitments,
-            )
-        except TypeError:
-            reconstructed = verifier.verify_record_transcryption(
-                enc_record, proof, session_a_keys, commitments,
-            )
+        reconstructed = verifier.verify_record_transcryption(
+            enc_record, proof, session_a_keys, commitments,
+        )
 
         self.assertEqual(len(reconstructed.pseudonyms), len(record.pseudonyms))
         self.assertEqual(len(reconstructed.attributes), len(record.attributes))
 
     def test_verifier_cache_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         domain1 = PseudonymizationDomain("domain1")
@@ -292,28 +228,27 @@ class TestVerifiable(unittest.TestCase):
 
         pseudo = Pseudonym.random()
         enc_pseudo = encrypt(pseudo, pseudonym_session1_keys.public)
-        operation_proof = _verifiable_pseudonymize(
-            transcryptor, enc_pseudo, info, pseudonym_session1_keys.public,
+        operation_proof = transcryptor.verifiable_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
         )
 
         # Cached lookup against the registered transition succeeds.
-        result = _verify_pseudonymization_cached(
-            verifier, transcryptor_id, enc_pseudo, operation_proof,
+        result = verifier.verify_pseudonymization_cached(
+            transcryptor_id, enc_pseudo, operation_proof,
             pseudonym_session1_keys.public, domain1, domain2, session1, session2,
         )
         self.assertIsNotNone(result)
 
         # Wrong transition (different target domain) is not in the cache.
         with self.assertRaises(Exception):
-            _verify_pseudonymization_cached(
-                verifier, transcryptor_id, enc_pseudo, operation_proof,
+            verifier.verify_pseudonymization_cached(
+                transcryptor_id, enc_pseudo, operation_proof,
                 pseudonym_session1_keys.public, domain1, domain3, session1, session2,
             )
 
         verifier.clear_cache()
         self.assertEqual(verifier.cache_size(), 0)
 
-    @unittest.skipUnless(_BATCH_AVAILABLE, "requires `batch` + `verifiable` features")
     def test_n_pep_batch_distributed_verifiable(self):
         """Distributed verifiable batch transcryption: client A -> 3 transcryptors -> client B.
 
@@ -348,13 +283,7 @@ class TestVerifiable(unittest.TestCase):
         encrypted_items = client_a.encrypt_batch(pseudonyms)
         client_a_pk = client_a.session_public_keys().pseudonym
 
-        if _BATCH_PK:
-            current = EncryptedPseudonymBatch(encrypted_items, client_a_pk)
-        else:
-            current = EncryptedPseudonymBatch(encrypted_items)
-
-        def _current_pk():
-            return current.public_key() if _BATCH_PK else client_a_pk
+        current = EncryptedPseudonymBatch(encrypted_items, client_a_pk)
 
         # Chain: each step records (pre-batch, pre-pk, proof, commitments) so
         # the *next* step can verify it before doing its own transcryption.
@@ -367,24 +296,16 @@ class TestVerifiable(unittest.TestCase):
             # actually received.
             if prev is not None:
                 pre_batch, pre_pk, proof, commitments = prev
-                if _BATCH_PK:
-                    reconstructed = proof.verified_reconstruct_batch(
-                        pre_batch, pre_pk, _current_pk(), commitments,
-                    )
-                else:
-                    reconstructed = proof.verified_reconstruct_batch(
-                        pre_batch, pre_pk, commitments,
-                    )
+                reconstructed = proof.verified_reconstruct_batch(
+                    pre_batch, pre_pk, current.public_key(), commitments,
+                )
                 self.assertEqual(reconstructed.items(), current.items())
 
             # Step 2: this transcryptor builds and applies its own verifiable
             # batch transcryption. We save a clone of the pre-batch + its pk
             # so the next iteration can verify against them.
-            pre_pk = _current_pk()
-            if _BATCH_PK:
-                pre_batch_clone = EncryptedPseudonymBatch(current.items(), pre_pk)
-            else:
-                pre_batch_clone = EncryptedPseudonymBatch(current.items())
+            pre_pk = current.public_key()
+            pre_batch_clone = EncryptedPseudonymBatch(current.items(), pre_pk)
 
             info = system.pseudonymization_info(
                 domain_a, domain_b, session_a, session_b,
@@ -392,23 +313,15 @@ class TestVerifiable(unittest.TestCase):
             commitments = system.pseudonymization_commitment(
                 domain_a, domain_b, session_a, session_b,
             )
-            if _BATCH_PK:
-                proof = current.verifiable_pseudonymize(info)
-            else:
-                proof = current.verifiable_pseudonymize(info, pre_pk)
+            proof = current.verifiable_pseudonymize(info)
             prev = (pre_batch_clone, pre_pk, proof, commitments)
 
         # Final: client B verifies the last transcryptor's proof, then decrypts.
         self.assertIsNotNone(prev)
         pre_batch, pre_pk, proof, commitments = prev
-        if _BATCH_PK:
-            verified_batch = proof.verified_reconstruct_batch(
-                pre_batch, pre_pk, _current_pk(), commitments,
-            )
-        else:
-            verified_batch = proof.verified_reconstruct_batch(
-                pre_batch, pre_pk, commitments,
-            )
+        verified_batch = proof.verified_reconstruct_batch(
+            pre_batch, pre_pk, current.public_key(), commitments,
+        )
         self.assertEqual(verified_batch.items(), current.items())
 
         decrypted = client_b.decrypt_batch(verified_batch.items())
@@ -425,7 +338,6 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_tampered_proof_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
@@ -442,8 +354,8 @@ class TestVerifiableNegative(unittest.TestCase):
         commitments = transcryptor.pseudonymization_commitment(d1, d2, s1, s2)
 
         enc_pseudo = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
-        proof = _verifiable_pseudonymize(
-            transcryptor, enc_pseudo, info, pseudonym_session1_keys.public,
+        proof = transcryptor.verifiable_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
         )
 
         # Build a second valid proof to donate one of its components. Every
@@ -452,21 +364,20 @@ class TestVerifiableNegative(unittest.TestCase):
         # cross-graft from another *valid* proof — every individual element
         # still decodes, but the per-statement binding no longer matches.
         donor_enc = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
-        donor_proof = _verifiable_pseudonymize(
-            transcryptor, donor_enc, info, pseudonym_session1_keys.public,
+        donor_proof = transcryptor.verifiable_pseudonymize(
+            donor_enc, info, pseudonym_session1_keys.public,
         )
         tampered = _swap_first_string_proof(proof, donor_proof)
         self.assertNotEqual(_proof_to_json(tampered), _proof_to_json(proof))
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            _verify_pseudonymization(
-                verifier, enc_pseudo, tampered, pseudonym_session1_keys.public, commitments,
+            verifier.verify_pseudonymization(
+                enc_pseudo, tampered, pseudonym_session1_keys.public, commitments,
             )
 
     def test_wrong_original_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
@@ -483,8 +394,8 @@ class TestVerifiableNegative(unittest.TestCase):
         commitments = transcryptor.pseudonymization_commitment(d1, d2, s1, s2)
 
         enc_pseudo = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
-        proof = _verifiable_pseudonymize(
-            transcryptor, enc_pseudo, info, pseudonym_session1_keys.public,
+        proof = transcryptor.verifiable_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
         )
 
         # Verify the proof against a *different* ciphertext.
@@ -492,13 +403,12 @@ class TestVerifiableNegative(unittest.TestCase):
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            _verify_pseudonymization(
-                verifier, other_enc, proof, pseudonym_session1_keys.public, commitments,
+            verifier.verify_pseudonymization(
+                other_enc, proof, pseudonym_session1_keys.public, commitments,
             )
 
     def test_wrong_commitments_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
@@ -517,19 +427,18 @@ class TestVerifiableNegative(unittest.TestCase):
         wrong_commitments = transcryptor.pseudonymization_commitment(d1, d3, s1, s2)
 
         enc_pseudo = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
-        proof = _verifiable_pseudonymize(
-            transcryptor, enc_pseudo, info, pseudonym_session1_keys.public,
+        proof = transcryptor.verifiable_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
         )
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            _verify_pseudonymization(
-                verifier, enc_pseudo, proof, pseudonym_session1_keys.public, wrong_commitments,
+            verifier.verify_pseudonymization(
+                enc_pseudo, proof, pseudonym_session1_keys.public, wrong_commitments,
             )
 
     def test_tampered_proof_rejected_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         s1 = EncryptionContext("s1")
@@ -556,7 +465,6 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_wrong_original_rejected_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         s1 = EncryptionContext("s1")
@@ -580,7 +488,6 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_tampered_proof_rejected_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         s1 = EncryptionContext("s1")
@@ -609,7 +516,6 @@ class TestVerifiableNegative(unittest.TestCase):
     def test_tampered_proof_rejected_record_transcryption(self):
         global_pseudonym_keys = make_pseudonym_global_keys()
         global_attribute_keys = make_attribute_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         d1 = PseudonymizationDomain("a")
@@ -642,33 +548,25 @@ class TestVerifiableNegative(unittest.TestCase):
         info = transcryptor.transcryption_info(d1, d2, s1, s2)
         commitments = transcryptor.transcryption_commitment(d1, d2, s1, s2)
 
-        try:
-            proof = transcryptor.verifiable_record_transcrypt(enc_record, info)
-        except TypeError:
-            proof = transcryptor.verifiable_record_transcrypt(enc_record, info, session_a_keys)
+        proof = transcryptor.verifiable_record_transcrypt(enc_record, info, session_a_keys)
 
         # Donor: independently re-encrypt the same record and prove again.
         donor_enc = encrypt_record(record, session_a_keys)
-        try:
-            donor_proof = transcryptor.verifiable_record_transcrypt(donor_enc, info)
-        except TypeError:
-            donor_proof = transcryptor.verifiable_record_transcrypt(donor_enc, info, session_a_keys)
+        donor_proof = transcryptor.verifiable_record_transcrypt(
+            donor_enc, info, session_a_keys,
+        )
 
         tampered = _swap_first_string_proof(proof, donor_proof)
         self.assertNotEqual(_proof_to_json(tampered), _proof_to_json(proof))
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            try:
-                verifier.verify_record_transcryption(enc_record, tampered, commitments)
-            except TypeError:
-                verifier.verify_record_transcryption(
-                    enc_record, tampered, session_a_keys, commitments,
-                )
+            verifier.verify_record_transcryption(
+                enc_record, tampered, session_a_keys, commitments,
+            )
 
     def test_wrong_original_rejected_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        pseudo_secret = PseudonymizationSecret(SECRET)
         enc_secret = EncryptionSecret(SECRET)
 
         s1 = EncryptionContext("s1")

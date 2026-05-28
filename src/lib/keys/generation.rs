@@ -203,7 +203,7 @@ where
     let rekey_commitment = RekeyFactorCommitment::new(&k.scalar());
 
     // Create proof that u_i = b_i * k_i
-    let proof = SessionKeyShareProof::new(blinding, &k.scalar(), &rekey_commitment.0 .0, rng);
+    let proof = SessionKeyShareProof::new(blinding, &rekey_commitment.0 .0, rng);
 
     (PK::from(pk), SK::from(sk), proof, blinding_commitment)
 }

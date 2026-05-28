@@ -11,7 +11,6 @@
 
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
-use derive_more::{Deref, From};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
@@ -27,11 +26,21 @@ impl FactorCommitment {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+/// Commitment to a rekey factor `k`: `K = k·G`.
+///
+/// Structurally identical to [`PseudonymizationFactorCommitment`] — the two
+/// types exist as phantom-types to prevent mixing up rekey and reshuffle
+/// commitments at call sites. The wrappers intentionally do **not** implement
+/// `From`/`Deref` against each other or against [`FactorCommitment`]: crossing
+/// the type boundary requires an explicit field access (`.0`), which is meant
+/// to surface in code review.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RekeyFactorCommitment(pub FactorCommitment);
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
+/// Commitment to a pseudonymization (reshuffle) factor `s`: `S = s·G`. See
+/// [`RekeyFactorCommitment`] for the phantom-type rationale.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PseudonymizationFactorCommitment(pub FactorCommitment);
 

@@ -30,24 +30,6 @@ const {
     makeDistributedGlobalKeys,
 } = require("../../pkg/libpep.js");
 
-// Detect whether the WASM build was compiled with `batch-pk`. With `batch-pk`,
-// `new EncryptedPseudonymBatch(items, pk)` requires a public key argument and
-// `verifiable_pseudonymize` takes only `info`. Without `batch-pk`, the
-// constructor takes only items, and `verifiable_pseudonymize`/
-// `verifiedReconstructBatch`/`verifyPseudonymizationBatch` need an extra
-// public-key argument.
-function _detectBatchPk() {
-    if (typeof EncryptedPseudonymBatch === "undefined") return false;
-    try {
-        // eslint-disable-next-line no-new
-        new EncryptedPseudonymBatch([]);
-        return false;
-    } catch (e) {
-        return true;
-    }
-}
-const BATCH_PK = _detectBatchPk();
-
 const SECRET = Uint8Array.from(Buffer.from("secret"));
 
 test('test_verifiable_pseudonymization_simple', () => {
@@ -409,13 +391,6 @@ test('n_pep_batch_distributed_verifiable', () => {
     // transcryptor produces a hoisted batch proof, and the *next* transcryptor
     // verifies the previous one's proof before applying its own transcryption.
     // The final client B verifies the last proof, then decrypts.
-    if (typeof EncryptedPseudonymBatch === "undefined"
-        || typeof DistributedTranscryptor === "undefined"
-        || typeof makeDistributedGlobalKeys === "undefined") {
-        // Build without `batch`/`verifiable`/distributed: nothing to test.
-        return;
-    }
-
     const n = 3;
     const [_globalPublicKeys, blindedGlobalKeys, blindingFactors] =
         makeDistributedGlobalKeys(n);
@@ -445,13 +420,7 @@ test('n_pep_batch_distributed_verifiable', () => {
     const encryptedItems = clientA.encryptPseudonymBatch(pseudonyms);
     const clientAPk = clientA.sessionKeys.pseudonym.public;
 
-    const makeBatch = (items) =>
-        BATCH_PK
-            ? new EncryptedPseudonymBatch(items, clientAPk)
-            : new EncryptedPseudonymBatch(items);
-
-    let current = makeBatch(encryptedItems);
-    const currentPk = () => (BATCH_PK ? current.publicKey : clientAPk);
+    let current = new EncryptedPseudonymBatch(encryptedItems, clientAPk);
 
     // Chain: each step records (pre-batch, pre-pk, proof, commitments) so the
     // next step can verify it before doing its own transcryption.
@@ -464,9 +433,9 @@ test('n_pep_batch_distributed_verifiable', () => {
         // actually received.
         if (prev !== null) {
             const { preBatch, prePk, proof, commitments } = prev;
-            const reconstructed = BATCH_PK
-                ? proof.verifiedReconstructBatch(preBatch, prePk, currentPk(), commitments)
-                : proof.verifiedReconstructBatch(preBatch, prePk, commitments);
+            const reconstructed = proof.verifiedReconstructBatch(
+                preBatch, prePk, current.publicKey, commitments,
+            );
             // Compare items by base64 serialization to avoid object identity.
             const recItems = reconstructed.items.map((p) => p.toBase64());
             const curItems = current.items.map((p) => p.toBase64());
@@ -476,18 +445,14 @@ test('n_pep_batch_distributed_verifiable', () => {
         // Step 2: this transcryptor builds and applies its own verifiable
         // batch transcryption. We save a clone of the pre-batch + its pk so
         // the next iteration can verify against them.
-        const prePk = currentPk();
-        const preBatch = BATCH_PK
-            ? new EncryptedPseudonymBatch(current.items, prePk)
-            : new EncryptedPseudonymBatch(current.items);
+        const prePk = current.publicKey;
+        const preBatch = new EncryptedPseudonymBatch(current.items, prePk);
 
         const info = system.pseudonymizationInfo(domainA, domainB, sessionA, sessionB);
         const commitments = system.pseudonymizationCommitment(
             domainA, domainB, sessionA, sessionB,
         );
-        const proof = BATCH_PK
-            ? current.verifiablePseudonymize(info)
-            : current.verifiablePseudonymize(info, prePk);
+        const proof = current.verifiablePseudonymize(info);
         prev = { preBatch, prePk, proof, commitments };
     }
 
@@ -495,9 +460,9 @@ test('n_pep_batch_distributed_verifiable', () => {
     // decrypts.
     expect(prev).not.toBeNull();
     const { preBatch, prePk, proof, commitments } = prev;
-    const verifiedBatch = BATCH_PK
-        ? proof.verifiedReconstructBatch(preBatch, prePk, currentPk(), commitments)
-        : proof.verifiedReconstructBatch(preBatch, prePk, commitments);
+    const verifiedBatch = proof.verifiedReconstructBatch(
+        preBatch, prePk, current.publicKey, commitments,
+    );
     const verItems = verifiedBatch.items.map((p) => p.toBase64());
     const curItems = current.items.map((p) => p.toBase64());
     expect(verItems).toEqual(curItems);
