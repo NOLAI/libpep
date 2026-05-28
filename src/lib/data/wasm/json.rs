@@ -22,6 +22,7 @@ use crate::keys::wasm::types::WASMSessionKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalPublicKeys;
 use crate::keys::SessionKeys;
+use crate::wasm_errors::batch_err_to_js;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
@@ -377,7 +378,7 @@ pub fn wasm_encrypt_json_batch(
     let keys: SessionKeys = (*session_keys).into();
     let rust_values: Vec<PEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let encrypted = encrypt_batch(&rust_values, &keys, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?
+        .map_err(batch_err_to_js)?
         .into_items();
 
     Ok(encrypted
@@ -429,7 +430,7 @@ pub fn wasm_decrypt_json_batch(
     let keys: SessionKeys = (*session_keys).into();
     let rust_encrypted: Vec<EncryptedPEPJSONValue> = encrypted.into_iter().map(|v| v.0).collect();
     let decrypted =
-        decrypt_batch(&rust_encrypted, &keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        decrypt_batch(&rust_encrypted, &keys).map_err(batch_err_to_js)?;
 
     Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
 }
@@ -456,10 +457,10 @@ pub fn wasm_transcrypt_json_batch(
 ) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
     let mut rng = rand::rng();
     let items: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let mut batch = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+    let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
     batch
         .transcrypt(&transcryption_info.0, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        .map_err(batch_err_to_js)?;
     Ok(batch
         .into_items()
         .into_iter()
@@ -478,10 +479,10 @@ pub fn wasm_transcrypt_json_batch(
     let items: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let keys: crate::keys::SessionKeys = (*session_keys).into();
     let mut batch =
-        EncryptedBatch::new(items, keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
     batch
         .transcrypt(&transcryption_info.0, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        .map_err(batch_err_to_js)?;
     Ok(batch
         .into_items()
         .into_iter()

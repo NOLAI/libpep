@@ -21,21 +21,21 @@
 //! `data/py/batch.rs`. A second `#[pymethods]` block per `Py*Batch` is fine
 //! because Cargo.toml enables PyO3's `multiple-pymethods` feature.
 
-use pyo3::exceptions::PyValueError;
+use crate::py_errors::{JsonFormatError, ProofRejectedError};
 use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]
 fn map_ser_err<E: std::fmt::Display>(e: E) -> PyErr {
-    PyValueError::new_err(format!("Serialization failed: {}", e))
+    JsonFormatError::new_err(format!("Serialization failed: {}", e))
 }
 
 #[cfg(feature = "serde")]
 fn map_de_err<E: std::fmt::Display>(e: E) -> PyErr {
-    PyValueError::new_err(format!("Deserialization failed: {}", e))
+    JsonFormatError::new_err(format!("Deserialization failed: {}", e))
 }
 
 fn map_verify_err() -> PyErr {
-    PyValueError::new_err("verification failed")
+    ProofRejectedError::new_err("proof rejected")
 }
 
 use crate::data::py::batch::{PyAttributeBatch, PyPseudonymBatch, PyRecordBatch};

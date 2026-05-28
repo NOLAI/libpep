@@ -19,6 +19,7 @@ use crate::core::verifiable::{
     VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
 };
 use crate::core::wasm::elgamal::WASMElGamal;
+use crate::wasm_errors::malformed_proof_err;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -52,7 +53,7 @@ impl WASMFactorCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -60,7 +61,7 @@ impl WASMFactorCommitment {
     pub fn from_json(json: &str) -> Result<WASMFactorCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMFactorCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -79,7 +80,7 @@ impl WASMRekeyFactorCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -87,7 +88,7 @@ impl WASMRekeyFactorCommitment {
     pub fn from_json(json: &str) -> Result<WASMRekeyFactorCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMRekeyFactorCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -106,7 +107,7 @@ impl WASMPseudonymizationFactorCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -114,7 +115,7 @@ impl WASMPseudonymizationFactorCommitment {
     pub fn from_json(json: &str) -> Result<WASMPseudonymizationFactorCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMPseudonymizationFactorCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -181,7 +182,7 @@ impl WASMVerifiableRerandomize {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -189,7 +190,7 @@ impl WASMVerifiableRerandomize {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRerandomize, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRerandomize)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -286,7 +287,7 @@ impl WASMVerifiableRekey {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -294,7 +295,7 @@ impl WASMVerifiableRekey {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRekey, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRekey)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -364,7 +365,7 @@ impl WASMVerifiableRekey2 {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -372,7 +373,7 @@ impl WASMVerifiableRekey2 {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRekey2, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRekey2)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -430,7 +431,7 @@ impl WASMVerifiableReshuffle {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -438,7 +439,7 @@ impl WASMVerifiableReshuffle {
     pub fn from_json(json: &str) -> Result<WASMVerifiableReshuffle, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableReshuffle)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -511,7 +512,7 @@ impl WASMVerifiableReshuffle2 {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -519,7 +520,7 @@ impl WASMVerifiableReshuffle2 {
     pub fn from_json(json: &str) -> Result<WASMVerifiableReshuffle2, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableReshuffle2)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -570,7 +571,7 @@ impl WASMVerifiableRSKInner {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -578,7 +579,7 @@ impl WASMVerifiableRSKInner {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRSKInner, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRSKInner)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -629,7 +630,7 @@ impl WASMVerifiableRSK {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -637,7 +638,7 @@ impl WASMVerifiableRSK {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRSK, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRSK)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -741,7 +742,7 @@ impl WASMVerifiableRSK2 {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -749,7 +750,7 @@ impl WASMVerifiableRSK2 {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRSK2, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRSK2)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -868,7 +869,7 @@ impl WASMVerifiableRRSK {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -876,7 +877,7 @@ impl WASMVerifiableRRSK {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRRSK, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRRSK)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1040,7 +1041,7 @@ impl WASMVerifiableRRSK2 {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1048,7 +1049,7 @@ impl WASMVerifiableRRSK2 {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRRSK2, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRRSK2)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1162,7 +1163,7 @@ impl WASMVerifiableRerandomizeBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1170,7 +1171,7 @@ impl WASMVerifiableRerandomizeBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRerandomizeBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRerandomizeBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1284,7 +1285,7 @@ impl WASMVerifiableRekeyBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1292,7 +1293,7 @@ impl WASMVerifiableRekeyBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRekeyBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRekeyBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1373,7 +1374,7 @@ impl WASMVerifiableRekey2Batch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1381,7 +1382,7 @@ impl WASMVerifiableRekey2Batch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRekey2Batch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRekey2Batch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1446,7 +1447,7 @@ impl WASMVerifiableReshuffleBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1454,7 +1455,7 @@ impl WASMVerifiableReshuffleBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableReshuffleBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableReshuffleBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1535,7 +1536,7 @@ impl WASMVerifiableReshuffle2Batch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1543,7 +1544,7 @@ impl WASMVerifiableReshuffle2Batch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableReshuffle2Batch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableReshuffle2Batch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1620,7 +1621,7 @@ impl WASMVerifiableRSKBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1628,7 +1629,7 @@ impl WASMVerifiableRSKBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRSKBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRSKBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1742,7 +1743,7 @@ impl WASMVerifiableRSK2Batch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1750,7 +1751,7 @@ impl WASMVerifiableRSK2Batch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRSK2Batch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRSK2Batch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -1883,7 +1884,7 @@ impl WASMVerifiableRRSKBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -1891,7 +1892,7 @@ impl WASMVerifiableRRSKBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRRSKBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRRSKBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -2100,7 +2101,7 @@ impl WASMVerifiableRRSK2Batch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -2108,7 +2109,7 @@ impl WASMVerifiableRRSK2Batch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRRSK2Batch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRRSK2Batch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 

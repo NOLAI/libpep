@@ -8,6 +8,7 @@
 use crate::arithmetic::wasm::group_elements::WASMGroupElement;
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
+use crate::wasm_errors::malformed_proof_err;
 use derive_more::{From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -40,7 +41,7 @@ impl WASMBlindingCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -49,7 +50,7 @@ impl WASMBlindingCommitment {
     pub fn from_json(json: &str) -> Result<WASMBlindingCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMBlindingCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -98,7 +99,7 @@ impl WASMBlindingCommitments {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -107,7 +108,7 @@ impl WASMBlindingCommitments {
     pub fn from_json(json: &str) -> Result<WASMBlindingCommitments, JsValue> {
         serde_json::from_str(json)
             .map(WASMBlindingCommitments)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -150,7 +151,7 @@ impl WASMSessionKeyShareProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -159,6 +160,6 @@ impl WASMSessionKeyShareProof {
     pub fn from_json(json: &str) -> Result<WASMSessionKeyShareProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMSessionKeyShareProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }

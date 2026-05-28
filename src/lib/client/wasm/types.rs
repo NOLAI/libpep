@@ -20,6 +20,8 @@ use crate::data::wasm::simple::{
 use crate::keys::wasm::types::WASMGlobalPublicKeys;
 #[cfg(feature = "offline")]
 use crate::keys::*;
+#[cfg(all(feature = "offline", feature = "batch"))]
+use crate::wasm_errors::batch_err_to_js;
 #[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "offline")]
@@ -87,7 +89,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedAttribute::from)
@@ -106,7 +108,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
 
@@ -122,7 +124,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedAttribute::from)
@@ -141,7 +143,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
@@ -193,7 +195,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_values, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedPEPJSONValue)

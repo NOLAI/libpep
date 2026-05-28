@@ -509,8 +509,7 @@ pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) 
 /// # Security Note
 ///
 /// The deterministic nonce is derived (EdDSA-style) by hashing the secret scalar together
-/// with the message, so distinct (secret, message) pairs produce distinct nonces. The
-/// nonce hash is domain-separated from the Fiat-Shamir challenge hash.
+/// with the message, so distinct (secret, message) pairs produce distinct nonces.
 pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupElement, Proof) {
     let mut hasher = Sha512::new();
     hasher.update(a.to_bytes());

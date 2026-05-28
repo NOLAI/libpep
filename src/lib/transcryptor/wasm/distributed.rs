@@ -20,6 +20,8 @@ use crate::factors::{
 };
 use crate::keys::distribution::BlindingFactor;
 use crate::keys::wasm::distribution::WASMBlindingFactor;
+#[cfg(feature = "batch")]
+use crate::wasm_errors::batch_err_to_js;
 use crate::keys::wasm::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
@@ -241,10 +243,10 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -265,10 +267,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -287,10 +289,10 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -311,10 +313,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -383,10 +385,10 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -407,10 +409,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -430,10 +432,10 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -454,10 +456,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -514,10 +516,10 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -539,10 +541,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -629,10 +631,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<crate::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -654,10 +656,10 @@ impl WASMDistributedTranscryptor {
             records.into_iter().map(|r| r.into()).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -678,10 +680,10 @@ impl WASMDistributedTranscryptor {
         let items: Vec<crate::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()
@@ -703,10 +705,10 @@ impl WASMDistributedTranscryptor {
             records.into_iter().map(|r| r.into()).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(batch
             .into_items()
             .into_iter()

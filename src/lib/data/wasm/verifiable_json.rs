@@ -15,10 +15,12 @@ use crate::data::wasm::json::WASMEncryptedPEPJSONValue;
 use crate::factors::wasm::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::wasm::contexts::WASMTranscryptionInfo;
 use crate::verifier::wasm::WASMVerifier;
+use crate::verifier::VerifyError;
+use crate::wasm_errors::{malformed_proof_err, verify_err_to_js};
 use wasm_bindgen::prelude::*;
 
 fn verify_err() -> JsValue {
-    JsValue::from(JsError::new("verification failed"))
+    verify_err_to_js(VerifyError::ProofRejected)
 }
 
 // ---------------------------------------------------------------------------
@@ -47,7 +49,7 @@ impl WASMJSONTranscryptionProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -55,7 +57,7 @@ impl WASMJSONTranscryptionProof {
     pub fn from_json(json: &str) -> Result<WASMJSONTranscryptionProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMJSONTranscryptionProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     /// Verify the proof against the original encrypted JSON value and the
@@ -141,7 +143,7 @@ impl WASMVerifiableJSONBatch {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -149,7 +151,7 @@ impl WASMVerifiableJSONBatch {
     pub fn from_json(json: &str) -> Result<WASMVerifiableJSONBatch, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableJSONBatch)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 

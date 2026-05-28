@@ -12,6 +12,7 @@ use crate::factors::verifiable::{
     MasterRekeyingSecret,
 };
 use crate::factors::wasm::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
+use crate::wasm_errors::json_err;
 use derive_more::{From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -94,7 +95,7 @@ impl WASMMasterPseudonymizationPublicKey {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(json_err)
     }
 
     /// Deserialize from JSON.
@@ -103,7 +104,7 @@ impl WASMMasterPseudonymizationPublicKey {
     pub fn from_json(json: &str) -> Result<WASMMasterPseudonymizationPublicKey, JsValue> {
         serde_json::from_str(json)
             .map(WASMMasterPseudonymizationPublicKey)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(json_err)
     }
 }
 
@@ -198,7 +199,7 @@ impl WASMMasterRekeyingPublicKey {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(json_err)
     }
 
     /// Deserialize from JSON.
@@ -207,6 +208,6 @@ impl WASMMasterRekeyingPublicKey {
     pub fn from_json(json: &str) -> Result<WASMMasterRekeyingPublicKey, JsValue> {
         serde_json::from_str(json)
             .map(WASMMasterRekeyingPublicKey)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(json_err)
     }
 }

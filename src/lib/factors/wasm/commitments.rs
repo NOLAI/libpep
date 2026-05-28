@@ -4,6 +4,7 @@ use crate::factors::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
+use crate::wasm_errors::malformed_proof_err;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -20,7 +21,7 @@ impl WASMVerifiablePseudonymizationCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -29,7 +30,7 @@ impl WASMVerifiablePseudonymizationCommitment {
     pub fn from_json(json: &str) -> Result<WASMVerifiablePseudonymizationCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiablePseudonymizationCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -44,7 +45,7 @@ impl WASMVerifiableRekeyCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -53,7 +54,7 @@ impl WASMVerifiableRekeyCommitment {
     pub fn from_json(json: &str) -> Result<WASMVerifiableRekeyCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableRekeyCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -69,7 +70,7 @@ impl WASMVerifiableTranscryptionCommitment {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -78,6 +79,6 @@ impl WASMVerifiableTranscryptionCommitment {
     pub fn from_json(json: &str) -> Result<WASMVerifiableTranscryptionCommitment, JsValue> {
         serde_json::from_str(json)
             .map(WASMVerifiableTranscryptionCommitment)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }

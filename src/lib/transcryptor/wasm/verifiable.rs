@@ -10,6 +10,7 @@ use crate::factors::wasm::contexts::{
     WASMPseudonymizationInfo,
 };
 use crate::transcryptor::wasm::types::WASMTranscryptor;
+use crate::wasm_errors::malformed_proof_err;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_class = Transcryptor)]
@@ -76,7 +77,7 @@ impl WASMTranscryptor {
             .0
             .verifiable_pseudonymize(&pseudo_info.0, &mut rng);
 
-        serde_json::to_string(&operation_proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
     }
 
     #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
@@ -95,7 +96,7 @@ impl WASMTranscryptor {
             .0
             .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rng);
 
-        serde_json::to_string(&operation_proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
     }
 
     /// Perform verifiable attribute rekey.
@@ -113,7 +114,7 @@ impl WASMTranscryptor {
         let mut rng = rand::rng();
         let operation_proof = encrypted.0.verifiable_rekey(&rekey_info.0, &mut rng);
 
-        serde_json::to_string(&operation_proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
     }
 
     /// Perform verifiable pseudonym rekey.
@@ -133,7 +134,7 @@ impl WASMTranscryptor {
         let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
         let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
 
-        serde_json::to_string(&operation_proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
     }
 
     /// Build the combined public commitments for a transcryption transition

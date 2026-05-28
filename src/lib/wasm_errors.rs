@@ -25,6 +25,14 @@
 //!   `"MalformedProof: ..."`
 //! - `"ConflictingValue: ..."`, `"CacheFull: ..."`
 //! - `"WeakBlinding: ..."`
+//!
+//! Helpers:
+//! - [`batch_err_to_js`] for `BatchError`
+//! - [`verify_err_to_js`] for `VerifyError`
+//! - [`register_commitments_err_to_js`] for `RegisterCommitmentsError`
+//! - [`session_key_share_err_to_js`] for `SessionKeyShareError`
+//! - [`malformed_proof_err`] for proof / commitment decode failures
+//! - [`json_err`] for non-proof JSON ser/de failures
 
 #![cfg(all(feature = "wasm", not(feature = "python")))]
 
@@ -152,4 +160,11 @@ pub(crate) fn session_key_share_err_to_js(
 #[allow(dead_code)]
 pub(crate) fn malformed_proof_err(e: impl std::fmt::Display) -> JsValue {
     js_err("MalformedProof", e)
+}
+
+/// Wrap a serde JSON error for a non-proof type (e.g. encrypted records,
+/// master keys) as a typed `"JsonError: ..."` so JS can pattern-match.
+#[allow(dead_code)]
+pub(crate) fn json_err(e: impl std::fmt::Display) -> JsValue {
+    js_err("JsonError", e)
 }

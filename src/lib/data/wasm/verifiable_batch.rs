@@ -39,10 +39,12 @@ use crate::factors::wasm::contexts::{
 };
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+use crate::verifier::VerifyError;
+use crate::wasm_errors::{malformed_proof_err, verify_err_to_js};
 use wasm_bindgen::prelude::*;
 
 fn verify_err() -> JsValue {
-    JsValue::from(JsError::new("verification failed"))
+    verify_err_to_js(VerifyError::ProofRejected)
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +72,7 @@ impl WASMPseudonymPseudonymizationBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -78,7 +80,7 @@ impl WASMPseudonymPseudonymizationBatchProof {
     pub fn from_json(json: &str) -> Result<WASMPseudonymPseudonymizationBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMPseudonymPseudonymizationBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -152,7 +154,7 @@ impl WASMPseudonymRekeyBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -160,7 +162,7 @@ impl WASMPseudonymRekeyBatchProof {
     pub fn from_json(json: &str) -> Result<WASMPseudonymRekeyBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMPseudonymRekeyBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -217,7 +219,7 @@ impl WASMAttributeRekeyBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -225,7 +227,7 @@ impl WASMAttributeRekeyBatchProof {
     pub fn from_json(json: &str) -> Result<WASMAttributeRekeyBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMAttributeRekeyBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -288,7 +290,7 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -296,7 +298,7 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
     pub fn from_json(json: &str) -> Result<WASMLongPseudonymPseudonymizationBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMLongPseudonymPseudonymizationBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -374,7 +376,7 @@ impl WASMLongPseudonymRekeyBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -382,7 +384,7 @@ impl WASMLongPseudonymRekeyBatchProof {
     pub fn from_json(json: &str) -> Result<WASMLongPseudonymRekeyBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMLongPseudonymRekeyBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -443,7 +445,7 @@ impl WASMLongAttributeRekeyBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -451,7 +453,7 @@ impl WASMLongAttributeRekeyBatchProof {
     pub fn from_json(json: &str) -> Result<WASMLongAttributeRekeyBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMLongAttributeRekeyBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -508,7 +510,7 @@ impl WASMRecordTranscryptionBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -516,7 +518,7 @@ impl WASMRecordTranscryptionBatchProof {
     pub fn from_json(json: &str) -> Result<WASMRecordTranscryptionBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMRecordTranscryptionBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -594,7 +596,7 @@ impl WASMLongRecordTranscryptionBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -602,7 +604,7 @@ impl WASMLongRecordTranscryptionBatchProof {
     pub fn from_json(json: &str) -> Result<WASMLongRecordTranscryptionBatchProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMLongRecordTranscryptionBatchProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]

@@ -22,6 +22,8 @@ use crate::keys::wasm::types::WASMSessionKeys;
 use crate::keys::wasm::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
+#[cfg(feature = "batch")]
+use crate::wasm_errors::batch_err_to_js;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -205,7 +207,7 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .map_err(batch_err_to_js)?
             .into_items();
         Ok(encrypted
             .into_iter()
@@ -225,7 +227,7 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .map_err(batch_err_to_js)?
             .into_items();
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
@@ -241,7 +243,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMAttribute::from).collect())
     }
 
@@ -256,7 +258,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPseudonym::from).collect())
     }
 
@@ -272,7 +274,7 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .map_err(batch_err_to_js)?
             .into_items();
         Ok(encrypted
             .into_iter()
@@ -292,7 +294,7 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .map_err(batch_err_to_js)?
             .into_items();
         Ok(encrypted
             .into_iter()
@@ -311,7 +313,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMLongAttribute::from).collect())
     }
 
@@ -326,7 +328,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMLongPseudonym::from).collect())
     }
 
@@ -419,7 +421,7 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_values, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?
+            .map_err(batch_err_to_js)?
             .into_items();
         Ok(encrypted
             .into_iter()
@@ -457,7 +459,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
     }
 
@@ -472,7 +474,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
     }
 }

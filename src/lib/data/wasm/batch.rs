@@ -31,6 +31,7 @@ use crate::factors::wasm::contexts::{
 };
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+use crate::wasm_errors::batch_err_to_js;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::wasm::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionKeys,
@@ -61,7 +62,7 @@ impl WASMEncryptedPseudonymBatch {
         let items: Vec<EncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let inner =
-            EncryptedBatch::new(items, pk).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -70,7 +71,7 @@ impl WASMEncryptedPseudonymBatch {
     #[wasm_bindgen(constructor)]
     pub fn new(items: Vec<WASMEncryptedPseudonym>) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         let items: Vec<EncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -110,7 +111,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Pseudonymize every item in the batch and shuffle.
@@ -125,7 +126,7 @@ impl WASMEncryptedPseudonymBatch {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Pseudonymize every item in the batch and shuffle.
@@ -135,7 +136,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Rekey every item in the batch and shuffle.
@@ -145,7 +146,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Rekey every item in the batch and shuffle.
@@ -155,7 +156,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -165,7 +166,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -180,7 +181,7 @@ impl WASMEncryptedPseudonymBatch {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         self.inner
             .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -190,7 +191,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }
 
@@ -216,7 +217,7 @@ impl WASMEncryptedAttributeBatch {
         let items: Vec<EncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         let inner =
-            EncryptedBatch::new(items, pk).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -224,7 +225,7 @@ impl WASMEncryptedAttributeBatch {
     #[wasm_bindgen(constructor)]
     pub fn new(items: Vec<WASMEncryptedAttribute>) -> Result<WASMEncryptedAttributeBatch, JsValue> {
         let items: Vec<EncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -260,7 +261,7 @@ impl WASMEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&AttributeRekeyInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -269,7 +270,7 @@ impl WASMEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&AttributeRekeyInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -279,7 +280,7 @@ impl WASMEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -293,7 +294,7 @@ impl WASMEncryptedAttributeBatch {
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         self.inner
             .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -302,7 +303,7 @@ impl WASMEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }
 
@@ -330,7 +331,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let items: Vec<LongEncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let inner =
-            EncryptedBatch::new(items, pk).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -340,7 +341,7 @@ impl WASMLongEncryptedPseudonymBatch {
         items: Vec<WASMLongEncryptedPseudonym>,
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         let items: Vec<LongEncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -375,7 +376,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -389,7 +390,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -398,7 +399,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .pseudonymize(&PseudonymizationInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -407,7 +408,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -416,7 +417,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -425,7 +426,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -439,7 +440,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         self.inner
             .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -448,7 +449,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }
 
@@ -476,7 +477,7 @@ impl WASMLongEncryptedAttributeBatch {
         let items: Vec<LongEncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         let inner =
-            EncryptedBatch::new(items, pk).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -486,7 +487,7 @@ impl WASMLongEncryptedAttributeBatch {
         items: Vec<WASMLongEncryptedAttribute>,
     ) -> Result<WASMLongEncryptedAttributeBatch, JsValue> {
         let items: Vec<LongEncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -521,7 +522,7 @@ impl WASMLongEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&AttributeRekeyInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -530,7 +531,7 @@ impl WASMLongEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .rekey(&AttributeRekeyInfo::from(info.0), &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -539,7 +540,7 @@ impl WASMLongEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -553,7 +554,7 @@ impl WASMLongEncryptedAttributeBatch {
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
         self.inner
             .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -562,7 +563,7 @@ impl WASMLongEncryptedAttributeBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }
 
@@ -588,7 +589,7 @@ impl WASMEncryptedRecordBatch {
         let items: Vec<EncryptedRecord> = items.into_iter().map(EncryptedRecord::from).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         let inner =
-            EncryptedBatch::new(items, keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -596,7 +597,7 @@ impl WASMEncryptedRecordBatch {
     #[wasm_bindgen(constructor)]
     pub fn new(items: Vec<WASMEncryptedRecord>) -> Result<WASMEncryptedRecordBatch, JsValue> {
         let items: Vec<EncryptedRecord> = items.into_iter().map(EncryptedRecord::from).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -632,7 +633,7 @@ impl WASMEncryptedRecordBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -646,7 +647,7 @@ impl WASMEncryptedRecordBatch {
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         self.inner
             .transcrypt(&info.0, &keys, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -655,7 +656,7 @@ impl WASMEncryptedRecordBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }
 
@@ -684,7 +685,7 @@ impl WASMLongEncryptedRecordBatch {
             items.into_iter().map(LongEncryptedRecord::from).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         let inner =
-            EncryptedBatch::new(items, keys).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+            EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -695,7 +696,7 @@ impl WASMLongEncryptedRecordBatch {
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
         let items: Vec<LongEncryptedRecord> =
             items.into_iter().map(LongEncryptedRecord::from).collect();
-        let inner = EncryptedBatch::new(items).map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+        let inner = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -731,7 +732,7 @@ impl WASMLongEncryptedRecordBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -745,7 +746,7 @@ impl WASMLongEncryptedRecordBatch {
         let keys: crate::keys::SessionKeys = (*session_keys).into();
         self.inner
             .transcrypt(&info.0, &keys, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 
     #[cfg(feature = "elgamal3")]
@@ -754,6 +755,6 @@ impl WASMLongEncryptedRecordBatch {
         let mut rng = rand::rng();
         self.inner
             .transcrypt(&info.0, &mut rng)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(batch_err_to_js)
     }
 }

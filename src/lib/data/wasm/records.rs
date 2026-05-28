@@ -4,6 +4,8 @@ use crate::data::records::{EncryptedRecord, Record};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+#[cfg(feature = "verifiable")]
+use crate::wasm_errors::malformed_proof_err;
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "long")]
@@ -358,7 +360,7 @@ impl WASMRecordTranscryptionProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     /// Deserialize from JSON.
@@ -367,7 +369,7 @@ impl WASMRecordTranscryptionProof {
     pub fn from_json(json: &str) -> Result<WASMRecordTranscryptionProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMRecordTranscryptionProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 
@@ -393,7 +395,7 @@ impl WASMLongRecordTranscryptionProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string(&self.0).map_err(|e| JsValue::from_str(&format!("{}", e)))
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
     }
 
     #[cfg(feature = "serde")]
@@ -401,7 +403,7 @@ impl WASMLongRecordTranscryptionProof {
     pub fn from_json(json: &str) -> Result<WASMLongRecordTranscryptionProof, JsValue> {
         serde_json::from_str(json)
             .map(WASMLongRecordTranscryptionProof)
-            .map_err(|e| JsValue::from_str(&format!("{}", e)))
+            .map_err(malformed_proof_err)
     }
 }
 

@@ -1,7 +1,7 @@
 //! Python bindings for zero-knowledge proofs.
 
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::arithmetic::py::group_elements::PyGroupElement;
+use crate::arithmetic::py::scalars::PyScalarNonZero;
 use crate::core::zkps::{create_proof, verify_proof, Proof};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -79,50 +79,25 @@ impl PyProof {
 
 /// Creates a zero-knowledge proof.
 ///
-/// Args:
-///     secret: The secret scalar as 32 bytes
-///     message: The message as a group element (32 bytes)
-///
-/// Returns:
-///     A tuple of (public_key, proof) where public_key is 32 bytes
+/// Returns a tuple `(public_key, proof)` where `public_key = a*G`.
 #[pyfunction]
-fn create_zkp_proof<'py>(
-    py: Python<'py>,
-    secret: &[u8],
-    message: &[u8],
-) -> PyResult<(Bound<'py, PyBytes>, PyProof)> {
+fn create_zkp_proof(
+    secret: &PyScalarNonZero,
+    message: &PyGroupElement,
+) -> (PyGroupElement, PyProof) {
     let mut rng = rand::rng();
-
-    let secret = ScalarNonZero::from_slice(secret)
-        .ok_or_else(|| PyValueError::new_err("Invalid secret scalar"))?;
-    let message = GroupElement::from_slice(message)
-        .ok_or_else(|| PyValueError::new_err("Invalid message group element"))?;
-
-    let (public_key, proof) = create_proof(&secret, &message, &mut rng);
-
-    Ok((
-        PyBytes::new(py, public_key.to_bytes().as_slice()),
-        PyProof { inner: proof },
-    ))
+    let (public_key, proof) = create_proof(&secret.0, &message.0, &mut rng);
+    (PyGroupElement(public_key), PyProof { inner: proof })
 }
 
 /// Verifies a zero-knowledge proof.
-///
-/// Args:
-///     public_key: The public key as 32 bytes
-///     message: The message as a group element (32 bytes)
-///     proof: The proof to verify
-///
-/// Returns:
-///     True if the proof is valid, False otherwise
 #[pyfunction]
-fn verify_zkp_proof(public_key: &[u8], message: &[u8], proof: &PyProof) -> PyResult<bool> {
-    let public_key = GroupElement::from_slice(public_key)
-        .ok_or_else(|| PyValueError::new_err("Invalid public key"))?;
-    let message = GroupElement::from_slice(message)
-        .ok_or_else(|| PyValueError::new_err("Invalid message"))?;
-
-    Ok(verify_proof(&public_key, &message, &proof.inner))
+fn verify_zkp_proof(
+    public_key: &PyGroupElement,
+    message: &PyGroupElement,
+    proof: &PyProof,
+) -> bool {
+    verify_proof(&public_key.0, &message.0, &proof.inner)
 }
 
 /// Register the zkps module.
