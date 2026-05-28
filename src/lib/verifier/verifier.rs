@@ -140,6 +140,29 @@ impl Verifier {
         }
     }
 
+    /// Construct a verifier with each commitment cache capped at
+    /// `max_entries`. Once a cache is at its cap, further
+    /// `register_*_commitments` calls return
+    /// [`CacheRegistrationError::CacheFull`](super::cache::CacheRegistrationError::CacheFull)
+    /// (wrapped in [`RegisterCommitmentsError`]). Idempotent re-registration
+    /// of an existing key remains allowed at the cap.
+    ///
+    /// Useful when commitment registration is reachable from untrusted code
+    /// and you want a hard memory bound.
+    #[must_use]
+    pub fn with_cache_capacity(max_entries: usize) -> Self {
+        Self {
+            pseudonymization_cache: PseudonymizationCommitmentsCache::with_max_entries(max_entries),
+            pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::with_max_entries(max_entries),
+            attribute_rekey_cache: AttributeRekeyCommitmentsCache::with_max_entries(max_entries),
+            blinding_commitments: HashMap::new(),
+            #[cfg(feature = "verifiable-derivation")]
+            master_pseudonym_keys: HashMap::new(),
+            #[cfg(feature = "verifiable-derivation")]
+            master_rekey_keys: HashMap::new(),
+        }
+    }
+
     // ------------------------------------------------------------------
     // Blinding commitments (for session key share verification)
     // ------------------------------------------------------------------

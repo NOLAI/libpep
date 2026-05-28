@@ -19,6 +19,9 @@ use pyo3::prelude::*;
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
 
+    // Register typed exception classes on the top-level module.
+    crate::py_errors::register(m)?;
+
     // Register arithmetic as submodule
     let arithmetic_module = PyModule::new(py, "arithmetic")?;
     arithmetic::register_module(&arithmetic_module)?;
@@ -74,6 +77,10 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     data::long::register(&data_module)?;
     data::padding::register(&data_module)?;
     data::records::register(&data_module)?;
+    #[cfg(feature = "batch")]
+    data::batch::register(&data_module)?;
+    #[cfg(all(feature = "batch", feature = "verifiable"))]
+    data::verifiable_batch::register(&data_module)?;
     m.add_submodule(&data_module)?;
     py.import("sys")?
         .getattr("modules")?
@@ -84,6 +91,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     {
         let json_module = PyModule::new(py, "json")?;
         data::json::register(&json_module)?;
+        #[cfg(feature = "verifiable")]
+        data::verifiable_json::register(&json_module)?;
         data_module.add_submodule(&json_module)?;
         py.import("sys")?
             .getattr("modules")?
@@ -97,6 +106,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     factors::secrets::register(&factors_module)?;
     #[cfg(feature = "verifiable")]
     factors::commitments::register_commitment_module(&factors_module)?;
+    #[cfg(feature = "verifiable-derivation")]
+    factors::verifiable::register(&factors_module)?;
     m.add_submodule(&factors_module)?;
     py.import("sys")?
         .getattr("modules")?

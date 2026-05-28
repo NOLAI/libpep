@@ -4,6 +4,9 @@ pub mod blinding;
 pub mod setup;
 pub mod shares;
 
+#[cfg(feature = "verifiable-derivation")]
+pub mod proofs;
+
 pub use blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
     PyBlindingFactor,
@@ -18,11 +21,16 @@ pub use shares::{
     PySessionKeyShares, PySessionKeys, PySessionPublicKeys, PySessionSecretKeys,
 };
 
+#[cfg(feature = "verifiable-derivation")]
+pub use proofs::{PyBlindingCommitment, PyBlindingCommitments, PySessionKeyShareProof};
+
 use pyo3::prelude::*;
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     blinding::register(m)?;
     setup::register(m)?;
     shares::register(m)?;
+    #[cfg(feature = "verifiable-derivation")]
+    proofs::register(m)?;
     Ok(())
 }

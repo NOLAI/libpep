@@ -8,10 +8,10 @@ use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
-#[cfg(all(feature = "offline", feature = "long"))]
-use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
 #[cfg(feature = "offline")]
-use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::wasm::records::{WASMEncryptedRecord, WASMRecord};
+#[cfg(all(feature = "offline", feature = "long"))]
+use crate::data::wasm::records::{WASMLongEncryptedRecord, WASMLongRecord};
 #[cfg(feature = "offline")]
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
@@ -150,7 +150,7 @@ impl WASMOfflinePEPClient {
 
     /// Encrypt a Record using global public keys (offline mode).
     #[wasm_bindgen(js_name = encryptRecord)]
-    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMRecordEncrypted {
+    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMEncryptedRecord {
         use crate::data::records::Record;
         use crate::data::traits::Encryptable;
         let mut rng = rand::rng();
@@ -162,7 +162,7 @@ impl WASMOfflinePEPClient {
     /// Encrypt a LongRecord using global public keys (offline mode).
     #[cfg(feature = "long")]
     #[wasm_bindgen(js_name = encryptLongRecord)]
-    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongRecordEncrypted {
+    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongEncryptedRecord {
         use crate::data::records::LongRecord;
         use crate::data::traits::Encryptable;
         let mut rng = rand::rng();

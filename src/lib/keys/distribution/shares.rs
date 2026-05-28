@@ -13,7 +13,7 @@ use derive_more::From;
 ///
 /// Intentionally does **not** implement `Deref` to the inner scalar: the
 /// wrapped value is secret. Internal callers needing the scalar should use
-/// [`PseudonymSessionKeyShare::as_scalar`].
+/// the crate-internal `as_scalar` accessor.
 #[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
@@ -31,7 +31,7 @@ impl std::fmt::Debug for PseudonymSessionKeyShare {
 ///
 /// Intentionally does **not** implement `Deref` to the inner scalar: the
 /// wrapped value is secret. Internal callers needing the scalar should use
-/// [`AttributeSessionKeyShare::as_scalar`].
+/// the crate-internal `as_scalar` accessor.
 #[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]

@@ -2,6 +2,9 @@ pub mod blinding;
 pub mod setup;
 pub mod shares;
 
+#[cfg(feature = "verifiable-derivation")]
+pub mod proofs;
+
 pub use blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
@@ -16,3 +19,6 @@ pub use shares::{
     wasm_make_session_key_shares, WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
     WASMSessionKeyShares,
 };
+
+#[cfg(feature = "verifiable-derivation")]
+pub use proofs::{WASMBlindingCommitment, WASMBlindingCommitments, WASMSessionKeyShareProof};

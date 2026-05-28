@@ -330,11 +330,8 @@ pub fn py_transcrypt_batch(
     let mut rng = rand::rng();
     let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let mut batch = EncryptedBatch::new(rust_values)
-        .map_err(|e| PyValueError::new_err(format!("Batch construction failed: {}", e)))?;
-    batch
-        .transcrypt(&info, &mut rng)
-        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
+    let mut batch = EncryptedBatch::new(rust_values).map_err(PyErr::from)?;
+    batch.transcrypt(&info, &mut rng).map_err(PyErr::from)?;
     Ok(batch
         .into_items()
         .into_iter()
@@ -354,11 +351,8 @@ pub fn py_transcrypt_batch(
     let rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
     let keys: crate::keys::SessionKeys = session_keys.clone().into();
-    let mut batch = EncryptedBatch::new(rust_values, keys)
-        .map_err(|e| PyValueError::new_err(format!("Batch construction failed: {}", e)))?;
-    batch
-        .transcrypt(&info, &mut rng)
-        .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
+    let mut batch = EncryptedBatch::new(rust_values, keys).map_err(PyErr::from)?;
+    batch.transcrypt(&info, &mut rng).map_err(PyErr::from)?;
     Ok(batch
         .into_items()
         .into_iter()
@@ -558,7 +552,7 @@ pub fn py_unify_structures(structures: Vec<PyJSONStructure>) -> PyResult<PyJSONS
     let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
     crate::data::json::structure::unify_structures(&rust_structures)
         .map(PyJSONStructure)
-        .map_err(|e| PyValueError::new_err(format!("Unification failed: {}", e)))
+        .map_err(PyErr::from)
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

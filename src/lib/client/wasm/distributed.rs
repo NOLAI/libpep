@@ -8,9 +8,9 @@ use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
+use crate::data::wasm::records::{WASMEncryptedRecord, WASMRecord};
 #[cfg(feature = "long")]
-use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
-use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::wasm::records::{WASMLongEncryptedRecord, WASMLongRecord};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
@@ -58,6 +58,13 @@ impl WASMClient {
 
     #[wasm_bindgen(js_name = dump)]
     pub fn wasm_dump(&self) -> WASMSessionKeys {
+        (*self.dump()).into()
+    }
+
+    /// Session keys getter — equivalent to `dump()` but exposed as a JS
+    /// property for parity with the Python `Client.session_keys` getter.
+    #[wasm_bindgen(getter, js_name = sessionKeys)]
+    pub fn wasm_session_keys(&self) -> WASMSessionKeys {
         (*self.dump()).into()
     }
 
@@ -325,7 +332,7 @@ impl WASMClient {
 
     /// Encrypt a Record using session keys.
     #[wasm_bindgen(js_name = encryptRecord)]
-    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMRecordEncrypted {
+    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMEncryptedRecord {
         let mut rng = rand::rng();
         use crate::data::records::Record;
         use crate::data::traits::Encryptable;
@@ -337,7 +344,7 @@ impl WASMClient {
     /// Decrypt an encrypted Record using session keys.
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = decryptRecord)]
-    pub fn wasm_decrypt_record(&self, encrypted: WASMRecordEncrypted) -> Option<WASMRecord> {
+    pub fn wasm_decrypt_record(&self, encrypted: WASMEncryptedRecord) -> Option<WASMRecord> {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -347,7 +354,7 @@ impl WASMClient {
     /// Decrypt an encrypted Record using session keys.
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = decryptRecord)]
-    pub fn wasm_decrypt_record(&self, encrypted: WASMRecordEncrypted) -> WASMRecord {
+    pub fn wasm_decrypt_record(&self, encrypted: WASMEncryptedRecord) -> WASMRecord {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -357,7 +364,7 @@ impl WASMClient {
     /// Encrypt a LongRecord using session keys.
     #[cfg(feature = "long")]
     #[wasm_bindgen(js_name = encryptLongRecord)]
-    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongRecordEncrypted {
+    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongEncryptedRecord {
         let mut rng = rand::rng();
         use crate::data::records::LongRecord;
         use crate::data::traits::Encryptable;
@@ -371,7 +378,7 @@ impl WASMClient {
     #[wasm_bindgen(js_name = decryptLongRecord)]
     pub fn wasm_decrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
     ) -> Option<WASMLongRecord> {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Encrypted;
@@ -382,7 +389,7 @@ impl WASMClient {
     /// Decrypt an encrypted LongRecord using session keys.
     #[cfg(all(feature = "long", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = decryptLongRecord)]
-    pub fn wasm_decrypt_long_record(&self, encrypted: WASMLongRecordEncrypted) -> WASMLongRecord {
+    pub fn wasm_decrypt_long_record(&self, encrypted: WASMLongEncryptedRecord) -> WASMLongRecord {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Encrypted;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();

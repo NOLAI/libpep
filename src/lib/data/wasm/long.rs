@@ -338,37 +338,6 @@ pub fn wasm_rekey_long_pseudonym_batch(
         .collect())
 }
 
-/// A pair of long encrypted pseudonyms and attributes for batch transcryption.
-#[wasm_bindgen(js_name = LongEncryptedRecord)]
-pub struct WASMLongEncryptedRecord {
-    pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-    attributes: Vec<WASMLongEncryptedAttribute>,
-}
-
-#[wasm_bindgen(js_class = "LongEncryptedRecord")]
-impl WASMLongEncryptedRecord {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-        attributes: Vec<WASMLongEncryptedAttribute>,
-    ) -> Self {
-        Self {
-            pseudonyms,
-            attributes,
-        }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn pseudonyms(&self) -> Vec<WASMLongEncryptedPseudonym> {
-        self.pseudonyms.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn attributes(&self) -> Vec<WASMLongEncryptedAttribute> {
-        self.attributes.clone()
-    }
-}
-
 /// Batch transcryption of long encrypted data.
 /// Each item contains a list of long encrypted pseudonyms and a list of long encrypted attributes.
 /// The order of the items is randomly shuffled to avoid linking them.
@@ -379,17 +348,11 @@ impl WASMLongEncryptedRecord {
 #[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
-    encrypted: Vec<WASMLongEncryptedRecord>,
+    encrypted: Vec<crate::data::wasm::records::WASMLongEncryptedRecord>,
     transcryption_info: &WASMTranscryptionInfo,
-) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
+) -> Result<Vec<crate::data::wasm::records::WASMLongEncryptedRecord>, JsValue> {
     let mut rng = rand::rng();
-    let items: Vec<LongEncryptedRecord> = encrypted
-        .into_iter()
-        .map(|pair| LongEncryptedRecord {
-            pseudonyms: pair.pseudonyms.into_iter().map(|p| p.0).collect(),
-            attributes: pair.attributes.into_iter().map(|a| a.0).collect(),
-        })
-        .collect();
+    let items: Vec<LongEncryptedRecord> = encrypted.into_iter().map(Into::into).collect();
     let info = TranscryptionInfo {
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
@@ -401,36 +364,19 @@ pub fn wasm_transcrypt_long_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(|rec| WASMLongEncryptedRecord {
-            pseudonyms: rec
-                .pseudonyms
-                .into_iter()
-                .map(WASMLongEncryptedPseudonym)
-                .collect(),
-            attributes: rec
-                .attributes
-                .into_iter()
-                .map(WASMLongEncryptedAttribute)
-                .collect(),
-        })
+        .map(crate::data::wasm::records::WASMLongEncryptedRecord::from)
         .collect())
 }
 
 #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
-    encrypted: Vec<WASMLongEncryptedRecord>,
+    encrypted: Vec<crate::data::wasm::records::WASMLongEncryptedRecord>,
     transcryption_info: &WASMTranscryptionInfo,
     session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
+) -> Result<Vec<crate::data::wasm::records::WASMLongEncryptedRecord>, JsValue> {
     let mut rng = rand::rng();
-    let items: Vec<LongEncryptedRecord> = encrypted
-        .into_iter()
-        .map(|pair| LongEncryptedRecord {
-            pseudonyms: pair.pseudonyms.into_iter().map(|p| p.0).collect(),
-            attributes: pair.attributes.into_iter().map(|a| a.0).collect(),
-        })
-        .collect();
+    let items: Vec<LongEncryptedRecord> = encrypted.into_iter().map(Into::into).collect();
     let info = TranscryptionInfo {
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
@@ -444,17 +390,6 @@ pub fn wasm_transcrypt_long_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(|rec| WASMLongEncryptedRecord {
-            pseudonyms: rec
-                .pseudonyms
-                .into_iter()
-                .map(WASMLongEncryptedPseudonym)
-                .collect(),
-            attributes: rec
-                .attributes
-                .into_iter()
-                .map(WASMLongEncryptedAttribute)
-                .collect(),
-        })
+        .map(crate::data::wasm::records::WASMLongEncryptedRecord::from)
         .collect())
 }

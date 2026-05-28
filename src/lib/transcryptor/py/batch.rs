@@ -45,11 +45,10 @@ pub fn py_pseudonymize_batch(
             .into_iter()
             .map(|e| e.0)
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .pseudonymize(&pseudonymization_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -70,11 +69,10 @@ pub fn py_pseudonymize_batch(
             .into_iter()
             .map(|e| e.0)
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .pseudonymize(&pseudonymization_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -116,11 +114,10 @@ pub fn py_pseudonymize_batch(
             .into_iter()
             .map(|e| e.0)
             .collect();
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
         batch
             .pseudonymize(&pseudonymization_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -141,11 +138,10 @@ pub fn py_pseudonymize_batch(
             .into_iter()
             .map(|e| e.0)
             .collect();
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
         batch
             .pseudonymize(&pseudonymization_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -195,11 +191,8 @@ pub fn py_rekey_batch(
                         .0
                 })
                 .collect();
-            let mut batch = EncryptedBatch::new(items)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&info.0, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
+            batch.rekey(&info.0, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -224,11 +217,8 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            let mut batch = EncryptedBatch::new(items)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&info.0, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
+            batch.rekey(&info.0, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -252,11 +242,8 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let mut batch = EncryptedBatch::new(items)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&rust_info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
+            batch.rekey(&rust_info, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -282,11 +269,8 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let mut batch = EncryptedBatch::new(items)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&rust_info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
+            batch.rekey(&rust_info, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -338,11 +322,8 @@ pub fn py_rekey_batch(
                         .0
                 })
                 .collect();
-            let mut batch = EncryptedBatch::new(items, pk)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&info.0, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
+            batch.rekey(&info.0, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -375,11 +356,8 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            let mut batch = EncryptedBatch::new(items, pk)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&info.0, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
+            batch.rekey(&info.0, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -411,11 +389,8 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let mut batch = EncryptedBatch::new(items, pk)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&rust_info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
+            batch.rekey(&rust_info, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -449,11 +424,8 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let mut batch = EncryptedBatch::new(items, pk)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            batch
-                .rekey(&rust_info, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
+            batch.rekey(&rust_info, &mut rng).map_err(PyErr::from)?;
             return Ok(batch
                 .into_items()
                 .into_iter()
@@ -496,11 +468,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -521,11 +492,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -546,11 +516,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -572,11 +541,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -598,11 +566,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -655,11 +622,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -688,11 +654,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -721,11 +686,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items, session_keys)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, session_keys).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -747,11 +711,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items, session_keys)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, session_keys).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()
@@ -773,11 +736,10 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let mut batch = EncryptedBatch::new(items, session_keys)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+        let mut batch = EncryptedBatch::new(items, session_keys).map_err(PyErr::from)?;
         batch
             .transcrypt(&transcryption_info, &mut rng)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            .map_err(PyErr::from)?;
         return Ok(batch
             .into_items()
             .into_iter()

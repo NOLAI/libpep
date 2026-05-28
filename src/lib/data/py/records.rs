@@ -410,6 +410,8 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register Record types
     m.add_class::<PyRecord>()?;
     m.add_class::<PyEncryptedRecord>()?;
+    m.add_function(pyo3::wrap_pyfunction!(py_encrypt_record, m)?)?;
+    m.add_function(pyo3::wrap_pyfunction!(py_decrypt_record, m)?)?;
 
     // Register Long Record types (if long feature enabled)
     #[cfg(feature = "long")]
@@ -417,6 +419,8 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<PyLongRecord>()?;
         m.add_class::<PyLongEncryptedRecord>()?;
         m.add_class::<PyLongRecordStructure>()?;
+        m.add_function(pyo3::wrap_pyfunction!(py_encrypt_long_record, m)?)?;
+        m.add_function(pyo3::wrap_pyfunction!(py_decrypt_long_record, m)?)?;
     }
 
     // Register Verifiable Record proof types

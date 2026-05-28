@@ -54,8 +54,14 @@ pub mod verifier;
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;
 
+#[cfg(all(feature = "python", not(feature = "wasm")))]
+pub mod py_errors;
+
 #[cfg(all(feature = "wasm", not(feature = "python")))]
 pub mod wasm;
+
+#[cfg(all(feature = "wasm", not(feature = "python")))]
+pub mod wasm_errors;
 
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 use pyo3::prelude::*;

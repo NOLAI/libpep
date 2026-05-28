@@ -6,9 +6,9 @@ use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::wasm::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::wasm::records::WASMLongRecordEncrypted;
-use crate::data::wasm::records::WASMRecordEncrypted;
+use crate::data::wasm::records::WASMLongEncryptedRecord;
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
@@ -116,6 +116,74 @@ impl WASMDistributedTranscryptor {
             &session_from.0,
             &session_to.0,
         ))
+    }
+
+    /// Build the public commitments for a pseudonymization transition.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = pseudonymizationCommitment)]
+    pub fn wasm_pseudonymization_commitment(
+        &self,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> crate::factors::wasm::commitments::WASMVerifiablePseudonymizationCommitment {
+        crate::factors::wasm::commitments::WASMVerifiablePseudonymizationCommitment::from(
+            self.0.pseudonymization_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
+        )
+    }
+
+    /// Build the public commitment for an attribute rekey transition.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = attributeRekeyCommitment)]
+    pub fn wasm_attribute_rekey_commitment(
+        &self,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> crate::factors::wasm::commitments::WASMVerifiableRekeyCommitment {
+        crate::factors::wasm::commitments::WASMVerifiableRekeyCommitment::from(
+            self.0
+                .attribute_rekey_commitment(&session_from.0, &session_to.0),
+        )
+    }
+
+    /// Build the public commitment for a pseudonym rekey transition.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = pseudonymRekeyCommitment)]
+    pub fn wasm_pseudonym_rekey_commitment(
+        &self,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> crate::factors::wasm::commitments::WASMVerifiableRekeyCommitment {
+        crate::factors::wasm::commitments::WASMVerifiableRekeyCommitment::from(
+            self.0
+                .pseudonym_rekey_commitment(&session_from.0, &session_to.0),
+        )
+    }
+
+    /// Build the combined public commitments for a transcryption transition.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = transcryptionCommitment)]
+    pub fn wasm_transcryption_commitment(
+        &self,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> crate::factors::wasm::commitments::WASMVerifiableTranscryptionCommitment {
+        crate::factors::wasm::commitments::WASMVerifiableTranscryptionCommitment::from(
+            self.0.transcryption_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
+        )
     }
 
     #[wasm_bindgen(js_name = rekey)]
@@ -487,9 +555,9 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -502,10 +570,10 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -520,9 +588,9 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -535,10 +603,10 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -553,9 +621,9 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecordBatch)]
     pub fn transcrypt_record_batch(
         &self,
-        records: Vec<WASMRecordEncrypted>,
+        records: Vec<WASMEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> Result<Vec<WASMRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::EncryptedRecord> =
@@ -568,7 +636,7 @@ impl WASMDistributedTranscryptor {
         Ok(batch
             .into_items()
             .into_iter()
-            .map(WASMRecordEncrypted::from)
+            .map(WASMEncryptedRecord::from)
             .collect())
     }
 
@@ -576,10 +644,10 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecordBatch)]
     pub fn transcrypt_record_batch(
         &self,
-        records: Vec<WASMRecordEncrypted>,
+        records: Vec<WASMEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> Result<Vec<WASMRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::EncryptedRecord> =
@@ -593,7 +661,7 @@ impl WASMDistributedTranscryptor {
         Ok(batch
             .into_items()
             .into_iter()
-            .map(WASMRecordEncrypted::from)
+            .map(WASMEncryptedRecord::from)
             .collect())
     }
 
@@ -602,9 +670,9 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
     pub fn transcrypt_long_record_batch(
         &self,
-        records: Vec<WASMLongRecordEncrypted>,
+        records: Vec<WASMLongEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> Result<Vec<WASMLongRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::LongEncryptedRecord> =
@@ -617,7 +685,7 @@ impl WASMDistributedTranscryptor {
         Ok(batch
             .into_items()
             .into_iter()
-            .map(WASMLongRecordEncrypted::from)
+            .map(WASMLongEncryptedRecord::from)
             .collect())
     }
 
@@ -625,10 +693,10 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
     pub fn transcrypt_long_record_batch(
         &self,
-        records: Vec<WASMLongRecordEncrypted>,
+        records: Vec<WASMLongEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> Result<Vec<WASMLongRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::LongEncryptedRecord> =
@@ -642,7 +710,7 @@ impl WASMDistributedTranscryptor {
         Ok(batch
             .into_items()
             .into_iter()
-            .map(WASMLongRecordEncrypted::from)
+            .map(WASMLongEncryptedRecord::from)
             .collect())
     }
 }

@@ -7,7 +7,7 @@ use crate::keys::SessionKeys;
 /// Note: this trait deliberately does NOT bound the implementing type by
 /// `Deref<Target = ScalarNonZero>`. The wrapped scalar is secret and
 /// implementations must expose it only via a crate-internal accessor
-/// (e.g. `as_scalar`) — see [`crate::keys::distribution::PseudonymSessionKeyShare::as_scalar`].
+/// (e.g. `as_scalar` on [`crate::keys::distribution::PseudonymSessionKeyShare`]).
 /// The `inner_scalar` method below is the trait-level equivalent.
 pub trait SessionKeyShare: Sized {
     type PublicKeyType: From<crate::arithmetic::group_elements::GroupElement>;

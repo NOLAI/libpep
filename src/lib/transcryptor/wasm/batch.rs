@@ -12,9 +12,9 @@ use crate::data::records::LongEncryptedRecord;
 use crate::data::wasm::json::WASMEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::wasm::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::wasm::records::WASMLongRecordEncrypted;
-use crate::data::wasm::records::WASMRecordEncrypted;
+use crate::data::wasm::records::WASMLongEncryptedRecord;
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
@@ -228,9 +228,9 @@ pub fn wasm_transcrypt_attribute_batch(
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptRecordBatch)]
 pub fn wasm_transcrypt_record_batch(
-    encrypted: Vec<WASMRecordEncrypted>,
+    encrypted: Vec<WASMEncryptedRecord>,
     info: &WASMTranscryptionInfo,
-) -> Result<Vec<WASMRecordEncrypted>, String> {
+) -> Result<Vec<WASMEncryptedRecord>, String> {
     let items: Vec<EncryptedRecord> = encrypted.into_iter().map(EncryptedRecord::from).collect();
     let mut rng = rand::rng();
     let mut batch = EncryptedBatch::new(items).map_err(|e| e.to_string())?;
@@ -240,17 +240,17 @@ pub fn wasm_transcrypt_record_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(WASMRecordEncrypted::from)
+        .map(WASMEncryptedRecord::from)
         .collect())
 }
 
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptRecordBatch)]
 pub fn wasm_transcrypt_record_batch(
-    encrypted: Vec<WASMRecordEncrypted>,
+    encrypted: Vec<WASMEncryptedRecord>,
     info: &WASMTranscryptionInfo,
     session_keys: &WASMSessionKeys,
-) -> Result<Vec<WASMRecordEncrypted>, String> {
+) -> Result<Vec<WASMEncryptedRecord>, String> {
     let items: Vec<EncryptedRecord> = encrypted.into_iter().map(EncryptedRecord::from).collect();
     let mut rng = rand::rng();
     let keys: crate::keys::SessionKeys = (*session_keys).into();
@@ -261,7 +261,7 @@ pub fn wasm_transcrypt_record_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(WASMRecordEncrypted::from)
+        .map(WASMEncryptedRecord::from)
         .collect())
 }
 
@@ -269,9 +269,9 @@ pub fn wasm_transcrypt_record_batch(
 #[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
 pub fn wasm_transcrypt_long_record_batch(
-    encrypted: Vec<WASMLongRecordEncrypted>,
+    encrypted: Vec<WASMLongEncryptedRecord>,
     info: &WASMTranscryptionInfo,
-) -> Result<Vec<WASMLongRecordEncrypted>, String> {
+) -> Result<Vec<WASMLongEncryptedRecord>, String> {
     let items: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
         .map(LongEncryptedRecord::from)
@@ -284,17 +284,17 @@ pub fn wasm_transcrypt_long_record_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(WASMLongRecordEncrypted::from)
+        .map(WASMLongEncryptedRecord::from)
         .collect())
 }
 
 #[cfg(all(feature = "long", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
 pub fn wasm_transcrypt_long_record_batch(
-    encrypted: Vec<WASMLongRecordEncrypted>,
+    encrypted: Vec<WASMLongEncryptedRecord>,
     info: &WASMTranscryptionInfo,
     session_keys: &WASMSessionKeys,
-) -> Result<Vec<WASMLongRecordEncrypted>, String> {
+) -> Result<Vec<WASMLongEncryptedRecord>, String> {
     let items: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
         .map(LongEncryptedRecord::from)
@@ -308,7 +308,7 @@ pub fn wasm_transcrypt_long_record_batch(
     Ok(batch
         .into_items()
         .into_iter()
-        .map(WASMLongRecordEncrypted::from)
+        .map(WASMLongEncryptedRecord::from)
         .collect())
 }
 

@@ -13,8 +13,8 @@ use rand_core::{CryptoRng, Rng};
 /// This type intentionally does **not** implement `Deref` to the inner
 /// scalar: the wrapped value is secret and exposing it via the `*` operator
 /// makes it easy to leak inadvertently (e.g. via `Debug` of a tuple).
-/// Internal callers that need the scalar value should use
-/// [`BlindingFactor::as_scalar`].
+/// Internal callers that need the scalar value should use the
+/// crate-internal `as_scalar` accessor.
 #[derive(Copy, Clone, From)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
 

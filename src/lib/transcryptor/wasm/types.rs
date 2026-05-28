@@ -2,9 +2,9 @@
 
 #[cfg(feature = "long")]
 use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::wasm::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::wasm::records::WASMLongRecordEncrypted;
-use crate::data::wasm::records::WASMRecordEncrypted;
+use crate::data::wasm::records::WASMLongEncryptedRecord;
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
@@ -218,9 +218,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -233,10 +233,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         use crate::data::records::EncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -251,9 +251,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();
@@ -266,10 +266,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::wasm::types::WASMSessionKeys,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         use crate::data::records::LongEncryptedRecord;
         use crate::data::traits::Transcryptable;
         let mut rng = rand::rng();

@@ -121,6 +121,76 @@ impl PyDistributedTranscryptor {
         ))
     }
 
+    /// Build the public commitments for a pseudonymization transition.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "pseudonymization_commitment")]
+    fn py_pseudonymization_commitment(
+        &self,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyVerifiablePseudonymizationCommitment {
+        crate::factors::py::commitments::PyVerifiablePseudonymizationCommitment {
+            inner: self.0.pseudonymization_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
+        }
+    }
+
+    /// Build the public commitment for an attribute rekey transition.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "attribute_rekey_commitment")]
+    fn py_attribute_rekey_commitment(
+        &self,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+        crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+            inner: self
+                .0
+                .attribute_rekey_commitment(&session_from.0, &session_to.0),
+        }
+    }
+
+    /// Build the public commitment for a pseudonym rekey transition.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "pseudonym_rekey_commitment")]
+    fn py_pseudonym_rekey_commitment(
+        &self,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+        crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+            inner: self
+                .0
+                .pseudonym_rekey_commitment(&session_from.0, &session_to.0),
+        }
+    }
+
+    /// Build the combined public commitments for a transcryption transition.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "transcryption_commitment")]
+    fn py_transcryption_commitment(
+        &self,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyVerifiableTranscryptionCommitment {
+        crate::factors::py::commitments::PyVerifiableTranscryptionCommitment {
+            inner: self.0.transcryption_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
+        }
+    }
+
     /// Polymorphic rekey that works with any rekeyable type.
     #[pyo3(name = "rekey")]
     fn py_rekey(&self, encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
