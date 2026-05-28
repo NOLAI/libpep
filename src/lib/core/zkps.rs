@@ -376,11 +376,7 @@ pub(crate) fn verify_proof_split(
     s: &ScalarCanBeZero,
 ) -> bool {
     let identity = GroupElement::identity();
-    if gm == &identity
-        || ga == &identity
-        || gn == &identity
-        || gc1 == &identity
-        || gc2 == &identity
+    if gm == &identity || ga == &identity || gn == &identity || gc1 == &identity || gc2 == &identity
     {
         return false;
     }
@@ -774,14 +770,8 @@ mod tests {
         let (ga, p) = create_proof(&a, &gm, &mut rng);
         let identity = GroupElement::identity();
 
-        assert!(!verify_proof_split(
-            &ga, &gm, &identity, &p.c1, &p.c2, &p.s
-        ));
-        assert!(!verify_proof_split(
-            &ga, &gm, &p.n, &identity, &p.c2, &p.s
-        ));
-        assert!(!verify_proof_split(
-            &ga, &gm, &p.n, &p.c1, &identity, &p.s
-        ));
+        assert!(!verify_proof_split(&ga, &gm, &identity, &p.c1, &p.c2, &p.s));
+        assert!(!verify_proof_split(&ga, &gm, &p.n, &identity, &p.c2, &p.s));
+        assert!(!verify_proof_split(&ga, &gm, &p.n, &p.c1, &identity, &p.s));
     }
 }
