@@ -366,10 +366,9 @@ impl PseudonymPseudonymizationBatchProof {
         commitments: &crate::factors::VerifiablePseudonymizationCommitment,
     ) -> bool {
         let originals: Vec<_> = original.items.iter().map(|e| *e.value()).collect();
-        let gy = originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let Some(gy) = crate::data::verifiable::shared_gy(&originals) else {
+            return false;
+        };
         self.0.verify(
             &originals,
             &gy,
@@ -406,10 +405,7 @@ impl PseudonymPseudonymizationBatchProof {
         commitments: &crate::factors::VerifiablePseudonymizationCommitment,
     ) -> Option<Vec<EncryptedPseudonym>> {
         let originals: Vec<_> = original.items.iter().map(|e| *e.value()).collect();
-        let gy = originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let gy = crate::data::verifiable::shared_gy(&originals)?;
         self.0
             .verified_reconstruct(
                 &originals,

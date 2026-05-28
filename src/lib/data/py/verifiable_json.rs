@@ -1,9 +1,8 @@
 //! Python bindings for verifiable JSON transcryption.
 //!
-//! Wraps [`JSONTranscryptionProof`](crate::data::verifiable::json::JSONTranscryptionProof)
-//! and [`VerifiableJSONBatch`](crate::data::verifiable::json::VerifiableJSONBatch),
-//! and adds a `verifiable_transcrypt` producer on the existing
-//! [`PyEncryptedPEPJSONValue`](crate::data::py::json::PyEncryptedPEPJSONValue).
+//! Wraps [`JSONTranscryptionProof`] and [`VerifiableJSONBatch`], and adds a
+//! `verifiable_transcrypt` producer on the existing
+//! [`PyEncryptedPEPJSONValue`].
 //!
 //! Verifier-side methods `verify_json_transcryption` / `verify_json_transcryption_batch`
 //! are added to `PyVerifier` from this module via an extra `#[pymethods]` block

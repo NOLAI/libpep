@@ -162,7 +162,7 @@ pub fn py_make_pseudonym_session_keys_with_proof(
     session: &crate::factors::py::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
     blinding: &crate::keys::py::distribution::blinding::PyBlindingFactor,
-) -> PyPseudonymSessionKeysWithProof {
+) -> PyResult<PyPseudonymSessionKeysWithProof> {
     let mut rng = rand::rng();
     let (public, secret_key, proof, blinding_commitment) = make_pseudonym_session_keys_with_proof(
         &PseudonymGlobalSecretKey(global.0 .0),
@@ -170,13 +170,14 @@ pub fn py_make_pseudonym_session_keys_with_proof(
         &secret.0,
         &blinding.0 .0,
         &mut rng,
-    );
-    PyPseudonymSessionKeysWithProof {
+    )
+    .map_err(PyErr::from)?;
+    Ok(PyPseudonymSessionKeysWithProof {
         public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(public.0)),
         secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
         proof: proof.into(),
         blinding_commitment: blinding_commitment.into(),
-    }
+    })
 }
 
 /// Generate attribute session keys together with a session-key-share proof.
@@ -188,7 +189,7 @@ pub fn py_make_attribute_session_keys_with_proof(
     session: &crate::factors::py::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
     blinding: &crate::keys::py::distribution::blinding::PyBlindingFactor,
-) -> PyAttributeSessionKeysWithProof {
+) -> PyResult<PyAttributeSessionKeysWithProof> {
     let mut rng = rand::rng();
     let (public, secret_key, proof, blinding_commitment) = make_attribute_session_keys_with_proof(
         &AttributeGlobalSecretKey(global.0 .0),
@@ -196,13 +197,14 @@ pub fn py_make_attribute_session_keys_with_proof(
         &secret.0,
         &blinding.0 .0,
         &mut rng,
-    );
-    PyAttributeSessionKeysWithProof {
+    )
+    .map_err(PyErr::from)?;
+    Ok(PyAttributeSessionKeysWithProof {
         public: PyAttributeSessionPublicKey::from(PyGroupElement::from(public.0)),
         secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
         proof: proof.into(),
         blinding_commitment: blinding_commitment.into(),
-    }
+    })
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

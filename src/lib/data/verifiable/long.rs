@@ -403,10 +403,9 @@ impl LongPseudonymPseudonymizationBatchProof {
         commitments: &crate::factors::VerifiablePseudonymizationCommitment,
     ) -> bool {
         let (_, originals) = flatten_long_pseudonyms(&original.items);
-        let gy = originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let Some(gy) = crate::data::verifiable::shared_gy(&originals) else {
+            return false;
+        };
         self.0.verify(
             &originals,
             &gy,
@@ -443,10 +442,7 @@ impl LongPseudonymPseudonymizationBatchProof {
         commitments: &crate::factors::VerifiablePseudonymizationCommitment,
     ) -> Option<Vec<LongEncryptedPseudonym>> {
         let (block_counts, originals) = flatten_long_pseudonyms(&original.items);
-        let gy = originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let gy = crate::data::verifiable::shared_gy(&originals)?;
         let _ = self.0.verified_reconstruct(
             &originals,
             &gy,

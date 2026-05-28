@@ -167,13 +167,31 @@ impl Verifier {
     // Blinding commitments (for session key share verification)
     // ------------------------------------------------------------------
 
+    /// Register the blinding commitments for a transcryptor.
+    ///
+    /// Rejects weak commitments (identity or `G`). A `B_i = G` would mean
+    /// `b_i = 1`, defeating the blinding entirely. Re-registering an already
+    /// present transcryptor with a *different* set of commitments is also
+    /// rejected (`ConflictingValue`): a session-share verifier with both an
+    /// old and a new blinding commitment from the same transcryptor cannot
+    /// safely decide which one was used.
     pub fn register_blinding_commitments(
         &mut self,
         transcryptor_id: TranscryptorId,
         commitments: BlindingCommitments,
-    ) {
-        self.blinding_commitments
-            .insert(transcryptor_id, commitments);
+    ) -> Result<(), RegisterCommitmentsError> {
+        Self::validate_not_weak(&commitments.pseudonym.0, "blinding pseudonym")?;
+        Self::validate_not_weak(&commitments.attribute.0, "blinding attribute")?;
+        match self.blinding_commitments.get(&transcryptor_id) {
+            Some(existing) if *existing != commitments => {
+                Err(super::cache::CacheRegistrationError::ConflictingValue.into())
+            }
+            _ => {
+                self.blinding_commitments
+                    .insert(transcryptor_id, commitments);
+                Ok(())
+            }
+        }
     }
 
     pub fn get_blinding_commitments(&self, transcryptor_id: &str) -> Option<&BlindingCommitments> {
@@ -188,17 +206,39 @@ impl Verifier {
     // Master keys (verifiable-derivation only)
     // ------------------------------------------------------------------
 
+    /// Register the master public keys for a transcryptor (verifiable-derivation only).
+    ///
+    /// Rejects weak group elements (identity or `G`) in any master-key
+    /// component, and rejects re-registration with a *different* key (a
+    /// silent overwrite would invalidate everything previously cached against
+    /// the prior master keys). Idempotent re-registration with the same
+    /// values is allowed.
     #[cfg(feature = "verifiable-derivation")]
     pub fn register_master_keys(
         &mut self,
         transcryptor_id: TranscryptorId,
         pseudonym_master_key: MasterPseudonymizationPublicKey,
         rekey_master_key: MasterRekeyingPublicKey,
-    ) {
+    ) -> Result<(), RegisterCommitmentsError> {
+        Self::validate_not_weak(&pseudonym_master_key.x1, "master pseudonym x1")?;
+        Self::validate_not_weak(&pseudonym_master_key.x2, "master pseudonym x2")?;
+        Self::validate_not_weak(&rekey_master_key.y1, "master rekey y1")?;
+        Self::validate_not_weak(&rekey_master_key.y2, "master rekey y2")?;
+        if let Some(existing) = self.master_pseudonym_keys.get(&transcryptor_id) {
+            if *existing != pseudonym_master_key {
+                return Err(super::cache::CacheRegistrationError::ConflictingValue.into());
+            }
+        }
+        if let Some(existing) = self.master_rekey_keys.get(&transcryptor_id) {
+            if *existing != rekey_master_key {
+                return Err(super::cache::CacheRegistrationError::ConflictingValue.into());
+            }
+        }
         self.master_pseudonym_keys
             .insert(transcryptor_id.clone(), pseudonym_master_key);
         self.master_rekey_keys
             .insert(transcryptor_id, rekey_master_key);
+        Ok(())
     }
 
     #[cfg(feature = "verifiable-derivation")]
@@ -233,6 +273,47 @@ impl Verifier {
         } else {
             Ok(())
         }
+    }
+
+    /// Reject a [`VerifiablePseudonymizationCommitment`] whose reshuffle or
+    /// rekey component is weak (identity or `G`). Used by every one-shot
+    /// `verify_*` / `verified_reconstruct_*` entry point so that callers who
+    /// bypass [`register_pseudonymization_commitments`] still get the same
+    /// guard.
+    fn check_pseudonymization_commitment(
+        c: &VerifiablePseudonymizationCommitment,
+    ) -> Result<(), VerifyError> {
+        Self::validate_not_weak(&c.reshuffle_commitment.0 .0, "reshuffle").map_err(|e| {
+            VerifyError::WeakCommitment {
+                commitment_type: e.0,
+            }
+        })?;
+        Self::validate_not_weak(&c.rekey_commitment.0 .0, "rekey").map_err(|e| {
+            VerifyError::WeakCommitment {
+                commitment_type: e.0,
+            }
+        })?;
+        Ok(())
+    }
+
+    /// As [`check_pseudonymization_commitment`] but for a single rekey
+    /// commitment.
+    fn check_rekey_commitment(
+        c: &VerifiableRekeyCommitment,
+        kind: &'static str,
+    ) -> Result<(), VerifyError> {
+        Self::validate_not_weak(&c.commitment.0 .0, kind).map_err(|e| VerifyError::WeakCommitment {
+            commitment_type: e.0,
+        })
+    }
+
+    /// As [`check_pseudonymization_commitment`] but for a composite
+    /// transcryption commitment (pseudonym + attribute).
+    fn check_transcryption_commitment(
+        c: &VerifiableTranscryptionCommitment,
+    ) -> Result<(), VerifyError> {
+        Self::check_pseudonymization_commitment(&c.pseudonym)?;
+        Self::check_rekey_commitment(&c.attribute, "attribute rekey")
     }
 
     pub fn register_pseudonymization_commitments(
@@ -366,6 +447,7 @@ impl Verifier {
     where
         P: VerifiableRekeyProof,
     {
+        Self::check_rekey_commitment(commitments, "rekey")?;
         if proof.verify(original, commitments) {
             Ok(())
         } else {
@@ -382,6 +464,7 @@ impl Verifier {
     where
         P: VerifiableRekeyProof,
     {
+        Self::check_rekey_commitment(commitments, "rekey")?;
         proof
             .verified_reconstruct(original, commitments)
             .ok_or(VerifyError::ProofRejected)
@@ -399,6 +482,7 @@ impl Verifier {
     where
         P: VerifiablePseudonymizationProof,
     {
+        Self::check_pseudonymization_commitment(commitments)?;
         if proof.verify(original, commitments) {
             Ok(())
         } else {
@@ -417,6 +501,7 @@ impl Verifier {
     where
         P: VerifiablePseudonymizationProof,
     {
+        Self::check_pseudonymization_commitment(commitments)?;
         if proof.verify(original, public_key, commitments) {
             Ok(())
         } else {
@@ -434,6 +519,7 @@ impl Verifier {
     where
         P: VerifiablePseudonymizationProof,
     {
+        Self::check_pseudonymization_commitment(commitments)?;
         proof
             .verified_reconstruct(original, commitments)
             .ok_or(VerifyError::ProofRejected)
@@ -450,6 +536,7 @@ impl Verifier {
     where
         P: VerifiablePseudonymizationProof,
     {
+        Self::check_pseudonymization_commitment(commitments)?;
         proof
             .verified_reconstruct(original, public_key, commitments)
             .ok_or(VerifyError::ProofRejected)
@@ -467,6 +554,7 @@ impl Verifier {
     where
         P: VerifiableTranscryptionProof,
     {
+        Self::check_transcryption_commitment(commitments)?;
         if proof.verify(original, commitments) {
             Ok(())
         } else {
@@ -485,6 +573,7 @@ impl Verifier {
     where
         P: VerifiableTranscryptionProof,
     {
+        Self::check_transcryption_commitment(commitments)?;
         if proof.verify(original, public_key, commitments) {
             Ok(())
         } else {
@@ -502,6 +591,7 @@ impl Verifier {
     where
         P: VerifiableTranscryptionProof,
     {
+        Self::check_transcryption_commitment(commitments)?;
         proof
             .verified_reconstruct(original, commitments)
             .ok_or(VerifyError::ProofRejected)
@@ -518,6 +608,7 @@ impl Verifier {
     where
         P: VerifiableTranscryptionProof,
     {
+        Self::check_transcryption_commitment(commitments)?;
         proof
             .verified_reconstruct(original, public_key, commitments)
             .ok_or(VerifyError::ProofRejected)

@@ -1,9 +1,8 @@
 //! WASM bindings for verifiable JSON transcryption.
 //!
-//! Wraps [`JSONTranscryptionProof`](crate::data::verifiable::json::JSONTranscryptionProof)
-//! and [`VerifiableJSONBatch`](crate::data::verifiable::json::VerifiableJSONBatch),
-//! and adds a `verifiableTranscrypt` producer on the existing
-//! [`WASMEncryptedPEPJSONValue`](crate::data::wasm::json::WASMEncryptedPEPJSONValue).
+//! Wraps [`JSONTranscryptionProof`] and [`VerifiableJSONBatch`], and adds a
+//! `verifiableTranscrypt` producer on the existing
+//! [`WASMEncryptedPEPJSONValue`].
 //!
 //! Verifier-side methods `verifyJSONTranscryption` /
 //! `verifyJSONTranscryptionBatch` are added to `WASMVerifier` from this module

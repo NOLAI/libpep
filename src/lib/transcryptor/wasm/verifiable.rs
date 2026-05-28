@@ -157,7 +157,7 @@ impl WASMTranscryptor {
 
     /// Perform verifiable transcryption of a simple record.
     ///
-    /// Returns a [`RecordTranscryptionProof`] containing per-item proofs that
+    /// Returns a `WASMRecordTranscryptionProof` containing per-item proofs that
     /// the verifier can check against the commitments published for this
     /// transition.
     #[cfg(feature = "elgamal3")]
@@ -197,7 +197,7 @@ impl WASMTranscryptor {
 
     /// Perform verifiable transcryption of a long record.
     ///
-    /// Returns a [`LongRecordTranscryptionProof`] containing per-item proofs
+    /// Returns a `WASMLongRecordTranscryptionProof` containing per-item proofs
     /// that the verifier can check against the commitments published for this
     /// transition.
     #[cfg(all(feature = "long", feature = "elgamal3"))]

@@ -21,8 +21,10 @@
 //! - `"BatchError: ..."` (inconsistent structure variant)
 //! - `"JsonError: ..."`, `"UnifyError: ..."`
 //! - `"ProofRejected: ..."`, `"UnknownCommitment: ..."`,
-//!   `"WeakCommitment: ..."`, `"MasterKeysNotRegistered: ..."`
+//!   `"WeakCommitment: ..."`, `"MasterKeysNotRegistered: ..."`,
+//!   `"MalformedProof: ..."`
 //! - `"ConflictingValue: ..."`, `"CacheFull: ..."`
+//! - `"WeakBlinding: ..."`
 
 #![cfg(all(feature = "wasm", not(feature = "python")))]
 
@@ -130,4 +132,24 @@ pub(crate) fn register_commitments_err_to_js(
     e: crate::verifier::RegisterCommitmentsError,
 ) -> JsValue {
     js_err(e.display_prefix(), &e)
+}
+
+#[cfg(feature = "verifiable")]
+#[allow(dead_code)]
+pub(crate) fn session_key_share_err_to_js(
+    e: crate::keys::generation::SessionKeyShareError,
+) -> JsValue {
+    use crate::keys::generation::SessionKeyShareError;
+    let prefix = match e {
+        SessionKeyShareError::WeakBlinding => "WeakBlinding",
+    };
+    js_err(prefix, e)
+}
+
+/// Wrap a deserialization failure for a proof / commitment / other ZKP value
+/// as a typed `"MalformedProof: ..."` error so JS can distinguish a bad input
+/// from a `"ProofRejected: ..."` cryptographic failure.
+#[allow(dead_code)]
+pub(crate) fn malformed_proof_err(e: impl std::fmt::Display) -> JsValue {
+    js_err("MalformedProof", e)
 }

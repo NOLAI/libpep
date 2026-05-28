@@ -167,7 +167,7 @@ impl WASMVerifier {
         use crate::core::verifiable::VerifiableRRSK;
 
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+            .map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
 
         self.inner
@@ -192,7 +192,7 @@ impl WASMVerifier {
         use crate::core::verifiable::VerifiableRRSK;
 
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+            .map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
 
@@ -214,8 +214,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
 
-        let core_proof: VerifiableRekey = serde_json::from_str(proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+        let core_proof: VerifiableRekey =
+            serde_json::from_str(proof_json).map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymRekeyProof(core_proof);
 
         self.inner
@@ -236,8 +236,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedAttribute, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
 
-        let core_proof: VerifiableRekey = serde_json::from_str(proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+        let core_proof: VerifiableRekey =
+            serde_json::from_str(proof_json).map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::AttributeRekeyProof(core_proof);
 
         self.inner
@@ -330,7 +330,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         use crate::core::verifiable::VerifiableRRSK;
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+            .map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonymization_cached(
@@ -362,7 +362,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         use crate::core::verifiable::VerifiableRRSK;
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+            .map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         self.inner
@@ -392,8 +392,8 @@ impl WASMVerifier {
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
-        let core_proof: VerifiableRekey = serde_json::from_str(proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+        let core_proof: VerifiableRekey =
+            serde_json::from_str(proof_json).map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::PseudonymRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonym_rekey_cached(
@@ -419,8 +419,8 @@ impl WASMVerifier {
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedAttribute, JsValue> {
         use crate::core::verifiable::VerifiableRekey;
-        let core_proof: VerifiableRekey = serde_json::from_str(proof_json)
-            .map_err(|e| JsValue::from(JsError::new(&format!("{}", e))))?;
+        let core_proof: VerifiableRekey =
+            serde_json::from_str(proof_json).map_err(crate::wasm_errors::malformed_proof_err)?;
         let proof = crate::data::verifiable::simple::AttributeRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_attribute_rekey_cached(
@@ -454,9 +454,10 @@ impl WASMVerifier {
         &mut self,
         transcryptor_id: &str,
         commitments: &crate::keys::wasm::distribution::proofs::WASMBlindingCommitments,
-    ) {
+    ) -> Result<(), JsValue> {
         self.inner
-            .register_blinding_commitments(transcryptor_id.to_string(), commitments.0);
+            .register_blinding_commitments(transcryptor_id.to_string(), commitments.0)
+            .map_err(crate::wasm_errors::register_commitments_err_to_js)
     }
 
     /// Check if blinding commitments are registered for a transcryptor.
@@ -484,12 +485,14 @@ impl WASMVerifier {
         transcryptor_id: &str,
         pseudonym_master_key: &crate::factors::wasm::verifiable::WASMMasterPseudonymizationPublicKey,
         rekey_master_key: &crate::factors::wasm::verifiable::WASMMasterRekeyingPublicKey,
-    ) {
-        self.inner.register_master_keys(
-            transcryptor_id.to_string(),
-            pseudonym_master_key.0,
-            rekey_master_key.0,
-        );
+    ) -> Result<(), JsValue> {
+        self.inner
+            .register_master_keys(
+                transcryptor_id.to_string(),
+                pseudonym_master_key.0,
+                rekey_master_key.0,
+            )
+            .map_err(crate::wasm_errors::register_commitments_err_to_js)
     }
 
     /// Check if master keys are registered for a transcryptor.
@@ -631,7 +634,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -648,7 +653,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(feature = "elgamal3")]
@@ -663,7 +670,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -680,7 +689,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -695,7 +706,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -712,7 +725,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedAttributeBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -727,7 +742,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedAttributeBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -746,7 +763,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -763,7 +782,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", feature = "elgamal3"))]
@@ -778,7 +799,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -795,7 +818,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", any(feature = "elgamal3", not(feature = "batch-pk"))))]
@@ -810,7 +835,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedPseudonymBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -827,7 +854,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedAttributeBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", any(feature = "elgamal3", not(feature = "batch-pk"))))]
@@ -842,7 +871,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedAttributeBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -861,7 +892,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &sk, &new_sk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -878,7 +911,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(feature = "elgamal3")]
@@ -893,7 +928,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -912,7 +949,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &sk, &new_sk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -929,7 +968,9 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 
     #[cfg(all(feature = "long", feature = "elgamal3"))]
@@ -944,6 +985,8 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(&original.inner, &commitments.0)
             .map(|inner| crate::data::wasm::batch::WASMLongEncryptedRecordBatch { inner })
-            .ok_or_else(|| JsValue::from(JsError::new("verification failed")))
+            .ok_or_else(|| {
+                crate::wasm_errors::verify_err_to_js(crate::verifier::VerifyError::ProofRejected)
+            })
     }
 }

@@ -190,6 +190,33 @@ impl From<crate::verifier::RegisterCommitmentsError> for PyErr {
 }
 
 // ---------------------------------------------------------------------------
+// SessionKeyShareError — refusal to generate a session-key share.
+// ---------------------------------------------------------------------------
+
+create_exception!(
+    libpep,
+    SessionKeyShareError,
+    PEPError,
+    "Refused to generate a session-key share (e.g. weak blinding factor)."
+);
+create_exception!(
+    libpep,
+    WeakBlindingError,
+    SessionKeyShareError,
+    "The supplied blinding factor was 1, which would leak the share scalar."
+);
+
+#[cfg(feature = "verifiable")]
+impl From<crate::keys::generation::SessionKeyShareError> for PyErr {
+    fn from(e: crate::keys::generation::SessionKeyShareError) -> PyErr {
+        use crate::keys::generation::SessionKeyShareError;
+        match e {
+            SessionKeyShareError::WeakBlinding => WeakBlindingError::new_err(e.to_string()),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Module registration
 // ---------------------------------------------------------------------------
 
@@ -231,6 +258,13 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         py.get_type::<ConflictingValueError>(),
     )?;
     m.add("CacheFullError", py.get_type::<CacheFullError>())?;
+
+    // SessionKeyShareError subtree.
+    m.add(
+        "SessionKeyShareError",
+        py.get_type::<SessionKeyShareError>(),
+    )?;
+    m.add("WeakBlindingError", py.get_type::<WeakBlindingError>())?;
 
     Ok(())
 }

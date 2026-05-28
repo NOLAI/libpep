@@ -8,8 +8,6 @@ use crate::factors::py::commitments::{
 use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::verifier::Verifier;
 use derive_more::{Deref, From, Into};
-#[cfg(all(feature = "batch", feature = "verifiable"))]
-use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 #[cfg(feature = "verifiable")]
@@ -405,9 +403,10 @@ impl PyVerifier {
         &mut self,
         transcryptor_id: &str,
         commitments: &crate::keys::py::distribution::proofs::PyBlindingCommitments,
-    ) {
+    ) -> PyResult<()> {
         self.0
-            .register_blinding_commitments(transcryptor_id.to_string(), commitments.inner);
+            .register_blinding_commitments(transcryptor_id.to_string(), commitments.inner)
+            .map_err(PyErr::from)
     }
 
     /// Check if blinding commitments are registered for a transcryptor.
@@ -432,12 +431,14 @@ impl PyVerifier {
         transcryptor_id: &str,
         pseudonym_master_key: &crate::factors::py::verifiable::PyMasterPseudonymizationPublicKey,
         rekey_master_key: &crate::factors::py::verifiable::PyMasterRekeyingPublicKey,
-    ) {
-        self.0.register_master_keys(
-            transcryptor_id.to_string(),
-            pseudonym_master_key.inner,
-            rekey_master_key.inner,
-        );
+    ) -> PyResult<()> {
+        self.0
+            .register_master_keys(
+                transcryptor_id.to_string(),
+                pseudonym_master_key.inner,
+                rekey_master_key.inner,
+            )
+            .map_err(PyErr::from)
     }
 
     /// Check if master keys are registered for a transcryptor.
@@ -573,7 +574,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -589,7 +590,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &pk, &commitments.inner)
             .map(crate::data::py::batch::PyPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(feature = "elgamal3")]
@@ -603,7 +604,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -619,7 +620,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -633,7 +634,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -649,7 +650,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyAttributeBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -663,7 +664,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyAttributeBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -681,7 +682,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyLongPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -697,7 +698,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &pk, &commitments.inner)
             .map(crate::data::py::batch::PyLongPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", feature = "elgamal3"))]
@@ -711,7 +712,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyLongPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -727,7 +728,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyLongPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", any(feature = "elgamal3", not(feature = "batch-pk"))))]
@@ -741,7 +742,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyLongPseudonymBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -757,7 +758,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::py::batch::PyLongAttributeBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", any(feature = "elgamal3", not(feature = "batch-pk"))))]
@@ -771,7 +772,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyLongAttributeBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -789,7 +790,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &sk, &new_sk, &commitments.inner)
             .map(crate::data::py::batch::PyRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -805,7 +806,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &sk, &commitments.inner)
             .map(crate::data::py::batch::PyRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(feature = "elgamal3")]
@@ -819,7 +820,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -837,7 +838,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &sk, &new_sk, &commitments.inner)
             .map(crate::data::py::batch::PyLongRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -853,7 +854,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &sk, &commitments.inner)
             .map(crate::data::py::batch::PyLongRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 
     #[cfg(all(feature = "long", feature = "elgamal3"))]
@@ -867,7 +868,7 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(&original.inner, &commitments.inner)
             .map(crate::data::py::batch::PyLongRecordBatch::from)
-            .ok_or_else(|| PyValueError::new_err("verification failed"))
+            .ok_or_else(|| PyErr::from(crate::verifier::VerifyError::ProofRejected))
     }
 }
 

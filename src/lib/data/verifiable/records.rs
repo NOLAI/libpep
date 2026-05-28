@@ -570,10 +570,9 @@ impl RecordTranscryptionBatchProof {
             .iter()
             .flat_map(|r| r.attributes.iter().map(|a| *a.value()))
             .collect();
-        let gy = pseudonym_originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let Some(gy) = crate::data::verifiable::shared_gy(&pseudonym_originals) else {
+            return false;
+        };
         self.pseudonyms.verify(
             &pseudonym_originals,
             &gy,
@@ -650,10 +649,7 @@ impl RecordTranscryptionBatchProof {
             .iter()
             .flat_map(|r| r.attributes.iter().map(|a| *a.value()))
             .collect();
-        let gy = pseudonym_originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let gy = crate::data::verifiable::shared_gy(&pseudonym_originals)?;
         let pseudo_news = self.pseudonyms.verified_reconstruct(
             &pseudonym_originals,
             &gy,
@@ -1020,10 +1016,9 @@ impl LongRecordTranscryptionBatchProof {
                     .flat_map(|la| la.0.iter().map(|b| *b.value()))
             })
             .collect();
-        let gy = pseudonym_originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let Some(gy) = crate::data::verifiable::shared_gy(&pseudonym_originals) else {
+            return false;
+        };
         self.pseudonyms.verify(
             &pseudonym_originals,
             &gy,
@@ -1105,10 +1100,7 @@ impl LongRecordTranscryptionBatchProof {
                     .flat_map(|la| la.0.iter().map(|b| *b.value()))
             })
             .collect();
-        let gy = pseudonym_originals
-            .first()
-            .map(|c| c.gy)
-            .unwrap_or(crate::arithmetic::group_elements::G);
+        let gy = crate::data::verifiable::shared_gy(&pseudonym_originals)?;
         let pseudo_news = self.pseudonyms.verified_reconstruct(
             &pseudonym_originals,
             &gy,

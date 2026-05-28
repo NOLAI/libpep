@@ -858,3 +858,281 @@ fn tampered_proof_rejected_record_transcryption() {
         verifier.verify_transcryption::<_>(&enc_record, &tampered, &session_a_keys, &commitments);
     assert!(matches!(result, Err(VerifyError::ProofRejected)));
 }
+
+// ---------------------------------------------------------------------------
+// Batch negative tests: tampered proof, wrong original, element reorder,
+// wrong recipient PK, single-element batch, empty batch.
+// ---------------------------------------------------------------------------
+
+/// Set up a single-transcryptor batch verifiable-pseudonymize scenario and
+/// return everything the negative tests below need: the pre-batch (originals),
+/// the produced proof, the post-batch (mutated by the proving step), the
+/// transcryptor commitments, and the session-A public key.
+#[cfg(all(feature = "batch", feature = "serde"))]
+#[allow(clippy::type_complexity)]
+fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
+    rng: &mut R,
+) -> (
+    libpep::data::batch::EncryptedBatch<EncryptedPseudonym>,
+    libpep::data::batch::EncryptedBatch<EncryptedPseudonym>,
+    libpep::data::verifiable::simple::PseudonymPseudonymizationBatchProof,
+    libpep::factors::VerifiablePseudonymizationCommitment,
+    PseudonymSessionPublicKey,
+) {
+    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let d1 = PseudonymizationDomain::from("d1");
+    let d2 = PseudonymizationDomain::from("d2");
+    let s1 = EncryptionContext::from("s1");
+    let s2 = EncryptionContext::from("s2");
+
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
+    let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
+
+    let items: Vec<_> = (0..3)
+        .map(|_| encrypt(&Pseudonym::random(rng), &pk1, rng))
+        .collect();
+
+    #[cfg(not(feature = "elgamal3"))]
+    let pre = libpep::data::batch::EncryptedBatch::new(items, pk1).expect("new batch");
+    #[cfg(feature = "elgamal3")]
+    let pre = libpep::data::batch::EncryptedBatch::new(items).expect("new batch");
+
+    let mut post = pre.clone();
+    let proof = post.verifiable_pseudonymize(&info, rng);
+
+    (pre, post, proof, commitments, pk1)
+}
+
+/// A batch proof whose serialized form has had a single string component
+/// swapped must be rejected.
+#[cfg(all(feature = "batch", feature = "serde"))]
+#[test]
+fn tampered_proof_rejected_pseudonymization_batch() {
+    let rng = &mut rand::rng();
+    let (pre, _post, proof, commitments, pk1) = batch_pseudonymize_fixture(rng);
+    // Build a donor proof from an independent batch over the same statement.
+    let (_pre2, _post2, donor_proof, _c2, _pk2) = batch_pseudonymize_fixture(rng);
+    let tampered = swap_first_string(&proof, &donor_proof);
+
+    #[cfg(not(feature = "elgamal3"))]
+    let result = tampered.verified_reconstruct(&pre, &pk1, &commitments);
+    #[cfg(feature = "elgamal3")]
+    let result = {
+        let _ = &pk1; // unused under elgamal3
+        tampered.verified_reconstruct(&pre, &commitments)
+    };
+    assert!(result.is_none(), "tampered batch proof must not verify");
+}
+
+/// Verifying a batch proof against a different (but well-formed) pre-batch
+/// must be rejected: each per-item inner proof binds to its original
+/// ciphertext.
+#[cfg(all(feature = "batch", feature = "serde"))]
+#[test]
+fn wrong_original_rejected_pseudonymization_batch() {
+    let rng = &mut rand::rng();
+    let (_pre, _post, proof, commitments, pk1) = batch_pseudonymize_fixture(rng);
+    // Fresh, independent batch: same shape and key, different ciphertexts.
+    let (other_pre, _, _, _, _) = batch_pseudonymize_fixture(rng);
+
+    #[cfg(not(feature = "elgamal3"))]
+    let result = proof.verified_reconstruct(&other_pre, &pk1, &commitments);
+    #[cfg(feature = "elgamal3")]
+    let result = {
+        let _ = &pk1;
+        proof.verified_reconstruct(&other_pre, &commitments)
+    };
+    assert!(
+        result.is_none(),
+        "batch proof against a wrong original batch must not verify"
+    );
+}
+
+/// Reordering items within the input batch must be rejected: the per-item
+/// inner proofs are positionally bound to their originals.
+#[cfg(all(feature = "batch", feature = "serde"))]
+#[test]
+fn reordered_originals_rejected_pseudonymization_batch() {
+    let rng = &mut rand::rng();
+    let (pre, _post, proof, commitments, pk1) = batch_pseudonymize_fixture(rng);
+
+    // Build a permuted version of `pre` (swap items 0 and 1).
+    let mut items: Vec<_> = pre.as_items().to_vec();
+    assert!(items.len() >= 2);
+    items.swap(0, 1);
+    #[cfg(not(feature = "elgamal3"))]
+    let reordered = libpep::data::batch::EncryptedBatch::new(items, pk1).expect("reordered batch");
+    #[cfg(feature = "elgamal3")]
+    let reordered = libpep::data::batch::EncryptedBatch::new(items).expect("reordered batch");
+
+    #[cfg(not(feature = "elgamal3"))]
+    let result = proof.verified_reconstruct(&reordered, &pk1, &commitments);
+    #[cfg(feature = "elgamal3")]
+    let result = {
+        let _ = &pk1;
+        proof.verified_reconstruct(&reordered, &commitments)
+    };
+    assert!(
+        result.is_none(),
+        "swapping two items in the original batch must invalidate the proof"
+    );
+}
+
+/// Verifying a batch proof against a different recipient public key must be
+/// rejected (non-`elgamal3` only — under `elgamal3` the recipient key is
+/// embedded in `gy` and changing it amounts to changing the originals).
+#[cfg(all(feature = "batch", feature = "serde", not(feature = "elgamal3")))]
+#[test]
+fn wrong_recipient_pk_rejected_pseudonymization_batch() {
+    let rng = &mut rand::rng();
+    let (pre, _post, proof, commitments, _pk1) = batch_pseudonymize_fixture(rng);
+    // Fresh, unrelated recipient public key.
+    let (other_pk, _) = make_pseudonym_global_keys(rng);
+    let other_session_pk = PseudonymSessionPublicKey::from(*other_pk);
+
+    let result = proof.verified_reconstruct(&pre, &other_session_pk, &commitments);
+    assert!(
+        result.is_none(),
+        "batch proof must not verify under a wrong recipient public key"
+    );
+}
+
+/// Single-element batch happy path: proves the batch machinery handles
+/// `n=1` correctly (a common boundary).
+#[cfg(feature = "batch")]
+#[test]
+fn single_element_batch_verified_pseudonymization() {
+    let rng = &mut rand::rng();
+    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let d1 = PseudonymizationDomain::from("d1");
+    let d2 = PseudonymizationDomain::from("d2");
+    let s1 = EncryptionContext::from("s1");
+    let s2 = EncryptionContext::from("s2");
+
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
+    let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
+
+    let item = encrypt(&Pseudonym::random(rng), &pk1, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let pre = libpep::data::batch::EncryptedBatch::new(vec![item], pk1).expect("new batch");
+    #[cfg(feature = "elgamal3")]
+    let pre = libpep::data::batch::EncryptedBatch::new(vec![item]).expect("new batch");
+
+    let mut post = pre.clone();
+    let proof = post.verifiable_pseudonymize(&info, rng);
+
+    #[cfg(not(feature = "elgamal3"))]
+    let result = proof.verified_reconstruct(&pre, &pk1, &commitments);
+    #[cfg(feature = "elgamal3")]
+    let result = proof.verified_reconstruct(&pre, &commitments);
+    let news = result.expect("single-element batch must verify");
+    assert_eq!(news.len(), 1);
+}
+
+/// Empty-batch verification: an honestly-built empty proof verifies, but
+/// only against an empty pre-batch. Verifying an empty proof against a
+/// non-empty batch must fail (length mismatch).
+#[cfg(feature = "batch")]
+#[test]
+fn empty_batch_proof_only_verifies_against_empty_batch() {
+    let rng = &mut rand::rng();
+    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let d1 = PseudonymizationDomain::from("d1");
+    let d2 = PseudonymizationDomain::from("d2");
+    let s1 = EncryptionContext::from("s1");
+    let s2 = EncryptionContext::from("s2");
+
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
+    let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
+
+    #[cfg(not(feature = "elgamal3"))]
+    let pre_empty: libpep::data::batch::EncryptedBatch<EncryptedPseudonym> =
+        libpep::data::batch::EncryptedBatch::new(vec![], pk1).expect("empty batch");
+    #[cfg(feature = "elgamal3")]
+    let pre_empty: libpep::data::batch::EncryptedBatch<EncryptedPseudonym> =
+        libpep::data::batch::EncryptedBatch::new(vec![]).expect("empty batch");
+
+    let mut post = pre_empty.clone();
+    let empty_proof = post.verifiable_pseudonymize(&info, rng);
+
+    // Verifying the empty proof against the empty batch reconstructs to an
+    // empty Vec — and under elgamal3 we additionally enforce that the
+    // batch's `gy` is consistent (which an empty batch has no `gy` to share),
+    // so verification fails rather than vacuously succeeding.
+    #[cfg(not(feature = "elgamal3"))]
+    {
+        let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
+        assert!(result.is_some());
+        assert!(result.unwrap().is_empty());
+    }
+    #[cfg(feature = "elgamal3")]
+    {
+        let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
+        assert!(
+            result.is_none(),
+            "elgamal3 empty-batch verify must fail — no gy to bind"
+        );
+    }
+
+    // Verifying the empty proof against a non-empty batch must fail
+    // regardless of feature configuration.
+    let item = encrypt(&Pseudonym::random(rng), &pk1, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let pre_nonempty =
+        libpep::data::batch::EncryptedBatch::new(vec![item], pk1).expect("non-empty batch");
+    #[cfg(feature = "elgamal3")]
+    let pre_nonempty =
+        libpep::data::batch::EncryptedBatch::new(vec![item]).expect("non-empty batch");
+
+    #[cfg(not(feature = "elgamal3"))]
+    let bad = empty_proof.verified_reconstruct(&pre_nonempty, &pk1, &commitments);
+    #[cfg(feature = "elgamal3")]
+    let bad = empty_proof.verified_reconstruct(&pre_nonempty, &commitments);
+    assert!(bad.is_none(), "length mismatch must reject verification");
+}
+
+/// Under elgamal3, a batch mixing items encrypted under different recipient
+/// public keys (i.e. items with different `gy`) must be rejected even if
+/// every per-item proof is otherwise valid for *one* of the keys.
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
+#[test]
+fn mixed_gy_rejected_pseudonymization_batch() {
+    let rng = &mut rand::rng();
+    let (pre, _post, proof, commitments, _pk1) = batch_pseudonymize_fixture(rng);
+    // Build a foreign item under a *different* recipient session key so the
+    // `gy` differs from the rest of the batch.
+    let (_, gsk2) = make_pseudonym_global_keys(rng);
+    let enc_secret2 = EncryptionSecret::from("other-secret".into());
+    let (other_session_pk, _) = make_pseudonym_session_keys(
+        &gsk2,
+        &EncryptionContext::from("other-session"),
+        &enc_secret2,
+    );
+    let foreign_item = encrypt(&Pseudonym::random(rng), &other_session_pk, rng);
+
+    // Splice the foreign item into the pre-batch.
+    let mut items: Vec<_> = pre.as_items().to_vec();
+    items[0] = foreign_item;
+    let mixed = libpep::data::batch::EncryptedBatch::new(items).expect("mixed batch");
+
+    let result = proof.verified_reconstruct(&mixed, &commitments);
+    assert!(
+        result.is_none(),
+        "mixed-gy batch must be rejected by the shared_gy guard"
+    );
+}
