@@ -257,8 +257,6 @@ fn hash_to_scalar_2(typ: &[u8], input: &[u8]) -> ScalarNonZero {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_master_pseudonymization_key_derivation() {
         let mut rng = rand::rng();
