@@ -29,7 +29,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "verifiable")]
     {
         let zkps_module = PyModule::new(py, "zkps")?;
-        zkps::register_module(m)?;
+        zkps::register(&zkps_module)?;
+        m.add_submodule(&zkps_module)?;
         py.import("sys")?
             .getattr("modules")?
             .set_item("libpep.core.zkps", &zkps_module)?;

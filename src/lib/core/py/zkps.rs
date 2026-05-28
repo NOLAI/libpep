@@ -126,11 +126,9 @@ fn verify_zkp_proof(public_key: &[u8], message: &[u8], proof: &PyProof) -> PyRes
 }
 
 /// Register the zkps module.
-pub fn register_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    let zkps_module = PyModule::new(parent_module.py(), "zkps")?;
-    zkps_module.add_class::<PyProof>()?;
-    zkps_module.add_function(wrap_pyfunction!(create_zkp_proof, &zkps_module)?)?;
-    zkps_module.add_function(wrap_pyfunction!(verify_zkp_proof, &zkps_module)?)?;
-    parent_module.add_submodule(&zkps_module)?;
+pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyProof>()?;
+    m.add_function(wrap_pyfunction!(create_zkp_proof, m)?)?;
+    m.add_function(wrap_pyfunction!(verify_zkp_proof, m)?)?;
     Ok(())
 }

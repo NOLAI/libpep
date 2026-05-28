@@ -1,6 +1,6 @@
 //! Python bindings for batch transcryption operations.
 //!
-//! These wrap [`EncryptedBatch`](crate::data::batch::EncryptedBatch) so the
+//! These wrap [`EncryptedBatch`] so the
 //! Python surface stays close to the original `*_batch` free functions but
 //! benefits from the new struct's lockstep public-key updates internally.
 
@@ -162,8 +162,15 @@ pub fn py_pseudonymize_batch(
     ))
 }
 
-/// Polymorphic batch rekeying. (Rekey does not require Y, so the same
-/// signature works in both modes.)
+/// Polymorphic batch rekeying.
+///
+/// Under `elgamal3`, every ciphertext carries its own `gy` and no
+/// recipient public key is needed. Under `elgamal2`, the caller must supply
+/// the recipient public key matching the encrypted-value variant
+/// (`PseudonymSessionPublicKey` for pseudonyms,
+/// `AttributeSessionPublicKey` for attributes); it is threaded through the
+/// batch construction so the binding does not invent a fake key.
+#[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "rekey_batch")]
 #[allow(clippy::expect_used)]
@@ -188,15 +195,8 @@ pub fn py_rekey_batch(
                         .0
                 })
                 .collect();
-            #[cfg(feature = "elgamal3")]
             let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            #[cfg(not(feature = "elgamal3"))]
-            let mut batch = EncryptedBatch::new(
-                items,
-                crate::keys::PseudonymSessionPublicKey::from(crate::arithmetic::group_elements::G),
-            )
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             batch
                 .rekey(&info.0, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -224,15 +224,8 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            #[cfg(feature = "elgamal3")]
             let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            #[cfg(not(feature = "elgamal3"))]
-            let mut batch = EncryptedBatch::new(
-                items,
-                crate::keys::PseudonymSessionPublicKey::from(crate::arithmetic::group_elements::G),
-            )
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             batch
                 .rekey(&info.0, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -259,15 +252,8 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            #[cfg(feature = "elgamal3")]
             let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            #[cfg(not(feature = "elgamal3"))]
-            let mut batch = EncryptedBatch::new(
-                items,
-                crate::keys::AttributeSessionPublicKey::from(crate::arithmetic::group_elements::G),
-            )
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             batch
                 .rekey(&rust_info, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -296,15 +282,175 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            #[cfg(feature = "elgamal3")]
             let mut batch = EncryptedBatch::new(items)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-            #[cfg(not(feature = "elgamal3"))]
-            let mut batch = EncryptedBatch::new(
-                items,
-                crate::keys::AttributeSessionPublicKey::from(crate::arithmetic::group_elements::G),
-            )
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&rust_info, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
+                .into_iter()
+                .map(|e| {
+                    Py::new(py, PyLongEncryptedAttribute(e))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
+    Err(PyTypeError::new_err(
+        "rekey_batch() requires list of encrypted values and matching rekey info",
+    ))
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[pyfunction]
+#[pyo3(name = "rekey_batch")]
+#[allow(clippy::expect_used)]
+pub fn py_rekey_batch(
+    py: Python,
+    encrypted: Vec<Bound<PyAny>>,
+    rekey_info: &Bound<PyAny>,
+    public_key: &Bound<PyAny>,
+) -> PyResult<Vec<Py<PyAny>>> {
+    if encrypted.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut rng = rand::rng();
+
+    // EncryptedPseudonym × PseudonymRekeyFactor (requires PseudonymSessionPublicKey)
+    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+        if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
+            let pk = public_key
+                .extract::<crate::keys::py::PyPseudonymSessionPublicKey>()
+                .map_err(|_| {
+                    PyTypeError::new_err(
+                        "rekey_batch on pseudonyms requires PseudonymSessionPublicKey",
+                    )
+                })?;
+            let pk = crate::keys::PseudonymSessionPublicKey::from(pk.0 .0);
+            let items: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyEncryptedPseudonym>()
+                        .expect("type already validated")
+                        .0
+                })
+                .collect();
+            let mut batch = EncryptedBatch::new(items, pk)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&info.0, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
+                .into_iter()
+                .map(|e| {
+                    Py::new(py, PyEncryptedPseudonym(e))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
+    #[cfg(feature = "long")]
+    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+        if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
+            let pk = public_key
+                .extract::<crate::keys::py::PyPseudonymSessionPublicKey>()
+                .map_err(|_| {
+                    PyTypeError::new_err(
+                        "rekey_batch on long pseudonyms requires PseudonymSessionPublicKey",
+                    )
+                })?;
+            let pk = crate::keys::PseudonymSessionPublicKey::from(pk.0 .0);
+            let items: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyLongEncryptedPseudonym>()
+                        .expect("type already validated")
+                        .0
+                        .clone()
+                })
+                .collect();
+            let mut batch = EncryptedBatch::new(items, pk)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&info.0, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
+                .into_iter()
+                .map(|e| {
+                    Py::new(py, PyLongEncryptedPseudonym(e))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
+    if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
+        if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
+            let pk = public_key
+                .extract::<crate::keys::py::PyAttributeSessionPublicKey>()
+                .map_err(|_| {
+                    PyTypeError::new_err(
+                        "rekey_batch on attributes requires AttributeSessionPublicKey",
+                    )
+                })?;
+            let pk = crate::keys::AttributeSessionPublicKey::from(pk.0 .0);
+            let items: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyEncryptedAttribute>()
+                        .expect("type already validated")
+                        .0
+                })
+                .collect();
+            let rust_info = AttributeRekeyInfo::from(&info);
+            let mut batch = EncryptedBatch::new(items, pk)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            batch
+                .rekey(&rust_info, &mut rng)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
+            return Ok(batch
+                .into_items()
+                .into_iter()
+                .map(|e| {
+                    Py::new(py, PyEncryptedAttribute(e))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .collect());
+        }
+    }
+
+    #[cfg(feature = "long")]
+    if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
+        if encrypted[0].extract::<PyLongEncryptedAttribute>().is_ok() {
+            let pk = public_key
+                .extract::<crate::keys::py::PyAttributeSessionPublicKey>()
+                .map_err(|_| {
+                    PyTypeError::new_err(
+                        "rekey_batch on long attributes requires AttributeSessionPublicKey",
+                    )
+                })?;
+            let pk = crate::keys::AttributeSessionPublicKey::from(pk.0 .0);
+            let items: Vec<_> = encrypted
+                .iter()
+                .map(|e| {
+                    e.extract::<PyLongEncryptedAttribute>()
+                        .expect("type already validated")
+                        .0
+                        .clone()
+                })
+                .collect();
+            let rust_info = AttributeRekeyInfo::from(&info);
+            let mut batch = EncryptedBatch::new(items, pk)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             batch
                 .rekey(&rust_info, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;

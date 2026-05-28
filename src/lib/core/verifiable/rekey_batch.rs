@@ -10,23 +10,6 @@ use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub fn verifiable_rekey_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRekeyBatch {
-    VerifiableRekeyBatch::new(ciphertexts, k, rng)
-}
-
-pub fn verifiable_rekey2_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRekey2Batch {
-    VerifiableRekey2Batch::new(ciphertexts, k_from, k_to, rng)
-}
-
 /// A batch of [`VerifiableRekey`] proofs sharing one rekey factor.
 ///
 /// No header is needed: the rekey-factor commitment `K = k·G` is supplied
@@ -34,7 +17,14 @@ pub fn verifiable_rekey2_batch<R: Rng + CryptoRng>(
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRekeyBatch {
-    pub inners: Vec<VerifiableRekey>,
+    pub(crate) inners: Vec<VerifiableRekey>,
+}
+
+impl VerifiableRekeyBatch {
+    /// The per-message inner proofs.
+    pub fn inners(&self) -> &[VerifiableRekey] {
+        &self.inners
+    }
 }
 
 impl VerifiableRekeyBatch {
@@ -98,9 +88,9 @@ impl VerifiableRekeyBatch {
     }
 }
 
-/// A batch of [`VerifiableRekey2`] proofs sharing one `(k_from, k_to)` factor pair.
+/// A batch of [`super::VerifiableRekey2`] proofs sharing one `(k_from, k_to)` factor pair.
 ///
-/// Mirrors [`VerifiableRekey2`]'s layout (`gk`, `p_gk_to`, `inner: VerifiableRekey`)
+/// Mirrors [`super::VerifiableRekey2`]'s layout (`gk`, `p_gk_to`, `inner: VerifiableRekey`)
 /// at batch level — the inner scalar `k = k_from⁻¹·k_to` is hoisted into the
 /// single `gk`/`p_gk_to` pair, and the per-message inners are still ordinary
 /// [`VerifiableRekey`] values that verify against [`Self::combined_commitment`].
@@ -108,11 +98,26 @@ impl VerifiableRekeyBatch {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRekey2Batch {
     /// `K = (k_from⁻¹·k_to)·G`.
-    pub gk: GroupElement,
+    pub(crate) gk: GroupElement,
     /// `ZKP{K_to = k_from * K}`.
-    pub p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof,
     /// One [`VerifiableRekey`] per ciphertext, under the combined scalar.
-    pub inners: Vec<VerifiableRekey>,
+    pub(crate) inners: Vec<VerifiableRekey>,
+}
+
+impl VerifiableRekey2Batch {
+    /// The combined commitment `K = (k_from⁻¹·k_to)·G`.
+    pub fn gk(&self) -> &GroupElement {
+        &self.gk
+    }
+    /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
+    pub fn p_gk_to(&self) -> &Proof {
+        &self.p_gk_to
+    }
+    /// The per-message inner proofs.
+    pub fn inners(&self) -> &[VerifiableRekey] {
+        &self.inners
+    }
 }
 
 impl VerifiableRekey2Batch {

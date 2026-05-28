@@ -43,11 +43,26 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRSK {
     /// `T = (s·k⁻¹)·G`.
-    pub gt: GroupElement,
+    pub(crate) gt: GroupElement,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
-    pub p_gs: Proof,
+    pub(crate) p_gs: Proof,
     /// Per-message body.
-    pub inner: VerifiableRSKInner,
+    pub(crate) inner: VerifiableRSKInner,
+}
+
+impl VerifiableRSK {
+    /// `T = (s·k⁻¹)·G`.
+    pub fn gt(&self) -> &GroupElement {
+        &self.gt
+    }
+    /// The proof `ZKP{S = k * T}`.
+    pub fn p_gs(&self) -> &Proof {
+        &self.p_gs
+    }
+    /// The per-message inner sub-proofs body.
+    pub fn inner(&self) -> &VerifiableRSKInner {
+        &self.inner
+    }
 }
 
 impl VerifiableRSK {
@@ -127,12 +142,28 @@ impl VerifiableRSK {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRSKInner {
     /// `ZKP{B' = (s·k⁻¹) * B}`: first component is `B' = (s·k⁻¹)·B`.
-    pub p_gb_prime: Proof,
+    pub(crate) p_gb_prime: Proof,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
-    pub p_gc_prime: Proof,
+    pub(crate) p_gc_prime: Proof,
     /// `ZKP{Y' = k * Y}`: first component is `Y' = k·Y`.
     #[cfg(feature = "elgamal3")]
-    pub p_gy_prime: Proof,
+    pub(crate) p_gy_prime: Proof,
+}
+
+impl VerifiableRSKInner {
+    /// The proof `ZKP{B' = (s·k⁻¹) * B}`.
+    pub fn p_gb_prime(&self) -> &Proof {
+        &self.p_gb_prime
+    }
+    /// The proof `ZKP{C' = s * C}`.
+    pub fn p_gc_prime(&self) -> &Proof {
+        &self.p_gc_prime
+    }
+    /// The proof `ZKP{Y' = k * Y}` (elgamal3 only).
+    #[cfg(feature = "elgamal3")]
+    pub fn p_gy_prime(&self) -> &Proof {
+        &self.p_gy_prime
+    }
 }
 
 impl VerifiableRSKInner {
@@ -218,15 +249,38 @@ impl VerifiableRSKInner {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRSK2 {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub gs: GroupElement,
+    pub(crate) gs: GroupElement,
     /// `K = (k_from⁻¹·k_to)·G`.
-    pub gk: GroupElement,
+    pub(crate) gk: GroupElement,
     /// `ZKP{S_to = s_from * S}`: first component is `S_to = s_to·G`.
-    pub p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof,
     /// `ZKP{K_to = k_from * K}`: first component is `K_to = k_to·G`.
-    pub p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof,
     /// VRSK over the combined scalars.
-    pub inner: VerifiableRSK,
+    pub(crate) inner: VerifiableRSK,
+}
+
+impl VerifiableRSK2 {
+    /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
+    pub fn gs(&self) -> &GroupElement {
+        &self.gs
+    }
+    /// The combined rekey commitment `K = (k_from⁻¹·k_to)·G`.
+    pub fn gk(&self) -> &GroupElement {
+        &self.gk
+    }
+    /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
+    pub fn p_gs_to(&self) -> &Proof {
+        &self.p_gs_to
+    }
+    /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
+    pub fn p_gk_to(&self) -> &Proof {
+        &self.p_gk_to
+    }
+    /// The inner VRSK over the combined scalars.
+    pub fn inner(&self) -> &VerifiableRSK {
+        &self.inner
+    }
 }
 
 impl VerifiableRSK2 {
@@ -338,26 +392,6 @@ impl VerifiableRSK2 {
             &self.combined_rekey_commitment(),
         )
     }
-}
-
-pub fn verifiable_rsk<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRSK {
-    VerifiableRSK::new(m, s, k, rng)
-}
-
-pub fn verifiable_rsk2<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRSK2 {
-    VerifiableRSK2::new(m, s_from, s_to, k_from, k_to, rng)
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@
 //! ([`EncryptedPseudonym`](crate::data::simple::EncryptedPseudonym),
 //! [`EncryptedAttribute`](crate::data::simple::EncryptedAttribute)), long,
 //! records, and JSON — via the polymorphism already present in
-//! [`Encryptable::PublicKeyType`](crate::data::traits::Encryptable::PublicKeyType).
+//! [`Encryptable::PublicKeyType`].
 //!
 //! Under `elgamal2` with the `batch-pk` feature, the batch carries the
 //! recipient public key at the batch level so that transcryptor operations
@@ -15,7 +15,7 @@
 //! ciphertext already carries its own `gy`).
 //!
 //! Construction validates that all items share the same
-//! [`HasStructure::structure`](crate::data::traits::HasStructure::structure) so
+//! [`HasStructure::structure`] so
 //! that subsequent batch operations can shuffle the items without enabling
 //! linkability through structural fingerprinting.
 

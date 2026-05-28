@@ -301,7 +301,7 @@ impl WASMVerifiableRekey {
 #[wasm_bindgen(js_name = verifiableRekey)]
 pub fn wasm_verifiable_rekey(m: &WASMElGamal, k: &WASMScalarNonZero) -> WASMVerifiableRekey {
     let mut rng = rand::rng();
-    WASMVerifiableRekey(crate::core::verifiable::verifiable_rekey(m, k, &mut rng))
+    WASMVerifiableRekey(VerifiableRekey::new(m, k, &mut rng))
 }
 
 #[derive(Clone, From, Into, Deref)]
@@ -383,9 +383,7 @@ pub fn wasm_verifiable_rekey2(
     k_to: &WASMScalarNonZero,
 ) -> WASMVerifiableRekey2 {
     let mut rng = rand::rng();
-    WASMVerifiableRekey2(crate::core::verifiable::verifiable_rekey2(
-        m, k_from, k_to, &mut rng,
-    ))
+    WASMVerifiableRekey2(VerifiableRekey2::new(m, k_from, k_to, &mut rng))
 }
 
 // ---------------------------------------------------------------------------
@@ -450,9 +448,7 @@ pub fn wasm_verifiable_reshuffle(
     s: &WASMScalarNonZero,
 ) -> WASMVerifiableReshuffle {
     let mut rng = rand::rng();
-    WASMVerifiableReshuffle(crate::core::verifiable::verifiable_reshuffle(
-        m, s, &mut rng,
-    ))
+    WASMVerifiableReshuffle(VerifiableReshuffle::new(m, s, &mut rng))
 }
 
 #[derive(Clone, From, Into, Deref)]
@@ -534,9 +530,7 @@ pub fn wasm_verifiable_reshuffle2(
     s_to: &WASMScalarNonZero,
 ) -> WASMVerifiableReshuffle2 {
     let mut rng = rand::rng();
-    WASMVerifiableReshuffle2(crate::core::verifiable::verifiable_reshuffle2(
-        m, s_from, s_to, &mut rng,
-    ))
+    WASMVerifiableReshuffle2(VerifiableReshuffle2::new(m, s_from, s_to, &mut rng))
 }
 
 // ---------------------------------------------------------------------------
@@ -654,7 +648,7 @@ pub fn wasm_verifiable_rsk(
     k: &WASMScalarNonZero,
 ) -> WASMVerifiableRSK {
     let mut rng = rand::rng();
-    WASMVerifiableRSK(crate::core::verifiable::verifiable_rsk(m, s, k, &mut rng))
+    WASMVerifiableRSK(VerifiableRSK::new(m, s, k, &mut rng))
 }
 
 #[derive(Clone, From, Into, Deref)]
@@ -768,9 +762,7 @@ pub fn wasm_verifiable_rsk2(
     k_to: &WASMScalarNonZero,
 ) -> WASMVerifiableRSK2 {
     let mut rng = rand::rng();
-    WASMVerifiableRSK2(crate::core::verifiable::verifiable_rsk2(
-        m, s_from, s_to, k_from, k_to, &mut rng,
-    ))
+    WASMVerifiableRSK2(VerifiableRSK2::new(m, s_from, s_to, k_from, k_to, &mut rng))
 }
 
 // ---------------------------------------------------------------------------
@@ -897,9 +889,7 @@ pub fn wasm_verifiable_rrsk(
     k: &WASMScalarNonZero,
 ) -> WASMVerifiableRRSK {
     let mut rng = rand::rng();
-    WASMVerifiableRRSK(crate::core::verifiable::verifiable_rrsk(
-        m, &m.gy, r, s, k, &mut rng,
-    ))
+    WASMVerifiableRRSK(VerifiableRRSK::new(m, &m.gy, r, s, k, &mut rng))
 }
 
 #[cfg(not(feature = "elgamal3"))]
@@ -912,9 +902,7 @@ pub fn wasm_verifiable_rrsk(
     k: &WASMScalarNonZero,
 ) -> WASMVerifiableRRSK {
     let mut rng = rand::rng();
-    WASMVerifiableRRSK(crate::core::verifiable::verifiable_rrsk(
-        m, gy, r, s, k, &mut rng,
-    ))
+    WASMVerifiableRRSK(VerifiableRRSK::new(m, gy, r, s, k, &mut rng))
 }
 
 #[derive(Clone, From, Into, Deref)]
@@ -1075,7 +1063,7 @@ pub fn wasm_verifiable_rrsk2(
     k_to: &WASMScalarNonZero,
 ) -> WASMVerifiableRRSK2 {
     let mut rng = rand::rng();
-    WASMVerifiableRRSK2(crate::core::verifiable::verifiable_rrsk2(
+    WASMVerifiableRRSK2(VerifiableRRSK2::new(
         m, &m.gy, r, s_from, s_to, k_from, k_to, &mut rng,
     ))
 }
@@ -1093,7 +1081,7 @@ pub fn wasm_verifiable_rrsk2(
     k_to: &WASMScalarNonZero,
 ) -> WASMVerifiableRRSK2 {
     let mut rng = rand::rng();
-    WASMVerifiableRRSK2(crate::core::verifiable::verifiable_rrsk2(
+    WASMVerifiableRRSK2(VerifiableRRSK2::new(
         m, gy, r, s_from, s_to, k_from, k_to, &mut rng,
     ))
 }
@@ -1316,9 +1304,7 @@ pub fn wasm_verifiable_rekey_batch(
 ) -> WASMVerifiableRekeyBatch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRekeyBatch(crate::core::verifiable::verifiable_rekey_batch(
-        &cts, k, &mut rng,
-    ))
+    WASMVerifiableRekeyBatch(VerifiableRekeyBatch::new(&cts, k, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -1408,9 +1394,7 @@ pub fn wasm_verifiable_rekey2_batch(
 ) -> WASMVerifiableRekey2Batch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRekey2Batch(crate::core::verifiable::verifiable_rekey2_batch(
-        &cts, k_from, k_to, &mut rng,
-    ))
+    WASMVerifiableRekey2Batch(VerifiableRekey2Batch::new(&cts, k_from, k_to, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -1482,9 +1466,7 @@ pub fn wasm_verifiable_reshuffle_batch(
 ) -> WASMVerifiableReshuffleBatch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableReshuffleBatch(crate::core::verifiable::verifiable_reshuffle_batch(
-        &cts, s, &mut rng,
-    ))
+    WASMVerifiableReshuffleBatch(VerifiableReshuffleBatch::new(&cts, s, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -1574,9 +1556,7 @@ pub fn wasm_verifiable_reshuffle2_batch(
 ) -> WASMVerifiableReshuffle2Batch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableReshuffle2Batch(crate::core::verifiable::verifiable_reshuffle2_batch(
-        &cts, s_from, s_to, &mut rng,
-    ))
+    WASMVerifiableReshuffle2Batch(VerifiableReshuffle2Batch::new(&cts, s_from, s_to, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -1661,9 +1641,7 @@ pub fn wasm_verifiable_rsk_batch(
 ) -> WASMVerifiableRSKBatch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRSKBatch(crate::core::verifiable::verifiable_rsk_batch(
-        &cts, s, k, &mut rng,
-    ))
+    WASMVerifiableRSKBatch(VerifiableRSKBatch::new(&cts, s, k, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -1787,7 +1765,7 @@ pub fn wasm_verifiable_rsk2_batch(
 ) -> WASMVerifiableRSK2Batch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRSK2Batch(crate::core::verifiable::verifiable_rsk2_batch(
+    WASMVerifiableRSK2Batch(VerifiableRSK2Batch::new(
         &cts, s_from, s_to, k_from, k_to, &mut rng,
     ))
 }
@@ -1932,9 +1910,9 @@ pub fn wasm_verifiable_rrsk_batch(
     let mut rng = rand::rng();
     let gy = ciphertexts[0].gy;
     let cts = into_elgamal_vec(&ciphertexts);
-    Ok(WASMVerifiableRRSKBatch(
-        crate::core::verifiable::verifiable_rrsk_batch(&cts, &gy, s, k, &mut rng),
-    ))
+    Ok(WASMVerifiableRRSKBatch(VerifiableRRSKBatch::new(
+        &cts, &gy, s, k, &mut rng,
+    )))
 }
 
 #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
@@ -1947,9 +1925,7 @@ pub fn wasm_verifiable_rrsk_batch(
 ) -> WASMVerifiableRRSKBatch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRRSKBatch(crate::core::verifiable::verifiable_rrsk_batch(
-        &cts, gy, s, k, &mut rng,
-    ))
+    WASMVerifiableRRSKBatch(VerifiableRRSKBatch::new(&cts, gy, s, k, &mut rng))
 }
 
 #[cfg(feature = "batch")]
@@ -2153,11 +2129,9 @@ pub fn wasm_verifiable_rrsk2_batch(
     let mut rng = rand::rng();
     let gy = ciphertexts[0].gy;
     let cts = into_elgamal_vec(&ciphertexts);
-    Ok(WASMVerifiableRRSK2Batch(
-        crate::core::verifiable::verifiable_rrsk2_batch(
-            &cts, &gy, s_from, s_to, k_from, k_to, &mut rng,
-        ),
-    ))
+    Ok(WASMVerifiableRRSK2Batch(VerifiableRRSK2Batch::new(
+        &cts, &gy, s_from, s_to, k_from, k_to, &mut rng,
+    )))
 }
 
 #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
@@ -2173,7 +2147,7 @@ pub fn wasm_verifiable_rrsk2_batch(
 ) -> WASMVerifiableRRSK2Batch {
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
-    WASMVerifiableRRSK2Batch(crate::core::verifiable::verifiable_rrsk2_batch(
+    WASMVerifiableRRSK2Batch(VerifiableRRSK2Batch::new(
         &cts, gy, s_from, s_to, k_from, k_to, &mut rng,
     ))
 }

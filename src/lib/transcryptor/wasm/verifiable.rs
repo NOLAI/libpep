@@ -2,59 +2,60 @@
 
 use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::wasm::commitments::{
-    WASMVerifiablePseudonymizationCommitments, WASMVerifiableRekeyCommitments,
+    WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
+    WASMVerifiableTranscryptionCommitment,
 };
 use crate::factors::wasm::contexts::{
     WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
     WASMPseudonymizationInfo,
 };
 use crate::transcryptor::wasm::types::WASMTranscryptor;
-use crate::transcryptor::Transcryptor;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(js_class = Transcryptor)]
 impl WASMTranscryptor {
     /// Generate the public commitments (combined per transition) for a
-    /// pseudonymization info.
-    #[wasm_bindgen(js_name = pseudonymizationCommitments)]
-    pub fn pseudonymization_commitments(
+    /// pseudonymization transition.
+    #[wasm_bindgen(js_name = pseudonymizationCommitment)]
+    pub fn pseudonymization_commitment(
         &self,
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-    ) -> WASMVerifiablePseudonymizationCommitments {
-        let info = self.0.pseudonymization_info(
+    ) -> WASMVerifiablePseudonymizationCommitment {
+        WASMVerifiablePseudonymizationCommitment::from(self.0.pseudonymization_commitment(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
             &session_to.0,
-        );
-        WASMVerifiablePseudonymizationCommitments::from(Transcryptor::pseudonymization_commitment(
-            &info,
         ))
     }
 
     /// Generate the public commitment for an attribute rekey transition.
-    #[wasm_bindgen(js_name = attributeRekeyCommitments)]
-    pub fn attribute_rekey_commitments(
+    #[wasm_bindgen(js_name = attributeRekeyCommitment)]
+    pub fn attribute_rekey_commitment(
         &self,
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-    ) -> WASMVerifiableRekeyCommitments {
-        let info = self.0.attribute_rekey_info(&session_from.0, &session_to.0);
-        WASMVerifiableRekeyCommitments::from(Transcryptor::attribute_rekey_commitment(&info))
+    ) -> WASMVerifiableRekeyCommitment {
+        WASMVerifiableRekeyCommitment::from(
+            self.0
+                .attribute_rekey_commitment(&session_from.0, &session_to.0),
+        )
     }
 
     /// Generate the public commitment for a pseudonym rekey transition.
-    #[wasm_bindgen(js_name = pseudonymRekeyCommitments)]
-    pub fn pseudonym_rekey_commitments(
+    #[wasm_bindgen(js_name = pseudonymRekeyCommitment)]
+    pub fn pseudonym_rekey_commitment(
         &self,
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-    ) -> WASMVerifiableRekeyCommitments {
-        let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        WASMVerifiableRekeyCommitments::from(Transcryptor::pseudonym_rekey_commitment(&info))
+    ) -> WASMVerifiableRekeyCommitment {
+        WASMVerifiableRekeyCommitment::from(
+            self.0
+                .pseudonym_rekey_commitment(&session_from.0, &session_to.0),
+        )
     }
 
     /// Perform verifiable pseudonymization.
@@ -133,5 +134,74 @@ impl WASMTranscryptor {
         let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
 
         serde_json::to_string(&operation_proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+    }
+
+    /// Build the combined public commitments for a transcryption transition
+    /// (pseudonymization + attribute rekey). Used by the verifier to check
+    /// `verifiableRecordTranscrypt` proofs.
+    #[wasm_bindgen(js_name = transcryptionCommitment)]
+    pub fn transcryption_commitment(
+        &self,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> WASMVerifiableTranscryptionCommitment {
+        WASMVerifiableTranscryptionCommitment::from(self.0.transcryption_commitment(
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
+        ))
+    }
+
+    /// Perform verifiable transcryption of a simple record passed as JSON.
+    ///
+    /// Accepts the encrypted record as JSON together with the transition's
+    /// domain/session contexts (so the transcryptor can derive its own
+    /// `TranscryptionInfo`). Returns the `RecordTranscryptionProof` JSON.
+    #[cfg(all(feature = "serde", feature = "elgamal3"))]
+    #[wasm_bindgen(js_name = verifiableRecordTranscrypt)]
+    pub fn verifiable_record_transcrypt(
+        &self,
+        encrypted_record_json: &str,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> Result<String, JsValue> {
+        let enc: crate::data::records::EncryptedRecord =
+            serde_json::from_str(encrypted_record_json)
+                .map_err(|e| JsValue::from_str(&format!("encrypted_record: {}", e)))?;
+        let info =
+            self.0
+                .transcryption_info(&domain_from.0, &domain_to.0, &session_from.0, &session_to.0);
+        let mut rng = rand::rng();
+        let proof = self.0.verifiable_transcrypt(&enc, &info, &mut rng);
+        serde_json::to_string(&proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
+    }
+
+    #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = verifiableRecordTranscrypt)]
+    pub fn verifiable_record_transcrypt(
+        &self,
+        encrypted_record_json: &str,
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+        session_keys_json: &str,
+    ) -> Result<String, JsValue> {
+        let enc: crate::data::records::EncryptedRecord =
+            serde_json::from_str(encrypted_record_json)
+                .map_err(|e| JsValue::from_str(&format!("encrypted_record: {}", e)))?;
+        let info =
+            self.0
+                .transcryption_info(&domain_from.0, &domain_to.0, &session_from.0, &session_to.0);
+        let sk: crate::keys::SessionKeys = serde_json::from_str(session_keys_json)
+            .map_err(|e| JsValue::from_str(&format!("session_keys: {}", e)))?;
+        let mut rng = rand::rng();
+        let proof = self.0.verifiable_transcrypt(&enc, &info, &sk, &mut rng);
+        serde_json::to_string(&proof).map_err(|e| JsValue::from_str(&format!("{}", e)))
     }
 }

@@ -12,6 +12,69 @@ use libpep::keys::*;
 use libpep::transcryptor::Transcryptor;
 use libpep::verifier::Verifier;
 
+/// Serde-roundtrip a verifiable proof, flipping a single character inside the
+/// JSON encoding to produce a syntactically valid but semantically different
+/// proof. Used by tampered-proof tests below.
+///
+/// The mutation targets hex/base64 string literals in the JSON: it walks the
+/// JSON character by character, finds the first character inside a string
+/// literal that is a hex/base64 digit, and replaces it with a different valid
+/// digit. This keeps deserialization happy (the string still decodes) while
+/// changing the underlying group element / scalar.
+/// Swap the proof's first base64 / hex-encoded string value with the
+/// corresponding value from a *different but valid* proof, producing a
+/// well-formed but semantically wrong proof for verification testing.
+///
+/// Strategy: re-serialize the donor proof into the recipient proof's JSON
+/// shape, copy the first leaf string value across, and deserialize back.
+/// This guarantees the result is a fully-valid serialization (group elements
+/// still decode, scalars still canonical) but the proof no longer matches the
+/// statement it claims to prove.
+#[cfg(feature = "serde")]
+fn swap_first_string<T>(proof: &T, donor: &T) -> T
+where
+    T: serde::Serialize + serde::de::DeserializeOwned,
+{
+    let mut target: serde_json::Value =
+        serde_json::to_value(proof).expect("serialize target to JSON");
+    let donor_value: serde_json::Value =
+        serde_json::to_value(donor).expect("serialize donor to JSON");
+    let swapped = swap_first_string_value(&mut target, &donor_value);
+    assert!(swapped, "swap_first_string: no string value found to swap");
+    serde_json::from_value(target).expect("swapped proof should still deserialize")
+}
+
+/// Walk `target` and `donor` in parallel, replacing the first string value in
+/// `target` with the corresponding string in `donor`. Returns true on success.
+#[cfg(feature = "serde")]
+fn swap_first_string_value(target: &mut serde_json::Value, donor: &serde_json::Value) -> bool {
+    match (target, donor) {
+        (serde_json::Value::String(t), serde_json::Value::String(d)) if t != d => {
+            *t = d.clone();
+            true
+        }
+        (serde_json::Value::Array(ts), serde_json::Value::Array(ds)) => {
+            for (t, d) in ts.iter_mut().zip(ds.iter()) {
+                if swap_first_string_value(t, d) {
+                    return true;
+                }
+            }
+            false
+        }
+        (serde_json::Value::Object(tm), serde_json::Value::Object(dm)) => {
+            for (k, t) in tm.iter_mut() {
+                if let Some(d) = dm.get(k) {
+                    if swap_first_string_value(t, d) {
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
 #[test]
 fn test_verifiable_pseudonymization_simple() {
     let rng = &mut rand::rng();
@@ -35,7 +98,8 @@ fn test_verifiable_pseudonymization_simple() {
 
     let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
-    let commitments = Transcryptor::pseudonymization_commitment(&info);
+    let commitments =
+        transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
 
     #[cfg(feature = "elgamal3")]
     let operation_proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
@@ -85,7 +149,7 @@ fn test_verifiable_pseudonym_rekey() {
 
     let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
-    let commitments = Transcryptor::pseudonym_rekey_commitment(&info);
+    let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
     let operation_proof = enc_pseudo.verifiable_rekey(&info, rng);
 
@@ -128,7 +192,7 @@ fn test_verifiable_attribute_rekey() {
 
     let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
-    let commitments = Transcryptor::attribute_rekey_commitment(&info);
+    let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
     let operation_proof = enc_attr.verifiable_rekey(&info, rng);
 
@@ -169,7 +233,8 @@ fn test_verifier_cache_pseudonymization() {
 
     let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
-    let commitments = Transcryptor::pseudonymization_commitment(&info);
+    let commitments =
+        transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
 
     let mut verifier = Verifier::new();
     let transcryptor_id = String::from("transcryptor1");
@@ -192,32 +257,35 @@ fn test_verifier_cache_pseudonymization() {
     let operation_proof =
         enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
 
+    use libpep::verifier::VerifyError;
     #[cfg(feature = "elgamal3")]
-    let result: Option<EncryptedPseudonym> = verifier.verified_reconstruct_pseudonymization_cached(
-        &transcryptor_id,
-        &enc_pseudo,
-        &operation_proof,
-        &domain1,
-        &domain2,
-        &session1,
-        &session2,
-    );
+    let result: Result<EncryptedPseudonym, _> = verifier
+        .verified_reconstruct_pseudonymization_cached(
+            &transcryptor_id,
+            &enc_pseudo,
+            &operation_proof,
+            &domain1,
+            &domain2,
+            &session1,
+            &session2,
+        );
     #[cfg(not(feature = "elgamal3"))]
-    let result: Option<EncryptedPseudonym> = verifier.verified_reconstruct_pseudonymization_cached(
-        &transcryptor_id,
-        &enc_pseudo,
-        &operation_proof,
-        &pseudonym_session1_public,
-        &domain1,
-        &domain2,
-        &session1,
-        &session2,
-    );
-    assert!(result.is_some());
+    let result: Result<EncryptedPseudonym, _> = verifier
+        .verified_reconstruct_pseudonymization_cached(
+            &transcryptor_id,
+            &enc_pseudo,
+            &operation_proof,
+            &pseudonym_session1_public,
+            &domain1,
+            &domain2,
+            &session1,
+            &session2,
+        );
+    assert!(result.is_ok());
 
     // Wrong transition (different target domain) should not be in the cache.
     #[cfg(feature = "elgamal3")]
-    let bad: Option<EncryptedPseudonym> = verifier.verified_reconstruct_pseudonymization_cached(
+    let bad: Result<EncryptedPseudonym, _> = verifier.verified_reconstruct_pseudonymization_cached(
         &transcryptor_id,
         &enc_pseudo,
         &operation_proof,
@@ -227,7 +295,7 @@ fn test_verifier_cache_pseudonymization() {
         &session2,
     );
     #[cfg(not(feature = "elgamal3"))]
-    let bad: Option<EncryptedPseudonym> = verifier.verified_reconstruct_pseudonymization_cached(
+    let bad: Result<EncryptedPseudonym, _> = verifier.verified_reconstruct_pseudonymization_cached(
         &transcryptor_id,
         &enc_pseudo,
         &operation_proof,
@@ -237,7 +305,7 @@ fn test_verifier_cache_pseudonymization() {
         &session1,
         &session2,
     );
-    assert!(bad.is_none());
+    assert!(matches!(bad, Err(VerifyError::UnknownCommitment)));
 
     verifier.clear_cache();
     assert!(verifier.cache().is_empty());
@@ -329,7 +397,8 @@ fn n_pep_batch_distributed_verifiable() {
         let pre_batch = current.clone();
         let pre_pk = current.public_key;
         let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-        let commitments = Transcryptor::pseudonymization_commitment(&info.pseudonym);
+        let commitments =
+            system.pseudonymization_commitment(&domain_a, &domain_b, &session_a, &session_b);
         let proof = current.verifiable_pseudonymize(&info.pseudonym, rng);
 
         prev = Some((pre_batch, pre_pk, proof, commitments));
@@ -413,7 +482,8 @@ fn test_verifiable_record_transcryption() {
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-    let commitments = Transcryptor::transcryption_commitment(&info);
+    let commitments =
+        transcryptor.transcryption_commitment(&domain_a, &domain_b, &session_a, &session_b);
 
     #[cfg(feature = "elgamal3")]
     let proof = transcryptor.verifiable_transcrypt(&enc_record, &info, rng);
@@ -432,4 +502,359 @@ fn test_verifiable_record_transcryption() {
 
     assert_eq!(reconstructed.pseudonyms.len(), record.pseudonyms.len());
     assert_eq!(reconstructed.attributes.len(), record.attributes.len());
+}
+
+// ============================================================================
+// Negative tests: tampered proofs, wrong originals, and wrong commitments must
+// all cause verification to fail with a structured error.
+// ============================================================================
+
+#[cfg(feature = "serde")]
+#[test]
+fn tampered_proof_rejected_pseudonymization() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let domain1 = PseudonymizationDomain::from("d1");
+    let domain2 = PseudonymizationDomain::from("d2");
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (pseudonym_session1_public, _) =
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
+    let commitments =
+        transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
+
+    let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    #[cfg(feature = "elgamal3")]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+
+    // Build a second valid proof to donate one of its components.
+    let donor_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    #[cfg(feature = "elgamal3")]
+    let donor_proof = donor_enc.verifiable_pseudonymize(&info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let donor_proof = donor_enc.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+
+    let tampered = swap_first_string(&proof, &donor_proof);
+
+    let verifier = Verifier::new();
+    #[cfg(feature = "elgamal3")]
+    let result = verifier.verify_pseudonymization::<_>(&enc_pseudo, &tampered, &commitments);
+    #[cfg(not(feature = "elgamal3"))]
+    let result = verifier.verify_pseudonymization::<_>(
+        &enc_pseudo,
+        &tampered,
+        &pseudonym_session1_public,
+        &commitments,
+    );
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[test]
+fn wrong_original_rejected_pseudonymization() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let domain1 = PseudonymizationDomain::from("d1");
+    let domain2 = PseudonymizationDomain::from("d2");
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (pseudonym_session1_public, _) =
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
+    let commitments =
+        transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
+
+    let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    #[cfg(feature = "elgamal3")]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+
+    // Verify the proof against a *different* ciphertext.
+    let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+
+    let verifier = Verifier::new();
+    #[cfg(feature = "elgamal3")]
+    let result = verifier.verify_pseudonymization::<_>(&other_enc, &proof, &commitments);
+    #[cfg(not(feature = "elgamal3"))]
+    let result = verifier.verify_pseudonymization::<_>(
+        &other_enc,
+        &proof,
+        &pseudonym_session1_public,
+        &commitments,
+    );
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[test]
+fn wrong_commitments_rejected_pseudonymization() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let domain1 = PseudonymizationDomain::from("d1");
+    let domain2 = PseudonymizationDomain::from("d2");
+    let domain3 = PseudonymizationDomain::from("d3");
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (pseudonym_session1_public, _) =
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
+    // Commitments for a *different* target domain than the proof.
+    let wrong_commitments =
+        transcryptor.pseudonymization_commitment(&domain1, &domain3, &session1, &session2);
+
+    let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    #[cfg(feature = "elgamal3")]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+
+    let verifier = Verifier::new();
+    #[cfg(feature = "elgamal3")]
+    let result = verifier.verify_pseudonymization::<_>(&enc_pseudo, &proof, &wrong_commitments);
+    #[cfg(not(feature = "elgamal3"))]
+    let result = verifier.verify_pseudonymization::<_>(
+        &enc_pseudo,
+        &proof,
+        &pseudonym_session1_public,
+        &wrong_commitments,
+    );
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn tampered_proof_rejected_pseudonym_rekey() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (pseudonym_session1_public, _) =
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
+    let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
+
+    let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    let proof = enc_pseudo.verifiable_rekey(&info, rng);
+
+    let donor_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    let donor_proof = donor_enc.verifiable_rekey(&info, rng);
+
+    let tampered = swap_first_string(&proof, &donor_proof);
+
+    let verifier = Verifier::new();
+    let result: Result<(), _> = verifier.verify_rekey(&enc_pseudo, &tampered, &commitments);
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[test]
+fn wrong_original_rejected_pseudonym_rekey() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (pseudonym_session1_public, _) =
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
+    let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
+
+    let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    let proof = enc_pseudo.verifiable_rekey(&info, rng);
+
+    let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+
+    let verifier = Verifier::new();
+    let result: Result<(), _> = verifier.verify_rekey(&other_enc, &proof, &commitments);
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn tampered_proof_rejected_attribute_rekey() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, attribute_global_secret) = make_attribute_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (attribute_session1_public, _) =
+        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.attribute_rekey_info(&session1, &session2);
+    let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
+
+    let enc_attr = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
+    let proof = enc_attr.verifiable_rekey(&info, rng);
+
+    let donor_enc = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
+    let donor_proof = donor_enc.verifiable_rekey(&info, rng);
+
+    let tampered = swap_first_string(&proof, &donor_proof);
+
+    let verifier = Verifier::new();
+    let result: Result<(), _> = verifier.verify_rekey(&enc_attr, &tampered, &commitments);
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[test]
+fn wrong_original_rejected_attribute_rekey() {
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, attribute_global_secret) = make_attribute_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let session1 = EncryptionContext::from("s1");
+    let session2 = EncryptionContext::from("s2");
+
+    let (attribute_session1_public, _) =
+        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.attribute_rekey_info(&session1, &session2);
+    let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
+
+    let enc_attr = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
+    let proof = enc_attr.verifiable_rekey(&info, rng);
+
+    let other_enc = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
+
+    let verifier = Verifier::new();
+    let result: Result<(), _> = verifier.verify_rekey(&other_enc, &proof, &commitments);
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn tampered_proof_rejected_record_transcryption() {
+    use libpep::data::records::{EncryptedRecord, Record};
+    use libpep::verifier::VerifyError;
+
+    let rng = &mut rand::rng();
+    let (_, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
+    let (_, global_attribute_sk) = make_attribute_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from("secret".into());
+    let enc_secret = EncryptionSecret::from("secret".into());
+
+    let domain_a = PseudonymizationDomain::from("a");
+    let domain_b = PseudonymizationDomain::from("b");
+    let session_a = EncryptionContext::from("sa");
+    let session_b = EncryptionContext::from("sb");
+
+    let (pseudonym_session_a_pk, pseudonym_session_a_sk) =
+        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &enc_secret);
+    let (attribute_session_a_pk, attribute_session_a_sk) =
+        make_attribute_session_keys(&global_attribute_sk, &session_a, &enc_secret);
+    let session_a_keys = SessionKeys {
+        pseudonym: PseudonymSessionKeys {
+            public: pseudonym_session_a_pk,
+            secret: pseudonym_session_a_sk,
+        },
+        attribute: AttributeSessionKeys {
+            public: attribute_session_a_pk,
+            secret: attribute_session_a_sk,
+        },
+    };
+
+    let record = Record::new(
+        vec![Pseudonym::random(rng)],
+        vec![Attribute::random(rng), Attribute::random(rng)],
+    );
+    let enc_record = EncryptedRecord::new(
+        record
+            .pseudonyms
+            .iter()
+            .map(|p| encrypt(p, &session_a_keys.pseudonym.public, rng))
+            .collect(),
+        record
+            .attributes
+            .iter()
+            .map(|a| encrypt(a, &session_a_keys.attribute.public, rng))
+            .collect(),
+    );
+
+    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
+    let commitments =
+        transcryptor.transcryption_commitment(&domain_a, &domain_b, &session_a, &session_b);
+
+    #[cfg(feature = "elgamal3")]
+    let proof = transcryptor.verifiable_transcrypt(&enc_record, &info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let proof = transcryptor.verifiable_transcrypt(&enc_record, &info, &session_a_keys, rng);
+
+    // Donor: independently re-encrypt the same record and prove again.
+    let donor_enc = EncryptedRecord::new(
+        record
+            .pseudonyms
+            .iter()
+            .map(|p| encrypt(p, &session_a_keys.pseudonym.public, rng))
+            .collect(),
+        record
+            .attributes
+            .iter()
+            .map(|a| encrypt(a, &session_a_keys.attribute.public, rng))
+            .collect(),
+    );
+    #[cfg(feature = "elgamal3")]
+    let donor_proof = transcryptor.verifiable_transcrypt(&donor_enc, &info, rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let donor_proof = transcryptor.verifiable_transcrypt(&donor_enc, &info, &session_a_keys, rng);
+
+    let tampered = swap_first_string(&proof, &donor_proof);
+
+    let verifier = Verifier::new();
+    #[cfg(feature = "elgamal3")]
+    let result = verifier.verify_transcryption::<_>(&enc_record, &tampered, &commitments);
+    #[cfg(not(feature = "elgamal3"))]
+    let result =
+        verifier.verify_transcryption::<_>(&enc_record, &tampered, &session_a_keys, &commitments);
+    assert!(matches!(result, Err(VerifyError::ProofRejected)));
 }

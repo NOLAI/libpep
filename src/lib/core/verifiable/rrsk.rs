@@ -15,7 +15,7 @@
 //! components. The verifier reconstructs them from the rerandomize step and
 //! then verifies the VRSK / VRSK2 proof against them.
 //!
-//! Unlike the standalone [`VerifiableRerandomize`](super::VerifiableRerandomize),
+//! Unlike the standalone [`VerifiableRerandomize`],
 //! which is only available with `insecure` because the rerandomization can be
 //! applied unbounded, VRRSK and VRRSK-2 *do* tie the rerandomization to a
 //! specific `(s, k)` (or `(s_from, s_to, k_from, k_to)`) tuple via the
@@ -36,8 +36,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRRSK {
-    pub rerandomize: VerifiableRerandomize,
-    pub rsk: VerifiableRSK,
+    pub(crate) rerandomize: VerifiableRerandomize,
+    pub(crate) rsk: VerifiableRSK,
+}
+
+impl VerifiableRRSK {
+    /// The rerandomize sub-proof.
+    pub fn rerandomize(&self) -> &VerifiableRerandomize {
+        &self.rerandomize
+    }
+    /// The RSK sub-proof.
+    pub fn rsk(&self) -> &VerifiableRSK {
+        &self.rsk
+    }
 }
 
 impl VerifiableRRSK {
@@ -109,8 +120,19 @@ impl VerifiableRRSK {
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRRSK2 {
-    pub rerandomize: VerifiableRerandomize,
-    pub rsk2: VerifiableRSK2,
+    pub(crate) rerandomize: VerifiableRerandomize,
+    pub(crate) rsk2: VerifiableRSK2,
+}
+
+impl VerifiableRRSK2 {
+    /// The rerandomize sub-proof.
+    pub fn rerandomize(&self) -> &VerifiableRerandomize {
+        &self.rerandomize
+    }
+    /// The RSK-2 sub-proof.
+    pub fn rsk2(&self) -> &VerifiableRSK2 {
+        &self.rsk2
+    }
 }
 
 impl VerifiableRRSK2 {
@@ -189,31 +211,6 @@ impl VerifiableRRSK2 {
             k_to_commitments,
         )
     }
-}
-
-pub fn verifiable_rrsk<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    gy: &GroupElement,
-    r: &ScalarNonZero,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRRSK {
-    VerifiableRRSK::new(m, gy, r, s, k, rng)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn verifiable_rrsk2<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    gy: &GroupElement,
-    r: &ScalarNonZero,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRRSK2 {
-    VerifiableRRSK2::new(m, gy, r, s_from, s_to, k_from, k_to, rng)
 }
 
 #[cfg(test)]

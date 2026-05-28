@@ -8,6 +8,11 @@ use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+// NOTE: `verifiable_rerandomize_batch` is intentionally kept (not removed
+// with the rest of the snake-case free wrappers) because it does extra
+// work beyond `VerifiableRerandomizeBatch::new` — it also returns the
+// rerandomized ciphertexts via the `pub(crate)` `result` helper, which is
+// not otherwise accessible to external callers.
 #[cfg(feature = "insecure")]
 pub fn verifiable_rerandomize_batch<R: Rng + CryptoRng>(
     originals: &[ElGamal],
@@ -28,7 +33,14 @@ pub fn verifiable_rerandomize_batch<R: Rng + CryptoRng>(
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRerandomizeBatch {
-    pub inners: Vec<VerifiableRerandomize>,
+    pub(crate) inners: Vec<VerifiableRerandomize>,
+}
+
+impl VerifiableRerandomizeBatch {
+    /// The per-message inner proofs.
+    pub fn inners(&self) -> &[VerifiableRerandomize] {
+        &self.inners
+    }
 }
 
 impl VerifiableRerandomizeBatch {

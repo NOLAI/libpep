@@ -31,9 +31,20 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableReshuffle {
     /// `ZKP{B' = s * B}`: first component is `B' = s·B`.
-    pub p_gb_prime: Proof,
+    pub(crate) p_gb_prime: Proof,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
-    pub p_gc_prime: Proof,
+    pub(crate) p_gc_prime: Proof,
+}
+
+impl VerifiableReshuffle {
+    /// The proof `ZKP{B' = s * B}`.
+    pub fn p_gb_prime(&self) -> &Proof {
+        &self.p_gb_prime
+    }
+    /// The proof `ZKP{C' = s * C}`.
+    pub fn p_gc_prime(&self) -> &Proof {
+        &self.p_gc_prime
+    }
 }
 
 impl VerifiableReshuffle {
@@ -92,11 +103,26 @@ impl VerifiableReshuffle {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableReshuffle2 {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub gs: GroupElement,
+    pub(crate) gs: GroupElement,
     /// `ZKP{S_to = s_from * S}`: first component is `S_to = s_to·G`.
-    pub p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof,
     /// The per-message reshuffle under the combined scalar.
-    pub inner: VerifiableReshuffle,
+    pub(crate) inner: VerifiableReshuffle,
+}
+
+impl VerifiableReshuffle2 {
+    /// The combined commitment `S = (s_from⁻¹·s_to)·G`.
+    pub fn gs(&self) -> &GroupElement {
+        &self.gs
+    }
+    /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
+    pub fn p_gs_to(&self) -> &Proof {
+        &self.p_gs_to
+    }
+    /// The inner per-message reshuffle proof under the combined scalar.
+    pub fn inner(&self) -> &VerifiableReshuffle {
+        &self.inner
+    }
 }
 
 impl VerifiableReshuffle2 {
@@ -167,23 +193,6 @@ impl VerifiableReshuffle2 {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
     }
-}
-
-pub fn verifiable_reshuffle<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    s: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableReshuffle {
-    VerifiableReshuffle::new(m, s, rng)
-}
-
-pub fn verifiable_reshuffle2<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableReshuffle2 {
-    VerifiableReshuffle2::new(m, s_from, s_to, rng)
 }
 
 #[cfg(test)]

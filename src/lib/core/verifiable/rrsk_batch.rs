@@ -10,29 +10,6 @@ use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub fn verifiable_rrsk_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    gy: &GroupElement,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRRSKBatch {
-    VerifiableRRSKBatch::new(ciphertexts, gy, s, k, rng)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn verifiable_rrsk2_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    gy: &GroupElement,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRRSK2Batch {
-    VerifiableRRSK2Batch::new(ciphertexts, gy, s_from, s_to, k_from, k_to, rng)
-}
-
 /// A batch of [`super::VerifiableRRSK`] proofs sharing one `(s, k)` factor pair.
 ///
 /// Mirrors `VerifiableRRSK { rerandomize, rsk }` at batch level: a single
@@ -41,8 +18,19 @@ pub fn verifiable_rrsk2_batch<R: Rng + CryptoRng>(
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRRSKBatch {
-    pub rerandomize: VerifiableRerandomizeBatch,
-    pub rsk: VerifiableRSKBatch,
+    pub(crate) rerandomize: VerifiableRerandomizeBatch,
+    pub(crate) rsk: VerifiableRSKBatch,
+}
+
+impl VerifiableRRSKBatch {
+    /// The batched rerandomize sub-proof.
+    pub fn rerandomize(&self) -> &VerifiableRerandomizeBatch {
+        &self.rerandomize
+    }
+    /// The batched RSK sub-proof.
+    pub fn rsk(&self) -> &VerifiableRSKBatch {
+        &self.rsk
+    }
 }
 
 impl VerifiableRRSKBatch {
@@ -141,8 +129,19 @@ impl VerifiableRRSKBatch {
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRRSK2Batch {
-    pub rerandomize: VerifiableRerandomizeBatch,
-    pub rsk2: VerifiableRSK2Batch,
+    pub(crate) rerandomize: VerifiableRerandomizeBatch,
+    pub(crate) rsk2: VerifiableRSK2Batch,
+}
+
+impl VerifiableRRSK2Batch {
+    /// The batched rerandomize sub-proof.
+    pub fn rerandomize(&self) -> &VerifiableRerandomizeBatch {
+        &self.rerandomize
+    }
+    /// The batched RSK-2 sub-proof.
+    pub fn rsk2(&self) -> &VerifiableRSK2Batch {
+        &self.rsk2
+    }
 }
 
 impl VerifiableRRSK2Batch {

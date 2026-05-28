@@ -136,15 +136,22 @@ use crate::core::verifiable::RekeyFactorCommitment;
 #[cfg(feature = "verifiable")]
 use crate::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 
-/// Generate session keys with a proof of correct construction.
+/// Generate session keys with a proof of correct share construction.
 ///
-/// This variant generates a session key along with a zero-knowledge proof that
-/// the key was constructed correctly as u_i = b_i * k_i, where:
-/// - b_i is a blinding factor
-/// - k_i is the rekey factor for the given context
+/// This variant is part of libpep's **blinded-product key construction** (not
+/// a DKG / VSS scheme). It returns a (public, secret) session key pair along
+/// with a zero-knowledge proof that the session-key share `u_i = b_i * k_i`
+/// was constructed correctly, where:
+/// - `b_i` is a per-transcryptor blinding factor (committed to as `B_i = b_i·G`).
+/// - `k_i = derive(context)` is the publicly-recomputable rekey factor for the
+///   given context.
 ///
-/// The proof allows users to verify the session key share without revealing
-/// the secret factors.
+/// The proof allows the user receiving the share to verify it was honestly
+/// computed without revealing the secret factors. See the module-level
+/// documentation of [`crate::keys::distribution::proofs`] for the full
+/// security model — in particular, this construction does NOT prove that
+/// the dealer used the matching `b_i` when computing the blinded global
+/// secret key at setup time; the dealer is trusted at setup.
 ///
 /// # Arguments
 ///
@@ -160,7 +167,7 @@ use crate::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 /// A tuple containing:
 /// - The public session key
 /// - The secret session key (u_i = b_i * k_i * global_secret)
-/// - A proof of correct construction
+/// - A proof of correct share construction
 /// - The blinding commitment (B_i = b_i * G)
 #[cfg(feature = "verifiable")]
 pub fn make_session_key_pair_with_proof<GSK, PK, SK, RF, F, R>(

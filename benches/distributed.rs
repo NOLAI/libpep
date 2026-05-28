@@ -358,15 +358,23 @@ fn bench_verifiable_commitment_generation(c: &mut Criterion) {
                 let domain_to = PseudonymizationDomain::from("domain-b");
                 let session_from = EncryptionContext::from("session-a");
                 let session_to = EncryptionContext::from("session-b");
-                let info = transcryptor.pseudonymization_info(
+                (
+                    transcryptor,
+                    domain_from,
+                    domain_to,
+                    session_from,
+                    session_to,
+                    rng,
+                )
+            },
+            |(transcryptor, domain_from, domain_to, session_from, session_to, _rng)| {
+                black_box(transcryptor.pseudonymization_commitment(
                     &domain_from,
                     &domain_to,
                     &session_from,
                     &session_to,
-                );
-                (info, rng)
+                ))
             },
-            |(info, _rng)| black_box(Transcryptor::pseudonymization_commitment(&info)),
             criterion::BatchSize::SmallInput,
         )
     });
@@ -511,7 +519,12 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
                 #[cfg(not(feature = "elgamal3"))]
                 let result =
                     encrypted.pseudonymize(&info, &client.dump().pseudonym.public, &mut rng);
-                let commitments = Transcryptor::pseudonymization_commitment(&info);
+                let commitments = transcryptor.pseudonymization_commitment(
+                    &domain_from,
+                    &domain_to,
+                    &session_from,
+                    &session_to,
+                );
                 let verifier = Verifier::new();
 
                 #[cfg(feature = "elgamal3")]
@@ -532,7 +545,7 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
             },
             #[cfg(feature = "elgamal3")]
             |(original, _result, operation_proof, commitments, verifier)| {
-                let r: Option<libpep::data::simple::EncryptedPseudonym> = verifier
+                let r: Result<libpep::data::simple::EncryptedPseudonym, _> = verifier
                     .verified_reconstruct_pseudonymization(
                         &original,
                         &operation_proof,
@@ -542,7 +555,7 @@ fn bench_verifiable_pseudonymization_verify(c: &mut Criterion) {
             },
             #[cfg(not(feature = "elgamal3"))]
             |(original, _result, operation_proof, pk, commitments, verifier)| {
-                let r: Option<libpep::data::simple::EncryptedPseudonym> = verifier
+                let r: Result<libpep::data::simple::EncryptedPseudonym, _> = verifier
                     .verified_reconstruct_pseudonymization(
                         &original,
                         &operation_proof,

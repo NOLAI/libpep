@@ -22,6 +22,7 @@ use rand_core::{CryptoRng, Rng};
 /// Contains proofs for both pseudonymization and attribute rekeying.
 #[cfg(feature = "verifiable")]
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RecordTranscryptionProof {
     /// One [`PseudonymPseudonymizationProof`] per pseudonym (RRSK includes
     /// a fresh per-message rerandomize step).
@@ -205,6 +206,7 @@ impl VerifiableTranscryptionProof for RecordTranscryptionProof {
 /// with multiple proofs per long pseudonym/attribute (one per block).
 #[cfg(all(feature = "verifiable", feature = "long"))]
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LongRecordTranscryptionProof {
     /// One [`LongPseudonymPseudonymizationProof`] per long pseudonym.
     pub pseudonym_operation_proofs: Vec<LongPseudonymPseudonymizationProof>,
@@ -549,7 +551,37 @@ impl RecordTranscryptionBatchProof {
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
         commitments: &crate::factors::VerifiableTranscryptionCommitment,
     ) -> bool {
-        self.verified_reconstruct(original, commitments).is_some()
+        use crate::data::simple::ElGamalEncrypted;
+        let structure: Vec<(usize, usize)> = original
+            .items
+            .iter()
+            .map(|r| (r.pseudonyms.len(), r.attributes.len()))
+            .collect();
+        if structure != self.structure {
+            return false;
+        }
+        let pseudonym_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| r.pseudonyms.iter().map(|p| *p.value()))
+            .collect();
+        let attribute_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| r.attributes.iter().map(|a| *a.value()))
+            .collect();
+        let gy = pseudonym_originals
+            .first()
+            .map(|c| c.gy)
+            .unwrap_or(crate::arithmetic::group_elements::G);
+        self.pseudonyms.verify(
+            &pseudonym_originals,
+            &gy,
+            &commitments.pseudonym.reshuffle_commitment,
+            &commitments.pseudonym.rekey_commitment,
+        ) && self
+            .attributes
+            .verify(&attribute_originals, &commitments.attribute.commitment)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -559,8 +591,34 @@ impl RecordTranscryptionBatchProof {
         public_key: &SessionKeys,
         commitments: &crate::factors::VerifiableTranscryptionCommitment,
     ) -> bool {
-        self.verified_reconstruct(original, public_key, commitments)
-            .is_some()
+        use crate::data::simple::ElGamalEncrypted;
+        use crate::keys::PublicKey as _;
+        let structure: Vec<(usize, usize)> = original
+            .items
+            .iter()
+            .map(|r| (r.pseudonyms.len(), r.attributes.len()))
+            .collect();
+        if structure != self.structure {
+            return false;
+        }
+        let pseudonym_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| r.pseudonyms.iter().map(|p| *p.value()))
+            .collect();
+        let attribute_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| r.attributes.iter().map(|a| *a.value()))
+            .collect();
+        self.pseudonyms.verify(
+            &pseudonym_originals,
+            public_key.pseudonym.public.value(),
+            &commitments.pseudonym.reshuffle_commitment,
+            &commitments.pseudonym.rekey_commitment,
+        ) && self
+            .attributes
+            .verify(&attribute_originals, &commitments.attribute.commitment)
     }
 
     /// Verify and return reconstructed records as a flat `Vec<EncryptedRecord>`.
@@ -939,7 +997,41 @@ impl LongRecordTranscryptionBatchProof {
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
         commitments: &crate::factors::VerifiableTranscryptionCommitment,
     ) -> bool {
-        self.verified_reconstruct(original, commitments).is_some()
+        use crate::data::simple::ElGamalEncrypted;
+        let structure = long_record_structure(&original.items);
+        if structure != self.structure {
+            return false;
+        }
+        let pseudonym_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| {
+                r.pseudonyms
+                    .iter()
+                    .flat_map(|lp| lp.0.iter().map(|b| *b.value()))
+            })
+            .collect();
+        let attribute_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| {
+                r.attributes
+                    .iter()
+                    .flat_map(|la| la.0.iter().map(|b| *b.value()))
+            })
+            .collect();
+        let gy = pseudonym_originals
+            .first()
+            .map(|c| c.gy)
+            .unwrap_or(crate::arithmetic::group_elements::G);
+        self.pseudonyms.verify(
+            &pseudonym_originals,
+            &gy,
+            &commitments.pseudonym.reshuffle_commitment,
+            &commitments.pseudonym.rekey_commitment,
+        ) && self
+            .attributes
+            .verify(&attribute_originals, &commitments.attribute.commitment)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -949,8 +1041,38 @@ impl LongRecordTranscryptionBatchProof {
         public_key: &SessionKeys,
         commitments: &crate::factors::VerifiableTranscryptionCommitment,
     ) -> bool {
-        self.verified_reconstruct(original, public_key, commitments)
-            .is_some()
+        use crate::data::simple::ElGamalEncrypted;
+        use crate::keys::PublicKey as _;
+        let structure = long_record_structure(&original.items);
+        if structure != self.structure {
+            return false;
+        }
+        let pseudonym_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| {
+                r.pseudonyms
+                    .iter()
+                    .flat_map(|lp| lp.0.iter().map(|b| *b.value()))
+            })
+            .collect();
+        let attribute_originals: Vec<_> = original
+            .items
+            .iter()
+            .flat_map(|r| {
+                r.attributes
+                    .iter()
+                    .flat_map(|la| la.0.iter().map(|b| *b.value()))
+            })
+            .collect();
+        self.pseudonyms.verify(
+            &pseudonym_originals,
+            public_key.pseudonym.public.value(),
+            &commitments.pseudonym.reshuffle_commitment,
+            &commitments.pseudonym.rekey_commitment,
+        ) && self
+            .attributes
+            .verify(&attribute_originals, &commitments.attribute.commitment)
     }
 
     /// Verify and return reconstructed records as a flat `Vec<LongEncryptedRecord>`.

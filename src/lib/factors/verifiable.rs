@@ -54,10 +54,17 @@ fn context_payload(context: &EncryptionContext) -> Option<&str> {
 use serde::{Deserialize, Serialize};
 
 /// Master pseudonymization secret with two Carter-Wegman components.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MasterPseudonymizationSecret {
     pub(crate) x1: ScalarNonZero,
     pub(crate) x2: ScalarNonZero,
+}
+
+impl std::fmt::Debug for MasterPseudonymizationSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret scalars via Debug formatting (e.g. logs).
+        f.write_str("MasterPseudonymizationSecret(…)")
+    }
 }
 
 /// Master pseudonymization public key: `(X₁, X₂) = (x₁·G, x₂·G)`.
@@ -69,10 +76,17 @@ pub struct MasterPseudonymizationPublicKey {
 }
 
 /// Master rekeying secret with two Carter-Wegman components.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MasterRekeyingSecret {
     pub(crate) y1: ScalarNonZero,
     pub(crate) y2: ScalarNonZero,
+}
+
+impl std::fmt::Debug for MasterRekeyingSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret scalars via Debug formatting (e.g. logs).
+        f.write_str("MasterRekeyingSecret(…)")
+    }
 }
 
 /// Master rekeying public key: `(Y₁, Y₂) = (y₁·G, y₂·G)`.

@@ -69,13 +69,38 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[derive(Eq, PartialEq, Clone, Copy, Debug, Deref)]
 pub struct Proof {
     #[deref]
-    pub n: GroupElement,
-    pub c1: GroupElement,
-    pub c2: GroupElement,
-    pub s: ScalarCanBeZero,
+    pub(crate) n: GroupElement,
+    pub(crate) c1: GroupElement,
+    pub(crate) c2: GroupElement,
+    pub(crate) s: ScalarCanBeZero,
 }
 
 impl Proof {
+    /// Construct a `Proof` from its raw components.
+    pub fn new(n: GroupElement, c1: GroupElement, c2: GroupElement, s: ScalarCanBeZero) -> Self {
+        Self { n, c1, c2, s }
+    }
+
+    /// The claimed result `N = a*M`.
+    pub fn n(&self) -> &GroupElement {
+        &self.n
+    }
+
+    /// First commitment `c1 = r*G`.
+    pub fn c1(&self) -> &GroupElement {
+        &self.c1
+    }
+
+    /// Second commitment `c2 = r*M`.
+    pub fn c2(&self) -> &GroupElement {
+        &self.c2
+    }
+
+    /// Response scalar `s = a*e + r`.
+    pub fn s(&self) -> &ScalarCanBeZero {
+        &self.s
+    }
+
     /// Encodes the proof as a 128-byte array.
     ///
     /// The encoding layout is:
@@ -94,14 +119,19 @@ impl Proof {
 
     /// Decodes a proof from a 128-byte array.
     ///
-    /// Returns `None` if any component fails to decode.
+    /// Returns `None` if any component fails to decode, or if `n`, `c1`,
+    /// or `c2` is the identity element (which would make verification
+    /// equations vacuous).
     pub fn decode(v: &[u8; 128]) -> Option<Self> {
-        Some(Self {
-            n: GroupElement::from_slice(&v[0..32])?,
-            c1: GroupElement::from_slice(&v[32..64])?,
-            c2: GroupElement::from_slice(&v[64..96])?,
-            s: ScalarCanBeZero::from_slice(&v[96..128])?,
-        })
+        let n = GroupElement::from_slice(&v[0..32])?;
+        let c1 = GroupElement::from_slice(&v[32..64])?;
+        let c2 = GroupElement::from_slice(&v[64..96])?;
+        let s = ScalarCanBeZero::from_slice(&v[96..128])?;
+        let identity = GroupElement::identity();
+        if n == identity || c1 == identity || c2 == identity {
+            return None;
+        }
+        Some(Self { n, c1, c2, s })
     }
 
     /// Decodes a proof from a byte slice.
@@ -333,6 +363,11 @@ pub fn create_proofs_same_scalar<R: Rng + CryptoRng>(
 /// - `s*M == e*N + c2`
 ///
 /// where `e` is the challenge derived from hashing all public values.
+///
+/// Also guards against trivially insecure inputs: rejects if `gm` or `ga`
+/// is the identity element (in which case the verification equations
+/// would be vacuous and an attacker could forge proofs without knowing
+/// the witness).
 #[must_use]
 pub fn verify_proof_split(
     ga: &GroupElement,
@@ -342,6 +377,13 @@ pub fn verify_proof_split(
     gc2: &GroupElement,
     s: &ScalarCanBeZero,
 ) -> bool {
+    // Reject identity bases: the equation `s*M == e*N + c2` becomes
+    // vacuous when M is the identity, and similarly for ga.
+    let identity = GroupElement::identity();
+    if gm == &identity || ga == &identity {
+        return false;
+    }
+
     let mut hasher = Sha512::new();
     hasher.update(ga.to_bytes());
     hasher.update(gm.to_bytes());
@@ -550,7 +592,7 @@ mod tests {
     use crate::arithmetic::scalars::ScalarNonZero;
     use crate::core::zkps::{
         create_proof, create_proof_unlinkable, create_proofs_same_scalar, sign, sign_unlinkable,
-        verify, verify_proof,
+        verify, verify_proof, verify_proof_split, Proof,
     };
 
     #[test]
@@ -641,5 +683,82 @@ mod tests {
         // Determinism: same (a, gm) still produces the same proof.
         let (_, p1_again) = create_proof_unlinkable(&a1, &gm);
         assert_eq!(p1, p1_again);
+    }
+
+    #[test]
+    fn verify_rejects_identity_gm() {
+        // Regression test: when `gm` is the identity element, the verification
+        // equation `s*M == e*N + c2` becomes `0 == 0 + c2`, which would be
+        // trivially satisfied by an attacker-chosen `c2 = 0` and any `c1`.
+        // Verification must reject any such input outright.
+        let mut rng = rand::rng();
+        let a = ScalarNonZero::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
+        let (ga, p) = create_proof(&a, &gm, &mut rng);
+
+        // Sanity check: honest verification with the real `gm` passes.
+        assert!(verify_proof(&ga, &gm, &p));
+        // But swapping in identity for `gm` must fail.
+        assert!(!verify_proof(&ga, &GroupElement::identity(), &p));
+        assert!(!verify_proof_split(
+            &ga,
+            &GroupElement::identity(),
+            &p.n,
+            &p.c1,
+            &p.c2,
+            &p.s
+        ));
+    }
+
+    #[test]
+    fn verify_rejects_identity_ga() {
+        // Symmetric guard: if `ga` is the identity, `s*G == e*A + c1`
+        // collapses on the verifier side and the proof becomes meaningless.
+        let mut rng = rand::rng();
+        let a = ScalarNonZero::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
+        let (_ga, p) = create_proof(&a, &gm, &mut rng);
+
+        assert!(!verify_proof(&GroupElement::identity(), &gm, &p));
+        assert!(!verify_proof_split(
+            &GroupElement::identity(),
+            &gm,
+            &p.n,
+            &p.c1,
+            &p.c2,
+            &p.s
+        ));
+    }
+
+    #[test]
+    fn decode_rejects_identity_components() {
+        // A 128-byte proof buffer whose `n` slot decodes to the identity
+        // element must be rejected by `Proof::decode`. The all-zeros
+        // 32-byte Ristretto encoding decodes to the identity point.
+        let mut rng = rand::rng();
+        let a = ScalarNonZero::random(&mut rng);
+        let gm = GroupElement::random(&mut rng);
+        let (_ga, p) = create_proof(&a, &gm, &mut rng);
+
+        let mut buf = p.encode();
+        // Overwrite `n` (bytes 0..32) with the identity encoding.
+        for byte in buf.iter_mut().take(32) {
+            *byte = 0;
+        }
+        assert!(Proof::decode(&buf).is_none());
+
+        // Similarly for c1 (bytes 32..64).
+        let mut buf2 = p.encode();
+        for byte in buf2.iter_mut().take(64).skip(32) {
+            *byte = 0;
+        }
+        assert!(Proof::decode(&buf2).is_none());
+
+        // Similarly for c2 (bytes 64..96).
+        let mut buf3 = p.encode();
+        for byte in buf3.iter_mut().take(96).skip(64) {
+            *byte = 0;
+        }
+        assert!(Proof::decode(&buf3).is_none());
     }
 }

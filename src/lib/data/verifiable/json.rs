@@ -17,8 +17,8 @@ use std::collections::HashMap;
 ///
 /// The structure mirrors the JSON value structure:
 /// - `Null` has no proof
-/// - Primitives (`Bool`, `Number`, `String`) carry [`AttributeRekeyProof`]
-/// - `Pseudonym` carries a [`PseudonymPseudonymizationProof`]
+/// - Primitives (`Bool`, `Number`, `String`) carry [`crate::data::verifiable::simple::AttributeRekeyProof`]
+/// - `Pseudonym` carries a [`crate::data::verifiable::simple::PseudonymPseudonymizationProof`]
 /// - Long variants carry their respective long proofs
 /// - Arrays and Objects carry nested proofs
 #[cfg(feature = "verifiable")]

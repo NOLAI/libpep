@@ -343,6 +343,69 @@ impl PyLongRecordStructure {
     }
 }
 
+/// Verifiable proof bundle for transcrypting a (simple) [`PyEncryptedRecord`].
+///
+/// Contains one pseudonymization proof per pseudonym and one rekey proof per
+/// attribute. Pass this back to `Verifier.verify_transcryption` together with
+/// the original ciphertext and the published transition commitments.
+#[cfg(feature = "verifiable")]
+#[pyclass(name = "RecordTranscryptionProof", from_py_object)]
+#[derive(Clone)]
+pub struct PyRecordTranscryptionProof {
+    pub(crate) inner: crate::data::verifiable::records::RecordTranscryptionProof,
+}
+
+#[cfg(feature = "verifiable")]
+#[pymethods]
+impl PyRecordTranscryptionProof {
+    /// Serialize to JSON.
+    #[cfg(feature = "serde")]
+    fn to_json(&self) -> PyResult<String> {
+        serde_json::to_string(&self.inner).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Serialization failed: {}", e))
+        })
+    }
+
+    /// Deserialize from JSON.
+    #[cfg(feature = "serde")]
+    #[staticmethod]
+    fn from_json(json: &str) -> PyResult<Self> {
+        serde_json::from_str(json)
+            .map(|inner| PyRecordTranscryptionProof { inner })
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {}", e))
+            })
+    }
+}
+
+#[cfg(all(feature = "verifiable", feature = "long"))]
+#[pyclass(name = "LongRecordTranscryptionProof", from_py_object)]
+#[derive(Clone)]
+pub struct PyLongRecordTranscryptionProof {
+    pub(crate) inner: crate::data::verifiable::records::LongRecordTranscryptionProof,
+}
+
+#[cfg(all(feature = "verifiable", feature = "long"))]
+#[pymethods]
+impl PyLongRecordTranscryptionProof {
+    #[cfg(feature = "serde")]
+    fn to_json(&self) -> PyResult<String> {
+        serde_json::to_string(&self.inner).map_err(|e| {
+            pyo3::exceptions::PyValueError::new_err(format!("Serialization failed: {}", e))
+        })
+    }
+
+    #[cfg(feature = "serde")]
+    #[staticmethod]
+    fn from_json(json: &str) -> PyResult<Self> {
+        serde_json::from_str(json)
+            .map(|inner| PyLongRecordTranscryptionProof { inner })
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {}", e))
+            })
+    }
+}
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register Record types
     m.add_class::<PyRecord>()?;
@@ -354,6 +417,14 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<PyLongRecord>()?;
         m.add_class::<PyLongEncryptedRecord>()?;
         m.add_class::<PyLongRecordStructure>()?;
+    }
+
+    // Register Verifiable Record proof types
+    #[cfg(feature = "verifiable")]
+    {
+        m.add_class::<PyRecordTranscryptionProof>()?;
+        #[cfg(feature = "long")]
+        m.add_class::<PyLongRecordTranscryptionProof>()?;
     }
 
     Ok(())

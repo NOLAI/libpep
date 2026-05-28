@@ -20,8 +20,7 @@
 //!
 //! This module exposes verification for *per-message* proofs:
 //! [`verify_pseudonymization`](Verifier::verify_pseudonymization),
-//! [`verify_pseudonym_rekey`](Verifier::verify_pseudonym_rekey),
-//! [`verify_attribute_rekey`](Verifier::verify_attribute_rekey), and
+//! [`verify_rekey`](Verifier::verify_rekey), and
 //! [`verify_transcryption`](Verifier::verify_transcryption) (for composite
 //! record/JSON values). Each is polymorphic over any encrypted type
 //! implementing the matching `Verifiable*` trait (simple values, long
@@ -62,12 +61,46 @@ use super::cache::{
 #[error("weak {0} commitment is not allowed")]
 pub struct WeakCommitmentError(pub &'static str);
 
+/// Failure mode for `register_*_commitments` calls. Either the supplied
+/// commitment is weak, or the cache rejected the registration (conflicting
+/// value already present, or cache is full).
+#[derive(thiserror::Error, Debug, Clone, Eq, PartialEq)]
+pub enum RegisterCommitmentsError {
+    #[error(transparent)]
+    Weak(#[from] WeakCommitmentError),
+    #[error(transparent)]
+    Cache(#[from] super::cache::CacheRegistrationError),
+}
+
+/// Structured failure mode for `verify_*` / `verified_reconstruct_*` methods.
+///
+/// Distinguishes between cryptographic failure (`ProofRejected`), a cache
+/// miss (`UnknownCommitment`), a weak / unusable commitment, and the absence
+/// of master keys (only relevant on the `verifiable-derivation` path).
+#[derive(thiserror::Error, Debug, Clone, Eq, PartialEq)]
+pub enum VerifyError {
+    /// The proof did not verify against the supplied statement.
+    #[error("proof rejected")]
+    ProofRejected,
+    /// No commitments registered for the requested transcryptor/transition.
+    #[error("no commitments registered for this transition")]
+    UnknownCommitment,
+    /// Commitments are present but are weak / invalid.
+    #[error("weak {commitment_type} commitment")]
+    WeakCommitment { commitment_type: &'static str },
+    /// Master keys are not registered (needed for verifiable-derivation paths).
+    #[error("master keys not registered for this transcryptor")]
+    MasterKeysNotRegistered,
+}
+
 /// A verifier with per-transition commitment caching.
 ///
 /// Stored commitments are *combined* for a given transition (i.e. already
 /// encode the `s_from⁻¹·s_to` / `k_from⁻¹·k_to` product). Verification of
 /// individual transcryption operations then reduces to a single
-/// [`VerifiableRRSK`] or [`VerifiableRekey`] check against these commitments.
+/// [`VerifiableRRSK`](crate::core::verifiable::VerifiableRRSK) or
+/// [`VerifiableRekey`](crate::core::verifiable::VerifiableRekey) check against
+/// these commitments.
 pub struct Verifier {
     pseudonymization_cache: PseudonymizationCommitmentsCache,
     pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache,
@@ -187,7 +220,7 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiablePseudonymizationCommitment,
-    ) -> Result<(), WeakCommitmentError> {
+    ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.reshuffle_commitment.0 .0, "reshuffle")?;
         Self::validate_not_weak(&commitments.rekey_commitment.0 .0, "rekey")?;
         let key: PseudonymizationKey = (
@@ -197,7 +230,7 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        self.pseudonymization_cache.store(key, commitments);
+        self.pseudonymization_cache.store(key, commitments)?;
         Ok(())
     }
 
@@ -207,14 +240,14 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiableRekeyCommitment,
-    ) -> Result<(), WeakCommitmentError> {
+    ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.commitment.0 .0, "pseudonym rekey")?;
         let key: RekeyTransitionKey = (
             transcryptor_id.clone(),
             context_from.clone(),
             context_to.clone(),
         );
-        self.pseudonym_rekey_cache.store(key, commitments);
+        self.pseudonym_rekey_cache.store(key, commitments)?;
         Ok(())
     }
 
@@ -224,14 +257,14 @@ impl Verifier {
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
         commitments: VerifiableRekeyCommitment,
-    ) -> Result<(), WeakCommitmentError> {
+    ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.commitment.0 .0, "attribute rekey")?;
         let key: RekeyTransitionKey = (
             transcryptor_id.clone(),
             context_from.clone(),
             context_to.clone(),
         );
-        self.attribute_rekey_cache.store(key, commitments);
+        self.attribute_rekey_cache.store(key, commitments)?;
         Ok(())
     }
 
@@ -306,11 +339,15 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiableRekeyCommitment,
-    ) -> bool
+    ) -> Result<(), VerifyError>
     where
         P: VerifiableRekeyProof,
     {
-        proof.verify(original, commitments)
+        if proof.verify(original, commitments) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 
     pub fn verified_reconstruct_rekey<P>(
@@ -318,11 +355,13 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiableRekeyCommitment,
-    ) -> Option<P::Output>
+    ) -> Result<P::Output, VerifyError>
     where
         P: VerifiableRekeyProof,
     {
-        proof.verified_reconstruct(original, commitments)
+        proof
+            .verified_reconstruct(original, commitments)
+            .ok_or(VerifyError::ProofRejected)
     }
 
     // ----- Pseudonymization -----
@@ -333,11 +372,15 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiablePseudonymizationCommitment,
-    ) -> bool
+    ) -> Result<(), VerifyError>
     where
         P: VerifiablePseudonymizationProof,
     {
-        proof.verify(original, commitments)
+        if proof.verify(original, commitments) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -347,11 +390,15 @@ impl Verifier {
         proof: &P,
         public_key: &crate::keys::PseudonymSessionPublicKey,
         commitments: &VerifiablePseudonymizationCommitment,
-    ) -> bool
+    ) -> Result<(), VerifyError>
     where
         P: VerifiablePseudonymizationProof,
     {
-        proof.verify(original, public_key, commitments)
+        if proof.verify(original, public_key, commitments) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 
     #[cfg(feature = "elgamal3")]
@@ -360,11 +407,13 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiablePseudonymizationCommitment,
-    ) -> Option<P::Output>
+    ) -> Result<P::Output, VerifyError>
     where
         P: VerifiablePseudonymizationProof,
     {
-        proof.verified_reconstruct(original, commitments)
+        proof
+            .verified_reconstruct(original, commitments)
+            .ok_or(VerifyError::ProofRejected)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -374,11 +423,13 @@ impl Verifier {
         proof: &P,
         public_key: &crate::keys::PseudonymSessionPublicKey,
         commitments: &VerifiablePseudonymizationCommitment,
-    ) -> Option<P::Output>
+    ) -> Result<P::Output, VerifyError>
     where
         P: VerifiablePseudonymizationProof,
     {
-        proof.verified_reconstruct(original, public_key, commitments)
+        proof
+            .verified_reconstruct(original, public_key, commitments)
+            .ok_or(VerifyError::ProofRejected)
     }
 
     // ----- Transcryption (composite) -----
@@ -389,11 +440,15 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiableTranscryptionCommitment,
-    ) -> bool
+    ) -> Result<(), VerifyError>
     where
         P: VerifiableTranscryptionProof,
     {
-        proof.verify(original, commitments)
+        if proof.verify(original, commitments) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -403,11 +458,15 @@ impl Verifier {
         proof: &P,
         public_key: &crate::keys::SessionKeys,
         commitments: &VerifiableTranscryptionCommitment,
-    ) -> bool
+    ) -> Result<(), VerifyError>
     where
         P: VerifiableTranscryptionProof,
     {
-        proof.verify(original, public_key, commitments)
+        if proof.verify(original, public_key, commitments) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 
     #[cfg(feature = "elgamal3")]
@@ -416,11 +475,13 @@ impl Verifier {
         original: &P::DataType,
         proof: &P,
         commitments: &VerifiableTranscryptionCommitment,
-    ) -> Option<P::Output>
+    ) -> Result<P::Output, VerifyError>
     where
         P: VerifiableTranscryptionProof,
     {
-        proof.verified_reconstruct(original, commitments)
+        proof
+            .verified_reconstruct(original, commitments)
+            .ok_or(VerifyError::ProofRejected)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -430,11 +491,13 @@ impl Verifier {
         proof: &P,
         public_key: &crate::keys::SessionKeys,
         commitments: &VerifiableTranscryptionCommitment,
-    ) -> Option<P::Output>
+    ) -> Result<P::Output, VerifyError>
     where
         P: VerifiableTranscryptionProof,
     {
-        proof.verified_reconstruct(original, public_key, commitments)
+        proof
+            .verified_reconstruct(original, public_key, commitments)
+            .ok_or(VerifyError::ProofRejected)
     }
 
     // ------------------------------------------------------------------
@@ -454,7 +517,7 @@ impl Verifier {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output>
+    ) -> Result<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output, VerifyError>
     where
         E: VerifiablePseudonymizable,
         E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
@@ -466,7 +529,10 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let commitments = self.pseudonymization_cache.retrieve(&key)?;
+        let commitments = self
+            .pseudonymization_cache
+            .retrieve(&key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         self.verified_reconstruct_pseudonymization::<E::PseudonymizationProof>(
             original,
             proof,
@@ -486,7 +552,7 @@ impl Verifier {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output>
+    ) -> Result<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output, VerifyError>
     where
         E: VerifiablePseudonymizable,
         E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
@@ -498,7 +564,10 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let commitments = self.pseudonymization_cache.retrieve(&key)?;
+        let commitments = self
+            .pseudonymization_cache
+            .retrieve(&key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         self.verified_reconstruct_pseudonymization::<E::PseudonymizationProof>(
             original,
             proof,
@@ -514,7 +583,7 @@ impl Verifier {
         proof: &E::RekeyProof,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::RekeyProof as VerifiableRekeyProof>::Output>
+    ) -> Result<<E::RekeyProof as VerifiableRekeyProof>::Output, VerifyError>
     where
         E: VerifiableRekeyable,
         E::RekeyProof: VerifiableRekeyProof<DataType = E>,
@@ -524,7 +593,10 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let commitments = self.pseudonym_rekey_cache.retrieve(&key)?;
+        let commitments = self
+            .pseudonym_rekey_cache
+            .retrieve(&key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         self.verified_reconstruct_rekey::<E::RekeyProof>(original, proof, commitments)
     }
 
@@ -535,7 +607,7 @@ impl Verifier {
         proof: &E::RekeyProof,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::RekeyProof as VerifiableRekeyProof>::Output>
+    ) -> Result<<E::RekeyProof as VerifiableRekeyProof>::Output, VerifyError>
     where
         E: VerifiableRekeyable,
         E::RekeyProof: VerifiableRekeyProof<DataType = E>,
@@ -545,7 +617,10 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let commitments = self.attribute_rekey_cache.retrieve(&key)?;
+        let commitments = self
+            .attribute_rekey_cache
+            .retrieve(&key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         self.verified_reconstruct_rekey::<E::RekeyProof>(original, proof, commitments)
     }
 
@@ -561,7 +636,7 @@ impl Verifier {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output>
+    ) -> Result<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output, VerifyError>
     where
         E: VerifiableTranscryptable,
         E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
@@ -578,8 +653,14 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let pseudonym = *self.pseudonymization_cache.retrieve(&pseudo_key)?;
-        let attribute = *self.attribute_rekey_cache.retrieve(&attr_key)?;
+        let pseudonym = *self
+            .pseudonymization_cache
+            .retrieve(&pseudo_key)
+            .ok_or(VerifyError::UnknownCommitment)?;
+        let attribute = *self
+            .attribute_rekey_cache
+            .retrieve(&attr_key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         let commitments = VerifiableTranscryptionCommitment {
             pseudonym,
             attribute,
@@ -603,7 +684,7 @@ impl Verifier {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output>
+    ) -> Result<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output, VerifyError>
     where
         E: VerifiableTranscryptable,
         E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
@@ -620,8 +701,14 @@ impl Verifier {
             context_from.clone(),
             context_to.clone(),
         );
-        let pseudonym = *self.pseudonymization_cache.retrieve(&pseudo_key)?;
-        let attribute = *self.attribute_rekey_cache.retrieve(&attr_key)?;
+        let pseudonym = *self
+            .pseudonymization_cache
+            .retrieve(&pseudo_key)
+            .ok_or(VerifyError::UnknownCommitment)?;
+        let attribute = *self
+            .attribute_rekey_cache
+            .retrieve(&attr_key)
+            .ok_or(VerifyError::UnknownCommitment)?;
         let commitments = VerifiableTranscryptionCommitment {
             pseudonym,
             attribute,
@@ -644,23 +731,26 @@ impl Verifier {
     // and supply the rekey commitment explicitly.
 
     /// Verify a session-key-share proof with an explicitly supplied rekey commitment.
-    #[must_use]
     pub fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
         rekey_commitment: &GroupElement,
         for_pseudonym: bool,
         proof: &crate::keys::distribution::SessionKeyShareProof,
-    ) -> bool {
-        let Some(blinding_commitments) = self.get_blinding_commitments(transcryptor_id) else {
-            return false;
-        };
+    ) -> Result<(), VerifyError> {
+        let blinding_commitments = self
+            .get_blinding_commitments(transcryptor_id)
+            .ok_or(VerifyError::UnknownCommitment)?;
         let bc = if for_pseudonym {
             &blinding_commitments.pseudonym
         } else {
             &blinding_commitments.attribute
         };
-        proof.verify(bc, rekey_commitment)
+        if proof.verify(bc, rekey_commitment) {
+            Ok(())
+        } else {
+            Err(VerifyError::ProofRejected)
+        }
     }
 }
 

@@ -23,9 +23,20 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRerandomize {
     /// `R = r·G`.
-    pub gr: GroupElement,
+    pub(crate) gr: GroupElement,
     /// `ZKP{Y_r = r * Y}`: first component is `Y_r = r·Y`.
-    pub p_gy_r: Proof,
+    pub(crate) p_gy_r: Proof,
+}
+
+impl VerifiableRerandomize {
+    /// The commitment `R = r·G`.
+    pub fn gr(&self) -> &GroupElement {
+        &self.gr
+    }
+    /// The proof `ZKP{Y_r = r * Y}`.
+    pub fn p_gy_r(&self) -> &Proof {
+        &self.p_gy_r
+    }
 }
 
 impl VerifiableRerandomize {
@@ -75,6 +86,11 @@ impl VerifiableRerandomize {
     }
 }
 
+// NOTE: `verifiable_rerandomize` is intentionally kept (not removed with the
+// rest of the snake-case free wrappers) because it does extra work beyond
+// `VerifiableRerandomize::new` — it also computes and returns the
+// rerandomized ciphertext via the `pub(crate)` `result` helper, which is
+// not otherwise accessible to external callers.
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
 pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
     original: &ElGamal,

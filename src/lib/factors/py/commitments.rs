@@ -1,20 +1,23 @@
 //! Python bindings for commitment types.
 
-use crate::factors::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
+use crate::factors::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
+};
 use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]
 use pyo3::exceptions::PyValueError;
 
-/// Pseudonymization factor commitments with proofs (Python).
-#[pyclass(name = "VerifiablePseudonymizationCommitments", from_py_object)]
+/// Pseudonymization factor commitment for a single transition (Python).
+#[pyclass(name = "VerifiablePseudonymizationCommitment", from_py_object)]
 #[derive(Clone)]
-pub struct PyVerifiablePseudonymizationCommitments {
+pub struct PyVerifiablePseudonymizationCommitment {
     pub(crate) inner: VerifiablePseudonymizationCommitment,
 }
 
 #[pymethods]
-impl PyVerifiablePseudonymizationCommitments {
+impl PyVerifiablePseudonymizationCommitment {
     /// Serialize to JSON.
     #[cfg(feature = "serde")]
     fn to_json(&self) -> PyResult<String> {
@@ -27,26 +30,26 @@ impl PyVerifiablePseudonymizationCommitments {
     #[staticmethod]
     fn from_json(json: &str) -> PyResult<Self> {
         serde_json::from_str(json)
-            .map(|inner| PyVerifiablePseudonymizationCommitments { inner })
+            .map(|inner| PyVerifiablePseudonymizationCommitment { inner })
             .map_err(|e| PyValueError::new_err(format!("Deserialization failed: {}", e)))
     }
 }
 
-impl From<VerifiablePseudonymizationCommitment> for PyVerifiablePseudonymizationCommitments {
+impl From<VerifiablePseudonymizationCommitment> for PyVerifiablePseudonymizationCommitment {
     fn from(inner: VerifiablePseudonymizationCommitment) -> Self {
-        PyVerifiablePseudonymizationCommitments { inner }
+        PyVerifiablePseudonymizationCommitment { inner }
     }
 }
 
-/// Rekey factor commitments with proof (Python).
-#[pyclass(name = "VerifiableRekeyCommitments", from_py_object)]
+/// Rekey factor commitment for a single transition (Python).
+#[pyclass(name = "VerifiableRekeyCommitment", from_py_object)]
 #[derive(Clone)]
-pub struct PyVerifiableRekeyCommitments {
+pub struct PyVerifiableRekeyCommitment {
     pub(crate) inner: VerifiableRekeyCommitment,
 }
 
 #[pymethods]
-impl PyVerifiableRekeyCommitments {
+impl PyVerifiableRekeyCommitment {
     /// Serialize to JSON.
     #[cfg(feature = "serde")]
     fn to_json(&self) -> PyResult<String> {
@@ -59,20 +62,54 @@ impl PyVerifiableRekeyCommitments {
     #[staticmethod]
     fn from_json(json: &str) -> PyResult<Self> {
         serde_json::from_str(json)
-            .map(|inner| PyVerifiableRekeyCommitments { inner })
+            .map(|inner| PyVerifiableRekeyCommitment { inner })
             .map_err(|e| PyValueError::new_err(format!("Deserialization failed: {}", e)))
     }
 }
 
-impl From<VerifiableRekeyCommitment> for PyVerifiableRekeyCommitments {
+impl From<VerifiableRekeyCommitment> for PyVerifiableRekeyCommitment {
     fn from(inner: VerifiableRekeyCommitment) -> Self {
-        PyVerifiableRekeyCommitments { inner }
+        PyVerifiableRekeyCommitment { inner }
+    }
+}
+
+/// Combined transcryption commitments — pseudonymization (reshuffle + rekey)
+/// plus attribute rekey — for a transition (Python).
+#[pyclass(name = "VerifiableTranscryptionCommitment", from_py_object)]
+#[derive(Clone)]
+pub struct PyVerifiableTranscryptionCommitment {
+    pub(crate) inner: VerifiableTranscryptionCommitment,
+}
+
+#[pymethods]
+impl PyVerifiableTranscryptionCommitment {
+    /// Serialize to JSON.
+    #[cfg(feature = "serde")]
+    fn to_json(&self) -> PyResult<String> {
+        serde_json::to_string(&self.inner)
+            .map_err(|e| PyValueError::new_err(format!("Serialization failed: {}", e)))
+    }
+
+    /// Deserialize from JSON.
+    #[cfg(feature = "serde")]
+    #[staticmethod]
+    fn from_json(json: &str) -> PyResult<Self> {
+        serde_json::from_str(json)
+            .map(|inner| PyVerifiableTranscryptionCommitment { inner })
+            .map_err(|e| PyValueError::new_err(format!("Deserialization failed: {}", e)))
+    }
+}
+
+impl From<VerifiableTranscryptionCommitment> for PyVerifiableTranscryptionCommitment {
+    fn from(inner: VerifiableTranscryptionCommitment) -> Self {
+        PyVerifiableTranscryptionCommitment { inner }
     }
 }
 
 #[allow(dead_code)]
 pub(crate) fn register_commitment_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
-    parent_module.add_class::<PyVerifiablePseudonymizationCommitments>()?;
-    parent_module.add_class::<PyVerifiableRekeyCommitments>()?;
+    parent_module.add_class::<PyVerifiablePseudonymizationCommitment>()?;
+    parent_module.add_class::<PyVerifiableRekeyCommitment>()?;
+    parent_module.add_class::<PyVerifiableTranscryptionCommitment>()?;
     Ok(())
 }

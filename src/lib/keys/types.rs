@@ -16,10 +16,17 @@ pub struct GlobalPublicKeys {
 }
 
 /// A pair of global secret keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct GlobalSecretKeys {
     pub pseudonym: PseudonymGlobalSecretKey,
     pub attribute: AttributeGlobalSecretKey,
+}
+
+impl std::fmt::Debug for GlobalSecretKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak inner secret scalars via Debug formatting.
+        f.write_str("GlobalSecretKeys { pseudonym: …, attribute: … }")
+    }
 }
 
 /// A global public key for pseudonyms, associated with the [`PseudonymGlobalSecretKey`] from which session keys are derived.
@@ -30,8 +37,15 @@ pub struct GlobalSecretKeys {
 pub struct PseudonymGlobalPublicKey(pub(crate) GroupElement);
 
 /// A global secret key for pseudonyms from which session keys are derived.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, From)]
 pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for PseudonymGlobalSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("PseudonymGlobalSecretKey(…)")
+    }
+}
 
 /// A global public key for attributes, associated with the [`AttributeGlobalSecretKey`] from which session keys are derived.
 /// Can also be used to encrypt attributes, if no session key is available or using a session key may leak information.
@@ -41,32 +55,69 @@ pub struct PseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 pub struct AttributeGlobalPublicKey(pub(crate) GroupElement);
 
 /// A global secret key for attributes from which session keys are derived.
-#[derive(Copy, Clone, Debug, From)]
+#[derive(Copy, Clone, From)]
 pub struct AttributeGlobalSecretKey(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for AttributeGlobalSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("AttributeGlobalSecretKey(…)")
+    }
+}
 
 /// Session keys for both pseudonyms and attributes.
 /// Organized by key type (pseudonym/attribute) rather than by public/secret.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SessionKeys {
     pub pseudonym: PseudonymSessionKeys,
     pub attribute: AttributeSessionKeys,
 }
 
+impl std::fmt::Debug for SessionKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Avoid leaking secret session-key scalars via Debug formatting.
+        f.debug_struct("SessionKeys")
+            .field("pseudonym", &self.pseudonym)
+            .field("attribute", &self.attribute)
+            .finish()
+    }
+}
+
 /// A pseudonym session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PseudonymSessionKeys {
     pub public: PseudonymSessionPublicKey,
     pub secret: PseudonymSessionSecretKey,
 }
 
+impl std::fmt::Debug for PseudonymSessionKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Avoid leaking the secret scalar via Debug formatting.
+        f.debug_struct("PseudonymSessionKeys")
+            .field("public", &self.public)
+            .field("secret", &self.secret)
+            .finish()
+    }
+}
+
 /// An attribute session key pair containing both public and secret keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AttributeSessionKeys {
     pub public: AttributeSessionPublicKey,
     pub secret: AttributeSessionSecretKey,
+}
+
+impl std::fmt::Debug for AttributeSessionKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Avoid leaking the secret scalar via Debug formatting.
+        f.debug_struct("AttributeSessionKeys")
+            .field("public", &self.public)
+            .field("secret", &self.secret)
+            .finish()
+    }
 }
 
 /// A session public key used to encrypt pseudonyms, associated with a [`PseudonymSessionSecretKey`].
@@ -76,10 +127,17 @@ pub struct AttributeSessionKeys {
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt pseudonyms with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Deref, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for PseudonymSessionSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("PseudonymSessionSecretKey(…)")
+    }
+}
 
 /// A session public key used to encrypt attributes, associated with a [`AttributeSessionSecretKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Deref, From)]
@@ -88,10 +146,17 @@ pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt attributes with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Deref, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for AttributeSessionSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("AttributeSessionSecretKey(…)")
+    }
+}
 
 // Session key conversion (under a rekey factor)
 //

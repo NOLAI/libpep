@@ -10,5 +10,5 @@ pub use crate::factors::wasm as factors;
 pub use crate::keys::wasm as keys;
 pub use crate::transcryptor::wasm as transcryptor;
 
-// Re-export functions from client module for backwards compatibility
-pub use client::functions::*;
+#[cfg(feature = "verifiable")]
+pub use crate::verifier::wasm as verifier;

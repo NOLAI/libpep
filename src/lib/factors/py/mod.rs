@@ -20,4 +20,4 @@ pub use types::{
 };
 
 #[cfg(feature = "verifiable")]
-pub use commitments::{PyVerifiablePseudonymizationCommitments, PyVerifiableRekeyCommitments};
+pub use commitments::{PyVerifiablePseudonymizationCommitment, PyVerifiableRekeyCommitment};

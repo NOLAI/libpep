@@ -2,7 +2,6 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::arithmetic::scalars::ScalarTraits;
 use crate::arithmetic::wasm::group_elements::WASMGroupElement;
 use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
 use crate::client::distributed::{

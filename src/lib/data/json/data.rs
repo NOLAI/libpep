@@ -3,6 +3,8 @@
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
 #[cfg(feature = "batch")]
+use crate::data::batch::BatchError;
+#[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -18,8 +20,6 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
-#[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};

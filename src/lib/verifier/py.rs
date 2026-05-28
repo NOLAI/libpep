@@ -2,7 +2,8 @@
 
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::commitments::{
-    PyVerifiablePseudonymizationCommitments, PyVerifiableRekeyCommitments,
+    PyVerifiablePseudonymizationCommitment, PyVerifiableRekeyCommitment,
+    PyVerifiableTranscryptionCommitment,
 };
 use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::verifier::Verifier;
@@ -37,7 +38,7 @@ impl PyVerifier {
         domain_to: &PyPseudonymizationDomain,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
-        commitments: &PyVerifiablePseudonymizationCommitments,
+        commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<()> {
         self.0
             .register_pseudonymization_commitments(
@@ -57,7 +58,7 @@ impl PyVerifier {
         transcryptor_id: &str,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
-        commitments: &PyVerifiableRekeyCommitments,
+        commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<()> {
         self.0
             .register_attribute_rekey_commitments(
@@ -75,7 +76,7 @@ impl PyVerifier {
         transcryptor_id: &str,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
-        commitments: &PyVerifiableRekeyCommitments,
+        commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<()> {
         self.0
             .register_pseudonym_rekey_commitments(
@@ -138,19 +139,20 @@ impl PyVerifier {
     }
 
     /// Verify a pseudonymization operation against the combined commitments,
-    /// returning the reconstructed pseudonym on success or None on failure.
+    /// returning the reconstructed pseudonym on success or raising on failure.
     #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
         operation_proof: &PyVerifiableRRSK,
-        commitments: &PyVerifiablePseudonymizationCommitments,
-    ) -> Option<PyEncryptedPseudonym> {
+        commitments: &PyVerifiablePseudonymizationCommitment,
+    ) -> PyResult<PyEncryptedPseudonym> {
         let proof =
             crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
         self.0
             .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.inner)
             .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Verify a pseudonymization operation against the combined commitments,
@@ -164,14 +166,15 @@ impl PyVerifier {
         original: &PyEncryptedPseudonym,
         operation_proof: &PyVerifiableRRSK,
         public_key: &crate::keys::py::PyPseudonymSessionPublicKey,
-        commitments: &PyVerifiablePseudonymizationCommitments,
-    ) -> Option<PyEncryptedPseudonym> {
+        commitments: &PyVerifiablePseudonymizationCommitment,
+    ) -> PyResult<PyEncryptedPseudonym> {
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
         let proof =
             crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
         self.0
             .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.inner)
             .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Verify a pseudonym rekey operation against the rekey commitment.
@@ -180,12 +183,13 @@ impl PyVerifier {
         &self,
         original: &PyEncryptedPseudonym,
         proof: &PyVerifiableRekey,
-        commitments: &PyVerifiableRekeyCommitments,
-    ) -> Option<PyEncryptedPseudonym> {
+        commitments: &PyVerifiableRekeyCommitment,
+    ) -> PyResult<PyEncryptedPseudonym> {
         let wrapped = crate::data::verifiable::simple::PseudonymRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
             .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Verify an attribute rekey operation against the rekey commitment.
@@ -194,12 +198,153 @@ impl PyVerifier {
         &self,
         original: &PyEncryptedAttribute,
         proof: &PyVerifiableRekey,
-        commitments: &PyVerifiableRekeyCommitments,
-    ) -> Option<PyEncryptedAttribute> {
+        commitments: &PyVerifiableRekeyCommitment,
+    ) -> PyResult<PyEncryptedAttribute> {
         let wrapped = crate::data::verifiable::simple::AttributeRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
             .map(PyEncryptedAttribute)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Verify a record transcryption operation, returning the reconstructed
+    /// record on success. Pseudonym fields are checked by RRSK, attribute
+    /// fields by rekey; the `commitments` bundle covers both.
+    #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
+    fn verify_record_transcryption(
+        &self,
+        original: &crate::data::py::records::PyEncryptedRecord,
+        proof: &crate::data::py::records::PyRecordTranscryptionProof,
+        commitments: &PyVerifiableTranscryptionCommitment,
+    ) -> PyResult<crate::data::py::records::PyEncryptedRecord> {
+        self.0
+            .verified_reconstruct_transcryption(&original.0, &proof.inner, &commitments.inner)
+            .map(crate::data::py::records::PyEncryptedRecord)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]
+    fn verify_record_transcryption(
+        &self,
+        original: &crate::data::py::records::PyEncryptedRecord,
+        proof: &crate::data::py::records::PyRecordTranscryptionProof,
+        session_keys: &crate::keys::py::PySessionKeys,
+        commitments: &PyVerifiableTranscryptionCommitment,
+    ) -> PyResult<crate::data::py::records::PyEncryptedRecord> {
+        let sk = crate::keys::SessionKeys::from(session_keys.clone());
+        self.0
+            .verified_reconstruct_transcryption(&original.0, &proof.inner, &sk, &commitments.inner)
+            .map(crate::data::py::records::PyEncryptedRecord)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Cache-backed pseudonymization verification: looks up the registered
+    /// commitments by transition and verifies the proof against them. Raises
+    /// `ValueError` if no commitments are registered for that transition or
+    /// the proof does not verify.
+    #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
+    #[allow(clippy::too_many_arguments)]
+    fn verify_pseudonymization_cached(
+        &self,
+        transcryptor_id: &str,
+        original: &PyEncryptedPseudonym,
+        operation_proof: &PyVerifiableRRSK,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+    ) -> PyResult<PyEncryptedPseudonym> {
+        let proof =
+            crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        self.0
+            .verified_reconstruct_pseudonymization_cached(
+                transcryptor_id,
+                &original.0,
+                &proof,
+                &domain_from.0,
+                &domain_to.0,
+                &context_from.0,
+                &context_to.0,
+            )
+            .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]
+    #[allow(clippy::too_many_arguments)]
+    fn verify_pseudonymization_cached(
+        &self,
+        transcryptor_id: &str,
+        original: &PyEncryptedPseudonym,
+        operation_proof: &PyVerifiableRRSK,
+        public_key: &crate::keys::py::PyPseudonymSessionPublicKey,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+    ) -> PyResult<PyEncryptedPseudonym> {
+        let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+        let proof =
+            crate::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        self.0
+            .verified_reconstruct_pseudonymization_cached(
+                transcryptor_id,
+                &original.0,
+                &proof,
+                &pk,
+                &domain_from.0,
+                &domain_to.0,
+                &context_from.0,
+                &context_to.0,
+            )
+            .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Cache-backed pseudonym rekey verification.
+    #[cfg(feature = "verifiable")]
+    fn verify_pseudonym_rekey_cached(
+        &self,
+        transcryptor_id: &str,
+        original: &PyEncryptedPseudonym,
+        proof: &PyVerifiableRekey,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+    ) -> PyResult<PyEncryptedPseudonym> {
+        let wrapped = crate::data::verifiable::simple::PseudonymRekeyProof(proof.inner);
+        self.0
+            .verified_reconstruct_pseudonym_rekey_cached(
+                transcryptor_id,
+                &original.0,
+                &wrapped,
+                &context_from.0,
+                &context_to.0,
+            )
+            .map(PyEncryptedPseudonym)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Cache-backed attribute rekey verification.
+    #[cfg(feature = "verifiable")]
+    fn verify_attribute_rekey_cached(
+        &self,
+        transcryptor_id: &str,
+        original: &PyEncryptedAttribute,
+        proof: &PyVerifiableRekey,
+        context_from: &PyEncryptionContext,
+        context_to: &PyEncryptionContext,
+    ) -> PyResult<PyEncryptedAttribute> {
+        let wrapped = crate::data::verifiable::simple::AttributeRekeyProof(proof.inner);
+        self.0
+            .verified_reconstruct_attribute_rekey_cached(
+                transcryptor_id,
+                &original.0,
+                &wrapped,
+                &context_from.0,
+                &context_to.0,
+            )
+            .map(PyEncryptedAttribute)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 }
 

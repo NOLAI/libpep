@@ -9,34 +9,83 @@ use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 
 /// A blinding factor used to blind a global secret key during system setup.
-#[derive(Copy, Clone, Debug, From, Deref)]
+///
+/// This type intentionally does **not** implement `Deref` to the inner
+/// scalar: the wrapped value is secret and exposing it via the `*` operator
+/// makes it easy to leak inadvertently (e.g. via `Debug` of a tuple).
+/// Internal callers that need the scalar value should use
+/// [`BlindingFactor::as_scalar`].
+#[derive(Copy, Clone, From)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for BlindingFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("BlindingFactor(…)")
+    }
+}
 
 /// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+///
+/// Although blinded, the wrapped scalar is still cryptographically sensitive
+/// material; `Debug` is implemented manually to avoid leaking it.
+#[derive(Copy, Clone, Eq, PartialEq, From, Deref)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for BlindedPseudonymGlobalSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("BlindedPseudonymGlobalSecretKey(…)")
+    }
+}
+
 /// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+///
+/// Although blinded, the wrapped scalar is still cryptographically sensitive
+/// material; `Debug` is implemented manually to avoid leaking it.
+#[derive(Copy, Clone, Eq, PartialEq, From, Deref)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for BlindedAttributeGlobalSecretKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("BlindedAttributeGlobalSecretKey(…)")
+    }
+}
+
 /// A pair of blinded global secret keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BlindedGlobalKeys {
     pub pseudonym: BlindedPseudonymGlobalSecretKey,
     pub attribute: BlindedAttributeGlobalSecretKey,
 }
 
+impl std::fmt::Debug for BlindedGlobalKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BlindedGlobalKeys")
+            .field("pseudonym", &self.pseudonym)
+            .field("attribute", &self.attribute)
+            .finish()
+    }
+}
+
 impl BlindingFactor {
+    /// Crate-internal accessor for the inner secret scalar.
+    ///
+    /// Not part of the public API: external callers should never need the
+    /// raw scalar, since exposing it defeats the purpose of blinding.
+    #[inline]
+    pub(crate) fn as_scalar(&self) -> &ScalarNonZero {
+        &self.0
+    }
+
     /// Create a random blinding factor.
     pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         loop {
@@ -47,6 +96,21 @@ impl BlindingFactor {
         }
     }
 
+    /// Encode as a byte array.
+    ///
+    /// This exposes the secret scalar bytes; callers must handle the result
+    /// as secret material (e.g. only persist it via a secure channel).
+    pub fn to_bytes(&self) -> [u8; 32] {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_bytes()
+    }
+    /// Encode as a hexadecimal string.
+    ///
+    /// As with [`Self::to_bytes`], the result is secret material.
+    pub fn to_hex(&self) -> String {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_hex()
+    }
     /// Decode from a byte array.
     pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
         ScalarNonZero::from_bytes(bytes).map(Self)

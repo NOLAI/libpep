@@ -1,9 +1,43 @@
-//! Session key share proofs for distributed key generation.
+//! Session-key-share proofs for the blinded-product key construction.
 //!
-//! This module implements zero-knowledge proofs for session key shares in distributed
-//! transcryption scenarios. When multiple transcryptors establish session keys through
-//! session key shares, each share u_i = b_i * k_i must be proven to be correctly
-//! constructed without revealing the secret factors.
+//! libpep distributes session keys using a **blinded-product** construction,
+//! NOT a Distributed Key Generation (DKG) / Verifiable Secret Sharing (VSS)
+//! scheme. The construction works as follows:
+//!
+//! - Each transcryptor `i` holds a secret blinding scalar `b_i`.
+//! - At setup, a dealer computes the blinded global secret key
+//!   `sk' = sk · ∏ b_i⁻¹` and publishes it together with the global public
+//!   key. Each transcryptor receives its own `b_i` over a secure channel.
+//! - To derive a session key for a context, each transcryptor computes its
+//!   own session-key share `u_i = b_i · k_i`, where
+//!   `k_i = derive(context)` is a publicly-recomputable rekey factor for
+//!   that context. The user multiplies `sk'` by all shares `u_i` to obtain
+//!   the session secret key:
+//!   `sk_session = sk' · ∏ u_i = sk · ∏ b_i⁻¹ · ∏ (b_i · k_i) = sk · ∏ k_i`.
+//!
+//! This module's [`SessionKeyShareProof`] proves, in zero knowledge, that an
+//! individual transcryptor `i` correctly computed its share `u_i = b_i · k_i`
+//! using the blinding scalar `b_i` previously committed to as `B_i = b_i · G`
+//! and the publicly-recomputable rekey factor commitment `K_i = k_i · G`.
+//!
+//! # Security model
+//!
+//! What this proof **does** guarantee:
+//! - For each transcryptor `i`, the published share commitment
+//!   `U_i = u_i · G` is exactly `b_i · k_i · G`, where `b_i` matches the
+//!   pre-configured blinding commitment `B_i = b_i · G` and `k_i` is the
+//!   rekey factor derived from the (known, deterministic) context.
+//!
+//! What this proof **does NOT** guarantee:
+//! - That at setup the dealer actually used the same `b_i` in computing
+//!   `sk' = sk · ∏ b_i⁻¹` as the `b_i` that was shipped to transcryptor `i`.
+//!   There is no commitment phase, no broadcast, and no proof tying the
+//!   blinded global secret key back to the individual `B_i`. A malicious
+//!   dealer could in principle use a different set of blinding scalars in
+//!   the product than the ones it distributed. **The dealer is therefore a
+//!   trusted party at setup time.** Once setup is complete (and the dealer
+//!   is gone), the per-share proofs in this module guarantee correctness of
+//!   each transcryptor's contribution at session-derivation time.
 
 use crate::arithmetic::group_elements::{GroupElement, G};
 use crate::arithmetic::scalars::ScalarNonZero;
@@ -36,26 +70,30 @@ impl BlindingCommitment {
     }
 }
 
-/// Proof that a session key share was correctly constructed.
+/// Proof that a session-key share was correctly constructed.
 ///
 /// This is a ZKP(U_i; b_i; K_i) proving that:
-/// - u_i = b_i * k_i (session key share)
+/// - u_i = b_i * k_i (session-key share scalar)
 /// - U_i = u_i * G (public commitment to the share)
 /// - Using preconfigured B_i = b_i * G (blinding commitment)
 /// - Using K_i from stored factor commitments (rekey factor commitment)
 ///
 /// # Security Note
 ///
-/// This proof should only be shared with the user requesting the session key,
-/// as u_i must remain secret. Unlike transcryption proofs which can be public,
-/// session key share proofs contain information that could compromise security
-/// if shared publicly.
+/// The proof reveals `U_i = u_i · G` (the public commitment to the share)
+/// but the underlying scalar `u_i` MUST remain secret to the transcryptor
+/// and the user requesting the session key. Anyone holding all `u_i` along
+/// with the blinded global secret key `sk'` can reconstruct `sk_session`.
+/// The proof itself can be transmitted over the same channel as the share
+/// scalar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct SessionKeyShareProof {
-    /// U_i = u_i * G (public commitment to session key share)
-    pub share_commitment: GroupElement,
-    /// Zero-knowledge proof that u_i = b_i * k_i
+    /// Zero-knowledge proof that u_i = b_i * k_i.
+    ///
+    /// The proof's `n` field equals `U_i = u_i · G`, the public commitment
+    /// to the session-key share. It is checked against `b_i · K_i` by
+    /// [`SessionKeyShareProof::verify`].
     pub proof: Proof,
 }
 
@@ -67,7 +105,9 @@ impl SessionKeyShareProof {
     /// # Arguments
     ///
     /// * `blinding` - The blinding factor b_i (kept secret by transcryptor)
-    /// * `rekey_factor` - The rekey factor k_i (kept secret by transcryptor)
+    /// * `_rekey_factor` - Currently unused (kept for API stability — the proof
+    ///   is constructed against `rekey_commitment = k_i · G`, so the scalar
+    ///   `k_i` itself is not needed).
     /// * `rekey_commitment` - Public commitment K_i = k_i * G
     /// * `rng` - Random number generator
     ///
@@ -77,25 +117,16 @@ impl SessionKeyShareProof {
     /// was constructed correctly.
     pub fn new<R: Rng + CryptoRng>(
         blinding: &ScalarNonZero,
-        rekey_factor: &ScalarNonZero,
+        _rekey_factor: &ScalarNonZero,
         rekey_commitment: &GroupElement,
         rng: &mut R,
     ) -> Self {
-        // Compute u_i = b_i * k_i (session key share contribution)
-        let share = blinding * rekey_factor;
-
-        // Create U_i = u_i * G (public commitment)
-        let share_commitment = share * G;
-
         // Create ZKP proving knowledge of b_i such that:
-        // - share_commitment = b_i * rekey_commitment
+        // - proof.n = U_i = b_i * rekey_commitment = b_i * k_i * G = u_i * G
         // - (which implies u_i = b_i * k_i since K_i = k_i * G)
         let (_, proof) = create_proof(blinding, rekey_commitment, rng);
 
-        Self {
-            share_commitment,
-            proof,
-        }
+        Self { proof }
     }
 
     /// Verify a session key share proof.
@@ -118,18 +149,19 @@ impl SessionKeyShareProof {
         rekey_commitment: &GroupElement,
     ) -> bool {
         // Verify the ZKP
-        // This confirms: share_commitment = b_i * rekey_commitment
+        // This confirms: proof.n = b_i * rekey_commitment
         // which means: U_i = b_i * K_i = b_i * (k_i * G) = (b_i * k_i) * G = u_i * G
         verify_proof(&blinding_commitment.0, rekey_commitment, &self.proof)
     }
 
     /// Get the public commitment to the session key share.
     ///
-    /// Returns U_i = u_i * G.
+    /// Returns U_i = u_i * G. This is simply `self.proof.n`: in the honest
+    /// construction the proof's `n` value IS the share commitment.
     ///
-    /// The user should verify this matches the commitment before accepting the share.
+    /// The user should verify the proof before relying on this value.
     pub fn share_commitment(&self) -> &GroupElement {
-        &self.share_commitment
+        &self.proof.n
     }
 }
 
@@ -191,6 +223,23 @@ mod tests {
         // Verify U_i = (b_i * k_i) * G
         let expected_share_commitment = (blinding * rekey_factor) * G;
         assert_eq!(*proof.share_commitment(), expected_share_commitment);
+    }
+
+    #[test]
+    fn test_share_commitment_equals_proof_n() {
+        // Regression test for the removed redundant `share_commitment` field.
+        // `share_commitment()` MUST return `&self.proof.n` so a malicious
+        // prover cannot publish a different value via the public getter than
+        // what the proof actually proves.
+        let mut rng = rand::rng();
+        let blinding = ScalarNonZero::random(&mut rng);
+        let rekey_factor = ScalarNonZero::random(&mut rng);
+        let rekey_commitment = rekey_factor * G;
+
+        let proof =
+            SessionKeyShareProof::new(&blinding, &rekey_factor, &rekey_commitment, &mut rng);
+
+        assert_eq!(proof.share_commitment(), &proof.proof.n);
     }
 
     #[test]

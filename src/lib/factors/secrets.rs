@@ -12,13 +12,27 @@ use sha2::{Digest, Sha256};
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 pub type Secret = Box<[u8]>;
 
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`](ReshuffleFactor) from a [`PseudonymizationDomain`](PseudonymizationDomain).
-#[derive(Clone, Debug, From)]
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
+#[derive(Clone, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
-/// Encryption secret used to derive rekey factors from an [`EncryptionContext`](EncryptionContext).
-#[derive(Clone, Debug, From)]
+impl std::fmt::Debug for PseudonymizationSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret bytes via Debug formatting (e.g. logs).
+        f.write_str("PseudonymizationSecret(…)")
+    }
+}
+
+/// Encryption secret used to derive rekey factors from an [`EncryptionContext`].
+#[derive(Clone, From)]
 pub struct EncryptionSecret(pub(crate) Secret);
+
+impl std::fmt::Debug for EncryptionSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret bytes via Debug formatting (e.g. logs).
+        f.write_str("EncryptionSecret(…)")
+    }
+}
 
 impl PseudonymizationSecret {
     pub fn from(secret: Vec<u8>) -> Self {

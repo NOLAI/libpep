@@ -15,10 +15,10 @@ pub mod wasm;
 pub mod py;
 
 pub use cache::{
-    AttributeRekeyCommitmentsCache, CommitmentsCache, InMemoryCommitmentsCache,
-    PseudonymRekeyCommitmentsCache, PseudonymizationCommitmentsCache,
+    AttributeRekeyCommitmentsCache, CacheRegistrationError, CommitmentsCache,
+    InMemoryCommitmentsCache, PseudonymRekeyCommitmentsCache, PseudonymizationCommitmentsCache,
 };
-pub use verifier::Verifier;
+pub use verifier::{RegisterCommitmentsError, Verifier, VerifyError, WeakCommitmentError};
 
 #[cfg(feature = "wasm")]
 pub use wasm::WASMVerifier;

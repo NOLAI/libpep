@@ -8,12 +8,24 @@ use crate::factors::{
 use derive_more::From;
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for RerandomizeFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RerandomizeFactor(…)")
+    }
+}
+
 /// High-level type for the factor used to [`reshuffle`](crate::core::primitives::reshuffle) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct ReshuffleFactor(pub ScalarNonZero);
+
+impl std::fmt::Debug for ReshuffleFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ReshuffleFactor(…)")
+    }
+}
 
 /// Trait for rekey factors that can be extracted to a scalar.
 pub trait RekeyFactor {
@@ -21,8 +33,14 @@ pub trait RekeyFactor {
 }
 
 /// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct PseudonymRekeyFactor(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for PseudonymRekeyFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PseudonymRekeyFactor(…)")
+    }
+}
 
 impl RekeyFactor for PseudonymRekeyFactor {
     fn scalar(&self) -> ScalarNonZero {
@@ -31,8 +49,14 @@ impl RekeyFactor for PseudonymRekeyFactor {
 }
 
 /// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for attributes.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct AttributeRekeyFactor(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for AttributeRekeyFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("AttributeRekeyFactor(…)")
+    }
+}
 
 impl RekeyFactor for AttributeRekeyFactor {
     fn scalar(&self) -> ScalarNonZero {
@@ -42,12 +66,18 @@ impl RekeyFactor for AttributeRekeyFactor {
 
 /// High-level type for the factors used to [`rsk`](crate::core::primitives::rsk) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
 /// Contains both the reshuffle factor (`s`) and the rekey factor (`k`).
-#[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
+#[derive(Eq, PartialEq, Clone, Copy, From)]
 pub struct PseudonymRSKFactors {
     /// Reshuffle factor - transforms pseudonyms between different domains
     pub s: ReshuffleFactor,
     /// Rekey factor - transforms pseudonyms between different sessions
     pub k: PseudonymRekeyFactor,
+}
+
+impl std::fmt::Debug for PseudonymRSKFactors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PseudonymRSKFactors { s: …, k: … }")
+    }
 }
 
 /// The information required to perform n-PEP pseudonymization from one domain and session to another.
@@ -73,10 +103,16 @@ impl From<PseudonymizationInfo> for PseudonymRekeyInfo {
 }
 
 /// The information required for transcryption, containing both pseudonymization info and attribute rekey info.
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct TranscryptionInfo {
     pub pseudonym: PseudonymizationInfo,
     pub attribute: AttributeRekeyInfo,
+}
+
+impl std::fmt::Debug for TranscryptionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("TranscryptionInfo { pseudonym: …, attribute: … }")
+    }
 }
 
 impl PseudonymizationInfo {

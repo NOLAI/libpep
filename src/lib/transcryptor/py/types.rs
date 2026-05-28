@@ -4,9 +4,8 @@
 use crate::data::py::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-#[cfg(feature = "elgamal3")]
 use crate::data::py::records::PyEncryptedRecord;
-#[cfg(all(feature = "long", feature = "elgamal3"))]
+#[cfg(feature = "long")]
 use crate::data::py::records::PyLongEncryptedRecord;
 use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::py::contexts::{
@@ -311,50 +310,51 @@ impl PyTranscryptor {
 
     /// Generate commitment proofs for pseudonymization factors.
     #[cfg(feature = "verifiable")]
-    fn pseudonymization_commitments(
+    fn pseudonymization_commitment(
         &self,
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-    ) -> crate::factors::py::commitments::PyVerifiablePseudonymizationCommitments {
-        use crate::factors::py::commitments::PyVerifiablePseudonymizationCommitments;
-        let info = self.pseudonymization_info(
-            &domain_from.0,
-            &domain_to.0,
-            &session_from.0,
-            &session_to.0,
-        );
-        PyVerifiablePseudonymizationCommitments {
-            inner: Transcryptor::pseudonymization_commitment(&info),
+    ) -> crate::factors::py::commitments::PyVerifiablePseudonymizationCommitment {
+        use crate::factors::py::commitments::PyVerifiablePseudonymizationCommitment;
+        PyVerifiablePseudonymizationCommitment {
+            inner: self.0.pseudonymization_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
         }
     }
 
     /// Generate commitment proofs for attribute rekey factors.
     #[cfg(feature = "verifiable")]
-    fn attribute_rekey_commitments(
+    fn attribute_rekey_commitment(
         &self,
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitments {
-        use crate::factors::py::commitments::PyVerifiableRekeyCommitments;
-        let info = self.attribute_rekey_info(&session_from.0, &session_to.0);
-        PyVerifiableRekeyCommitments {
-            inner: Transcryptor::attribute_rekey_commitment(&info),
+    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+        use crate::factors::py::commitments::PyVerifiableRekeyCommitment;
+        PyVerifiableRekeyCommitment {
+            inner: self
+                .0
+                .attribute_rekey_commitment(&session_from.0, &session_to.0),
         }
     }
 
     /// Generate commitment proofs for pseudonym rekey factors.
     #[cfg(feature = "verifiable")]
-    fn pseudonym_rekey_commitments(
+    fn pseudonym_rekey_commitment(
         &self,
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitments {
-        use crate::factors::py::commitments::PyVerifiableRekeyCommitments;
-        let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        PyVerifiableRekeyCommitments {
-            inner: Transcryptor::pseudonym_rekey_commitment(&info),
+    ) -> crate::factors::py::commitments::PyVerifiableRekeyCommitment {
+        use crate::factors::py::commitments::PyVerifiableRekeyCommitment;
+        PyVerifiableRekeyCommitment {
+            inner: self
+                .0
+                .pseudonym_rekey_commitment(&session_from.0, &session_to.0),
         }
     }
 
@@ -437,6 +437,92 @@ impl PyTranscryptor {
         crate::core::py::verifiable::PyVerifiableRekey {
             inner: operation_proof.0,
         }
+    }
+
+    /// Build the combined public commitments for a transcryption transition:
+    /// pseudonymization (`S`, `K_pseudo`) plus attribute rekey (`K_attr`).
+    /// Used by the verifier to check `verifiable_record_transcrypt` /
+    /// `verifiable_long_record_transcrypt` proofs.
+    #[cfg(feature = "verifiable")]
+    fn transcryption_commitment(
+        &self,
+        domain_from: &PyPseudonymizationDomain,
+        domain_to: &PyPseudonymizationDomain,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> crate::factors::py::commitments::PyVerifiableTranscryptionCommitment {
+        crate::factors::py::commitments::PyVerifiableTranscryptionCommitment {
+            inner: self.0.transcryption_commitment(
+                &domain_from.0,
+                &domain_to.0,
+                &session_from.0,
+                &session_to.0,
+            ),
+        }
+    }
+
+    /// Perform verifiable transcryption of a simple record (pseudonyms +
+    /// attributes). Returns a [`RecordTranscryptionProof`] containing per-item
+    /// proofs that the verifier can check against the commitments published
+    /// for this transition.
+    #[cfg(all(feature = "verifiable", feature = "elgamal3"))]
+    fn verifiable_record_transcrypt(
+        &self,
+        encrypted: &PyEncryptedRecord,
+        transcryption_info: &PyTranscryptionInfo,
+    ) -> crate::data::py::records::PyRecordTranscryptionProof {
+        let mut rng = rand::rng();
+        let info = TranscryptionInfo::from(transcryption_info);
+        let proof = self.0.verifiable_transcrypt(&encrypted.0, &info, &mut rng);
+        crate::data::py::records::PyRecordTranscryptionProof { inner: proof }
+    }
+
+    /// Non-`elgamal3` variant: the recipient session keys the pseudonym /
+    /// attribute ciphertexts were encrypted under must be supplied so the
+    /// inner rerandomize step's binding can be proven.
+    #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]
+    fn verifiable_record_transcrypt(
+        &self,
+        encrypted: &PyEncryptedRecord,
+        transcryption_info: &PyTranscryptionInfo,
+        session_keys: &crate::keys::py::PySessionKeys,
+    ) -> crate::data::py::records::PyRecordTranscryptionProof {
+        let mut rng = rand::rng();
+        let info = TranscryptionInfo::from(transcryption_info);
+        let sk = crate::keys::SessionKeys::from(session_keys.clone());
+        let proof = self
+            .0
+            .verifiable_transcrypt(&encrypted.0, &info, &sk, &mut rng);
+        crate::data::py::records::PyRecordTranscryptionProof { inner: proof }
+    }
+
+    /// Verifiable transcryption of a long record.
+    #[cfg(all(feature = "verifiable", feature = "long", feature = "elgamal3"))]
+    fn verifiable_long_record_transcrypt(
+        &self,
+        encrypted: &PyLongEncryptedRecord,
+        transcryption_info: &PyTranscryptionInfo,
+    ) -> crate::data::py::records::PyLongRecordTranscryptionProof {
+        let mut rng = rand::rng();
+        let info = TranscryptionInfo::from(transcryption_info);
+        let proof = self.0.verifiable_transcrypt(&encrypted.0, &info, &mut rng);
+        crate::data::py::records::PyLongRecordTranscryptionProof { inner: proof }
+    }
+
+    #[cfg(all(feature = "verifiable", feature = "long", not(feature = "elgamal3")))]
+    fn verifiable_long_record_transcrypt(
+        &self,
+        encrypted: &PyLongEncryptedRecord,
+        transcryption_info: &PyTranscryptionInfo,
+        session_keys: &crate::keys::py::PySessionKeys,
+    ) -> crate::data::py::records::PyLongRecordTranscryptionProof {
+        let mut rng = rand::rng();
+        let info = TranscryptionInfo::from(transcryption_info);
+        let sk = crate::keys::SessionKeys::from(session_keys.clone());
+        let proof = self
+            .0
+            .verifiable_transcrypt(&encrypted.0, &info, &sk, &mut rng);
+        crate::data::py::records::PyLongRecordTranscryptionProof { inner: proof }
     }
 }
 

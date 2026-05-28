@@ -12,27 +12,7 @@ use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub fn verifiable_rsk_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRSKBatch {
-    VerifiableRSKBatch::new(ciphertexts, s, k, rng)
-}
-
-pub fn verifiable_rsk2_batch<R: Rng + CryptoRng>(
-    ciphertexts: &[ElGamal],
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRSK2Batch {
-    VerifiableRSK2Batch::new(ciphertexts, s_from, s_to, k_from, k_to, rng)
-}
-
-/// A batch of [`VerifiableRSK`] proofs sharing one `(s, k)` factor pair.
+/// A batch of [`super::VerifiableRSK`] proofs sharing one `(s, k)` factor pair.
 ///
 /// `gt = (s·k⁻¹)·G` and the `ZKP{S = k·T}` ([`Self::p_gs`]) depend only on
 /// `(s, k)` and not on any individual ciphertext, so they are hoisted into
@@ -42,12 +22,27 @@ pub fn verifiable_rsk2_batch<R: Rng + CryptoRng>(
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRSKBatch {
     /// `T = (s·k⁻¹)·G`.
-    pub gt: GroupElement,
+    pub(crate) gt: GroupElement,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
-    pub p_gs: Proof,
+    pub(crate) p_gs: Proof,
     /// Per-message inners; verified against `gt` plus the published
     /// `(S, K)` commitments.
-    pub inners: Vec<VerifiableRSKInner>,
+    pub(crate) inners: Vec<VerifiableRSKInner>,
+}
+
+impl VerifiableRSKBatch {
+    /// `T = (s·k⁻¹)·G`.
+    pub fn gt(&self) -> &GroupElement {
+        &self.gt
+    }
+    /// The hoisted factor sub-proof `ZKP{S = k * T}`.
+    pub fn p_gs(&self) -> &Proof {
+        &self.p_gs
+    }
+    /// The per-message inner bodies.
+    pub fn inners(&self) -> &[VerifiableRSKInner] {
+        &self.inners
+    }
 }
 
 impl VerifiableRSKBatch {
@@ -150,25 +145,48 @@ impl VerifiableRSKBatch {
     }
 }
 
-/// A batch of [`VerifiableRSK2`] proofs sharing one
+/// A batch of [`super::VerifiableRSK2`] proofs sharing one
 /// `(s_from, s_to, k_from, k_to)` factor tuple.
 ///
-/// Mirrors [`VerifiableRSK2`]'s layout: the per-factor `(gs, gk, p_gs_to,
+/// Mirrors [`super::VerifiableRSK2`]'s layout: the per-factor `(gs, gk, p_gs_to,
 /// p_gk_to)` plus an `inner` that is itself the batched VRSK over the
 /// combined scalars `(s, k) = (s_from⁻¹·s_to, k_from⁻¹·k_to)`.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRSK2Batch {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub gs: GroupElement,
+    pub(crate) gs: GroupElement,
     /// `K = (k_from⁻¹·k_to)·G`.
-    pub gk: GroupElement,
+    pub(crate) gk: GroupElement,
     /// `ZKP{S_to = s_from * S}`.
-    pub p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof,
     /// `ZKP{K_to = k_from * K}`.
-    pub p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof,
     /// VRSK batch over the combined scalars.
-    pub inner: VerifiableRSKBatch,
+    pub(crate) inner: VerifiableRSKBatch,
+}
+
+impl VerifiableRSK2Batch {
+    /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
+    pub fn gs(&self) -> &GroupElement {
+        &self.gs
+    }
+    /// The combined rekey commitment `K = (k_from⁻¹·k_to)·G`.
+    pub fn gk(&self) -> &GroupElement {
+        &self.gk
+    }
+    /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
+    pub fn p_gs_to(&self) -> &Proof {
+        &self.p_gs_to
+    }
+    /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
+    pub fn p_gk_to(&self) -> &Proof {
+        &self.p_gk_to
+    }
+    /// The inner VRSK batch over the combined scalars.
+    pub fn inner(&self) -> &VerifiableRSKBatch {
+        &self.inner
+    }
 }
 
 impl VerifiableRSK2Batch {

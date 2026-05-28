@@ -3,22 +3,31 @@
 //! This module provides methods for the transcryptor to perform verifiable
 //! transcryption operations that generate zero-knowledge proofs.
 
+use crate::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::factors::{
-    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
-    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
-    VerifiableTranscryptionCommitment,
+    PseudonymizationInfo, TranscryptionInfo, VerifiablePseudonymizationCommitment,
+    VerifiableRekeyCommitment, VerifiableTranscryptionCommitment,
 };
 use rand_core::{CryptoRng, Rng};
 
 use super::types::Transcryptor;
 
 impl Transcryptor {
-    /// Build the public commitments for a pseudonymization info: forward
-    /// commitments `S = s·G` and `K = k·G` to the reshuffle and rekey factors.
+    /// Build the public commitments for a pseudonymization transition:
+    /// forward commitments `S = s·G` and `K = k·G` to the reshuffle and rekey
+    /// factors. The commitments are bound to the same `(domain_from,
+    /// domain_to, session_from, session_to)` tuple the prover passes to
+    /// [`pseudonymization_info`](Self::pseudonymization_info), guaranteeing
+    /// that the verifier and prover commit to the same secrets.
     pub fn pseudonymization_commitment(
-        info: &PseudonymizationInfo,
+        &self,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
     ) -> VerifiablePseudonymizationCommitment {
         use crate::core::verifiable::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
+        let info = self.pseudonymization_info(domain_from, domain_to, session_from, session_to);
         let reshuffle_commitment = PseudonymizationFactorCommitment::new(&info.s.0);
         let rekey_commitment = RekeyFactorCommitment::new(&info.k.0);
         VerifiablePseudonymizationCommitment {
@@ -27,28 +36,49 @@ impl Transcryptor {
         }
     }
 
-    /// Build the public commitment for a pseudonym rekey info: `K = k·G`.
-    pub fn pseudonym_rekey_commitment(info: &PseudonymRekeyInfo) -> VerifiableRekeyCommitment {
+    /// Build the public commitment for a pseudonym rekey transition: `K = k·G`.
+    pub fn pseudonym_rekey_commitment(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> VerifiableRekeyCommitment {
         use crate::core::verifiable::RekeyFactorCommitment;
+        let info = self.pseudonym_rekey_info(session_from, session_to);
         VerifiableRekeyCommitment {
             commitment: RekeyFactorCommitment::new(&info.0),
         }
     }
 
-    /// Build the public commitment for an attribute rekey info: `K = k·G`.
-    pub fn attribute_rekey_commitment(info: &AttributeRekeyInfo) -> VerifiableRekeyCommitment {
+    /// Build the public commitment for an attribute rekey transition: `K = k·G`.
+    pub fn attribute_rekey_commitment(
+        &self,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> VerifiableRekeyCommitment {
         use crate::core::verifiable::RekeyFactorCommitment;
+        let info = self.attribute_rekey_info(session_from, session_to);
         VerifiableRekeyCommitment {
             commitment: RekeyFactorCommitment::new(&info.0),
         }
     }
 
-    /// Build the combined public commitments for a transcryption info:
+    /// Build the combined public commitments for a transcryption transition:
     /// pseudonymization (`S`, `K_pseudo`) and attribute rekey (`K_attr`).
-    pub fn transcryption_commitment(info: &TranscryptionInfo) -> VerifiableTranscryptionCommitment {
+    pub fn transcryption_commitment(
+        &self,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+    ) -> VerifiableTranscryptionCommitment {
         VerifiableTranscryptionCommitment {
-            pseudonym: Self::pseudonymization_commitment(&info.pseudonym),
-            attribute: Self::attribute_rekey_commitment(&info.attribute),
+            pseudonym: self.pseudonymization_commitment(
+                domain_from,
+                domain_to,
+                session_from,
+                session_to,
+            ),
+            attribute: self.attribute_rekey_commitment(session_from, session_to),
         }
     }
 
@@ -90,8 +120,7 @@ impl Transcryptor {
     /// Perform a verifiable rekey operation.
     ///
     /// The verifier recovers the result by calling
-    /// [`Verifier::verify_pseudonym_rekey`](crate::verifier::Verifier::verify_pseudonym_rekey)
-    /// or [`Verifier::verify_attribute_rekey`](crate::verifier::Verifier::verify_attribute_rekey)
+    /// [`Verifier::verify_rekey`](crate::verifier::Verifier::verify_rekey)
     /// on the returned proof.
     pub fn verifiable_rekey<E, R>(
         &self,

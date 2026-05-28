@@ -41,10 +41,26 @@ use serde::{Deserialize, Serialize};
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRekey {
-    pub gb_prime: GroupElement,
-    pub p_gb: Proof,
+    pub(crate) gb_prime: GroupElement,
+    pub(crate) p_gb: Proof,
     #[cfg(feature = "elgamal3")]
-    pub p_gy_prime: Proof,
+    pub(crate) p_gy_prime: Proof,
+}
+
+impl VerifiableRekey {
+    /// The new first ciphertext component `B' = k⁻¹·B`.
+    pub fn gb_prime(&self) -> &GroupElement {
+        &self.gb_prime
+    }
+    /// The proof `ZKP{B = k * B'}`.
+    pub fn p_gb(&self) -> &Proof {
+        &self.p_gb
+    }
+    /// The proof `ZKP{Y' = k * Y}` (elgamal3 only).
+    #[cfg(feature = "elgamal3")]
+    pub fn p_gy_prime(&self) -> &Proof {
+        &self.p_gy_prime
+    }
 }
 
 impl VerifiableRekey {
@@ -119,11 +135,26 @@ impl VerifiableRekey {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct VerifiableRekey2 {
     /// `K = (k_from⁻¹ · k_to) · G`.
-    pub gk: GroupElement,
+    pub(crate) gk: GroupElement,
     /// `ZKP{K_to = k_from * K}`: first component equals `K_to = k_to·G`.
-    pub p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof,
     /// The per-message rekey under the combined scalar.
-    pub inner: VerifiableRekey,
+    pub(crate) inner: VerifiableRekey,
+}
+
+impl VerifiableRekey2 {
+    /// The combined commitment `K = (k_from⁻¹·k_to)·G`.
+    pub fn gk(&self) -> &GroupElement {
+        &self.gk
+    }
+    /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
+    pub fn p_gk_to(&self) -> &Proof {
+        &self.p_gk_to
+    }
+    /// The inner per-message rekey proof under the combined scalar.
+    pub fn inner(&self) -> &VerifiableRekey {
+        &self.inner
+    }
 }
 
 impl VerifiableRekey2 {
@@ -196,23 +227,6 @@ impl VerifiableRekey2 {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
     }
-}
-
-pub fn verifiable_rekey<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    k: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRekey {
-    VerifiableRekey::new(m, k, rng)
-}
-
-pub fn verifiable_rekey2<R: Rng + CryptoRng>(
-    m: &ElGamal,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-    rng: &mut R,
-) -> VerifiableRekey2 {
-    VerifiableRekey2::new(m, k_from, k_to, rng)
 }
 
 #[cfg(test)]

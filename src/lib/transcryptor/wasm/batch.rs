@@ -1,6 +1,6 @@
 //! WASM bindings for batch transcryption operations.
 //!
-//! Wrap [`EncryptedBatch`](crate::data::batch::EncryptedBatch) so JS callers
+//! Wrap [`EncryptedBatch`] so JS callers
 //! continue to receive plain `Vec<...>` while benefiting from the new
 //! struct's lockstep public-key updates internally.
 

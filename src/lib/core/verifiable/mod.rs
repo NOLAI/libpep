@@ -25,29 +25,18 @@ pub use rerandomize_batch::verifiable_rerandomize_batch;
 #[cfg(feature = "batch")]
 pub use rerandomize_batch::VerifiableRerandomizeBatch;
 
-pub use reshuffle::{
-    verifiable_reshuffle, verifiable_reshuffle2, VerifiableReshuffle, VerifiableReshuffle2,
-};
+pub use reshuffle::{VerifiableReshuffle, VerifiableReshuffle2};
 #[cfg(feature = "batch")]
-pub use reshuffle_batch::{
-    verifiable_reshuffle2_batch, verifiable_reshuffle_batch, VerifiableReshuffle2Batch,
-    VerifiableReshuffleBatch,
-};
+pub use reshuffle_batch::{VerifiableReshuffle2Batch, VerifiableReshuffleBatch};
 
-pub use rekey::{verifiable_rekey, verifiable_rekey2, VerifiableRekey, VerifiableRekey2};
+pub use rekey::{VerifiableRekey, VerifiableRekey2};
 #[cfg(feature = "batch")]
-pub use rekey_batch::{
-    verifiable_rekey2_batch, verifiable_rekey_batch, VerifiableRekey2Batch, VerifiableRekeyBatch,
-};
+pub use rekey_batch::{VerifiableRekey2Batch, VerifiableRekeyBatch};
 
-pub use rsk::{verifiable_rsk, verifiable_rsk2, VerifiableRSK, VerifiableRSK2, VerifiableRSKInner};
+pub use rsk::{VerifiableRSK, VerifiableRSK2, VerifiableRSKInner};
 #[cfg(feature = "batch")]
-pub use rsk_batch::{
-    verifiable_rsk2_batch, verifiable_rsk_batch, VerifiableRSK2Batch, VerifiableRSKBatch,
-};
+pub use rsk_batch::{VerifiableRSK2Batch, VerifiableRSKBatch};
 
-pub use rrsk::{verifiable_rrsk, verifiable_rrsk2, VerifiableRRSK, VerifiableRRSK2};
+pub use rrsk::{VerifiableRRSK, VerifiableRRSK2};
 #[cfg(feature = "batch")]
-pub use rrsk_batch::{
-    verifiable_rrsk2_batch, verifiable_rrsk_batch, VerifiableRRSK2Batch, VerifiableRRSKBatch,
-};
+pub use rrsk_batch::{VerifiableRRSK2Batch, VerifiableRRSKBatch};

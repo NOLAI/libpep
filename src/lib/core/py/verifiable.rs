@@ -241,7 +241,7 @@ impl PyVerifiableRekey {
 fn py_verifiable_rekey(m: &PyElGamal, k: &PyScalarNonZero) -> PyVerifiableRekey {
     let mut rng = rand::rng();
     PyVerifiableRekey {
-        inner: crate::core::verifiable::verifiable_rekey(&m.0, &k.0, &mut rng),
+        inner: VerifiableRekey::new(&m.0, &k.0, &mut rng),
     }
 }
 
@@ -312,7 +312,7 @@ fn py_verifiable_rekey2(
 ) -> PyVerifiableRekey2 {
     let mut rng = rand::rng();
     PyVerifiableRekey2 {
-        inner: crate::core::verifiable::verifiable_rekey2(&m.0, &k_from.0, &k_to.0, &mut rng),
+        inner: VerifiableRekey2::new(&m.0, &k_from.0, &k_to.0, &mut rng),
     }
 }
 
@@ -365,7 +365,7 @@ impl PyVerifiableReshuffle {
 fn py_verifiable_reshuffle(m: &PyElGamal, s: &PyScalarNonZero) -> PyVerifiableReshuffle {
     let mut rng = rand::rng();
     PyVerifiableReshuffle {
-        inner: crate::core::verifiable::verifiable_reshuffle(&m.0, &s.0, &mut rng),
+        inner: VerifiableReshuffle::new(&m.0, &s.0, &mut rng),
     }
 }
 
@@ -436,7 +436,7 @@ fn py_verifiable_reshuffle2(
 ) -> PyVerifiableReshuffle2 {
     let mut rng = rand::rng();
     PyVerifiableReshuffle2 {
-        inner: crate::core::verifiable::verifiable_reshuffle2(&m.0, &s_from.0, &s_to.0, &mut rng),
+        inner: VerifiableReshuffle2::new(&m.0, &s_from.0, &s_to.0, &mut rng),
     }
 }
 
@@ -540,7 +540,7 @@ impl PyVerifiableRSK {
 fn py_verifiable_rsk(m: &PyElGamal, s: &PyScalarNonZero, k: &PyScalarNonZero) -> PyVerifiableRSK {
     let mut rng = rand::rng();
     PyVerifiableRSK {
-        inner: crate::core::verifiable::verifiable_rsk(&m.0, &s.0, &k.0, &mut rng),
+        inner: VerifiableRSK::new(&m.0, &s.0, &k.0, &mut rng),
     }
 }
 
@@ -646,9 +646,7 @@ fn py_verifiable_rsk2(
 ) -> PyVerifiableRSK2 {
     let mut rng = rand::rng();
     PyVerifiableRSK2 {
-        inner: crate::core::verifiable::verifiable_rsk2(
-            &m.0, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
-        ),
+        inner: VerifiableRSK2::new(&m.0, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng),
     }
 }
 
@@ -776,7 +774,7 @@ fn py_verifiable_rrsk(
 ) -> PyVerifiableRRSK {
     let mut rng = rand::rng();
     PyVerifiableRRSK {
-        inner: crate::core::verifiable::verifiable_rrsk(&m.0, &m.0.gy, &r.0, &s.0, &k.0, &mut rng),
+        inner: VerifiableRRSK::new(&m.0, &m.0.gy, &r.0, &s.0, &k.0, &mut rng),
     }
 }
 
@@ -792,7 +790,7 @@ fn py_verifiable_rrsk(
 ) -> PyVerifiableRRSK {
     let mut rng = rand::rng();
     PyVerifiableRRSK {
-        inner: crate::core::verifiable::verifiable_rrsk(&m.0, &gy.0, &r.0, &s.0, &k.0, &mut rng),
+        inner: VerifiableRRSK::new(&m.0, &gy.0, &r.0, &s.0, &k.0, &mut rng),
     }
 }
 
@@ -945,7 +943,7 @@ fn py_verifiable_rrsk2(
 ) -> PyVerifiableRRSK2 {
     let mut rng = rand::rng();
     PyVerifiableRRSK2 {
-        inner: crate::core::verifiable::verifiable_rrsk2(
+        inner: VerifiableRRSK2::new(
             &m.0, &m.0.gy, &r.0, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
         ),
     }
@@ -966,7 +964,7 @@ fn py_verifiable_rrsk2(
 ) -> PyVerifiableRRSK2 {
     let mut rng = rand::rng();
     PyVerifiableRRSK2 {
-        inner: crate::core::verifiable::verifiable_rrsk2(
+        inner: VerifiableRRSK2::new(
             &m.0, &gy.0, &r.0, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
         ),
     }
@@ -1150,7 +1148,7 @@ fn py_verifiable_rekey_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRekeyBatch {
-        inner: crate::core::verifiable::verifiable_rekey_batch(&cts, &k.0, &mut rng),
+        inner: VerifiableRekeyBatch::new(&cts, &k.0, &mut rng),
     }
 }
 
@@ -1233,7 +1231,7 @@ fn py_verifiable_rekey2_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRekey2Batch {
-        inner: crate::core::verifiable::verifiable_rekey2_batch(&cts, &k_from.0, &k_to.0, &mut rng),
+        inner: VerifiableRekey2Batch::new(&cts, &k_from.0, &k_to.0, &mut rng),
     }
 }
 
@@ -1293,7 +1291,7 @@ fn py_verifiable_reshuffle_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableReshuffleBatch {
-        inner: crate::core::verifiable::verifiable_reshuffle_batch(&cts, &s.0, &mut rng),
+        inner: VerifiableReshuffleBatch::new(&cts, &s.0, &mut rng),
     }
 }
 
@@ -1376,9 +1374,7 @@ fn py_verifiable_reshuffle2_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableReshuffle2Batch {
-        inner: crate::core::verifiable::verifiable_reshuffle2_batch(
-            &cts, &s_from.0, &s_to.0, &mut rng,
-        ),
+        inner: VerifiableReshuffle2Batch::new(&cts, &s_from.0, &s_to.0, &mut rng),
     }
 }
 
@@ -1451,7 +1447,7 @@ fn py_verifiable_rsk_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRSKBatch {
-        inner: crate::core::verifiable::verifiable_rsk_batch(&cts, &s.0, &k.0, &mut rng),
+        inner: VerifiableRSKBatch::new(&cts, &s.0, &k.0, &mut rng),
     }
 }
 
@@ -1565,9 +1561,7 @@ fn py_verifiable_rsk2_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRSK2Batch {
-        inner: crate::core::verifiable::verifiable_rsk2_batch(
-            &cts, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
-        ),
+        inner: VerifiableRSK2Batch::new(&cts, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng),
     }
 }
 
@@ -1718,7 +1712,7 @@ fn py_verifiable_rrsk_batch(
     let gy = ciphertexts[0].0.gy;
     let cts = into_elgamal_vec(&ciphertexts);
     Ok(PyVerifiableRRSKBatch {
-        inner: crate::core::verifiable::verifiable_rrsk_batch(&cts, &gy, &s.0, &k.0, &mut rng),
+        inner: VerifiableRRSKBatch::new(&cts, &gy, &s.0, &k.0, &mut rng),
     })
 }
 
@@ -1734,7 +1728,7 @@ fn py_verifiable_rrsk_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRRSKBatch {
-        inner: crate::core::verifiable::verifiable_rrsk_batch(&cts, &gy.0, &s.0, &k.0, &mut rng),
+        inner: VerifiableRRSKBatch::new(&cts, &gy.0, &s.0, &k.0, &mut rng),
     }
 }
 
@@ -1929,7 +1923,7 @@ fn py_verifiable_rrsk2_batch(
     let gy = ciphertexts[0].0.gy;
     let cts = into_elgamal_vec(&ciphertexts);
     Ok(PyVerifiableRRSK2Batch {
-        inner: crate::core::verifiable::verifiable_rrsk2_batch(
+        inner: VerifiableRRSK2Batch::new(
             &cts, &gy, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
         ),
     })
@@ -1950,7 +1944,7 @@ fn py_verifiable_rrsk2_batch(
     let mut rng = rand::rng();
     let cts = into_elgamal_vec(&ciphertexts);
     PyVerifiableRRSK2Batch {
-        inner: crate::core::verifiable::verifiable_rrsk2_batch(
+        inner: VerifiableRRSK2Batch::new(
             &cts, &gy.0, &s_from.0, &s_to.0, &k_from.0, &k_to.0, &mut rng,
         ),
     }

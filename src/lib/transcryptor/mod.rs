@@ -43,9 +43,3 @@ pub use functions::{pseudonymize, rekey, rerandomize, rerandomize_known, transcr
 
 // Re-export distributed types
 pub use distributed::DistributedTranscryptor;
-
-// Re-export batch error type for backwards compatibility. The batch
-// operations themselves live as methods on
-// [`EncryptedBatch`](crate::data::batch::EncryptedBatch).
-#[cfg(feature = "batch")]
-pub use crate::data::batch::BatchError;
