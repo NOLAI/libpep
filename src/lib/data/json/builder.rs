@@ -203,6 +203,7 @@ impl Default for PEPJSONBuilder {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use super::*;
     use crate::client::{decrypt, encrypt};
     use crate::factors::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;

@@ -27,6 +27,8 @@ use libpep::keys::{
     PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
+#[cfg(feature = "json")]
+use libpep::keys::{AttributeGlobalSecretKey, GlobalSecretKeys};
 use std::cmp::Ordering;
 
 #[derive(Command, Debug, Default)]
