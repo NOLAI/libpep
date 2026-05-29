@@ -328,8 +328,7 @@ pub fn wasm_rekey_long_pseudonym_batch(
     let mut rng = rand::rng();
     let items: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
     let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-    let mut batch =
-        EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+    let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
     batch
         .rekey(&rekey_info.0, &mut rng)
         .map_err(batch_err_to_js)?;
@@ -360,9 +359,7 @@ pub fn wasm_transcrypt_long_batch(
         attribute: transcryption_info.0.attribute,
     };
     let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
-    batch
-        .transcrypt(&info, &mut rng)
-        .map_err(batch_err_to_js)?;
+    batch.transcrypt(&info, &mut rng).map_err(batch_err_to_js)?;
     Ok(batch
         .into_items()
         .into_iter()
@@ -384,11 +381,8 @@ pub fn wasm_transcrypt_long_batch(
         attribute: transcryption_info.0.attribute,
     };
     let keys: crate::keys::SessionKeys = (*session_keys).into();
-    let mut batch =
-        EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
-    batch
-        .transcrypt(&info, &mut rng)
-        .map_err(batch_err_to_js)?;
+    let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
+    batch.transcrypt(&info, &mut rng).map_err(batch_err_to_js)?;
     Ok(batch
         .into_items()
         .into_iter()

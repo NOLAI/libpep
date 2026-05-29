@@ -20,12 +20,12 @@ use crate::factors::{
 };
 use crate::keys::distribution::BlindingFactor;
 use crate::keys::wasm::distribution::WASMBlindingFactor;
-#[cfg(feature = "batch")]
-use crate::wasm_errors::batch_err_to_js;
 use crate::keys::wasm::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
 use crate::transcryptor::DistributedTranscryptor;
+#[cfg(feature = "batch")]
+use crate::wasm_errors::batch_err_to_js;
 use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
@@ -242,8 +242,7 @@ impl WASMDistributedTranscryptor {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -266,8 +265,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -288,8 +286,7 @@ impl WASMDistributedTranscryptor {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -312,8 +309,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -384,8 +380,7 @@ impl WASMDistributedTranscryptor {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -408,8 +403,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         batch
             .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -431,8 +425,7 @@ impl WASMDistributedTranscryptor {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -455,8 +448,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-        let mut batch = EncryptedBatch::new(items, pk)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         batch
             .pseudonymize(&PseudonymizationInfo::from(pseudonymization_info), &mut rng)
             .map_err(batch_err_to_js)?;
@@ -515,8 +507,7 @@ impl WASMDistributedTranscryptor {
         use crate::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;
@@ -540,8 +531,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
-        let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;
@@ -630,8 +620,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;
@@ -655,8 +644,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<crate::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
-        let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;
@@ -679,8 +667,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<crate::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
-        let mut batch = EncryptedBatch::new(items)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;
@@ -704,8 +691,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<crate::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
-        let mut batch = EncryptedBatch::new(items, keys)
-            .map_err(batch_err_to_js)?;
+        let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
             .map_err(batch_err_to_js)?;

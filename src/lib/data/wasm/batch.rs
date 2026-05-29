@@ -31,11 +31,11 @@ use crate::factors::wasm::contexts::{
 };
 use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use crate::wasm_errors::batch_err_to_js;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::wasm::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionKeys,
 };
+use crate::wasm_errors::batch_err_to_js;
 use wasm_bindgen::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -61,8 +61,7 @@ impl WASMEncryptedPseudonymBatch {
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         let items: Vec<EncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-        let inner =
-            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -144,9 +143,7 @@ impl WASMEncryptedPseudonymBatch {
     #[wasm_bindgen(js_name = rekey)]
     pub fn rekey(&mut self, info: &WASMPseudonymRekeyFactor) -> Result<(), JsValue> {
         let mut rng = rand::rng();
-        self.inner
-            .rekey(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
     }
 
     /// Rekey every item in the batch and shuffle.
@@ -154,9 +151,7 @@ impl WASMEncryptedPseudonymBatch {
     #[wasm_bindgen(js_name = rekey)]
     pub fn rekey(&mut self, info: &WASMPseudonymRekeyFactor) -> Result<(), JsValue> {
         let mut rng = rand::rng();
-        self.inner
-            .rekey(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -216,8 +211,7 @@ impl WASMEncryptedAttributeBatch {
     ) -> Result<WASMEncryptedAttributeBatch, JsValue> {
         let items: Vec<EncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
-        let inner =
-            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -330,8 +324,7 @@ impl WASMLongEncryptedPseudonymBatch {
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         let items: Vec<LongEncryptedPseudonym> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
-        let inner =
-            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -406,18 +399,14 @@ impl WASMLongEncryptedPseudonymBatch {
     #[wasm_bindgen(js_name = rekey)]
     pub fn rekey(&mut self, info: &WASMPseudonymRekeyFactor) -> Result<(), JsValue> {
         let mut rng = rand::rng();
-        self.inner
-            .rekey(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
     #[wasm_bindgen(js_name = rekey)]
     pub fn rekey(&mut self, info: &WASMPseudonymRekeyFactor) -> Result<(), JsValue> {
         let mut rng = rand::rng();
-        self.inner
-            .rekey(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -476,8 +465,7 @@ impl WASMLongEncryptedAttributeBatch {
     ) -> Result<WASMLongEncryptedAttributeBatch, JsValue> {
         let items: Vec<LongEncryptedAttribute> = items.into_iter().map(|e| e.0).collect();
         let pk = crate::keys::AttributeSessionPublicKey::from(public_key.0 .0);
-        let inner =
-            EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -588,8 +576,7 @@ impl WASMEncryptedRecordBatch {
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
         let items: Vec<EncryptedRecord> = items.into_iter().map(EncryptedRecord::from).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
-        let inner =
-            EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 
@@ -684,8 +671,7 @@ impl WASMLongEncryptedRecordBatch {
         let items: Vec<LongEncryptedRecord> =
             items.into_iter().map(LongEncryptedRecord::from).collect();
         let keys: crate::keys::SessionKeys = (*session_keys).into();
-        let inner =
-            EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
+        let inner = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
 

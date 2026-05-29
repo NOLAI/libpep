@@ -429,8 +429,7 @@ pub fn wasm_decrypt_json_batch(
 ) -> Result<Vec<WASMPEPJSONValue>, JsValue> {
     let keys: SessionKeys = (*session_keys).into();
     let rust_encrypted: Vec<EncryptedPEPJSONValue> = encrypted.into_iter().map(|v| v.0).collect();
-    let decrypted =
-        decrypt_batch(&rust_encrypted, &keys).map_err(batch_err_to_js)?;
+    let decrypted = decrypt_batch(&rust_encrypted, &keys).map_err(batch_err_to_js)?;
 
     Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
 }
@@ -478,8 +477,7 @@ pub fn wasm_transcrypt_json_batch(
     let mut rng = rand::rng();
     let items: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let keys: crate::keys::SessionKeys = (*session_keys).into();
-    let mut batch =
-        EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
+    let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
     batch
         .transcrypt(&transcryption_info.0, &mut rng)
         .map_err(batch_err_to_js)?;
