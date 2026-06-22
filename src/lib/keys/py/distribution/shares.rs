@@ -3,7 +3,6 @@ use super::blinding::{
     PyBlindingFactor,
 };
 use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
-use crate::arithmetic::scalars::ScalarTraits;
 use crate::client::distributed::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,

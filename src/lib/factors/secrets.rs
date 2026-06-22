@@ -12,13 +12,27 @@ use sha2::{Digest, Sha256};
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from contexts.
 pub type Secret = Box<[u8]>;
 
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`](ReshuffleFactor) from a [`PseudonymizationDomain`](PseudonymizationDomain).
-#[derive(Clone, Debug, From)]
+/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
+#[derive(Clone, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
-/// Encryption secret used to derive rekey factors from an [`EncryptionContext`](EncryptionContext).
-#[derive(Clone, Debug, From)]
+impl std::fmt::Debug for PseudonymizationSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret bytes via Debug formatting (e.g. logs).
+        f.write_str("PseudonymizationSecret(…)")
+    }
+}
+
+/// Encryption secret used to derive rekey factors from an [`EncryptionContext`].
+#[derive(Clone, From)]
 pub struct EncryptionSecret(pub(crate) Secret);
+
+impl std::fmt::Debug for EncryptionSecret {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak secret bytes via Debug formatting (e.g. logs).
+        f.write_str("EncryptionSecret(…)")
+    }
+}
 
 impl PseudonymizationSecret {
     pub fn from(secret: Vec<u8>) -> Self {
@@ -171,71 +185,4 @@ fn make_factor(secret: &Secret, typ: u32, audience_type: u32, payload: &String) 
     let mut bytes = [0u8; 64];
     bytes.copy_from_slice(&result_outer);
     ScalarNonZero::from_hash(&bytes)
-}
-
-// Info implementations with new() and reverse() methods
-
-impl PseudonymizationInfo {
-    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    pub fn new(
-        domain_from: &PseudonymizationDomain,
-        domain_to: &PseudonymizationDomain,
-        session_from: &EncryptionContext,
-        session_to: &EncryptionContext,
-        pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
-        let reshuffle_factor = ReshuffleFactor(s_from.0.invert() * s_to.0);
-        let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
-        Self {
-            s: reshuffle_factor,
-            k: rekey_factor,
-        }
-    }
-
-    /// Reverse the pseudonymization info (i.e., switch the direction of the pseudonymization).
-    pub fn reverse(&self) -> Self {
-        Self {
-            s: ReshuffleFactor(self.s.0.invert()),
-            k: PseudonymRekeyFactor(self.k.0.invert()),
-        }
-    }
-}
-
-impl PseudonymRekeyInfo {
-    /// Compute the rekey info for pseudonyms given sessions and secrets.
-    pub fn new(
-        session_from: &EncryptionContext,
-        session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
-        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
-        PseudonymRekeyFactor(k_from.0.invert() * k_to.0)
-    }
-
-    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
-    pub fn reverse(&self) -> Self {
-        PseudonymRekeyFactor(self.0.invert())
-    }
-}
-
-impl AttributeRekeyInfo {
-    /// Compute the rekey info for attributes given sessions and secrets.
-    pub fn new(
-        session_from: &EncryptionContext,
-        session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
-    ) -> Self {
-        let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
-        let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
-        AttributeRekeyFactor(k_from.0.invert() * k_to.0)
-    }
-
-    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
-    pub fn reverse(&self) -> Self {
-        AttributeRekeyFactor(self.0.invert())
-    }
 }

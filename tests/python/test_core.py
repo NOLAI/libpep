@@ -152,13 +152,8 @@ class TestPrimitives(unittest.TestCase):
         # Generate rerandomization factor
         r = ScalarNonZero.random()
 
-        # Rerandomize the ciphertext
-        # Check if we need public key (non-elgamal3 version)
-        try:
-            rerandomized = rerandomize(self.encrypted, self.Y, r)
-        except TypeError:
-            # elgamal3 version - doesn't need public key
-            rerandomized = rerandomize(self.encrypted, r)
+        # Rerandomize the ciphertext.
+        rerandomized = rerandomize(self.encrypted, self.Y, r)
 
         # Both should decrypt to same message
         dec_original = decrypt(self.encrypted, self.y)

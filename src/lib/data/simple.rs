@@ -4,15 +4,12 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
-use crate::data::traits::{
-    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::*;
-use crate::transcryptor::BatchError;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -462,9 +459,36 @@ impl ElGamalEncrypted for EncryptedAttribute {
 // Transcryption trait implementations
 
 impl Pseudonymizable for EncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rsk(
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        let r = ScalarNonZero::random(rng);
+        EncryptedPseudonym::from_value(crate::core::primitives::rrsk(
             self.value(),
+            &r,
+            &info.s.0,
+            &info.k.0,
+        ))
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        use crate::keys::PublicKey as _;
+        let r = ScalarNonZero::random(rng);
+        EncryptedPseudonym::from_value(crate::core::primitives::rrsk(
+            self.value(),
+            public_key.value(),
+            &r,
             &info.s.0,
             &info.k.0,
         ))
@@ -488,16 +512,52 @@ impl Rekeyable for EncryptedAttribute {
 }
 
 impl Transcryptable for EncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, public_key, rng)
     }
 }
 
 impl Transcryptable for EncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    // Attributes have no rerandomize step in `transcrypt` — rekey alone.
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, _rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.rekey(&info.attribute)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        _public_key: &AttributeSessionPublicKey,
+        _rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
         self.rekey(&info.attribute)
     }
 }
+
 #[cfg(feature = "batch")]
 impl crate::data::traits::HasStructure for EncryptedPseudonym {
     type Structure = ();
@@ -511,21 +571,6 @@ impl crate::data::traits::HasStructure for EncryptedAttribute {
 
     fn structure(&self) -> Self::Structure {}
 }
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for Pseudonym {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for Attribute {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {

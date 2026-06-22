@@ -16,9 +16,7 @@ use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use crate::data::traits::{
-    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -37,7 +35,6 @@ use std::io::{Error, ErrorKind};
 
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::transcryptor::BatchError;
 
 /// A collection of [Pseudonym]s that together represent a larger pseudonym value using PKCS#7 padding.
 ///
@@ -928,11 +925,33 @@ impl Encrypted for LongEncryptedAttribute {
 // Transcryption trait implementations for long types
 
 impl Pseudonymizable for LongEncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
         let pseudonymized_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.pseudonymize(info))
+            .map(|block| block.pseudonymize(info, rng))
+            .collect();
+        LongEncryptedPseudonym(pseudonymized_blocks)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        let pseudonymized_blocks: Vec<_> = self
+            .encrypted_blocks()
+            .iter()
+            .map(|block| block.pseudonymize(info, public_key, rng))
             .collect();
         LongEncryptedPseudonym(pseudonymized_blocks)
     }
@@ -965,13 +984,47 @@ impl Rekeyable for LongEncryptedAttribute {
 }
 
 impl Transcryptable for LongEncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.pseudonymize(&info.pseudonym, public_key, rng)
     }
 }
 
 impl Transcryptable for LongEncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, _rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        self.rekey(&info.attribute)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        _public_key: &crate::keys::AttributeSessionPublicKey,
+        _rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
         self.rekey(&info.attribute)
     }
 }
@@ -991,20 +1044,6 @@ impl crate::data::traits::HasStructure for LongEncryptedAttribute {
 
     fn structure(&self) -> Self::Structure {
         self.0.len()
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for LongPseudonym {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for LongAttribute {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
     }
 }
 

@@ -22,7 +22,9 @@ use crate::keys::py::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+use crate::keys::py::types::{
+    PyAttributeGlobalSecretKey, PyGlobalSecretKeys, PyPseudonymGlobalSecretKey,
+};
 use crate::keys::py::PySessionKeys;
 use crate::keys::py::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
@@ -31,7 +33,7 @@ use crate::keys::py::{
 #[cfg(feature = "offline")]
 use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::keys::{AttributeGlobalSecretKey, GlobalSecretKeys, PseudonymGlobalSecretKey};
 use crate::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys,
     PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
@@ -445,11 +447,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             if let Some(result) = decrypt_global(&ej.0, &keys) {
                 return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
             }
@@ -511,11 +516,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             let result = decrypt_global(&ej.0, &keys);
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
@@ -567,6 +575,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPseudonym(e))
@@ -595,6 +604,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedAttribute(e))
@@ -625,6 +635,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedPseudonym(e))
@@ -655,6 +666,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedAttribute(e))
@@ -681,6 +693,7 @@ pub fn py_encrypt_batch(
             let encrypted = encrypt_batch(&rust_msgs, &keys, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPEPJSONValue(e))

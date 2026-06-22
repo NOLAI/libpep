@@ -15,6 +15,12 @@ pub mod contexts;
 pub mod secrets;
 pub mod types;
 
+#[cfg(feature = "verifiable")]
+pub mod commitments;
+
+#[cfg(feature = "verifiable-derivation")]
+pub mod verifiable;
+
 #[cfg(feature = "python")]
 pub mod py;
 
@@ -31,4 +37,16 @@ pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
     PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RekeyInfoProvider, RerandomizeFactor,
     ReshuffleFactor, TranscryptionInfo,
+};
+
+#[cfg(feature = "verifiable")]
+pub use commitments::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
+};
+
+#[cfg(feature = "verifiable-derivation")]
+pub use verifiable::{
+    MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,
+    MasterRekeyingSecret,
 };

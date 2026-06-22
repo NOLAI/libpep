@@ -25,7 +25,7 @@ impl PyPseudonym {
     /// Convert to a [`PyGroupElement`].
     #[pyo3(name = "to_point")]
     fn to_point(&self) -> PyGroupElement {
-        self.0.value.into()
+        self.value.into()
     }
 
     /// Generate a random pseudonym.
@@ -167,7 +167,7 @@ impl PyAttribute {
     /// Convert to a [`PyGroupElement`].
     #[pyo3(name = "to_point")]
     fn to_point(&self) -> PyGroupElement {
-        self.0.value.into()
+        self.value.into()
     }
 
     /// Generate a random attribute.

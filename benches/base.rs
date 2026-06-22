@@ -253,4 +253,5 @@ criterion_group!(
     bench_rsk2,
     bench_rrsk2
 );
+
 criterion_main!(benches);

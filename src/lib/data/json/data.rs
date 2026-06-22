@@ -2,6 +2,9 @@
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
+#[cfg(feature = "batch")]
+use crate::data::batch::BatchError;
+#[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -9,7 +12,7 @@ use crate::data::long::{
 };
 use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
+use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -17,7 +20,6 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
-use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -540,6 +542,19 @@ impl Encryptable for PEPJSONValue {
             ),
         }
     }
+
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
+    }
 }
 
 impl Encrypted for EncryptedPEPJSONValue {
@@ -795,31 +810,73 @@ impl Encrypted for EncryptedPEPJSONValue {
 // Transcryption trait implementation for JSON
 
 impl Transcryptable for EncryptedPEPJSONValue {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: rand_core::Rng + rand_core::CryptoRng,
+    {
         match self {
             EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => EncryptedPEPJSONValue::Bool(enc.transcrypt(info)),
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.transcrypt(info, rng))
+            }
             EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Number(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.transcrypt(info))
+                EncryptedPEPJSONValue::String(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::LongString(enc) => {
-                EncryptedPEPJSONValue::LongString(enc.transcrypt(info))
+                EncryptedPEPJSONValue::LongString(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
-                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt(info))
+                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt(info, rng))
             }
             EncryptedPEPJSONValue::Array(arr) => {
-                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info)).collect())
+                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info, rng)).collect())
             }
             EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
                 obj.iter()
-                    .map(|(k, v)| (k.clone(), v.transcrypt(info)))
+                    .map(|(k, v)| (k.clone(), v.transcrypt(info, rng)))
+                    .collect(),
+            ),
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
+    where
+        R: rand_core::Rng + rand_core::CryptoRng,
+    {
+        match self {
+            EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::Number(enc) => {
+                EncryptedPEPJSONValue::Number(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::String(enc) => {
+                EncryptedPEPJSONValue::String(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::LongString(enc) => {
+                EncryptedPEPJSONValue::LongString(enc.transcrypt(info, &keys.attribute.public, rng))
+            }
+            EncryptedPEPJSONValue::Pseudonym(enc) => {
+                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info, &keys.pseudonym.public, rng))
+            }
+            EncryptedPEPJSONValue::LongPseudonym(enc) => EncryptedPEPJSONValue::LongPseudonym(
+                enc.transcrypt(info, &keys.pseudonym.public, rng),
+            ),
+            EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+                arr.iter().map(|x| x.transcrypt(info, keys, rng)).collect(),
+            ),
+            EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.transcrypt(info, keys, rng)))
                     .collect(),
             ),
         }
@@ -832,25 +889,6 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
 
     fn structure(&self) -> Self::Structure {
         self.structure()
-    }
-}
-
-#[cfg(feature = "batch")]
-impl BatchEncryptable for PEPJSONValue {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        if items.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Collect and unify structures
-        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
-        let unified = unify_structures(&structures)?;
-
-        // Pad each item to unified structure
-        Ok(items
-            .iter()
-            .map(|item| item.pad_to(&unified))
-            .collect::<Result<Vec<_>, _>>()?)
     }
 }
 

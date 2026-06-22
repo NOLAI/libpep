@@ -48,6 +48,17 @@ pub trait Encryptable: Sized {
     ) -> Self::EncryptedType
     where
         R: Rng + CryptoRng;
+
+    /// Hook for batch-level preprocessing before encryption. Default is a
+    /// pass-through; override when the encrypted batch needs items to share
+    /// a uniform shape (e.g. JSON values padded to a unified structure).
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, crate::data::batch::BatchError>
+    where
+        Self: Clone,
+    {
+        Ok(items.to_vec())
+    }
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
@@ -114,16 +125,39 @@ pub trait Encrypted: Sized {
 
 // Transcryption traits
 
-/// A trait for encrypted pseudonyms that can be pseudonymized (reshuffled + rekeyed).
+/// A trait for encrypted pseudonyms that can be pseudonymized (rerandomized,
+/// reshuffled, and rekeyed via [`rrsk`](crate::core::primitives::rrsk)).
 ///
-/// Pseudonymization applies both a reshuffle operation (to change the pseudonymization domain)
-/// and a rekey operation (to change the encryption context).
+/// Pseudonymization rerandomizes the ciphertext with a fresh randomiser `r`
+/// (so the same pseudonym pseudonymized twice produces two unlinkable
+/// ciphertexts), changes the pseudonymization domain via the reshuffle
+/// factor, and rekeys to the destination encryption context.
 ///
-/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and [`LongEncryptedPseudonym`](super::long::LongEncryptedPseudonym),
-/// as attributes cannot be reshuffled (they have no pseudonymization domain).
+/// This trait is only implemented by
+/// [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and
+/// [`LongEncryptedPseudonym`](super::long::LongEncryptedPseudonym), as
+/// attributes cannot be reshuffled (they have no pseudonymization domain).
 pub trait Pseudonymizable: Encrypted {
-    /// Pseudonymize this encrypted pseudonym from one domain and context to another.
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self;
+    /// Pseudonymize from one domain and context to another, with a freshly
+    /// sampled rerandomize factor.
+    #[cfg(feature = "elgamal3")]
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng;
+
+    /// Pseudonymize from one domain and context to another, with a freshly
+    /// sampled rerandomize factor. `public_key` is the recipient public key
+    /// the ciphertext was encrypted under (needed for the rerandomize step
+    /// when the ciphertext does not carry it).
+    #[cfg(not(feature = "elgamal3"))]
+    fn pseudonymize<R>(
+        &self,
+        info: &PseudonymizationInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted types that can be rekeyed (encryption context change).
@@ -142,12 +176,29 @@ pub trait Rekeyable: Encrypted {
 /// A trait for encrypted types that can be transcrypted.
 ///
 /// Transcryption combines domain change and encryption context change:
-/// - For pseudonyms: applies both pseudonymization (reshuffle + rekey)
-/// - For attributes: applies only rekeying (no reshuffle possible)
-/// - For JSON values: recursively transcrypts all nested values
+/// - For pseudonyms: rerandomize + reshuffle + rekey ([`rrsk`](crate::core::primitives::rrsk))
+/// - For attributes: rekey only (no rerandomize, no reshuffle)
+/// - For JSON values / records: recursively transcrypts all nested values
 pub trait Transcryptable: Encrypted {
-    /// Transcrypt this encrypted value from one domain and context to another.
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self;
+    /// Transcrypt this encrypted value from one domain and context to another,
+    /// rerandomizing pseudonyms with a freshly sampled factor.
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng;
+
+    /// Transcrypt this encrypted value. `public_key` is the recipient public
+    /// key the ciphertext was encrypted under (needed for the rerandomize
+    /// step on pseudonyms when the ciphertext does not carry it).
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(
+        &self,
+        info: &TranscryptionInfo,
+        public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> Self
+    where
+        R: Rng + CryptoRng;
 }
 
 /// A trait for encrypted types that have a structure that must be validated during batch operations.
@@ -161,11 +212,4 @@ pub trait HasStructure {
 
     /// Get the structure of this encrypted value.
     fn structure(&self) -> Self::Structure;
-}
-
-#[cfg(feature = "batch")]
-pub trait BatchEncryptable: Encryptable + Clone {
-    fn preprocess_batch(
-        items: &[Self],
-    ) -> Result<Vec<Self>, crate::transcryptor::batch::BatchError>;
 }

@@ -19,7 +19,7 @@ impl WASMPseudonym {
 
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(&self) -> WASMGroupElement {
-        self.0.value.into()
+        self.value.into()
     }
 
     #[wasm_bindgen]
@@ -105,7 +105,7 @@ impl WASMAttribute {
 
     #[wasm_bindgen(js_name = toPoint)]
     pub fn to_point(&self) -> WASMGroupElement {
-        self.0.value.into()
+        self.value.into()
     }
 
     #[wasm_bindgen]

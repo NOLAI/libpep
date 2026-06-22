@@ -11,7 +11,7 @@
 //! - [`types`]: Key type definitions for global and session keys
 //! - [`traits`]: Traits for public and secret keys
 //! - [`generation`]: Functions for generating global and session keys
-//! - [`distribution`]: Distributed transcryptor key management (blinding, shares, setup)
+//! - [`distribution`]: Distributed transcryptor key management (blinding, shares, setup, ZKPs)
 
 pub mod distribution;
 pub mod generation;
@@ -37,3 +37,6 @@ pub use types::{
     PseudonymGlobalPublicKey, PseudonymGlobalSecretKey, PseudonymSessionKeys,
     PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
 };
+
+#[cfg(feature = "verifiable")]
+pub use distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};

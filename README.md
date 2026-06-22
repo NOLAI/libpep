@@ -30,6 +30,12 @@ The core idea behind is that the pseudonymization and rekeying operations are ap
 This means that during initial encryption, the ultimate receiver(s) do(es) not yet need to be known.
 Data can initially be encrypted for one key, and later rekeyed and potentially reshuffled (in case of identifiers) for another key, leading to non-interactive asynchronous end-to-end encryption with built-in pseudonymisation.
 
+Each of these operations also has a *verifiable* counterpart that produces a non-interactive zero-knowledge proof
+attesting that the transformation was applied with the claimed factor — without revealing the factor itself.
+A receiver (or a third-party auditor) can verify the proof against published factor commitments and so be
+certain that, for example, a transcryptor used the correct pseudonymization factor for a given target domain.
+See [Verifiable transcryption](#verifiable-transcryption) below.
+
 ## Applications
 
 For pseudonymization, the core operation is *reshuffle* with `s`.
@@ -44,9 +50,55 @@ The factor `k` is typically tied to the *current session of a user*, which we ca
 When the same encrypted pseudonym is used multiple times, rerandomize is applied every time.
 This way a binary compare of the encrypted pseudonym will not leak any information.
 
-The `reshuffle(in, n)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, k, n)`.
+The `reshuffle(in, s)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, s, k)`.
+Together with `rerandomize(in, r)`, this forms an `rrsk(in, r, s, k)`.
 
-Additionally, `reshuffle2(in, n_from, n_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
+Additionally, `reshuffle2(in, s_from, s_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)` and `rrsk2(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `s = s_from^-1 * s_to`.
+
+## Verifiable transcryption
+
+Each homomorphic operation has a *verifiable* counterpart that produces a non-interactive zero-knowledge proof
+attesting that the transformation was applied with the claimed factor.
+The proofs are Schnorr-style discrete-log-equality proofs over Curve25519/Ristretto, made non-interactive
+via the Fiat–Shamir transform.
+
+The actor model is:
+1. The **transcryptor** publishes a public *factor commitment* `A = a·G` for each scalar `a` it will use
+   (a rekey factor for a session, a reshuffle factor for a domain transition, etc.).
+2. When the transcryptor performs an operation (`rekey`, `reshuffle`, `rsk`, `rrsk`, or their `*2` variants),
+   it also emits a proof tying the new ciphertext to the published commitment, without revealing `a`.
+3. A separate **verifier** checks each proof against the published commitments and reconstructs the
+   transformed ciphertext only if the proof verifies.
+4. The recipient decrypts the verified ciphertext as usual.
+
+Verifiable variants of every primitive are available:
+- `VerifiableRerandomize`, `VerifiableRekey`/`VerifiableRekey2`,
+  `VerifiableReshuffle`/`VerifiableReshuffle2`, `VerifiableRSK`/`VerifiableRSK2`,
+  `VerifiableRRSK`/`VerifiableRRSK2` — in `core::verifiable`.
+- Per-message and batched variants share the same factor commitments, so the same verifier code
+  works for single ciphertexts and for batches.
+- For batches, the factor block (e.g. the combined `S`, `K`, and the `gt = (s·k⁻¹)·G` header in
+  VRSK) is *hoisted* out of the per-message inners. Verification of a batch of N ciphertexts costs
+  one factor-block verification plus N cheap inner verifications.
+- The data-layer wrappers in `data::verifiable` and `data::batch` lift these into operations on
+  `EncryptedPseudonym`, `EncryptedAttribute`, `EncryptedRecord`, JSON values, and batches.
+
+The high-level entry points are:
+- `Transcryptor::verifiable_pseudonymize`, `verifiable_pseudonym_rekey`,
+  `verifiable_attribute_rekey`, `verifiable_record_transcrypt`
+  (and the corresponding `*_commitment` accessors that publish the factor commitments).
+- `Verifier::verify_pseudonymization`, `verify_rekey`, `verify_transcryption`
+  (each with `verified_reconstruct_*` to recover the transformed ciphertext, and `*_cached`
+  variants that look the commitments up by transition key).
+
+In a distributed (n-PEP) setting, each transcryptor in the chain publishes its own commitments and
+proofs; the next transcryptor (or the final client) verifies the previous step before applying its own.
+Session keys are derived via a blinded-product construction in which each transcryptor proves
+`u_i = b_i · k_i` against its preconfigured blinding commitment `B_i = b_i · G`
+(see `keys::distribution::proofs::SessionKeyShareProof`).
+
+The `verifiable` feature is on by default. Disable with `--no-default-features` if you only need
+the unverified primitives.
 
 ## Installation
 
@@ -65,6 +117,10 @@ Run the `peppy` CLI using cargo:
 ```
 cargo run --bin peppy
 ```
+The CLI covers key generation, encryption/decryption (including long values and JSON), the
+primitive transformations (`rerandomize`, `rekey`, `transcrypt`, `transcrypt-attribute`,
+`transcrypt-from-global`, `transcrypt-to-global`), JSON variants, and a `setup-distributed`
+command for the blinded-product distributed key setup.
 
 Apart from a Rust crate, this library provides bindings for multiple platforms:
 
@@ -89,12 +145,13 @@ The library is organized into the following main modules, each providing a diffe
 | Module | Description |
 |--------|-------------|
 | `arithmetic` | Basic arithmetic operations on scalars and group elements using Curve25519 |
-| `core` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
-| `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
-| `keys` | Key management: global keys, session keys, key generation, and distributed key setup |
-| `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
-| `transcryptor` | Transcryptor for pseudonymization and rekeying operations |
+| `core` | Low-level ElGamal encryption/decryption, PEP primitives (`rekey`, `reshuffle`, `rerandomize`), and the verifiable variants with zero-knowledge proofs (`core::verifiable`, `core::zkps`) |
+| `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, padding, batches, and verifiable proof wrappers |
+| `keys` | Key management: global keys, session keys, key generation, distributed key setup, and session-key-share proofs |
+| `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, derivation functions, and the public factor commitments used to verify proofs |
+| `transcryptor` | Transcryptor for pseudonymization, rekeying, and (with `verifiable`) proof-producing variants |
 | `client` | Client-side encryption and decryption using session keys |
+| `verifier` | Verifier that checks per-message and batch proofs against published factor commitments (requires `verifiable`) |
 
 ### Keys Module (`keys`)
 
@@ -102,12 +159,15 @@ The library is organized into the following main modules, each providing a diffe
 - `keys::generation` - Functions for generating global and session keys
 - `keys::traits` - Traits for key types
 - `keys::distribution` - Distributed key generation and setup for multi-party transcryptors
+- `keys::distribution::proofs` - `BlindingCommitment`, `BlindingCommitments`, and `SessionKeyShareProof` for the blinded-product session-key construction (requires `verifiable`)
 
 ### Factors Module (`factors`)
 
 - `factors::types` - Factor types (ReshuffleFactor, RekeyFactor, RerandomizeFactor) and Info type aliases
 - `factors::secrets` - Secret types and derivation functions (PseudonymizationSecret, EncryptionSecret)
 - `factors::contexts` - Context types (PseudonymizationDomain, EncryptionContext)
+- `factors::commitments` - Public factor commitments (`A = a·G`) published by transcryptors so verifiers can check per-operation proofs (requires `verifiable`)
+- `factors::verifiable` - Master keys (`MasterPseudonymizationPublicKey`, `MasterRekeyingPublicKey`, and their secret counterparts) used by the `verifiable-derivation` Carter–Wegman commitment derivation
 
 ### Data Module (`data`)
 
@@ -116,7 +176,20 @@ The library is organized into the following main modules, each providing a diffe
 - `data::long` - Long pseudonyms and attributes (over 15 bytes with PKCS#7 padding) (requires `long` feature)
 - `data::records` - Record types for batch operations
 - `data::json` - JSON structured data with nested pseudonyms and attributes (requires `json` feature)
+- `data::batch` - `EncryptedBatch` and its verifiable batch proofs, with hoisted per-batch factor blocks and per-message inners (requires `batch`)
+- `data::verifiable` - Data-layer wrappers around the core ZKPs (`PseudonymPseudonymizationProof`, `RecordTranscryptionProof`, etc.) and the `Verifiable*` traits the `Verifier` consumes (requires `verifiable`)
 - `data::traits` - Common traits for data types
+
+### Verifier Module (`verifier`, requires `verifiable`)
+
+- `verifier::Verifier` - In-memory verifier that registers per-transition factor commitments
+  and verifies per-message proofs (`verify_pseudonymization`, `verify_rekey`, `verify_transcryption`)
+  and their cached variants
+- `verifier::cache` - `CommitmentsCache` traits and the default `InMemoryCommitmentsCache` for
+  storing commitments under transition keys (`(d_from, d_to, c_from, c_to)` for pseudonymization,
+  `(c_from, c_to)` for rekey)
+- `verifier::{VerifyError, RegisterCommitmentsError, WeakCommitmentError}` - Structured errors
+  distinguishing proof rejection, cache miss, weak commitments, and missing master keys
 
 ### Prelude
 
@@ -144,6 +217,8 @@ The following features are available:
 - `long`: enables support for long pseudonyms and attributes over 15 bytes using PKCS#7 padding.
 - `offline`: enables offline encryption towards global keys (instead of only session keys).
 - `batch`: enables batch transcryption operations with reordering to prevent linkability.
+- `batch-pk`: carries the recipient public key inside `EncryptedBatch` so batch operations don't require a caller-supplied public key (no effect under `elgamal3`); implies `batch`.
+- `verifiable`: enables zero-knowledge proofs of correct transcryption (`core::verifiable`, `data::verifiable`, `verifier`) and the proof-producing methods on `Transcryptor`.
 - `serde`: enables serialization/deserialization support via Serde.
 - `json`: enables PEP json structured data types.
 - `build-binary`: builds the `peppy` command-line tool.
@@ -152,8 +227,9 @@ The following features are available:
 - `python`: enables Python bindings via PyO3 (mutually exclusive with `wasm`).
 - `wasm`: enables WebAssembly bindings via wasm-bindgen (mutually exclusive with `python`).
 - `elgamal3`: enables ElGamal triple encryption, including the recipient's public key in message encoding. This provides additional security verification but is less efficient.
+- `verifiable-derivation`: enables Carter–Wegman verifiable derivation of factor commitments (O(1) storage instead of O(n) per transition); implies `verifiable`.
 - `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets.
-- `insecure`: enables methods that expose global secret keys, to be used with care for testing or special use cases.
+- `insecure`: enables methods that expose global secret keys, or that reconstruct verifiable outputs without checking the proof; to be used with care for testing or special use cases.
 - `global-pseudonyms`: enables global pseudonyms (which are insecure).
 
 **Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly.
@@ -202,6 +278,8 @@ Run tests with different feature combinations:
 ```bash
 cargo test --features elgamal3
 cargo test --features legacy
+cargo test --features verifiable-derivation
+cargo test --no-default-features --features=long,offline,batch,batch-pk,serde,json,verifiable
 ```
 
 ### Building Bindings

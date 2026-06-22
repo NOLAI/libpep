@@ -52,7 +52,16 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Step 4: Pseudonymize (transform) the encrypted pseudonyms
     let transformed_pseudonyms: Vec<EncryptedPseudonym> = encrypted_pseudonyms
         .iter()
-        .map(|ep| pseudonymize(ep, &pseudo_info))
+        .map(|ep| {
+            #[cfg(feature = "elgamal3")]
+            {
+                pseudonymize(ep, &pseudo_info, &mut rng)
+            }
+            #[cfg(not(feature = "elgamal3"))]
+            {
+                pseudonymize(ep, &pseudo_info, &session_public, &mut rng)
+            }
+        })
         .collect();
 
     // Step 5: Decrypt the transformed pseudonyms
@@ -88,7 +97,16 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
 
     let reverse_transformed: Vec<EncryptedPseudonym> = re_encrypted_pseudonyms
         .iter()
-        .map(|ep| pseudonymize(ep, &reverse_pseudo_info))
+        .map(|ep| {
+            #[cfg(feature = "elgamal3")]
+            {
+                pseudonymize(ep, &reverse_pseudo_info, &mut rng)
+            }
+            #[cfg(not(feature = "elgamal3"))]
+            {
+                pseudonymize(ep, &reverse_pseudo_info, &session_public, &mut rng)
+            }
+        })
         .collect();
 
     let reverse_decrypted: Vec<Pseudonym> = reverse_transformed

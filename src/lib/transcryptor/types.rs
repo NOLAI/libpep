@@ -7,8 +7,10 @@ use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
-#[cfg(feature = "batch")]
 use rand_core::{CryptoRng, Rng};
+
+/// Transcryptor identifier for distributed PEP systems.
+pub type TranscryptorId = String;
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymisation secret and a rekeying secret.
@@ -108,84 +110,73 @@ impl Transcryptor {
     }
 
     /// Pseudonymize encrypted data from one domain/session to another.
-    /// Automatically works with any pseudonymizable type (pseudonyms, long pseudonyms, etc.)
-    pub fn pseudonymize<E>(&self, encrypted: &E, pseudonymization_info: &PseudonymizationInfo) -> E
-    where
-        E: Pseudonymizable,
-    {
-        super::functions::pseudonymize(encrypted, pseudonymization_info)
-    }
-
-    /// Transcrypt (rekey or pseudonymize) encrypted data from one domain/session to another.
-    /// Automatically works with any transcryptable type (pseudonyms, attributes, JSON values, records, etc.)
-    pub fn transcrypt<E>(&self, encrypted: &E, transcryption_info: &TranscryptionInfo) -> E
-    where
-        E: Transcryptable,
-    {
-        super::functions::transcrypt(encrypted, transcryption_info)
-    }
-
-    /// Rekey a batch of encrypted data from one session to another.
-    /// Automatically works with any rekeyable type (attributes, long attributes, etc.)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the encrypted data do not all have the same structure.
-    #[cfg(feature = "batch")]
-    pub fn rekey_batch<E, R>(
+    /// Internally uses RRSK with a freshly sampled rerandomize factor.
+    #[cfg(feature = "elgamal3")]
+    pub fn pseudonymize<E, R>(
         &self,
-        encrypted: &mut [E],
-        rekey_info: &E::RekeyInfo,
-        rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
-    where
-        E: Rekeyable + crate::data::traits::HasStructure + Clone,
-        E::RekeyInfo: Copy,
-        R: Rng + CryptoRng,
-    {
-        super::batch::rekey_batch(encrypted, rekey_info, rng)
-    }
-
-    /// Pseudonymize a batch of encrypted data from one domain/session to another.
-    /// Automatically works with any pseudonymizable type (pseudonyms, long pseudonyms, etc.)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the encrypted data do not all have the same structure.
-    #[cfg(feature = "batch")]
-    pub fn pseudonymize_batch<E, R>(
-        &self,
-        encrypted: &mut [E],
+        encrypted: &E,
         pseudonymization_info: &PseudonymizationInfo,
         rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
+    ) -> E
     where
-        E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
+        E: Pseudonymizable,
         R: Rng + CryptoRng,
     {
-        super::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
+        super::functions::pseudonymize(encrypted, pseudonymization_info, rng)
     }
 
-    /// Transcrypt a batch of encrypted data from one domain/session to another.
-    /// Automatically works with any transcryptable type (records, JSON values, long records, etc.)
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the encrypted data do not all have the same structure.
-    #[cfg(feature = "batch")]
-    pub fn transcrypt_batch<E, R>(
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn pseudonymize<E, R>(
         &self,
-        encrypted: &mut [E],
-        transcryption_info: &TranscryptionInfo,
+        encrypted: &E,
+        pseudonymization_info: &PseudonymizationInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
         rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
+    ) -> E
     where
-        E: Transcryptable + crate::data::traits::HasStructure + Clone,
+        E: Pseudonymizable,
         R: Rng + CryptoRng,
     {
-        super::batch::transcrypt_batch(encrypted, transcryption_info, rng)
+        super::functions::pseudonymize(encrypted, pseudonymization_info, public_key, rng)
+    }
+
+    /// Transcrypt encrypted data from one domain/session to another.
+    /// Internally pseudonyms use RRSK (rerandomize+reshuffle+rekey) with a
+    /// freshly sampled factor, attributes use rekey only.
+    #[cfg(feature = "elgamal3")]
+    pub fn transcrypt<E, R>(
+        &self,
+        encrypted: &E,
+        transcryption_info: &TranscryptionInfo,
+        rng: &mut R,
+    ) -> E
+    where
+        E: Transcryptable,
+        R: Rng + CryptoRng,
+    {
+        super::functions::transcrypt(encrypted, transcryption_info, rng)
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    pub fn transcrypt<E, R>(
+        &self,
+        encrypted: &E,
+        transcryption_info: &TranscryptionInfo,
+        public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
+        rng: &mut R,
+    ) -> E
+    where
+        E: Transcryptable,
+        R: Rng + CryptoRng,
+    {
+        super::functions::transcrypt(encrypted, transcryption_info, public_key, rng)
     }
 }
+
+// Batch operations live as methods on `EncryptedBatch<E>` itself (one impl
+// per concrete `E`). Call them directly on the batch — there is no
+// polymorphic batch wrapper on `Transcryptor` because each batch shape has
+// its own concrete signature.
 
 impl RekeyInfoProvider<AttributeRekeyInfo> for Transcryptor {
     fn rekey_info(

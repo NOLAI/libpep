@@ -13,3 +13,8 @@ pub mod py;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;
+
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
+#[cfg(feature = "verifiable")]
+pub mod zkps;

@@ -19,14 +19,35 @@ use crate::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, t
 use wasm_bindgen::prelude::*;
 
 /// Pseudonymize an encrypted pseudonym from one domain/session to another.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = pseudonymize)]
 pub fn wasm_pseudonymize(
     encrypted: &WASMEncryptedPseudonym,
     pseudonymization_info: &WASMPseudonymizationInfo,
 ) -> WASMEncryptedPseudonym {
+    let mut rng = rand::rng();
     pseudonymize(
         &encrypted.0,
         &PseudonymizationInfo::from(pseudonymization_info),
+        &mut rng,
+    )
+    .into()
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = pseudonymize)]
+pub fn wasm_pseudonymize(
+    encrypted: &WASMEncryptedPseudonym,
+    pseudonymization_info: &WASMPseudonymizationInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> WASMEncryptedPseudonym {
+    let mut rng = rand::rng();
+    let pk = PseudonymSessionPublicKey::from(public_key.0 .0);
+    pseudonymize(
+        &encrypted.0,
+        &PseudonymizationInfo::from(pseudonymization_info),
+        &pk,
+        &mut rng,
     )
     .into()
 }
@@ -50,21 +71,71 @@ pub fn wasm_rekey_attribute(
 }
 
 /// Transcrypt an encrypted pseudonym from one domain/session to another.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptPseudonym)]
 pub fn wasm_transcrypt_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMEncryptedPseudonym {
-    transcrypt(&encrypted.0, &TranscryptionInfo::from(transcryption_info)).into()
+    let mut rng = rand::rng();
+    transcrypt(
+        &encrypted.0,
+        &TranscryptionInfo::from(transcryption_info),
+        &mut rng,
+    )
+    .into()
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptPseudonym)]
+pub fn wasm_transcrypt_pseudonym(
+    encrypted: &WASMEncryptedPseudonym,
+    transcryption_info: &WASMTranscryptionInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> WASMEncryptedPseudonym {
+    let mut rng = rand::rng();
+    let pk = PseudonymSessionPublicKey::from(public_key.0 .0);
+    transcrypt(
+        &encrypted.0,
+        &TranscryptionInfo::from(transcryption_info),
+        &pk,
+        &mut rng,
+    )
+    .into()
 }
 
 /// Transcrypt an encrypted attribute from one session to another.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptAttribute)]
 pub fn wasm_transcrypt_attribute(
     encrypted: &WASMEncryptedAttribute,
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMEncryptedAttribute {
-    transcrypt(&encrypted.0, &TranscryptionInfo::from(transcryption_info)).into()
+    let mut rng = rand::rng();
+    transcrypt(
+        &encrypted.0,
+        &TranscryptionInfo::from(transcryption_info),
+        &mut rng,
+    )
+    .into()
+}
+
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptAttribute)]
+pub fn wasm_transcrypt_attribute(
+    encrypted: &WASMEncryptedAttribute,
+    transcryption_info: &WASMTranscryptionInfo,
+    public_key: &WASMAttributeSessionPublicKey,
+) -> WASMEncryptedAttribute {
+    let mut rng = rand::rng();
+    let pk = AttributeSessionPublicKey::from(public_key.0 .0);
+    transcrypt(
+        &encrypted.0,
+        &TranscryptionInfo::from(transcryption_info),
+        &pk,
+        &mut rng,
+    )
+    .into()
 }
 
 /// Rerandomize an encrypted pseudonym.
@@ -156,15 +227,35 @@ pub fn wasm_rerandomize_encrypted_attribute_known(
 // ============================================================================
 
 /// Pseudonymize a long encrypted pseudonym from one domain/session to another.
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = pseudonymizeLong)]
 pub fn wasm_pseudonymize_long(
     encrypted: &WASMLongEncryptedPseudonym,
     pseudonymization_info: &WASMPseudonymizationInfo,
 ) -> WASMLongEncryptedPseudonym {
+    let mut rng = rand::rng();
     pseudonymize(
         &encrypted.0,
         &PseudonymizationInfo::from(pseudonymization_info),
+        &mut rng,
+    )
+    .into()
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = pseudonymizeLong)]
+pub fn wasm_pseudonymize_long(
+    encrypted: &WASMLongEncryptedPseudonym,
+    pseudonymization_info: &WASMPseudonymizationInfo,
+    public_key: &WASMPseudonymSessionPublicKey,
+) -> WASMLongEncryptedPseudonym {
+    let mut rng = rand::rng();
+    let pk = PseudonymSessionPublicKey::from(public_key.0 .0);
+    pseudonymize(
+        &encrypted.0,
+        &PseudonymizationInfo::from(pseudonymization_info),
+        &pk,
+        &mut rng,
     )
     .into()
 }

@@ -101,3 +101,133 @@ pub fn wasm_make_session_keys(
     );
     keys.into()
 }
+
+/// Result bundle for `makePseudonymSessionKeysWithProof`.
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_name = PseudonymSessionKeysWithProof)]
+#[derive(Clone)]
+pub struct WASMPseudonymSessionKeysWithProof {
+    public: WASMPseudonymSessionPublicKey,
+    secret: WASMPseudonymSessionSecretKey,
+    proof: crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof,
+    blinding_commitment: crate::keys::wasm::distribution::proofs::WASMBlindingCommitment,
+}
+
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_class = PseudonymSessionKeysWithProof)]
+impl WASMPseudonymSessionKeysWithProof {
+    #[wasm_bindgen(getter)]
+    pub fn public(&self) -> WASMPseudonymSessionPublicKey {
+        self.public
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn secret(&self) -> WASMPseudonymSessionSecretKey {
+        self.secret
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn proof(&self) -> crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof {
+        self.proof
+    }
+
+    #[wasm_bindgen(getter, js_name = blindingCommitment)]
+    pub fn blinding_commitment(
+        &self,
+    ) -> crate::keys::wasm::distribution::proofs::WASMBlindingCommitment {
+        self.blinding_commitment
+    }
+}
+
+/// Result bundle for `makeAttributeSessionKeysWithProof`.
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_name = AttributeSessionKeysWithProof)]
+#[derive(Clone)]
+pub struct WASMAttributeSessionKeysWithProof {
+    public: WASMAttributeSessionPublicKey,
+    secret: WASMAttributeSessionSecretKey,
+    proof: crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof,
+    blinding_commitment: crate::keys::wasm::distribution::proofs::WASMBlindingCommitment,
+}
+
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_class = AttributeSessionKeysWithProof)]
+impl WASMAttributeSessionKeysWithProof {
+    #[wasm_bindgen(getter)]
+    pub fn public(&self) -> WASMAttributeSessionPublicKey {
+        self.public
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn secret(&self) -> WASMAttributeSessionSecretKey {
+        self.secret
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn proof(&self) -> crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof {
+        self.proof
+    }
+
+    #[wasm_bindgen(getter, js_name = blindingCommitment)]
+    pub fn blinding_commitment(
+        &self,
+    ) -> crate::keys::wasm::distribution::proofs::WASMBlindingCommitment {
+        self.blinding_commitment
+    }
+}
+
+/// Generate pseudonym session keys together with a session-key-share proof.
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_name = makePseudonymSessionKeysWithProof)]
+pub fn wasm_make_pseudonym_session_keys_with_proof(
+    global: &WASMPseudonymGlobalSecretKey,
+    session: &WASMEncryptionContext,
+    secret: &WASMEncryptionSecret,
+    blinding: &crate::keys::wasm::distribution::blinding::WASMBlindingFactor,
+) -> Result<WASMPseudonymSessionKeysWithProof, JsValue> {
+    let mut rng = rand::rng();
+    let (public, secret_key, proof, blinding_commitment) = make_pseudonym_session_keys_with_proof(
+        &PseudonymGlobalSecretKey(global.0 .0),
+        &session.0,
+        &secret.0,
+        &blinding.0 .0,
+        &mut rng,
+    )
+    .map_err(crate::wasm_errors::session_key_share_err_to_js)?;
+    Ok(WASMPseudonymSessionKeysWithProof {
+        public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(public.0)),
+        secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(secret_key.0)),
+        proof: crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof(proof),
+        blinding_commitment: crate::keys::wasm::distribution::proofs::WASMBlindingCommitment(
+            blinding_commitment,
+        ),
+    })
+}
+
+/// Generate attribute session keys together with a session-key-share proof.
+#[cfg(feature = "verifiable-derivation")]
+#[wasm_bindgen(js_name = makeAttributeSessionKeysWithProof)]
+pub fn wasm_make_attribute_session_keys_with_proof(
+    global: &WASMAttributeGlobalSecretKey,
+    session: &WASMEncryptionContext,
+    secret: &WASMEncryptionSecret,
+    blinding: &crate::keys::wasm::distribution::blinding::WASMBlindingFactor,
+) -> Result<WASMAttributeSessionKeysWithProof, JsValue> {
+    let mut rng = rand::rng();
+    let (public, secret_key, proof, blinding_commitment) = make_attribute_session_keys_with_proof(
+        &AttributeGlobalSecretKey(global.0 .0),
+        &session.0,
+        &secret.0,
+        &blinding.0 .0,
+        &mut rng,
+    )
+    .map_err(crate::wasm_errors::session_key_share_err_to_js)?;
+    Ok(WASMAttributeSessionKeysWithProof {
+        public: WASMAttributeSessionPublicKey(WASMGroupElement::from(public.0)),
+        secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(secret_key.0)),
+        proof: crate::keys::wasm::distribution::proofs::WASMSessionKeyShareProof(proof),
+        blinding_commitment: crate::keys::wasm::distribution::proofs::WASMBlindingCommitment(
+            blinding_commitment,
+        ),
+    })
+}

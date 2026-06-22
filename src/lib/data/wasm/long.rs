@@ -283,6 +283,8 @@ impl WASMLongEncryptedAttribute {
     }
 }
 
+#[cfg(feature = "batch")]
+use crate::data::batch::EncryptedBatch;
 /// WASM bindings for batch operations on long (multi-block) data types.
 #[cfg(feature = "batch")]
 use crate::data::records::LongEncryptedRecord;
@@ -293,56 +295,48 @@ use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
 #[cfg(feature = "batch")]
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "batch")]
-use crate::transcryptor::{rekey_batch, transcrypt_batch};
+use crate::wasm_errors::batch_err_to_js;
 
 /// Batch rekeying of long encrypted pseudonyms.
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.
-#[cfg(feature = "batch")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = rekeyLongPseudonymBatch)]
 pub fn wasm_rekey_long_pseudonym_batch(
     encrypted: Vec<WASMLongEncryptedPseudonym>,
     rekey_info: &WASMPseudonymRekeyFactor,
 ) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
     let mut rng = rand::rng();
-    let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
-    let result = rekey_batch(&mut enc, &rekey_info.0, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
+    let items: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+    let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
+    batch
+        .rekey(&rekey_info.0, &mut rng)
+        .map_err(batch_err_to_js)?;
+    Ok(batch
+        .into_items()
         .into_iter()
         .map(WASMLongEncryptedPseudonym)
         .collect())
 }
 
-/// A pair of long encrypted pseudonyms and attributes for batch transcryption.
-#[wasm_bindgen(js_name = LongEncryptedRecord)]
-pub struct WASMLongEncryptedRecord {
-    pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-    attributes: Vec<WASMLongEncryptedAttribute>,
-}
-
-#[wasm_bindgen(js_class = "LongEncryptedRecord")]
-impl WASMLongEncryptedRecord {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-        attributes: Vec<WASMLongEncryptedAttribute>,
-    ) -> Self {
-        Self {
-            pseudonyms,
-            attributes,
-        }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn pseudonyms(&self) -> Vec<WASMLongEncryptedPseudonym> {
-        self.pseudonyms.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn attributes(&self) -> Vec<WASMLongEncryptedAttribute> {
-        self.attributes.clone()
-    }
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = rekeyLongPseudonymBatch)]
+pub fn wasm_rekey_long_pseudonym_batch(
+    encrypted: Vec<WASMLongEncryptedPseudonym>,
+    rekey_info: &WASMPseudonymRekeyFactor,
+    public_key: &crate::keys::wasm::types::WASMPseudonymSessionPublicKey,
+) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
+    let mut rng = rand::rng();
+    let items: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+    let pk = crate::keys::PseudonymSessionPublicKey::from(public_key.0 .0);
+    let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
+    batch
+        .rekey(&rekey_info.0, &mut rng)
+        .map_err(batch_err_to_js)?;
+    Ok(batch
+        .into_items()
+        .into_iter()
+        .map(WASMLongEncryptedPseudonym)
+        .collect())
 }
 
 /// Batch transcryption of long encrypted data.
@@ -352,40 +346,46 @@ impl WASMLongEncryptedRecord {
 /// # Errors
 ///
 /// Throws an error if the encrypted data do not all have the same structure.
-#[cfg(feature = "batch")]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongBatch)]
 pub fn wasm_transcrypt_long_batch(
-    encrypted: Vec<WASMLongEncryptedRecord>,
+    encrypted: Vec<crate::data::wasm::records::WASMLongEncryptedRecord>,
     transcryption_info: &WASMTranscryptionInfo,
-) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
+) -> Result<Vec<crate::data::wasm::records::WASMLongEncryptedRecord>, JsValue> {
     let mut rng = rand::rng();
-    let mut enc: Vec<LongEncryptedRecord> = encrypted
-        .into_iter()
-        .map(|pair| LongEncryptedRecord {
-            pseudonyms: pair.pseudonyms.into_iter().map(|p| p.0).collect(),
-            attributes: pair.attributes.into_iter().map(|a| a.0).collect(),
-        })
-        .collect();
+    let items: Vec<LongEncryptedRecord> = encrypted.into_iter().map(Into::into).collect();
     let info = TranscryptionInfo {
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
     };
-    let result = transcrypt_batch(&mut enc, &info, &mut rng)
-        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
+    let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
+    batch.transcrypt(&info, &mut rng).map_err(batch_err_to_js)?;
+    Ok(batch
+        .into_items()
         .into_iter()
-        .map(|rec| WASMLongEncryptedRecord {
-            pseudonyms: rec
-                .pseudonyms
-                .into_iter()
-                .map(WASMLongEncryptedPseudonym)
-                .collect(),
-            attributes: rec
-                .attributes
-                .into_iter()
-                .map(WASMLongEncryptedAttribute)
-                .collect(),
-        })
+        .map(crate::data::wasm::records::WASMLongEncryptedRecord::from)
+        .collect())
+}
+
+#[cfg(all(feature = "batch", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = transcryptLongBatch)]
+pub fn wasm_transcrypt_long_batch(
+    encrypted: Vec<crate::data::wasm::records::WASMLongEncryptedRecord>,
+    transcryption_info: &WASMTranscryptionInfo,
+    session_keys: &crate::keys::wasm::types::WASMSessionKeys,
+) -> Result<Vec<crate::data::wasm::records::WASMLongEncryptedRecord>, JsValue> {
+    let mut rng = rand::rng();
+    let items: Vec<LongEncryptedRecord> = encrypted.into_iter().map(Into::into).collect();
+    let info = TranscryptionInfo {
+        pseudonym: transcryption_info.0.pseudonym,
+        attribute: transcryption_info.0.attribute,
+    };
+    let keys: crate::keys::SessionKeys = (*session_keys).into();
+    let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
+    batch.transcrypt(&info, &mut rng).map_err(batch_err_to_js)?;
+    Ok(batch
+        .into_items()
+        .into_iter()
+        .map(crate::data::wasm::records::WASMLongEncryptedRecord::from)
         .collect())
 }

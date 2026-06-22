@@ -16,10 +16,12 @@
 //! stored long-term before it is shared at any point in the future.
 //!
 //! This library provides both a [core] API for `ElGamal` encryption and the PEP
-//! [primitives](core::primitives), and a [core] API for
-//! [pseudonymization](core::functions::pseudonymize) and [rekeying](core::functions::rekey)
-//! (i.e. [transcryption](core::functions::transcrypt)) of [`Pseudonym`](core::data::simple::Pseudonym)s
-//! and [`Attribute`](core::data::simple::Attribute)s using this cryptographic concept.
+//! [primitives](core::primitives), and a higher-level API for
+//! [pseudonymization](transcryptor::functions::pseudonymize) and
+//! [rekeying](transcryptor::functions::rekey) (i.e.
+//! [transcryption](transcryptor::functions::transcrypt)) of
+//! [`Pseudonym`](data::simple::Pseudonym)s and
+//! [`Attribute`](data::simple::Attribute)s using this cryptographic concept.
 //!
 //! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
@@ -46,11 +48,20 @@ pub mod keys;
 pub mod prelude;
 pub mod transcryptor;
 
+#[cfg(feature = "verifiable")]
+pub mod verifier;
+
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 pub mod py;
 
+#[cfg(all(feature = "python", not(feature = "wasm")))]
+pub mod py_errors;
+
 #[cfg(all(feature = "wasm", not(feature = "python")))]
 pub mod wasm;
+
+#[cfg(all(feature = "wasm", not(feature = "python")))]
+pub mod wasm_errors;
 
 #[cfg(all(feature = "python", not(feature = "wasm")))]
 use pyo3::prelude::*;

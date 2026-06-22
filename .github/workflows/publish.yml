@@ -4,6 +4,13 @@ on:
   release:
     types: [created]
 
+env:
+  # Workaround for intermittent `[16] Error in the HTTP2 framing layer` from
+  # crates.io's CDN. Forces cargo's curl backend to use HTTP/1.1 instead of
+  # HTTP/2 multiplexing when fetching the registry and crate sources.
+  CARGO_HTTP_MULTIPLEXING: "false"
+  CARGO_NET_RETRY: "10"
+
 jobs:
   semver-checks:
     runs-on: ubuntu-latest
@@ -71,7 +78,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --sdist --out dist --features python
+          args: --release --sdist --out dist --features pyo3/extension-module,python
           sccache: 'true'
           manylinux: auto
       - name: Publish to PyPI

@@ -6,31 +6,85 @@
 use super::blinding::BlindingFactor;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
-use derive_more::{Deref, From};
+use derive_more::From;
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::core::keys::distribution::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::keys::distribution::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
+///
+/// Intentionally does **not** implement `Deref` to the inner scalar: the
+/// wrapped value is secret. Internal callers needing the scalar should use
+/// the crate-internal `as_scalar` accessor.
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for PseudonymSessionKeyShare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("PseudonymSessionKeyShare(…)")
+    }
+}
+
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::core::keys::distribution::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::keys::distribution::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
+///
+/// Intentionally does **not** implement `Deref` to the inner scalar: the
+/// wrapped value is secret. Internal callers needing the scalar should use
+/// the crate-internal `as_scalar` accessor.
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for AttributeSessionKeyShare {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Do not leak the secret scalar via Debug formatting (e.g. logs).
+        f.write_str("AttributeSessionKeyShare(…)")
+    }
+}
+
 /// A pair of session key shares containing both pseudonym and attribute shares.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SessionKeyShares {
     pub pseudonym: PseudonymSessionKeyShare,
     pub attribute: AttributeSessionKeyShare,
 }
 
+impl std::fmt::Debug for SessionKeyShares {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionKeyShares")
+            .field("pseudonym", &self.pseudonym)
+            .field("attribute", &self.attribute)
+            .finish()
+    }
+}
+
 impl PseudonymSessionKeyShare {
+    /// Crate-internal accessor for the inner secret scalar.
+    ///
+    /// Not part of the public API: external callers should never need the
+    /// raw scalar.
+    #[inline]
+    pub(crate) fn as_scalar(&self) -> &ScalarNonZero {
+        &self.0
+    }
+
+    /// Encode as a byte array.
+    ///
+    /// The result is secret material; treat it accordingly.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_bytes()
+    }
+    /// Encode as a hexadecimal string.
+    ///
+    /// The result is secret material; treat it accordingly.
+    pub fn to_hex(&self) -> String {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_hex()
+    }
     /// Decode from a byte array.
     pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
         ScalarNonZero::from_bytes(bytes).map(Self)
@@ -46,6 +100,29 @@ impl PseudonymSessionKeyShare {
 }
 
 impl AttributeSessionKeyShare {
+    /// Crate-internal accessor for the inner secret scalar.
+    ///
+    /// Not part of the public API: external callers should never need the
+    /// raw scalar.
+    #[inline]
+    pub(crate) fn as_scalar(&self) -> &ScalarNonZero {
+        &self.0
+    }
+
+    /// Encode as a byte array.
+    ///
+    /// The result is secret material; treat it accordingly.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_bytes()
+    }
+    /// Encode as a hexadecimal string.
+    ///
+    /// The result is secret material; treat it accordingly.
+    pub fn to_hex(&self) -> String {
+        use crate::arithmetic::scalars::ScalarTraits;
+        self.0.to_hex()
+    }
     /// Decode from a byte array.
     pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
         ScalarNonZero::from_bytes(bytes).map(Self)
@@ -72,7 +149,7 @@ impl MakeSessionKeyShare<PseudonymRekeyFactor> for PseudonymSessionKeyShare {
         rekey_factor: &PseudonymRekeyFactor,
         blinding_factor: &BlindingFactor,
     ) -> Self {
-        PseudonymSessionKeyShare(rekey_factor.scalar() * **blinding_factor)
+        PseudonymSessionKeyShare(rekey_factor.scalar() * *blinding_factor.as_scalar())
     }
 }
 
@@ -81,7 +158,7 @@ impl MakeSessionKeyShare<AttributeRekeyFactor> for AttributeSessionKeyShare {
         rekey_factor: &AttributeRekeyFactor,
         blinding_factor: &BlindingFactor,
     ) -> Self {
-        AttributeSessionKeyShare(rekey_factor.scalar() * **blinding_factor)
+        AttributeSessionKeyShare(rekey_factor.scalar() * *blinding_factor.as_scalar())
     }
 }
 

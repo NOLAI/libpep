@@ -9,9 +9,9 @@ use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 use crate::data::wasm::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
+use crate::data::wasm::records::{WASMEncryptedRecord, WASMRecord};
 #[cfg(feature = "long")]
-use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
-use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::wasm::records::{WASMLongEncryptedRecord, WASMLongRecord};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
@@ -189,7 +189,7 @@ pub fn wasm_decrypt_long_attribute(
 
 /// Encrypt a Record using session keys.
 #[wasm_bindgen(js_name = encryptRecord)]
-pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMRecordEncrypted {
+pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMEncryptedRecord {
     let mut rng = rand::rng();
     use crate::data::records::Record;
     use crate::data::traits::Encryptable;
@@ -202,7 +202,7 @@ pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMRe
 #[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = decryptRecord)]
 pub fn wasm_decrypt_record(
-    encrypted: WASMRecordEncrypted,
+    encrypted: WASMEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> Option<WASMRecord> {
     use crate::data::records::EncryptedRecord;
@@ -215,7 +215,7 @@ pub fn wasm_decrypt_record(
 /// Decrypt an encrypted Record using session keys.
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = decryptRecord)]
-pub fn wasm_decrypt_record(encrypted: WASMRecordEncrypted, keys: &WASMSessionKeys) -> WASMRecord {
+pub fn wasm_decrypt_record(encrypted: WASMEncryptedRecord, keys: &WASMSessionKeys) -> WASMRecord {
     use crate::data::records::EncryptedRecord;
     use crate::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
@@ -224,16 +224,40 @@ pub fn wasm_decrypt_record(encrypted: WASMRecordEncrypted, keys: &WASMSessionKey
 }
 
 /// Transcrypt an encrypted Record from one context to another.
+#[cfg(feature = "elgamal3")]
 #[wasm_bindgen(js_name = transcryptRecord)]
 pub fn wasm_transcrypt_record(
-    encrypted: WASMRecordEncrypted,
+    encrypted: WASMEncryptedRecord,
     transcryption_info: &WASMTranscryptionInfo,
-) -> WASMRecordEncrypted {
+) -> WASMEncryptedRecord {
     use crate::data::records::EncryptedRecord;
+    let mut rng = rand::rng();
     let rust_encrypted: EncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
         &TranscryptionInfo::from(transcryption_info),
+        &mut rng,
+    )
+    .into()
+}
+
+/// Transcrypt an encrypted Record from one context to another.
+#[cfg(not(feature = "elgamal3"))]
+#[wasm_bindgen(js_name = transcryptRecord)]
+pub fn wasm_transcrypt_record(
+    encrypted: WASMEncryptedRecord,
+    transcryption_info: &WASMTranscryptionInfo,
+    keys: &WASMSessionKeys,
+) -> WASMEncryptedRecord {
+    use crate::data::records::EncryptedRecord;
+    let mut rng = rand::rng();
+    let session_keys: SessionKeys = (*keys).into();
+    let rust_encrypted: EncryptedRecord = encrypted.into();
+    transcrypt(
+        &rust_encrypted,
+        &TranscryptionInfo::from(transcryption_info),
+        &session_keys,
+        &mut rng,
     )
     .into()
 }
@@ -244,7 +268,7 @@ pub fn wasm_transcrypt_record(
 pub fn wasm_encrypt_long_record(
     record: WASMLongRecord,
     keys: &WASMSessionKeys,
-) -> WASMLongRecordEncrypted {
+) -> WASMLongEncryptedRecord {
     let mut rng = rand::rng();
     use crate::data::records::LongRecord;
     use crate::data::traits::Encryptable;
@@ -257,7 +281,7 @@ pub fn wasm_encrypt_long_record(
 #[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = decryptLongRecord)]
 pub fn wasm_decrypt_long_record(
-    encrypted: WASMLongRecordEncrypted,
+    encrypted: WASMLongEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> Option<WASMLongRecord> {
     use crate::data::records::LongEncryptedRecord;
@@ -271,7 +295,7 @@ pub fn wasm_decrypt_long_record(
 #[cfg(all(feature = "long", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptLongRecord)]
 pub fn wasm_decrypt_long_record(
-    encrypted: WASMLongRecordEncrypted,
+    encrypted: WASMLongEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> WASMLongRecord {
     use crate::data::records::LongEncryptedRecord;
@@ -282,17 +306,40 @@ pub fn wasm_decrypt_long_record(
 }
 
 /// Transcrypt an encrypted LongRecord from one context to another.
-#[cfg(feature = "long")]
+#[cfg(all(feature = "long", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptLongRecord)]
 pub fn wasm_transcrypt_long_record(
-    encrypted: WASMLongRecordEncrypted,
+    encrypted: WASMLongEncryptedRecord,
     transcryption_info: &WASMTranscryptionInfo,
-) -> WASMLongRecordEncrypted {
+) -> WASMLongEncryptedRecord {
     use crate::data::records::LongEncryptedRecord;
+    let mut rng = rand::rng();
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
         &TranscryptionInfo::from(transcryption_info),
+        &mut rng,
+    )
+    .into()
+}
+
+/// Transcrypt an encrypted LongRecord from one context to another.
+#[cfg(all(feature = "long", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = transcryptLongRecord)]
+pub fn wasm_transcrypt_long_record(
+    encrypted: WASMLongEncryptedRecord,
+    transcryption_info: &WASMTranscryptionInfo,
+    keys: &WASMSessionKeys,
+) -> WASMLongEncryptedRecord {
+    use crate::data::records::LongEncryptedRecord;
+    let mut rng = rand::rng();
+    let session_keys: SessionKeys = (*keys).into();
+    let rust_encrypted: LongEncryptedRecord = encrypted.into();
+    transcrypt(
+        &rust_encrypted,
+        &TranscryptionInfo::from(transcryption_info),
+        &session_keys,
+        &mut rng,
     )
     .into()
 }
@@ -339,15 +386,35 @@ pub fn wasm_decrypt_json(
 }
 
 /// Transcrypt an encrypted PEPJSONValue from one context to another.
-#[cfg(feature = "json")]
+#[cfg(all(feature = "json", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = transcryptJSON)]
 pub fn wasm_transcrypt_json(
     encrypted: &WASMEncryptedPEPJSONValue,
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
     WASMEncryptedPEPJSONValue(transcrypt(
         &encrypted.0,
         &TranscryptionInfo::from(transcryption_info),
+        &mut rng,
+    ))
+}
+
+/// Transcrypt an encrypted PEPJSONValue from one context to another.
+#[cfg(all(feature = "json", not(feature = "elgamal3")))]
+#[wasm_bindgen(js_name = transcryptJSON)]
+pub fn wasm_transcrypt_json(
+    encrypted: &WASMEncryptedPEPJSONValue,
+    transcryption_info: &WASMTranscryptionInfo,
+    keys: &WASMSessionKeys,
+) -> WASMEncryptedPEPJSONValue {
+    let mut rng = rand::rng();
+    let session_keys: SessionKeys = (*keys).into();
+    WASMEncryptedPEPJSONValue(transcrypt(
+        &encrypted.0,
+        &TranscryptionInfo::from(transcryption_info),
+        &session_keys,
+        &mut rng,
     ))
 }
 

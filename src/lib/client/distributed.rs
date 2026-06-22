@@ -3,27 +3,47 @@
 use crate::keys::SessionKeys;
 
 /// Trait for session key share types that define their associated key types.
-pub trait SessionKeyShare:
-    std::ops::Deref<Target = crate::arithmetic::scalars::ScalarNonZero> + Sized
-{
+///
+/// Note: this trait deliberately does NOT bound the implementing type by
+/// `Deref<Target = ScalarNonZero>`. The wrapped scalar is secret and
+/// implementations must expose it only via a crate-internal accessor
+/// (e.g. `as_scalar` on [`crate::keys::distribution::PseudonymSessionKeyShare`]).
+/// The `inner_scalar` method below is the trait-level equivalent.
+pub trait SessionKeyShare: Sized {
     type PublicKeyType: From<crate::arithmetic::group_elements::GroupElement>;
     type SecretKeyType: std::ops::Deref<Target = crate::arithmetic::scalars::ScalarNonZero>
         + From<crate::arithmetic::scalars::ScalarNonZero>;
     type BlindedGlobalSecretKeyType: std::ops::Deref<
         Target = crate::arithmetic::scalars::ScalarNonZero,
     >;
+
+    /// Get a reference to the inner secret scalar of this share.
+    fn inner_scalar(&self) -> &crate::arithmetic::scalars::ScalarNonZero;
+
+    /// Compute the multiplicative inverse of the inner scalar.
+    fn invert_scalar(&self) -> crate::arithmetic::scalars::ScalarNonZero {
+        self.inner_scalar().invert()
+    }
 }
 
 impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
     type PublicKeyType = crate::keys::PseudonymSessionPublicKey;
     type SecretKeyType = crate::keys::PseudonymSessionSecretKey;
     type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedPseudonymGlobalSecretKey;
+
+    fn inner_scalar(&self) -> &crate::arithmetic::scalars::ScalarNonZero {
+        self.as_scalar()
+    }
 }
 
 impl SessionKeyShare for crate::keys::distribution::AttributeSessionKeyShare {
     type PublicKeyType = crate::keys::AttributeSessionPublicKey;
     type SecretKeyType = crate::keys::AttributeSessionSecretKey;
     type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedAttributeGlobalSecretKey;
+
+    fn inner_scalar(&self) -> &crate::arithmetic::scalars::ScalarNonZero {
+        self.as_scalar()
+    }
 }
 
 /// Polymorphic function to reconstruct a session key from a blinded global secret key and session key shares.
@@ -38,7 +58,7 @@ where
     let secret = S::SecretKeyType::from(
         session_key_shares
             .iter()
-            .fold(*blinded_global_secret_key, |acc, x| acc * **x),
+            .fold(*blinded_global_secret_key, |acc, x| acc * *x.inner_scalar()),
     );
     let public = S::PublicKeyType::from(*secret * crate::arithmetic::group_elements::G);
     (public, secret)
@@ -104,7 +124,9 @@ where
     S: SessionKeyShare,
 {
     let secret = S::SecretKeyType::from(
-        *session_secret_key * old_session_key_share.invert() * *new_session_key_share,
+        *session_secret_key
+            * old_session_key_share.invert_scalar()
+            * *new_session_key_share.inner_scalar(),
     );
     let public = S::PublicKeyType::from(*secret * crate::arithmetic::group_elements::G);
     (public, secret)

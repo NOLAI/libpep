@@ -6,6 +6,13 @@ on:
       - 'main'
   pull_request:
 
+env:
+  # Workaround for intermittent `[16] Error in the HTTP2 framing layer` from
+  # crates.io's CDN. Forces cargo's curl backend to use HTTP/1.1 instead of
+  # HTTP/2 multiplexing when fetching the registry and crate sources.
+  CARGO_HTTP_MULTIPLEXING: "false"
+  CARGO_NET_RETRY: "10"
+
 jobs:
   semver-checks:
     runs-on: ubuntu-latest

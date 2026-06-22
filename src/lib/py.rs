@@ -11,10 +11,16 @@ pub use crate::factors::py as factors;
 pub use crate::keys::py as keys;
 pub use crate::transcryptor::py as transcryptor;
 
+#[cfg(feature = "verifiable")]
+pub use crate::verifier::py as verifier;
+
 use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
+
+    // Register typed exception classes on the top-level module.
+    crate::py_errors::register(m)?;
 
     // Register arithmetic as submodule
     let arithmetic_module = PyModule::new(py, "arithmetic")?;
@@ -71,6 +77,10 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     data::long::register(&data_module)?;
     data::padding::register(&data_module)?;
     data::records::register(&data_module)?;
+    #[cfg(feature = "batch")]
+    data::batch::register(&data_module)?;
+    #[cfg(all(feature = "batch", feature = "verifiable"))]
+    data::verifiable_batch::register(&data_module)?;
     m.add_submodule(&data_module)?;
     py.import("sys")?
         .getattr("modules")?
@@ -81,6 +91,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     {
         let json_module = PyModule::new(py, "json")?;
         data::json::register(&json_module)?;
+        #[cfg(feature = "verifiable")]
+        data::verifiable_json::register(&json_module)?;
         data_module.add_submodule(&json_module)?;
         py.import("sys")?
             .getattr("modules")?
@@ -92,10 +104,25 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     factors::contexts::register(&factors_module)?;
     factors::types::register(&factors_module)?;
     factors::secrets::register(&factors_module)?;
+    #[cfg(feature = "verifiable")]
+    factors::commitments::register_commitment_module(&factors_module)?;
+    #[cfg(feature = "verifiable-derivation")]
+    factors::verifiable::register(&factors_module)?;
     m.add_submodule(&factors_module)?;
     py.import("sys")?
         .getattr("modules")?
         .set_item("libpep.factors", &factors_module)?;
+
+    // Register verifier as submodule
+    #[cfg(feature = "verifiable")]
+    {
+        let verifier_module = PyModule::new(py, "verifier")?;
+        verifier::register_verifier_module(&verifier_module)?;
+        m.add_submodule(&verifier_module)?;
+        py.import("sys")?
+            .getattr("modules")?
+            .set_item("libpep.verifier", &verifier_module)?;
+    }
 
     Ok(())
 }

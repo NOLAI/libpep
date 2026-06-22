@@ -8,11 +8,18 @@
 //! - [`blinding`]: Blinding factors and blinded global secret keys
 //! - [`shares`]: Session key shares for transcryptors
 //! - [`setup`]: System setup functions for creating distributed keys
+//! - [`proofs`]: Zero-knowledge proofs for session key shares (verifiable feature)
 
 pub mod blinding;
 pub mod setup;
 pub mod shares;
 
+#[cfg(feature = "verifiable")]
+pub mod proofs;
+
 pub use blinding::*;
 pub use setup::*;
 pub use shares::*;
+
+#[cfg(feature = "verifiable")]
+pub use proofs::*;

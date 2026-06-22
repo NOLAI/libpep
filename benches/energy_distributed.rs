@@ -62,7 +62,8 @@ fn main() {
 
                 bench.benchmark(metadata, &|| {
                     process_entities_individually(
-                        &entities, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                        &entities, &systems, &client_a, &domain_a, &domain_b, &session_a,
+                        &session_b,
                     );
                     Ok::<_, ()>(())
                 });
@@ -71,6 +72,7 @@ fn main() {
     }
 
     // Benchmark distributed transcrypt with batch operations
+    #[cfg(feature = "batch")]
     for num_servers in BENCHMARK_SERVERS {
         for num_entities in BENCHMARK_ENTITIES {
             for (num_pseudonyms_per_entity, num_attributes_per_entity) in BENCHMARK_STRUCTURES {
@@ -97,6 +99,7 @@ fn main() {
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
+                        &client_a,
                         &domain_a,
                         &domain_b,
                         &session_a,

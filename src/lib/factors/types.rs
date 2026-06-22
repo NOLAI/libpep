@@ -1,16 +1,31 @@
 //! Cryptographic factor types for rerandomization, reshuffling, and rekeying operations.
 
 use crate::arithmetic::scalars::ScalarNonZero;
-use crate::factors::EncryptionContext;
+use crate::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    EncryptionContext, EncryptionSecret, PseudonymizationDomain, PseudonymizationSecret,
+};
 use derive_more::From;
 
 /// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 
+impl std::fmt::Debug for RerandomizeFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RerandomizeFactor(…)")
+    }
+}
+
 /// High-level type for the factor used to [`reshuffle`](crate::core::primitives::reshuffle) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct ReshuffleFactor(pub ScalarNonZero);
+
+impl std::fmt::Debug for ReshuffleFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ReshuffleFactor(…)")
+    }
+}
 
 /// Trait for rekey factors that can be extracted to a scalar.
 pub trait RekeyFactor {
@@ -18,8 +33,14 @@ pub trait RekeyFactor {
 }
 
 /// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct PseudonymRekeyFactor(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for PseudonymRekeyFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PseudonymRekeyFactor(…)")
+    }
+}
 
 impl RekeyFactor for PseudonymRekeyFactor {
     fn scalar(&self) -> ScalarNonZero {
@@ -28,8 +49,14 @@ impl RekeyFactor for PseudonymRekeyFactor {
 }
 
 /// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for attributes.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, From)]
 pub struct AttributeRekeyFactor(pub(crate) ScalarNonZero);
+
+impl std::fmt::Debug for AttributeRekeyFactor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("AttributeRekeyFactor(…)")
+    }
+}
 
 impl RekeyFactor for AttributeRekeyFactor {
     fn scalar(&self) -> ScalarNonZero {
@@ -39,12 +66,18 @@ impl RekeyFactor for AttributeRekeyFactor {
 
 /// High-level type for the factors used to [`rsk`](crate::core::primitives::rsk) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
 /// Contains both the reshuffle factor (`s`) and the rekey factor (`k`).
-#[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
+#[derive(Eq, PartialEq, Clone, Copy, From)]
 pub struct PseudonymRSKFactors {
     /// Reshuffle factor - transforms pseudonyms between different domains
     pub s: ReshuffleFactor,
     /// Rekey factor - transforms pseudonyms between different sessions
     pub k: PseudonymRekeyFactor,
+}
+
+impl std::fmt::Debug for PseudonymRSKFactors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PseudonymRSKFactors { s: …, k: … }")
+    }
 }
 
 /// The information required to perform n-PEP pseudonymization from one domain and session to another.
@@ -70,21 +103,92 @@ impl From<PseudonymizationInfo> for PseudonymRekeyInfo {
 }
 
 /// The information required for transcryption, containing both pseudonymization info and attribute rekey info.
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub struct TranscryptionInfo {
     pub pseudonym: PseudonymizationInfo,
     pub attribute: AttributeRekeyInfo,
 }
 
+impl std::fmt::Debug for TranscryptionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("TranscryptionInfo { pseudonym: …, attribute: … }")
+    }
+}
+
+impl PseudonymizationInfo {
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
+        let reshuffle_factor = ReshuffleFactor(s_from.0.invert() * s_to.0);
+        let rekey_factor = PseudonymRekeyInfo::new(session_from, session_to, encryption_secret);
+        Self {
+            s: reshuffle_factor,
+            k: rekey_factor,
+        }
+    }
+
+    /// Reverse the pseudonymization info (i.e., switch the direction of the pseudonymization).
+    pub fn reverse(&self) -> Self {
+        Self {
+            s: ReshuffleFactor(self.s.0.invert()),
+            k: PseudonymRekeyFactor(self.k.0.invert()),
+        }
+    }
+}
+
+impl PseudonymRekeyInfo {
+    /// Compute the rekey info for pseudonyms given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
+        PseudonymRekeyFactor(k_from.0.invert() * k_to.0)
+    }
+
+    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
+    pub fn reverse(&self) -> Self {
+        PseudonymRekeyFactor(self.0.invert())
+    }
+}
+
+impl AttributeRekeyInfo {
+    /// Compute the rekey info for attributes given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
+        AttributeRekeyFactor(k_from.0.invert() * k_to.0)
+    }
+
+    /// Reverse the rekey info (i.e., switch the direction of the rekeying).
+    pub fn reverse(&self) -> Self {
+        AttributeRekeyFactor(self.0.invert())
+    }
+}
+
 impl TranscryptionInfo {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
     pub fn new(
-        domain_from: &crate::factors::contexts::PseudonymizationDomain,
-        domain_to: &crate::factors::contexts::PseudonymizationDomain,
-        session_from: &crate::factors::contexts::EncryptionContext,
-        session_to: &crate::factors::contexts::EncryptionContext,
-        pseudonymization_secret: &crate::factors::PseudonymizationSecret,
-        encryption_secret: &crate::factors::EncryptionSecret,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
     ) -> Self {
         Self {
             pseudonym: PseudonymizationInfo::new(

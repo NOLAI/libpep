@@ -4,6 +4,8 @@ use crate::data::records::{EncryptedRecord, Record};
 use crate::data::wasm::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+#[cfg(feature = "verifiable")]
+use crate::wasm_errors::malformed_proof_err;
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "long")]
@@ -15,6 +17,7 @@ use crate::data::wasm::long::{
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
 #[wasm_bindgen(js_name = Record)]
+#[derive(Clone)]
 pub struct WASMRecord {
     pseudonyms: Vec<WASMPseudonym>,
     attributes: Vec<WASMAttribute>,
@@ -64,21 +67,22 @@ impl From<Record> for WASMRecord {
 
 /// An encrypted record containing multiple encrypted pseudonyms and attributes.
 /// This is the encrypted version of a Record that can be decrypted back.
-#[wasm_bindgen(js_name = RecordEncrypted)]
-pub struct WASMRecordEncrypted {
+#[wasm_bindgen(js_name = EncryptedRecord)]
+#[derive(Clone)]
+pub struct WASMEncryptedRecord {
     pseudonyms: Vec<WASMEncryptedPseudonym>,
     attributes: Vec<WASMEncryptedAttribute>,
 }
 
-#[wasm_bindgen(js_class = RecordEncrypted)]
-impl WASMRecordEncrypted {
+#[wasm_bindgen(js_class = EncryptedRecord)]
+impl WASMEncryptedRecord {
     /// Create a new encrypted record.
     #[wasm_bindgen(constructor)]
     pub fn new(
         pseudonyms: Vec<WASMEncryptedPseudonym>,
         attributes: Vec<WASMEncryptedAttribute>,
     ) -> Self {
-        WASMRecordEncrypted {
+        WASMEncryptedRecord {
             pseudonyms,
             attributes,
         }
@@ -97,9 +101,9 @@ impl WASMRecordEncrypted {
     }
 }
 
-impl From<EncryptedRecord> for WASMRecordEncrypted {
+impl From<EncryptedRecord> for WASMEncryptedRecord {
     fn from(record: EncryptedRecord) -> Self {
-        WASMRecordEncrypted {
+        WASMEncryptedRecord {
             pseudonyms: record
                 .pseudonyms
                 .into_iter()
@@ -114,8 +118,8 @@ impl From<EncryptedRecord> for WASMRecordEncrypted {
     }
 }
 
-impl From<WASMRecordEncrypted> for EncryptedRecord {
-    fn from(record: WASMRecordEncrypted) -> Self {
+impl From<WASMEncryptedRecord> for EncryptedRecord {
+    fn from(record: WASMEncryptedRecord) -> Self {
         EncryptedRecord::new(
             record.pseudonyms.into_iter().map(|p| p.0).collect(),
             record.attributes.into_iter().map(|a| a.0).collect(),
@@ -128,6 +132,7 @@ impl From<WASMRecordEncrypted> for EncryptedRecord {
 #[cfg(feature = "long")]
 /// A long record containing multiple long pseudonyms and attributes for a single entity.
 #[wasm_bindgen(js_name = LongRecord)]
+#[derive(Clone)]
 pub struct WASMLongRecord {
     pseudonyms: Vec<WASMLongPseudonym>,
     attributes: Vec<WASMLongAttribute>,
@@ -238,22 +243,23 @@ impl From<LongRecord> for WASMLongRecord {
 #[cfg(feature = "long")]
 /// An encrypted long record containing multiple encrypted long pseudonyms and attributes.
 /// This is the encrypted version of a LongRecord that can be decrypted back.
-#[wasm_bindgen(js_name = LongRecordEncrypted)]
-pub struct WASMLongRecordEncrypted {
+#[wasm_bindgen(js_name = LongEncryptedRecord)]
+#[derive(Clone)]
+pub struct WASMLongEncryptedRecord {
     pseudonyms: Vec<WASMLongEncryptedPseudonym>,
     attributes: Vec<WASMLongEncryptedAttribute>,
 }
 
 #[cfg(feature = "long")]
-#[wasm_bindgen(js_class = LongRecordEncrypted)]
-impl WASMLongRecordEncrypted {
+#[wasm_bindgen(js_class = LongEncryptedRecord)]
+impl WASMLongEncryptedRecord {
     /// Create a new encrypted long record.
     #[wasm_bindgen(constructor)]
     pub fn new(
         pseudonyms: Vec<WASMLongEncryptedPseudonym>,
         attributes: Vec<WASMLongEncryptedAttribute>,
     ) -> Self {
-        WASMLongRecordEncrypted {
+        WASMLongEncryptedRecord {
             pseudonyms,
             attributes,
         }
@@ -273,9 +279,9 @@ impl WASMLongRecordEncrypted {
 }
 
 #[cfg(feature = "long")]
-impl From<LongEncryptedRecord> for WASMLongRecordEncrypted {
+impl From<LongEncryptedRecord> for WASMLongEncryptedRecord {
     fn from(record: LongEncryptedRecord) -> Self {
-        WASMLongRecordEncrypted {
+        WASMLongEncryptedRecord {
             pseudonyms: record
                 .pseudonyms
                 .into_iter()
@@ -291,8 +297,8 @@ impl From<LongEncryptedRecord> for WASMLongRecordEncrypted {
 }
 
 #[cfg(feature = "long")]
-impl From<WASMLongRecordEncrypted> for LongEncryptedRecord {
-    fn from(record: WASMLongRecordEncrypted) -> Self {
+impl From<WASMLongEncryptedRecord> for LongEncryptedRecord {
+    fn from(record: WASMLongEncryptedRecord) -> Self {
         LongEncryptedRecord::new(
             record.pseudonyms.into_iter().map(|p| p.0).collect(),
             record.attributes.into_iter().map(|a| a.0).collect(),
@@ -332,5 +338,80 @@ impl WASMLongRecordStructure {
     #[wasm_bindgen(getter, js_name = attributeBlocks)]
     pub fn attribute_blocks(&self) -> Vec<usize> {
         self.0.attribute_blocks.clone()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Verifiable record proof wrappers
+// ---------------------------------------------------------------------------
+
+/// Proof bundle for verifiable transcryption of a simple record (WASM).
+#[cfg(feature = "verifiable")]
+#[wasm_bindgen(js_name = RecordTranscryptionProof)]
+#[derive(Clone)]
+pub struct WASMRecordTranscryptionProof(
+    pub(crate) crate::data::verifiable::records::RecordTranscryptionProof,
+);
+
+#[cfg(feature = "verifiable")]
+#[wasm_bindgen(js_class = RecordTranscryptionProof)]
+impl WASMRecordTranscryptionProof {
+    /// Serialize to JSON.
+    #[cfg(feature = "serde")]
+    #[wasm_bindgen(js_name = toJSON)]
+    pub fn to_json(&self) -> Result<String, JsValue> {
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
+    }
+
+    /// Deserialize from JSON.
+    #[cfg(feature = "serde")]
+    #[wasm_bindgen(js_name = fromJSON)]
+    pub fn from_json(json: &str) -> Result<WASMRecordTranscryptionProof, JsValue> {
+        serde_json::from_str(json)
+            .map(WASMRecordTranscryptionProof)
+            .map_err(malformed_proof_err)
+    }
+}
+
+#[cfg(feature = "verifiable")]
+impl From<crate::data::verifiable::records::RecordTranscryptionProof>
+    for WASMRecordTranscryptionProof
+{
+    fn from(p: crate::data::verifiable::records::RecordTranscryptionProof) -> Self {
+        Self(p)
+    }
+}
+
+#[cfg(all(feature = "verifiable", feature = "long"))]
+#[wasm_bindgen(js_name = LongRecordTranscryptionProof)]
+#[derive(Clone)]
+pub struct WASMLongRecordTranscryptionProof(
+    pub(crate) crate::data::verifiable::records::LongRecordTranscryptionProof,
+);
+
+#[cfg(all(feature = "verifiable", feature = "long"))]
+#[wasm_bindgen(js_class = LongRecordTranscryptionProof)]
+impl WASMLongRecordTranscryptionProof {
+    #[cfg(feature = "serde")]
+    #[wasm_bindgen(js_name = toJSON)]
+    pub fn to_json(&self) -> Result<String, JsValue> {
+        serde_json::to_string(&self.0).map_err(malformed_proof_err)
+    }
+
+    #[cfg(feature = "serde")]
+    #[wasm_bindgen(js_name = fromJSON)]
+    pub fn from_json(json: &str) -> Result<WASMLongRecordTranscryptionProof, JsValue> {
+        serde_json::from_str(json)
+            .map(WASMLongRecordTranscryptionProof)
+            .map_err(malformed_proof_err)
+    }
+}
+
+#[cfg(all(feature = "verifiable", feature = "long"))]
+impl From<crate::data::verifiable::records::LongRecordTranscryptionProof>
+    for WASMLongRecordTranscryptionProof
+{
+    fn from(p: crate::data::verifiable::records::LongRecordTranscryptionProof) -> Self {
+        Self(p)
     }
 }
