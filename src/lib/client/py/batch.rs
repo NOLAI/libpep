@@ -34,6 +34,10 @@ use crate::client::encrypt_global;
 use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::GlobalSecretKeys;
 #[cfg(feature = "offline")]
 use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -721,15 +725,19 @@ pub fn py_decrypt_global_batch(
         }
     }
 
-    // Try Vec<EncryptedPEPJSONValue> with GlobalKeys
+    // Try Vec<EncryptedPEPJSONValue> with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(keys) = secret_key.extract::<PyTranscryptionInfo>() {
-            let info = TranscryptionInfo::from(keys);
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            use crate::data::traits::Encrypted;
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             let result: Vec<_> = jsons
                 .into_iter()
                 .map(|j| {
-                    j.0.decrypt_global(&info)
+                    j.0.decrypt_global(&keys)
                         .map(PyPEPJSONValue)
                         .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))
                 })
@@ -762,7 +770,7 @@ pub fn py_decrypt_global_batch(
                 .into_iter()
                 .map(|ep| PyPseudonym(decrypt_global(&ep.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -774,7 +782,7 @@ pub fn py_decrypt_global_batch(
                 .into_iter()
                 .map(|ea| PyAttribute(decrypt_global(&ea.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -787,7 +795,7 @@ pub fn py_decrypt_global_batch(
                 .into_iter()
                 .map(|lep| PyLongPseudonym(decrypt_global(&lep.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
@@ -800,20 +808,24 @@ pub fn py_decrypt_global_batch(
                 .into_iter()
                 .map(|lea| PyLongAttribute(decrypt_global(&lea.0, &key)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 
-    // Try Vec<EncryptedPEPJSONValue> with GlobalKeys
+    // Try Vec<EncryptedPEPJSONValue> with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(keys) = secret_key.extract::<PyTranscryptionInfo>() {
-            let info = TranscryptionInfo::from(keys);
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            use crate::data::traits::Encrypted;
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             let result: Vec<PyPEPJSONValue> = jsons
                 .into_iter()
-                .map(|j| PyPEPJSONValue(j.0.decrypt_global(&info)))
+                .map(|j| PyPEPJSONValue(j.0.decrypt_global(&keys)))
                 .collect();
-            return Ok(result.into_py_any(py)?);
+            return result.into_py_any(py);
         }
     }
 

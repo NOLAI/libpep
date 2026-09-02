@@ -23,6 +23,10 @@ use crate::keys::py::types::{
 };
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::GlobalSecretKeys;
 use crate::keys::py::PySessionKeys;
 use crate::keys::py::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
@@ -445,11 +449,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             if let Some(result) = decrypt_global(&ej.0, &keys) {
                 return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
             }
@@ -511,11 +518,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             let result = decrypt_global(&ej.0, &keys);
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
