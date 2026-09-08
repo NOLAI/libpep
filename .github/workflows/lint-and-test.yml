@@ -33,7 +33,7 @@ jobs:
     name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets --features "${{ matrix.features }}" -- -D warnings
 
@@ -42,7 +42,7 @@ jobs:
     name: cargo fmt
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - run: cargo fmt -- --check
 
   test:
@@ -72,7 +72,7 @@ jobs:
     name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo test --features "${{ matrix.features }}"
@@ -83,7 +83,7 @@ jobs:
     name: test python bindings
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v6
         with:
@@ -105,7 +105,7 @@ jobs:
     name: test wasm bindings
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v6
         with:
