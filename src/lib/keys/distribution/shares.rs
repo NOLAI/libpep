@@ -9,14 +9,14 @@ use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
 use derive_more::{Deref, From};
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::core::keys::distribution::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
+/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::keys::distribution::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::core::keys::distribution::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
+/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::keys::distribution::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]

@@ -16,10 +16,10 @@
 //! stored long-term before it is shared at any point in the future.
 //!
 //! This library provides both a [core] API for `ElGamal` encryption and the PEP
-//! [primitives](core::primitives), and a [core] API for
-//! [pseudonymization](core::functions::pseudonymize) and [rekeying](core::functions::rekey)
-//! (i.e. [transcryption](core::functions::transcrypt)) of [`Pseudonym`](core::data::simple::Pseudonym)s
-//! and [`Attribute`](core::data::simple::Attribute)s using this cryptographic concept.
+//! [primitives](core::primitives), and a high-level API for
+//! [pseudonymization](transcryptor::pseudonymize) and [rekeying](transcryptor::rekey)
+//! (i.e. [transcryption](transcryptor::transcrypt)) of [`Pseudonym`](data::simple::Pseudonym)s
+//! and [`Attribute`](data::simple::Attribute)s using this cryptographic concept.
 //!
 //! This library primarily implements the *n-PEP* scheme, described in the paper by
 //! [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
@@ -51,7 +51,7 @@
 //!   derivation). Implies `elgamal3`, `offline` and `global-pseudonyms`; only for
 //!   interoperability with legacy deployments.
 //! - `insecure`: methods that use global *secret* keys directly, such as offline decryption
-//!   ([`decrypt_global`](client::decrypt_global)). In the intended security model the global
+//!   (`decrypt_global`). In the intended security model the global
 //!   secret key is discarded after distributed setup; retaining it to use these methods gives
 //!   its holder the ability to decrypt everything. Intended for testing only.
 //! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
