@@ -301,6 +301,141 @@ macro_rules! py_global_pubkey_impl {
     };
 }
 
+/// Methods of a long plaintext wrapper (a [`libpep::data::long::LongPseudonym`]-shaped type):
+/// vector constructor, padded string/byte codecs, block padding and accessors.
+macro_rules! py_long_plaintext_impl {
+    ($w:ident wraps $core:ident of $item_w:ident($item_core:ident) as $name:literal,
+     ctor($arg:ident, doc = $ctor_doc:tt), items($items:ident, doc = $items_doc:tt)) => {
+        #[pymethods]
+        impl $w {
+            #[doc = $ctor_doc]
+            #[new]
+            fn new($arg: Vec<$item_w>) -> Self {
+                let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
+                Self($core(rust_items))
+            }
+
+            #[doc = concat!("Encodes an arbitrary-length string into a `", stringify!($core), "` using PKCS#7 padding.")]
+            #[staticmethod]
+            #[pyo3(name = "from_string_padded")]
+            fn from_string_padded(text: &str) -> Self {
+                Self($core::from_string_padded(text))
+            }
+
+            #[doc = concat!("Encodes an arbitrary-length byte array into a `", stringify!($core), "` using PKCS#7 padding.")]
+            #[staticmethod]
+            #[pyo3(name = "from_bytes_padded")]
+            fn from_bytes_padded(data: &[u8]) -> Self {
+                Self($core::from_bytes_padded(data))
+            }
+
+            #[doc = concat!("Decodes the `", stringify!($core), "` back to the original string.")]
+            #[pyo3(name = "to_string_padded")]
+            fn to_string_padded(&self) -> PyResult<String> {
+                self.0.to_string_padded().map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+                })
+            }
+
+            #[doc = concat!("Decodes the `", stringify!($core), "` back to the original byte array.")]
+            #[pyo3(name = "to_bytes_padded")]
+            fn to_bytes_padded(&self, py: Python) -> PyResult<Py<PyAny>> {
+                let result = self.0.to_bytes_padded().map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Decoding failed: {e}"))
+                })?;
+                Ok(PyBytes::new(py, &result).into())
+            }
+
+            #[doc = concat!("Pads this ", stringify!($core), " to a target number of blocks for batch unlinkability.")]
+            ///
+            /// In batch transcryption, all values must have identical structure to prevent
+            /// linkability attacks. This method adds external padding blocks to normalize
+            /// different-sized values to the same structure.
+            ///
+            /// Args:
+            ///     target_blocks: The desired number of blocks (must be >= current block count)
+            ///
+            /// Raises:
+            ///     ValueError: If the current number of blocks exceeds the target
+            #[pyo3(name = "pad_to")]
+            fn pad_to(&self, target_blocks: usize) -> PyResult<Self> {
+                self.0.pad_to(target_blocks).map(Self).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Padding failed: {e}"))
+                })
+            }
+
+            #[doc = $items_doc]
+            fn $items(&self) -> Vec<$item_w> {
+                self.0 .0.iter().map(|p| $item_w(*p)).collect()
+            }
+
+            /// Get the number of blocks.
+            fn __len__(&self) -> usize {
+                self.0 .0.len()
+            }
+
+            fn __repr__(&self) -> String {
+                format!(concat!($name, "({} blocks)"), self.0 .0.len())
+            }
+
+            fn __eq__(&self, other: &$w) -> bool {
+                self.0 == other.0
+            }
+        }
+    };
+}
+
+/// Methods of a long encrypted wrapper (a [`libpep::data::long::LongEncryptedPseudonym`]-shaped
+/// type): vector constructor, pipe-delimited serialization and accessors.
+macro_rules! py_long_encrypted_impl {
+    ($w:ident wraps $core:ident of $item_w:ident($item_core:ident) as $name:literal,
+     ctor($arg:ident, doc = $ctor_doc:tt), items($items:ident, doc = $items_doc:tt)) => {
+        #[pymethods]
+        impl $w {
+            #[doc = $ctor_doc]
+            #[new]
+            fn new($arg: Vec<$item_w>) -> Self {
+                let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
+                Self($core(rust_items))
+            }
+
+            /// Serializes to a pipe-delimited base64 string.
+            #[pyo3(name = "serialize")]
+            fn serialize(&self) -> String {
+                self.0.serialize()
+            }
+
+            /// Deserializes from a pipe-delimited base64 string.
+            #[staticmethod]
+            #[pyo3(name = "deserialize")]
+            fn deserialize(s: &str) -> PyResult<Self> {
+                $core::deserialize(s).map(Self).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
+                })
+            }
+
+            #[doc = $items_doc]
+            fn $items(&self) -> Vec<$item_w> {
+                self.0 .0.iter().map(|p| $item_w(*p)).collect()
+            }
+
+            /// Get the number of blocks.
+            fn __len__(&self) -> usize {
+                self.0 .0.len()
+            }
+
+            fn __repr__(&self) -> String {
+                format!(concat!($name, "({} blocks)"), self.0 .0.len())
+            }
+
+            fn __eq__(&self, other: &$w) -> bool {
+                self.0 == other.0
+            }
+        }
+    };
+}
+
 pub(crate) use {
-    py_encrypted_impl, py_global_pubkey_impl, py_plaintext_impl, py_session_pubkey_impl,
+    py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl, py_long_plaintext_impl,
+    py_plaintext_impl, py_session_pubkey_impl,
 };
