@@ -30,12 +30,29 @@ jobs:
             name: "default+wasm"
           - features: "wasm,elgamal3"
             name: "default+wasm+elgamal3"
+          # Insecure methods (offline decryption paths)
+          - features: "insecure"
+            name: "default+insecure"
+          - features: "python,insecure"
+            name: "default+python+insecure"
+          - features: "wasm,insecure"
+            name: "default+wasm+insecure"
+          # Without default features (feature gating)
+          - features: ""
+            name: "no-default"
+            args: "--no-default-features"
+          - features: "batch,insecure"
+            name: "no-default+batch+insecure"
+            args: "--no-default-features"
+          - features: "json"
+            name: "no-default+json"
+            args: "--no-default-features"
     name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets --features "${{ matrix.features }}" -- -D warnings
+      - run: cargo clippy --all-targets ${{ matrix.args }} --features "${{ matrix.features }}" -- -D warnings
 
   fmt:
     runs-on: ubuntu-latest
@@ -69,6 +86,9 @@ jobs:
             name: "default+wasm"
           - features: "wasm,elgamal3"
             name: "default+wasm+elgamal3"
+          # Insecure methods (offline decryption paths)
+          - features: "insecure"
+            name: "default+insecure"
     name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
@@ -94,7 +114,7 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install maturin pytest
-          maturin develop --features python
+          maturin develop --features python,insecure
       - name: Run Python tests
         run: |
           source .venv/bin/activate

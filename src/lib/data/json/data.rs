@@ -2,6 +2,7 @@
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
 use crate::arithmetic::scalars::ScalarNonZero;
+#[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -9,7 +10,9 @@ use crate::data::long::{
 };
 use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
+use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -17,6 +20,7 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
+#[cfg(feature = "batch")]
 use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -835,6 +839,7 @@ impl crate::data::traits::HasStructure for EncryptedPEPJSONValue {
     }
 }
 
+#[cfg(feature = "batch")]
 #[cfg(feature = "batch")]
 impl BatchEncryptable for PEPJSONValue {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {

@@ -4,14 +4,15 @@
 use crate::arithmetic::group_elements::GroupElement;
 use crate::arithmetic::scalars::ScalarNonZero;
 use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
-use crate::data::traits::{
-    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::*;
+#[cfg(feature = "batch")]
 use crate::transcryptor::BatchError;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
@@ -513,12 +514,14 @@ impl crate::data::traits::HasStructure for EncryptedAttribute {
 }
 
 #[cfg(feature = "batch")]
+#[cfg(feature = "batch")]
 impl BatchEncryptable for Pseudonym {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         Ok(items.to_vec())
     }
 }
 
+#[cfg(feature = "batch")]
 #[cfg(feature = "batch")]
 impl BatchEncryptable for Attribute {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {

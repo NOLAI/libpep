@@ -21,6 +21,7 @@ use derive_more::{Deref, From, Into};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
+#[cfg(feature = "batch")]
 use pyo3::IntoPyObjectExt;
 
 /// A PEP transcryptor system.

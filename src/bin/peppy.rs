@@ -311,9 +311,9 @@ fn main() {
         Some(Sub::GenerateGlobalKeys(_)) => {
             let (pk, sk) = make_pseudonym_global_keys(&mut rng);
             eprint!("Public global key: ");
-            println!("{}", &pk.to_hex());
+            println!("{}", pk.to_hex());
             eprint!("Secret global key: ");
-            println!("{}", &sk.value().to_hex());
+            println!("{}", sk.value().to_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
             let global_secret_key = PseudonymGlobalSecretKey::from(
@@ -328,14 +328,14 @@ fn main() {
                 &encryption_secret,
             );
             eprint!("Public session key: ");
-            println!("{}", &session_pk.to_hex());
+            println!("{}", session_pk.to_hex());
             eprint!("Secret session key: ");
-            println!("{}", &session_sk.value().to_hex());
+            println!("{}", session_sk.value().to_hex());
         }
         Some(Sub::Random(_)) => {
             let pseudonym = Pseudonym::random(&mut rng);
             eprint!("Random: ");
-            println!("{}", &pseudonym.to_hex());
+            println!("{}", pseudonym.to_hex());
         }
         Some(Sub::Encode(arg)) => {
             let origin = arg.args[0].as_bytes();
@@ -353,12 +353,12 @@ fn main() {
                     padded[..origin.len()].copy_from_slice(origin);
                     let pseudonym = Pseudonym::from_lizard(&padded);
                     eprint!("Encoded: ");
-                    println!("{}", &pseudonym.to_hex());
+                    println!("{}", pseudonym.to_hex());
                 }
                 Ordering::Equal => {
                     let pseudonym = Pseudonym::from_lizard(origin.try_into().unwrap());
                     eprint!("Encoded: ");
-                    println!("{}", &pseudonym.to_hex());
+                    println!("{}", pseudonym.to_hex());
                 }
             };
         }
@@ -399,7 +399,7 @@ fn main() {
             let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = pseudonym.encrypt(&public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.to_base64());
+            println!("{}", ciphertext.to_base64());
         }
         Some(Sub::EncryptGlobal(arg)) => {
             let public_key =
@@ -407,7 +407,7 @@ fn main() {
             let pseudonym = Pseudonym::from_hex(&arg.args[1]).expect("Invalid pseudonym.");
             let ciphertext = pseudonym.encrypt_global(&public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.to_base64());
+            println!("{}", ciphertext.to_base64());
         }
         Some(Sub::Decrypt(arg)) => {
             let secret_key = PseudonymSessionSecretKey::from(
@@ -422,7 +422,7 @@ fn main() {
             #[cfg(not(feature = "elgamal3"))]
             let plaintext = ciphertext.decrypt(&secret_key);
             eprint!("Plaintext: ");
-            println!("{}", &plaintext.to_hex());
+            println!("{}", plaintext.to_hex());
         }
         Some(Sub::EncryptAttribute(arg)) => {
             let public_key =
@@ -430,7 +430,7 @@ fn main() {
             let attribute = Attribute::from_hex(&arg.args[1]).expect("Invalid attribute.");
             let ciphertext = attribute.encrypt(&public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.to_base64());
+            println!("{}", ciphertext.to_base64());
         }
         Some(Sub::EncryptAttributeGlobal(arg)) => {
             let public_key =
@@ -438,7 +438,7 @@ fn main() {
             let attribute = Attribute::from_hex(&arg.args[1]).expect("Invalid attribute.");
             let ciphertext = attribute.encrypt_global(&public_key, &mut rng);
             eprint!("Ciphertext: ");
-            println!("{}", &ciphertext.to_base64());
+            println!("{}", ciphertext.to_base64());
         }
         Some(Sub::DecryptAttribute(arg)) => {
             let secret_key = AttributeSessionSecretKey::from(
@@ -453,7 +453,7 @@ fn main() {
             #[cfg(not(feature = "elgamal3"))]
             let plaintext = ciphertext.decrypt(&secret_key);
             eprint!("Plaintext: ");
-            println!("{}", &plaintext.to_hex());
+            println!("{}", plaintext.to_hex());
         }
         #[cfg(feature = "long")]
         Some(Sub::EncryptLongPseudonym(arg)) => {
@@ -576,7 +576,7 @@ fn main() {
                 rerandomized = ciphertext.rerandomize(&mut rng);
             }
             eprint!("Rerandomized ciphertext: ");
-            println!("{}", &rerandomized.to_base64());
+            println!("{}", rerandomized.to_base64());
         }
         Some(Sub::Transcrypt(arg)) => {
             let pseudonymization_secret =
@@ -598,7 +598,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.to_base64());
+            println!("{}", transcrypted.to_base64());
         }
         Some(Sub::TranscryptFromGlobal(arg)) => {
             let pseudonymization_secret =
@@ -619,7 +619,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.to_base64());
+            println!("{}", transcrypted.to_base64());
         }
         Some(Sub::TranscryptToGlobal(arg)) => {
             let pseudonymization_secret =
@@ -640,7 +640,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.to_base64());
+            println!("{}", transcrypted.to_base64());
         }
         Some(Sub::TranscryptAttribute(arg)) => {
             let pseudonymization_secret =
@@ -662,7 +662,7 @@ fn main() {
             );
             let transcrypted = transcrypt(&ciphertext, &transcryption_info);
             eprint!("Transcrypted ciphertext: ");
-            println!("{}", &transcrypted.to_base64());
+            println!("{}", transcrypted.to_base64());
         }
         #[cfg(feature = "json")]
         Some(Sub::JsonEncrypt(arg)) => {
@@ -791,17 +791,11 @@ fn main() {
                 Vec<BlindingFactor>,
             ) = make_distributed_global_keys(n, &mut rng);
             eprintln!("Public global keys:");
-            eprintln!("  - Attributes: {}", &global_public_keys.attribute.to_hex());
-            eprintln!("  - Pseudonyms: {}", &global_public_keys.pseudonym.to_hex());
+            eprintln!("  - Attributes: {}", global_public_keys.attribute.to_hex());
+            eprintln!("  - Pseudonyms: {}", global_public_keys.pseudonym.to_hex());
             eprintln!("Blinded secret keys:");
-            eprintln!(
-                "  - Attributes: {}",
-                &blinded_global_keys.attribute.to_hex()
-            );
-            eprintln!(
-                "  - Pseudonyms: {}",
-                &blinded_global_keys.pseudonym.to_hex()
-            );
+            eprintln!("  - Attributes: {}", blinded_global_keys.attribute.to_hex());
+            eprintln!("  - Pseudonyms: {}", blinded_global_keys.pseudonym.to_hex());
             eprintln!("Blinding factors (keep secret):");
             for factor in &blinding_factors {
                 eprintln!("  - {}", factor.to_hex());

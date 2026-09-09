@@ -9,9 +9,9 @@ use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
 use crate::data::json::utils;
 use crate::data::traits::Transcryptable;
-use crate::factors::py::contexts::{
-    PyEncryptionContext, PyPseudonymizationDomain, PyTranscryptionInfo,
-};
+#[cfg(feature = "batch")]
+use crate::factors::py::contexts::PyTranscryptionInfo;
+use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::py::types::PyGlobalPublicKeys;
@@ -428,10 +428,7 @@ pub fn py_encrypt_global(
     global_keys: &PyGlobalPublicKeys,
 ) -> PyEncryptedPEPJSONValue {
     let mut rng = rand::rng();
-    let keys = GlobalPublicKeys {
-        pseudonym: global_keys.pseudonym.0 .0.into(),
-        attribute: global_keys.attribute.0 .0.into(),
-    };
+    let keys = GlobalPublicKeys::from(*global_keys);
     PyEncryptedPEPJSONValue(encrypt_global(&value.0, &keys, &mut rng))
 }
 
@@ -444,10 +441,7 @@ pub fn py_decrypt_global(
     encrypted: &PyEncryptedPEPJSONValue,
     global_secret_keys: &PyGlobalSecretKeys,
 ) -> PyResult<PyPEPJSONValue> {
-    let keys = GlobalSecretKeys {
-        pseudonym: global_secret_keys.pseudonym.0 .0.into(),
-        attribute: global_secret_keys.attribute.0 .0.into(),
-    };
+    let keys = GlobalSecretKeys::from(*global_secret_keys);
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt_global(&encrypted.0, &keys)
         .ok_or_else(|| PyValueError::new_err("Decryption failed: key mismatch"))?;

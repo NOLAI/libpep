@@ -1,6 +1,8 @@
 //! Client type definitions.
 
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
+use crate::data::traits::{Encryptable, Encrypted};
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
 use crate::keys::{KeyProvider, SessionKeys};
@@ -79,7 +81,7 @@ impl Client {
     }
 
     /// Encrypt a batch of messages without padding or preprocessing.
-    #[cfg(feature = "insecure")]
+    #[cfg(all(feature = "batch", feature = "insecure"))]
     pub fn encrypt_batch_raw<M, R>(
         &self,
         messages: &[M],

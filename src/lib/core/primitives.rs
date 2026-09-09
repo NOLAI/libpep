@@ -44,22 +44,79 @@ pub fn reshuffle(encrypted: &ElGamal, s: &ScalarNonZero) -> ElGamal {
 /// If the original message was encrypted under key `Y`, the new message will be encrypted under key
 /// `k * Y` such that users with secret key `k * y` can decrypt it.
 pub fn rekey(encrypted: &ElGamal, k: &ScalarNonZero) -> ElGamal {
+    let k_inv = k.invert();
+    #[cfg(feature = "elgamal3")]
+    return rekey_precomputed(encrypted, k, &k_inv);
+    #[cfg(not(feature = "elgamal3"))]
+    rekey_precomputed(encrypted, &k_inv)
+}
+
+/// Variant of [`rekey`] that takes the precomputed inverse of `k`.
+///
+/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
+/// once and use this function per ciphertext.
+#[cfg(feature = "elgamal3")]
+pub fn rekey_precomputed(encrypted: &ElGamal, k: &ScalarNonZero, k_inv: &ScalarNonZero) -> ElGamal {
     ElGamal {
-        gb: k.invert() * encrypted.gb, // TODO k.invert can be precomputed
+        gb: k_inv * encrypted.gb,
         gc: encrypted.gc,
-        #[cfg(feature = "elgamal3")]
         gy: k * encrypted.gy,
+    }
+}
+
+/// Variant of [`rekey`] that takes the precomputed inverse of `k`.
+///
+/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
+/// once and use this function per ciphertext.
+#[cfg(not(feature = "elgamal3"))]
+pub fn rekey_precomputed(encrypted: &ElGamal, k_inv: &ScalarNonZero) -> ElGamal {
+    ElGamal {
+        gb: k_inv * encrypted.gb,
+        gc: encrypted.gc,
     }
 }
 
 /// Combination of  [`reshuffle`] and [`rekey`] (more efficient and secure than applying them
 /// separately).
 pub fn rsk(encrypted: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
+    let ski = s * k.invert();
+    #[cfg(feature = "elgamal3")]
+    return rsk_precomputed(encrypted, s, k, &ski);
+    #[cfg(not(feature = "elgamal3"))]
+    rsk_precomputed(encrypted, s, &ski)
+}
+
+/// Variant of [`rsk`] that takes the precomputed product `ski = s * k^-1`.
+///
+/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
+/// value), compute `ski` once and use this function per ciphertext.
+#[cfg(feature = "elgamal3")]
+pub fn rsk_precomputed(
+    encrypted: &ElGamal,
+    s: &ScalarNonZero,
+    k: &ScalarNonZero,
+    ski: &ScalarNonZero,
+) -> ElGamal {
     ElGamal {
-        gb: (s * k.invert()) * encrypted.gb, // TODO s * k.invert can be precomputed
+        gb: ski * encrypted.gb,
         gc: s * encrypted.gc,
-        #[cfg(feature = "elgamal3")]
         gy: k * encrypted.gy,
+    }
+}
+
+/// Variant of [`rsk`] that takes the precomputed product `ski = s * k^-1`.
+///
+/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
+/// value), compute `ski` once and use this function per ciphertext.
+#[cfg(not(feature = "elgamal3"))]
+pub fn rsk_precomputed(encrypted: &ElGamal, s: &ScalarNonZero, ski: &ScalarNonZero) -> ElGamal {
+    ElGamal {
+        gb: ski * encrypted.gb,
+        gc: s * encrypted.gc,
     }
 }
 

@@ -16,9 +16,9 @@ use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
-use crate::data::traits::{
-    BatchEncryptable, Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable,
-};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -37,6 +37,7 @@ use std::io::{Error, ErrorKind};
 
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+#[cfg(feature = "batch")]
 use crate::transcryptor::BatchError;
 
 /// A collection of [Pseudonym]s that together represent a larger pseudonym value using PKCS#7 padding.
@@ -929,10 +930,23 @@ impl Encrypted for LongEncryptedAttribute {
 
 impl Pseudonymizable for LongEncryptedPseudonym {
     fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+        let ski = info.s.0 * info.k.0.invert();
         let pseudonymized_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.pseudonymize(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value = crate::core::primitives::rsk_precomputed(
+                    block.value(),
+                    &info.s.0,
+                    &info.k.0,
+                    &ski,
+                );
+                #[cfg(not(feature = "elgamal3"))]
+                let value =
+                    crate::core::primitives::rsk_precomputed(block.value(), &info.s.0, &ski);
+                EncryptedPseudonym::from_value(value)
+            })
             .collect();
         LongEncryptedPseudonym(pseudonymized_blocks)
     }
@@ -942,10 +956,18 @@ impl Rekeyable for LongEncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+        let k_inv = info.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.rekey(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value =
+                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                #[cfg(not(feature = "elgamal3"))]
+                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                EncryptedPseudonym::from_value(value)
+            })
             .collect();
         LongEncryptedPseudonym(rekeyed_blocks)
     }
@@ -955,10 +977,18 @@ impl Rekeyable for LongEncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+        let k_inv = info.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.rekey(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value =
+                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                #[cfg(not(feature = "elgamal3"))]
+                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                EncryptedAttribute::from_value(value)
+            })
             .collect();
         LongEncryptedAttribute(rekeyed_blocks)
     }
@@ -995,12 +1025,14 @@ impl crate::data::traits::HasStructure for LongEncryptedAttribute {
 }
 
 #[cfg(feature = "batch")]
+#[cfg(feature = "batch")]
 impl BatchEncryptable for LongPseudonym {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         Ok(items.to_vec())
     }
 }
 
+#[cfg(feature = "batch")]
 #[cfg(feature = "batch")]
 impl BatchEncryptable for LongAttribute {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
@@ -1372,6 +1404,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "json")]
     fn long_encrypted_serde_json() {
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_pseudonym_session_keys(

@@ -17,6 +17,8 @@ use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
 use crate::keys::py::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
@@ -28,13 +30,15 @@ use crate::keys::py::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::GlobalSecretKeys;
 #[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+use crate::keys::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys,
-    PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, SessionKeys,
 };
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -369,14 +373,11 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
         }
     }
 
-    // Try PEPJSONValue with SessionKeys
+    // Try PEPJSONValue with GlobalPublicKeys
     #[cfg(feature = "json")]
-    if let Ok(json) = message.extract::<PyPEPJSONValue>() {
-        if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
-            let keys = GlobalPublicKeys {
-                pseudonym: PseudonymGlobalPublicKey(*pk.pseudonym.0),
-                attribute: AttributeGlobalPublicKey(*pk.attribute.0),
-            };
+    if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
+        if let Ok(json) = message.extract::<PyPEPJSONValue>() {
+            let keys = GlobalPublicKeys::from(pk);
             let result = encrypt_global(&json.0, &keys, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
@@ -445,11 +446,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             if let Some(result) = decrypt_global(&ej.0, &keys) {
                 return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
             }
@@ -511,11 +515,14 @@ pub fn py_decrypt_global(
         }
     }
 
-    // Try EncryptedPEPJSONValue with SessionKeys
+    // Try EncryptedPEPJSONValue with GlobalSecretKeys
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PySessionKeys>() {
-            let keys: SessionKeys = sk.clone().into();
+        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+            let keys = GlobalSecretKeys {
+                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
+                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+            };
             let result = decrypt_global(&ej.0, &keys);
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }

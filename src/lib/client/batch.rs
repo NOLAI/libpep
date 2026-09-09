@@ -1,6 +1,8 @@
 //! Batch operations for encryption and decryption.
 
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted};
+#[cfg(any(feature = "insecure", feature = "offline"))]
+use crate::data::traits::Encryptable;
+use crate::data::traits::{BatchEncryptable, Encrypted};
 use crate::transcryptor::batch::BatchError;
 use rand_core::{CryptoRng, Rng};
 
@@ -87,13 +89,10 @@ where
 {
     encrypted
         .iter()
-        .map(|x| {
+        .enumerate()
+        .map(|(index, x)| {
             x.decrypt(secret_key)
-                .ok_or_else(|| BatchError::InconsistentStructure {
-                    index: 0,
-                    expected_structure: "valid decryption".to_string(),
-                    actual_structure: "decryption failed".to_string(),
-                })
+                .ok_or(BatchError::DecryptionFailed { index })
         })
         .collect()
 }
@@ -136,13 +135,10 @@ where
 {
     encrypted
         .iter()
-        .map(|x| {
+        .enumerate()
+        .map(|(index, x)| {
             x.decrypt_global(secret_key)
-                .ok_or_else(|| BatchError::InconsistentStructure {
-                    index: 0,
-                    expected_structure: "valid decryption".to_string(),
-                    actual_structure: "decryption failed".to_string(),
-                })
+                .ok_or(BatchError::DecryptionFailed { index })
         })
         .collect()
 }
