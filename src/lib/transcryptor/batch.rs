@@ -9,6 +9,7 @@ use thiserror::Error;
 
 /// Error type for batch operation failures.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum BatchError {
     /// Items in the batch have inconsistent structures.
     ///
