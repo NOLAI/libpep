@@ -43,4 +43,5 @@ dev = [
 [tool.maturin]
 features = ["extension-module", "json", "long", "offline", "batch", "serde"]
 module-name = "libpep"
+include = [{ path = "libpep-stubs/**/*.pyi", format = ["wheel", "sdist"] }]
 
