@@ -38,7 +38,7 @@ impl PyReshuffleFactor {
 
     #[pyo3(name = "scalar")]
     pub fn py_scalar(&self) -> PyScalarNonZero {
-        PyScalarNonZero(self.0 .0)
+        PyScalarNonZero(self.0.scalar())
     }
 }
 

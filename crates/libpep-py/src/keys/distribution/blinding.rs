@@ -4,7 +4,6 @@ use crate::keys::types::{
 };
 use crate::macros::py_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::keys::SecretKey;
