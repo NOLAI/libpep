@@ -35,7 +35,6 @@
   },
   "type": "module",
   "module": "pkg/libpep.js",
-
   "files": [
     "pkg/libpep_bg.wasm",
     "pkg/libpep_bg.wasm.d.ts",
@@ -57,5 +56,10 @@
     "build": "npm run build:bundler && npm run build:web",
     "test": "npm run build:nodejs && jest",
     "prepublishOnly": "npm run build"
+  },
+  "jest": {
+    "testMatch": [
+      "<rootDir>/tests/wasm/**/*.test.js"
+    ]
   }
 }
