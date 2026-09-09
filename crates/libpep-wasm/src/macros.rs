@@ -330,7 +330,41 @@ macro_rules! wasm_long_encrypted_impl {
     };
 }
 
+/// Methods of a scalar-backed key wrapper (session key shares, blinding factors and blinded
+/// keys): scalar constructor plus byte and hex codecs.
+macro_rules! wasm_scalar_key_impl {
+    ($w:ident wraps $core:ident as $js:literal) => {
+        #[wasm_bindgen(js_class = $js)]
+        impl $w {
+            #[wasm_bindgen(constructor)]
+            pub fn new(x: WASMScalarNonZero) -> Self {
+                $w($core::from(x.0))
+            }
+
+            #[wasm_bindgen(js_name = toBytes)]
+            pub fn to_bytes(&self) -> Vec<u8> {
+                self.0.to_bytes().to_vec()
+            }
+
+            #[wasm_bindgen(js_name = fromBytes)]
+            pub fn from_bytes(bytes: Vec<u8>) -> Option<$w> {
+                $core::from_slice(&bytes).map($w)
+            }
+
+            #[wasm_bindgen(js_name = toHex)]
+            pub fn to_hex(self) -> String {
+                self.0.to_hex()
+            }
+
+            #[wasm_bindgen(js_name = fromHex)]
+            pub fn from_hex(hex: &str) -> Option<$w> {
+                $core::from_hex(hex).map($w)
+            }
+        }
+    };
+}
+
 pub(crate) use {
     wasm_encrypted_impl, wasm_long_encrypted_impl, wasm_long_plaintext_impl, wasm_pair_impl,
-    wasm_plaintext_impl, wasm_point_key_impl,
+    wasm_plaintext_impl, wasm_point_key_impl, wasm_scalar_key_impl,
 };

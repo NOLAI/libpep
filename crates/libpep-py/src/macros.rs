@@ -435,7 +435,56 @@ macro_rules! py_long_encrypted_impl {
     };
 }
 
+/// Methods of a scalar-backed key wrapper (session key shares, blinding factors and blinded
+/// keys): scalar constructor, byte and hex codecs, repr and equality.
+macro_rules! py_scalar_key_impl {
+    ($w:ident wraps $core:ident as $name:literal) => {
+        #[pymethods]
+        #[allow(clippy::wrong_self_convention)]
+        impl $w {
+            #[new]
+            fn new(x: PyScalarNonZero) -> Self {
+                $w($core::from(x.0))
+            }
+
+            #[pyo3(name = "to_bytes")]
+            fn encode(&self, py: Python) -> Py<PyAny> {
+                PyBytes::new(py, &self.0.to_bytes()).into()
+            }
+
+            #[staticmethod]
+            #[pyo3(name = "from_bytes")]
+            fn decode(bytes: &[u8]) -> Option<$w> {
+                $core::from_slice(bytes).map($w)
+            }
+
+            #[pyo3(name = "to_hex")]
+            fn as_hex(&self) -> String {
+                self.0.to_hex()
+            }
+
+            #[staticmethod]
+            #[pyo3(name = "from_hex")]
+            fn from_hex(hex: &str) -> Option<$w> {
+                $core::from_hex(hex).map($w)
+            }
+
+            fn __repr__(&self) -> String {
+                format!(concat!($name, "::from({})"), self.as_hex())
+            }
+
+            fn __str__(&self) -> String {
+                self.as_hex()
+            }
+
+            fn __eq__(&self, other: &$w) -> bool {
+                *self.0 == *other.0
+            }
+        }
+    };
+}
+
 pub(crate) use {
     py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl, py_long_plaintext_impl,
-    py_plaintext_impl, py_session_pubkey_impl,
+    py_plaintext_impl, py_scalar_key_impl, py_session_pubkey_impl,
 };
