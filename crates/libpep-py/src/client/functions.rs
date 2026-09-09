@@ -1,42 +1,40 @@
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::client::decrypt_global;
-#[cfg(feature = "offline")]
-use crate::client::encrypt_global;
-use crate::client::{decrypt, encrypt};
-#[cfg(feature = "batch")]
-use crate::client::{decrypt_batch, encrypt_batch};
 #[cfg(feature = "json")]
-use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 #[cfg(feature = "long")]
-use crate::data::py::long::{
+use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::data::py::records::{PyEncryptedRecord, PyRecord};
+use crate::data::records::{PyEncryptedRecord, PyRecord};
 #[cfg(feature = "long")]
-use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
+use crate::data::records::{PyLongEncryptedRecord, PyLongRecord};
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 #[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
+use crate::keys::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
-use crate::keys::py::types::{
+use crate::keys::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
-use crate::keys::py::PySessionKeys;
-use crate::keys::py::{
+use crate::keys::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+use crate::keys::PySessionKeys;
+use crate::keys::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::GlobalSecretKeys;
-#[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::{
+use libpep::client::decrypt_global;
+#[cfg(feature = "offline")]
+use libpep::client::encrypt_global;
+use libpep::client::{decrypt, encrypt};
+#[cfg(feature = "batch")]
+use libpep::client::{decrypt_batch, encrypt_batch};
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use libpep::keys::GlobalSecretKeys;
+#[cfg(feature = "offline")]
+use libpep::keys::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey, SessionKeys,
 };
@@ -69,7 +67,7 @@ pub fn py_encrypt(data: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>
         key.extract::<PyPseudonymSessionPublicKey>(),
     ) {
         let mut rng = rand::rng();
-        let encrypted = encrypt(&p.0, &PseudonymSessionPublicKey::from(k.0 .0), &mut rng);
+        let encrypted = encrypt(&p.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
         return Ok(Py::new(py, PyEncryptedPseudonym(encrypted))?.into_any());
     }
 
@@ -79,7 +77,7 @@ pub fn py_encrypt(data: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>
         key.extract::<PyAttributeSessionPublicKey>(),
     ) {
         let mut rng = rand::rng();
-        let encrypted = encrypt(&a.0, &AttributeSessionPublicKey::from(k.0 .0), &mut rng);
+        let encrypted = encrypt(&a.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
         return Ok(Py::new(py, PyEncryptedAttribute(encrypted))?.into_any());
     }
 
@@ -90,7 +88,7 @@ pub fn py_encrypt(data: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>
         key.extract::<PyPseudonymSessionPublicKey>(),
     ) {
         let mut rng = rand::rng();
-        let encrypted = encrypt(&lp.0, &PseudonymSessionPublicKey::from(k.0 .0), &mut rng);
+        let encrypted = encrypt(&lp.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
         return Ok(Py::new(py, PyLongEncryptedPseudonym(encrypted))?.into_any());
     }
 
@@ -101,7 +99,7 @@ pub fn py_encrypt(data: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>
         key.extract::<PyAttributeSessionPublicKey>(),
     ) {
         let mut rng = rand::rng();
-        let encrypted = encrypt(&la.0, &AttributeSessionPublicKey::from(k.0 .0), &mut rng);
+        let encrypted = encrypt(&la.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
         return Ok(Py::new(py, PyLongEncryptedAttribute(encrypted))?.into_any());
     }
 
@@ -155,7 +153,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyEncryptedPseudonym>(),
         key.extract::<PyPseudonymSessionSecretKey>(),
     ) {
-        return decrypt(&ep.0, &PseudonymSessionSecretKey::from(k.0 .0))
+        return decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0))
             .map(|p| {
                 Py::new(py, PyPseudonym(p))
                     .expect("PyO3 allocation failed")
@@ -169,7 +167,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyEncryptedAttribute>(),
         key.extract::<PyAttributeSessionSecretKey>(),
     ) {
-        return decrypt(&ea.0, &AttributeSessionSecretKey::from(k.0 .0))
+        return decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0))
             .map(|a| {
                 Py::new(py, PyAttribute(a))
                     .expect("PyO3 allocation failed")
@@ -184,7 +182,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyLongEncryptedPseudonym>(),
         key.extract::<PyPseudonymSessionSecretKey>(),
     ) {
-        return decrypt(&lep.0, &PseudonymSessionSecretKey::from(k.0 .0))
+        return decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0))
             .map(|p| Py::new(py, PyLongPseudonym(p)).map(|p| p.into_any()))
             .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
     }
@@ -195,7 +193,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyLongEncryptedAttribute>(),
         key.extract::<PyAttributeSessionSecretKey>(),
     ) {
-        return decrypt(&lea.0, &AttributeSessionSecretKey::from(k.0 .0))
+        return decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0))
             .map(|a| Py::new(py, PyLongAttribute(a)).map(|a| a.into_any()))
             .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
     }
@@ -252,7 +250,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyEncryptedPseudonym>(),
         key.extract::<PyPseudonymSessionSecretKey>(),
     ) {
-        let decrypted = decrypt(&ep.0, &PseudonymSessionSecretKey::from(k.0 .0));
+        let decrypted = decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0));
         return Ok(Py::new(py, PyPseudonym(decrypted))?.into_any());
     }
 
@@ -261,7 +259,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyEncryptedAttribute>(),
         key.extract::<PyAttributeSessionSecretKey>(),
     ) {
-        let decrypted = decrypt(&ea.0, &AttributeSessionSecretKey::from(k.0 .0));
+        let decrypted = decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0));
         return Ok(Py::new(py, PyAttribute(decrypted))?.into_any());
     }
 
@@ -271,7 +269,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyLongEncryptedPseudonym>(),
         key.extract::<PyPseudonymSessionSecretKey>(),
     ) {
-        let decrypted = decrypt(&lep.0, &PseudonymSessionSecretKey::from(k.0 .0));
+        let decrypted = decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0));
         return Ok(Py::new(py, PyLongPseudonym(decrypted))?.into_any());
     }
 
@@ -281,7 +279,7 @@ pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<P
         encrypted.extract::<PyLongEncryptedAttribute>(),
         key.extract::<PyAttributeSessionSecretKey>(),
     ) {
-        let decrypted = decrypt(&lea.0, &AttributeSessionSecretKey::from(k.0 .0));
+        let decrypted = decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0));
         return Ok(Py::new(py, PyLongAttribute(decrypted))?.into_any());
     }
 
@@ -338,7 +336,7 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     // Try Pseudonym with PseudonymGlobalPublicKey
     if let Ok(p) = message.extract::<PyPseudonym>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
-            let key = PseudonymGlobalPublicKey(pk.0 .0);
+            let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result = encrypt_global(&p.0, &key, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
@@ -347,7 +345,7 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     // Try Attribute with AttributeGlobalPublicKey
     if let Ok(a) = message.extract::<PyAttribute>() {
         if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
-            let key = AttributeGlobalPublicKey(pk.0 .0);
+            let key = AttributeGlobalPublicKey::from(*pk.0);
             let result = encrypt_global(&a.0, &key, &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
         }
@@ -357,7 +355,7 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     #[cfg(feature = "long")]
     if let Ok(lp) = message.extract::<PyLongPseudonym>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
-            let key = PseudonymGlobalPublicKey(pk.0 .0);
+            let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result = encrypt_global(&lp.0, &key, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
@@ -367,7 +365,7 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     #[cfg(feature = "long")]
     if let Ok(la) = message.extract::<PyLongAttribute>() {
         if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
-            let key = AttributeGlobalPublicKey(pk.0 .0);
+            let key = AttributeGlobalPublicKey::from(*pk.0);
             let result = encrypt_global(&la.0, &key, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
@@ -403,7 +401,7 @@ pub fn py_decrypt_global(
     // Try EncryptedPseudonym with PseudonymGlobalSecretKey
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&ep.0, &key) {
                 return Ok(Py::new(py, PyPseudonym(result))?.into_any());
             }
@@ -414,7 +412,7 @@ pub fn py_decrypt_global(
     // Try EncryptedAttribute with AttributeGlobalSecretKey
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&ea.0, &key) {
                 return Ok(Py::new(py, PyAttribute(result))?.into_any());
             }
@@ -426,7 +424,7 @@ pub fn py_decrypt_global(
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&lep.0, &key) {
                 return Ok(Py::new(py, PyLongPseudonym(result))?.into_any());
             }
@@ -438,7 +436,7 @@ pub fn py_decrypt_global(
     #[cfg(feature = "long")]
     if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&lea.0, &key) {
                 return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
             }
@@ -451,8 +449,8 @@ pub fn py_decrypt_global(
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
         if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
             let keys = GlobalSecretKeys {
-                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
-                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+                pseudonym: PseudonymGlobalSecretKey::from(*sk.pseudonym.0),
+                attribute: AttributeGlobalSecretKey::from(*sk.attribute.0),
             };
             if let Some(result) = decrypt_global(&ej.0, &keys) {
                 return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
@@ -480,7 +478,7 @@ pub fn py_decrypt_global(
     // Try EncryptedPseudonym with PseudonymGlobalSecretKey
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&ep.0, &key);
             return Ok(Py::new(py, PyPseudonym(result))?.into_any());
         }
@@ -489,7 +487,7 @@ pub fn py_decrypt_global(
     // Try EncryptedAttribute with AttributeGlobalSecretKey
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&ea.0, &key);
             return Ok(Py::new(py, PyAttribute(result))?.into_any());
         }
@@ -499,7 +497,7 @@ pub fn py_decrypt_global(
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&lep.0, &key);
             return Ok(Py::new(py, PyLongPseudonym(result))?.into_any());
         }
@@ -509,7 +507,7 @@ pub fn py_decrypt_global(
     #[cfg(feature = "long")]
     if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&lea.0, &key);
             return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
         }
@@ -520,8 +518,8 @@ pub fn py_decrypt_global(
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
         if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
             let keys = GlobalSecretKeys {
-                pseudonym: PseudonymGlobalSecretKey(sk.pseudonym.0 .0),
-                attribute: AttributeGlobalSecretKey(sk.attribute.0 .0),
+                pseudonym: PseudonymGlobalSecretKey::from(*sk.pseudonym.0),
+                attribute: AttributeGlobalSecretKey::from(*sk.attribute.0),
             };
             let result = decrypt_global(&ej.0, &keys);
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
@@ -569,7 +567,7 @@ pub fn py_encrypt_batch(
                 .collect();
             let encrypted = encrypt_batch(
                 &rust_msgs,
-                &PseudonymSessionPublicKey::from(pk.0 .0),
+                &PseudonymSessionPublicKey::from(*pk.0),
                 &mut rng,
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -597,7 +595,7 @@ pub fn py_encrypt_batch(
                 .collect();
             let encrypted = encrypt_batch(
                 &rust_msgs,
-                &AttributeSessionPublicKey::from(pk.0 .0),
+                &AttributeSessionPublicKey::from(*pk.0),
                 &mut rng,
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -627,7 +625,7 @@ pub fn py_encrypt_batch(
                 .collect();
             let encrypted = encrypt_batch(
                 &rust_msgs,
-                &PseudonymSessionPublicKey::from(pk.0 .0),
+                &PseudonymSessionPublicKey::from(*pk.0),
                 &mut rng,
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -657,7 +655,7 @@ pub fn py_encrypt_batch(
                 .collect();
             let encrypted = encrypt_batch(
                 &rust_msgs,
-                &AttributeSessionPublicKey::from(pk.0 .0),
+                &AttributeSessionPublicKey::from(*pk.0),
                 &mut rng,
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -729,7 +727,7 @@ pub fn py_decrypt_batch(
                         .0
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -753,7 +751,7 @@ pub fn py_decrypt_batch(
                         .0
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -779,7 +777,7 @@ pub fn py_decrypt_batch(
                         .clone()
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -805,7 +803,7 @@ pub fn py_decrypt_batch(
                         .clone()
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -875,7 +873,7 @@ pub fn py_decrypt_batch(
                         .0
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -899,7 +897,7 @@ pub fn py_decrypt_batch(
                         .0
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -925,7 +923,7 @@ pub fn py_decrypt_batch(
                         .clone()
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &PseudonymSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()
@@ -951,7 +949,7 @@ pub fn py_decrypt_batch(
                         .clone()
                 })
                 .collect();
-            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(sk.0 .0))
+            let decrypted = decrypt_batch(&rust_encs, &AttributeSessionSecretKey::from(*sk.0))
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(decrypted
                 .into_iter()

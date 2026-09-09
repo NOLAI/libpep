@@ -1,23 +1,23 @@
 //! Python bindings for transcryptor types.
 
 #[cfg(feature = "json")]
-use crate::data::py::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
-use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::PyEncryptedRecord;
+use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::py::records::PyLongEncryptedRecord;
-use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::py::contexts::{
+use crate::data::records::PyLongEncryptedRecord;
+use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::factors::contexts::{
     PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,
     PyPseudonymizationInfo, PyTranscryptionInfo,
 };
-use crate::factors::{
+use derive_more::{Deref, From, Into};
+use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
     TranscryptionInfo,
 };
-use crate::transcryptor::Transcryptor;
-use derive_more::{Deref, From, Into};
+use libpep::transcryptor::Transcryptor;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

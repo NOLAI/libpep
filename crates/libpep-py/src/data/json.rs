@@ -1,29 +1,29 @@
 //! Python bindings for PEP JSON encryption.
 
-#[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::client::decrypt_global;
-#[cfg(feature = "offline")]
-use crate::client::encrypt_global;
-use crate::data::json::builder::PEPJSONBuilder;
-use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
-use crate::data::json::structure::JSONStructure;
-use crate::data::py::utils;
-use crate::data::traits::Transcryptable;
+use crate::data::utils;
 #[cfg(feature = "batch")]
-use crate::factors::py::contexts::PyTranscryptionInfo;
-use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
-use crate::factors::TranscryptionInfo;
+use crate::factors::contexts::PyTranscryptionInfo;
+use crate::factors::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "offline")]
-use crate::keys::py::types::PyGlobalPublicKeys;
+use crate::keys::types::PyGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
-use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
+use crate::keys::types::PyGlobalSecretKeys;
+use crate::keys::types::{PyEncryptionSecret, PyPseudonymizationSecret};
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
-use crate::keys::GlobalPublicKeys;
+use libpep::client::encrypt_global;
+use libpep::data::json::builder::PEPJSONBuilder;
+use libpep::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
+use libpep::data::json::structure::JSONStructure;
+use libpep::data::traits::Transcryptable;
+use libpep::factors::TranscryptionInfo;
+#[cfg(feature = "offline")]
+use libpep::keys::GlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::keys::GlobalSecretKeys;
+use libpep::keys::GlobalSecretKeys;
 #[cfg(feature = "batch")]
-use crate::transcryptor::transcrypt_batch;
+use libpep::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList};
@@ -500,7 +500,7 @@ pub fn py_bytes_to_number(bytes: [u8; 9]) -> f64 {
 #[pyo3(name = "unify_structures")]
 pub fn py_unify_structures(structures: Vec<PyJSONStructure>) -> PyResult<PyJSONStructure> {
     let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
-    crate::data::json::structure::unify_structures(&rust_structures)
+    libpep::data::json::structure::unify_structures(&rust_structures)
         .map(PyJSONStructure)
         .map_err(|e| PyValueError::new_err(format!("Unification failed: {}", e)))
 }

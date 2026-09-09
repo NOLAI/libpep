@@ -3,9 +3,9 @@
 //! Note: These are also exposed as methods on WASMPseudonym and WASMAttribute in core.rs.
 //! This module provides standalone function versions for API completeness.
 
-use crate::data::padding::Padded;
-use crate::data::simple::{Attribute, Pseudonym};
-use crate::data::wasm::simple::{WASMAttribute, WASMPseudonym};
+use crate::data::simple::{WASMAttribute, WASMPseudonym};
+use libpep::data::padding::Padded;
+use libpep::data::simple::{Attribute, Pseudonym};
 use wasm_bindgen::prelude::*;
 
 /// Encodes a byte array (up to 15 bytes) into a `Pseudonym` using PKCS#7 padding.

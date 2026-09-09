@@ -1,15 +1,13 @@
-//! Python bindings for libpep.
-//!
-//! This module re-exports Python bindings from their respective submodules.
+//! Python bindings for [libpep], built with PyO3 and distributed on PyPI as `libpep-py`
+//! (importable as `libpep`).
 
-// Re-export from submodules
-pub use crate::arithmetic::py as arithmetic;
-pub use crate::client::py as client;
-pub use crate::core::py as core;
-pub use crate::data::py as data;
-pub use crate::factors::py as factors;
-pub use crate::keys::py as keys;
-pub use crate::transcryptor::py as transcryptor;
+pub mod arithmetic;
+pub mod client;
+pub mod core;
+pub mod data;
+pub mod factors;
+pub mod keys;
+pub mod transcryptor;
 
 use pyo3::prelude::*;
 
@@ -98,4 +96,10 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         .set_item("libpep.factors", &factors_module)?;
 
     Ok(())
+}
+
+/// Python module for libpep.
+#[pymodule]
+fn libpep(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    register_module(m)
 }

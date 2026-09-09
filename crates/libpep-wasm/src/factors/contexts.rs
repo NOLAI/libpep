@@ -1,11 +1,12 @@
-use crate::factors::contexts::*;
-use crate::factors::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
-use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
-use crate::factors::{
+use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::types::WASMPseudonymRekeyFactor;
+use derive_more::From;
+use libpep::factors::contexts::*;
+use libpep::factors::RekeyFactor;
+use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymizationInfo,
     ReshuffleFactor, TranscryptionInfo,
 };
-use derive_more::From;
 use wasm_bindgen::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -66,7 +67,7 @@ impl WASMAttributeRekeyInfo {
 
     #[wasm_bindgen(js_name = reverse)]
     pub fn reverse(&self) -> WASMAttributeRekeyInfo {
-        WASMAttributeRekeyInfo(AttributeRekeyFactor(self.0 .0.invert()))
+        WASMAttributeRekeyInfo(AttributeRekeyFactor::from(self.0.scalar().invert()))
     }
 }
 
@@ -104,8 +105,8 @@ impl WASMPseudonymizationInfo {
     #[wasm_bindgen(js_name = reverse)]
     pub fn reverse(&self) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo(PseudonymizationInfo {
-            s: ReshuffleFactor(self.0.s.0.invert()),
-            k: PseudonymRekeyFactor(self.0.k.0.invert()),
+            s: ReshuffleFactor::from(self.0.s.0.invert()),
+            k: PseudonymRekeyFactor::from(self.0.k.scalar().invert()),
         })
     }
 }
@@ -150,10 +151,10 @@ impl WASMTranscryptionInfo {
     pub fn reverse(&self) -> WASMTranscryptionInfo {
         WASMTranscryptionInfo(TranscryptionInfo {
             pseudonym: PseudonymizationInfo {
-                s: ReshuffleFactor(self.0.pseudonym.s.0.invert()),
-                k: PseudonymRekeyFactor(self.0.pseudonym.k.0.invert()),
+                s: ReshuffleFactor::from(self.0.pseudonym.s.0.invert()),
+                k: PseudonymRekeyFactor::from(self.0.pseudonym.k.scalar().invert()),
             },
-            attribute: AttributeRekeyFactor(self.0.attribute.0.invert()),
+            attribute: AttributeRekeyFactor::from(self.0.attribute.scalar().invert()),
         })
     }
 }

@@ -1,17 +1,17 @@
 //! WASM bindings for Record types - standalone encrypt/decrypt operations.
 
-use crate::data::records::{EncryptedRecord, Record};
-use crate::data::wasm::simple::{
+use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+use libpep::data::records::{EncryptedRecord, Record};
 use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "long")]
-use crate::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
-#[cfg(feature = "long")]
-use crate::data::wasm::long::{
+use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
+#[cfg(feature = "long")]
+use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
 #[wasm_bindgen(js_name = Record)]

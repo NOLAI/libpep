@@ -1,10 +1,11 @@
-use crate::factors::contexts::*;
-use crate::factors::{
+use crate::keys::types::{PyEncryptionSecret, PyPseudonymizationSecret};
+use derive_more::{Deref, From, Into};
+use libpep::factors::contexts::*;
+use libpep::factors::RekeyFactor;
+use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymizationInfo,
     ReshuffleFactor, TranscryptionInfo,
 };
-use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
-use derive_more::{Deref, From, Into};
 use pyo3::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -134,8 +135,8 @@ impl PyPseudonymizationInfo {
     #[pyo3(name = "rev")]
     fn rev(&self) -> Self {
         PyPseudonymizationInfo(PyPseudonymRSKFactors {
-            s: PyReshuffleFactor(ReshuffleFactor(self.0.s.0 .0.invert())),
-            k: PyPseudonymRekeyFactor(PseudonymRekeyFactor(self.0.k.0 .0.invert())),
+            s: PyReshuffleFactor(ReshuffleFactor::from(self.0.s.0 .0.invert())),
+            k: PyPseudonymRekeyFactor(PseudonymRekeyFactor::from(self.0.k.0.scalar().invert())),
         })
     }
 }
@@ -154,8 +155,8 @@ impl PyAttributeRekeyInfo {
 
     #[pyo3(name = "rev")]
     fn rev(&self) -> Self {
-        PyAttributeRekeyInfo(PyAttributeRekeyFactor(AttributeRekeyFactor(
-            self.0 .0 .0.invert(),
+        PyAttributeRekeyInfo(PyAttributeRekeyFactor(AttributeRekeyFactor::from(
+            self.0 .0.scalar().invert(),
         )))
     }
 }

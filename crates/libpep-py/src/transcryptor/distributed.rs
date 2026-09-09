@@ -1,26 +1,26 @@
 //! Python bindings for distributed transcryptor.
 
 #[cfg(feature = "json")]
-use crate::data::py::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
-use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::PyEncryptedRecord;
+use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::py::records::PyLongEncryptedRecord;
-use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::py::contexts::{
+use crate::data::records::PyLongEncryptedRecord;
+use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::factors::contexts::{
     PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,
     PyPseudonymizationInfo, PyTranscryptionInfo,
 };
-use crate::factors::{
+use crate::keys::distribution::PyBlindingFactor;
+use crate::keys::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
+use derive_more::{Deref, From, Into};
+use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
     TranscryptionInfo,
 };
-use crate::keys::distribution::BlindingFactor;
-use crate::keys::py::distribution::PyBlindingFactor;
-use crate::keys::py::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
-use crate::transcryptor::DistributedTranscryptor;
-use derive_more::{Deref, From, Into};
+use libpep::keys::distribution::BlindingFactor;
+use libpep::transcryptor::DistributedTranscryptor;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -43,7 +43,7 @@ impl PyDistributedTranscryptor {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
             EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
-            BlindingFactor(blinding_factor.0 .0),
+            BlindingFactor::from(*blinding_factor.0),
         ))
     }
 

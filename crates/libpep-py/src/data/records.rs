@@ -1,18 +1,16 @@
 //! Python bindings for Record types.
 
-use crate::client::{decrypt, encrypt};
 #[cfg(feature = "long")]
-use crate::data::py::long::{
+use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::data::records::{EncryptedRecord, Record};
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::keys::PySessionKeys;
+use libpep::client::{decrypt, encrypt};
+use libpep::data::records::{EncryptedRecord, Record};
 #[cfg(feature = "long")]
-use crate::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
-use crate::keys::py::PySessionKeys;
-use crate::keys::types::SessionKeys;
+use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
+use libpep::keys::types::SessionKeys;
 use pyo3::prelude::*;
 
 /// A record containing multiple pseudonyms and attributes for a single entity.

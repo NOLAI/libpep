@@ -1,16 +1,31 @@
+[workspace]
+members = [".", "crates/libpep-py", "crates/libpep-wasm"]
+resolver = "2"
+
+[workspace.package]
+version = "0.14.0"
+edition = "2021"
+authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
+license = "Apache-2.0"
+repository = "https://github.com/NOLAI/libpep"
+
+[workspace.dependencies]
+libpep = { version = "0.14.0", path = ".", default-features = false }
+
 [package]
 name = "libpep"
-edition = "2021"
-version = "0.13.0"
-authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
 homepage = "https://github.com/NOLAI/libpep"
-repository = "https://github.com/NOLAI/libpep"
+repository.workspace = true
 documentation = "https://docs.rs/libpep"
-license = "Apache-2.0"
+license.workspace = true
 keywords = ["crypto", "pep", "pseudonymization"]
 categories = ["cryptography", "algorithms"]
 description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
+exclude = ["crates", "pkg", "pkg-web", "tests/wasm", "node_modules"]
 
 [features]
 default = ["build-binary", "long", "offline", "batch", "serde", "json"]
@@ -25,15 +40,12 @@ legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with t
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
 build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
 
-wasm = ["wasm-bindgen", "serde-wasm-bindgen", "js-sys", "getrandom", "rand"] # For building WebAssembly bindings via wasm-bindgen
-python = ["pyo3", "rand"] # For building Python bindings via PyO3
-# Note: python and wasm are mutually exclusive and should not be enabled together.
-# PyO3 builds a cdylib that links to the Python interpreter, while wasm-bindgen builds
-# a cdylib targeting WebAssembly - they have incompatible linking requirements.
+[lints]
+workspace = true
 
 [lib]
 name = "libpep"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 path = "src/lib/lib.rs"
 
 [[bin]]
@@ -51,11 +63,6 @@ hex = "^0.4"
 base64 = "^0.22"
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0", optional = true }
-wasm-bindgen = { version = "^0.2", optional = true }
-serde-wasm-bindgen = { version = "^0.6", optional = true }
-js-sys = { version = "^0.3", optional = true }
-getrandom = { version = "^0.4", features = ["wasm_js"], optional = true }
-pyo3 = { version = "0.29", features = ["extension-module"], optional = true }
 buildinfy = { version = "^0.2", optional = true }
 commandy = { version = "^0.2", optional = true }
 commandy_macros = { version = "^0.2", optional = true }
@@ -108,9 +115,9 @@ assets = [
 features = ["offline", "batch", "long", "serde", "elgamal3", "insecure"]
 rustdoc-args = ["--cfg", "docsrs"]
 
-[lints.rust]
+[workspace.lints.rust]
 unsafe_code = "deny"
 
-[lints.clippy]
+[workspace.lints.clippy]
 unwrap_used = "deny"
 expect_used = "deny"

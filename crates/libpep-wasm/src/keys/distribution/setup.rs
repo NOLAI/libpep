@@ -2,13 +2,13 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::arithmetic::wasm::group_elements::WASMGroupElement;
-use crate::keys::distribution::*;
-use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::wasm::types::{
+use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::keys::types::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMGlobalPublicKeys,
     WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
 };
+use libpep::keys::distribution::*;
+use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use wasm_bindgen::prelude::*;
 
 /// Setup a distributed system with global keys.
@@ -19,8 +19,8 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
         make_distributed_global_keys(n, &mut rng);
 
     let global_keys = WASMGlobalPublicKeys::new(
-        WASMPseudonymGlobalPublicKey(WASMGroupElement(global_public_keys.pseudonym.0)),
-        WASMAttributeGlobalPublicKey(WASMGroupElement(global_public_keys.attribute.0)),
+        WASMPseudonymGlobalPublicKey(WASMGroupElement(*global_public_keys.pseudonym)),
+        WASMAttributeGlobalPublicKey(WASMGroupElement(*global_public_keys.attribute)),
     );
     let blinded = WASMBlindedGlobalKeys(blinded_keys);
     let factors: Vec<WASMBlindingFactor> = blinding_factors
@@ -50,10 +50,10 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
 ) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor(x.0 .0))
+        .map(|x| BlindingFactor::from(*x.0))
         .collect();
     make_blinded_pseudonym_global_secret_key(
-        &PseudonymGlobalSecretKey::from(global_secret_key.0 .0),
+        &PseudonymGlobalSecretKey::from(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedPseudonymGlobalSecretKey)
@@ -67,10 +67,10 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
 ) -> Option<WASMBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor(x.0 .0))
+        .map(|x| BlindingFactor::from(*x.0))
         .collect();
     make_blinded_attribute_global_secret_key(
-        &AttributeGlobalSecretKey::from(global_secret_key.0 .0),
+        &AttributeGlobalSecretKey::from(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedAttributeGlobalSecretKey)
@@ -83,7 +83,7 @@ pub fn wasm_make_distributed_pseudonym_global_keys(n: usize) -> Box<[JsValue]> {
     let (public_key, blinded_key, blinding_factors) =
         make_distributed_pseudonym_global_keys(n, &mut rng);
 
-    let public = WASMPseudonymGlobalPublicKey(WASMGroupElement(public_key.0));
+    let public = WASMPseudonymGlobalPublicKey(WASMGroupElement(*public_key));
     let blinded = WASMBlindedPseudonymGlobalSecretKey(blinded_key);
     let factors: Vec<WASMBlindingFactor> = blinding_factors
         .into_iter()
@@ -111,7 +111,7 @@ pub fn wasm_make_distributed_attribute_global_keys(n: usize) -> Box<[JsValue]> {
     let (public_key, blinded_key, blinding_factors) =
         make_distributed_attribute_global_keys(n, &mut rng);
 
-    let public = WASMAttributeGlobalPublicKey(WASMGroupElement(public_key.0));
+    let public = WASMAttributeGlobalPublicKey(WASMGroupElement(*public_key));
     let blinded = WASMBlindedAttributeGlobalSecretKey(blinded_key);
     let factors: Vec<WASMBlindingFactor> = blinding_factors
         .into_iter()

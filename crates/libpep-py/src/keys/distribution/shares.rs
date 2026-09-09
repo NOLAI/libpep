@@ -2,19 +2,19 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
     PyBlindingFactor,
 };
-use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
-use crate::arithmetic::scalars::ScalarTraits;
-use crate::client::distributed::{
-    make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
-    update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
-};
-use crate::keys::distribution::*;
-use crate::keys::py::types::{
+use crate::arithmetic::{PyGroupElement, PyScalarNonZero};
+use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
-use crate::keys::*;
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::scalars::ScalarTraits;
+use libpep::client::distributed::{
+    make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
+    update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
+};
+use libpep::keys::distribution::*;
+use libpep::keys::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -28,7 +28,7 @@ pub struct PyPseudonymSessionKeyShare(pub(crate) PseudonymSessionKeyShare);
 impl PyPseudonymSessionKeyShare {
     #[new]
     fn new(x: PyScalarNonZero) -> Self {
-        PyPseudonymSessionKeyShare(PseudonymSessionKeyShare(x.0))
+        PyPseudonymSessionKeyShare(PseudonymSessionKeyShare::from(x.0))
     }
 
     #[pyo3(name = "to_bytes")]
@@ -54,7 +54,7 @@ impl PyPseudonymSessionKeyShare {
     }
 
     fn __repr__(&self) -> String {
-        format!("PseudonymSessionKeyShare({})", self.as_hex())
+        format!("PseudonymSessionKeyShare::from({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -75,7 +75,7 @@ pub struct PyAttributeSessionKeyShare(pub(crate) AttributeSessionKeyShare);
 impl PyAttributeSessionKeyShare {
     #[new]
     fn new(x: PyScalarNonZero) -> Self {
-        PyAttributeSessionKeyShare(AttributeSessionKeyShare(x.0))
+        PyAttributeSessionKeyShare(AttributeSessionKeyShare::from(x.0))
     }
 
     #[pyo3(name = "to_bytes")]
@@ -101,7 +101,7 @@ impl PyAttributeSessionKeyShare {
     }
 
     fn __repr__(&self) -> String {
-        format!("AttributeSessionKeyShare({})", self.as_hex())
+        format!("AttributeSessionKeyShare::from({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -260,8 +260,8 @@ pub fn py_make_pseudonym_session_key(
     let shares: Vec<PseudonymSessionKeyShare> = session_key_shares.iter().map(|s| s.0).collect();
     let (public, secret) = make_pseudonym_session_key(blinded_global_secret_key.0, &shares);
     PyPseudonymSessionKeyPair {
-        public: PyPseudonymSessionPublicKey(PyGroupElement(public.0)),
-        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(secret.0)),
+        public: PyPseudonymSessionPublicKey(PyGroupElement(*public)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret)),
     }
 }
 
@@ -275,8 +275,8 @@ pub fn py_make_attribute_session_key(
     let shares: Vec<AttributeSessionKeyShare> = session_key_shares.iter().map(|s| s.0).collect();
     let (public, secret) = make_attribute_session_key(blinded_global_secret_key.0, &shares);
     PyAttributeSessionKeyPair {
-        public: PyAttributeSessionPublicKey(PyGroupElement(public.0)),
-        secret: PyAttributeSessionSecretKey(PyScalarNonZero(secret.0)),
+        public: PyAttributeSessionPublicKey(PyGroupElement(*public)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret)),
     }
 }
 
@@ -301,12 +301,12 @@ pub fn py_make_session_keys_distributed(
     let keys = make_session_keys_distributed(blinded_keys, &shares);
     PySessionKeys {
         public: PySessionPublicKeys {
-            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(keys.pseudonym.public.0)),
-            attribute: PyAttributeSessionPublicKey(PyGroupElement(keys.attribute.public.0)),
+            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(*keys.pseudonym.public)),
+            attribute: PyAttributeSessionPublicKey(PyGroupElement(*keys.attribute.public)),
         },
         secret: PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(keys.pseudonym.secret.0)),
-            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(keys.attribute.secret.0)),
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(*keys.pseudonym.secret)),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(*keys.attribute.secret)),
         },
     }
 }
@@ -325,8 +325,8 @@ pub fn py_update_pseudonym_session_key(
         new_session_key_share.0,
     );
     PyPseudonymSessionKeyPair {
-        public: PyPseudonymSessionPublicKey(PyGroupElement(public.0)),
-        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(secret.0)),
+        public: PyPseudonymSessionPublicKey(PyGroupElement(*public)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret)),
     }
 }
 
@@ -344,8 +344,8 @@ pub fn py_update_attribute_session_key(
         new_session_key_share.0,
     );
     PyAttributeSessionKeyPair {
-        public: PyAttributeSessionPublicKey(PyGroupElement(public.0)),
-        secret: PyAttributeSessionSecretKey(PyScalarNonZero(secret.0)),
+        public: PyAttributeSessionPublicKey(PyGroupElement(*public)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret)),
     }
 }
 
@@ -378,12 +378,12 @@ pub fn py_update_session_keys(
     let updated = update_session_keys(current, old, new);
     PySessionKeys {
         public: PySessionPublicKeys {
-            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(updated.pseudonym.public.0)),
-            attribute: PyAttributeSessionPublicKey(PyGroupElement(updated.attribute.public.0)),
+            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(*updated.pseudonym.public)),
+            attribute: PyAttributeSessionPublicKey(PyGroupElement(*updated.attribute.public)),
         },
         secret: PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(updated.pseudonym.secret.0)),
-            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(updated.attribute.secret.0)),
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(*updated.pseudonym.secret)),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(*updated.attribute.secret)),
         },
     }
 }
@@ -393,12 +393,12 @@ impl From<PySessionKeys> for SessionKeys {
     fn from(py_keys: PySessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: PseudonymSessionPublicKey(py_keys.public.pseudonym.0 .0),
-                secret: PseudonymSessionSecretKey(py_keys.secret.pseudonym.0 .0),
+                public: PseudonymSessionPublicKey::from(*py_keys.public.pseudonym.0),
+                secret: PseudonymSessionSecretKey::from(*py_keys.secret.pseudonym.0),
             },
             attribute: AttributeSessionKeys {
-                public: AttributeSessionPublicKey(py_keys.public.attribute.0 .0),
-                secret: AttributeSessionSecretKey(py_keys.secret.attribute.0 .0),
+                public: AttributeSessionPublicKey::from(*py_keys.public.attribute.0),
+                secret: AttributeSessionSecretKey::from(*py_keys.secret.attribute.0),
             },
         }
     }
@@ -411,8 +411,8 @@ pub fn py_make_pseudonym_session_key_share(
     rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PyPseudonymSessionKeyShare {
-    use crate::factors::types::PseudonymRekeyFactor;
-    use crate::keys::distribution::make_pseudonym_session_key_share;
+    use libpep::factors::types::PseudonymRekeyFactor;
+    use libpep::keys::distribution::make_pseudonym_session_key_share;
     PyPseudonymSessionKeyShare(make_pseudonym_session_key_share(
         &PseudonymRekeyFactor::from(rekey_factor.0),
         &blinding_factor.0,
@@ -426,8 +426,8 @@ pub fn py_make_attribute_session_key_share(
     rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PyAttributeSessionKeyShare {
-    use crate::factors::types::AttributeRekeyFactor;
-    use crate::keys::distribution::make_attribute_session_key_share;
+    use libpep::factors::types::AttributeRekeyFactor;
+    use libpep::keys::distribution::make_attribute_session_key_share;
     PyAttributeSessionKeyShare(make_attribute_session_key_share(
         &AttributeRekeyFactor::from(rekey_factor.0),
         &blinding_factor.0,
@@ -442,8 +442,8 @@ pub fn py_make_session_key_shares(
     attribute_rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PySessionKeyShares {
-    use crate::factors::types::{AttributeRekeyFactor, PseudonymRekeyFactor};
-    use crate::keys::distribution::make_session_key_shares;
+    use libpep::factors::types::{AttributeRekeyFactor, PseudonymRekeyFactor};
+    use libpep::keys::distribution::make_session_key_shares;
     let shares = make_session_key_shares(
         &PseudonymRekeyFactor::from(pseudonym_rekey_factor.0),
         &AttributeRekeyFactor::from(attribute_rekey_factor.0),

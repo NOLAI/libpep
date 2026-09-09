@@ -15,12 +15,6 @@ pub mod contexts;
 pub mod secrets;
 pub mod types;
 
-#[cfg(feature = "python")]
-pub mod py;
-
-#[cfg(feature = "wasm")]
-pub mod wasm;
-
 // Re-export commonly used types
 pub use contexts::{EncryptionContext, PseudonymizationDomain};
 pub use secrets::{

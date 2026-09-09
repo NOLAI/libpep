@@ -1,22 +1,22 @@
 //! Python bindings for transcryption functions.
 
-use crate::arithmetic::py::PyScalarNonZero;
+use crate::arithmetic::PyScalarNonZero;
 #[cfg(feature = "json")]
-use crate::data::py::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
-use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::PyEncryptedRecord;
-use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::py::contexts::{
+use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::data::records::PyEncryptedRecord;
+use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::factors::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
-use crate::factors::TranscryptionInfo;
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
 #[cfg(not(feature = "elgamal3"))]
-use crate::keys::py::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
+use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
+use libpep::factors::TranscryptionInfo;
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
 #[cfg(not(feature = "elgamal3"))]
-use crate::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
-use crate::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
+use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
+use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -186,7 +186,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>, public_key: &Bound<PyAny>) -> Py
     // Try EncryptedPseudonym with PseudonymSessionPublicKey
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
-            let result = rerandomize(&ep.0, &PseudonymSessionPublicKey::from(pk.0 .0), &mut rng);
+            let result = rerandomize(&ep.0, &PseudonymSessionPublicKey::from(*pk.0), &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
     }
@@ -194,7 +194,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>, public_key: &Bound<PyAny>) -> Py
     // Try EncryptedAttribute with AttributeSessionPublicKey
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
-            let result = rerandomize(&ea.0, &AttributeSessionPublicKey::from(pk.0 .0), &mut rng);
+            let result = rerandomize(&ea.0, &AttributeSessionPublicKey::from(*pk.0), &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
         }
     }
@@ -203,7 +203,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>, public_key: &Bound<PyAny>) -> Py
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
-            let result = rerandomize(&lep.0, &PseudonymSessionPublicKey::from(pk.0 .0), &mut rng);
+            let result = rerandomize(&lep.0, &PseudonymSessionPublicKey::from(*pk.0), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
     }
@@ -212,7 +212,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>, public_key: &Bound<PyAny>) -> Py
     #[cfg(feature = "long")]
     if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
-            let result = rerandomize(&lea.0, &AttributeSessionPublicKey::from(pk.0 .0), &mut rng);
+            let result = rerandomize(&lea.0, &AttributeSessionPublicKey::from(*pk.0), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
     }
@@ -230,7 +230,7 @@ pub fn py_rerandomize_known(
     factor: &PyScalarNonZero,
 ) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
-    let rerand_factor = RerandomizeFactor(factor.0);
+    let rerand_factor = RerandomizeFactor::from(factor.0);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
@@ -274,14 +274,14 @@ pub fn py_rerandomize_known(
     factor: &PyScalarNonZero,
 ) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
-    let rerand_factor = RerandomizeFactor(factor.0);
+    let rerand_factor = RerandomizeFactor::from(factor.0);
 
     // Try EncryptedPseudonym with PseudonymSessionPublicKey
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
             let result = rerandomize_known(
                 &ep.0,
-                &PseudonymSessionPublicKey::from(pk.0 .0),
+                &PseudonymSessionPublicKey::from(*pk.0),
                 &rerand_factor,
             );
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
@@ -293,7 +293,7 @@ pub fn py_rerandomize_known(
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
             let result = rerandomize_known(
                 &ea.0,
-                &AttributeSessionPublicKey::from(pk.0 .0),
+                &AttributeSessionPublicKey::from(*pk.0),
                 &rerand_factor,
             );
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
@@ -306,7 +306,7 @@ pub fn py_rerandomize_known(
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
             let result = rerandomize_known(
                 &lep.0,
-                &PseudonymSessionPublicKey::from(pk.0 .0),
+                &PseudonymSessionPublicKey::from(*pk.0),
                 &rerand_factor,
             );
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
@@ -319,7 +319,7 @@ pub fn py_rerandomize_known(
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
             let result = rerandomize_known(
                 &lea.0,
-                &AttributeSessionPublicKey::from(pk.0 .0),
+                &AttributeSessionPublicKey::from(*pk.0),
                 &rerand_factor,
             );
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());

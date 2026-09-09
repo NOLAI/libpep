@@ -1,25 +1,25 @@
 //! WASM bindings for transcryptor types.
 
-#[cfg(all(feature = "long", feature = "batch"))]
-use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "batch")]
-use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "long")]
-use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 #[cfg(feature = "long")]
-use crate::data::wasm::records::WASMLongRecordEncrypted;
-use crate::data::wasm::records::WASMRecordEncrypted;
-use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::factors::wasm::contexts::{
+use crate::data::records::WASMLongRecordEncrypted;
+use crate::data::records::WASMRecordEncrypted;
+use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::factors::contexts::{
     WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
     WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
-use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
-use crate::factors::{
+use crate::factors::types::WASMPseudonymRekeyFactor;
+use derive_more::{Deref, From, Into};
+#[cfg(all(feature = "long", feature = "batch"))]
+use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "batch")]
+use libpep::data::simple::{EncryptedAttribute, EncryptedPseudonym};
+use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
 };
-use crate::transcryptor::Transcryptor;
-use derive_more::{Deref, From, Into};
+use libpep::transcryptor::Transcryptor;
 use wasm_bindgen::prelude::*;
 
 /// A PEP transcryptor system.
@@ -239,11 +239,11 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptJSON)]
     pub fn transcrypt_json(
         &self,
-        encrypted: &crate::data::wasm::json::WASMEncryptedPEPJSONValue,
-        transcryption_info: &crate::factors::wasm::contexts::WASMTranscryptionInfo,
-    ) -> crate::data::wasm::json::WASMEncryptedPEPJSONValue {
+        encrypted: &crate::data::json::WASMEncryptedPEPJSONValue,
+        transcryption_info: &crate::factors::contexts::WASMTranscryptionInfo,
+    ) -> crate::data::json::WASMEncryptedPEPJSONValue {
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0);
-        crate::data::wasm::json::WASMEncryptedPEPJSONValue(transcrypted)
+        crate::data::json::WASMEncryptedPEPJSONValue(transcrypted)
     }
 
     /// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
@@ -251,10 +251,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptJSONBatch)]
     pub fn transcrypt_json_batch(
         &self,
-        values: Vec<crate::data::wasm::json::WASMEncryptedPEPJSONValue>,
-        transcryption_info: &crate::factors::wasm::contexts::WASMTranscryptionInfo,
-    ) -> Result<Vec<crate::data::wasm::json::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue>
-    {
+        values: Vec<crate::data::json::WASMEncryptedPEPJSONValue>,
+        transcryption_info: &crate::factors::contexts::WASMTranscryptionInfo,
+    ) -> Result<Vec<crate::data::json::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let mut rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let transcrypted = self
@@ -263,7 +262,7 @@ impl WASMTranscryptor {
         Ok(transcrypted
             .into_vec()
             .into_iter()
-            .map(crate::data::wasm::json::WASMEncryptedPEPJSONValue)
+            .map(crate::data::json::WASMEncryptedPEPJSONValue)
             .collect())
     }
 
@@ -274,8 +273,8 @@ impl WASMTranscryptor {
         encrypted: WASMRecordEncrypted,
         transcryption_info: &WASMTranscryptionInfo,
     ) -> WASMRecordEncrypted {
-        use crate::data::records::EncryptedRecord;
-        use crate::data::traits::Transcryptable;
+        use libpep::data::records::EncryptedRecord;
+        use libpep::data::traits::Transcryptable;
         let rust_encrypted: EncryptedRecord = encrypted.into();
         let transcrypted = rust_encrypted.transcrypt(&transcryption_info.0);
         transcrypted.into()
@@ -289,8 +288,8 @@ impl WASMTranscryptor {
         encrypted: WASMLongRecordEncrypted,
         transcryption_info: &WASMTranscryptionInfo,
     ) -> WASMLongRecordEncrypted {
-        use crate::data::records::LongEncryptedRecord;
-        use crate::data::traits::Transcryptable;
+        use libpep::data::records::LongEncryptedRecord;
+        use libpep::data::traits::Transcryptable;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
         let transcrypted = rust_encrypted.transcrypt(&transcryption_info.0);
         transcrypted.into()
@@ -305,7 +304,7 @@ impl WASMTranscryptor {
         transcryption_info: &WASMTranscryptionInfo,
     ) -> Result<Vec<WASMRecordEncrypted>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut rust_records: Vec<crate::data::records::EncryptedRecord> =
+        let mut rust_records: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let transcrypted = self
             .transcrypt_batch(&mut rust_records, &transcryption_info.0, &mut rng)
@@ -326,7 +325,7 @@ impl WASMTranscryptor {
         transcryption_info: &WASMTranscryptionInfo,
     ) -> Result<Vec<WASMLongRecordEncrypted>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut rust_records: Vec<crate::data::records::LongEncryptedRecord> =
+        let mut rust_records: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let transcrypted = self
             .transcrypt_batch(&mut rust_records, &transcryption_info.0, &mut rng)

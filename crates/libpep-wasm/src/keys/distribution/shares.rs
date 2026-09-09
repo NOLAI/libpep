@@ -2,24 +2,24 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::arithmetic::scalars::ScalarTraits;
-use crate::arithmetic::wasm::group_elements::WASMGroupElement;
-use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
-use crate::client::distributed::{
-    make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
-    update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
-};
-use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
-use crate::keys::distribution::{
-    make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
-    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
-};
-use crate::keys::wasm::types::{
+use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::keys::types::{
     WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
     WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,
     WASMSessionKeys,
 };
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::scalars::ScalarTraits;
+use libpep::client::distributed::{
+    make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
+    update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
+};
+use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
+use libpep::keys::distribution::{
+    make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
+    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
+};
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session key share.
@@ -31,7 +31,7 @@ pub struct WASMPseudonymSessionKeyShare(pub(crate) PseudonymSessionKeyShare);
 impl WASMPseudonymSessionKeyShare {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMPseudonymSessionKeyShare(PseudonymSessionKeyShare(x.0))
+        WASMPseudonymSessionKeyShare(PseudonymSessionKeyShare::from(x.0))
     }
 
     #[wasm_bindgen(js_name = toBytes)]
@@ -64,7 +64,7 @@ pub struct WASMAttributeSessionKeyShare(pub(crate) AttributeSessionKeyShare);
 impl WASMAttributeSessionKeyShare {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMAttributeSessionKeyShare(AttributeSessionKeyShare(x.0))
+        WASMAttributeSessionKeyShare(AttributeSessionKeyShare::from(x.0))
     }
 
     #[wasm_bindgen(js_name = toBytes)]
@@ -126,8 +126,8 @@ pub fn wasm_make_pseudonym_session_key(
     let shares: Vec<PseudonymSessionKeyShare> = shares.into_iter().map(|s| s.0).collect();
     let (public, secret) = make_pseudonym_session_key(blinded_global_key.0, &shares);
     WASMPseudonymSessionKeyPair::new(
-        WASMPseudonymSessionPublicKey(WASMGroupElement(public.0)),
-        WASMPseudonymSessionSecretKey(WASMScalarNonZero(secret.0)),
+        WASMPseudonymSessionPublicKey(WASMGroupElement(*public)),
+        WASMPseudonymSessionSecretKey(WASMScalarNonZero(*secret)),
     )
 }
 
@@ -140,8 +140,8 @@ pub fn wasm_make_attribute_session_key(
     let shares: Vec<AttributeSessionKeyShare> = shares.into_iter().map(|s| s.0).collect();
     let (public, secret) = make_attribute_session_key(blinded_global_key.0, &shares);
     WASMAttributeSessionKeyPair::new(
-        WASMAttributeSessionPublicKey(WASMGroupElement(public.0)),
-        WASMAttributeSessionSecretKey(WASMScalarNonZero(secret.0)),
+        WASMAttributeSessionPublicKey(WASMGroupElement(*public)),
+        WASMAttributeSessionSecretKey(WASMScalarNonZero(*secret)),
     )
 }
 
@@ -168,8 +168,8 @@ pub fn wasm_update_pseudonym_session_key(
     let (public, secret) =
         update_pseudonym_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
     WASMPseudonymSessionKeyPair::new(
-        WASMPseudonymSessionPublicKey(WASMGroupElement(public.0)),
-        WASMPseudonymSessionSecretKey(WASMScalarNonZero(secret.0)),
+        WASMPseudonymSessionPublicKey(WASMGroupElement(*public)),
+        WASMPseudonymSessionSecretKey(WASMScalarNonZero(*secret)),
     )
 }
 
@@ -183,8 +183,8 @@ pub fn wasm_update_attribute_session_key(
     let (public, secret) =
         update_attribute_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
     WASMAttributeSessionKeyPair::new(
-        WASMAttributeSessionPublicKey(WASMGroupElement(public.0)),
-        WASMAttributeSessionSecretKey(WASMScalarNonZero(secret.0)),
+        WASMAttributeSessionPublicKey(WASMGroupElement(*public)),
+        WASMAttributeSessionSecretKey(WASMScalarNonZero(*secret)),
     )
 }
 

@@ -1,60 +1,56 @@
 //! Python bindings for batch transcryption operations.
 
-use crate::client::{decrypt_batch, encrypt_batch};
-use crate::data::py::records::PyEncryptedRecord;
+use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::py::records::PyLongEncryptedRecord;
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::data::records::EncryptedRecord;
-use crate::factors::py::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
-};
-use crate::factors::TranscryptionInfo;
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use crate::keys::py::types::{
+use crate::data::records::PyLongEncryptedRecord;
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::factors::contexts::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
+use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyGlobalPublicKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
 };
-use crate::keys::types::{
+use libpep::client::{decrypt_batch, encrypt_batch};
+use libpep::data::records::EncryptedRecord;
+use libpep::factors::TranscryptionInfo;
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
 
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::client::decrypt_global;
-#[cfg(feature = "offline")]
-use crate::client::encrypt_global;
 #[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
+use crate::keys::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
-use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
+use crate::keys::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+use crate::keys::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
-use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+use libpep::client::encrypt_global;
+#[cfg(feature = "offline")]
+use libpep::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 #[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::GlobalSecretKeys;
+use libpep::keys::GlobalSecretKeys;
 
 #[cfg(feature = "long")]
-use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "long")]
-use crate::data::py::long::{
+use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
 #[cfg(feature = "long")]
-use crate::data::records::LongEncryptedRecord;
+use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "long")]
+use libpep::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
-use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
-use crate::keys::{GlobalPublicKeys, SessionKeys};
+use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use libpep::keys::{GlobalPublicKeys, SessionKeys};
 
 /// Polymorphic batch pseudonymization of a list of encrypted pseudonyms.
 /// Works with both EncryptedPseudonym and LongEncryptedPseudonym.
@@ -293,7 +289,7 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     // Try Vec<PyPseudonym> with PyPseudonymSessionPublicKey
     if let Ok(ps) = messages.extract::<Vec<PyPseudonym>>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
-            let key = PseudonymSessionPublicKey::from(pk.0 .0);
+            let key = PseudonymSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = ps.into_iter().map(|p| p.0).collect();
 
             // True Batch: Shuffles and encrypts
@@ -309,7 +305,7 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     // Try Vec<PyAttribute> with PyAttributeSessionPublicKey
     if let Ok(attrs) = messages.extract::<Vec<PyAttribute>>() {
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
-            let key = AttributeSessionPublicKey::from(pk.0 .0);
+            let key = AttributeSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = attrs.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -325,7 +321,7 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     #[cfg(feature = "long")]
     if let Ok(lps) = messages.extract::<Vec<PyLongPseudonym>>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
-            let key = PseudonymSessionPublicKey::from(pk.0 .0);
+            let key = PseudonymSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = lps.into_iter().map(|p| p.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -341,7 +337,7 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     #[cfg(feature = "long")]
     if let Ok(las) = messages.extract::<Vec<PyLongAttribute>>() {
         if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
-            let key = AttributeSessionPublicKey::from(pk.0 .0);
+            let key = AttributeSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -356,7 +352,7 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
     // Try Vec<PyPEPJSONValue> with PySessionKeys
     #[cfg(feature = "json")]
     if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
-        if let Ok(session_keys) = public_key.extract::<crate::keys::py::PySessionKeys>() {
+        if let Ok(session_keys) = public_key.extract::<crate::keys::PySessionKeys>() {
             let keys = SessionKeys::from(session_keys);
             let rust_msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
 
@@ -388,7 +384,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedPseudonym> with PyPseudonymSessionSecretKey
     if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
-            let key = PseudonymSessionSecretKey::from(sk.0 .0);
+            let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
             // True Batch Decryption
@@ -404,7 +400,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedAttribute> with PyAttributeSessionSecretKey
     if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
-            let key = AttributeSessionSecretKey::from(sk.0 .0);
+            let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -420,7 +416,7 @@ pub fn py_decrypt_batch(
     #[cfg(feature = "long")]
     if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
-            let key = PseudonymSessionSecretKey::from(sk.0 .0);
+            let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -436,7 +432,7 @@ pub fn py_decrypt_batch(
     #[cfg(feature = "long")]
     if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
-            let key = AttributeSessionSecretKey::from(sk.0 .0);
+            let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -451,7 +447,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedPEPJSONValue> with PySessionKeys
     #[cfg(feature = "json")]
     if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(k) = secret_key.extract::<crate::keys::py::PySessionKeys>() {
+        if let Ok(k) = secret_key.extract::<crate::keys::PySessionKeys>() {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -484,7 +480,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedPseudonym> with PyPseudonymSessionSecretKey
     if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
-            let key = PseudonymSessionSecretKey::from(sk.0 .0);
+            let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -499,7 +495,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedAttribute> with PyAttributeSessionSecretKey
     if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
-            let key = AttributeSessionSecretKey::from(sk.0 .0);
+            let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -515,7 +511,7 @@ pub fn py_decrypt_batch(
     #[cfg(feature = "long")]
     if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
-            let key = PseudonymSessionSecretKey::from(sk.0 .0);
+            let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -531,7 +527,7 @@ pub fn py_decrypt_batch(
     #[cfg(feature = "long")]
     if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
-            let key = AttributeSessionSecretKey::from(sk.0 .0);
+            let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -546,7 +542,7 @@ pub fn py_decrypt_batch(
     // Try Vec<PyEncryptedPEPJSONValue> with PySessionKeys
     #[cfg(feature = "json")]
     if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(k) = secret_key.extract::<crate::keys::py::PySessionKeys>() {
+        if let Ok(k) = secret_key.extract::<crate::keys::PySessionKeys>() {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -579,7 +575,7 @@ pub fn py_encrypt_global_batch(
     // Try Vec<Pseudonym> with PseudonymGlobalPublicKey
     if let Ok(ps) = messages.extract::<Vec<PyPseudonym>>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
-            let key = PseudonymGlobalPublicKey(pk.0 .0);
+            let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result: Vec<PyEncryptedPseudonym> = ps
                 .into_iter()
                 .map(|p| PyEncryptedPseudonym(encrypt_global(&p.0, &key, &mut rng)))
@@ -591,7 +587,7 @@ pub fn py_encrypt_global_batch(
     // Try Vec<Attribute> with AttributeGlobalPublicKey
     if let Ok(attrs) = messages.extract::<Vec<PyAttribute>>() {
         if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
-            let key = AttributeGlobalPublicKey(pk.0 .0);
+            let key = AttributeGlobalPublicKey::from(*pk.0);
             let result: Vec<PyEncryptedAttribute> = attrs
                 .into_iter()
                 .map(|a| PyEncryptedAttribute(encrypt_global(&a.0, &key, &mut rng)))
@@ -604,7 +600,7 @@ pub fn py_encrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(lps) = messages.extract::<Vec<PyLongPseudonym>>() {
         if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
-            let key = PseudonymGlobalPublicKey(pk.0 .0);
+            let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result: Vec<PyLongEncryptedPseudonym> = lps
                 .into_iter()
                 .map(|p| PyLongEncryptedPseudonym(encrypt_global(&p.0, &key, &mut rng)))
@@ -617,7 +613,7 @@ pub fn py_encrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(las) = messages.extract::<Vec<PyLongAttribute>>() {
         if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
-            let key = AttributeGlobalPublicKey(pk.0 .0);
+            let key = AttributeGlobalPublicKey::from(*pk.0);
             let result: Vec<PyLongEncryptedAttribute> = las
                 .into_iter()
                 .map(|a| PyLongEncryptedAttribute(encrypt_global(&a.0, &key, &mut rng)))
@@ -630,7 +626,7 @@ pub fn py_encrypt_global_batch(
     #[cfg(feature = "json")]
     if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
         if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
-            use crate::data::traits::Encryptable;
+            use libpep::data::traits::Encryptable;
             let keys = GlobalPublicKeys::from(pk);
             let result: Vec<PyEncryptedPEPJSONValue> = jsons
                 .into_iter()
@@ -659,7 +655,7 @@ pub fn py_decrypt_global_batch(
     // Try Vec<EncryptedPseudonym> with PseudonymGlobalSecretKey
     if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = eps
                 .into_iter()
                 .map(|ep| {
@@ -675,7 +671,7 @@ pub fn py_decrypt_global_batch(
     // Try Vec<EncryptedAttribute> with AttributeGlobalSecretKey
     if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = eas
                 .into_iter()
                 .map(|ea| {
@@ -692,7 +688,7 @@ pub fn py_decrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = leps
                 .into_iter()
                 .map(|lep| {
@@ -709,7 +705,7 @@ pub fn py_decrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = leas
                 .into_iter()
                 .map(|lea| {
@@ -758,7 +754,7 @@ pub fn py_decrypt_global_batch(
     // Try Vec<EncryptedPseudonym> with PseudonymGlobalSecretKey
     if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<PyPseudonym> = eps
                 .into_iter()
                 .map(|ep| PyPseudonym(decrypt_global(&ep.0, &key)))
@@ -770,7 +766,7 @@ pub fn py_decrypt_global_batch(
     // Try Vec<EncryptedAttribute> with AttributeGlobalSecretKey
     if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<PyAttribute> = eas
                 .into_iter()
                 .map(|ea| PyAttribute(decrypt_global(&ea.0, &key)))
@@ -783,7 +779,7 @@ pub fn py_decrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
         if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
-            let key = PseudonymGlobalSecretKey(sk.0 .0);
+            let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<PyLongPseudonym> = leps
                 .into_iter()
                 .map(|lep| PyLongPseudonym(decrypt_global(&lep.0, &key)))
@@ -796,7 +792,7 @@ pub fn py_decrypt_global_batch(
     #[cfg(feature = "long")]
     if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
         if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
-            let key = AttributeGlobalSecretKey(sk.0 .0);
+            let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<PyLongAttribute> = leas
                 .into_iter()
                 .map(|lea| PyLongAttribute(decrypt_global(&lea.0, &key)))

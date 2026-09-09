@@ -1,0 +1,37 @@
+[package]
+name = "libpep-wasm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "WebAssembly bindings for libpep, polymorphic encryption and pseudonymization"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["long", "offline", "batch", "serde", "json"]
+serde = ["libpep/serde"]
+long = ["libpep/long"]
+offline = ["libpep/offline"]
+batch = ["libpep/batch"]
+json = ["libpep/json", "long", "serde"]
+elgamal3 = ["libpep/elgamal3"]
+global-pseudonyms = ["libpep/global-pseudonyms", "offline"]
+legacy = ["libpep/legacy", "elgamal3", "offline", "global-pseudonyms"]
+insecure = ["libpep/insecure"]
+
+[dependencies]
+libpep = { workspace = true }
+wasm-bindgen = "^0.2"
+serde-wasm-bindgen = "^0.6"
+js-sys = "^0.3"
+getrandom = { version = "^0.4", features = ["wasm_js"] }
+derive_more = { version = "^2.1", features = ["from", "into", "deref"] }
+rand = "^0.10"
+serde_json = "^1.0"

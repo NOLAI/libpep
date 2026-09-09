@@ -1,9 +1,9 @@
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::py::group_elements::PyGroupElement;
-use crate::arithmetic::py::scalars::PyScalarNonZero;
-use crate::factors::{EncryptionSecret, PseudonymizationSecret};
-use crate::keys::types::*;
+use crate::arithmetic::group_elements::PyGroupElement;
+use crate::arithmetic::scalars::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::group_elements::GroupElement;
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::types::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -160,7 +160,7 @@ impl PyPseudonymGlobalPublicKey {
     }
 
     fn __repr__(&self) -> String {
-        format!("PseudonymGlobalPublicKey({})", self.as_hex())
+        format!("PseudonymGlobalPublicKey::from({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -218,7 +218,7 @@ impl PyAttributeGlobalPublicKey {
     }
 
     fn __repr__(&self) -> String {
-        format!("AttributeGlobalPublicKey({})", self.as_hex())
+        format!("AttributeGlobalPublicKey::from({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -304,13 +304,13 @@ impl From<PyGlobalSecretKeys> for GlobalSecretKeys {
     }
 }
 
-/// Pseudonymization secret used to derive a reshuffle factor from a pseudonymization domain (see [`crate::factors::ReshuffleFactor`]).
+/// Pseudonymization secret used to derive a reshuffle factor from a pseudonymization domain (see [`libpep::factors::ReshuffleFactor`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[pyclass(name = "PseudonymizationSecret", from_py_object)]
 pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
 
-/// Encryption secret used to derive rekey factors from an encryption context (see [`crate::factors::PseudonymRekeyInfo`] and [`crate::factors::AttributeRekeyInfo`]).
+/// Encryption secret used to derive rekey factors from an encryption context (see [`libpep::factors::PseudonymRekeyInfo`] and [`libpep::factors::AttributeRekeyInfo`]).
 /// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
 #[derive(Clone, Debug, From)]
 #[pyclass(name = "EncryptionSecret", from_py_object)]

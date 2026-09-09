@@ -1,9 +1,9 @@
-use crate::arithmetic::scalars::ScalarTraits;
-use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
-use crate::keys::distribution::*;
-use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::wasm::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
+use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::scalars::ScalarTraits;
+use libpep::keys::distribution::*;
+use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use wasm_bindgen::prelude::*;
 
 /// A blinding factor.
@@ -15,7 +15,7 @@ pub struct WASMBlindingFactor(pub(crate) BlindingFactor);
 impl WASMBlindingFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindingFactor(BlindingFactor(x.0))
+        WASMBlindingFactor(BlindingFactor::from(x.0))
     }
 
     #[wasm_bindgen]
@@ -59,7 +59,7 @@ pub struct WASMBlindedPseudonymGlobalSecretKey(pub(crate) BlindedPseudonymGlobal
 impl WASMBlindedPseudonymGlobalSecretKey {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey(x.0))
+        WASMBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey::from(x.0))
     }
 
     #[wasm_bindgen(js_name = toBytes)]
@@ -92,7 +92,7 @@ pub struct WASMBlindedAttributeGlobalSecretKey(pub(crate) BlindedAttributeGlobal
 impl WASMBlindedAttributeGlobalSecretKey {
     #[wasm_bindgen(constructor)]
     pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey(x.0))
+        WASMBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey::from(x.0))
     }
 
     #[wasm_bindgen(js_name = toBytes)]
@@ -154,11 +154,11 @@ pub fn wasm_make_blinded_global_keys(
 ) -> Option<WASMBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor(x.0 .0))
+        .map(|x| BlindingFactor::from(*x.0))
         .collect();
     make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(pseudonym_global_secret_key.0 .0),
-        &AttributeGlobalSecretKey::from(attribute_global_secret_key.0 .0),
+        &PseudonymGlobalSecretKey::from(*pseudonym_global_secret_key.0),
+        &AttributeGlobalSecretKey::from(*attribute_global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedGlobalKeys)

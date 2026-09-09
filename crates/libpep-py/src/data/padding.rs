@@ -3,9 +3,9 @@
 //! Note: These are also exposed as methods on PyPseudonym and PyAttribute in core.rs.
 //! This module provides standalone function versions for API completeness.
 
-use crate::data::padding::Padded;
-use crate::data::py::simple::{PyAttribute, PyPseudonym};
-use crate::data::simple::{Attribute, Pseudonym};
+use crate::data::simple::{PyAttribute, PyPseudonym};
+use libpep::data::padding::Padded;
+use libpep::data::simple::{Attribute, Pseudonym};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 

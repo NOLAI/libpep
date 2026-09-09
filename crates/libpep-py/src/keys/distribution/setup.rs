@@ -2,11 +2,11 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
     PyBlindingFactor,
 };
-use crate::arithmetic::py::group_elements::PyGroupElement;
-use crate::keys::distribution::*;
-use crate::keys::py::types::{
+use crate::arithmetic::group_elements::PyGroupElement;
+use crate::keys::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
+use libpep::keys::distribution::*;
 use pyo3::prelude::*;
 
 #[pyfunction]
@@ -23,7 +23,7 @@ pub fn py_make_distributed_pseudonym_global_keys(
         make_distributed_pseudonym_global_keys(n, &mut rng);
 
     (
-        PyPseudonymGlobalPublicKey(PyGroupElement(public_key.0)),
+        PyPseudonymGlobalPublicKey(PyGroupElement(*public_key)),
         PyBlindedPseudonymGlobalSecretKey(blinded_key),
         blinding_factors.into_iter().map(PyBlindingFactor).collect(),
     )
@@ -44,7 +44,7 @@ pub fn py_make_distributed_attribute_global_keys(
         make_distributed_attribute_global_keys(n, &mut rng);
 
     (
-        PyAttributeGlobalPublicKey(PyGroupElement(public_key.0)),
+        PyAttributeGlobalPublicKey(PyGroupElement(*public_key)),
         PyBlindedAttributeGlobalSecretKey(blinded_key),
         blinding_factors.into_iter().map(PyBlindingFactor).collect(),
     )
@@ -66,8 +66,8 @@ pub fn py_make_distributed_global_keys(
 
     (
         PyGlobalPublicKeys {
-            pseudonym: PyPseudonymGlobalPublicKey(PyGroupElement(global_public_keys.pseudonym.0)),
-            attribute: PyAttributeGlobalPublicKey(PyGroupElement(global_public_keys.attribute.0)),
+            pseudonym: PyPseudonymGlobalPublicKey(PyGroupElement(*global_public_keys.pseudonym)),
+            attribute: PyAttributeGlobalPublicKey(PyGroupElement(*global_public_keys.attribute)),
         },
         PyBlindedGlobalKeys {
             pseudonym: PyBlindedPseudonymGlobalSecretKey(blinded_keys.pseudonym),

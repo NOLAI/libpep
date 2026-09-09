@@ -1,8 +1,8 @@
-use crate::arithmetic::wasm::group_elements::WASMGroupElement;
-use crate::core::wasm::elgamal::WASMElGamal;
-use crate::data::padding::Padded;
-use crate::data::simple::*;
+use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::core::elgamal::WASMElGamal;
 use derive_more::{Deref, From, Into};
+use libpep::data::padding::Padded;
+use libpep::data::simple::*;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym that can be used to identify a user.

@@ -8,12 +8,6 @@ pub mod functions;
 pub mod prelude;
 pub mod types;
 
-#[cfg(feature = "python")]
-pub mod py;
-
-#[cfg(feature = "wasm")]
-pub mod wasm;
-
 // Re-export types
 pub use types::Transcryptor;
 

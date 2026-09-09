@@ -1,8 +1,9 @@
 //! WASM bindings for cryptographic factor types.
 
-use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
-use crate::factors::types::*;
+use crate::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
+use libpep::factors::types::*;
+use libpep::factors::RekeyFactor;
 use wasm_bindgen::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -19,7 +20,7 @@ impl WASMRerandomizeFactor {
 
     #[wasm_bindgen(js_name = scalar)]
     pub fn wasm_scalar(&self) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0 .0)
+        WASMScalarNonZero(self.0.scalar())
     }
 }
 
@@ -55,7 +56,7 @@ impl WASMPseudonymRekeyFactor {
 
     #[wasm_bindgen(js_name = scalar)]
     pub fn wasm_scalar(&self) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0 .0)
+        WASMScalarNonZero(self.0.scalar())
     }
 }
 
@@ -73,7 +74,7 @@ impl WASMAttributeRekeyFactor {
 
     #[wasm_bindgen(js_name = scalar)]
     pub fn wasm_scalar(&self) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0 .0)
+        WASMScalarNonZero(self.0.scalar())
     }
 }
 

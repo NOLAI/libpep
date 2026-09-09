@@ -1,10 +1,11 @@
 //! Python bindings for key generation functions.
 
 use super::types::*;
-use crate::arithmetic::py::group_elements::PyGroupElement;
-use crate::arithmetic::py::scalars::PyScalarNonZero;
-use crate::keys::generation::*;
-use crate::keys::types::*;
+use crate::arithmetic::group_elements::PyGroupElement;
+use crate::arithmetic::scalars::PyScalarNonZero;
+use libpep::keys::generation::*;
+use libpep::keys::types::*;
+use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 
 /// Generate a new pseudonym global key pair.
@@ -14,8 +15,8 @@ pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
     let mut rng = rand::rng();
     let (public, secret) = make_pseudonym_global_keys(&mut rng);
     PyPseudonymGlobalKeyPair {
-        public: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(secret.0)),
+        public: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
     }
 }
 
@@ -26,8 +27,8 @@ pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
     let mut rng = rand::rng();
     let (public, secret) = make_attribute_global_keys(&mut rng);
     PyAttributeGlobalKeyPair {
-        public: PyAttributeGlobalPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(secret.0)),
+        public: PyAttributeGlobalPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
     }
 }
 
@@ -36,17 +37,17 @@ pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
 #[pyo3(name = "make_pseudonym_session_keys")]
 pub fn py_make_pseudonym_session_keys(
     global: &PyPseudonymGlobalSecretKey,
-    session: &crate::factors::py::contexts::PyEncryptionContext,
+    session: &crate::factors::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
-        &PseudonymGlobalSecretKey(global.0 .0),
+        &PseudonymGlobalSecretKey::from(*global.0),
         &session.0,
         &secret.0,
     );
     PyPseudonymSessionKeyPair {
-        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
+        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(*secret_key)),
     }
 }
 
@@ -55,17 +56,17 @@ pub fn py_make_pseudonym_session_keys(
 #[pyo3(name = "make_attribute_session_keys")]
 pub fn py_make_attribute_session_keys(
     global: &PyAttributeGlobalSecretKey,
-    session: &crate::factors::py::contexts::PyEncryptionContext,
+    session: &crate::factors::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
-        &AttributeGlobalSecretKey(global.0 .0),
+        &AttributeGlobalSecretKey::from(*global.0),
         &session.0,
         &secret.0,
     );
     PyAttributeSessionKeyPair {
-        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
+        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(*secret_key)),
     }
 }
 
@@ -77,12 +78,16 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     let (public, secret) = make_global_keys(&mut rng);
     (
         PyGlobalPublicKeys {
-            pseudonym: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(public.pseudonym.0)),
-            attribute: PyAttributeGlobalPublicKey::from(PyGroupElement::from(public.attribute.0)),
+            pseudonym: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public.pseudonym)),
+            attribute: PyAttributeGlobalPublicKey::from(PyGroupElement::from(*public.attribute)),
         },
         PyGlobalSecretKeys {
-            pseudonym: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(secret.pseudonym.0)),
-            attribute: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(secret.attribute.0)),
+            pseudonym: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(
+                *secret.pseudonym.value(),
+            )),
+            attribute: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(
+                *secret.attribute.value(),
+            )),
         },
     )
 }
@@ -92,32 +97,28 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
 #[pyo3(name = "make_session_keys")]
 pub fn py_make_session_keys(
     global: &PyGlobalSecretKeys,
-    session: &crate::factors::py::contexts::PyEncryptionContext,
+    session: &crate::factors::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PySessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {
-            pseudonym: PseudonymGlobalSecretKey(global.pseudonym.0 .0),
-            attribute: AttributeGlobalSecretKey(global.attribute.0 .0),
+            pseudonym: PseudonymGlobalSecretKey::from(*global.pseudonym.0),
+            attribute: AttributeGlobalSecretKey::from(*global.attribute.0),
         },
         &session.0,
         &secret.0,
     );
     PySessionKeys {
         pseudonym: PyPseudonymSessionKeys {
-            public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(
-                keys.pseudonym.public.0,
-            )),
+            public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*keys.pseudonym.public)),
             secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(
-                keys.pseudonym.secret.0,
+                *keys.pseudonym.secret,
             )),
         },
         attribute: PyAttributeSessionKeys {
-            public: PyAttributeSessionPublicKey::from(PyGroupElement::from(
-                keys.attribute.public.0,
-            )),
+            public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*keys.attribute.public)),
             secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(
-                keys.attribute.secret.0,
+                *keys.attribute.secret,
             )),
         },
     }

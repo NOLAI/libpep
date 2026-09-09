@@ -1,8 +1,8 @@
-use crate::arithmetic::py::group_elements::PyGroupElement;
-use crate::core::py::elgamal::PyElGamal;
-use crate::data::padding::Padded;
-use crate::data::simple::*;
+use crate::arithmetic::group_elements::PyGroupElement;
+use crate::core::elgamal::PyElGamal;
 use derive_more::{Deref, From, Into};
+use libpep::data::padding::Padded;
+use libpep::data::simple::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -314,7 +314,7 @@ impl PyEncryptedPseudonym {
     #[staticmethod]
     #[pyo3(name = "from_bytes")]
     fn decode(v: &[u8]) -> Option<Self> {
-        use crate::core::elgamal::ElGamal;
+        use libpep::core::elgamal::ElGamal;
         ElGamal::from_slice(v).map(|eg| Self(EncryptedPseudonym::from(eg)))
     }
 
@@ -367,7 +367,7 @@ impl PyEncryptedAttribute {
     #[staticmethod]
     #[pyo3(name = "from_bytes")]
     fn decode(v: &[u8]) -> Option<Self> {
-        use crate::core::elgamal::ElGamal;
+        use libpep::core::elgamal::ElGamal;
         ElGamal::from_slice(v).map(|eg| Self(EncryptedAttribute::from(eg)))
     }
 

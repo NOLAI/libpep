@@ -1,20 +1,18 @@
-use crate::client::{decrypt, encrypt};
-use crate::data::long::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
-};
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::keys::py::types::{
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
-use crate::keys::types::{
+use derive_more::{Deref, From};
+use libpep::client::{decrypt, encrypt};
+use libpep::data::long::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
+};
+use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
-use derive_more::{Deref, From};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -316,7 +314,7 @@ pub fn py_encrypt_long_pseudonym(
     let mut rng = rand::rng();
     PyLongEncryptedPseudonym(encrypt(
         &message.0,
-        &PseudonymSessionPublicKey::from(public_key.0 .0),
+        &PseudonymSessionPublicKey::from(*public_key.0),
         &mut rng,
     ))
 }
@@ -331,7 +329,7 @@ pub fn py_decrypt_long_pseudonym(
 ) -> Option<PyLongPseudonym> {
     decrypt(
         &encrypted.0,
-        &PseudonymSessionSecretKey::from(secret_key.0 .0),
+        &PseudonymSessionSecretKey::from(*secret_key.0),
     )
     .map(PyLongPseudonym)
 }
@@ -346,7 +344,7 @@ pub fn py_decrypt_long_pseudonym(
 ) -> PyLongPseudonym {
     PyLongPseudonym(decrypt(
         &encrypted.0,
-        &PseudonymSessionSecretKey::from(secret_key.0 .0),
+        &PseudonymSessionSecretKey::from(*secret_key.0),
     ))
 }
 
@@ -360,7 +358,7 @@ pub fn py_encrypt_long_attribute(
     let mut rng = rand::rng();
     PyLongEncryptedAttribute(encrypt(
         &message.0,
-        &AttributeSessionPublicKey::from(public_key.0 .0),
+        &AttributeSessionPublicKey::from(*public_key.0),
         &mut rng,
     ))
 }
@@ -375,7 +373,7 @@ pub fn py_decrypt_long_attribute(
 ) -> Option<PyLongAttribute> {
     decrypt(
         &encrypted.0,
-        &AttributeSessionSecretKey::from(secret_key.0 .0),
+        &AttributeSessionSecretKey::from(*secret_key.0),
     )
     .map(PyLongAttribute)
 }
@@ -390,7 +388,7 @@ pub fn py_decrypt_long_attribute(
 ) -> PyLongAttribute {
     PyLongAttribute(decrypt(
         &encrypted.0,
-        &AttributeSessionSecretKey::from(secret_key.0 .0),
+        &AttributeSessionSecretKey::from(*secret_key.0),
     ))
 }
 

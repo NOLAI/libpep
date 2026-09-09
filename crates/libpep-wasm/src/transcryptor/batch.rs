@@ -1,21 +1,21 @@
 //! WASM bindings for batch transcryption operations.
 
-use crate::data::records::EncryptedRecord;
-#[cfg(feature = "long")]
-use crate::data::records::LongEncryptedRecord;
 #[cfg(feature = "json")]
-use crate::data::wasm::json::WASMEncryptedPEPJSONValue;
+use crate::data::json::WASMEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
-use crate::data::wasm::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 #[cfg(feature = "long")]
-use crate::data::wasm::records::WASMLongRecordEncrypted;
-use crate::data::wasm::records::WASMRecordEncrypted;
-use crate::data::wasm::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::factors::wasm::contexts::{
+use crate::data::records::WASMLongRecordEncrypted;
+use crate::data::records::WASMRecordEncrypted;
+use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::factors::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::data::records::EncryptedRecord;
+#[cfg(feature = "long")]
+use libpep::data::records::LongEncryptedRecord;
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
+use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use wasm_bindgen::prelude::*;
 
 /// Batch pseudonymize encrypted pseudonyms.

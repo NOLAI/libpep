@@ -1,7 +1,7 @@
-use crate::arithmetic::wasm::group_elements::WASMGroupElement;
-use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
-use crate::keys::types::*;
+use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
+use libpep::keys::types::*;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session secret key used to decrypt pseudonyms with.
@@ -53,7 +53,7 @@ impl WASMPseudonymGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        use crate::arithmetic::group_elements::GroupElement;
+        use libpep::arithmetic::group_elements::GroupElement;
         GroupElement::from_slice(&bytes).map(|x| Self(x.into()))
     }
 
@@ -64,7 +64,7 @@ impl WASMPseudonymGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        use crate::arithmetic::group_elements::GroupElement;
+        use libpep::arithmetic::group_elements::GroupElement;
         GroupElement::from_hex(hex).map(|x| Self(x.into()))
     }
 }
@@ -88,7 +88,7 @@ impl WASMAttributeGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromBytes)]
     pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-        use crate::arithmetic::group_elements::GroupElement;
+        use libpep::arithmetic::group_elements::GroupElement;
         GroupElement::from_slice(&bytes).map(|x| Self(x.into()))
     }
 
@@ -99,7 +99,7 @@ impl WASMAttributeGlobalPublicKey {
 
     #[wasm_bindgen(js_name = fromHex)]
     pub fn from_hex(hex: &str) -> Option<Self> {
-        use crate::arithmetic::group_elements::GroupElement;
+        use libpep::arithmetic::group_elements::GroupElement;
         GroupElement::from_hex(hex).map(|x| Self(x.into()))
     }
 }
@@ -415,18 +415,18 @@ impl From<SessionKeys> for WASMSessionKeys {
         WASMSessionKeys {
             pseudonym: WASMPseudonymSessionKeys {
                 public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(
-                    keys.pseudonym.public.0,
+                    *keys.pseudonym.public,
                 )),
                 secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(
-                    keys.pseudonym.secret.0,
+                    *keys.pseudonym.secret,
                 )),
             },
             attribute: WASMAttributeSessionKeys {
                 public: WASMAttributeSessionPublicKey(WASMGroupElement::from(
-                    keys.attribute.public.0,
+                    *keys.attribute.public,
                 )),
                 secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(
-                    keys.attribute.secret.0,
+                    *keys.attribute.secret,
                 )),
             },
         }

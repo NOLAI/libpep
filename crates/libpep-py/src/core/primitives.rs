@@ -1,8 +1,8 @@
 use super::elgamal::PyElGamal;
 #[cfg(not(feature = "elgamal3"))]
-use crate::arithmetic::py::PyGroupElement;
-use crate::arithmetic::py::PyScalarNonZero;
-use crate::core::primitives::*;
+use crate::arithmetic::PyGroupElement;
+use crate::arithmetic::PyScalarNonZero;
+use libpep::core::primitives::*;
 use pyo3::prelude::*;
 
 /// Change the representation of a ciphertext without changing the contents.

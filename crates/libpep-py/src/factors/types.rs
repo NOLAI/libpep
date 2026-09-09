@@ -1,8 +1,9 @@
 //! Python bindings for cryptographic factor types.
 
-use crate::arithmetic::py::PyScalarNonZero;
-use crate::factors::types::*;
+use crate::arithmetic::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
+use libpep::factors::types::*;
+use libpep::factors::RekeyFactor;
 use pyo3::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -19,7 +20,7 @@ impl PyRerandomizeFactor {
 
     #[pyo3(name = "scalar")]
     pub fn py_scalar(&self) -> PyScalarNonZero {
-        PyScalarNonZero(self.0 .0)
+        PyScalarNonZero(self.0.scalar())
     }
 }
 
@@ -55,7 +56,7 @@ impl PyPseudonymRekeyFactor {
 
     #[pyo3(name = "scalar")]
     pub fn py_scalar(&self) -> PyScalarNonZero {
-        PyScalarNonZero(self.0 .0)
+        PyScalarNonZero(self.0.scalar())
     }
 }
 
@@ -73,7 +74,7 @@ impl PyAttributeRekeyFactor {
 
     #[pyo3(name = "scalar")]
     pub fn py_scalar(&self) -> PyScalarNonZero {
-        PyScalarNonZero(self.0 .0)
+        PyScalarNonZero(self.0.scalar())
     }
 }
 

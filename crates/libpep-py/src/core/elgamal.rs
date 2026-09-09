@@ -1,6 +1,6 @@
-use crate::arithmetic::py::{PyGroupElement, PyScalarNonZero};
-use crate::core::elgamal::{decrypt, encrypt, ElGamal};
+use crate::arithmetic::{PyGroupElement, PyScalarNonZero};
 use derive_more::{Deref, From, Into};
+use libpep::core::elgamal::{decrypt, encrypt, ElGamal};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

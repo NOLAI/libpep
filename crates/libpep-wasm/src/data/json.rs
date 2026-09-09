@@ -1,30 +1,30 @@
 //! WASM bindings for PEP JSON encryption.
 
-use crate::client::{decrypt, encrypt};
+use crate::data::utils;
 #[cfg(feature = "batch")]
-use crate::client::{decrypt_batch, encrypt_batch};
+use crate::factors::contexts::WASMTranscryptionInfo;
+use crate::factors::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
+use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::client::{decrypt_global, encrypt_global};
-use crate::data::json::builder::PEPJSONBuilder;
-use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
-use crate::data::json::structure::JSONStructure;
-use crate::data::wasm::utils;
-use crate::data::traits::Transcryptable;
-#[cfg(feature = "batch")]
-use crate::factors::wasm::contexts::WASMTranscryptionInfo;
-use crate::factors::wasm::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::factors::wasm::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
-use crate::factors::TranscryptionInfo;
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::wasm::types::WASMGlobalPublicKeys;
+use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::keys::wasm::types::WASMGlobalSecretKeys;
-use crate::keys::wasm::types::WASMSessionKeys;
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::GlobalPublicKeys;
-use crate::keys::SessionKeys;
+use crate::keys::types::WASMGlobalSecretKeys;
+use crate::keys::types::WASMSessionKeys;
+use libpep::client::{decrypt, encrypt};
 #[cfg(feature = "batch")]
-use crate::transcryptor::transcrypt_batch;
+use libpep::client::{decrypt_batch, encrypt_batch};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::client::{decrypt_global, encrypt_global};
+use libpep::data::json::builder::PEPJSONBuilder;
+use libpep::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
+use libpep::data::json::structure::JSONStructure;
+use libpep::data::traits::Transcryptable;
+use libpep::factors::TranscryptionInfo;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::GlobalPublicKeys;
+use libpep::keys::SessionKeys;
+#[cfg(feature = "batch")]
+use libpep::transcryptor::transcrypt_batch;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
@@ -460,7 +460,7 @@ pub fn wasm_decrypt_json_global(
     encrypted: &WASMEncryptedPEPJSONValue,
     global_secret_keys: &WASMGlobalSecretKeys,
 ) -> Result<WASMPEPJSONValue, JsValue> {
-    let keys = crate::keys::GlobalSecretKeys {
+    let keys = libpep::keys::GlobalSecretKeys {
         pseudonym: global_secret_keys.pseudonym().0 .0.into(),
         attribute: global_secret_keys.attribute().0 .0.into(),
     };
@@ -528,7 +528,7 @@ pub fn wasm_unify_structures(
     structures: Vec<WASMJSONStructure>,
 ) -> Result<WASMJSONStructure, JsValue> {
     let rust_structures: Vec<JSONStructure> = structures.into_iter().map(|s| s.0).collect();
-    crate::data::json::structure::unify_structures(&rust_structures)
+    libpep::data::json::structure::unify_structures(&rust_structures)
         .map(WASMJSONStructure)
         .map_err(|e| JsValue::from_str(&format!("Unification failed: {}", e)))
 }

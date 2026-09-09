@@ -1,8 +1,8 @@
 use super::elgamal::WASMElGamal;
 #[cfg(not(feature = "elgamal3"))]
-use crate::arithmetic::wasm::group_elements::WASMGroupElement;
-use crate::arithmetic::wasm::scalars::WASMScalarNonZero;
-use crate::core::primitives::*;
+use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::arithmetic::scalars::WASMScalarNonZero;
+use libpep::core::primitives::*;
 use wasm_bindgen::prelude::*;
 
 /// Change the representation of a ciphertext without changing the contents.

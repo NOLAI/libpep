@@ -16,9 +16,3 @@
 
 pub mod group_elements;
 pub mod scalars;
-
-#[cfg(feature = "python")]
-pub mod py;
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

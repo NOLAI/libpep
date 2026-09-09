@@ -1,16 +1,16 @@
 //! Python bindings for batch transcryption operations.
 
 #[cfg(feature = "json")]
-use crate::data::py::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
-use crate::data::py::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
-use crate::data::py::records::PyEncryptedRecord;
-use crate::data::py::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::py::contexts::{
+use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
+use crate::data::records::PyEncryptedRecord;
+use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::factors::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
-use crate::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
-use crate::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
+use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

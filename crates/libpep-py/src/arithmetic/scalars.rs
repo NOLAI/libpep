@@ -1,5 +1,5 @@
-use super::super::scalars::*;
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::scalars::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

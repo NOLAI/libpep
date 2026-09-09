@@ -1,15 +1,13 @@
 //! Python bindings for secret types and factor derivation functions.
 
-use crate::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::factors::*;
+use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::*;
 use pyo3::prelude::*;
 
-use crate::factors::py::types::{
-    PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyReshuffleFactor,
-};
+use crate::factors::types::{PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyReshuffleFactor};
 
 // Re-export the secret types from keys::py::types to avoid duplicate definitions
-pub use crate::keys::py::types::{PyEncryptionSecret, PyPseudonymizationSecret};
+pub use crate::keys::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 
 /// Derive a pseudonym rekey factor from a secret and a context.
 #[pyfunction]

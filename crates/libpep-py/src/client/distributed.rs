@@ -1,30 +1,28 @@
 //! Python bindings for distributed client.
 
-use crate::client::distributed::make_session_keys_distributed;
-use crate::client::Client;
 #[cfg(feature = "json")]
-use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 #[cfg(feature = "long")]
-use crate::data::py::long::{
+use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-use crate::data::py::records::{PyEncryptedRecord, PyRecord};
+use crate::data::records::{PyEncryptedRecord, PyRecord};
 #[cfg(feature = "long")]
-use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
-use crate::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
-};
-use crate::keys::py::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
-use crate::keys::py::{
+use crate::data::records::{PyLongEncryptedRecord, PyLongRecord};
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
+use crate::keys::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
+use crate::keys::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyBlindedGlobalKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
 };
-use crate::keys::py::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
-use crate::keys::*;
+use crate::keys::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
 use derive_more::{Deref, From, Into};
+use libpep::client::distributed::make_session_keys_distributed;
+use libpep::client::Client;
+use libpep::keys::distribution::{
+    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
+};
+use libpep::keys::*;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
@@ -46,8 +44,8 @@ impl PyClient {
         let shares: Vec<SessionKeyShares> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare(x.pseudonym.0 .0),
-                attribute: AttributeSessionKeyShare(x.attribute.0 .0),
+                pseudonym: PseudonymSessionKeyShare::from(*x.pseudonym.0),
+                attribute: AttributeSessionKeyShare::from(*x.attribute.0),
             })
             .collect();
         let blinded_keys = BlindedGlobalKeys {
@@ -69,12 +67,12 @@ impl PyClient {
         let keys = self.0.dump();
         PySessionKeys {
             pseudonym: PyPseudonymSessionKeys {
-                public: PyPseudonymSessionPublicKey(keys.pseudonym.public.0.into()),
-                secret: PyPseudonymSessionSecretKey(keys.pseudonym.secret.0.into()),
+                public: PyPseudonymSessionPublicKey((*keys.pseudonym.public).into()),
+                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
             },
             attribute: PyAttributeSessionKeys {
-                public: PyAttributeSessionPublicKey(keys.attribute.public.0.into()),
-                secret: PyAttributeSessionSecretKey(keys.attribute.secret.0.into()),
+                public: PyAttributeSessionPublicKey((*keys.attribute.public).into()),
+                secret: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
             },
         }
     }
@@ -84,12 +82,12 @@ impl PyClient {
         let keys = self.0.dump();
         PySessionKeys {
             pseudonym: PyPseudonymSessionKeys {
-                public: PyPseudonymSessionPublicKey(keys.pseudonym.public.0.into()),
-                secret: PyPseudonymSessionSecretKey(keys.pseudonym.secret.0.into()),
+                public: PyPseudonymSessionPublicKey((*keys.pseudonym.public).into()),
+                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
             },
             attribute: PyAttributeSessionKeys {
-                public: PyAttributeSessionPublicKey(keys.attribute.public.0.into()),
-                secret: PyAttributeSessionSecretKey(keys.attribute.secret.0.into()),
+                public: PyAttributeSessionPublicKey((*keys.attribute.public).into()),
+                secret: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
             },
         }
     }
@@ -98,8 +96,8 @@ impl PyClient {
     fn py_session_public_keys(&self) -> PySessionPublicKeys {
         let keys = self.0.dump();
         PySessionPublicKeys {
-            pseudonym: PyPseudonymSessionPublicKey(keys.pseudonym.public.0.into()),
-            attribute: PyAttributeSessionPublicKey(keys.attribute.public.0.into()),
+            pseudonym: PyPseudonymSessionPublicKey((*keys.pseudonym.public).into()),
+            attribute: PyAttributeSessionPublicKey((*keys.attribute.public).into()),
         }
     }
 
@@ -107,8 +105,8 @@ impl PyClient {
     fn py_session_secret_keys(&self) -> PySessionSecretKeys {
         let keys = self.0.dump();
         PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey(keys.pseudonym.secret.0.into()),
-            attribute: PyAttributeSessionSecretKey(keys.attribute.secret.0.into()),
+            pseudonym: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
+            attribute: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
         }
     }
 
@@ -147,24 +145,24 @@ impl PyClient {
 
         // Try Record - uses SessionKeys directly
         if let Ok(r) = message.extract::<PyRecord>() {
-            use crate::data::traits::Encryptable;
-            let result = r.0.encrypt(&self.0.keys, &mut rng);
+            use libpep::data::traits::Encryptable;
+            let result = r.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(result))?.into_any());
         }
 
         // Try LongRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(lr) = message.extract::<PyLongRecord>() {
-            use crate::data::traits::Encryptable;
-            let result = lr.0.encrypt(&self.0.keys, &mut rng);
+            use libpep::data::traits::Encryptable;
+            let result = lr.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
 
         // Try PEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(j) = message.extract::<PyPEPJSONValue>() {
-            use crate::data::traits::Encryptable;
-            let result = j.0.encrypt(&self.0.keys, &mut rng);
+            use libpep::data::traits::Encryptable;
+            let result = j.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
 
@@ -220,9 +218,9 @@ impl PyClient {
 
         // Try EncryptedRecord - uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-            use crate::data::traits::Encrypted;
+            use libpep::data::traits::Encrypted;
             let result =
-                er.0.decrypt(&self.0.keys)
+                er.0.decrypt(self.0.dump())
                     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))?;
             return Ok(Py::new(py, PyRecord(result))?.into_any());
         }
@@ -230,10 +228,10 @@ impl PyClient {
         // Try LongEncryptedRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
-            use crate::data::traits::Encrypted;
+            use libpep::data::traits::Encrypted;
             let result = ler
                 .0
-                .decrypt(&self.0.keys)
+                .decrypt(self.0.dump())
                 .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))?;
             return Ok(Py::new(py, PyLongRecord(result))?.into_any());
         }
@@ -241,9 +239,9 @@ impl PyClient {
         // Try EncryptedPEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-            use crate::data::traits::Encrypted;
+            use libpep::data::traits::Encrypted;
             let result =
-                ej.0.decrypt(&self.0.keys)
+                ej.0.decrypt(self.0.dump())
                     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))?;
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
@@ -288,24 +286,24 @@ impl PyClient {
 
         // Try EncryptedRecord - uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-            use crate::data::traits::Encrypted;
-            let result = er.0.decrypt(&self.0.keys);
+            use libpep::data::traits::Encrypted;
+            let result = er.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyRecord(result))?.into_any());
         }
 
         // Try LongEncryptedRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
-            use crate::data::traits::Encrypted;
-            let result = ler.0.decrypt(&self.0.keys);
+            use libpep::data::traits::Encrypted;
+            let result = ler.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyLongRecord(result))?.into_any());
         }
 
         // Try EncryptedPEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-            use crate::data::traits::Encrypted;
-            let result = ej.0.decrypt(&self.0.keys);
+            use libpep::data::traits::Encrypted;
+            let result = ej.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
 
@@ -534,14 +532,14 @@ impl PyClient {
         old_key_shares: &PySessionKeyShares,
         new_key_shares: &PySessionKeyShares,
     ) {
-        use crate::client::distributed::Distributed;
+        use libpep::client::distributed::Distributed;
         let old_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare(old_key_shares.pseudonym.0 .0),
-            attribute: AttributeSessionKeyShare(old_key_shares.attribute.0 .0),
+            pseudonym: PseudonymSessionKeyShare::from(*old_key_shares.pseudonym.0),
+            attribute: AttributeSessionKeyShare::from(*old_key_shares.attribute.0),
         };
         let new_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare(new_key_shares.pseudonym.0 .0),
-            attribute: AttributeSessionKeyShare(new_key_shares.attribute.0 .0),
+            pseudonym: PseudonymSessionKeyShare::from(*new_key_shares.pseudonym.0),
+            attribute: AttributeSessionKeyShare::from(*new_key_shares.attribute.0),
         };
         self.0.update_session_secret_keys(old_shares, new_shares);
     }

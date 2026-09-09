@@ -18,12 +18,6 @@ pub mod generation;
 pub mod traits;
 pub mod types;
 
-#[cfg(feature = "python")]
-pub mod py;
-
-#[cfg(feature = "wasm")]
-pub mod wasm;
-
 // Re-export commonly used types
 pub use generation::{
     make_attribute_global_keys, make_attribute_session_keys, make_global_key_pair,

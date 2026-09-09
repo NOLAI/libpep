@@ -1,6 +1,6 @@
-use super::super::group_elements::{GroupElement, G};
-use crate::arithmetic::py::PyScalarNonZero;
+use crate::arithmetic::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
+use libpep::arithmetic::group_elements::{GroupElement, G};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

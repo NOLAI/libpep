@@ -1,40 +1,40 @@
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::client::decrypt_global;
-#[cfg(feature = "offline")]
-use crate::client::encrypt_global;
-use crate::client::{decrypt, encrypt};
 #[cfg(feature = "json")]
-use crate::data::wasm::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
+use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 #[cfg(feature = "long")]
-use crate::data::wasm::long::{
+use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
 #[cfg(feature = "long")]
-use crate::data::wasm::records::{WASMLongRecord, WASMLongRecordEncrypted};
-use crate::data::wasm::records::{WASMRecord, WASMRecordEncrypted};
-use crate::data::wasm::simple::{
+use crate::data::records::{WASMLongRecord, WASMLongRecordEncrypted};
+use crate::data::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
-use crate::factors::wasm::contexts::WASMTranscryptionInfo;
-use crate::factors::TranscryptionInfo;
-use crate::keys::wasm::types::WASMSessionKeys;
+use crate::factors::contexts::WASMTranscryptionInfo;
+use crate::keys::types::WASMSessionKeys;
 #[cfg(feature = "offline")]
-use crate::keys::wasm::types::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
+use crate::keys::types::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::wasm::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
-use crate::keys::wasm::types::{
+use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
+use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey, WASMPseudonymSessionPublicKey,
     WASMPseudonymSessionSecretKey,
 };
-#[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::keys::{
+use libpep::client::decrypt_global;
+#[cfg(feature = "offline")]
+use libpep::client::encrypt_global;
+use libpep::client::{decrypt, encrypt};
+use libpep::factors::TranscryptionInfo;
+#[cfg(feature = "offline")]
+use libpep::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey, SessionKeys,
 };
-use crate::transcryptor::transcrypt;
+use libpep::transcryptor::transcrypt;
 use wasm_bindgen::prelude::*;
 
 /// Encrypt a pseudonym using a session public key.
@@ -46,7 +46,7 @@ pub fn wasm_encrypt_pseudonym(
     let mut rng = rand::rng();
     encrypt(
         &m.0,
-        &PseudonymSessionPublicKey::from(public_key.0 .0),
+        &PseudonymSessionPublicKey::from(*public_key.0),
         &mut rng,
     )
     .into()
@@ -59,7 +59,7 @@ pub fn wasm_decrypt_pseudonym(
     v: &WASMEncryptedPseudonym,
     secret_key: &WASMPseudonymSessionSecretKey,
 ) -> Option<WASMPseudonym> {
-    decrypt(&v.0, &PseudonymSessionSecretKey::from(secret_key.0 .0)).map(|x| x.into())
+    decrypt(&v.0, &PseudonymSessionSecretKey::from(*secret_key.0)).map(|x| x.into())
 }
 
 /// Decrypt an encrypted pseudonym using a session secret key.
@@ -69,7 +69,7 @@ pub fn wasm_decrypt_pseudonym(
     v: &WASMEncryptedPseudonym,
     secret_key: &WASMPseudonymSessionSecretKey,
 ) -> WASMPseudonym {
-    decrypt(&v.0, &PseudonymSessionSecretKey::from(secret_key.0 .0)).into()
+    decrypt(&v.0, &PseudonymSessionSecretKey::from(*secret_key.0)).into()
 }
 
 /// Encrypt an attribute using a session public key.
@@ -81,7 +81,7 @@ pub fn wasm_encrypt_attribute(
     let mut rng = rand::rng();
     encrypt(
         &m.0,
-        &AttributeSessionPublicKey::from(public_key.0 .0),
+        &AttributeSessionPublicKey::from(*public_key.0),
         &mut rng,
     )
     .into()
@@ -94,7 +94,7 @@ pub fn wasm_decrypt_attribute(
     v: &WASMEncryptedAttribute,
     secret_key: &WASMAttributeSessionSecretKey,
 ) -> Option<WASMAttribute> {
-    decrypt(&v.0, &AttributeSessionSecretKey::from(secret_key.0 .0)).map(|x| x.into())
+    decrypt(&v.0, &AttributeSessionSecretKey::from(*secret_key.0)).map(|x| x.into())
 }
 
 /// Decrypt an encrypted attribute using a session secret key.
@@ -104,7 +104,7 @@ pub fn wasm_decrypt_attribute(
     v: &WASMEncryptedAttribute,
     secret_key: &WASMAttributeSessionSecretKey,
 ) -> WASMAttribute {
-    decrypt(&v.0, &AttributeSessionSecretKey::from(secret_key.0 .0)).into()
+    decrypt(&v.0, &AttributeSessionSecretKey::from(*secret_key.0)).into()
 }
 
 // ============================================================================
@@ -121,7 +121,7 @@ pub fn wasm_encrypt_long_pseudonym(
     let mut rng = rand::rng();
     encrypt(
         &m.0,
-        &PseudonymSessionPublicKey::from(public_key.0 .0),
+        &PseudonymSessionPublicKey::from(*public_key.0),
         &mut rng,
     )
     .into()
@@ -134,7 +134,7 @@ pub fn wasm_decrypt_long_pseudonym(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymSessionSecretKey,
 ) -> Option<WASMLongPseudonym> {
-    decrypt(&v.0, &PseudonymSessionSecretKey::from(secret_key.0 .0)).map(|x| x.into())
+    decrypt(&v.0, &PseudonymSessionSecretKey::from(*secret_key.0)).map(|x| x.into())
 }
 
 /// Decrypt an encrypted long pseudonym using a session secret key.
@@ -144,7 +144,7 @@ pub fn wasm_decrypt_long_pseudonym(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymSessionSecretKey,
 ) -> WASMLongPseudonym {
-    decrypt(&v.0, &PseudonymSessionSecretKey::from(secret_key.0 .0)).into()
+    decrypt(&v.0, &PseudonymSessionSecretKey::from(*secret_key.0)).into()
 }
 
 /// Encrypt a long attribute using a session public key.
@@ -157,7 +157,7 @@ pub fn wasm_encrypt_long_attribute(
     let mut rng = rand::rng();
     encrypt(
         &m.0,
-        &AttributeSessionPublicKey::from(public_key.0 .0),
+        &AttributeSessionPublicKey::from(*public_key.0),
         &mut rng,
     )
     .into()
@@ -170,7 +170,7 @@ pub fn wasm_decrypt_long_attribute(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeSessionSecretKey,
 ) -> Option<WASMLongAttribute> {
-    decrypt(&v.0, &AttributeSessionSecretKey::from(secret_key.0 .0)).map(|x| x.into())
+    decrypt(&v.0, &AttributeSessionSecretKey::from(*secret_key.0)).map(|x| x.into())
 }
 
 /// Decrypt an encrypted long attribute using a session secret key.
@@ -180,7 +180,7 @@ pub fn wasm_decrypt_long_attribute(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeSessionSecretKey,
 ) -> WASMLongAttribute {
-    decrypt(&v.0, &AttributeSessionSecretKey::from(secret_key.0 .0)).into()
+    decrypt(&v.0, &AttributeSessionSecretKey::from(*secret_key.0)).into()
 }
 
 // ============================================================================
@@ -191,8 +191,8 @@ pub fn wasm_decrypt_long_attribute(
 #[wasm_bindgen(js_name = encryptRecord)]
 pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMRecordEncrypted {
     let mut rng = rand::rng();
-    use crate::data::records::Record;
-    use crate::data::traits::Encryptable;
+    use libpep::data::records::Record;
+    use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: Record = record.into();
     rust_record.encrypt(&session_keys, &mut rng).into()
@@ -205,8 +205,8 @@ pub fn wasm_decrypt_record(
     encrypted: WASMRecordEncrypted,
     keys: &WASMSessionKeys,
 ) -> Option<WASMRecord> {
-    use crate::data::records::EncryptedRecord;
-    use crate::data::traits::Encrypted;
+    use libpep::data::records::EncryptedRecord;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: EncryptedRecord = encrypted.into();
     rust_encrypted.decrypt(&session_keys).map(|r| r.into())
@@ -216,8 +216,8 @@ pub fn wasm_decrypt_record(
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = decryptRecord)]
 pub fn wasm_decrypt_record(encrypted: WASMRecordEncrypted, keys: &WASMSessionKeys) -> WASMRecord {
-    use crate::data::records::EncryptedRecord;
-    use crate::data::traits::Encrypted;
+    use libpep::data::records::EncryptedRecord;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: EncryptedRecord = encrypted.into();
     rust_encrypted.decrypt(&session_keys).into()
@@ -229,7 +229,7 @@ pub fn wasm_transcrypt_record(
     encrypted: WASMRecordEncrypted,
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMRecordEncrypted {
-    use crate::data::records::EncryptedRecord;
+    use libpep::data::records::EncryptedRecord;
     let rust_encrypted: EncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -246,8 +246,8 @@ pub fn wasm_encrypt_long_record(
     keys: &WASMSessionKeys,
 ) -> WASMLongRecordEncrypted {
     let mut rng = rand::rng();
-    use crate::data::records::LongRecord;
-    use crate::data::traits::Encryptable;
+    use libpep::data::records::LongRecord;
+    use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: LongRecord = record.into();
     rust_record.encrypt(&session_keys, &mut rng).into()
@@ -260,8 +260,8 @@ pub fn wasm_decrypt_long_record(
     encrypted: WASMLongRecordEncrypted,
     keys: &WASMSessionKeys,
 ) -> Option<WASMLongRecord> {
-    use crate::data::records::LongEncryptedRecord;
-    use crate::data::traits::Encrypted;
+    use libpep::data::records::LongEncryptedRecord;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     rust_encrypted.decrypt(&session_keys).map(|r| r.into())
@@ -274,8 +274,8 @@ pub fn wasm_decrypt_long_record(
     encrypted: WASMLongRecordEncrypted,
     keys: &WASMSessionKeys,
 ) -> WASMLongRecord {
-    use crate::data::records::LongEncryptedRecord;
-    use crate::data::traits::Encrypted;
+    use libpep::data::records::LongEncryptedRecord;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     rust_encrypted.decrypt(&session_keys).into()
@@ -288,7 +288,7 @@ pub fn wasm_transcrypt_long_record(
     encrypted: WASMLongRecordEncrypted,
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMLongRecordEncrypted {
-    use crate::data::records::LongEncryptedRecord;
+    use libpep::data::records::LongEncryptedRecord;
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -309,7 +309,7 @@ pub fn wasm_encrypt_json(
     keys: &WASMSessionKeys,
 ) -> WASMEncryptedPEPJSONValue {
     let mut rng = rand::rng();
-    use crate::data::traits::Encryptable;
+    use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     WASMEncryptedPEPJSONValue(json.0.encrypt(&session_keys, &mut rng))
 }
@@ -321,7 +321,7 @@ pub fn wasm_decrypt_json(
     encrypted: &WASMEncryptedPEPJSONValue,
     keys: &WASMSessionKeys,
 ) -> Option<WASMPEPJSONValue> {
-    use crate::data::traits::Encrypted;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     encrypted.0.decrypt(&session_keys).map(WASMPEPJSONValue)
 }
@@ -333,7 +333,7 @@ pub fn wasm_decrypt_json(
     encrypted: &WASMEncryptedPEPJSONValue,
     keys: &WASMSessionKeys,
 ) -> WASMPEPJSONValue {
-    use crate::data::traits::Encrypted;
+    use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     WASMPEPJSONValue(encrypted.0.decrypt(&session_keys))
 }
@@ -363,7 +363,7 @@ pub fn wasm_encrypt_pseudonym_global(
     public_key: &WASMPseudonymGlobalPublicKey,
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::rng();
-    let key = PseudonymGlobalPublicKey(public_key.0 .0);
+    let key = PseudonymGlobalPublicKey::from(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -374,7 +374,7 @@ pub fn wasm_decrypt_pseudonym_global(
     v: &WASMEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> Option<WASMPseudonym> {
-    let key = PseudonymGlobalSecretKey(secret_key.0 .0);
+    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -385,7 +385,7 @@ pub fn wasm_decrypt_pseudonym_global(
     v: &WASMEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> WASMPseudonym {
-    let key = PseudonymGlobalSecretKey(secret_key.0 .0);
+    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }
 
@@ -397,7 +397,7 @@ pub fn wasm_encrypt_attribute_global(
     public_key: &WASMAttributeGlobalPublicKey,
 ) -> WASMEncryptedAttribute {
     let mut rng = rand::rng();
-    let key = AttributeGlobalPublicKey(public_key.0 .0);
+    let key = AttributeGlobalPublicKey::from(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -408,7 +408,7 @@ pub fn wasm_decrypt_attribute_global(
     v: &WASMEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> Option<WASMAttribute> {
-    let key = AttributeGlobalSecretKey(secret_key.0 .0);
+    let key = AttributeGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -419,7 +419,7 @@ pub fn wasm_decrypt_attribute_global(
     v: &WASMEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> WASMAttribute {
-    let key = AttributeGlobalSecretKey(secret_key.0 .0);
+    let key = AttributeGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }
 
@@ -431,7 +431,7 @@ pub fn wasm_encrypt_long_pseudonym_global(
     public_key: &WASMPseudonymGlobalPublicKey,
 ) -> WASMLongEncryptedPseudonym {
     let mut rng = rand::rng();
-    let key = PseudonymGlobalPublicKey(public_key.0 .0);
+    let key = PseudonymGlobalPublicKey::from(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -447,7 +447,7 @@ pub fn wasm_decrypt_long_pseudonym_global(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> Option<WASMLongPseudonym> {
-    let key = PseudonymGlobalSecretKey(secret_key.0 .0);
+    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -463,7 +463,7 @@ pub fn wasm_decrypt_long_pseudonym_global(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> WASMLongPseudonym {
-    let key = PseudonymGlobalSecretKey(secret_key.0 .0);
+    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }
 
@@ -475,7 +475,7 @@ pub fn wasm_encrypt_long_attribute_global(
     public_key: &WASMAttributeGlobalPublicKey,
 ) -> WASMLongEncryptedAttribute {
     let mut rng = rand::rng();
-    let key = AttributeGlobalPublicKey(public_key.0 .0);
+    let key = AttributeGlobalPublicKey::from(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -491,7 +491,7 @@ pub fn wasm_decrypt_long_attribute_global(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> Option<WASMLongAttribute> {
-    let key = AttributeGlobalSecretKey(secret_key.0 .0);
+    let key = AttributeGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -507,6 +507,6 @@ pub fn wasm_decrypt_long_attribute_global(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> WASMLongAttribute {
-    let key = AttributeGlobalSecretKey(secret_key.0 .0);
+    let key = AttributeGlobalSecretKey::from(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }

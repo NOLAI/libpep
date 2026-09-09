@@ -1,11 +1,11 @@
-use crate::data::long::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
-};
-use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::data::wasm::simple::{
+use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use derive_more::{Deref, From};
+use libpep::data::long::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
+};
+use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use wasm_bindgen::prelude::*;
 
 /// A collection of pseudonyms that together represent a larger pseudonym value using PKCS#7 padding.
@@ -283,17 +283,17 @@ impl WASMLongEncryptedAttribute {
     }
 }
 
+#[cfg(feature = "batch")]
+use crate::factors::contexts::WASMTranscryptionInfo;
+#[cfg(feature = "batch")]
+use crate::factors::types::WASMPseudonymRekeyFactor;
 /// WASM bindings for batch operations on long (multi-block) data types.
 #[cfg(feature = "batch")]
-use crate::data::records::LongEncryptedRecord;
+use libpep::data::records::LongEncryptedRecord;
 #[cfg(feature = "batch")]
-use crate::factors::wasm::contexts::WASMTranscryptionInfo;
+use libpep::factors::TranscryptionInfo;
 #[cfg(feature = "batch")]
-use crate::factors::wasm::types::WASMPseudonymRekeyFactor;
-#[cfg(feature = "batch")]
-use crate::factors::TranscryptionInfo;
-#[cfg(feature = "batch")]
-use crate::transcryptor::{rekey_batch, transcrypt_batch};
+use libpep::transcryptor::{rekey_batch, transcrypt_batch};
 
 /// Batch rekeying of long encrypted pseudonyms.
 /// The order of the pseudonyms is randomly shuffled to avoid linking them.

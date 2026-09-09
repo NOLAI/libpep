@@ -1,6 +1,6 @@
 //! Utility functions for JSON value conversion (binding-local copy).
 
-use crate::data::json::JsonError;
+use libpep::data::json::JsonError;
 
 /// Convert a boolean to a single byte (0x00 for false, 0x01 for true)
 pub(crate) fn bool_to_byte(b: bool) -> u8 {

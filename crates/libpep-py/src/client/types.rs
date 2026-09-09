@@ -1,27 +1,25 @@
 //! Python bindings for client types.
 
-#[cfg(feature = "offline")]
-use crate::client::OfflineClient;
 #[cfg(all(feature = "offline", feature = "json"))]
-use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
 #[cfg(all(feature = "offline", feature = "long"))]
-use crate::data::py::long::{
+use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
 #[cfg(feature = "offline")]
-use crate::data::py::records::{PyEncryptedRecord, PyRecord};
+use crate::data::records::{PyEncryptedRecord, PyRecord};
 #[cfg(all(feature = "offline", feature = "long"))]
-use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
+use crate::data::records::{PyLongEncryptedRecord, PyLongRecord};
 #[cfg(feature = "offline")]
-use crate::data::py::simple::{
-    PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
-};
+use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 #[cfg(feature = "offline")]
-use crate::keys::py::PyGlobalPublicKeys;
-#[cfg(feature = "offline")]
-use crate::keys::*;
+use crate::keys::PyGlobalPublicKeys;
 #[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
+#[cfg(feature = "offline")]
+use libpep::client::OfflineClient;
+#[cfg(feature = "offline")]
+use libpep::keys::*;
 #[cfg(feature = "offline")]
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -161,7 +159,7 @@ impl PyOfflineClient {
     /// Encrypt a Record using global public keys (offline mode).
     #[pyo3(name = "encrypt_record")]
     fn py_encrypt_record(&self, record: &PyRecord) -> PyResult<PyEncryptedRecord> {
-        use crate::data::traits::Encryptable;
+        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = record
             .0
@@ -173,7 +171,7 @@ impl PyOfflineClient {
     #[cfg(feature = "long")]
     #[pyo3(name = "encrypt_long_record")]
     fn py_encrypt_long_record(&self, record: &PyLongRecord) -> PyResult<PyLongEncryptedRecord> {
-        use crate::data::traits::Encryptable;
+        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = record
             .0
@@ -185,7 +183,7 @@ impl PyOfflineClient {
     #[cfg(feature = "json")]
     #[pyo3(name = "encrypt_json")]
     fn py_encrypt_json(&self, value: &PyPEPJSONValue) -> PyResult<PyEncryptedPEPJSONValue> {
-        use crate::data::traits::Encryptable;
+        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
         Ok(PyEncryptedPEPJSONValue(result))
