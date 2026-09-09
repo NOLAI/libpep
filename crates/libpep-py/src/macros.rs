@@ -478,7 +478,7 @@ macro_rules! py_scalar_key_impl {
             }
 
             fn __eq__(&self, other: &$w) -> bool {
-                *self.0 == *other.0
+                self.0.value() == other.0.value()
             }
         }
     };

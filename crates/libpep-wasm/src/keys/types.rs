@@ -3,6 +3,7 @@ use crate::arithmetic::scalars::WASMScalarNonZero;
 use crate::macros::{wasm_pair_impl, wasm_point_key_impl};
 use derive_more::{Deref, From, Into};
 use libpep::keys::types::*;
+use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session secret key used to decrypt pseudonyms with.
@@ -192,7 +193,7 @@ impl From<SessionKeys> for WASMSessionKeys {
                     *keys.pseudonym.public,
                 )),
                 secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(
-                    *keys.pseudonym.secret,
+                    *keys.pseudonym.secret.value(),
                 )),
             },
             attribute: WASMAttributeSessionKeys {
@@ -200,7 +201,7 @@ impl From<SessionKeys> for WASMSessionKeys {
                     *keys.attribute.public,
                 )),
                 secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(
-                    *keys.attribute.secret,
+                    *keys.attribute.secret.value(),
                 )),
             },
         }

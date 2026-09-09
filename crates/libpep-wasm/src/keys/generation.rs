@@ -63,7 +63,7 @@ pub fn wasm_make_pseudonym_session_keys(
     );
     WASMPseudonymSessionKeyPair::new(
         WASMPseudonymSessionPublicKey(WASMGroupElement::from(*public)),
-        WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(*secret_key)),
+        WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
     )
 }
 
@@ -81,7 +81,7 @@ pub fn wasm_make_attribute_session_keys(
     );
     WASMAttributeSessionKeyPair::new(
         WASMAttributeSessionPublicKey(WASMGroupElement::from(*public)),
-        WASMAttributeSessionSecretKey(WASMScalarNonZero::from(*secret_key)),
+        WASMAttributeSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
     )
 }
 
