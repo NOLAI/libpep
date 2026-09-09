@@ -9,6 +9,7 @@ use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyGlobalPublicKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
 };
+use crate::macros::py_dispatch;
 use libpep::client::{decrypt_batch, encrypt_batch};
 use libpep::data::records::EncryptedRecord;
 use libpep::factors::TranscryptionInfo;
@@ -278,17 +279,14 @@ pub fn py_transcrypt_batch(
     ))
 }
 
-/// Polymorphic batch encryption.
-/// Encrypts a list of unencrypted messages with a session public key.
-#[pyfunction]
-#[pyo3(name = "encrypt_batch")]
-pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
-    let py = messages.py();
-    let mut rng = rand::rng();
-
-    // Try Vec<PyPseudonym> with PyPseudonymSessionPublicKey
-    if let Ok(ps) = messages.extract::<Vec<PyPseudonym>>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
+py_dispatch!(
+    /// Polymorphic batch encryption.
+    /// Encrypts a list of unencrypted messages with a session public key.
+    #[pyfunction]
+    #[pyo3(name = "encrypt_batch")]
+    fn py_encrypt_batch(messages, public_key) with py err "encrypt_batch() requires (Vec[unencrypted_type], matching_public_key)" {
+        (ps in messages: Vec<PyPseudonym>, pk in public_key: PyPseudonymSessionPublicKey) => {
+            let mut rng = rand::rng();
             let key = PseudonymSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = ps.into_iter().map(|p| p.0).collect();
 
@@ -300,11 +298,8 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
                 result.into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyAttribute> with PyAttributeSessionPublicKey
-    if let Ok(attrs) = messages.extract::<Vec<PyAttribute>>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
+        (attrs in messages: Vec<PyAttribute>, pk in public_key: PyAttributeSessionPublicKey) => {
+            let mut rng = rand::rng();
             let key = AttributeSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = attrs.into_iter().map(|a| a.0).collect();
 
@@ -315,12 +310,9 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
                 result.into_iter().map(PyEncryptedAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongPseudonym>
-    #[cfg(feature = "long")]
-    if let Ok(lps) = messages.extract::<Vec<PyLongPseudonym>>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymSessionPublicKey>() {
+        #[cfg(feature = "long")]
+        (lps in messages: Vec<PyLongPseudonym>, pk in public_key: PyPseudonymSessionPublicKey) => {
+            let mut rng = rand::rng();
             let key = PseudonymSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = lps.into_iter().map(|p| p.0).collect();
 
@@ -331,12 +323,9 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
                 result.into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongAttribute>
-    #[cfg(feature = "long")]
-    if let Ok(las) = messages.extract::<Vec<PyLongAttribute>>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeSessionPublicKey>() {
+        #[cfg(feature = "long")]
+        (las in messages: Vec<PyLongAttribute>, pk in public_key: PyAttributeSessionPublicKey) => {
+            let mut rng = rand::rng();
             let key = AttributeSessionPublicKey::from(*pk.0);
             let rust_msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
 
@@ -347,12 +336,9 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
                 result.into_iter().map(PyLongEncryptedAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyPEPJSONValue> with PySessionKeys
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
-        if let Ok(session_keys) = public_key.extract::<crate::keys::PySessionKeys>() {
+        #[cfg(feature = "json")]
+        (jsons in messages: Vec<PyPEPJSONValue>, session_keys in public_key: crate::keys::PySessionKeys) => {
+            let mut rng = rand::rng();
             let keys = SessionKeys::from(session_keys);
             let rust_msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
 
@@ -365,25 +351,15 @@ pub fn py_encrypt_batch(messages: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
             return py_result.into_py_any(py);
         }
     }
-
-    Err(PyTypeError::new_err(
-        "encrypt_batch() requires (Vec[unencrypted_type], matching_public_key)",
-    ))
-}
-/// Polymorphic batch decryption.
-/// Decrypts a list of encrypted messages with a session secret key.
-#[cfg(feature = "elgamal3")]
-#[pyfunction]
-#[pyo3(name = "decrypt_batch")]
-pub fn py_decrypt_batch(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try Vec<PyEncryptedPseudonym> with PyPseudonymSessionSecretKey
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
+);
+py_dispatch!(
+    /// Polymorphic batch decryption.
+    /// Decrypts a list of encrypted messages with a session secret key.
+    #[cfg(feature = "elgamal3")]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_batch")]
+    fn py_decrypt_batch(encrypted, secret_key) with py err "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)" {
+        (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
             let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
@@ -395,11 +371,7 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyPseudonym> = result.into_iter().map(PyPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyEncryptedAttribute> with PyAttributeSessionSecretKey
-    if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
+        (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
             let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
@@ -410,12 +382,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyAttribute> = result.into_iter().map(PyAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongEncryptedPseudonym>
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
+        #[cfg(feature = "long")]
+        (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
             let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
@@ -426,12 +394,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyLongPseudonym> = result.into_iter().map(PyLongPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongEncryptedAttribute>
-    #[cfg(feature = "long")]
-    if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
+        #[cfg(feature = "long")]
+        (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
             let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
@@ -442,12 +406,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyLongAttribute> = result.into_iter().map(PyLongAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyEncryptedPEPJSONValue> with PySessionKeys
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(k) = secret_key.extract::<crate::keys::PySessionKeys>() {
+        #[cfg(feature = "json")]
+        (jsons in encrypted: Vec<PyEncryptedPEPJSONValue>, k in secret_key: crate::keys::PySessionKeys) => {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -460,26 +420,16 @@ pub fn py_decrypt_batch(
             return py_result.into_py_any(py);
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)",
-    ))
-}
-
-/// Polymorphic batch decryption.
-/// Decrypts a list of encrypted messages with a session secret key.
-#[cfg(not(feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "decrypt_batch")]
-pub fn py_decrypt_batch(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try Vec<PyEncryptedPseudonym> with PyPseudonymSessionSecretKey
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
+py_dispatch!(
+    /// Polymorphic batch decryption.
+    /// Decrypts a list of encrypted messages with a session secret key.
+    #[cfg(not(feature = "elgamal3"))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_batch")]
+    fn py_decrypt_batch(encrypted, secret_key) with py err "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)" {
+        (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
             let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
@@ -490,11 +440,7 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyPseudonym> = result.into_iter().map(PyPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyEncryptedAttribute> with PyAttributeSessionSecretKey
-    if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
+        (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
             let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
@@ -505,12 +451,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyAttribute> = result.into_iter().map(PyAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongEncryptedPseudonym>
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymSessionSecretKey>() {
+        #[cfg(feature = "long")]
+        (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
             let key = PseudonymSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
@@ -521,12 +463,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyLongPseudonym> = result.into_iter().map(PyLongPseudonym).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyLongEncryptedAttribute>
-    #[cfg(feature = "long")]
-    if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeSessionSecretKey>() {
+        #[cfg(feature = "long")]
+        (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
             let key = AttributeSessionSecretKey::from(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
@@ -537,12 +475,8 @@ pub fn py_decrypt_batch(
             let py_result: Vec<PyLongAttribute> = result.into_iter().map(PyLongAttribute).collect();
             return py_result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PyEncryptedPEPJSONValue> with PySessionKeys
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
-        if let Ok(k) = secret_key.extract::<crate::keys::PySessionKeys>() {
+        #[cfg(feature = "json")]
+        (jsons in encrypted: Vec<PyEncryptedPEPJSONValue>, k in secret_key: crate::keys::PySessionKeys) => {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -554,27 +488,17 @@ pub fn py_decrypt_batch(
             return py_result.into_py_any(py);
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)",
-    ))
-}
-
-/// Polymorphic batch encryption with global public key.
-/// Encrypts a list of unencrypted messages with a global public key.
-#[cfg(feature = "offline")]
-#[pyfunction]
-#[pyo3(name = "encrypt_global_batch")]
-pub fn py_encrypt_global_batch(
-    messages: &Bound<PyAny>,
-    public_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = messages.py();
-    let mut rng = rand::rng();
-
-    // Try Vec<Pseudonym> with PseudonymGlobalPublicKey
-    if let Ok(ps) = messages.extract::<Vec<PyPseudonym>>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
+py_dispatch!(
+    /// Polymorphic batch encryption with global public key.
+    /// Encrypts a list of unencrypted messages with a global public key.
+    #[cfg(feature = "offline")]
+    #[pyfunction]
+    #[pyo3(name = "encrypt_global_batch")]
+    fn py_encrypt_global_batch(messages, public_key) with py err "encrypt_global_batch() requires (Vec[unencrypted_type], matching_global_public_key)" {
+        (ps in messages: Vec<PyPseudonym>, pk in public_key: PyPseudonymGlobalPublicKey) => {
+            let mut rng = rand::rng();
             let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result: Vec<PyEncryptedPseudonym> = ps
                 .into_iter()
@@ -582,11 +506,8 @@ pub fn py_encrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<Attribute> with AttributeGlobalPublicKey
-    if let Ok(attrs) = messages.extract::<Vec<PyAttribute>>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
+        (attrs in messages: Vec<PyAttribute>, pk in public_key: PyAttributeGlobalPublicKey) => {
+            let mut rng = rand::rng();
             let key = AttributeGlobalPublicKey::from(*pk.0);
             let result: Vec<PyEncryptedAttribute> = attrs
                 .into_iter()
@@ -594,12 +515,9 @@ pub fn py_encrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongPseudonym> with PseudonymGlobalPublicKey
-    #[cfg(feature = "long")]
-    if let Ok(lps) = messages.extract::<Vec<PyLongPseudonym>>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
+        #[cfg(feature = "long")]
+        (lps in messages: Vec<PyLongPseudonym>, pk in public_key: PyPseudonymGlobalPublicKey) => {
+            let mut rng = rand::rng();
             let key = PseudonymGlobalPublicKey::from(*pk.0);
             let result: Vec<PyLongEncryptedPseudonym> = lps
                 .into_iter()
@@ -607,12 +525,9 @@ pub fn py_encrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongAttribute> with AttributeGlobalPublicKey
-    #[cfg(feature = "long")]
-    if let Ok(las) = messages.extract::<Vec<PyLongAttribute>>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
+        #[cfg(feature = "long")]
+        (las in messages: Vec<PyLongAttribute>, pk in public_key: PyAttributeGlobalPublicKey) => {
+            let mut rng = rand::rng();
             let key = AttributeGlobalPublicKey::from(*pk.0);
             let result: Vec<PyLongEncryptedAttribute> = las
                 .into_iter()
@@ -620,12 +535,9 @@ pub fn py_encrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<PEPJSONValue> with GlobalPublicKeys
-    #[cfg(feature = "json")]
-    if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
-        if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
+        #[cfg(feature = "json")]
+        (jsons in messages: Vec<PyPEPJSONValue>, pk in public_key: PyGlobalPublicKeys) => {
+            let mut rng = rand::rng();
             use libpep::data::traits::Encryptable;
             let keys = GlobalPublicKeys::from(pk);
             let result: Vec<PyEncryptedPEPJSONValue> = jsons
@@ -635,26 +547,16 @@ pub fn py_encrypt_global_batch(
             return result.into_py_any(py);
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "encrypt_global_batch() requires (Vec[unencrypted_type], matching_global_public_key)",
-    ))
-}
-
-/// Polymorphic batch decryption with global secret key.
-/// Decrypts a list of encrypted messages with a global secret key.
-#[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "decrypt_global_batch")]
-pub fn py_decrypt_global_batch(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try Vec<EncryptedPseudonym> with PseudonymGlobalSecretKey
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+py_dispatch!(
+    /// Polymorphic batch decryption with global secret key.
+    /// Decrypts a list of encrypted messages with a global secret key.
+    #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_global_batch")]
+    fn py_decrypt_global_batch(encrypted, secret_key) with py err "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)" {
+        (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = eps
                 .into_iter()
@@ -666,11 +568,7 @@ pub fn py_decrypt_global_batch(
                 .collect::<Result<Vec<_>, _>>()?;
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<EncryptedAttribute> with AttributeGlobalSecretKey
-    if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = eas
                 .into_iter()
@@ -682,12 +580,8 @@ pub fn py_decrypt_global_batch(
                 .collect::<Result<Vec<_>, _>>()?;
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongEncryptedPseudonym> with PseudonymGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = leps
                 .into_iter()
@@ -699,12 +593,8 @@ pub fn py_decrypt_global_batch(
                 .collect::<Result<Vec<_>, _>>()?;
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongEncryptedAttribute> with AttributeGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<_> = leas
                 .into_iter()
@@ -716,12 +606,8 @@ pub fn py_decrypt_global_batch(
                 .collect::<Result<Vec<_>, _>>()?;
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<EncryptedPEPJSONValue> with GlobalSecretKeys
-    #[cfg(feature = "json")]
-    if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
-        if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+        #[cfg(feature = "json")]
+        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPEPJSONValue>) => {
             let keys = GlobalSecretKeys::from(sk);
             let result: Vec<_> = jsons
                 .into_iter()
@@ -734,26 +620,16 @@ pub fn py_decrypt_global_batch(
             return result.into_py_any(py);
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)",
-    ))
-}
-
-/// Polymorphic batch decryption with global secret key.
-/// Decrypts a list of encrypted messages with a global secret key.
-#[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
-#[pyfunction]
-#[pyo3(name = "decrypt_global_batch")]
-pub fn py_decrypt_global_batch(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try Vec<EncryptedPseudonym> with PseudonymGlobalSecretKey
-    if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+py_dispatch!(
+    /// Polymorphic batch decryption with global secret key.
+    /// Decrypts a list of encrypted messages with a global secret key.
+    #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_global_batch")]
+    fn py_decrypt_global_batch(encrypted, secret_key) with py err "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)" {
+        (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<PyPseudonym> = eps
                 .into_iter()
@@ -761,11 +637,7 @@ pub fn py_decrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<EncryptedAttribute> with AttributeGlobalSecretKey
-    if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<PyAttribute> = eas
                 .into_iter()
@@ -773,12 +645,8 @@ pub fn py_decrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongEncryptedPseudonym> with PseudonymGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result: Vec<PyLongPseudonym> = leps
                 .into_iter()
@@ -786,12 +654,8 @@ pub fn py_decrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<LongEncryptedAttribute> with AttributeGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result: Vec<PyLongAttribute> = leas
                 .into_iter()
@@ -799,12 +663,8 @@ pub fn py_decrypt_global_batch(
                 .collect();
             return result.into_py_any(py);
         }
-    }
-
-    // Try Vec<EncryptedPEPJSONValue> with GlobalSecretKeys
-    #[cfg(feature = "json")]
-    if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
-        if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+        #[cfg(feature = "json")]
+        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPEPJSONValue>) => {
             let keys = GlobalSecretKeys::from(sk);
             let result: Vec<PyPEPJSONValue> = jsons
                 .into_iter()
@@ -813,11 +673,7 @@ pub fn py_decrypt_global_batch(
             return result.into_py_any(py);
         }
     }
-
-    Err(PyTypeError::new_err(
-        "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)",
-    ))
-}
+);
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_pseudonymize_batch, m)?)?;

@@ -10,6 +10,3 @@ pub mod data;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
-
-// Re-export functions from client module for backwards compatibility
-pub use client::functions::*;

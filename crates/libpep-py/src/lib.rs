@@ -13,90 +13,64 @@ pub mod transcryptor;
 
 use pyo3::prelude::*;
 
+/// Creates a named submodule, runs the given registration closure on it, attaches it to the
+/// parent, and patches `sys.modules` so `import libpep.<name>` works.
+fn add_submodule<'py>(
+    parent: &Bound<'py, PyModule>,
+    path: &str,
+    fill: impl FnOnce(&Bound<'py, PyModule>) -> PyResult<()>,
+) -> PyResult<Bound<'py, PyModule>> {
+    let py = parent.py();
+    let name = path.rsplit('.').next().unwrap_or(path);
+    let module = PyModule::new(py, name)?;
+    fill(&module)?;
+    parent.add_submodule(&module)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item(path, &module)?;
+    Ok(module)
+}
+
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    let py = m.py();
-
-    // Register arithmetic as submodule
-    let arithmetic_module = PyModule::new(py, "arithmetic")?;
-    arithmetic::register_module(&arithmetic_module)?;
-    m.add_submodule(&arithmetic_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.arithmetic", &arithmetic_module)?;
-
-    // Register core as submodule
-    let core_module = PyModule::new(py, "core")?;
-    core::register_module(&core_module)?;
-    m.add_submodule(&core_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.core", &core_module)?;
-
-    // Register client as submodule
-    let client_module = PyModule::new(py, "client")?;
-    client::types::register(&client_module)?;
-    client::distributed::register(&client_module)?;
-    client::functions::register(&client_module)?;
-    #[cfg(feature = "batch")]
-    client::batch::register(&client_module)?;
-    m.add_submodule(&client_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.client", &client_module)?;
-
-    // Register transcryptor as submodule
-    let transcryptor_module = PyModule::new(py, "transcryptor")?;
-    transcryptor::types::register(&transcryptor_module)?;
-    transcryptor::distributed::register(&transcryptor_module)?;
-    transcryptor::functions::register(&transcryptor_module)?;
-    #[cfg(feature = "batch")]
-    transcryptor::batch::register(&transcryptor_module)?;
-    m.add_submodule(&transcryptor_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.transcryptor", &transcryptor_module)?;
-
-    // Register keys as submodule
-    let keys_module = PyModule::new(py, "keys")?;
-    keys::register(&keys_module)?;
-    m.add_submodule(&keys_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.keys", &keys_module)?;
-
-    // Register data as submodule
-    let data_module = PyModule::new(py, "data")?;
-    data::simple::register(&data_module)?;
-    #[cfg(feature = "long")]
-    data::long::register(&data_module)?;
-    data::padding::register(&data_module)?;
-    data::records::register(&data_module)?;
-    m.add_submodule(&data_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.data", &data_module)?;
-
-    // Register json as a separate submodule under data
+    add_submodule(m, "libpep.arithmetic", |sm| arithmetic::register_module(sm))?;
+    add_submodule(m, "libpep.core", |sm| core::register_module(sm))?;
+    add_submodule(m, "libpep.client", |sm| {
+        client::types::register(sm)?;
+        client::distributed::register(sm)?;
+        client::functions::register(sm)?;
+        #[cfg(feature = "batch")]
+        client::batch::register(sm)?;
+        Ok(())
+    })?;
+    add_submodule(m, "libpep.transcryptor", |sm| {
+        transcryptor::types::register(sm)?;
+        transcryptor::distributed::register(sm)?;
+        transcryptor::functions::register(sm)?;
+        #[cfg(feature = "batch")]
+        transcryptor::batch::register(sm)?;
+        Ok(())
+    })?;
+    add_submodule(m, "libpep.keys", |sm| keys::register(sm))?;
+    let data_module = add_submodule(m, "libpep.data", |sm| {
+        data::simple::register(sm)?;
+        #[cfg(feature = "long")]
+        data::long::register(sm)?;
+        data::padding::register(sm)?;
+        data::records::register(sm)?;
+        Ok(())
+    })?;
     #[cfg(feature = "json")]
-    {
-        let json_module = PyModule::new(py, "json")?;
-        data::json::register(&json_module)?;
-        data_module.add_submodule(&json_module)?;
-        py.import("sys")?
-            .getattr("modules")?
-            .set_item("libpep.data.json", &json_module)?;
-    }
-
-    // Register factors as submodule
-    let factors_module = PyModule::new(py, "factors")?;
-    factors::contexts::register(&factors_module)?;
-    factors::types::register(&factors_module)?;
-    factors::secrets::register(&factors_module)?;
-    m.add_submodule(&factors_module)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("libpep.factors", &factors_module)?;
-
+    add_submodule(&data_module, "libpep.data.json", |sm| {
+        data::json::register(sm)
+    })?;
+    #[cfg(not(feature = "json"))]
+    drop(data_module);
+    add_submodule(m, "libpep.factors", |sm| {
+        factors::contexts::register(sm)?;
+        factors::types::register(sm)?;
+        factors::secrets::register(sm)?;
+        Ok(())
+    })?;
     Ok(())
 }
 
