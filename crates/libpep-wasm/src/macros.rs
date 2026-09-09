@@ -364,7 +364,71 @@ macro_rules! wasm_scalar_key_impl {
     };
 }
 
+/// Generates the session encrypt/decrypt function triple (encrypt, decrypt under elgamal3
+/// returning Option, decrypt otherwise) for one plaintext/encrypted type pair.
+macro_rules! wasm_session_crypt_fns {
+    ($($(#[$cfg:meta])* fns($enc_js:literal $encf:ident, $dec_js:literal $decf:ident)
+        for $m:ty => $e:ty, key($kpub:ty => $ckpub:ident, $ksec:ty => $cksec:ident);)+) => {$(
+        /// Encrypt using a session public key.
+        $(#[$cfg])*
+        #[wasm_bindgen(js_name = $enc_js)]
+        pub fn $encf(m: &$m, public_key: &$kpub) -> $e {
+            let mut rng = rand::rng();
+            encrypt(&m.0, &$ckpub::from(*public_key.0), &mut rng).into()
+        }
+
+        /// Decrypt using a session secret key.
+        $(#[$cfg])*
+        #[cfg(feature = "elgamal3")]
+        #[wasm_bindgen(js_name = $dec_js)]
+        pub fn $decf(v: &$e, secret_key: &$ksec) -> Option<$m> {
+            decrypt(&v.0, &$cksec::from(*secret_key.0)).map(|x| x.into())
+        }
+
+        /// Decrypt using a session secret key.
+        $(#[$cfg])*
+        #[cfg(not(feature = "elgamal3"))]
+        #[wasm_bindgen(js_name = $dec_js)]
+        pub fn $decf(v: &$e, secret_key: &$ksec) -> $m {
+            decrypt(&v.0, &$cksec::from(*secret_key.0)).into()
+        }
+    )+};
+}
+
+/// Generates the global (offline) encrypt/decrypt function triple for one
+/// plaintext/encrypted type pair.
+macro_rules! wasm_global_crypt_fns {
+    ($(fns($enc_js:literal $encf:ident, $dec_js:literal $decf:ident)
+        for $m:ty => $e:ty, key($kpub:ty => $ckpub:ident, $ksec:ty => $cksec:ident);)+) => {$(
+        /// Encrypt using a global public key (offline encryption).
+        #[cfg(feature = "offline")]
+        #[wasm_bindgen(js_name = $enc_js)]
+        pub fn $encf(m: &$m, public_key: &$kpub) -> $e {
+            let mut rng = rand::rng();
+            let key = $ckpub::from(*public_key.0);
+            encrypt_global(&m.0, &key, &mut rng).into()
+        }
+
+        /// Decrypt using a global secret key (offline decryption).
+        #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
+        #[wasm_bindgen(js_name = $dec_js)]
+        pub fn $decf(v: &$e, secret_key: &$ksec) -> Option<$m> {
+            let key = $cksec::from(*secret_key.0);
+            decrypt_global(&v.0, &key).map(|x| x.into())
+        }
+
+        /// Decrypt using a global secret key (offline decryption).
+        #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
+        #[wasm_bindgen(js_name = $dec_js)]
+        pub fn $decf(v: &$e, secret_key: &$ksec) -> $m {
+            let key = $cksec::from(*secret_key.0);
+            decrypt_global(&v.0, &key).into()
+        }
+    )+};
+}
+
 pub(crate) use {
-    wasm_encrypted_impl, wasm_long_encrypted_impl, wasm_long_plaintext_impl, wasm_pair_impl,
-    wasm_plaintext_impl, wasm_point_key_impl, wasm_scalar_key_impl,
+    wasm_encrypted_impl, wasm_global_crypt_fns, wasm_long_encrypted_impl, wasm_long_plaintext_impl,
+    wasm_pair_impl, wasm_plaintext_impl, wasm_point_key_impl, wasm_scalar_key_impl,
+    wasm_session_crypt_fns,
 };
