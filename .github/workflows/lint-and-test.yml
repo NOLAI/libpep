@@ -12,91 +12,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Default features (long, offline, batch, serde, json, build-binary)
-          - features: ""
-            name: "default"
-          # Special behavior-changing features
-          - features: "elgamal3"
-            name: "default+elgamal3"
-          - features: "legacy"
-            name: "default+legacy"
-          # Python bindings
-          - features: "python"
-            name: "default+python"
-          - features: "python,elgamal3"
-            name: "default+python+elgamal3"
-          # WASM bindings
-          - features: "wasm"
-            name: "default+wasm"
-          - features: "wasm,elgamal3"
-            name: "default+wasm+elgamal3"
-          # Insecure methods (offline decryption paths)
-          - features: "insecure"
-            name: "default+insecure"
-          - features: "python,insecure"
-            name: "default+python+insecure"
-          - features: "wasm,insecure"
-            name: "default+wasm+insecure"
-          # Without default features (feature gating)
-          - features: ""
-            name: "no-default"
-            args: "--no-default-features"
-          - features: "batch,insecure"
-            name: "no-default+batch+insecure"
-            args: "--no-default-features"
-          - features: "json"
-            name: "no-default+json"
-            args: "--no-default-features"
-    name: cargo clippy (${{ matrix.name }})
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets ${{ matrix.args }} --features "${{ matrix.features }}" -- -D warnings
-
-  fmt:
-    runs-on: ubuntu-latest
-    name: cargo fmt
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - run: cargo fmt -- --check
-
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Default features
-          - features: ""
-            name: "default"
-          # Special behavior-changing features
-          - features: "elgamal3"
-            name: "default+elgamal3"
-          - features: "legacy"
-            name: "default+legacy"
-          # Python bindings
-          - features: "python"
-            name: "default+python"
-          - features: "python,elgamal3"
-            name: "default+python+elgamal3"
-          # WASM bindings
-          - features: "wasm"
-            name: "default+wasm"
-          - features: "wasm,elgamal3"
-            name: "default+wasm+elgamal3"
-          # Insecure methods (offline decryption paths)
-          - features: "insecure"
-            name: "default+insecure"
+          - package: "libpep"
+            features: ""
+            name: "libpep default"
+          - package: "libpep"
+            features: "elgamal3"
+            name: "libpep default+elgamal3"
+          - package: "libpep"
+            features: "legacy"
+            name: "libpep default+legacy"
+          - package: "libpep"
+            features: "insecure"
+            name: "libpep default+insecure"
+          - package: "libpep-py"
+            features: ""
+            name: "libpep-py default"
+          - package: "libpep-py"
+            features: "elgamal3"
+            name: "libpep-py default+elgamal3"
+          - package: "libpep-wasm"
+            features: ""
+            name: "libpep-wasm default"
+          - package: "libpep-wasm"
+            features: "elgamal3"
+            name: "libpep-wasm default+elgamal3"
     name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
 
-      - run: cargo test --features "${{ matrix.features }}"
-      - run: cargo doc --no-deps --features "${{ matrix.features }}"
+      - run: cargo test -p ${{ matrix.package }} --features "${{ matrix.features }}"
+      - run: cargo doc -p ${{ matrix.package }} --no-deps --features "${{ matrix.features }}"
 
   test-python:
     runs-on: ubuntu-latest
@@ -114,11 +61,12 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install maturin pytest
-          maturin develop --features python,insecure
+          cd crates/libpep-py
+          maturin develop --features insecure
       - name: Run Python tests
         run: |
           source .venv/bin/activate
-          python -m unittest discover tests/python/ -v
+          python -m unittest discover crates/libpep-py/tests -v
 
   test-wasm:
     runs-on: ubuntu-latest

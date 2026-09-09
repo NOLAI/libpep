@@ -15,8 +15,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          # Check default feature set, plus elgamal3 and legacy.
-          # python/wasm bindings are not included here (and remain mutually exclusive).
+          # Check the core crate with the default feature set, plus elgamal3 and legacy.
+          # The binding crates are not published to crates.io.
+          package: libpep
           feature-group: default-features
           features: elgamal3,legacy,insecure
 
@@ -48,9 +49,9 @@ jobs:
       matrix:
         target: [ "web", "nodejs" ]
         features:
-          - "wasm"
-          - "wasm,elgamal3"
-          - "wasm,legacy"
+          - ""
+          - "elgamal3"
+          - "legacy"
 
     name: wasm-pack build (${{ matrix.target }}, ${{ matrix.features }})
     steps:
@@ -58,4 +59,4 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo install wasm-pack
-      - run: wasm-pack build --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      - run: wasm-pack build crates/libpep-wasm --target ${{ matrix.target }} --out-name libpep --features "${{ matrix.features }}"
