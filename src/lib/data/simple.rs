@@ -21,6 +21,11 @@ use serde::{Deserialize, Serialize};
 
 /// A pseudonym (in the background, this is a [`GroupElement`]) that can be used to identify a user
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
+///
+/// Pseudonyms in different domains are unlinkable because
+/// [reshuffling](crate::core::primitives::reshuffle) obliviously evaluates the Diffie-Hellman PRF
+/// on them. This requires origin pseudonyms to be uniformly random or lizard-encoded; see the
+/// security note on [`ElGamalEncryptable`].
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
@@ -99,6 +104,19 @@ pub trait ElGamalEncrypted: Encrypted {
 
 /// A marker trait for encryptable types that use ElGamal encryption with a single plaintext value.
 /// This enables access to ElGamal-specific operations like serialization and special encodings.
+///
+/// # Security
+///
+/// Pseudonym unlinkability assumes that no party knows (or can feasibly find) discrete-log
+/// relations between origin identifiers. Origin identifiers are expected to be uniformly random
+/// group elements, either sampled directly ([`random`](Self::random)) or produced by the
+/// elligator2-based lizard encoding ([`from_lizard`](Self::from_lizard)), both of which rule such
+/// relations out. Importing group elements with other distributions via the raw decoders
+/// ([`from_bytes`](Self::from_bytes), [`from_hex`](Self::from_hex)) preserves any discrete-log
+/// relation between them in every domain (if `M1 = 2*M2`, then `s*M1 = 2*(s*M2)`). Individual
+/// pseudonyms remain unlinkable across domains, so this is acceptable as long as no party knows
+/// the relations between origin identifiers: a party that does could recognize related pseudonyms
+/// by testing for the known relation.
 pub trait ElGamalEncryptable: Encryptable {
     /// Get the [`GroupElement`] plaintext value.
     fn value(&self) -> &GroupElement;

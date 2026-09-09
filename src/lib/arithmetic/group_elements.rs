@@ -73,6 +73,10 @@ impl GroupElement {
     ///
     /// There are practically no invalid lizard encodings!
     /// This is useful to encode arbitrary data as group element.
+    ///
+    /// The elligator2-based map also serves a security purpose: it makes it infeasible to choose
+    /// inputs whose encodings have a known discrete-log relation, which pseudonym unlinkability
+    /// relies on (see [`reshuffle`](crate::core::primitives::reshuffle)).
     #[must_use]
     pub fn from_lizard(v: &[u8; 16]) -> Self {
         Self(RistrettoPoint::lizard_encode::<Sha256>(v))

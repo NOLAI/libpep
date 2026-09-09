@@ -39,6 +39,14 @@ For pseudonymization, the core operation is *reshuffle* with `s`.
 Every user (or user group) knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one user's domain to another's (effectively applying `s = s_from^-1 * s_to`), without a global pseudonym existing in between.
 The factor `s` is typically tied to the *access group* or *domain of a user*, which we call the *pseudonymization domain*.
 
+Pseudonym unlinkability rests on the fact that `F_s(M) = s*M` is the Diffie–Hellman pseudorandom function (DH-PRF): as long as `s` stays secret, `s*M` is indistinguishable from a random group element under the Decisional Diffie–Hellman (DDH) assumption, so pseudonyms in different domains cannot be linked without knowing the ratio of their domain factors.
+Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and recipient never learn `s`.
+
+Strictly, the DH-PRF is `F_s(M) = s*H(M)` for a hash `H` into the group: without `H`, `F_s` is linear (`F_s(a*M) = a*F_s(M)`) and thus not pseudorandom for inputs with known discrete-log relations.
+This library omits `H` because origin identifiers are expected to be uniformly random group elements, either sampled directly or produced by the elligator2-based lizard encoding, which makes it infeasible to construct identifiers with known relations.
+Importing group elements with other distributions (e.g. via `from_bytes` or `from_hex`) weakens this: reshuffling is then no longer fully pseudorandom, since discrete-log relations between origin identifiers are preserved in every domain (if `M1 = 2*M2`, then also `s*M1 = 2*(s*M2)`).
+Individual pseudonyms remain unlinkable across domains under DDH, so this is acceptable as long as no party knows the relations between origin identifiers: a party that does could recognize related pseudonyms by testing for the known relation.
+
 Using only a reshuffle is insufficient, as the pseudonym is still encrypted for a key the user does not possess.
 To allow a user to decrypt the encrypted pseudonym, a *rekey* with `k` is needed, in combination with a protocol to hand the user the secret key `k*y`.
 The factor `k` is typically tied to the *current session of a user*, which we call the *encryption context*.
@@ -164,7 +172,8 @@ These have incompatible linking requirements and cannot coexist in the same buil
 
 ## Security and Implementation
 
-This library uses Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/).
+This library uses Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), offering 128 bits of security.
+Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the Decisional Diffie–Hellman (DDH) assumption in the Ristretto group and thus ultimately on the hardness of the discrete logarithm problem.
 
 ### Security Considerations
 - All cryptographic operations use constant-time algorithms to prevent timing attacks

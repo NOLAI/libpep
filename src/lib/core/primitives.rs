@@ -31,6 +31,11 @@ pub fn rerandomize(encrypted: &ElGamal, gy: &GroupElement, r: &ScalarNonZero) ->
 
 /// Change the contents of a ciphertext with factor `s`, i.e. message `M` becomes `s * M`.
 /// Can be used to blindly and pseudo-randomly pseudonymize identifiers.
+///
+/// This is an encryption-based oblivious evaluation of the Diffie–Hellman PRF
+/// `F_s(M) = s * M`, which is pseudorandom under the DDH assumption while `s` stays secret:
+/// the performing party evaluates the PRF homomorphically without learning `M` or `s * M`,
+/// which is what makes the resulting pseudonyms unlinkable across domains.
 pub fn reshuffle(encrypted: &ElGamal, s: &ScalarNonZero) -> ElGamal {
     ElGamal {
         gb: s * encrypted.gb,

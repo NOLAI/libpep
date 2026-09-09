@@ -9,6 +9,9 @@ use derive_more::From;
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 
 /// High-level type for the factor used to [`reshuffle`](crate::core::primitives::reshuffle) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
+///
+/// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
+/// the factors of two domains (or their ratio) can link pseudonyms between those domains.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct ReshuffleFactor(pub ScalarNonZero);
 

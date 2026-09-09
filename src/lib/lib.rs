@@ -15,6 +15,11 @@
 //! Transcryption can be distributed over multiple transcryptors, such that every transcryptor can
 //! independently monitor and block data exchanges, while confidentiality and pseudonym
 //! unlinkability hold as long as at least one transcryptor remains uncompromised.
+//!
+//! Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the
+//! pseudorandomness of the Diffie-Hellman PRF that [reshuffling](core::primitives::reshuffle)
+//! obliviously evaluates; both hold under the Decisional Diffie-Hellman assumption in the
+//! Ristretto group.
 //! Since at the time of initial encryption, the future recipient does not need to be specified,
 //! data sharing can be done *asynchronously*. This means that encrypted data can be
 //! stored long-term before it is shared at any point in the future.

@@ -13,6 +13,9 @@ use sha2::{Digest, Sha256};
 pub type Secret = Box<[u8]>;
 
 /// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
+///
+/// All reshuffle factors of a transcryptor derive from this secret; leaking it makes pseudonyms
+/// linkable across every domain that transcryptor serves.
 #[derive(Clone, Debug, From)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
