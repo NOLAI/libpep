@@ -41,7 +41,11 @@ impl DistributedTranscryptor {
 
     /// Get a reference to the blinding factor.
     #[allow(dead_code)]
-    pub(crate) fn blinding_factor(&self) -> &crate::keys::distribution::BlindingFactor {
+    /// The blinding factor of this transcryptor.
+    ///
+    /// Exposes secret material; intended for bindings and embedding code that
+    /// manages the transcryptor's configuration.
+    pub fn blinding_factor(&self) -> &crate::keys::distribution::BlindingFactor {
         &self.blinding_factor
     }
 

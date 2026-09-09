@@ -32,13 +32,21 @@ impl Transcryptor {
 
     /// Get a reference to the pseudonymisation secret.
     #[allow(dead_code)]
-    pub(crate) fn pseudonymisation_secret(&self) -> &PseudonymizationSecret {
+    /// The pseudonymization secret this transcryptor is configured with.
+    ///
+    /// Exposes secret material; intended for bindings and embedding code that
+    /// manages the transcryptor's configuration.
+    pub fn pseudonymisation_secret(&self) -> &PseudonymizationSecret {
         &self.pseudonymisation_secret
     }
 
     /// Get a reference to the rekeying secret.
     #[allow(dead_code)]
-    pub(crate) fn rekeying_secret(&self) -> &EncryptionSecret {
+    /// The rekeying (encryption) secret this transcryptor is configured with.
+    ///
+    /// Exposes secret material; intended for bindings and embedding code that
+    /// manages the transcryptor's configuration.
+    pub fn rekeying_secret(&self) -> &EncryptionSecret {
         &self.rekeying_secret
     }
 

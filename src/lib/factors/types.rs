@@ -8,6 +8,13 @@ use derive_more::From;
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 
+impl RerandomizeFactor {
+    /// The scalar value of this factor.
+    pub fn scalar(&self) -> ScalarNonZero {
+        self.0
+    }
+}
+
 /// High-level type for the factor used to [`reshuffle`](crate::core::primitives::reshuffle) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
 ///
 /// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
