@@ -484,7 +484,39 @@ macro_rules! py_scalar_key_impl {
     };
 }
 
+/// Generates a polymorphic dispatch function: each arm tries to extract the given Python
+/// argument types in order (nested, so a cheap first extract short-circuits an expensive
+/// second one) and runs its body, which is expected to `return`; falling through all arms
+/// raises a `TypeError` with the given message.
+macro_rules! py_dispatch {
+    (
+        $(#[$fmeta:meta])*
+        fn $f:ident($first:ident $(, $arg:ident)*) with $py:ident err $err:literal {
+            $( $(#[$cfg:meta])* ($($v:ident in $e:ident: $t:ty),+) => $body:block )+
+        }
+    ) => {
+        $(#[$fmeta])*
+        pub fn $f($first: &Bound<PyAny> $(, $arg: &Bound<PyAny>)*) -> PyResult<Py<PyAny>> {
+            #[allow(unused_variables)]
+            let $py = $first.py();
+            $(
+                $(#[$cfg])*
+                py_dispatch!(@arm ($($v in $e: $t),+) => $body);
+            )+
+            Err(PyTypeError::new_err($err))
+        }
+    };
+    (@arm ($v:ident in $e:ident: $t:ty) => $body:block) => {
+        if let Ok($v) = $e.extract::<$t>() { $body }
+    };
+    (@arm ($v:ident in $e:ident: $t:ty, $($vr:ident in $er:ident: $tr:ty),+) => $body:block) => {
+        if let Ok($v) = $e.extract::<$t>() {
+            py_dispatch!(@arm ($($vr in $er: $tr),+) => $body);
+        }
+    };
+}
+
 pub(crate) use {
-    py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl, py_long_plaintext_impl,
-    py_plaintext_impl, py_scalar_key_impl, py_session_pubkey_impl,
+    py_dispatch, py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl,
+    py_long_plaintext_impl, py_plaintext_impl, py_scalar_key_impl, py_session_pubkey_impl,
 };
