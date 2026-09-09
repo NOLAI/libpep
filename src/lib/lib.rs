@@ -72,6 +72,7 @@ pub mod arithmetic;
 pub mod client;
 pub mod core;
 pub mod data;
+pub mod errors;
 pub mod factors;
 pub mod keys;
 pub mod prelude;

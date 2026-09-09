@@ -35,10 +35,10 @@ use rand_core::{CryptoRng, Rng};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::{Error, ErrorKind};
 
+#[cfg(feature = "batch")]
+use crate::errors::BatchError;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-#[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
 
 /// A collection of [Pseudonym]s that together represent a larger pseudonym value using PKCS#7 padding.
 ///

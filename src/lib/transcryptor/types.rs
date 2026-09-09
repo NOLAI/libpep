@@ -145,7 +145,7 @@ impl Transcryptor {
         encrypted: &mut [E],
         rekey_info: &E::RekeyInfo,
         rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
+    ) -> Result<Box<[E]>, crate::errors::BatchError>
     where
         E: Rekeyable + crate::data::traits::HasStructure + Clone,
         E::RekeyInfo: Copy,
@@ -166,7 +166,7 @@ impl Transcryptor {
         encrypted: &mut [E],
         pseudonymization_info: &PseudonymizationInfo,
         rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
+    ) -> Result<Box<[E]>, crate::errors::BatchError>
     where
         E: Pseudonymizable + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,
@@ -186,7 +186,7 @@ impl Transcryptor {
         encrypted: &mut [E],
         transcryption_info: &TranscryptionInfo,
         rng: &mut R,
-    ) -> Result<Box<[E]>, super::batch::BatchError>
+    ) -> Result<Box<[E]>, crate::errors::BatchError>
     where
         E: Transcryptable + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,

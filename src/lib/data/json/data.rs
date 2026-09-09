@@ -13,6 +13,8 @@ use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pse
 #[cfg(feature = "batch")]
 use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
+#[cfg(feature = "batch")]
+use crate::errors::BatchError;
 use crate::factors::RerandomizeFactor;
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -20,8 +22,6 @@ use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
 use crate::keys::SessionKeys;
-#[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -48,6 +48,9 @@ pub enum JsonError {
 
     #[error("failed to get bytes from number: {0}")]
     NumberPadding(String),
+
+    #[error("invalid number encoding: {0}")]
+    InvalidNumberEncoding(String),
 
     #[error("failed to parse string: {0}")]
     StringPadding(String),
@@ -145,7 +148,7 @@ impl PEPJSONValue {
                     .as_slice()
                     .try_into()
                     .map_err(|_| JsonError::NumberBytesWrongLen { got: bytes.len() })?;
-                let num_val = bytes_to_number(&arr);
+                let num_val = bytes_to_number(&arr)?;
                 Ok(Value::Number(num_val))
             }
             Self::String(attr) => {
