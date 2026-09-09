@@ -7,7 +7,8 @@
 //! In the `ElGamal` scheme, a message `M` can be encrypted for a receiver which has public key `Y`
 //! associated with it, belonging to secret key `y`.
 //! Using the PEP cryptography, these encrypted messages can blindly be *transcrypted* from one key
-//! to another, by a central semi-trusted party, without the need to decrypt the message inbetween.
+//! to another by one or more semi-trusted parties (*transcryptors*), without the need to decrypt
+//! the message inbetween.
 //! Meanwhile, if the message contains an identifier of a data subject, this identifier can be
 //! pseudonymized.
 //! This enables end-to-end encrypted data sharing with built-in pseudonymization.
@@ -24,9 +25,10 @@
 //! This library primarily implements the *n-PEP* scheme, described in the paper by
 //! [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
 //! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
-//! *n-PEP: Secure data sharing with transitive and distributed blind pseudonymization*.
+//! *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*.
 //! In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**,
 //! Lecture Notes in Computer Science, Springer.
+//! [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
 //!
 //! n-PEP extends the original PEP framework, which was initially described in the article by
 //! Eric Verheul and Bart Jacobs,

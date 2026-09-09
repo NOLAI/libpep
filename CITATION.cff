@@ -19,7 +19,8 @@ keywords:
   - PEP
 preferred-citation:
   type: conference-paper
-  title: "n-PEP: Secure data sharing with transitive and distributed blind pseudonymization"
+  title: "n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization"
+  url: "https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf"
   authors:
     - given-names: Job
       family-names: Doesburg

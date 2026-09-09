@@ -19,12 +19,12 @@ We represent this encryption function as `Enc(b, M, Y)`.
 
 The library supports three homomorphic operations on ciphertext `in` (= `Enc(b, M, Y)`, encrypting message `M` for public key `Y` with random `b`):
 - `out = rekey(in, k)`: if `in` can be decrypted by secret key `y`, then `out` can be decrypted by secret key `k*y`.
-   Decryption will both result in message `M`. Specifically, `in = Enc(r, M, Y)` is transformed to `out = Enc(r, M, k*Y)`.
+   Both decrypt to the same message `M`. Specifically, `in = Enc(b, M, Y)` is transformed to `out = Enc(k^-1*b, M, k*Y)`.
 - `out = reshuffle(in, s)`: modifies a ciphertext `in` (an encrypted form of `M`), so that after decryption of `out` the decrypted message will be equal to `s*M`.
-  Specifically, `in = Enc(r, M, Y)` is transformed to `out = Enc(r, n*M, Y)`.
-- `o = rerandomize(in, r)`: scrambles a ciphertext.
+  Specifically, `in = Enc(b, M, Y)` is transformed to `out = Enc(s*b, s*M, Y)`.
+- `out = rerandomize(in, r)`: scrambles a ciphertext.
   Both `in` and `out` can be decrypted by the same secret key `y`, both resulting in the same decrypted message `M`.
-  However, the binary form of `in` and `out` differs. Spec: `in = Enc(b, M, Y)` is transformed to `out = Enc(r+b, M, Y)`;
+  However, the binary form of `in` and `out` differs. Specifically, `in = Enc(b, M, Y)` is transformed to `out = Enc(b+r, M, Y)`.
 
 With these three operations, encrypted data can be re-encrypted for different keys without decrypting the data, while pseudonymizing encrypted identifiers by reshuffling them with a user-specific factor.
 The core idea behind is that the pseudonymization and rekeying operations are applied on *encrypted* data.
@@ -45,9 +45,9 @@ The factor `k` is typically tied to the *current session of a user*, which we ca
 When the same encrypted pseudonym is used multiple times, rerandomize is applied every time.
 This way a binary compare of the encrypted pseudonym will not leak any information.
 
-The `reshuffle(in, n)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, k, n)`.
+The `reshuffle(in, s)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, s, k)`.
 
-Additionally, `reshuffle2(in, n_from, n_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)`, can be used for bidirectional transformations between two keys, effectively applying `k = k_from^-1 * k_to` and `n = n_from^-1 * n_to`.
+Additionally, `reshuffle2(in, s_from, s_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)`, are the transitive and reversible n-PEP variants that convert directly between two domains or sessions, effectively applying `s = s_from^-1 * s_to` and `k = k_from^-1 * k_to`.
 
 ## Installation
 
@@ -152,7 +152,7 @@ The following features are available:
 **Optional features:**
 - `python`: enables Python bindings via PyO3 (mutually exclusive with `wasm`).
 - `wasm`: enables WebAssembly bindings via wasm-bindgen (mutually exclusive with `python`).
-- `elgamal3`: enables ElGamal triple encryption, where ciphertexts additionally encode the public key they were encrypted for. This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations. **This feature changes API signatures**: decryption functions return `Option` (or an error for batches) instead of a plain value, since key mismatch becomes detectable. Choose one mode for your deployment; the two modes are not wire-compatible.
+- `elgamal3`: enables ElGamal triple encryption (the `(B, C, Y)` triple encoding of the original basic-PEP framework), where ciphertexts additionally encode the public key they were encrypted for. This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations. **This feature changes API signatures**: decryption functions return `Option` (or an error for batches) instead of a plain value, since key mismatch becomes detectable. Choose one mode for your deployment; the two modes are not wire-compatible.
 - `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets. Implies `elgamal3`, `offline` and `global-pseudonyms`. Only use this for interoperability with existing legacy PEP deployments.
 - `insecure`: enables methods that use global *secret* keys directly, such as offline decryption (`decrypt_global`). In the intended security model, the global secret key is discarded after distributed setup and never exists in one place; retaining it to use these methods gives whoever holds it the ability to decrypt everything. Only intended for testing and for special deployments that consciously accept this.
 - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (using reshuffle factor 1). Global pseudonyms are linkable across all domains, which defeats the purpose of domain-specific pseudonymization; only use this when such linkability is an explicit requirement.
@@ -246,9 +246,11 @@ wasm-pack build --target web --features wasm     # For browsers
 
 This library primarily implements the *n-PEP* scheme, described in:
 
-> Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure data sharing with transitive and distributed blind pseudonymization*. In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**, Lecture Notes in Computer Science, Springer.
+> Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*. In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**, Lecture Notes in Computer Science, Springer. [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
 
-n-PEP extends the original PEP framework, which was introduced in:
+n-PEP extends the PEP framework with *reversible* and *transitive* pseudonymization between domains (the `reshuffle2`/`rekey2`/`rsk2` operations), eliminating the polymorphic pseudonyms that act as a linking oracle in basic PEP, and distributes transcryption and session key establishment over `n` semi-trusted transcryptors, so that confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
+
+The original PEP framework, which n-PEP extends, was introduced in:
 
 > Eric Verheul and Bart Jacobs, *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*. In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172. [PDF](https://repository.ubn.ru.nl/bitstream/handle/2066/178461/178461.pdf?sequence=1)
 
