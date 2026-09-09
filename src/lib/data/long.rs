@@ -930,10 +930,23 @@ impl Encrypted for LongEncryptedAttribute {
 
 impl Pseudonymizable for LongEncryptedPseudonym {
     fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+        let ski = info.s.0 * info.k.0.invert();
         let pseudonymized_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.pseudonymize(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value = crate::core::primitives::rsk_precomputed(
+                    block.value(),
+                    &info.s.0,
+                    &info.k.0,
+                    &ski,
+                );
+                #[cfg(not(feature = "elgamal3"))]
+                let value =
+                    crate::core::primitives::rsk_precomputed(block.value(), &info.s.0, &ski);
+                EncryptedPseudonym::from_value(value)
+            })
             .collect();
         LongEncryptedPseudonym(pseudonymized_blocks)
     }
@@ -943,10 +956,18 @@ impl Rekeyable for LongEncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+        let k_inv = info.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.rekey(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value =
+                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                #[cfg(not(feature = "elgamal3"))]
+                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                EncryptedPseudonym::from_value(value)
+            })
             .collect();
         LongEncryptedPseudonym(rekeyed_blocks)
     }
@@ -956,10 +977,18 @@ impl Rekeyable for LongEncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+        let k_inv = info.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
-            .map(|block| block.rekey(info))
+            .map(|block| {
+                #[cfg(feature = "elgamal3")]
+                let value =
+                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                #[cfg(not(feature = "elgamal3"))]
+                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                EncryptedAttribute::from_value(value)
+            })
             .collect();
         LongEncryptedAttribute(rekeyed_blocks)
     }
