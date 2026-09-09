@@ -2,24 +2,32 @@
 
 #[cfg(feature = "offline")]
 use crate::client::OfflineClient;
-#[cfg(feature = "json")]
+#[cfg(all(feature = "offline", feature = "json"))]
 use crate::data::py::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
-#[cfg(feature = "long")]
+#[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::py::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
+#[cfg(feature = "offline")]
 use crate::data::py::records::{PyEncryptedRecord, PyRecord};
-#[cfg(feature = "long")]
+#[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
+#[cfg(feature = "offline")]
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
+#[cfg(feature = "offline")]
 use crate::keys::py::PyGlobalPublicKeys;
+#[cfg(feature = "offline")]
 use crate::keys::*;
+#[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
+#[cfg(feature = "offline")]
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
+#[cfg(feature = "offline")]
 use pyo3::types::PyAny;
+#[cfg(all(feature = "offline", feature = "batch"))]
 use pyo3::IntoPyObjectExt;
 
 /// An offline PEP client that can only encrypt (not decrypt).
@@ -185,6 +193,7 @@ impl PyOfflineClient {
     }
 }
 
+#[cfg_attr(not(feature = "offline"), allow(unused_variables))]
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "offline")]
     m.add_class::<PyOfflineClient>()?;

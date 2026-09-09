@@ -30,18 +30,18 @@ use pyo3::IntoPyObjectExt;
 use crate::client::decrypt_global;
 #[cfg(feature = "offline")]
 use crate::client::encrypt_global;
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
 use crate::keys::py::types::{PyAttributeGlobalPublicKey, PyPseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::GlobalSecretKeys;
 #[cfg(feature = "offline")]
 use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::GlobalSecretKeys;
 
 #[cfg(feature = "long")]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};

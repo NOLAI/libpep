@@ -794,14 +794,8 @@ fn main() {
             eprintln!("  - Attributes: {}", global_public_keys.attribute.to_hex());
             eprintln!("  - Pseudonyms: {}", global_public_keys.pseudonym.to_hex());
             eprintln!("Blinded secret keys:");
-            eprintln!(
-                "  - Attributes: {}",
-                blinded_global_keys.attribute.to_hex()
-            );
-            eprintln!(
-                "  - Pseudonyms: {}",
-                blinded_global_keys.pseudonym.to_hex()
-            );
+            eprintln!("  - Attributes: {}", blinded_global_keys.attribute.to_hex());
+            eprintln!("  - Pseudonyms: {}", blinded_global_keys.pseudonym.to_hex());
             eprintln!("Blinding factors (keep secret):");
             for factor in &blinding_factors {
                 eprintln!("  - {}", factor.to_hex());

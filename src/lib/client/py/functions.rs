@@ -17,28 +17,28 @@ use crate::data::py::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::py::simple::{
     PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym,
 };
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::py::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
 use crate::keys::py::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::py::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::py::types::PyGlobalSecretKeys;
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::keys::GlobalSecretKeys;
 use crate::keys::py::PySessionKeys;
 use crate::keys::py::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::keys::GlobalSecretKeys;
 #[cfg(feature = "offline")]
-use crate::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+use crate::keys::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys,
-    PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, SessionKeys,
 };
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

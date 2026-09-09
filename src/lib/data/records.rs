@@ -6,7 +6,9 @@
 use crate::data::simple::{
     Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
-use crate::data::traits::{BatchEncryptable, Encryptable, Encrypted, Transcryptable};
+#[cfg(feature = "batch")]
+use crate::data::traits::BatchEncryptable;
+use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
@@ -23,6 +25,7 @@ use crate::data::long::{
 
 #[cfg(feature = "batch")]
 use crate::data::traits::HasStructure;
+#[cfg(feature = "batch")]
 use crate::transcryptor::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
@@ -814,6 +817,7 @@ impl HasStructure for LongEncryptedRecord {
 }
 
 #[cfg(feature = "batch")]
+#[cfg(feature = "batch")]
 impl BatchEncryptable for Record {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         Ok(items.to_vec())
@@ -821,6 +825,7 @@ impl BatchEncryptable for Record {
 }
 
 #[cfg(feature = "batch")]
+#[cfg(all(feature = "batch", feature = "long"))]
 impl BatchEncryptable for LongRecord {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         Ok(items.to_vec())

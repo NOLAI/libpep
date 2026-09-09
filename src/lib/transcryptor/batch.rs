@@ -1,5 +1,6 @@
 //! Batch operations for pseudonymization, rekeying, and transcryption with shuffling.
 
+#[cfg(feature = "json")]
 use crate::data::json::{JsonError, UnifyError};
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
@@ -22,8 +23,10 @@ pub enum BatchError {
         expected_structure: String,
         actual_structure: String,
     },
+    #[cfg(feature = "json")]
     #[error(transparent)]
     UnifyError(#[from] UnifyError),
+    #[cfg(feature = "json")]
     #[error(transparent)]
     JsonError(#[from] JsonError),
 }

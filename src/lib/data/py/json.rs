@@ -9,9 +9,9 @@ use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
 use crate::data::json::utils;
 use crate::data::traits::Transcryptable;
-use crate::factors::py::contexts::{
-    PyEncryptionContext, PyPseudonymizationDomain, PyTranscryptionInfo,
-};
+#[cfg(feature = "batch")]
+use crate::factors::py::contexts::PyTranscryptionInfo;
+use crate::factors::py::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::py::types::PyGlobalPublicKeys;
