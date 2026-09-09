@@ -23,6 +23,12 @@ pub enum BatchError {
         expected_structure: String,
         actual_structure: String,
     },
+    /// Decryption of an item in the batch failed because the secret key does not match.
+    ///
+    /// Only occurs with the `elgamal3` feature, where ciphertexts encode the public key they
+    /// were encrypted for and decryption with a mismatched key is detected.
+    #[error("Decryption failed for entry at index {index}.")]
+    DecryptionFailed { index: usize },
     #[cfg(feature = "json")]
     #[error(transparent)]
     UnifyError(#[from] UnifyError),
