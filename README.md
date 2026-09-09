@@ -10,8 +10,10 @@
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
 
 This library implements PEP cryptography based on ElGamal encrypted messages.
-It can be used to encrypt data and re-encrypt it for different keys without decrypting the data, while pseudonymizing encrypted identifiers in the data.
-It primarily implements the *n-PEP* scheme (see [Background](#background)).
+It enables secure, end-to-end encrypted, pseudonymized data sharing between parties that each know their data subjects under different, unlinkable pseudonyms.
+Encrypted data can blindly be re-encrypted (*transcrypted*) for different keys by semi-trusted *transcryptors*, without decrypting the data and while pseudonymizing encrypted identifiers in the data.
+Following the principle of *distributed trust*, transcryption can be distributed over `n` transcryptors: every transcryptor can independently monitor and block data exchanges, while confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
+The library primarily implements the *n-PEP* scheme (see [Background](#background)).
 
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
 This encryption is random (polymorphic): every time a different random `b` is used, results in different ciphertexts (encrypted messages).
@@ -34,8 +36,7 @@ Data can initially be encrypted for one key, and later rekeyed and potentially r
 ## Applications
 
 For pseudonymization, the core operation is *reshuffle* with `s`.
-It modifies a main pseudonym with a factor `s` that is specific to a user (or user group) receiving the pseudonym.
-After applying a user specific factor `s`, a pseudonym is called a *local pseudonym*.
+Every user (or user group) knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one user's domain to another's (effectively applying `s = s_from^-1 * s_to`), without a global pseudonym existing in between.
 The factor `s` is typically tied to the *access group* or *domain of a user*, which we call the *pseudonymization domain*.
 
 Using only a reshuffle is insufficient, as the pseudonym is still encrypted for a key the user does not possess.
@@ -44,6 +45,7 @@ The factor `k` is typically tied to the *current session of a user*, which we ca
 
 When the same encrypted pseudonym is used multiple times, rerandomize is applied every time.
 This way a binary compare of the encrypted pseudonym will not leak any information.
+Mixing fresh randomness into a ciphertext before reshuffling also protects against plaintext injection attacks at transcryption.
 
 The `reshuffle(in, s)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, s, k)`.
 

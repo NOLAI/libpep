@@ -12,6 +12,9 @@
 //! Meanwhile, if the message contains an identifier of a data subject, this identifier can be
 //! pseudonymized.
 //! This enables end-to-end encrypted data sharing with built-in pseudonymization.
+//! Transcryption can be distributed over multiple transcryptors, such that every transcryptor can
+//! independently monitor and block data exchanges, while confidentiality and pseudonym
+//! unlinkability hold as long as at least one transcryptor remains uncompromised.
 //! Since at the time of initial encryption, the future recipient does not need to be specified,
 //! data sharing can be done *asynchronously*. This means that encrypted data can be
 //! stored long-term before it is shared at any point in the future.
