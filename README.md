@@ -11,6 +11,7 @@
 
 This library implements PEP cryptography based on ElGamal encrypted messages.
 It can be used to encrypt data and re-encrypt it for different keys without decrypting the data, while pseudonymizing encrypted identifiers in the data.
+It primarily implements the *n-PEP* scheme, presented at STM 2026 (see [Background](#background)).
 
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
 This encryption is random (polymorphic): every time a different random `b` is used, results in different ciphertexts (encrypted messages).
@@ -243,4 +244,14 @@ wasm-pack build --target web --features wasm     # For browsers
 
 ## Background
 
-Based on the article by Eric Verheul and Bart Jacobs, *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*. In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172.
+This library primarily implements the *n-PEP* scheme, described in:
+
+> Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure data sharing with transitive and distributed blind pseudonymization*. In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**, Lecture Notes in Computer Science, Springer.
+
+n-PEP extends the original PEP framework, which was introduced in:
+
+> Eric Verheul and Bart Jacobs, *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*. In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172. [PDF](https://repository.ubn.ru.nl/bitstream/handle/2066/178461/178461.pdf?sequence=1)
+
+## Citing
+
+If you use this library in academic work, please cite the n-PEP paper (see also [`CITATION.cff`](CITATION.cff)).

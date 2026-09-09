@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the n-PEP paper (see preferred-citation)."
+title: "libpep"
+type: software
+authors:
+  - given-names: Bernard
+    name-particle: van
+    family-names: Gastel
+    email: bvgastel@bitpowder.com
+  - given-names: Job
+    family-names: Doesburg
+    email: job@jobdoesburg.nl
+license: Apache-2.0
+repository-code: "https://github.com/NOLAI/libpep"
+keywords:
+  - cryptography
+  - pseudonymization
+  - polymorphic encryption
+  - PEP
+preferred-citation:
+  type: conference-paper
+  title: "n-PEP: Secure data sharing with transitive and distributed blind pseudonymization"
+  authors:
+    - given-names: Job
+      family-names: Doesburg
+    - given-names: Bernard
+      name-particle: van
+      family-names: Gastel
+    - given-names: Erik
+      family-names: Poll
+  conference:
+    name: "22nd International Workshop on Security and Trust Management (STM 2026)"
+  collection-title: "Security and Trust Management (STM 2026), Lecture Notes in Computer Science"
+  publisher:
+    name: "Springer"
+  year: 2026
+references:
+  - type: article
+    title: "Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research"
+    authors:
+      - given-names: Eric
+        family-names: Verheul
+      - given-names: Bart
+        family-names: Jacobs
+    journal: "Nieuw Archief voor Wiskunde"
+    volume: "5/18"
+    issue: "3"
+    year: 2017
+    start: 168
+    end: 172

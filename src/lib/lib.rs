@@ -21,14 +21,18 @@
 //! (i.e. [transcryption](core::functions::transcrypt)) of [`Pseudonym`](core::data::simple::Pseudonym)s
 //! and [`Attribute`](core::data::simple::Attribute)s using this cryptographic concept.
 //!
-//! The PEP framework was initially described in the article by Eric Verheul and Bart Jacobs,
+//! This library primarily implements the *n-PEP* scheme, described in the paper by
+//! [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
+//! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
+//! *n-PEP: Secure data sharing with transitive and distributed blind pseudonymization*.
+//! In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**,
+//! Lecture Notes in Computer Science, Springer.
+//!
+//! n-PEP extends the original PEP framework, which was initially described in the article by
+//! Eric Verheul and Bart Jacobs,
 //! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
 //! In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172.
 //! [PDF](https://repository.ubn.ru.nl/bitstream/handle/2066/178461/178461.pdf?sequence=1)
-//!
-//! This library implements an extension of the PEP framework, called *n-PEP*, described in the
-//! article by [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
-//! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/) (to be published).
 //!
 //! ## Feature flags
 //!
