@@ -26,7 +26,7 @@ use crate::data::long::{
 #[cfg(feature = "batch")]
 use crate::data::traits::HasStructure;
 #[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
+use crate::errors::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -7,13 +7,13 @@ use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
 #[cfg(feature = "batch")]
 use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+#[cfg(feature = "batch")]
+use crate::errors::BatchError;
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
 };
 use crate::keys::*;
-#[cfg(feature = "batch")]
-use crate::transcryptor::BatchError;
 use derive_more::{Deref, From};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -104,6 +104,13 @@ pub trait ElGamalEncrypted: Encrypted {
 
 /// A marker trait for encryptable types that use ElGamal encryption with a single plaintext value.
 /// This enables access to ElGamal-specific operations like serialization and special encodings.
+///
+/// # Access idioms
+///
+/// Plaintext value types expose their group element through the public `value` field and
+/// [`from_point`](Self::from_point)/[`to_point`-style](Self::value) conversions; *public* key
+/// types dereference to their group element; *secret* key material never dereferences and is
+/// read only through explicit `value()` calls.
 ///
 /// # Security
 ///
