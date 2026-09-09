@@ -203,4 +203,104 @@ macro_rules! py_encrypted_impl {
     };
 }
 
-pub(crate) use {py_encrypted_impl, py_plaintext_impl};
+/// Methods of a session public key wrapper: point conversion plus byte and hex codecs.
+macro_rules! py_session_pubkey_impl {
+    ($w:ident) => {
+        #[pymethods]
+        #[allow(clippy::wrong_self_convention)]
+        impl $w {
+            /// Returns the group element associated with this public key.
+            #[pyo3(name = "to_point")]
+            fn to_point(&self) -> PyGroupElement {
+                self.0
+            }
+
+            /// Encodes the public key as a byte array.
+            #[pyo3(name = "to_bytes")]
+            fn encode(&self, py: Python) -> Py<PyAny> {
+                PyBytes::new(py, &self.0 .0.to_bytes()).into()
+            }
+
+            /// Decodes a public key from a byte array.
+            #[staticmethod]
+            #[pyo3(name = "from_bytes")]
+            fn decode(bytes: &[u8]) -> Option<Self> {
+                GroupElement::from_slice(bytes).map(|x| Self(x.into()))
+            }
+
+            /// Encodes the public key as a hexadecimal string.
+            #[pyo3(name = "to_hex")]
+            fn as_hex(&self) -> String {
+                self.0.to_hex()
+            }
+
+            /// Decodes a public key from a hexadecimal string.
+            #[staticmethod]
+            #[pyo3(name = "from_hex")]
+            fn from_hex(hex: &str) -> Option<Self> {
+                GroupElement::from_hex(hex).map(|x| Self(x.into()))
+            }
+        }
+    };
+}
+
+/// Methods of a global public key wrapper: constructor, point conversion, byte and hex
+/// codecs, repr and str.
+macro_rules! py_global_pubkey_impl {
+    ($w:ident as $name:literal) => {
+        #[pymethods]
+        #[allow(clippy::wrong_self_convention)]
+        impl $w {
+            /// Creates a new global public key from a group element.
+            #[new]
+            fn new(x: PyGroupElement) -> Self {
+                Self(x.0.into())
+            }
+
+            /// Returns the group element associated with this public key.
+            #[pyo3(name = "to_point")]
+            fn to_point(&self) -> PyGroupElement {
+                self.0
+            }
+
+            /// Encodes the public key as a byte array.
+            #[pyo3(name = "to_bytes")]
+            fn encode(&self, py: Python) -> Py<PyAny> {
+                PyBytes::new(py, &self.0 .0.to_bytes()).into()
+            }
+
+            /// Decodes a public key from a byte array.
+            #[staticmethod]
+            #[pyo3(name = "from_bytes")]
+            fn decode(bytes: &[u8]) -> Option<Self> {
+                GroupElement::from_slice(bytes).map(|x| Self(x.into()))
+            }
+
+            /// Encodes the public key as a hexadecimal string.
+            #[pyo3(name = "to_hex")]
+            fn as_hex(&self) -> String {
+                self.0.to_hex()
+            }
+
+            /// Decodes a public key from a hexadecimal string.
+            #[staticmethod]
+            #[pyo3(name = "from_hex")]
+            fn from_hex(hex: &str) -> Option<Self> {
+                let x = GroupElement::from_hex(hex)?;
+                Some(Self(x.into()))
+            }
+
+            fn __repr__(&self) -> String {
+                format!(concat!($name, "::from({})"), self.as_hex())
+            }
+
+            fn __str__(&self) -> String {
+                self.as_hex()
+            }
+        }
+    };
+}
+
+pub(crate) use {
+    py_encrypted_impl, py_global_pubkey_impl, py_plaintext_impl, py_session_pubkey_impl,
+};
