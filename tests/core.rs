@@ -1,9 +1,9 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::client::{decrypt, encrypt};
-#[cfg(feature = "long")]
+#[cfg(all(feature = "batch", feature = "long"))]
 use libpep::data::long::{LongAttribute, LongPseudonym};
-#[cfg(feature = "long")]
+#[cfg(all(feature = "batch", feature = "long"))]
 use libpep::data::records::LongEncryptedRecord;
 use libpep::data::simple::*;
 use libpep::factors::contexts::*;

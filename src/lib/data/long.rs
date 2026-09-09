@@ -1404,6 +1404,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "json")]
     fn long_encrypted_serde_json() {
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_pseudonym_session_keys(
