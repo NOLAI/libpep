@@ -8,7 +8,7 @@ use crate::client::{decrypt_global, encrypt_global};
 use crate::data::json::builder::PEPJSONBuilder;
 use crate::data::json::data::{EncryptedPEPJSONValue, PEPJSONValue};
 use crate::data::json::structure::JSONStructure;
-use crate::data::json::utils;
+use crate::data::wasm::utils;
 use crate::data::traits::Transcryptable;
 #[cfg(feature = "batch")]
 use crate::factors::wasm::contexts::WASMTranscryptionInfo;

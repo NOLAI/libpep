@@ -1,6 +1,7 @@
 //! Python bindings for PEP data types.
 
 pub mod simple;
+pub(crate) mod utils;
 
 #[cfg(feature = "json")]
 pub mod json;
