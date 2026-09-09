@@ -41,10 +41,9 @@ pub struct PyOfflineClient(pub(crate) OfflineClient);
 impl PyOfflineClient {
     #[new]
     fn new(global_public_keys: &PyGlobalPublicKeys) -> Self {
-        Self(OfflineClient::new(GlobalPublicKeys {
-            pseudonym: PseudonymGlobalPublicKey(global_public_keys.pseudonym.0 .0),
-            attribute: AttributeGlobalPublicKey(global_public_keys.attribute.0 .0),
-        }))
+        Self(OfflineClient::new(GlobalPublicKeys::from(
+            *global_public_keys,
+        )))
     }
 
     /// Polymorphic encrypt that works with any encryptable type.

@@ -260,6 +260,15 @@ impl PyGlobalPublicKeys {
     }
 }
 
+impl From<PyGlobalPublicKeys> for GlobalPublicKeys {
+    fn from(py_keys: PyGlobalPublicKeys) -> Self {
+        GlobalPublicKeys {
+            pseudonym: py_keys.pseudonym.0 .0.into(),
+            attribute: py_keys.attribute.0 .0.into(),
+        }
+    }
+}
+
 /// A pair of global secret keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Debug)]
 #[pyclass(name = "GlobalSecretKeys", from_py_object)]
@@ -283,6 +292,15 @@ impl PyGlobalSecretKeys {
 
     fn __repr__(&self) -> String {
         "GlobalSecretKeys(pseudonym=..., attribute=...)".to_string()
+    }
+}
+
+impl From<PyGlobalSecretKeys> for GlobalSecretKeys {
+    fn from(py_keys: PyGlobalSecretKeys) -> Self {
+        GlobalSecretKeys {
+            pseudonym: py_keys.pseudonym.0 .0.into(),
+            attribute: py_keys.attribute.0 .0.into(),
+        }
     }
 }
 

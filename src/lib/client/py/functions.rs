@@ -373,14 +373,11 @@ pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> P
         }
     }
 
-    // Try PEPJSONValue with SessionKeys
+    // Try PEPJSONValue with GlobalPublicKeys
     #[cfg(feature = "json")]
-    if let Ok(json) = message.extract::<PyPEPJSONValue>() {
-        if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
-            let keys = GlobalPublicKeys {
-                pseudonym: PseudonymGlobalPublicKey(*pk.pseudonym.0),
-                attribute: AttributeGlobalPublicKey(*pk.attribute.0),
-            };
+    if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
+        if let Ok(json) = message.extract::<PyPEPJSONValue>() {
+            let keys = GlobalPublicKeys::from(pk);
             let result = encrypt_global(&json.0, &keys, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
