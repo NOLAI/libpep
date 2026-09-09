@@ -36,6 +36,28 @@
 //!
 //! ## Feature flags
 //!
+//! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
+//! towards global keys), `batch` (batch transcryption with shuffling), `serde`, `json`
+//! (structured data with nested pseudonyms), and `build-binary` (the `peppy` CLI).
+//!
+//! Optional features and their security implications:
+//!
+//! - `elgamal3`: ciphertexts additionally encode the public key they were encrypted for, making
+//!   decryption with a mismatched key detectable at the cost of larger ciphertexts and slower
+//!   operations. **This feature changes API signatures**: decryption functions return an
+//!   [`Option`] (or an error for batches) instead of a plain value. The two modes are not
+//!   wire-compatible; choose one for your deployment.
+//! - `legacy`: compatibility with the legacy PEP repository implementation (different scalar
+//!   derivation). Implies `elgamal3`, `offline` and `global-pseudonyms`; only for
+//!   interoperability with legacy deployments.
+//! - `insecure`: methods that use global *secret* keys directly, such as offline decryption
+//!   ([`decrypt_global`](client::decrypt_global)). In the intended security model the global
+//!   secret key is discarded after distributed setup; retaining it to use these methods gives
+//!   its holder the ability to decrypt everything. Intended for testing only.
+//! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
+//!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
+//!   linkability is an explicit requirement.
+//!
 //! **Note:** The `python` and `wasm` features are mutually exclusive. If both are enabled,
 //! neither binding module will be compiled. This is because PyO3 builds a cdylib that links
 //! to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly -

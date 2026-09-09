@@ -11,7 +11,7 @@
 
 This library implements PEP cryptography based on ElGamal encrypted messages.
 It can be used to encrypt data and re-encrypt it for different keys without decrypting the data, while pseudonymizing encrypted identifiers in the data.
-It primarily implements the *n-PEP* scheme, presented at STM 2026 (see [Background](#background)).
+It primarily implements the *n-PEP* scheme (see [Background](#background)).
 
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
 This encryption is random (polymorphic): every time a different random `b` is used, results in different ciphertexts (encrypted messages).
@@ -152,10 +152,10 @@ The following features are available:
 **Optional features:**
 - `python`: enables Python bindings via PyO3 (mutually exclusive with `wasm`).
 - `wasm`: enables WebAssembly bindings via wasm-bindgen (mutually exclusive with `python`).
-- `elgamal3`: enables ElGamal triple encryption, including the recipient's public key in message encoding. This provides additional security verification but is less efficient.
-- `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets.
-- `insecure`: enables methods that expose global secret keys, to be used with care for testing or special use cases.
-- `global-pseudonyms`: enables global pseudonyms (which are insecure).
+- `elgamal3`: enables ElGamal triple encryption, where ciphertexts additionally encode the public key they were encrypted for. This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations. **This feature changes API signatures**: decryption functions return `Option` (or an error for batches) instead of a plain value, since key mismatch becomes detectable. Choose one mode for your deployment; the two modes are not wire-compatible.
+- `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets. Implies `elgamal3`, `offline` and `global-pseudonyms`. Only use this for interoperability with existing legacy PEP deployments.
+- `insecure`: enables methods that use global *secret* keys directly, such as offline decryption (`decrypt_global`). In the intended security model, the global secret key is discarded after distributed setup and never exists in one place; retaining it to use these methods gives whoever holds it the ability to decrypt everything. Only intended for testing and for special deployments that consciously accept this.
+- `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (using reshuffle factor 1). Global pseudonyms are linkable across all domains, which defeats the purpose of domain-specific pseudonymization; only use this when such linkability is an explicit requirement.
 
 **Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly.
 These have incompatible linking requirements and cannot coexist in the same build.
