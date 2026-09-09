@@ -2,7 +2,6 @@ use crate::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use wasm_bindgen::prelude::*;

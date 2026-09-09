@@ -105,7 +105,7 @@ impl WASMPseudonymizationInfo {
     #[wasm_bindgen(js_name = reverse)]
     pub fn reverse(&self) -> WASMPseudonymizationInfo {
         WASMPseudonymizationInfo(PseudonymizationInfo {
-            s: ReshuffleFactor::from(self.0.s.0.invert()),
+            s: ReshuffleFactor::from(self.0.s.scalar().invert()),
             k: PseudonymRekeyFactor::from(self.0.k.scalar().invert()),
         })
     }
@@ -151,7 +151,7 @@ impl WASMTranscryptionInfo {
     pub fn reverse(&self) -> WASMTranscryptionInfo {
         WASMTranscryptionInfo(TranscryptionInfo {
             pseudonym: PseudonymizationInfo {
-                s: ReshuffleFactor::from(self.0.pseudonym.s.0.invert()),
+                s: ReshuffleFactor::from(self.0.pseudonym.s.scalar().invert()),
                 k: PseudonymRekeyFactor::from(self.0.pseudonym.k.scalar().invert()),
             },
             attribute: AttributeRekeyFactor::from(self.0.attribute.scalar().invert()),

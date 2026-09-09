@@ -38,7 +38,7 @@ impl WASMReshuffleFactor {
 
     #[wasm_bindgen(js_name = scalar)]
     pub fn wasm_scalar(&self) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0 .0)
+        WASMScalarNonZero(self.0.scalar())
     }
 }
 

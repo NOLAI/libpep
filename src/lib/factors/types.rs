@@ -20,7 +20,14 @@ impl RerandomizeFactor {
 /// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
 /// the factors of two domains (or their ratio) can link pseudonyms between those domains.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct ReshuffleFactor(pub ScalarNonZero);
+pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
+
+impl ReshuffleFactor {
+    /// The scalar value of this factor.
+    pub fn scalar(&self) -> ScalarNonZero {
+        self.0
+    }
+}
 
 /// Trait for rekey factors that can be extracted to a scalar.
 pub trait RekeyFactor {
