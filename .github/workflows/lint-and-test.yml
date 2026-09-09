@@ -114,7 +114,7 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install maturin pytest
-          maturin develop --features python
+          maturin develop --features python,insecure
       - name: Run Python tests
         run: |
           source .venv/bin/activate
