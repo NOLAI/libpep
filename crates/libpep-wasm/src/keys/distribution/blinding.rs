@@ -103,7 +103,7 @@ pub fn wasm_make_blinded_global_keys(
 ) -> Option<WASMBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_global_keys(
         &PseudonymGlobalSecretKey::from(*pseudonym_global_secret_key.0),

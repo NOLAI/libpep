@@ -40,8 +40,8 @@ impl WASMClient {
         let shares: Vec<SessionKeyShares> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare::from(*x.0.pseudonym),
-                attribute: AttributeSessionKeyShare::from(*x.0.attribute),
+                pseudonym: PseudonymSessionKeyShare::from(*x.0.pseudonym.value()),
+                attribute: AttributeSessionKeyShare::from(*x.0.attribute.value()),
             })
             .collect();
         let blinded_keys = BlindedGlobalKeys {

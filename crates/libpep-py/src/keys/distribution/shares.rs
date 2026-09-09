@@ -182,7 +182,7 @@ pub fn py_make_pseudonym_session_key(
     let (public, secret) = make_pseudonym_session_key(blinded_global_secret_key.0, &shares);
     PyPseudonymSessionKeyPair {
         public: PyPseudonymSessionPublicKey(PyGroupElement(*public)),
-        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret.value())),
     }
 }
 
@@ -197,7 +197,7 @@ pub fn py_make_attribute_session_key(
     let (public, secret) = make_attribute_session_key(blinded_global_secret_key.0, &shares);
     PyAttributeSessionKeyPair {
         public: PyAttributeSessionPublicKey(PyGroupElement(*public)),
-        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret.value())),
     }
 }
 
@@ -226,8 +226,8 @@ pub fn py_make_session_keys_distributed(
             attribute: PyAttributeSessionPublicKey(PyGroupElement(*keys.attribute.public)),
         },
         secret: PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(*keys.pseudonym.secret)),
-            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(*keys.attribute.secret)),
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(*keys.pseudonym.secret.value())),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(*keys.attribute.secret.value())),
         },
     }
 }
@@ -247,7 +247,7 @@ pub fn py_update_pseudonym_session_key(
     );
     PyPseudonymSessionKeyPair {
         public: PyPseudonymSessionPublicKey(PyGroupElement(*public)),
-        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret)),
+        secret: PyPseudonymSessionSecretKey(PyScalarNonZero(*secret.value())),
     }
 }
 
@@ -266,7 +266,7 @@ pub fn py_update_attribute_session_key(
     );
     PyAttributeSessionKeyPair {
         public: PyAttributeSessionPublicKey(PyGroupElement(*public)),
-        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret)),
+        secret: PyAttributeSessionSecretKey(PyScalarNonZero(*secret.value())),
     }
 }
 
@@ -303,8 +303,12 @@ pub fn py_update_session_keys(
             attribute: PyAttributeSessionPublicKey(PyGroupElement(*updated.attribute.public)),
         },
         secret: PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(*updated.pseudonym.secret)),
-            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(*updated.attribute.secret)),
+            pseudonym: PyPseudonymSessionSecretKey(PyScalarNonZero(
+                *updated.pseudonym.secret.value(),
+            )),
+            attribute: PyAttributeSessionSecretKey(PyScalarNonZero(
+                *updated.attribute.secret.value(),
+            )),
         },
     }
 }

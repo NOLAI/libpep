@@ -172,8 +172,14 @@ mod tests {
         let session = make_session_keys(&global_sk, &context, &secret);
 
         // Verify session public keys match session secret keys
-        assert_eq!(*session.pseudonym.public, *session.pseudonym.secret * G);
-        assert_eq!(*session.attribute.public, *session.attribute.secret * G);
+        assert_eq!(
+            *session.pseudonym.public,
+            *session.pseudonym.secret.value() * G
+        );
+        assert_eq!(
+            *session.attribute.public,
+            *session.attribute.secret.value() * G
+        );
     }
 
     #[test]
