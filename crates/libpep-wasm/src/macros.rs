@@ -374,7 +374,7 @@ macro_rules! wasm_session_crypt_fns {
         #[wasm_bindgen(js_name = $enc_js)]
         pub fn $encf(m: &$m, public_key: &$kpub) -> $e {
             let mut rng = rand::rng();
-            encrypt(&m.0, &$ckpub::from(*public_key.0), &mut rng).into()
+            encrypt(&m.0, &<$ckpub as libpep::keys::PublicKey>::from_point(*public_key.0), &mut rng).into()
         }
 
         /// Decrypt using a session secret key.
@@ -382,7 +382,7 @@ macro_rules! wasm_session_crypt_fns {
         #[cfg(feature = "elgamal3")]
         #[wasm_bindgen(js_name = $dec_js)]
         pub fn $decf(v: &$e, secret_key: &$ksec) -> Option<$m> {
-            decrypt(&v.0, &$cksec::from(*secret_key.0)).map(|x| x.into())
+            decrypt(&v.0, &<$cksec as libpep::keys::SecretKey>::from_scalar(*secret_key.0)).map(|x| x.into())
         }
 
         /// Decrypt using a session secret key.
@@ -390,7 +390,7 @@ macro_rules! wasm_session_crypt_fns {
         #[cfg(not(feature = "elgamal3"))]
         #[wasm_bindgen(js_name = $dec_js)]
         pub fn $decf(v: &$e, secret_key: &$ksec) -> $m {
-            decrypt(&v.0, &$cksec::from(*secret_key.0)).into()
+            decrypt(&v.0, &<$cksec as libpep::keys::SecretKey>::from_scalar(*secret_key.0)).into()
         }
     )+};
 }
@@ -405,7 +405,7 @@ macro_rules! wasm_global_crypt_fns {
         #[wasm_bindgen(js_name = $enc_js)]
         pub fn $encf(m: &$m, public_key: &$kpub) -> $e {
             let mut rng = rand::rng();
-            let key = $ckpub::from(*public_key.0);
+            let key = <$ckpub as libpep::keys::PublicKey>::from_point(*public_key.0);
             encrypt_global(&m.0, &key, &mut rng).into()
         }
 
@@ -413,7 +413,7 @@ macro_rules! wasm_global_crypt_fns {
         #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
         #[wasm_bindgen(js_name = $dec_js)]
         pub fn $decf(v: &$e, secret_key: &$ksec) -> Option<$m> {
-            let key = $cksec::from(*secret_key.0);
+            let key = <$cksec as libpep::keys::SecretKey>::from_scalar(*secret_key.0);
             decrypt_global(&v.0, &key).map(|x| x.into())
         }
 
@@ -421,7 +421,7 @@ macro_rules! wasm_global_crypt_fns {
         #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
         #[wasm_bindgen(js_name = $dec_js)]
         pub fn $decf(v: &$e, secret_key: &$ksec) -> $m {
-            let key = $cksec::from(*secret_key.0);
+            let key = <$cksec as libpep::keys::SecretKey>::from_scalar(*secret_key.0);
             decrypt_global(&v.0, &key).into()
         }
     )+};

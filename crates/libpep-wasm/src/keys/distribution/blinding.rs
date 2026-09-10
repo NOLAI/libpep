@@ -4,6 +4,7 @@ use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
 /// A blinding factor.
@@ -105,8 +106,8 @@ pub fn wasm_make_blinded_global_keys(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(*pseudonym_global_secret_key.0),
-        &AttributeGlobalSecretKey::from(*attribute_global_secret_key.0),
+        &PseudonymGlobalSecretKey::from_scalar(*pseudonym_global_secret_key.0),
+        &AttributeGlobalSecretKey::from_scalar(*attribute_global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedGlobalKeys)

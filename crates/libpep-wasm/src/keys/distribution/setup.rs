@@ -9,6 +9,7 @@ use crate::keys::types::{
 };
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
 /// Setup a distributed system with global keys.
@@ -53,7 +54,7 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_pseudonym_global_secret_key(
-        &PseudonymGlobalSecretKey::from(*global_secret_key.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedPseudonymGlobalSecretKey)
@@ -70,7 +71,7 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_attribute_global_secret_key(
-        &AttributeGlobalSecretKey::from(*global_secret_key.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedAttributeGlobalSecretKey)

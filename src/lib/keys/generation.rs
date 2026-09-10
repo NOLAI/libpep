@@ -2,7 +2,6 @@
 
 use super::traits::SecretKey;
 use super::types::*;
-use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
@@ -11,20 +10,19 @@ use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic function to generate a global key pair.
 /// Automatically works for both pseudonym and attribute keys based on the types.
-pub fn make_global_key_pair<R, PK, SK>(rng: &mut R) -> (PK, SK)
+pub fn make_global_key_pair<R, SK>(rng: &mut R) -> (SK::PublicKeyType, SK)
 where
     R: Rng + CryptoRng,
-    PK: From<GroupElement>,
-    SK: From<ScalarNonZero>,
+    SK: SecretKey,
 {
-    let sk = loop {
-        let sk = ScalarNonZero::random(rng);
-        if sk != ScalarNonZero::one() {
-            break sk;
+    let scalar = loop {
+        let scalar = ScalarNonZero::random(rng);
+        if scalar != ScalarNonZero::one() {
+            break scalar;
         }
     };
-    let pk = sk * G;
-    (PK::from(pk), SK::from(sk))
+    let sk = SK::from_scalar(scalar);
+    (sk.public_key(), sk)
 }
 
 /// Generate new global key pairs for both pseudonyms and attributes.
@@ -61,23 +59,21 @@ pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
 
 /// Polymorphic function to generate a session key pair from a global secret key.
 /// Automatically works for both pseudonym and attribute keys based on the types.
-pub fn make_session_key_pair<GSK, PK, SK, RF, F>(
+pub fn make_session_key_pair<GSK, SK, RF, F>(
     global: &GSK,
     context: &EncryptionContext,
     secret: &EncryptionSecret,
     rekey_fn: F,
-) -> (PK, SK)
+) -> (SK::PublicKeyType, SK)
 where
     GSK: SecretKey,
-    PK: From<GroupElement>,
-    SK: From<ScalarNonZero>,
+    SK: SecretKey,
     RF: RekeyFactor,
     F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
 {
     let k = rekey_fn(secret, context);
-    let sk = k.scalar() * *global.value();
-    let pk = sk * G;
-    (PK::from(pk), SK::from(sk))
+    let sk = SK::from_scalar(k.scalar() * *global.value());
+    (sk.public_key(), sk)
 }
 
 /// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
@@ -135,6 +131,9 @@ pub fn make_attribute_session_keys(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    // The basepoint is imported here so the assertions verify the derivation independently,
+    // rather than comparing `public_key()` against itself.
+    use crate::elgamal::arithmetic::group_elements::G;
 
     #[test]
     fn make_global_keys_creates_valid_keypairs() {
@@ -149,16 +148,14 @@ mod tests {
     #[test]
     fn make_pseudonym_global_keys_creates_valid_keypair() {
         let mut rng = rand::rng();
-        let (public, secret) =
-            make_global_key_pair::<_, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey>(&mut rng);
+        let (public, secret) = make_global_key_pair::<_, PseudonymGlobalSecretKey>(&mut rng);
         assert_eq!(*public, *secret.value() * G);
     }
 
     #[test]
     fn make_attribute_global_keys_creates_valid_keypair() {
         let mut rng = rand::rng();
-        let (public, secret) =
-            make_global_key_pair::<_, AttributeGlobalPublicKey, AttributeGlobalSecretKey>(&mut rng);
+        let (public, secret) = make_global_key_pair::<_, AttributeGlobalSecretKey>(&mut rng);
         assert_eq!(*public, *secret.value() * G);
     }
 
@@ -211,8 +208,7 @@ mod tests {
     fn public_key_encode_decode() {
         use crate::keys::traits::PublicKey;
         let mut rng = rand::rng();
-        let (public, _) =
-            make_global_key_pair::<_, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey>(&mut rng);
+        let (public, _) = make_global_key_pair::<_, PseudonymGlobalSecretKey>(&mut rng);
         let encoded = public.to_bytes();
         let decoded =
             PseudonymGlobalPublicKey::from_bytes(&encoded).expect("decoding should succeed");
@@ -223,8 +219,7 @@ mod tests {
     fn public_key_hex_roundtrip() {
         use crate::keys::traits::PublicKey;
         let mut rng = rand::rng();
-        let (public, _) =
-            make_global_key_pair::<_, AttributeGlobalPublicKey, AttributeGlobalSecretKey>(&mut rng);
+        let (public, _) = make_global_key_pair::<_, AttributeGlobalSecretKey>(&mut rng);
         let hex = public.to_hex();
         let decoded =
             AttributeGlobalPublicKey::from_hex(&hex).expect("hex decoding should succeed");

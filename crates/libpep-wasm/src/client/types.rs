@@ -20,6 +20,7 @@ use crate::keys::types::WASMGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "offline")]
 use libpep::client::OfflineClient;
+use libpep::keys::PublicKey;
 #[cfg(feature = "offline")]
 use libpep::keys::*;
 #[cfg(feature = "offline")]
@@ -37,8 +38,8 @@ impl WASMOfflinePEPClient {
     #[wasm_bindgen(constructor)]
     pub fn new(global_keys: &WASMGlobalPublicKeys) -> Self {
         let global_keys = GlobalPublicKeys {
-            pseudonym: PseudonymGlobalPublicKey::from(*global_keys.pseudonym().0),
-            attribute: AttributeGlobalPublicKey::from(*global_keys.attribute().0),
+            pseudonym: PseudonymGlobalPublicKey::from_point(*global_keys.pseudonym().0),
+            attribute: AttributeGlobalPublicKey::from_point(*global_keys.attribute().0),
         };
         Self(OfflineClient::new(global_keys))
     }

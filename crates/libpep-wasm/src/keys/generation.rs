@@ -57,7 +57,7 @@ pub fn wasm_make_pseudonym_session_keys(
     secret: &WASMEncryptionSecret,
 ) -> WASMPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
-        &PseudonymGlobalSecretKey::from(*global.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
     );
@@ -75,7 +75,7 @@ pub fn wasm_make_attribute_session_keys(
     secret: &WASMEncryptionSecret,
 ) -> WASMAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
-        &AttributeGlobalSecretKey::from(*global.0),
+        &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
     );
@@ -94,8 +94,8 @@ pub fn wasm_make_session_keys(
 ) -> WASMSessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {
-            pseudonym: PseudonymGlobalSecretKey::from(global.pseudonym().0 .0),
-            attribute: AttributeGlobalSecretKey::from(global.attribute().0 .0),
+            pseudonym: PseudonymGlobalSecretKey::from_scalar(global.pseudonym().0 .0),
+            attribute: AttributeGlobalSecretKey::from_scalar(global.attribute().0 .0),
         },
         &session.0,
         &secret.0,

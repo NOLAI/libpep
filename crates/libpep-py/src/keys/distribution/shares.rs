@@ -14,6 +14,8 @@ use libpep::client::distributed::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use libpep::keys::distribution::*;
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 use libpep::keys::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
@@ -240,7 +242,7 @@ pub fn py_update_pseudonym_session_key(
     new_session_key_share: PyPseudonymSessionKeyShare,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret) = update_pseudonym_session_key(
-        session_secret_key.0 .0.into(),
+        SecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -259,7 +261,7 @@ pub fn py_update_attribute_session_key(
     new_session_key_share: PyAttributeSessionKeyShare,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret) = update_attribute_session_key(
-        session_secret_key.0 .0.into(),
+        SecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -279,12 +281,12 @@ pub fn py_update_session_keys(
 ) -> PySessionKeys {
     let current = SessionKeys {
         pseudonym: PseudonymSessionKeys {
-            public: current_keys.public.pseudonym.0 .0.into(),
-            secret: current_keys.secret.pseudonym.0 .0.into(),
+            public: PublicKey::from_point(current_keys.public.pseudonym.0 .0),
+            secret: SecretKey::from_scalar(current_keys.secret.pseudonym.0 .0),
         },
         attribute: AttributeSessionKeys {
-            public: current_keys.public.attribute.0 .0.into(),
-            secret: current_keys.secret.attribute.0 .0.into(),
+            public: PublicKey::from_point(current_keys.public.attribute.0 .0),
+            secret: SecretKey::from_scalar(current_keys.secret.attribute.0 .0),
         },
     };
     let old = SessionKeyShares {
@@ -317,12 +319,12 @@ impl From<PySessionKeys> for SessionKeys {
     fn from(py_keys: PySessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: PseudonymSessionPublicKey::from(*py_keys.public.pseudonym.0),
-                secret: PseudonymSessionSecretKey::from(*py_keys.secret.pseudonym.0),
+                public: PseudonymSessionPublicKey::from_point(*py_keys.public.pseudonym.0),
+                secret: PseudonymSessionSecretKey::from_scalar(*py_keys.secret.pseudonym.0),
             },
             attribute: AttributeSessionKeys {
-                public: AttributeSessionPublicKey::from(*py_keys.public.attribute.0),
-                secret: AttributeSessionSecretKey::from(*py_keys.secret.attribute.0),
+                public: AttributeSessionPublicKey::from_point(*py_keys.public.attribute.0),
+                secret: AttributeSessionSecretKey::from_scalar(*py_keys.secret.attribute.0),
             },
         }
     }

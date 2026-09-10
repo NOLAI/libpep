@@ -446,8 +446,8 @@ pub fn wasm_encrypt_json_global(
 ) -> WASMEncryptedPEPJSONValue {
     let mut rng = rand::rng();
     let keys = GlobalPublicKeys {
-        pseudonym: (*global_keys.pseudonym().0).into(),
-        attribute: (*global_keys.attribute().0).into(),
+        pseudonym: libpep::keys::PublicKey::from_point(*global_keys.pseudonym().0),
+        attribute: libpep::keys::PublicKey::from_point(*global_keys.attribute().0),
     };
     WASMEncryptedPEPJSONValue(encrypt_global(&value.0, &keys, &mut rng))
 }
@@ -461,8 +461,8 @@ pub fn wasm_decrypt_json_global(
     global_secret_keys: &WASMGlobalSecretKeys,
 ) -> Result<WASMPEPJSONValue, JsValue> {
     let keys = libpep::keys::GlobalSecretKeys {
-        pseudonym: global_secret_keys.pseudonym().0 .0.into(),
-        attribute: global_secret_keys.attribute().0 .0.into(),
+        pseudonym: libpep::keys::SecretKey::from_scalar(global_secret_keys.pseudonym().0 .0),
+        attribute: libpep::keys::SecretKey::from_scalar(global_secret_keys.attribute().0 .0),
     };
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt_global(&encrypted.0, &keys)

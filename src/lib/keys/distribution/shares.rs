@@ -4,6 +4,7 @@
 //! transcryptors. By combining all shares with blinded global secret keys, session keys can be derived.
 
 use super::blinding::BlindingFactor;
+use super::traits::SessionKeyShare;
 use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
 use derive_more::From;
@@ -14,6 +15,17 @@ use derive_more::From;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
+
+impl SessionKeyShare for PseudonymSessionKeyShare {
+    type Reconstruction = crate::client::distributed::PseudonymSessionKeyReconstruction;
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+    fn from_scalar(scalar: ScalarNonZero) -> Self {
+        Self(scalar)
+    }
+}
 
 impl PseudonymSessionKeyShare {
     /// The scalar value of this share.
@@ -38,6 +50,17 @@ impl PseudonymSessionKeyShare {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
+
+impl SessionKeyShare for AttributeSessionKeyShare {
+    type Reconstruction = crate::client::distributed::AttributeSessionKeyReconstruction;
+
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+    fn from_scalar(scalar: ScalarNonZero) -> Self {
+        Self(scalar)
+    }
+}
 
 impl AttributeSessionKeyShare {
     /// The scalar value of this share.

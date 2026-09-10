@@ -114,8 +114,11 @@ pub fn wasm_update_pseudonym_session_key(
     old_share: &WASMPseudonymSessionKeyShare,
     new_share: &WASMPseudonymSessionKeyShare,
 ) -> WASMPseudonymSessionKeyPair {
-    let (public, secret) =
-        update_pseudonym_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
+    let (public, secret) = update_pseudonym_session_key(
+        libpep::keys::SecretKey::from_scalar(session_secret_key.0 .0),
+        old_share.0,
+        new_share.0,
+    );
     WASMPseudonymSessionKeyPair::new(
         WASMPseudonymSessionPublicKey(WASMGroupElement(*public)),
         WASMPseudonymSessionSecretKey(WASMScalarNonZero(*secret.value())),
@@ -129,8 +132,11 @@ pub fn wasm_update_attribute_session_key(
     old_share: &WASMAttributeSessionKeyShare,
     new_share: &WASMAttributeSessionKeyShare,
 ) -> WASMAttributeSessionKeyPair {
-    let (public, secret) =
-        update_attribute_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
+    let (public, secret) = update_attribute_session_key(
+        libpep::keys::SecretKey::from_scalar(session_secret_key.0 .0),
+        old_share.0,
+        new_share.0,
+    );
     WASMAttributeSessionKeyPair::new(
         WASMAttributeSessionPublicKey(WASMGroupElement(*public)),
         WASMAttributeSessionSecretKey(WASMScalarNonZero(*secret.value())),

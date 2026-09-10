@@ -134,7 +134,7 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_pseudonym_global_secret_key(
-        &PseudonymGlobalSecretKey::from(*global_secret_key.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
@@ -153,7 +153,7 @@ pub fn py_make_blinded_attribute_global_secret_key(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_attribute_global_secret_key(
-        &AttributeGlobalSecretKey::from(*global_secret_key.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
@@ -172,8 +172,8 @@ pub fn py_make_blinded_global_keys(
         .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(*global_secret_keys.pseudonym.0),
-        &AttributeGlobalSecretKey::from(*global_secret_keys.attribute.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_keys.pseudonym.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_keys.attribute.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;

@@ -3,6 +3,7 @@
 //! This module provides blinding factors used to blind global secret keys during system setup,
 //! making it impossible to derive keys without cooperation of the transcryptors.
 
+use super::traits::BlindedGlobalSecretKey;
 use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::keys::*;
 use derive_more::From;
@@ -37,9 +38,12 @@ impl BlindingFactor {
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 
-impl crate::keys::SecretKey for BlindedPseudonymGlobalSecretKey {
+impl BlindedGlobalSecretKey for BlindedPseudonymGlobalSecretKey {
     fn value(&self) -> &ScalarNonZero {
         &self.0
+    }
+    fn from_scalar(scalar: ScalarNonZero) -> Self {
+        Self(scalar)
     }
 }
 
@@ -63,9 +67,12 @@ impl BlindedPseudonymGlobalSecretKey {
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
 
-impl crate::keys::SecretKey for BlindedAttributeGlobalSecretKey {
+impl BlindedGlobalSecretKey for BlindedAttributeGlobalSecretKey {
     fn value(&self) -> &ScalarNonZero {
         &self.0
+    }
+    fn from_scalar(scalar: ScalarNonZero) -> Self {
+        Self(scalar)
     }
 }
 
@@ -156,33 +163,22 @@ fn compute_blinding_multiplier(blinding_factors: &[BlindingFactor]) -> Option<Sc
 }
 
 /// Trait for global secret key types that can be blinded.
-pub trait BlindableGlobalSecretKey: Sized {
-    type BlindedType: From<ScalarNonZero>;
-
-    /// Get the inner scalar value.
-    fn inner(&self) -> &ScalarNonZero;
+pub trait BlindableGlobalSecretKey: SecretKey {
+    type BlindedType: BlindedGlobalSecretKey;
 
     /// Blind this global secret key with the given blinding factors.
     fn blind(&self, blinding_factors: &[BlindingFactor]) -> Option<Self::BlindedType> {
         compute_blinding_multiplier(blinding_factors)
-            .map(|k| Self::BlindedType::from(*self.inner() * k))
+            .map(|k| Self::BlindedType::from_scalar(*self.value() * k))
     }
 }
 
 impl BlindableGlobalSecretKey for PseudonymGlobalSecretKey {
     type BlindedType = BlindedPseudonymGlobalSecretKey;
-
-    fn inner(&self) -> &ScalarNonZero {
-        &self.0
-    }
 }
 
 impl BlindableGlobalSecretKey for AttributeGlobalSecretKey {
     type BlindedType = BlindedAttributeGlobalSecretKey;
-
-    fn inner(&self) -> &ScalarNonZero {
-        &self.0
-    }
 }
 
 /// Create a blinded global secret key from a global secret key and blinding factors.
