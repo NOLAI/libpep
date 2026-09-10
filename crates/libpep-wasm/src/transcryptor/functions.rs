@@ -1,9 +1,9 @@
 //! WASM bindings for transcryption functions.
 
-use crate::arithmetic::scalars::WASMScalarNonZero;
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::contexts::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };

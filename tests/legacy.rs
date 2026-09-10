@@ -1,7 +1,7 @@
 #[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
-    use libpep::arithmetic::scalars::ScalarTraits;
+    use libpep::elgamal::arithmetic::scalars::ScalarTraits;
     use libpep::factors::contexts::PseudonymizationDomain;
     use libpep::factors::secrets::{make_pseudonymisation_factor, PseudonymizationSecret};
     use libpep::factors::PseudonymRekeyFactor;

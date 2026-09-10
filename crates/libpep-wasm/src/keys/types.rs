@@ -1,5 +1,5 @@
-use crate::arithmetic::group_elements::WASMGroupElement;
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::macros::{wasm_pair_impl, wasm_point_key_impl};
 use derive_more::{Deref, From, Into};
 use libpep::keys::types::*;

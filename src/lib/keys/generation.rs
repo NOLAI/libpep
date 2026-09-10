@@ -2,8 +2,8 @@
 
 use super::traits::SecretKey;
 use super::types::*;
-use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
 use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret};

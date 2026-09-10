@@ -171,7 +171,7 @@ macro_rules! py_encrypted_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(v: &[u8]) -> Option<Self> {
-                use libpep::core::elgamal::ElGamal;
+                use libpep::elgamal::ElGamal;
                 ElGamal::from_slice(v).map(|eg| Self($core::from(eg)))
             }
 

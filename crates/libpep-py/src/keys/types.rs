@@ -1,8 +1,8 @@
-use crate::arithmetic::group_elements::PyGroupElement;
-use crate::arithmetic::scalars::PyScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
+use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::group_elements::GroupElement;
+use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::types::*;
 use pyo3::prelude::*;

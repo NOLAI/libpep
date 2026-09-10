@@ -1,12 +1,12 @@
 //! Core data types for pseudonyms and attributes, their encrypted versions,
 //! and session-key based encryption and decryption operations.
 
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::elgamal::{ElGamal, ELGAMAL_LENGTH};
 #[cfg(feature = "batch")]
 use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::{ElGamal, ELGAMAL_LENGTH};
 #[cfg(feature = "batch")]
 use crate::errors::BatchError;
 use crate::factors::TranscryptionInfo;
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
 ///
 /// Pseudonyms in different domains are unlinkable because
-/// [reshuffling](crate::core::primitives::reshuffle) obliviously evaluates the Diffie-Hellman PRF
+/// [reshuffling](crate::elgamal::primitives::reshuffle) obliviously evaluates the Diffie-Hellman PRF
 /// on them. This requires origin pseudonyms to be uniformly random or lizard-encoded; see the
 /// security note on [`ElGamalEncryptable`].
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -218,7 +218,7 @@ impl Encryptable for Pseudonym {
     where
         R: Rng + CryptoRng,
     {
-        EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
+        EncryptedPseudonym::from_value(crate::elgamal::encrypt(
             self.value(),
             public_key.value(),
             rng,
@@ -234,7 +234,7 @@ impl Encryptable for Pseudonym {
     where
         R: Rng + CryptoRng,
     {
-        EncryptedPseudonym::from_value(crate::core::elgamal::encrypt(
+        EncryptedPseudonym::from_value(crate::elgamal::encrypt(
             self.value(),
             public_key.value(),
             rng,
@@ -252,7 +252,7 @@ impl Encryptable for Attribute {
     where
         R: Rng + CryptoRng,
     {
-        EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
+        EncryptedAttribute::from_value(crate::elgamal::encrypt(
             self.value(),
             public_key.value(),
             rng,
@@ -268,7 +268,7 @@ impl Encryptable for Attribute {
     where
         R: Rng + CryptoRng,
     {
-        EncryptedAttribute::from_value(crate::core::elgamal::encrypt(
+        EncryptedAttribute::from_value(crate::elgamal::encrypt(
             self.value(),
             public_key.value(),
             rng,
@@ -308,15 +308,12 @@ impl Encrypted for EncryptedPseudonym {
 
     #[cfg(feature = "elgamal3")]
     fn decrypt(&self, secret_key: &Self::SecretKeyType) -> Option<Self::UnencryptedType> {
-        crate::core::elgamal::decrypt(self.value(), secret_key.value()).map(Pseudonym::from_value)
+        crate::elgamal::decrypt(self.value(), secret_key.value()).map(Pseudonym::from_value)
     }
 
     #[cfg(not(feature = "elgamal3"))]
     fn decrypt(&self, secret_key: &Self::SecretKeyType) -> Self::UnencryptedType {
-        Pseudonym::from_value(crate::core::elgamal::decrypt(
-            self.value(),
-            secret_key.value(),
-        ))
+        Pseudonym::from_value(crate::elgamal::decrypt(self.value(), secret_key.value()))
     }
 
     #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
@@ -324,15 +321,12 @@ impl Encrypted for EncryptedPseudonym {
         &self,
         secret_key: &Self::GlobalSecretKeyType,
     ) -> Option<Self::UnencryptedType> {
-        crate::core::elgamal::decrypt(self.value(), secret_key.value()).map(Pseudonym::from_value)
+        crate::elgamal::decrypt(self.value(), secret_key.value()).map(Pseudonym::from_value)
     }
 
     #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
     fn decrypt_global(&self, secret_key: &Self::GlobalSecretKeyType) -> Self::UnencryptedType {
-        Pseudonym::from_value(crate::core::elgamal::decrypt(
-            self.value(),
-            secret_key.value(),
-        ))
+        Pseudonym::from_value(crate::elgamal::decrypt(self.value(), secret_key.value()))
     }
 
     #[cfg(feature = "elgamal3")]
@@ -359,7 +353,7 @@ impl Encrypted for EncryptedPseudonym {
 
     #[cfg(feature = "elgamal3")]
     fn rerandomize_known(&self, factor: &RerandomizeFactor) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rerandomize(
+        EncryptedPseudonym::from_value(crate::elgamal::primitives::rerandomize(
             self.value(),
             &factor.0,
         ))
@@ -371,7 +365,7 @@ impl Encrypted for EncryptedPseudonym {
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         factor: &RerandomizeFactor,
     ) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rerandomize(
+        EncryptedPseudonym::from_value(crate::elgamal::primitives::rerandomize(
             self.value(),
             public_key.value(),
             &factor.0,
@@ -387,15 +381,12 @@ impl Encrypted for EncryptedAttribute {
 
     #[cfg(feature = "elgamal3")]
     fn decrypt(&self, secret_key: &Self::SecretKeyType) -> Option<Self::UnencryptedType> {
-        crate::core::elgamal::decrypt(self.value(), secret_key.value()).map(Attribute::from_value)
+        crate::elgamal::decrypt(self.value(), secret_key.value()).map(Attribute::from_value)
     }
 
     #[cfg(not(feature = "elgamal3"))]
     fn decrypt(&self, secret_key: &Self::SecretKeyType) -> Self::UnencryptedType {
-        Attribute::from_value(crate::core::elgamal::decrypt(
-            self.value(),
-            secret_key.value(),
-        ))
+        Attribute::from_value(crate::elgamal::decrypt(self.value(), secret_key.value()))
     }
 
     #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
@@ -403,15 +394,12 @@ impl Encrypted for EncryptedAttribute {
         &self,
         secret_key: &Self::GlobalSecretKeyType,
     ) -> Option<Self::UnencryptedType> {
-        crate::core::elgamal::decrypt(self.value(), secret_key.value()).map(Attribute::from_value)
+        crate::elgamal::decrypt(self.value(), secret_key.value()).map(Attribute::from_value)
     }
 
     #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
     fn decrypt_global(&self, secret_key: &Self::GlobalSecretKeyType) -> Self::UnencryptedType {
-        Attribute::from_value(crate::core::elgamal::decrypt(
-            self.value(),
-            secret_key.value(),
-        ))
+        Attribute::from_value(crate::elgamal::decrypt(self.value(), secret_key.value()))
     }
 
     #[cfg(feature = "elgamal3")]
@@ -438,7 +426,7 @@ impl Encrypted for EncryptedAttribute {
 
     #[cfg(feature = "elgamal3")]
     fn rerandomize_known(&self, factor: &RerandomizeFactor) -> Self {
-        EncryptedAttribute::from_value(crate::core::primitives::rerandomize(
+        EncryptedAttribute::from_value(crate::elgamal::primitives::rerandomize(
             self.value(),
             &factor.0,
         ))
@@ -450,7 +438,7 @@ impl Encrypted for EncryptedAttribute {
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         factor: &RerandomizeFactor,
     ) -> Self {
-        EncryptedAttribute::from_value(crate::core::primitives::rerandomize(
+        EncryptedAttribute::from_value(crate::elgamal::primitives::rerandomize(
             self.value(),
             public_key.value(),
             &factor.0,
@@ -489,7 +477,7 @@ impl ElGamalEncrypted for EncryptedAttribute {
 
 impl Pseudonymizable for EncryptedPseudonym {
     fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rsk(
+        EncryptedPseudonym::from_value(crate::elgamal::primitives::rsk(
             self.value(),
             &info.s.0,
             &info.k.0,
@@ -501,7 +489,7 @@ impl Rekeyable for EncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        EncryptedPseudonym::from_value(crate::core::primitives::rekey(self.value(), &info.0))
+        EncryptedPseudonym::from_value(crate::elgamal::primitives::rekey(self.value(), &info.0))
     }
 }
 
@@ -509,7 +497,7 @@ impl Rekeyable for EncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        EncryptedAttribute::from_value(crate::core::primitives::rekey(self.value(), &info.0))
+        EncryptedAttribute::from_value(crate::elgamal::primitives::rekey(self.value(), &info.0))
     }
 }
 

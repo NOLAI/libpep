@@ -1,8 +1,8 @@
 //! Python bindings for key generation functions.
 
 use super::types::*;
-use crate::arithmetic::group_elements::PyGroupElement;
-use crate::arithmetic::scalars::PyScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
+use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use libpep::keys::generation::*;
 use libpep::keys::types::*;
 use libpep::keys::SecretKey;

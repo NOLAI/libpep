@@ -2,8 +2,8 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::arithmetic::group_elements::WASMGroupElement;
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{
     WASMAttributeSessionKeyPair, WASMAttributeSessionPublicKey, WASMAttributeSessionSecretKey,
     WASMPseudonymSessionKeyPair, WASMPseudonymSessionPublicKey, WASMPseudonymSessionSecretKey,

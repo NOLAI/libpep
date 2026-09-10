@@ -1,6 +1,6 @@
 //! WASM bindings for cryptographic factor types.
 
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::factors::RekeyFactor;

@@ -1,10 +1,10 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use libpep::arithmetic::group_elements::{GroupElement, G};
-use libpep::arithmetic::scalars::ScalarNonZero;
-use libpep::core::elgamal::{decrypt, encrypt};
-use libpep::core::primitives::{
+use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
+use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
+use libpep::elgamal::{decrypt, encrypt};
 use rand::rng;
 
 fn setup_keys() -> (ScalarNonZero, GroupElement) {
