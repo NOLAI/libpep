@@ -79,10 +79,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@1.85.0
+        with:
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
       - run: cargo check -p libpep-py
       - run: cargo check -p libpep-wasm
+      - run: cargo check -p libpep-wasm --target wasm32-unknown-unknown
 
   feature-powerset:
     runs-on: ubuntu-latest
