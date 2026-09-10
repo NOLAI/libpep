@@ -102,7 +102,7 @@ impl PEPJSONBuilder {
 
         // Try to decode as multi-block pseudonym (hex string with multiple 64-char blocks)
         // Each block is 32 bytes = 64 hex chars
-        if value.len() > 64 && value.len().is_multiple_of(64) {
+        if value.len() > 64 && value.len() % 64 == 0 {
             let num_blocks = value.len() / 64;
             let mut blocks = Vec::with_capacity(num_blocks);
             let mut all_decoded = true;
@@ -138,7 +138,7 @@ impl PEPJSONBuilder {
 
         // Try to decode as multi-block pseudonym (raw bytes, multiple of 32)
         let bytes = value.as_bytes();
-        if bytes.len() > 32 && bytes.len().is_multiple_of(32) {
+        if bytes.len() > 32 && bytes.len() % 32 == 0 {
             let num_blocks = bytes.len() / 32;
             let mut blocks = Vec::with_capacity(num_blocks);
             let mut all_decoded = true;

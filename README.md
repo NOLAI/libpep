@@ -173,6 +173,7 @@ These have incompatible linking requirements and cannot coexist in the same buil
 ## Security and Implementation
 
 This library uses Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), offering 128 bits of security.
+The minimum supported Rust version (MSRV) is 1.85; raising it is considered a semver-relevant change.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the Decisional Diffie–Hellman (DDH) assumption in the Ristretto group and thus ultimately on the hardness of the discrete logarithm problem.
 
 ### Security Considerations
