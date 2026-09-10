@@ -21,10 +21,12 @@ use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
 use libpep::keys::make_session_keys;
 use libpep::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, AttributeGlobalPublicKey,
-    AttributeGlobalSecretKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,
-    PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey, SecretKey,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
+    SecretKey,
 };
+#[cfg(feature = "json")]
+use libpep::keys::{AttributeGlobalSecretKey, GlobalSecretKeys};
 use libpep::transcryptor::transcrypt;
 use std::cmp::Ordering;
 
