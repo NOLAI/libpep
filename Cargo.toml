@@ -5,6 +5,7 @@ resolver = "2"
 [workspace.package]
 version = "0.14.0"
 edition = "2021"
+rust-version = "1.85"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 license = "Apache-2.0"
 repository = "https://github.com/NOLAI/libpep"
@@ -16,6 +17,7 @@ libpep = { version = "0.14.0", path = ".", default-features = false }
 name = "libpep"
 edition.workspace = true
 version.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 homepage = "https://github.com/NOLAI/libpep"
 repository.workspace = true
