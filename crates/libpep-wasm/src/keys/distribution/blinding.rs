@@ -4,7 +4,7 @@ use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use wasm_bindgen::prelude::*;
 
 /// A blinding factor.

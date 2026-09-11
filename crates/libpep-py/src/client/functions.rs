@@ -29,10 +29,10 @@ use libpep::client::encrypt_global;
 use libpep::client::{decrypt, encrypt};
 #[cfg(feature = "batch")]
 use libpep::client::{decrypt_batch, encrypt_batch};
+use libpep::keys::ElGamalPublicKey;
+use libpep::keys::ElGamalSecretKey;
 #[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
 use libpep::keys::GlobalSecretKeys;
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
 #[cfg(feature = "offline")]
 use libpep::keys::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]

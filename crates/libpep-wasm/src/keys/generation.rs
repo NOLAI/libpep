@@ -7,7 +7,7 @@ use crate::factors::contexts::WASMEncryptionContext;
 use crate::factors::secrets::WASMEncryptionSecret;
 use libpep::keys::generation::*;
 use libpep::keys::types::*;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use wasm_bindgen::prelude::*;
 
 /// Generate both pseudonym and attribute global key pairs at once.

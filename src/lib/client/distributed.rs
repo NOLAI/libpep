@@ -55,7 +55,7 @@ macro_rules! elgamal_reconstruction {
                 shares: &[Self::Share],
             ) -> (Self::PublicKeyType, Self::SecretKeyType) {
                 use crate::keys::distribution::BlindedGlobalSecretKey;
-                use crate::keys::SecretKey;
+                use crate::keys::{ElGamalSecretKey, SecretKey};
                 let secret = Self::SecretKeyType::from_scalar(
                     shares
                         .iter()
@@ -69,7 +69,7 @@ macro_rules! elgamal_reconstruction {
                 old_share: &Self::Share,
                 new_share: &Self::Share,
             ) -> (Self::PublicKeyType, Self::SecretKeyType) {
-                use crate::keys::SecretKey;
+                use crate::keys::{ElGamalSecretKey, SecretKey};
                 let secret = Self::SecretKeyType::from_scalar(
                     *session_secret_key.value()
                         * old_share.value().invert()

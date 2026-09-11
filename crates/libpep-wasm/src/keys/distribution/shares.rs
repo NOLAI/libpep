@@ -20,7 +20,7 @@ use libpep::keys::distribution::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session key share.
@@ -115,7 +115,7 @@ pub fn wasm_update_pseudonym_session_key(
     new_share: &WASMPseudonymSessionKeyShare,
 ) -> WASMPseudonymSessionKeyPair {
     let (public, secret) = update_pseudonym_session_key(
-        libpep::keys::SecretKey::from_scalar(session_secret_key.0 .0),
+        libpep::keys::ElGamalSecretKey::from_scalar(session_secret_key.0 .0),
         old_share.0,
         new_share.0,
     );
@@ -133,7 +133,7 @@ pub fn wasm_update_attribute_session_key(
     new_share: &WASMAttributeSessionKeyShare,
 ) -> WASMAttributeSessionKeyPair {
     let (public, secret) = update_attribute_session_key(
-        libpep::keys::SecretKey::from_scalar(session_secret_key.0 .0),
+        libpep::keys::ElGamalSecretKey::from_scalar(session_secret_key.0 .0),
         old_share.0,
         new_share.0,
     );

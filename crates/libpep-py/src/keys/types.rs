@@ -5,7 +5,7 @@ use derive_more::{Deref, From, Into};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::types::*;
-use libpep::keys::{PublicKey, SecretKey};
+use libpep::keys::{ElGamalPublicKey, ElGamalSecretKey};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -99,8 +99,8 @@ impl PyGlobalPublicKeys {
 impl From<PyGlobalPublicKeys> for GlobalPublicKeys {
     fn from(py_keys: PyGlobalPublicKeys) -> Self {
         GlobalPublicKeys {
-            pseudonym: PublicKey::from_point(py_keys.pseudonym.0 .0),
-            attribute: PublicKey::from_point(py_keys.attribute.0 .0),
+            pseudonym: ElGamalPublicKey::from_point(py_keys.pseudonym.0 .0),
+            attribute: ElGamalPublicKey::from_point(py_keys.attribute.0 .0),
         }
     }
 }
@@ -134,8 +134,8 @@ impl PyGlobalSecretKeys {
 impl From<PyGlobalSecretKeys> for GlobalSecretKeys {
     fn from(py_keys: PyGlobalSecretKeys) -> Self {
         GlobalSecretKeys {
-            pseudonym: SecretKey::from_scalar(py_keys.pseudonym.0 .0),
-            attribute: SecretKey::from_scalar(py_keys.attribute.0 .0),
+            pseudonym: ElGamalSecretKey::from_scalar(py_keys.pseudonym.0 .0),
+            attribute: ElGamalSecretKey::from_scalar(py_keys.attribute.0 .0),
         }
     }
 }
@@ -312,12 +312,12 @@ impl From<PySessionKeys> for SessionKeys {
     fn from(py_keys: PySessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: PublicKey::from_point(py_keys.pseudonym.public.0 .0),
-                secret: SecretKey::from_scalar(py_keys.pseudonym.secret.0 .0),
+                public: ElGamalPublicKey::from_point(py_keys.pseudonym.public.0 .0),
+                secret: ElGamalSecretKey::from_scalar(py_keys.pseudonym.secret.0 .0),
             },
             attribute: AttributeSessionKeys {
-                public: PublicKey::from_point(py_keys.attribute.public.0 .0),
-                secret: SecretKey::from_scalar(py_keys.attribute.secret.0 .0),
+                public: ElGamalPublicKey::from_point(py_keys.attribute.public.0 .0),
+                secret: ElGamalSecretKey::from_scalar(py_keys.attribute.secret.0 .0),
             },
         }
     }

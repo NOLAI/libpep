@@ -51,8 +51,8 @@ use libpep::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
 use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalPublicKey;
+use libpep::keys::ElGamalSecretKey;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
 
 /// Polymorphic batch pseudonymization of a list of encrypted pseudonyms.

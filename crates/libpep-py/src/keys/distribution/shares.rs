@@ -14,8 +14,8 @@ use libpep::client::distributed::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use libpep::keys::distribution::*;
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalPublicKey;
+use libpep::keys::ElGamalSecretKey;
 use libpep::keys::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
@@ -242,7 +242,7 @@ pub fn py_update_pseudonym_session_key(
     new_session_key_share: PyPseudonymSessionKeyShare,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret) = update_pseudonym_session_key(
-        SecretKey::from_scalar(session_secret_key.0 .0),
+        ElGamalSecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -261,7 +261,7 @@ pub fn py_update_attribute_session_key(
     new_session_key_share: PyAttributeSessionKeyShare,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret) = update_attribute_session_key(
-        SecretKey::from_scalar(session_secret_key.0 .0),
+        ElGamalSecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -281,12 +281,12 @@ pub fn py_update_session_keys(
 ) -> PySessionKeys {
     let current = SessionKeys {
         pseudonym: PseudonymSessionKeys {
-            public: PublicKey::from_point(current_keys.public.pseudonym.0 .0),
-            secret: SecretKey::from_scalar(current_keys.secret.pseudonym.0 .0),
+            public: ElGamalPublicKey::from_point(current_keys.public.pseudonym.0 .0),
+            secret: ElGamalSecretKey::from_scalar(current_keys.secret.pseudonym.0 .0),
         },
         attribute: AttributeSessionKeys {
-            public: PublicKey::from_point(current_keys.public.attribute.0 .0),
-            secret: SecretKey::from_scalar(current_keys.secret.attribute.0 .0),
+            public: ElGamalPublicKey::from_point(current_keys.public.attribute.0 .0),
+            secret: ElGamalSecretKey::from_scalar(current_keys.secret.attribute.0 .0),
         },
     };
     let old = SessionKeyShares {

@@ -1,6 +1,6 @@
 //! Key generation functions for global and session keys.
 
-use super::traits::SecretKey;
+use super::elgamal::ElGamalSecretKey;
 use super::types::*;
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
@@ -13,7 +13,7 @@ use rand_core::{CryptoRng, Rng};
 pub fn make_global_key_pair<R, SK>(rng: &mut R) -> (SK::PublicKeyType, SK)
 where
     R: Rng + CryptoRng,
-    SK: SecretKey,
+    SK: ElGamalSecretKey,
 {
     let scalar = loop {
         let scalar = ScalarNonZero::random(rng);
@@ -66,8 +66,8 @@ pub fn make_session_key_pair<GSK, SK, RF, F>(
     rekey_fn: F,
 ) -> (SK::PublicKeyType, SK)
 where
-    GSK: SecretKey,
-    SK: SecretKey,
+    GSK: ElGamalSecretKey,
+    SK: ElGamalSecretKey,
     RF: RekeyFactor,
     F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
 {

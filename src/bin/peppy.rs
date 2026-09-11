@@ -23,9 +23,9 @@ use libpep::keys::distribution::{
 use libpep::keys::make_session_keys;
 use libpep::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, AttributeGlobalPublicKey,
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,
-    PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
-    SecretKey,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, ElGamalSecretKey,
+    PseudonymGlobalPublicKey, PseudonymGlobalSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, PublicKey,
 };
 #[cfg(feature = "json")]
 use libpep::keys::{AttributeGlobalSecretKey, GlobalSecretKeys};

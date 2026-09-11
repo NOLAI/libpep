@@ -20,7 +20,7 @@ use crate::keys::types::WASMGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "offline")]
 use libpep::client::OfflineClient;
-use libpep::keys::PublicKey;
+use libpep::keys::ElGamalPublicKey;
 #[cfg(feature = "offline")]
 use libpep::keys::*;
 #[cfg(feature = "offline")]

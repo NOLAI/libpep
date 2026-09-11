@@ -163,13 +163,14 @@ fn compute_blinding_multiplier(blinding_factors: &[BlindingFactor]) -> Option<Sc
 }
 
 /// Trait for global secret key types that can be blinded.
-pub trait BlindableGlobalSecretKey: SecretKey {
+pub trait BlindableGlobalSecretKey: crate::keys::ElGamalSecretKey {
     type BlindedType: BlindedGlobalSecretKey;
 
     /// Blind this global secret key with the given blinding factors.
     fn blind(&self, blinding_factors: &[BlindingFactor]) -> Option<Self::BlindedType> {
-        compute_blinding_multiplier(blinding_factors)
-            .map(|k| Self::BlindedType::from_scalar(*self.value() * k))
+        compute_blinding_multiplier(blinding_factors).map(|k| {
+            Self::BlindedType::from_scalar(*crate::keys::ElGamalSecretKey::value(self) * k)
+        })
     }
 }
 

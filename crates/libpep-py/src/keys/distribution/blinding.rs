@@ -6,7 +6,7 @@ use crate::macros::py_scalar_key_impl;
 use derive_more::{Deref, From, Into};
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

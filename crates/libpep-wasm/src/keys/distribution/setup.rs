@@ -9,7 +9,7 @@ use crate::keys::types::{
 };
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use wasm_bindgen::prelude::*;
 
 /// Setup a distributed system with global keys.

@@ -12,8 +12,8 @@ use crate::keys::types::{
     WASMPseudonymSessionSecretKey,
 };
 use libpep::client::{decrypt_batch, encrypt_batch};
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalPublicKey;
+use libpep::keys::ElGamalSecretKey;
 use libpep::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,

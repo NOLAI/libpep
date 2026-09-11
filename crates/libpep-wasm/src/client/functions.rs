@@ -27,9 +27,9 @@ use libpep::client::decrypt_global;
 use libpep::client::encrypt_global;
 use libpep::client::{decrypt, encrypt};
 use libpep::factors::TranscryptionInfo;
-use libpep::keys::PublicKey;
+use libpep::keys::ElGamalPublicKey;
 #[cfg(feature = "insecure")]
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 #[cfg(feature = "offline")]
 use libpep::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]

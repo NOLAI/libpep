@@ -5,7 +5,7 @@ use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use libpep::keys::generation::*;
 use libpep::keys::types::*;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalSecretKey;
 use pyo3::prelude::*;
 
 /// Generate a new pseudonym global key pair.

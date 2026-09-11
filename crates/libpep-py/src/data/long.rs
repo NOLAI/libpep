@@ -14,8 +14,8 @@ use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::ElGamalPublicKey;
+use libpep::keys::ElGamalSecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

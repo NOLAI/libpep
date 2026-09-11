@@ -15,7 +15,7 @@ use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::PublicKey;
+use libpep::keys::ElGamalPublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};

@@ -9,16 +9,19 @@
 //! # Organization
 //!
 //! - [`types`]: Key type definitions for global and session keys
-//! - [`traits`]: Traits for public and secret keys
+//! - [`traits`]: Role traits for public and secret keys
+//! - [`elgamal`]: The ElGamal instantiation of those role traits
 //! - [`generation`]: Functions for generating global and session keys
 //! - [`distribution`]: Distributed transcryptor key management (blinding, shares, setup)
 
 pub mod distribution;
+pub mod elgamal;
 pub mod generation;
 pub mod traits;
 pub mod types;
 
 // Re-export commonly used types
+pub use elgamal::{ElGamalPublicKey, ElGamalSecretKey};
 pub use generation::{
     make_attribute_global_keys, make_attribute_session_keys, make_global_key_pair,
     make_global_keys, make_pseudonym_global_keys, make_pseudonym_session_keys,
