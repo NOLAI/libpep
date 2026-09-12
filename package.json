@@ -1,6 +1,6 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Library for polymorphic encryption and pseudonymization (in WASM)",
   "repository": {
     "type": "git",
@@ -51,9 +51,9 @@
     "README.md"
   ],
   "scripts": {
-    "build:bundler": "wasm-pack build --target bundler --features wasm,json",
-    "build:nodejs": "wasm-pack build --target nodejs --features wasm,json",
-    "build:web": "wasm-pack build --target web --out-dir ./pkg-web --features wasm,json",
+    "build:bundler": "wasm-pack build crates/libpep-wasm --target bundler --out-dir ../../pkg --out-name libpep --features json",
+    "build:nodejs": "wasm-pack build crates/libpep-wasm --target nodejs --out-dir ../../pkg --out-name libpep --features json",
+    "build:web": "wasm-pack build crates/libpep-wasm --target web --out-dir ../../pkg-web --out-name libpep --features json",
     "build": "npm run build:bundler && npm run build:web",
     "test": "npm run build:nodejs && jest",
     "prepublishOnly": "npm run build"

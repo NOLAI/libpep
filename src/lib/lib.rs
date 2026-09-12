@@ -67,11 +67,6 @@
 //! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
-//!
-//! **Note:** The `python` and `wasm` features are mutually exclusive. If both are enabled,
-//! neither binding module will be compiled. This is because PyO3 builds a cdylib that links
-//! to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly -
-//! they have incompatible linking requirements.
 
 pub mod arithmetic;
 pub mod client;
@@ -81,19 +76,3 @@ pub mod factors;
 pub mod keys;
 pub mod prelude;
 pub mod transcryptor;
-
-#[cfg(all(feature = "python", not(feature = "wasm")))]
-pub mod py;
-
-#[cfg(all(feature = "wasm", not(feature = "python")))]
-pub mod wasm;
-
-#[cfg(all(feature = "python", not(feature = "wasm")))]
-use pyo3::prelude::*;
-
-/// Python module for libpep
-#[cfg(all(feature = "python", not(feature = "wasm")))]
-#[pymodule]
-fn libpep(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    py::register_module(m)
-}

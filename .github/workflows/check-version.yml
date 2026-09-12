@@ -14,8 +14,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: obi1kenobi/cargo-semver-checks-action@v2
         with:
-          # Check default feature set, plus elgamal3 and legacy.
-          # python/wasm bindings are not included here (and remain mutually exclusive).
+          # Check the core crate with the default feature set, plus elgamal3 and legacy.
+          # The binding crates are not published to crates.io.
+          package: libpep
           feature-group: default-features
           features: elgamal3,legacy,insecure
 
@@ -42,7 +43,7 @@ jobs:
           PKG_VERSION=$(node -p "require('./package.json').version")
           
           # Get Cargo.toml version
-          CARGO_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+          CARGO_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name=="libpep") | .version')
           
           echo "package.json version: $PKG_VERSION"
           echo "Cargo.toml version: $CARGO_VERSION"
