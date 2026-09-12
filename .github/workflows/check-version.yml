@@ -32,10 +32,7 @@ jobs:
           node-version: '24'
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
       - name: Check versions
         run: |
