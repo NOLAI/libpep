@@ -61,7 +61,7 @@ jobs:
     name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy -p ${{ matrix.package }} --all-targets ${{ matrix.args }} --features "${{ matrix.features }}" -- -D warnings
 
@@ -70,7 +70,7 @@ jobs:
     name: cargo fmt
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - run: cargo fmt --all -- --check
 
   msrv:
@@ -92,7 +92,7 @@ jobs:
     name: cargo hack (feature powerset, depth 2)
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-hack
       - run: cargo hack check -p libpep --feature-powerset --depth 2 --no-dev-deps
@@ -130,7 +130,7 @@ jobs:
     name: cargo test (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo test -p ${{ matrix.package }} --features "${{ matrix.features }}"
@@ -141,7 +141,7 @@ jobs:
     name: test python bindings
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-python@v7
         with:
@@ -168,7 +168,7 @@ jobs:
     name: test wasm bindings
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v7
         with:
