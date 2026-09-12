@@ -489,7 +489,7 @@ impl Rekeyable for EncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        EncryptedPseudonym::from_value(crate::elgamal::primitives::rekey(self.value(), &info.0))
+        EncryptedPseudonym::from_value(crate::elgamal::primitives::rekey(self.value(), &info.k.0))
     }
 }
 
@@ -497,7 +497,7 @@ impl Rekeyable for EncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        EncryptedAttribute::from_value(crate::elgamal::primitives::rekey(self.value(), &info.0))
+        EncryptedAttribute::from_value(crate::elgamal::primitives::rekey(self.value(), &info.k.0))
     }
 }
 
@@ -547,7 +547,7 @@ impl BatchEncryptable for Attribute {
 mod tests {
     use super::*;
     use crate::client::{decrypt, encrypt};
-    use crate::factors::contexts::EncryptionContext;
+    use crate::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
 
     #[test]

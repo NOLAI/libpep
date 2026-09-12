@@ -7,8 +7,8 @@ use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::elgamal::arithmetic::PyScalarNonZero;
-use crate::factors::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
+use crate::factors::types::{
+    PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
@@ -51,24 +51,24 @@ pub fn py_pseudonymize(
 
 /// Polymorphic rekey function - works with any rekeyable type.
 /// Accepts EncryptedPseudonym, EncryptedAttribute, LongEncryptedPseudonym, or LongEncryptedAttribute.
-/// The rekey_info must be either PyPseudonymRekeyFactor or PyAttributeRekeyInfo.
+/// The rekey_info must be either PyPseudonymRekeyInfo or PyAttributeRekeyInfo.
 #[pyfunction]
 #[pyo3(name = "rekey")]
 pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
 
-    // Try EncryptedPseudonym with PseudonymRekeyFactor
+    // Try EncryptedPseudonym with PseudonymRekeyInfo
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+        if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
             let result = rekey(&ep.0, &info.0);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
     }
 
-    // Try LongEncryptedPseudonym with PseudonymRekeyFactor
+    // Try LongEncryptedPseudonym with PseudonymRekeyInfo
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-        if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+        if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
             let result = rekey(&lep.0, &info.0);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
@@ -94,7 +94,7 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
     }
 
     Err(PyTypeError::new_err(
-        "rekey() requires (EncryptedPseudonym | LongEncryptedPseudonym, PseudonymRekeyFactor) or (EncryptedAttribute | LongEncryptedAttribute, AttributeRekeyInfo)"
+        "rekey() requires (EncryptedPseudonym | LongEncryptedPseudonym, PseudonymRekeyInfo) or (EncryptedAttribute | LongEncryptedAttribute, AttributeRekeyInfo)"
     ))
 }
 /// Polymorphic transcrypt function - works with any transcryptable type.

@@ -4,6 +4,7 @@
 pub(crate) mod macros;
 
 pub mod client;
+pub mod contexts;
 pub mod data;
 pub mod elgamal;
 pub mod factors;
@@ -63,12 +64,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     })?;
     #[cfg(not(feature = "json"))]
     drop(data_module);
-    add_submodule(m, "libpep.factors", |sm| {
-        factors::contexts::register(sm)?;
-        factors::types::register(sm)?;
-        factors::secrets::register(sm)?;
-        Ok(())
-    })?;
+    add_submodule(m, "libpep.contexts", |sm| contexts::register(sm))?;
+    add_submodule(m, "libpep.factors", |sm| factors::register(sm))?;
     Ok(())
 }
 

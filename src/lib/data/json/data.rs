@@ -867,7 +867,7 @@ impl BatchEncryptable for PEPJSONValue {
 mod tests {
     use super::*;
     use crate::client::{decrypt, encrypt};
-    use crate::factors::contexts::EncryptionContext;
+    use crate::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,

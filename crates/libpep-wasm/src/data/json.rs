@@ -1,10 +1,10 @@
 //! WASM bindings for PEP JSON encryption.
 
+use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::data::utils;
-#[cfg(feature = "batch")]
-use crate::factors::contexts::WASMTranscryptionInfo;
-use crate::factors::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+#[cfg(feature = "batch")]
+use crate::factors::types::WASMTranscryptionInfo;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]

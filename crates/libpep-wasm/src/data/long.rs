@@ -46,9 +46,9 @@ wasm_long_encrypted_impl!(WASMLongEncryptedAttribute wraps LongEncryptedAttribut
     items(encrypted_attributes as encryptedAttributes, doc = "Get the underlying encrypted attributes."));
 
 #[cfg(feature = "batch")]
-use crate::factors::contexts::WASMTranscryptionInfo;
+use crate::factors::types::WASMPseudonymRekeyInfo;
 #[cfg(feature = "batch")]
-use crate::factors::types::WASMPseudonymRekeyFactor;
+use crate::factors::types::WASMTranscryptionInfo;
 /// WASM bindings for batch operations on long (multi-block) data types.
 #[cfg(feature = "batch")]
 use libpep::data::records::LongEncryptedRecord;
@@ -63,7 +63,7 @@ use libpep::transcryptor::{rekey_batch, transcrypt_batch};
 #[wasm_bindgen(js_name = rekeyLongPseudonymBatch)]
 pub fn wasm_rekey_long_pseudonym_batch(
     encrypted: Vec<WASMLongEncryptedPseudonym>,
-    rekey_info: &WASMPseudonymRekeyFactor,
+    rekey_info: &WASMPseudonymRekeyInfo,
 ) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
     let mut rng = rand::rng();
     let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();

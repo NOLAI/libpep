@@ -1,16 +1,16 @@
 //! WASM bindings for distributed transcryptor.
 
+use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::records::WASMLongRecordEncrypted;
 use crate::data::records::WASMRecordEncrypted;
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::factors::contexts::{
-    WASMAttributeRekeyInfo, WASMEncryptionContext, WASMPseudonymizationDomain,
-    WASMPseudonymizationInfo, WASMTranscryptionInfo,
+use crate::factors::types::WASMPseudonymRekeyInfo;
+use crate::factors::types::{
+    WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
-use crate::factors::types::WASMPseudonymRekeyFactor;
 use crate::keys::distribution::WASMBlindingFactor;
 use crate::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
@@ -82,8 +82,8 @@ impl WASMDistributedTranscryptor {
         &self,
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-    ) -> WASMPseudonymRekeyFactor {
-        WASMPseudonymRekeyFactor::from(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
+    ) -> WASMPseudonymRekeyInfo {
+        WASMPseudonymRekeyInfo::from(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
     }
 
     #[wasm_bindgen(js_name = pseudonymizationInfo)]
@@ -280,7 +280,7 @@ impl WASMDistributedTranscryptor {
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPEPJSONValue,
-        transcryption_info: &crate::factors::contexts::WASMTranscryptionInfo,
+        transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
     ) -> crate::data::json::WASMEncryptedPEPJSONValue {
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0);
         crate::data::json::WASMEncryptedPEPJSONValue(transcrypted)
@@ -301,7 +301,7 @@ impl WASMDistributedTranscryptor {
     pub fn transcrypt_json_batch(
         &self,
         values: Vec<crate::data::json::WASMEncryptedPEPJSONValue>,
-        transcryption_info: &crate::factors::contexts::WASMTranscryptionInfo,
+        transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
     ) -> Result<Vec<crate::data::json::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let mut rust_values: Vec<_> = values.into_iter().map(|v| v.0).collect();

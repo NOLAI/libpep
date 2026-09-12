@@ -6,8 +6,8 @@ use crate::data::json::PyEncryptedPEPJSONValue;
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::contexts::{
-    PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
+use crate::factors::types::{
+    PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
@@ -94,8 +94,8 @@ pub fn py_rekey_batch(
 
     let mut rng = rand::rng();
 
-    // Try EncryptedPseudonym with PseudonymRekeyFactor
-    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+    // Try EncryptedPseudonym with PseudonymRekeyInfo
+    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
         if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
             let mut rust_encs: Vec<_> = encrypted
                 .iter()
@@ -119,9 +119,9 @@ pub fn py_rekey_batch(
         }
     }
 
-    // Try LongEncryptedPseudonym with PseudonymRekeyFactor
+    // Try LongEncryptedPseudonym with PseudonymRekeyInfo
     #[cfg(feature = "long")]
-    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+    if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
         if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
             let mut rust_encs: Vec<_> = encrypted
                 .iter()

@@ -4,10 +4,10 @@
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
-use crate::factors::contexts::{
+use crate::factors::types::WASMPseudonymRekeyInfo;
+use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
-use crate::factors::types::WASMPseudonymRekeyFactor;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
 use libpep::factors::{
@@ -35,7 +35,7 @@ pub fn wasm_pseudonymize(
 #[wasm_bindgen(js_name = rekeyPseudonym)]
 pub fn wasm_rekey_pseudonym(
     encrypted: &WASMEncryptedPseudonym,
-    rekey_info: &WASMPseudonymRekeyFactor,
+    rekey_info: &WASMPseudonymRekeyInfo,
 ) -> WASMEncryptedPseudonym {
     rekey(&encrypted.0, &rekey_info.0).into()
 }
@@ -174,7 +174,7 @@ pub fn wasm_pseudonymize_long(
 #[wasm_bindgen(js_name = rekeyLongPseudonym)]
 pub fn wasm_rekey_long_pseudonym(
     encrypted: &WASMLongEncryptedPseudonym,
-    rekey_info: &WASMPseudonymRekeyFactor,
+    rekey_info: &WASMPseudonymRekeyInfo,
 ) -> WASMLongEncryptedPseudonym {
     rekey(&encrypted.0, &rekey_info.0).into()
 }

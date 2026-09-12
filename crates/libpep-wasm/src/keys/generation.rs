@@ -1,9 +1,9 @@
 //! WASM bindings for key generation functions.
 
 use super::types::*;
+use crate::contexts::WASMEncryptionContext;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
-use crate::factors::contexts::WASMEncryptionContext;
 use crate::factors::secrets::WASMEncryptionSecret;
 use libpep::keys::generation::*;
 use libpep::keys::types::*;

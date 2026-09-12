@@ -4,6 +4,7 @@
 pub(crate) mod macros;
 
 pub mod client;
+pub mod contexts;
 pub mod data;
 pub mod elgamal;
 pub mod factors;

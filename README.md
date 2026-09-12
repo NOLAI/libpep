@@ -133,7 +133,8 @@ The library is organized into the following main modules, each providing a diffe
 | `elgamal` | Low-level ElGamal encryption/decryption, PEP primitives (`rekey`, `reshuffle`, `rerandomize`) in `elgamal::primitives`, and the underlying Curve25519 scalar and group element arithmetic in `elgamal::arithmetic` |
 | `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
 | `keys` | Key management: global keys, session keys, key generation, and distributed key setup |
-| `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
+| `contexts` | Pseudonymization domains and encryption contexts, the identifiers that data is pseudonymized and encrypted for |
+| `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, transcryption info, and derivation functions |
 | `transcryptor` | Transcryptor for pseudonymization and rekeying operations |
 | `client` | Client-side encryption and decryption using session keys |
 
@@ -144,11 +145,16 @@ The library is organized into the following main modules, each providing a diffe
 - `keys::traits` - Traits for key types
 - `keys::distribution` - Distributed key generation and setup for multi-party transcryptors
 
+### Contexts Module (`contexts`)
+
+- `PseudonymizationDomain` - the domain a pseudonym exists in (typically a user's role or usergroup)
+- `EncryptionContext` - the context a ciphertext exists in (typically a user's session)
+
 ### Factors Module (`factors`)
 
-- `factors::types` - Factor types (ReshuffleFactor, RekeyFactor, RerandomizeFactor) and Info type aliases
-- `factors::secrets` - Secret types and derivation functions (PseudonymizationSecret, EncryptionSecret)
-- `factors::contexts` - Context types (PseudonymizationDomain, EncryptionContext)
+- `factors::types` - Factor types (ReshuffleFactor, PseudonymRekeyFactor, AttributeRekeyFactor, RerandomizeFactor) and the info types bundling them for one transcryption (PseudonymizationInfo, PseudonymRekeyInfo, AttributeRekeyInfo, TranscryptionInfo)
+- `factors::secrets` - Secret types (PseudonymizationSecret, EncryptionSecret)
+- `factors::derivation` - Derivation of factors and transcryption info from secrets and contexts
 
 ### Data Module (`data`)
 

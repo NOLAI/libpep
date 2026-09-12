@@ -1,12 +1,12 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::client::{decrypt, encrypt};
+use libpep::contexts::*;
 #[cfg(all(feature = "batch", feature = "long"))]
 use libpep::data::long::{LongAttribute, LongPseudonym};
 #[cfg(all(feature = "batch", feature = "long"))]
 use libpep::data::records::LongEncryptedRecord;
 use libpep::data::simple::*;
-use libpep::factors::contexts::*;
 use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
@@ -249,7 +249,7 @@ fn test_batch_long() {
     // Test batch rekeying of long pseudonyms
     let rekeyed_pseudonyms = rekey_batch(
         &mut long_pseudonyms.clone(),
-        &transcryption_info.pseudonym.k,
+        &transcryption_info.pseudonym.into(),
         rng,
     )
     .unwrap();

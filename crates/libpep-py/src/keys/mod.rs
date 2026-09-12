@@ -2,7 +2,6 @@ pub mod distribution;
 pub mod generation;
 pub mod types;
 
-// Re-export types for backwards compatibility and easier imports
 pub use distribution::{
     PyAttributeSessionKeyShare, PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys,
     PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor, PyPseudonymSessionKeyShare,
@@ -10,9 +9,9 @@ pub use distribution::{
 };
 pub use types::{
     PyAttributeGlobalPublicKey, PyAttributeGlobalSecretKey, PyAttributeSessionPublicKey,
-    PyAttributeSessionSecretKey, PyEncryptionSecret, PyGlobalPublicKeys, PyGlobalSecretKeys,
+    PyAttributeSessionSecretKey, PyGlobalPublicKeys, PyGlobalSecretKeys,
     PyPseudonymGlobalPublicKey, PyPseudonymGlobalSecretKey, PyPseudonymSessionPublicKey,
-    PyPseudonymSessionSecretKey, PyPseudonymizationSecret, PySessionKeys,
+    PyPseudonymSessionSecretKey, PySessionKeys,
 };
 
 use pyo3::prelude::*;

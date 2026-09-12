@@ -4,7 +4,7 @@ use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::records::PyLongEncryptedRecord;
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
-use crate::factors::contexts::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
+use crate::factors::types::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
 use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyGlobalPublicKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,

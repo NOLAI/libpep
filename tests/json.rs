@@ -1,9 +1,9 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::json::builder::PEPJSONBuilder;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
-use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::factors::TranscryptionInfo;
 use libpep::keys::{make_global_keys, make_session_keys};

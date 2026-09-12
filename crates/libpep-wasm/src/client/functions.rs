@@ -10,7 +10,7 @@ use crate::data::records::{WASMRecord, WASMRecordEncrypted};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
-use crate::factors::contexts::WASMTranscryptionInfo;
+use crate::factors::types::WASMTranscryptionInfo;
 use crate::keys::types::WASMSessionKeys;
 #[cfg(feature = "offline")]
 use crate::keys::types::{WASMAttributeGlobalPublicKey, WASMPseudonymGlobalPublicKey};

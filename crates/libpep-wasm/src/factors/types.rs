@@ -1,9 +1,10 @@
-//! WASM bindings for cryptographic factor types.
+//! WASM bindings for factor types and the transcryption info types that bundle them.
 
+use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
+use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
-use libpep::factors::RekeyFactor;
 use wasm_bindgen::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -78,53 +79,192 @@ impl WASMAttributeRekeyFactor {
     }
 }
 
-/// Factors for pseudonymization containing reshuffle and rekey factors.
-#[derive(Clone, Copy)]
-#[wasm_bindgen(js_name = PseudonymRSKFactors)]
-pub struct WASMPseudonymRSKFactors {
-    s: WASMReshuffleFactor,
-    k: WASMPseudonymRekeyFactor,
-}
+/// The information required to pseudonymize from one domain and session to another.
+///
+/// Bundles a reshuffle factor `s` and a pseudonym rekey factor `k`.
+#[derive(Copy, Clone, Debug, From, Into)]
+#[wasm_bindgen(js_name = PseudonymizationInfo)]
+pub struct WASMPseudonymizationInfo(pub(crate) PseudonymizationInfo);
 
-#[wasm_bindgen(js_class = PseudonymRSKFactors)]
-impl WASMPseudonymRSKFactors {
+#[wasm_bindgen(js_class = "PseudonymizationInfo")]
+impl WASMPseudonymizationInfo {
     #[wasm_bindgen(constructor)]
-    pub fn new(s: WASMReshuffleFactor, k: WASMPseudonymRekeyFactor) -> Self {
-        Self { s, k }
+    pub fn new(
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
+        Self(PseudonymizationInfo::new(
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        ))
     }
 
+    /// The reshuffle factor.
     #[wasm_bindgen(getter)]
     pub fn s(&self) -> WASMReshuffleFactor {
-        self.s
+        WASMReshuffleFactor(self.0.s)
     }
 
-    #[wasm_bindgen(setter)]
-    pub fn set_s(&mut self, s: WASMReshuffleFactor) {
-        self.s = s;
-    }
-
+    /// The pseudonym rekey factor.
     #[wasm_bindgen(getter)]
     pub fn k(&self) -> WASMPseudonymRekeyFactor {
-        self.k
+        WASMPseudonymRekeyFactor(self.0.k)
     }
 
-    #[wasm_bindgen(setter)]
-    pub fn set_k(&mut self, k: WASMPseudonymRekeyFactor) {
-        self.k = k;
+    /// The rekey-only part of this info, for rekeying pseudonyms without reshuffling.
+    #[wasm_bindgen(getter, js_name = rekeyInfo)]
+    pub fn rekey_info(&self) -> WASMPseudonymRekeyInfo {
+        WASMPseudonymRekeyInfo(self.0.into())
+    }
+
+    /// The info for the opposite direction.
+    #[wasm_bindgen(js_name = reverse)]
+    pub fn reverse(&self) -> Self {
+        Self(self.0.reverse())
     }
 }
 
-impl From<&WASMPseudonymRSKFactors> for PseudonymRSKFactors {
-    fn from(x: &WASMPseudonymRSKFactors) -> Self {
-        PseudonymRSKFactors { s: x.s.0, k: x.k.0 }
+/// The information required to rekey pseudonyms from one session to another.
+#[derive(Copy, Clone, Debug, From, Into)]
+#[wasm_bindgen(js_name = PseudonymRekeyInfo)]
+pub struct WASMPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
+
+#[wasm_bindgen(js_class = "PseudonymRekeyInfo")]
+impl WASMPseudonymRekeyInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
+        Self(PseudonymRekeyInfo::new(
+            &session_from.0,
+            &session_to.0,
+            &encryption_secret.0,
+        ))
+    }
+
+    /// The pseudonym rekey factor.
+    #[wasm_bindgen(getter)]
+    pub fn k(&self) -> WASMPseudonymRekeyFactor {
+        WASMPseudonymRekeyFactor(self.0.k)
+    }
+
+    /// The info for the opposite direction.
+    #[wasm_bindgen(js_name = reverse)]
+    pub fn reverse(&self) -> Self {
+        Self(self.0.reverse())
     }
 }
 
-impl From<PseudonymRSKFactors> for WASMPseudonymRSKFactors {
-    fn from(x: PseudonymRSKFactors) -> Self {
-        WASMPseudonymRSKFactors {
-            s: WASMReshuffleFactor(x.s),
-            k: WASMPseudonymRekeyFactor(x.k),
-        }
+/// The information required to rekey attributes from one session to another.
+#[derive(Copy, Clone, Debug, From, Into)]
+#[wasm_bindgen(js_name = AttributeRekeyInfo)]
+pub struct WASMAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
+
+#[wasm_bindgen(js_class = "AttributeRekeyInfo")]
+impl WASMAttributeRekeyInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
+        Self(AttributeRekeyInfo::new(
+            &session_from.0,
+            &session_to.0,
+            &encryption_secret.0,
+        ))
+    }
+
+    /// The attribute rekey factor.
+    #[wasm_bindgen(getter)]
+    pub fn k(&self) -> WASMAttributeRekeyFactor {
+        WASMAttributeRekeyFactor(self.0.k)
+    }
+
+    /// The info for the opposite direction.
+    #[wasm_bindgen(js_name = reverse)]
+    pub fn reverse(&self) -> Self {
+        Self(self.0.reverse())
+    }
+}
+
+/// The information required to transcrypt from one domain and session to another.
+///
+/// Bundles pseudonymization info for pseudonyms and rekey info for attributes.
+#[derive(Copy, Clone, Debug, From, Into)]
+#[wasm_bindgen(js_name = TranscryptionInfo)]
+pub struct WASMTranscryptionInfo(pub(crate) TranscryptionInfo);
+
+#[wasm_bindgen(js_class = "TranscryptionInfo")]
+impl WASMTranscryptionInfo {
+    #[wasm_bindgen(constructor)]
+    pub fn new(
+        domain_from: &WASMPseudonymizationDomain,
+        domain_to: &WASMPseudonymizationDomain,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
+    ) -> Self {
+        Self(TranscryptionInfo::new(
+            &domain_from.0,
+            &domain_to.0,
+            &session_from.0,
+            &session_to.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        ))
+    }
+
+    /// The pseudonymization info for pseudonyms.
+    #[wasm_bindgen(getter)]
+    pub fn pseudonym(&self) -> WASMPseudonymizationInfo {
+        WASMPseudonymizationInfo(self.0.pseudonym)
+    }
+
+    /// The rekey info for attributes.
+    #[wasm_bindgen(getter)]
+    pub fn attribute(&self) -> WASMAttributeRekeyInfo {
+        WASMAttributeRekeyInfo(self.0.attribute)
+    }
+
+    /// The info for the opposite direction.
+    #[wasm_bindgen(js_name = reverse)]
+    pub fn reverse(&self) -> Self {
+        Self(self.0.reverse())
+    }
+}
+
+impl From<&WASMPseudonymizationInfo> for PseudonymizationInfo {
+    fn from(x: &WASMPseudonymizationInfo) -> Self {
+        x.0
+    }
+}
+
+impl From<&WASMPseudonymRekeyInfo> for PseudonymRekeyInfo {
+    fn from(x: &WASMPseudonymRekeyInfo) -> Self {
+        x.0
+    }
+}
+
+impl From<&WASMAttributeRekeyInfo> for AttributeRekeyInfo {
+    fn from(x: &WASMAttributeRekeyInfo) -> Self {
+        x.0
+    }
+}
+
+impl From<&WASMTranscryptionInfo> for TranscryptionInfo {
+    fn from(x: &WASMTranscryptionInfo) -> Self {
+        x.0
     }
 }
