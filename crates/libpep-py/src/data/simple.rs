@@ -1,5 +1,5 @@
-use crate::arithmetic::group_elements::PyGroupElement;
-use crate::core::elgamal::PyElGamal;
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
+use crate::elgamal::PyElGamal;
 use crate::macros::{py_encrypted_impl, py_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;

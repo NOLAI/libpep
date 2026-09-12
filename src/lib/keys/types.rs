@@ -3,8 +3,8 @@
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
 
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use derive_more::{Deref, From};
 
 /// A pair of global public keys containing both pseudonym and attribute keys.

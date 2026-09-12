@@ -1,6 +1,6 @@
 //! Python bindings for cryptographic factor types.
 
-use crate::arithmetic::PyScalarNonZero;
+use crate::elgamal::arithmetic::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::factors::RekeyFactor;

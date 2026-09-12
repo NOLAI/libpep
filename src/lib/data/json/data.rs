@@ -1,7 +1,6 @@
 //! Core JSON encryption types and implementations.
 
 use super::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
-use crate::arithmetic::scalars::ScalarNonZero;
 #[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 #[cfg(feature = "long")]
@@ -13,6 +12,7 @@ use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pse
 #[cfg(feature = "batch")]
 use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 #[cfg(feature = "batch")]
 use crate::errors::BatchError;
 use crate::factors::RerandomizeFactor;

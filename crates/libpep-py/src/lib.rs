@@ -3,10 +3,9 @@
 
 pub(crate) mod macros;
 
-pub mod arithmetic;
 pub mod client;
-pub mod core;
 pub mod data;
+pub mod elgamal;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
@@ -15,7 +14,7 @@ use pyo3::prelude::*;
 
 /// Creates a named submodule, runs the given registration closure on it, attaches it to the
 /// parent, and patches `sys.modules` so `import libpep.<name>` works.
-fn add_submodule<'py>(
+pub(crate) fn add_submodule<'py>(
     parent: &Bound<'py, PyModule>,
     path: &str,
     fill: impl FnOnce(&Bound<'py, PyModule>) -> PyResult<()>,
@@ -32,8 +31,7 @@ fn add_submodule<'py>(
 }
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    add_submodule(m, "libpep.arithmetic", |sm| arithmetic::register_module(sm))?;
-    add_submodule(m, "libpep.core", |sm| core::register_module(sm))?;
+    add_submodule(m, "libpep.elgamal", |sm| elgamal::register_module(sm))?;
     add_submodule(m, "libpep.client", |sm| {
         client::types::register(sm)?;
         client::distributed::register(sm)?;

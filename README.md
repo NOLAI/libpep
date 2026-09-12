@@ -99,8 +99,7 @@ The library is organized into the following main modules, each providing a diffe
 
 | Module | Description |
 |--------|-------------|
-| `arithmetic` | Basic arithmetic operations on scalars and group elements using Curve25519 |
-| `core` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
+| `elgamal` | Low-level ElGamal encryption/decryption, PEP primitives (`rekey`, `reshuffle`, `rerandomize`) in `elgamal::primitives`, and the underlying Curve25519 scalar and group element arithmetic in `elgamal::arithmetic` |
 | `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
 | `keys` | Key management: global keys, session keys, key generation, and distributed key setup |
 | `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |

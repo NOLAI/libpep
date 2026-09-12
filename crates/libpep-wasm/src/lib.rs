@@ -3,10 +3,9 @@
 
 pub(crate) mod macros;
 
-pub mod arithmetic;
 pub mod client;
-pub mod core;
 pub mod data;
+pub mod elgamal;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;

@@ -3,7 +3,7 @@
 //! This module provides blinding factors used to blind global secret keys during system setup,
 //! making it impossible to derive keys without cooperation of the transcryptors.
 
-use crate::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::keys::*;
 use derive_more::From;
 use rand_core::{CryptoRng, Rng};

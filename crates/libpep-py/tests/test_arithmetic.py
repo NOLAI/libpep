@@ -12,8 +12,8 @@ For high-level operations, use Pseudonym and Attribute from libpep.data instead.
 
 import unittest
 
-from libpep.arithmetic.group_elements import GroupElement
-from libpep.arithmetic.scalars import ScalarNonZero, ScalarCanBeZero
+from libpep.elgamal.arithmetic.group_elements import GroupElement
+from libpep.elgamal.arithmetic.scalars import ScalarNonZero, ScalarCanBeZero
 
 class TestArithmetic(unittest.TestCase):
     def test_group_element_arithmetic(self):

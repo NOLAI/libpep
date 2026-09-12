@@ -20,30 +20,28 @@ import tempfile
 from pathlib import Path
 
 import libpep
-import libpep.arithmetic
-import libpep.arithmetic.group_elements
-import libpep.arithmetic.scalars
 import libpep.client
-import libpep.core
-import libpep.core.elgamal
-import libpep.core.primitives
 import libpep.data
 import libpep.data.json
+import libpep.elgamal
+import libpep.elgamal.arithmetic
+import libpep.elgamal.arithmetic.group_elements
+import libpep.elgamal.arithmetic.scalars
+import libpep.elgamal.primitives
 import libpep.factors
 import libpep.keys
 import libpep.transcryptor
 
 MODULES = {
     "__init__": libpep,
-    "arithmetic/__init__": libpep.arithmetic,
-    "arithmetic/group_elements": libpep.arithmetic.group_elements,
-    "arithmetic/scalars": libpep.arithmetic.scalars,
     "client": libpep.client,
-    "core/__init__": libpep.core,
-    "core/elgamal": libpep.core.elgamal,
-    "core/primitives": libpep.core.primitives,
     "data/__init__": libpep.data,
     "data/json": libpep.data.json,
+    "elgamal/__init__": libpep.elgamal,
+    "elgamal/arithmetic/__init__": libpep.elgamal.arithmetic,
+    "elgamal/arithmetic/group_elements": libpep.elgamal.arithmetic.group_elements,
+    "elgamal/arithmetic/scalars": libpep.elgamal.arithmetic.scalars,
+    "elgamal/primitives": libpep.elgamal.primitives,
     "factors": libpep.factors,
     "keys": libpep.keys,
     "transcryptor": libpep.transcryptor,
