@@ -47,19 +47,20 @@
     "pkg-web/libpep.d.ts",
     "pkg-web/libpep.js",
     "pkg-web/package.json",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build:bundler": "wasm-pack build crates/libpep-wasm --target bundler --out-dir ../../pkg --out-name libpep --features json",
-    "build:nodejs": "wasm-pack build crates/libpep-wasm --target nodejs --out-dir ../../pkg --out-name libpep --features json",
-    "build:web": "wasm-pack build crates/libpep-wasm --target web --out-dir ../../pkg-web --out-name libpep --features json",
+    "build:bundler": "wasm-pack build . --target bundler --out-dir pkg --out-name libpep --features json",
+    "build:nodejs": "wasm-pack build . --target nodejs --out-dir pkg --out-name libpep --features json",
+    "build:web": "wasm-pack build . --target web --out-dir pkg-web --out-name libpep --features json",
     "build": "npm run build:bundler && npm run build:web",
     "test": "npm run build:nodejs && jest",
     "prepublishOnly": "npm run build"
   },
   "jest": {
     "testMatch": [
-      "<rootDir>/tests/wasm/**/*.test.js"
+      "<rootDir>/tests/**/*.test.js"
     ]
   }
 }

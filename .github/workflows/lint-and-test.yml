@@ -175,5 +175,7 @@ jobs:
           node-version: '24.x'
       - run: cargo install wasm-pack
       - run: npm install
+        working-directory: crates/libpep-wasm
       - name: Build and test WASM package
         run: npm test
+        working-directory: crates/libpep-wasm

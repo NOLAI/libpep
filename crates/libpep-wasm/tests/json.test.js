@@ -10,7 +10,7 @@ const {
     EncryptionSecret,
     PseudonymizationDomain,
     EncryptionContext, encryptJsonBatch,
-} = require("../../pkg/libpep.js");
+} = require("../pkg/libpep.js");
 
 test('test json transcryption with builder', async () => {
     // Setup keys and secrets

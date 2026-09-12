@@ -7,7 +7,7 @@ const {
     Pseudonym,
     PseudonymizationDomain,
     EncryptionContext,
-} = require("../../pkg/libpep.js");
+} = require("../pkg/libpep.js");
 
 test('n_pep', async () => {
     const n = 3;

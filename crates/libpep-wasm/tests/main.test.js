@@ -38,7 +38,7 @@ const {
     transcryptLongBatch,
     LongEncryptedRecord,
     EncryptedRecord,
-} = require("../../pkg/libpep.js");
+} = require("../pkg/libpep.js");
 
 test('test high level', async () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();

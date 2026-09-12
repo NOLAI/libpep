@@ -268,17 +268,18 @@ maturin build --release
 
 #### WASM
 
-To build and test WASM bindings:
+The WASM bindings live in the `crates/libpep-wasm` workspace crate. To build and test them:
 ```bash
+cd crates/libpep-wasm
 npm install
-npm run build  # Builds both Node.js and web targets
+npm run build  # Builds both bundler and web targets
 npm test
 ```
 
-The WASM bindings live in the `crates/libpep-wasm` workspace crate. To build for a specific target:
+To build for a specific target (from `crates/libpep-wasm`):
 ```bash
-wasm-pack build crates/libpep-wasm --target nodejs --out-name libpep  # For Node.js
-wasm-pack build crates/libpep-wasm --target web --out-name libpep     # For browsers
+npm run build:nodejs  # For Node.js, into pkg/
+npm run build:web     # For browsers, into pkg-web/
 ```
 
 ## License

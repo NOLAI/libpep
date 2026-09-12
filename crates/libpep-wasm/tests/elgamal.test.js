@@ -1,4 +1,4 @@
-const {GroupElement, ScalarNonZero, encrypt, decrypt, rekey, reshuffle, rsk} = require("../../pkg/libpep.js");
+const {GroupElement, ScalarNonZero, encrypt, decrypt, rekey, reshuffle, rsk} = require("../pkg/libpep.js");
 
 describe('ElGamal encryption', () => {
     test('encryption decryption', async () => {
