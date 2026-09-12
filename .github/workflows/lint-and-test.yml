@@ -161,7 +161,7 @@ jobs:
       - name: Check type stubs are in sync
         run: |
           source .venv/bin/activate
-          python scripts/generate_python_stubs.py --check
+          python bindings/python/generate_stubs.py --check
 
   test-wasm:
     runs-on: ubuntu-latest

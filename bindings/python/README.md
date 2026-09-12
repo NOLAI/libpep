@@ -26,4 +26,5 @@ Build and test from the repository root:
 cd bindings/python
 maturin develop
 python -m unittest discover tests -v
+python generate_stubs.py   # regenerate the type stubs after an API change
 ```
