@@ -141,6 +141,10 @@ pub struct RekeyArgs {
 
 #[derive(Args)]
 pub struct PseudonymizeArgs {
+    /// The public key the ciphertext is encrypted under (hex), needed to rerandomize it.
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: String,
     /// The reshuffle factor from the current to the new domain (hex).
     #[arg(long)]
     s: String,
@@ -154,6 +158,11 @@ pub struct PseudonymizeArgs {
 
 #[derive(Args)]
 pub struct TranscryptArgs {
+    /// The public key the ciphertext is encrypted under (hex), needed to rerandomize
+    /// pseudonyms; ignored for attributes.
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: Option<String>,
     /// The transcryptor's pseudonymization secret (pseudonyms only).
     #[arg(long)]
     pseudonymization_secret: Option<String>,
@@ -503,20 +512,38 @@ fn rekey<K: Kind>(args: RekeyArgs, out: &mut Output) -> Result<()> {
     Ok(())
 }
 
-fn pseudonymize(args: PseudonymizeArgs, out: &mut Output) -> Result<()> {
+fn pseudonymize<R: Rng + CryptoRng>(
+    args: PseudonymizeArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     let info = PseudonymizationInfo {
         s: ReshuffleFactor::from(io::scalar(&args.s, "s")?),
         k: PseudonymRekeyFactor::from(io::scalar(&args.k, "k")?),
     };
-    let result = match Cipher::<PseudonymKind>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.pseudonymize(&info)),
-        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.pseudonymize(&info)),
+    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
+    #[cfg(feature = "elgamal3")]
+    let result = match cipher {
+        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.pseudonymize(&info, rng)),
+        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.pseudonymize(&info, rng)),
+    };
+    #[cfg(not(feature = "elgamal3"))]
+    let result = {
+        let key: PseudonymSessionPublicKey = io::public_key(&args.key, "public key")?;
+        match cipher {
+            Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.pseudonymize(&info, &key, rng)),
+            Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.pseudonymize(&info, &key, rng)),
+        }
     };
     result.emit(out);
     Ok(())
 }
 
-fn transcrypt_pseudonym(args: TranscryptArgs, out: &mut Output) -> Result<()> {
+fn transcrypt_pseudonym<R: Rng + CryptoRng>(
+    args: TranscryptArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     let missing =
         |what: &str| io::Error::input(format!("--{what} is required to transcrypt a pseudonym"));
     let info = TranscryptionInfo::new(
@@ -539,9 +566,22 @@ fn transcrypt_pseudonym(args: TranscryptArgs, out: &mut Output) -> Result<()> {
         )?,
         &io::encryption_secret(&args.encryption_secret)?,
     );
-    let result = match Cipher::<PseudonymKind>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.transcrypt(&info)),
-        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.transcrypt(&info)),
+    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
+    #[cfg(feature = "elgamal3")]
+    let result = match cipher {
+        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.transcrypt(&info, rng)),
+        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.transcrypt(&info, rng)),
+    };
+    #[cfg(not(feature = "elgamal3"))]
+    let result = {
+        let key: PseudonymSessionPublicKey = io::public_key(
+            args.key.as_deref().ok_or_else(|| missing("key"))?,
+            "public key",
+        )?;
+        match cipher {
+            Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.transcrypt(&info, &key, rng)),
+            Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.transcrypt(&info, &key, rng)),
+        }
     };
     result.emit(out);
     Ok(())
@@ -585,8 +625,8 @@ pub fn run_pseudonym<R: Rng + CryptoRng>(
         PseudonymCommand::Decrypt(args) => decrypt::<PseudonymKind>(args, out),
         PseudonymCommand::Rerandomize(args) => rerandomize::<PseudonymKind, R>(args, rng, out),
         PseudonymCommand::Rekey(args) => rekey::<PseudonymKind>(args, out),
-        PseudonymCommand::Pseudonymize(args) => pseudonymize(args, out),
-        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, out),
+        PseudonymCommand::Pseudonymize(args) => pseudonymize(args, rng, out),
+        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, rng, out),
     }
 }
 

@@ -7,7 +7,7 @@ use crate::data::simple::{
     Attribute, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
 #[cfg(feature = "batch")]
-use crate::data::traits::BatchEncryptable;
+use crate::data::traits::HasStructure;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -22,11 +22,6 @@ use std::io::{Error, ErrorKind};
 use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-
-#[cfg(feature = "batch")]
-use crate::data::traits::HasStructure;
-#[cfg(feature = "batch")]
-use crate::errors::BatchError;
 
 /// Structure descriptor for Records - describes the shape without the data.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -538,10 +533,41 @@ impl Encrypted for EncryptedRecord {
 }
 
 impl Transcryptable for EncryptedRecord {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
         EncryptedRecord {
-            pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
-            attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt(info, rng))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt(info, rng))
+                .collect(),
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        EncryptedRecord {
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt(info, &keys.pseudonym.public, rng))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt(info, &keys.attribute.public, rng))
+                .collect(),
         }
     }
 }
@@ -763,10 +789,41 @@ impl Encrypted for LongEncryptedRecord {
 
 #[cfg(feature = "long")]
 impl Transcryptable for LongEncryptedRecord {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    #[cfg(feature = "elgamal3")]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
         LongEncryptedRecord {
-            pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
-            attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt(info, rng))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt(info, rng))
+                .collect(),
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn transcrypt<R>(&self, info: &TranscryptionInfo, keys: &SessionKeys, rng: &mut R) -> Self
+    where
+        R: Rng + CryptoRng,
+    {
+        LongEncryptedRecord {
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt(info, &keys.pseudonym.public, rng))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt(info, &keys.attribute.public, rng))
+                .collect(),
         }
     }
 }
@@ -813,21 +870,5 @@ impl HasStructure for LongEncryptedRecord {
             pseudonym_blocks: self.pseudonyms.iter().map(|p| p.0.len()).collect(),
             attribute_blocks: self.attributes.iter().map(|a| a.0.len()).collect(),
         }
-    }
-}
-
-#[cfg(feature = "batch")]
-#[cfg(feature = "batch")]
-impl BatchEncryptable for Record {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
-    }
-}
-
-#[cfg(feature = "batch")]
-#[cfg(all(feature = "batch", feature = "long"))]
-impl BatchEncryptable for LongRecord {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        Ok(items.to_vec())
     }
 }

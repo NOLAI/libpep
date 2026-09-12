@@ -30,11 +30,14 @@ readme = "README.md"
 exclude = ["bindings", "pkg", "pkg-web", "node_modules"]
 
 [features]
-default = ["build-binary", "long", "offline", "batch", "serde", "json"]
+default = ["build-binary", "long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
 serde = ["dep:serde"] # For (de)serialization support via Serde
+verifiable = [] # Enable verifiable operations with zero-knowledge proofs
+verifiable-derivation = ["verifiable"] # Enable Carter-Wegman verifiable factor derivation (O(1) storage vs O(n))
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
+batch-pk = ["batch"] # Carry the recipient public key inside EncryptedBatch (elgamal2 only); enables convenience batch ops that don't require a caller-supplied pk. No effect under elgamal3.
 long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption support
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
@@ -88,7 +91,7 @@ required-features = ["batch", "json"]
 [[bench]]
 name = "distributed"
 harness = false
-required-features = ["batch"]
+required-features = ["batch", "batch-pk"]
 
 [[bench]]
 name = "energy_base"
@@ -97,7 +100,12 @@ harness = false
 [[bench]]
 name = "energy_distributed"
 harness = false
-required-features = ["batch"]
+required-features = ["batch", "batch-pk"]
+
+[[bench]]
+name = "verifiable"
+harness = false
+required-features = ["verifiable"]
 
 [package.metadata.deb]
 name = "peppy"

@@ -28,6 +28,13 @@ pub enum Point {
     Random,
     /// The group element `s * G` for a scalar `s`.
     Base { scalar: String },
+    /// The group element `s * P` for a scalar `s` and a group element `P`, for example a public
+    /// key converted with a rekey factor.
+    Mul {
+        #[arg(long)]
+        scalar: String,
+        point: String,
+    },
     /// A group element derived from text with SHA-512.
     FromHash { text: String },
 }
@@ -57,6 +64,10 @@ pub fn run_point<R: Rng + CryptoRng>(cmd: Point, rng: &mut R, out: &mut Output) 
     match cmd {
         Point::Random => out.value("point", GroupElement::random(rng).to_hex()),
         Point::Base { scalar } => out.value("point", (io::scalar(&scalar, "scalar")? * G).to_hex()),
+        Point::Mul { scalar, point } => out.value(
+            "point",
+            (io::scalar(&scalar, "scalar")? * io::point(&point, "point")?).to_hex(),
+        ),
         Point::FromHash { text } => {
             let digest: [u8; 64] = Sha512::digest(io::read_arg(&text)?.as_bytes()).into();
             out.value("point", GroupElement::from_hash(&digest).to_hex());

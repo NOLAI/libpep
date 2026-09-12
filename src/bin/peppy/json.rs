@@ -39,6 +39,11 @@ pub enum Json {
     },
     /// Transcrypt an encrypted JSON document from one domain and session to another.
     Transcrypt {
+        /// The session keys the document is encrypted under, as JSON, needed to rerandomize
+        /// its pseudonyms.
+        #[cfg(not(feature = "elgamal3"))]
+        #[arg(long)]
+        keys: String,
         /// The transcryptor's pseudonymization secret.
         #[arg(long)]
         pseudonymization_secret: String,
@@ -119,6 +124,8 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             out.value("document", json);
         }
         Json::Transcrypt {
+            #[cfg(not(feature = "elgamal3"))]
+            keys,
             pseudonymization_secret,
             encryption_secret,
             from_domain,
@@ -137,10 +144,16 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             );
             let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;
+            #[cfg(feature = "elgamal3")]
+            let transcrypted = encrypted.transcrypt(&info, rng);
+            #[cfg(not(feature = "elgamal3"))]
+            let transcrypted = {
+                let keys: SessionKeys = keys_json(&keys, "session_keys", "keys")?;
+                encrypted.transcrypt(&info, &keys, rng)
+            };
             out.value(
                 "encrypted",
-                serde_json::to_value(encrypted.transcrypt(&info))
-                    .expect("encrypted JSON is serializable"),
+                serde_json::to_value(transcrypted).expect("encrypted JSON is serializable"),
             );
         }
     }

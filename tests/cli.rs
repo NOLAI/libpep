@@ -96,6 +96,19 @@ fn setup() -> (serde_json::Value, Session, Session) {
     (global.clone(), derive("session-a"), derive("session-b"))
 }
 
+/// The public key argument that pseudonym transcryption needs in the default ciphertext mode.
+fn key_arg(public: &str) -> Vec<&str> {
+    #[cfg(feature = "elgamal3")]
+    {
+        let _ = public;
+        Vec::new()
+    }
+    #[cfg(not(feature = "elgamal3"))]
+    {
+        vec!["--key", public]
+    }
+}
+
 const TRANSCRYPT: [&str; 4] = [
     "--pseudonymization-secret",
     "pseudonymization secret",
@@ -110,6 +123,7 @@ fn pseudonym_round_trip_through_transcryption() {
     let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
     let mut args = vec!["pseudonym", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    args.extend(key_arg(a.public()));
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",
@@ -127,6 +141,7 @@ fn pseudonym_round_trip_through_transcryption() {
 
     let mut back = vec!["pseudonym", "transcrypt"];
     back.extend_from_slice(&TRANSCRYPT);
+    back.extend(key_arg(b.public()));
     back.extend_from_slice(&[
         "--from-domain",
         "research",
@@ -220,17 +235,20 @@ fn explicit_factors_match_the_transcryptor() {
     ]);
     let value = peppy(&["pseudonym", "random"]);
     let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
-    let by_factors = peppy(&[
+    let mut by_factors_args = vec![
         "pseudonym",
         "pseudonymize",
         "--s",
         field(&info, "reshuffle_factor"),
         "--k",
         field(&info, "pseudonym_rekey_factor"),
-        &encrypted,
-    ]);
+    ];
+    by_factors_args.extend(key_arg(a.public()));
+    by_factors_args.push(&encrypted);
+    let by_factors = peppy(&by_factors_args);
     let mut args = vec!["pseudonym", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    args.extend(key_arg(a.public()));
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",
@@ -350,8 +368,9 @@ fn distributed_setup_shares_and_reconstruction() {
         field(&setup, "pseudonym_public_key"),
         &value,
     ]);
+    let mut current_key = field(&setup, "pseudonym_public_key").to_string();
     for secret in &secrets {
-        current = peppy(&[
+        let mut args = vec![
             "pseudonym",
             "transcrypt",
             "--pseudonymization-secret",
@@ -364,8 +383,21 @@ fn distributed_setup_shares_and_reconstruction() {
             "domain",
             "--to-context",
             "session-1",
-            &current,
+        ];
+        args.extend(key_arg(&current_key));
+        args.push(&current);
+        current = peppy(&args);
+        // After a transcryptor's rekey the ciphertext is under the key converted with its
+        // rekey factor, which the library exposes through `factors rekey`.
+        let k = peppy(&[
+            "factors",
+            "rekey",
+            "--secret",
+            secret,
+            "--context",
+            "session-1",
         ]);
+        current_key = peppy(&["point", "mul", "--scalar", &k, &current_key]);
     }
     let decrypted = peppy(&[
         "pseudonym",
@@ -399,7 +431,7 @@ fn distributed_setup_shares_and_reconstruction() {
         "--new-share",
         field(&new_share, "pseudonym_share"),
     ]);
-    let moved = peppy(&[
+    let mut moved_args = vec![
         "pseudonym",
         "transcrypt",
         "--pseudonymization-secret",
@@ -414,8 +446,10 @@ fn distributed_setup_shares_and_reconstruction() {
         "session-1",
         "--to-context",
         "session-2",
-        &current,
-    ]);
+    ];
+    moved_args.extend(key_arg(field(&session, "pseudonym_public_key")));
+    moved_args.push(&current);
+    let moved = peppy(&moved_args);
     let decrypted = peppy(&[
         "pseudonym",
         "decrypt",
@@ -444,6 +478,8 @@ fn json_documents() {
         .to_string();
     let mut args = vec!["json", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    #[cfg(not(feature = "elgamal3"))]
+    args.extend_from_slice(&["--keys", &keys_a]);
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",

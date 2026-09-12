@@ -57,15 +57,3 @@ def encrypt_global(message, public_key):
 def encrypt_global_batch(messages, public_key):
     """Polymorphic batch encryption with global public key."""
     ...
-
-def pseudonymize_batch(encrypted, pseudonymization_info):
-    """Polymorphic batch pseudonymization of a list of encrypted pseudonyms."""
-    ...
-
-def rekey_batch(encrypted, rekey_info):
-    """Polymorphic batch rekeying of a list of encrypted attributes."""
-    ...
-
-def transcrypt_batch(encrypted, transcryption_info):
-    """Polymorphic batch transcryption of a list of encrypted data."""
-    ...
