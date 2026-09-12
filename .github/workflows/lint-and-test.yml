@@ -152,12 +152,12 @@ jobs:
         run: |
           source .venv/bin/activate
           pip install maturin
-          cd crates/libpep-py
+          cd bindings/python
           maturin develop --features insecure
       - name: Run Python tests
         run: |
           source .venv/bin/activate
-          python -m unittest discover crates/libpep-py/tests -v
+          python -m unittest discover bindings/python/tests -v
       - name: Check type stubs are in sync
         run: |
           source .venv/bin/activate
@@ -175,7 +175,7 @@ jobs:
           node-version: '24.x'
       - run: cargo install wasm-pack
       - run: npm install
-        working-directory: crates/libpep-wasm
+        working-directory: bindings/wasm
       - name: Build and test WASM package
         run: npm test
-        working-directory: crates/libpep-wasm
+        working-directory: bindings/wasm

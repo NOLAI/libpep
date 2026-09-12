@@ -21,7 +21,7 @@ See the [repository README](https://github.com/NOLAI/libpep) for the full docume
 Build and test from this crate directory:
 
 ```bash
-cd crates/libpep-wasm
+cd bindings/wasm
 npm install
 npm test
 ```

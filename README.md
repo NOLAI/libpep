@@ -256,32 +256,32 @@ cargo test --features legacy
 
 #### Python
 
-The Python bindings live in the `crates/libpep-py` workspace crate. To build and test them:
+The Python bindings live in the `bindings/python` workspace crate. To build and test them:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install maturin pytest
-cd crates/libpep-py
+cd bindings/python
 maturin develop
 python -m unittest discover tests -v
 ```
 
-To build a wheel for distribution (from `crates/libpep-py`):
+To build a wheel for distribution (from `bindings/python`):
 ```bash
 maturin build --release
 ```
 
 #### WASM
 
-The WASM bindings live in the `crates/libpep-wasm` workspace crate. To build and test them:
+The WASM bindings live in the `bindings/wasm` workspace crate. To build and test them:
 ```bash
-cd crates/libpep-wasm
+cd bindings/wasm
 npm install
 npm run build  # Builds both bundler and web targets
 npm test
 ```
 
-To build for a specific target (from `crates/libpep-wasm`):
+To build for a specific target (from `bindings/wasm`):
 ```bash
 npm run build:nodejs  # For Node.js, into pkg/
 npm run build:web     # For browsers, into pkg-web/

@@ -56,9 +56,9 @@ jobs:
       - run: npm install -g npm@latest
       - run: cargo install wasm-pack
       - run: npm run build
-        working-directory: crates/libpep-wasm
+        working-directory: bindings/wasm
       - run: npm publish --provenance --access public
-        working-directory: crates/libpep-wasm
+        working-directory: bindings/wasm
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
       - name: Build wheels and sdist
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: crates/libpep-py
+          working-directory: bindings/python
           command: build
           args: --release --sdist --out dist
           sccache: 'true'
@@ -81,4 +81,4 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: crates/libpep-py/dist
+          packages-dir: bindings/python/dist

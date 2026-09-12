@@ -2,7 +2,7 @@
 """Generate PEP 561 type stubs for the libpep Python module by introspection.
 
 Run against a built module (``maturin develop`` first). Emits a ``libpep-stubs``
-stub package into ``crates/libpep-py/libpep-stubs``, which maturin includes in
+stub package into ``bindings/python/libpep-stubs``, which maturin includes in
 the wheel. Parameter names come from the PyO3-generated text signatures;
 parameter and return annotations are left open since the native module does not
 carry them.
@@ -49,7 +49,7 @@ MODULES = {
     "transcryptor": libpep.transcryptor,
 }
 
-OUT = Path(__file__).resolve().parent.parent / "crates" / "libpep-py" / "libpep-stubs"
+OUT = Path(__file__).resolve().parent.parent / "bindings" / "python" / "libpep-stubs"
 
 
 def signature_of(obj, is_method: bool) -> str:

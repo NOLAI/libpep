@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/libpep-py", "crates/libpep-wasm"]
+members = [".", "bindings/python", "bindings/wasm"]
 resolver = "2"
 
 [workspace.package]
@@ -27,7 +27,7 @@ keywords = ["crypto", "pep", "pseudonymization"]
 categories = ["cryptography", "algorithms"]
 description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
-exclude = ["crates", "pkg", "pkg-web", "node_modules"]
+exclude = ["bindings", "pkg", "pkg-web", "node_modules"]
 
 [features]
 default = ["build-binary", "long", "offline", "batch", "serde", "json"]

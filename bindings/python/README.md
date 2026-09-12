@@ -23,7 +23,7 @@ See the [repository README](https://github.com/NOLAI/libpep) for the full docume
 Build and test from the repository root:
 
 ```bash
-cd crates/libpep-py
+cd bindings/python
 maturin develop
 python -m unittest discover tests -v
 ```

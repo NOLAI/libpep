@@ -59,4 +59,4 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: Swatinem/rust-cache@v2
       - run: cargo install wasm-pack
-      - run: wasm-pack build crates/libpep-wasm --target ${{ matrix.target }} --out-name libpep --features "${{ matrix.features }}"
+      - run: wasm-pack build bindings/wasm --target ${{ matrix.target }} --out-name libpep --features "${{ matrix.features }}"

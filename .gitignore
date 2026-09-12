@@ -149,10 +149,10 @@ dist
 /peppy.1
 
 # WASM build
-/crates/libpep-wasm/pkg/
-/crates/libpep-wasm/pkg-web/
+/bindings/wasm/pkg/
+/bindings/wasm/pkg-web/
 .aider*
-/crates/libpep-wasm/package-lock.json
+/bindings/wasm/package-lock.json
 
 # Code editors
 .idea/
