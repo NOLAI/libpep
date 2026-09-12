@@ -12,6 +12,8 @@ use crate::keys::types::{
     WASMPseudonymSessionSecretKey,
 };
 use libpep::client::{decrypt_batch, encrypt_batch};
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 use libpep::keys::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
@@ -28,7 +30,7 @@ pub fn wasm_encrypt_pseudonym_batch(
     let mut rng = rand::rng();
     encrypt_batch(
         &rust_msgs,
-        &PseudonymSessionPublicKey::from(*key.0),
+        &PseudonymSessionPublicKey::from_point(*key.0),
         &mut rng,
     )
     .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
@@ -43,7 +45,7 @@ pub fn wasm_decrypt_pseudonym_batch(
     key: &WASMPseudonymSessionSecretKey,
 ) -> Result<Vec<WASMPseudonym>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
-    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(|d| d.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -56,7 +58,7 @@ pub fn wasm_decrypt_pseudonym_batch(
     key: &WASMPseudonymSessionSecretKey,
 ) -> Result<Vec<WASMPseudonym>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
-    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(WASMPseudonym).collect())
         .map_err(|e| e.to_string())
 }
@@ -71,7 +73,7 @@ pub fn wasm_encrypt_attribute_batch(
     let mut rng = rand::rng();
     encrypt_batch(
         &rust_msgs,
-        &AttributeSessionPublicKey::from(*key.0),
+        &AttributeSessionPublicKey::from_point(*key.0),
         &mut rng,
     )
     .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
@@ -86,7 +88,7 @@ pub fn wasm_decrypt_attribute_batch(
     key: &WASMAttributeSessionSecretKey,
 ) -> Result<Vec<WASMAttribute>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
-    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(|d| d.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -99,7 +101,7 @@ pub fn wasm_decrypt_attribute_batch(
     key: &WASMAttributeSessionSecretKey,
 ) -> Result<Vec<WASMAttribute>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
-    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(WASMAttribute).collect())
         .map_err(|e| e.to_string())
 }
@@ -115,7 +117,7 @@ pub fn wasm_encrypt_long_pseudonym_batch(
     let mut rng = rand::rng();
     encrypt_batch(
         &rust_msgs,
-        &PseudonymSessionPublicKey::from(*key.0),
+        &PseudonymSessionPublicKey::from_point(*key.0),
         &mut rng,
     )
     .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
@@ -130,7 +132,7 @@ pub fn wasm_decrypt_long_pseudonym_batch(
     key: &WASMPseudonymSessionSecretKey,
 ) -> Result<Vec<WASMLongPseudonym>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(|d| d.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -143,7 +145,7 @@ pub fn wasm_decrypt_long_pseudonym_batch(
     key: &WASMPseudonymSessionSecretKey,
 ) -> Result<Vec<WASMLongPseudonym>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &PseudonymSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(WASMLongPseudonym).collect())
         .map_err(|e| e.to_string())
 }
@@ -159,7 +161,7 @@ pub fn wasm_encrypt_long_attribute_batch(
     let mut rng = rand::rng();
     encrypt_batch(
         &rust_msgs,
-        &AttributeSessionPublicKey::from(*key.0),
+        &AttributeSessionPublicKey::from_point(*key.0),
         &mut rng,
     )
     .map(|encrypted| encrypted.into_iter().map(|e| e.into()).collect())
@@ -174,7 +176,7 @@ pub fn wasm_decrypt_long_attribute_batch(
     key: &WASMAttributeSessionSecretKey,
 ) -> Result<Vec<WASMLongAttribute>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(|d| d.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -187,7 +189,7 @@ pub fn wasm_decrypt_long_attribute_batch(
     key: &WASMAttributeSessionSecretKey,
 ) -> Result<Vec<WASMLongAttribute>, String> {
     let rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from(*key.0))
+    decrypt_batch(&rust_enc, &AttributeSessionSecretKey::from_scalar(*key.0))
         .map(|decrypted| decrypted.into_iter().map(WASMLongAttribute).collect())
         .map_err(|e| e.to_string())
 }

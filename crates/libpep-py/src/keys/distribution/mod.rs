@@ -5,8 +5,8 @@ pub mod setup;
 pub mod shares;
 
 pub use blinding::{
-    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
-    PyBlindingFactor,
+    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
+    PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
 pub use setup::{
     py_make_distributed_attribute_global_keys, py_make_distributed_global_keys,

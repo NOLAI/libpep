@@ -27,6 +27,8 @@ use libpep::client::decrypt_global;
 use libpep::client::encrypt_global;
 use libpep::client::{decrypt, encrypt};
 use libpep::factors::TranscryptionInfo;
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 #[cfg(feature = "offline")]
 use libpep::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -244,7 +246,7 @@ pub fn wasm_encrypt_long_pseudonym_global(
     public_key: &WASMPseudonymGlobalPublicKey,
 ) -> WASMLongEncryptedPseudonym {
     let mut rng = rand::rng();
-    let key = PseudonymGlobalPublicKey::from(*public_key.0);
+    let key = PseudonymGlobalPublicKey::from_point(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -260,7 +262,7 @@ pub fn wasm_decrypt_long_pseudonym_global(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> Option<WASMLongPseudonym> {
-    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
+    let key = PseudonymGlobalSecretKey::from_scalar(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -276,7 +278,7 @@ pub fn wasm_decrypt_long_pseudonym_global(
     v: &WASMLongEncryptedPseudonym,
     secret_key: &WASMPseudonymGlobalSecretKey,
 ) -> WASMLongPseudonym {
-    let key = PseudonymGlobalSecretKey::from(*secret_key.0);
+    let key = PseudonymGlobalSecretKey::from_scalar(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }
 
@@ -288,7 +290,7 @@ pub fn wasm_encrypt_long_attribute_global(
     public_key: &WASMAttributeGlobalPublicKey,
 ) -> WASMLongEncryptedAttribute {
     let mut rng = rand::rng();
-    let key = AttributeGlobalPublicKey::from(*public_key.0);
+    let key = AttributeGlobalPublicKey::from_point(*public_key.0);
     encrypt_global(&m.0, &key, &mut rng).into()
 }
 
@@ -304,7 +306,7 @@ pub fn wasm_decrypt_long_attribute_global(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> Option<WASMLongAttribute> {
-    let key = AttributeGlobalSecretKey::from(*secret_key.0);
+    let key = AttributeGlobalSecretKey::from_scalar(*secret_key.0);
     decrypt_global(&v.0, &key).map(|x| x.into())
 }
 
@@ -320,6 +322,6 @@ pub fn wasm_decrypt_long_attribute_global(
     v: &WASMLongEncryptedAttribute,
     secret_key: &WASMAttributeGlobalSecretKey,
 ) -> WASMLongAttribute {
-    let key = AttributeGlobalSecretKey::from(*secret_key.0);
+    let key = AttributeGlobalSecretKey::from_scalar(*secret_key.0);
     decrypt_global(&v.0, &key).into()
 }

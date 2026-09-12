@@ -1,6 +1,6 @@
 use super::blinding::{
-    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
-    PyBlindingFactor,
+    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
+    PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::keys::types::{
@@ -57,7 +57,7 @@ pub fn py_make_distributed_global_keys(
     n: usize,
 ) -> (
     PyGlobalPublicKeys,
-    PyBlindedGlobalKeys,
+    PyBlindedGlobalSecretKeys,
     Vec<PyBlindingFactor>,
 ) {
     let mut rng = rand::rng();
@@ -69,7 +69,7 @@ pub fn py_make_distributed_global_keys(
             pseudonym: PyPseudonymGlobalPublicKey(PyGroupElement(*global_public_keys.pseudonym)),
             attribute: PyAttributeGlobalPublicKey(PyGroupElement(*global_public_keys.attribute)),
         },
-        PyBlindedGlobalKeys {
+        PyBlindedGlobalSecretKeys {
             pseudonym: PyBlindedPseudonymGlobalSecretKey(blinded_keys.pseudonym),
             attribute: PyBlindedAttributeGlobalSecretKey(blinded_keys.attribute),
         },

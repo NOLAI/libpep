@@ -1,119 +1,103 @@
 //! Traits for public and secret keys.
+//!
+//! Only the global and session keys that data is encrypted towards and decrypted with implement
+//! these traits. The intermediate material of the distributed setup (blinding factors, blinded
+//! global secret keys, session key shares) is not a key and deliberately does not; see
+//! [`distribution`](super::distribution).
 
 use super::types::*;
-use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 
-/// A trait for public keys, which can be encoded and decoded from byte arrays and hex strings.
-pub trait PublicKey {
+/// A public key: a [`GroupElement`] of the form `sk * G`, which can be encoded to and decoded
+/// from byte arrays and hex strings.
+pub trait PublicKey: Sized {
+    /// The group element this key wraps.
     fn value(&self) -> &GroupElement;
+
+    /// Construct from a raw group element.
+    ///
+    /// Prefer deriving the public key from its secret key with [`SecretKey::public_key`]; this
+    /// constructor is for keys received from elsewhere.
+    fn from_point(point: GroupElement) -> Self;
+
+    /// Encode as a byte array.
     fn to_bytes(&self) -> [u8; 32] {
         self.value().to_bytes()
     }
+
+    /// Encode as a hexadecimal string.
     fn to_hex(&self) -> String {
         self.value().to_hex()
     }
-    fn from_bytes(bytes: &[u8; 32]) -> Option<Self>
-    where
-        Self: Sized;
-    fn from_slice(slice: &[u8]) -> Option<Self>
-    where
-        Self: Sized;
-    fn from_hex(s: &str) -> Option<Self>
-    where
-        Self: Sized;
+
+    /// Decode from a byte array.
+    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
+        GroupElement::from_bytes(bytes).map(Self::from_point)
+    }
+
+    /// Decode from a slice of bytes.
+    fn from_slice(slice: &[u8]) -> Option<Self> {
+        GroupElement::from_slice(slice).map(Self::from_point)
+    }
+
+    /// Decode from a hexadecimal string.
+    fn from_hex(s: &str) -> Option<Self> {
+        GroupElement::from_hex(s).map(Self::from_point)
+    }
 }
 
-/// A trait for secret keys, for which we do not allow encoding as secret keys should not be shared.
-pub trait SecretKey {
+/// A secret key: a [`ScalarNonZero`] whose public key is `sk * G`.
+///
+/// Secret keys are not encoded, as they should not be shared. Secret material is read through
+/// explicit [`value`](Self::value) calls rather than `Deref`, so every read is visible at the
+/// call site.
+pub trait SecretKey: Sized {
+    /// The public key associated with this secret key.
+    type PublicKeyType: PublicKey;
+
+    /// The scalar this key wraps.
     fn value(&self) -> &ScalarNonZero;
-}
 
-impl PublicKey for PseudonymGlobalPublicKey {
-    fn value(&self) -> &GroupElement {
-        &self.0
-    }
+    /// Construct from a raw scalar.
+    fn from_scalar(scalar: ScalarNonZero) -> Self;
 
-    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        GroupElement::from_bytes(bytes).map(Self::from)
-    }
-    fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(slice).map(PseudonymGlobalPublicKey::from)
-    }
-    fn from_hex(s: &str) -> Option<Self> {
-        GroupElement::from_hex(s).map(PseudonymGlobalPublicKey::from)
+    /// Derive the associated public key as `sk * G`.
+    fn public_key(&self) -> Self::PublicKeyType {
+        Self::PublicKeyType::from_point(*self.value() * G)
     }
 }
 
-impl SecretKey for PseudonymGlobalSecretKey {
-    fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
+macro_rules! impl_key_pair {
+    ($($pk:ident / $sk:ident),+ $(,)?) => {$(
+        impl PublicKey for $pk {
+            fn value(&self) -> &GroupElement {
+                &self.0
+            }
+            fn from_point(point: GroupElement) -> Self {
+                Self(point)
+            }
+        }
+
+        impl SecretKey for $sk {
+            type PublicKeyType = $pk;
+
+            fn value(&self) -> &ScalarNonZero {
+                &self.0
+            }
+            fn from_scalar(scalar: ScalarNonZero) -> Self {
+                Self(scalar)
+            }
+        }
+    )+};
 }
 
-impl PublicKey for AttributeGlobalPublicKey {
-    fn value(&self) -> &GroupElement {
-        &self.0
-    }
-
-    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        GroupElement::from_bytes(bytes).map(Self::from)
-    }
-    fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(slice).map(AttributeGlobalPublicKey::from)
-    }
-    fn from_hex(s: &str) -> Option<Self> {
-        GroupElement::from_hex(s).map(AttributeGlobalPublicKey::from)
-    }
-}
-
-impl SecretKey for AttributeGlobalSecretKey {
-    fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
-}
-
-impl PublicKey for PseudonymSessionPublicKey {
-    fn value(&self) -> &GroupElement {
-        &self.0
-    }
-    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        GroupElement::from_bytes(bytes).map(Self::from)
-    }
-    fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(slice).map(PseudonymSessionPublicKey::from)
-    }
-    fn from_hex(s: &str) -> Option<Self> {
-        GroupElement::from_hex(s).map(PseudonymSessionPublicKey::from)
-    }
-}
-
-impl SecretKey for PseudonymSessionSecretKey {
-    fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
-}
-
-impl PublicKey for AttributeSessionPublicKey {
-    fn value(&self) -> &GroupElement {
-        &self.0
-    }
-    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        GroupElement::from_bytes(bytes).map(Self::from)
-    }
-    fn from_slice(slice: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(slice).map(AttributeSessionPublicKey::from)
-    }
-    fn from_hex(s: &str) -> Option<Self> {
-        GroupElement::from_hex(s).map(AttributeSessionPublicKey::from)
-    }
-}
-
-impl SecretKey for AttributeSessionSecretKey {
-    fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
-}
+impl_key_pair!(
+    PseudonymGlobalPublicKey / PseudonymGlobalSecretKey,
+    AttributeGlobalPublicKey / AttributeGlobalSecretKey,
+    PseudonymSessionPublicKey / PseudonymSessionSecretKey,
+    AttributeSessionPublicKey / AttributeSessionSecretKey,
+);
 
 /// Trait to provide the correct key from SessionKeys or GlobalPublicKeys based on the key type.
 /// This enables polymorphic key access in the Client.

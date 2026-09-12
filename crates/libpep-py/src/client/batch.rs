@@ -51,6 +51,8 @@ use libpep::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
 use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
 
 /// Polymorphic batch pseudonymization of a list of encrypted pseudonyms.
@@ -287,7 +289,7 @@ py_dispatch!(
     fn py_encrypt_batch(messages, public_key) with py err "encrypt_batch() requires (Vec[unencrypted_type], matching_public_key)" {
         (ps in messages: Vec<PyPseudonym>, pk in public_key: PyPseudonymSessionPublicKey) => {
             let mut rng = rand::rng();
-            let key = PseudonymSessionPublicKey::from(*pk.0);
+            let key = PseudonymSessionPublicKey::from_point(*pk.0);
             let rust_msgs: Vec<_> = ps.into_iter().map(|p| p.0).collect();
 
             // True Batch: Shuffles and encrypts
@@ -300,7 +302,7 @@ py_dispatch!(
         }
         (attrs in messages: Vec<PyAttribute>, pk in public_key: PyAttributeSessionPublicKey) => {
             let mut rng = rand::rng();
-            let key = AttributeSessionPublicKey::from(*pk.0);
+            let key = AttributeSessionPublicKey::from_point(*pk.0);
             let rust_msgs: Vec<_> = attrs.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -313,7 +315,7 @@ py_dispatch!(
         #[cfg(feature = "long")]
         (lps in messages: Vec<PyLongPseudonym>, pk in public_key: PyPseudonymSessionPublicKey) => {
             let mut rng = rand::rng();
-            let key = PseudonymSessionPublicKey::from(*pk.0);
+            let key = PseudonymSessionPublicKey::from_point(*pk.0);
             let rust_msgs: Vec<_> = lps.into_iter().map(|p| p.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -326,7 +328,7 @@ py_dispatch!(
         #[cfg(feature = "long")]
         (las in messages: Vec<PyLongAttribute>, pk in public_key: PyAttributeSessionPublicKey) => {
             let mut rng = rand::rng();
-            let key = AttributeSessionPublicKey::from(*pk.0);
+            let key = AttributeSessionPublicKey::from_point(*pk.0);
             let rust_msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
 
             let result = encrypt_batch(&rust_msgs, &key, &mut rng)
@@ -360,7 +362,7 @@ py_dispatch!(
     #[pyo3(name = "decrypt_batch")]
     fn py_decrypt_batch(encrypted, secret_key) with py err "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)" {
         (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
-            let key = PseudonymSessionSecretKey::from(*sk.0);
+            let key = PseudonymSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
             // True Batch Decryption
@@ -372,7 +374,7 @@ py_dispatch!(
             return py_result.into_py_any(py);
         }
         (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
-            let key = AttributeSessionSecretKey::from(*sk.0);
+            let key = AttributeSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -384,7 +386,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
-            let key = PseudonymSessionSecretKey::from(*sk.0);
+            let key = PseudonymSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -396,7 +398,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
-            let key = AttributeSessionSecretKey::from(*sk.0);
+            let key = AttributeSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -430,7 +432,7 @@ py_dispatch!(
     #[pyo3(name = "decrypt_batch")]
     fn py_decrypt_batch(encrypted, secret_key) with py err "decrypt_batch() requires (Vec[encrypted_type], matching_secret_key)" {
         (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
-            let key = PseudonymSessionSecretKey::from(*sk.0);
+            let key = PseudonymSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = eps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -441,7 +443,7 @@ py_dispatch!(
             return py_result.into_py_any(py);
         }
         (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
-            let key = AttributeSessionSecretKey::from(*sk.0);
+            let key = AttributeSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = eas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -453,7 +455,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymSessionSecretKey) => {
-            let key = PseudonymSessionSecretKey::from(*sk.0);
+            let key = PseudonymSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = leps.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -465,7 +467,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeSessionSecretKey) => {
-            let key = AttributeSessionSecretKey::from(*sk.0);
+            let key = AttributeSessionSecretKey::from_scalar(*sk.0);
             let rust_encs: Vec<_> = leas.into_iter().map(|e| e.0).collect();
 
             let result = decrypt_batch(&rust_encs, &key).map_err(|e| {
@@ -499,7 +501,7 @@ py_dispatch!(
     fn py_encrypt_global_batch(messages, public_key) with py err "encrypt_global_batch() requires (Vec[unencrypted_type], matching_global_public_key)" {
         (ps in messages: Vec<PyPseudonym>, pk in public_key: PyPseudonymGlobalPublicKey) => {
             let mut rng = rand::rng();
-            let key = PseudonymGlobalPublicKey::from(*pk.0);
+            let key = PseudonymGlobalPublicKey::from_point(*pk.0);
             let result: Vec<PyEncryptedPseudonym> = ps
                 .into_iter()
                 .map(|p| PyEncryptedPseudonym(encrypt_global(&p.0, &key, &mut rng)))
@@ -508,7 +510,7 @@ py_dispatch!(
         }
         (attrs in messages: Vec<PyAttribute>, pk in public_key: PyAttributeGlobalPublicKey) => {
             let mut rng = rand::rng();
-            let key = AttributeGlobalPublicKey::from(*pk.0);
+            let key = AttributeGlobalPublicKey::from_point(*pk.0);
             let result: Vec<PyEncryptedAttribute> = attrs
                 .into_iter()
                 .map(|a| PyEncryptedAttribute(encrypt_global(&a.0, &key, &mut rng)))
@@ -518,7 +520,7 @@ py_dispatch!(
         #[cfg(feature = "long")]
         (lps in messages: Vec<PyLongPseudonym>, pk in public_key: PyPseudonymGlobalPublicKey) => {
             let mut rng = rand::rng();
-            let key = PseudonymGlobalPublicKey::from(*pk.0);
+            let key = PseudonymGlobalPublicKey::from_point(*pk.0);
             let result: Vec<PyLongEncryptedPseudonym> = lps
                 .into_iter()
                 .map(|p| PyLongEncryptedPseudonym(encrypt_global(&p.0, &key, &mut rng)))
@@ -528,7 +530,7 @@ py_dispatch!(
         #[cfg(feature = "long")]
         (las in messages: Vec<PyLongAttribute>, pk in public_key: PyAttributeGlobalPublicKey) => {
             let mut rng = rand::rng();
-            let key = AttributeGlobalPublicKey::from(*pk.0);
+            let key = AttributeGlobalPublicKey::from_point(*pk.0);
             let result: Vec<PyLongEncryptedAttribute> = las
                 .into_iter()
                 .map(|a| PyLongEncryptedAttribute(encrypt_global(&a.0, &key, &mut rng)))
@@ -557,7 +559,7 @@ py_dispatch!(
     #[pyo3(name = "decrypt_global_batch")]
     fn py_decrypt_global_batch(encrypted, secret_key) with py err "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)" {
         (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
-            let key = PseudonymGlobalSecretKey::from(*sk.0);
+            let key = PseudonymGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<_> = eps
                 .into_iter()
                 .map(|ep| {
@@ -569,7 +571,7 @@ py_dispatch!(
             return result.into_py_any(py);
         }
         (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
-            let key = AttributeGlobalSecretKey::from(*sk.0);
+            let key = AttributeGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<_> = eas
                 .into_iter()
                 .map(|ea| {
@@ -582,7 +584,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
-            let key = PseudonymGlobalSecretKey::from(*sk.0);
+            let key = PseudonymGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<_> = leps
                 .into_iter()
                 .map(|lep| {
@@ -595,7 +597,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
-            let key = AttributeGlobalSecretKey::from(*sk.0);
+            let key = AttributeGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<_> = leas
                 .into_iter()
                 .map(|lea| {
@@ -630,7 +632,7 @@ py_dispatch!(
     #[pyo3(name = "decrypt_global_batch")]
     fn py_decrypt_global_batch(encrypted, secret_key) with py err "decrypt_global_batch() requires (Vec[encrypted_type], matching_global_secret_key)" {
         (eps in encrypted: Vec<PyEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
-            let key = PseudonymGlobalSecretKey::from(*sk.0);
+            let key = PseudonymGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<PyPseudonym> = eps
                 .into_iter()
                 .map(|ep| PyPseudonym(decrypt_global(&ep.0, &key)))
@@ -638,7 +640,7 @@ py_dispatch!(
             return result.into_py_any(py);
         }
         (eas in encrypted: Vec<PyEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
-            let key = AttributeGlobalSecretKey::from(*sk.0);
+            let key = AttributeGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<PyAttribute> = eas
                 .into_iter()
                 .map(|ea| PyAttribute(decrypt_global(&ea.0, &key)))
@@ -647,7 +649,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leps in encrypted: Vec<PyLongEncryptedPseudonym>, sk in secret_key: PyPseudonymGlobalSecretKey) => {
-            let key = PseudonymGlobalSecretKey::from(*sk.0);
+            let key = PseudonymGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<PyLongPseudonym> = leps
                 .into_iter()
                 .map(|lep| PyLongPseudonym(decrypt_global(&lep.0, &key)))
@@ -656,7 +658,7 @@ py_dispatch!(
         }
         #[cfg(feature = "long")]
         (leas in encrypted: Vec<PyLongEncryptedAttribute>, sk in secret_key: PyAttributeGlobalSecretKey) => {
-            let key = AttributeGlobalSecretKey::from(*sk.0);
+            let key = AttributeGlobalSecretKey::from_scalar(*sk.0);
             let result: Vec<PyLongAttribute> = leas
                 .into_iter()
                 .map(|lea| PyLongAttribute(decrypt_global(&lea.0, &key)))

@@ -43,7 +43,7 @@ impl PyDistributedTranscryptor {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
             EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
-            BlindingFactor::from(*blinding_factor.0.value()),
+            BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
     }
 

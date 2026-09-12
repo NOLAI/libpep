@@ -1,7 +1,10 @@
 //! Distributed transcryptor key management.
 //!
-//! This module provides types and functions for managing keys in a distributed transcryptor system,
-//! including blinding factors, session key shares, and key reconstruction.
+//! In a distributed setup the global secret keys are blinded with one blinding factor per
+//! transcryptor, and each transcryptor contributes a session key share; a client combines the
+//! blinded global secret key with all shares to obtain its session key. The material involved
+//! is protocol state rather than keys, and has its own traits ([`BlindedGlobalSecretKey`],
+//! [`SessionKeyShare`]) instead of [`SecretKey`](crate::keys::SecretKey).
 //!
 //! # Organization
 //!

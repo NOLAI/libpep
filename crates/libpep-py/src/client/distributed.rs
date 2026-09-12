@@ -12,15 +12,16 @@ use crate::data::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use crate::keys::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
 use crate::keys::{
-    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyBlindedGlobalKeys,
+    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyBlindedGlobalSecretKeys,
     PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
 };
 use crate::keys::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
 use derive_more::{Deref, From, Into};
 use libpep::client::distributed::make_session_keys_distributed;
 use libpep::client::Client;
+use libpep::keys::distribution::SessionKeyShare;
 use libpep::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
+    AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use libpep::keys::*;
 use pyo3::exceptions::PyTypeError;
@@ -38,17 +39,17 @@ pub struct PyClient(Client);
 impl PyClient {
     #[new]
     fn new(
-        blinded_global_keys: &PyBlindedGlobalKeys,
+        blinded_global_keys: &PyBlindedGlobalSecretKeys,
         session_key_shares: Vec<PySessionKeyShares>,
     ) -> Self {
         let shares: Vec<SessionKeyShares> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare::from(*x.pseudonym.0.value()),
-                attribute: AttributeSessionKeyShare::from(*x.attribute.0.value()),
+                pseudonym: PseudonymSessionKeyShare::from_scalar(*x.pseudonym.0.value()),
+                attribute: AttributeSessionKeyShare::from_scalar(*x.attribute.0.value()),
             })
             .collect();
-        let blinded_keys = BlindedGlobalKeys {
+        let blinded_keys = BlindedGlobalSecretKeys {
             pseudonym: blinded_global_keys.pseudonym.0,
             attribute: blinded_global_keys.attribute.0,
         };
@@ -534,12 +535,12 @@ impl PyClient {
     ) {
         use libpep::client::distributed::Distributed;
         let old_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare::from(*old_key_shares.pseudonym.0.value()),
-            attribute: AttributeSessionKeyShare::from(*old_key_shares.attribute.0.value()),
+            pseudonym: PseudonymSessionKeyShare::from_scalar(*old_key_shares.pseudonym.0.value()),
+            attribute: AttributeSessionKeyShare::from_scalar(*old_key_shares.attribute.0.value()),
         };
         let new_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare::from(*new_key_shares.pseudonym.0.value()),
-            attribute: AttributeSessionKeyShare::from(*new_key_shares.attribute.0.value()),
+            pseudonym: PseudonymSessionKeyShare::from_scalar(*new_key_shares.pseudonym.0.value()),
+            attribute: AttributeSessionKeyShare::from_scalar(*new_key_shares.attribute.0.value()),
         };
         self.0.update_session_secret_keys(old_shares, new_shares);
     }

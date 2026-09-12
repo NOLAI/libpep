@@ -3,6 +3,7 @@ use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::macros::{wasm_pair_impl, wasm_point_key_impl};
 use derive_more::{Deref, From, Into};
 use libpep::keys::types::*;
+use libpep::keys::PublicKey;
 use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
@@ -174,12 +175,12 @@ impl From<WASMSessionKeys> for SessionKeys {
     fn from(keys: WASMSessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: keys.pseudonym.public.0 .0.into(),
-                secret: keys.pseudonym.secret.0 .0.into(),
+                public: PseudonymSessionPublicKey::from_point(keys.pseudonym.public.0 .0),
+                secret: PseudonymSessionSecretKey::from_scalar(keys.pseudonym.secret.0 .0),
             },
             attribute: AttributeSessionKeys {
-                public: keys.attribute.public.0 .0.into(),
-                secret: keys.attribute.secret.0 .0.into(),
+                public: AttributeSessionPublicKey::from_point(keys.attribute.public.0 .0),
+                secret: AttributeSessionSecretKey::from_scalar(keys.attribute.secret.0 .0),
             },
         }
     }

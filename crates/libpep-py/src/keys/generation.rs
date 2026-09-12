@@ -42,7 +42,7 @@ pub fn py_make_pseudonym_session_keys(
     secret: &PyEncryptionSecret,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
-        &PseudonymGlobalSecretKey::from(*global.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
     );
@@ -61,7 +61,7 @@ pub fn py_make_attribute_session_keys(
     secret: &PyEncryptionSecret,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
-        &AttributeGlobalSecretKey::from(*global.0),
+        &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
     );
@@ -103,8 +103,8 @@ pub fn py_make_session_keys(
 ) -> PySessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {
-            pseudonym: PseudonymGlobalSecretKey::from(*global.pseudonym.0),
-            attribute: AttributeGlobalSecretKey::from(*global.attribute.0),
+            pseudonym: PseudonymGlobalSecretKey::from_scalar(*global.pseudonym.0),
+            attribute: AttributeGlobalSecretKey::from_scalar(*global.attribute.0),
         },
         &session.0,
         &secret.0,

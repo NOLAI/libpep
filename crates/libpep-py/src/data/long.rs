@@ -14,6 +14,8 @@ use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
 };
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -74,7 +76,7 @@ pub fn py_encrypt_long_pseudonym(
     let mut rng = rand::rng();
     PyLongEncryptedPseudonym(encrypt(
         &message.0,
-        &PseudonymSessionPublicKey::from(*public_key.0),
+        &PseudonymSessionPublicKey::from_point(*public_key.0),
         &mut rng,
     ))
 }
@@ -89,7 +91,7 @@ pub fn py_decrypt_long_pseudonym(
 ) -> Option<PyLongPseudonym> {
     decrypt(
         &encrypted.0,
-        &PseudonymSessionSecretKey::from(*secret_key.0),
+        &PseudonymSessionSecretKey::from_scalar(*secret_key.0),
     )
     .map(PyLongPseudonym)
 }
@@ -104,7 +106,7 @@ pub fn py_decrypt_long_pseudonym(
 ) -> PyLongPseudonym {
     PyLongPseudonym(decrypt(
         &encrypted.0,
-        &PseudonymSessionSecretKey::from(*secret_key.0),
+        &PseudonymSessionSecretKey::from_scalar(*secret_key.0),
     ))
 }
 
@@ -118,7 +120,7 @@ pub fn py_encrypt_long_attribute(
     let mut rng = rand::rng();
     PyLongEncryptedAttribute(encrypt(
         &message.0,
-        &AttributeSessionPublicKey::from(*public_key.0),
+        &AttributeSessionPublicKey::from_point(*public_key.0),
         &mut rng,
     ))
 }
@@ -133,7 +135,7 @@ pub fn py_decrypt_long_attribute(
 ) -> Option<PyLongAttribute> {
     decrypt(
         &encrypted.0,
-        &AttributeSessionSecretKey::from(*secret_key.0),
+        &AttributeSessionSecretKey::from_scalar(*secret_key.0),
     )
     .map(PyLongAttribute)
 }
@@ -148,7 +150,7 @@ pub fn py_decrypt_long_attribute(
 ) -> PyLongAttribute {
     PyLongAttribute(decrypt(
         &encrypted.0,
-        &AttributeSessionSecretKey::from(*secret_key.0),
+        &AttributeSessionSecretKey::from_scalar(*secret_key.0),
     ))
 }
 

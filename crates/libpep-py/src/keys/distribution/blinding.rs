@@ -21,7 +21,7 @@ impl PyBlindingFactor {
     /// Create a new [`PyBlindingFactor`] from a [`PyScalarNonZero`].
     #[new]
     fn new(x: PyScalarNonZero) -> Self {
-        PyBlindingFactor(BlindingFactor::from(x.0))
+        PyBlindingFactor(BlindingFactor::from_scalar(x.0))
     }
 
     /// Generate a random [`PyBlindingFactor`].
@@ -60,7 +60,7 @@ impl PyBlindingFactor {
     }
 
     fn __repr__(&self) -> String {
-        format!("BlindingFactor::from({})", self.as_hex())
+        format!("BlindingFactor::from_scalar({})", self.as_hex())
     }
 
     fn __str__(&self) -> String {
@@ -88,8 +88,8 @@ py_scalar_key_impl!(PyBlindedAttributeGlobalSecretKey wraps BlindedAttributeGlob
 
 /// A pair of blinded global secret keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
-#[pyclass(name = "BlindedGlobalKeys", from_py_object)]
-pub struct PyBlindedGlobalKeys {
+#[pyclass(name = "BlindedGlobalSecretKeys", from_py_object)]
+pub struct PyBlindedGlobalSecretKeys {
     #[pyo3(get)]
     pub pseudonym: PyBlindedPseudonymGlobalSecretKey,
     #[pyo3(get)]
@@ -97,13 +97,13 @@ pub struct PyBlindedGlobalKeys {
 }
 
 #[pymethods]
-impl PyBlindedGlobalKeys {
+impl PyBlindedGlobalSecretKeys {
     #[new]
     fn new(
         pseudonym: PyBlindedPseudonymGlobalSecretKey,
         attribute: PyBlindedAttributeGlobalSecretKey,
     ) -> Self {
-        PyBlindedGlobalKeys {
+        PyBlindedGlobalSecretKeys {
             pseudonym,
             attribute,
         }
@@ -111,13 +111,13 @@ impl PyBlindedGlobalKeys {
 
     fn __repr__(&self) -> String {
         format!(
-            "BlindedGlobalKeys(pseudonym={}, attribute={})",
+            "BlindedGlobalSecretKeys(pseudonym={}, attribute={})",
             self.pseudonym.as_hex(),
             self.attribute.as_hex()
         )
     }
 
-    fn __eq__(&self, other: &PyBlindedGlobalKeys) -> bool {
+    fn __eq__(&self, other: &PyBlindedGlobalSecretKeys) -> bool {
         self.pseudonym == other.pseudonym && self.attribute == other.attribute
     }
 }
@@ -131,10 +131,10 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
 ) -> PyResult<PyBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0.value()))
+        .map(|x| BlindingFactor::from_scalar(*x.0.value()))
         .collect();
     let result = make_blinded_pseudonym_global_secret_key(
-        &PseudonymGlobalSecretKey::from(*global_secret_key.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
@@ -150,10 +150,10 @@ pub fn py_make_blinded_attribute_global_secret_key(
 ) -> PyResult<PyBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0.value()))
+        .map(|x| BlindingFactor::from_scalar(*x.0.value()))
         .collect();
     let result = make_blinded_attribute_global_secret_key(
-        &AttributeGlobalSecretKey::from(*global_secret_key.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
@@ -166,18 +166,18 @@ pub fn py_make_blinded_attribute_global_secret_key(
 pub fn py_make_blinded_global_keys(
     global_secret_keys: &PyGlobalSecretKeys,
     blinding_factors: Vec<PyBlindingFactor>,
-) -> PyResult<PyBlindedGlobalKeys> {
+) -> PyResult<PyBlindedGlobalSecretKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0.value()))
+        .map(|x| BlindingFactor::from_scalar(*x.0.value()))
         .collect();
     let result = make_blinded_global_keys(
-        &PseudonymGlobalSecretKey::from(*global_secret_keys.pseudonym.0),
-        &AttributeGlobalSecretKey::from(*global_secret_keys.attribute.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_keys.pseudonym.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_keys.attribute.0),
         &bs,
     )
     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Product of blinding factors is 1"))?;
-    Ok(PyBlindedGlobalKeys {
+    Ok(PyBlindedGlobalSecretKeys {
         pseudonym: PyBlindedPseudonymGlobalSecretKey(result.pseudonym),
         attribute: PyBlindedAttributeGlobalSecretKey(result.attribute),
     })
@@ -187,7 +187,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindingFactor>()?;
     m.add_class::<PyBlindedPseudonymGlobalSecretKey>()?;
     m.add_class::<PyBlindedAttributeGlobalSecretKey>()?;
-    m.add_class::<PyBlindedGlobalKeys>()?;
+    m.add_class::<PyBlindedGlobalSecretKeys>()?;
     m.add_function(wrap_pyfunction!(
         py_make_blinded_pseudonym_global_secret_key,
         m

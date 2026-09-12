@@ -43,7 +43,7 @@ impl WASMDistributedTranscryptor {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
             EncryptionSecret::from(rekeying_secret.as_bytes().into()),
-            BlindingFactor::from(*blinding_factor.0.value()),
+            BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
     }
 

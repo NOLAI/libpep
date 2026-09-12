@@ -3,7 +3,7 @@ pub mod generation;
 pub mod types;
 
 pub use distribution::{
-    PyAttributeSessionKeyShare, PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys,
+    PyAttributeSessionKeyShare, PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
     PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor, PyPseudonymSessionKeyShare,
     PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys,
 };

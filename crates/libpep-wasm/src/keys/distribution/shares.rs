@@ -1,5 +1,5 @@
 use super::blinding::{
-    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
@@ -16,11 +16,12 @@ use libpep::client::distributed::{
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
 use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
+use libpep::keys::distribution::SessionKeyShare;
 use libpep::keys::distribution::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
-use libpep::keys::SecretKey;
+use libpep::keys::{AttributeSessionSecretKey, PseudonymSessionSecretKey, SecretKey};
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session key share.
@@ -97,7 +98,7 @@ pub fn wasm_make_attribute_session_key(
 /// Combines session key shares.
 #[wasm_bindgen(js_name = makeSessionKeysDistributed)]
 pub fn wasm_make_session_keys_distributed(
-    blinded_global_keys: WASMBlindedGlobalKeys,
+    blinded_global_keys: WASMBlindedGlobalSecretKeys,
     shares: Vec<WASMSessionKeyShares>,
 ) -> WASMSessionKeys {
     let keys = make_session_keys_distributed(
@@ -114,8 +115,11 @@ pub fn wasm_update_pseudonym_session_key(
     old_share: &WASMPseudonymSessionKeyShare,
     new_share: &WASMPseudonymSessionKeyShare,
 ) -> WASMPseudonymSessionKeyPair {
-    let (public, secret) =
-        update_pseudonym_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
+    let (public, secret) = update_pseudonym_session_key(
+        PseudonymSessionSecretKey::from_scalar(session_secret_key.0 .0),
+        old_share.0,
+        new_share.0,
+    );
     WASMPseudonymSessionKeyPair::new(
         WASMPseudonymSessionPublicKey(WASMGroupElement(*public)),
         WASMPseudonymSessionSecretKey(WASMScalarNonZero(*secret.value())),
@@ -129,8 +133,11 @@ pub fn wasm_update_attribute_session_key(
     old_share: &WASMAttributeSessionKeyShare,
     new_share: &WASMAttributeSessionKeyShare,
 ) -> WASMAttributeSessionKeyPair {
-    let (public, secret) =
-        update_attribute_session_key(session_secret_key.0 .0.into(), old_share.0, new_share.0);
+    let (public, secret) = update_attribute_session_key(
+        AttributeSessionSecretKey::from_scalar(session_secret_key.0 .0),
+        old_share.0,
+        new_share.0,
+    );
     WASMAttributeSessionKeyPair::new(
         WASMAttributeSessionPublicKey(WASMGroupElement(*public)),
         WASMAttributeSessionSecretKey(WASMScalarNonZero(*secret.value())),

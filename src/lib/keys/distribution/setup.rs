@@ -77,7 +77,11 @@ pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
 pub fn make_distributed_global_keys<R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
-) -> (GlobalPublicKeys, BlindedGlobalKeys, Vec<BlindingFactor>) {
+) -> (
+    GlobalPublicKeys,
+    BlindedGlobalSecretKeys,
+    Vec<BlindingFactor>,
+) {
     let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys(rng);
     let (attribute_pk, attribute_sk) = make_attribute_global_keys(rng);
 

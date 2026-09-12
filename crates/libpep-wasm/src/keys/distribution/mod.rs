@@ -3,7 +3,7 @@ pub mod setup;
 pub mod shares;
 
 pub use blinding::{
-    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
 // Note: Blinding functions are exposed via wasm_bindgen, not as pub fn

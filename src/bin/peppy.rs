@@ -16,7 +16,9 @@ use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
+use libpep::keys::distribution::{
+    make_distributed_global_keys, BlindedGlobalSecretKey, BlindingFactor,
+};
 #[cfg(feature = "json")]
 use libpep::keys::make_session_keys;
 use libpep::keys::{
@@ -318,7 +320,7 @@ fn main() {
             println!("{}", sk.value().to_hex());
         }
         Some(Sub::GenerateSessionKeys(arg)) => {
-            let global_secret_key = PseudonymGlobalSecretKey::from(
+            let global_secret_key = PseudonymGlobalSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid global secret key."),
             );
             let encryption_secret = EncryptionSecret::from(arg.args[1].as_bytes().to_vec());
@@ -412,7 +414,7 @@ fn main() {
             println!("{}", ciphertext.to_base64());
         }
         Some(Sub::Decrypt(arg)) => {
-            let secret_key = PseudonymSessionSecretKey::from(
+            let secret_key = PseudonymSessionSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
@@ -443,7 +445,7 @@ fn main() {
             println!("{}", ciphertext.to_base64());
         }
         Some(Sub::DecryptAttribute(arg)) => {
-            let secret_key = AttributeSessionSecretKey::from(
+            let secret_key = AttributeSessionSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
@@ -472,7 +474,7 @@ fn main() {
         }
         #[cfg(feature = "long")]
         Some(Sub::DecryptLongPseudonym(arg)) => {
-            let secret_key = PseudonymSessionSecretKey::from(
+            let secret_key = PseudonymSessionSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
@@ -525,7 +527,7 @@ fn main() {
         }
         #[cfg(feature = "long")]
         Some(Sub::DecryptLongAttribute(arg)) => {
-            let secret_key = AttributeSessionSecretKey::from(
+            let secret_key = AttributeSessionSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0]).expect("Invalid secret key."),
             );
             let ciphertext =
@@ -668,11 +670,11 @@ fn main() {
         }
         #[cfg(feature = "json")]
         Some(Sub::JsonEncrypt(arg)) => {
-            let pseudonym_global_secret = PseudonymGlobalSecretKey::from(
+            let pseudonym_global_secret = PseudonymGlobalSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0])
                     .expect("Invalid pseudonym global secret key."),
             );
-            let attribute_global_secret = AttributeGlobalSecretKey::from(
+            let attribute_global_secret = AttributeGlobalSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[1])
                     .expect("Invalid attribute global secret key."),
             );
@@ -713,11 +715,11 @@ fn main() {
         }
         #[cfg(feature = "json")]
         Some(Sub::JsonDecrypt(arg)) => {
-            let pseudonym_global_secret = PseudonymGlobalSecretKey::from(
+            let pseudonym_global_secret = PseudonymGlobalSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[0])
                     .expect("Invalid pseudonym global secret key."),
             );
-            let attribute_global_secret = AttributeGlobalSecretKey::from(
+            let attribute_global_secret = AttributeGlobalSecretKey::from_scalar(
                 ScalarNonZero::from_hex(&arg.args[1])
                     .expect("Invalid attribute global secret key."),
             );

@@ -142,8 +142,10 @@ The library is organized into the following main modules, each providing a diffe
 
 - `keys::types` - Key type definitions (GlobalPublicKeys, SessionKeys, etc.)
 - `keys::generation` - Functions for generating global and session keys
-- `keys::traits` - Traits for key types
-- `keys::distribution` - Distributed key generation and setup for multi-party transcryptors
+- `keys::traits` - `PublicKey` and `SecretKey`: encoding, explicit construction from a group element or scalar, and deriving a public key from a secret key
+- `keys::distribution` - Distributed key generation and setup for multi-party transcryptors; its blinding factors, blinded global secret keys and session key shares are protocol material rather than keys and have their own traits
+
+Key types have no implicit conversions from raw scalars or group elements: a key is generated, derived from another key, or explicitly constructed with `SecretKey::from_scalar` or `PublicKey::from_point`.
 
 ### Contexts Module (`contexts`)
 

@@ -15,7 +15,7 @@ from libpep.keys import (
     make_global_keys,
     make_session_keys,
     BlindingFactor,
-    BlindedGlobalKeys,
+    BlindedGlobalSecretKeys,
     make_blinded_global_keys,
     make_pseudonym_global_keys,
     make_attribute_global_keys,

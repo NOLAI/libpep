@@ -1,6 +1,6 @@
 use super::blinding::{
-    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
-    PyBlindingFactor,
+    PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
+    PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
 use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::keys::types::{
@@ -204,7 +204,7 @@ pub fn py_make_attribute_session_key(
 #[pyfunction]
 #[pyo3(name = "make_session_keys_distributed")]
 pub fn py_make_session_keys_distributed(
-    blinded_global_keys: &PyBlindedGlobalKeys,
+    blinded_global_keys: &PyBlindedGlobalSecretKeys,
     session_key_shares: Vec<PySessionKeyShares>,
 ) -> PySessionKeys {
     let shares: Vec<SessionKeyShares> = session_key_shares
@@ -214,7 +214,7 @@ pub fn py_make_session_keys_distributed(
             attribute: s.attribute.0,
         })
         .collect();
-    let blinded_keys = BlindedGlobalKeys {
+    let blinded_keys = BlindedGlobalSecretKeys {
         pseudonym: blinded_global_keys.pseudonym.0,
         attribute: blinded_global_keys.attribute.0,
     };
@@ -240,7 +240,7 @@ pub fn py_update_pseudonym_session_key(
     new_session_key_share: PyPseudonymSessionKeyShare,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret) = update_pseudonym_session_key(
-        session_secret_key.0 .0.into(),
+        PseudonymSessionSecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -259,7 +259,7 @@ pub fn py_update_attribute_session_key(
     new_session_key_share: PyAttributeSessionKeyShare,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret) = update_attribute_session_key(
-        session_secret_key.0 .0.into(),
+        AttributeSessionSecretKey::from_scalar(session_secret_key.0 .0),
         old_session_key_share.0,
         new_session_key_share.0,
     );
@@ -279,12 +279,12 @@ pub fn py_update_session_keys(
 ) -> PySessionKeys {
     let current = SessionKeys {
         pseudonym: PseudonymSessionKeys {
-            public: current_keys.public.pseudonym.0 .0.into(),
-            secret: current_keys.secret.pseudonym.0 .0.into(),
+            public: PseudonymSessionPublicKey::from_point(current_keys.public.pseudonym.0 .0),
+            secret: PseudonymSessionSecretKey::from_scalar(current_keys.secret.pseudonym.0 .0),
         },
         attribute: AttributeSessionKeys {
-            public: current_keys.public.attribute.0 .0.into(),
-            secret: current_keys.secret.attribute.0 .0.into(),
+            public: AttributeSessionPublicKey::from_point(current_keys.public.attribute.0 .0),
+            secret: AttributeSessionSecretKey::from_scalar(current_keys.secret.attribute.0 .0),
         },
     };
     let old = SessionKeyShares {
@@ -317,12 +317,12 @@ impl From<PySessionKeys> for SessionKeys {
     fn from(py_keys: PySessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: PseudonymSessionPublicKey::from(*py_keys.public.pseudonym.0),
-                secret: PseudonymSessionSecretKey::from(*py_keys.secret.pseudonym.0),
+                public: PseudonymSessionPublicKey::from_point(*py_keys.public.pseudonym.0),
+                secret: PseudonymSessionSecretKey::from_scalar(*py_keys.secret.pseudonym.0),
             },
             attribute: AttributeSessionKeys {
-                public: AttributeSessionPublicKey::from(*py_keys.public.attribute.0),
-                secret: AttributeSessionSecretKey::from(*py_keys.secret.attribute.0),
+                public: AttributeSessionPublicKey::from_point(*py_keys.public.attribute.0),
+                secret: AttributeSessionSecretKey::from_scalar(*py_keys.secret.attribute.0),
             },
         }
     }
