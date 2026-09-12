@@ -14,6 +14,8 @@ use libpep::factors::{
     AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
 };
 #[cfg(not(feature = "elgamal3"))]
+use libpep::keys::PublicKey;
+#[cfg(not(feature = "elgamal3"))]
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use wasm_bindgen::prelude::*;
@@ -83,7 +85,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym(
     public_key: &WASMPseudonymSessionPublicKey,
 ) -> WASMEncryptedPseudonym {
     let mut rng = rand::rng();
-    let pk = PseudonymSessionPublicKey::from(*public_key.0);
+    let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
     rerandomize(&v.0, &pk, &mut rng).into()
 }
 
@@ -103,7 +105,7 @@ pub fn wasm_rerandomize_encrypted_attribute(
     public_key: &WASMAttributeSessionPublicKey,
 ) -> WASMEncryptedAttribute {
     let mut rng = rand::rng();
-    let pk = AttributeSessionPublicKey::from(*public_key.0);
+    let pk = AttributeSessionPublicKey::from_point(*public_key.0);
     rerandomize(&v.0, &pk, &mut rng).into()
 }
 
@@ -125,7 +127,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     public_key: &WASMPseudonymSessionPublicKey,
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedPseudonym {
-    let pk = PseudonymSessionPublicKey::from(*public_key.0);
+    let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
     rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
 }
 
@@ -147,7 +149,7 @@ pub fn wasm_rerandomize_encrypted_attribute_known(
     public_key: &WASMAttributeSessionPublicKey,
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedAttribute {
-    let pk = AttributeSessionPublicKey::from(*public_key.0);
+    let pk = AttributeSessionPublicKey::from_point(*public_key.0);
     rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
 }
 
@@ -207,7 +209,7 @@ pub fn wasm_rerandomize_long_encrypted_pseudonym(
     public_key: &WASMPseudonymSessionPublicKey,
 ) -> WASMLongEncryptedPseudonym {
     let mut rng = rand::rng();
-    let pk = PseudonymSessionPublicKey::from(*public_key.0);
+    let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
     rerandomize(&v.0, &pk, &mut rng).into()
 }
 
@@ -229,7 +231,7 @@ pub fn wasm_rerandomize_long_encrypted_attribute(
     public_key: &WASMAttributeSessionPublicKey,
 ) -> WASMLongEncryptedAttribute {
     let mut rng = rand::rng();
-    let pk = AttributeSessionPublicKey::from(*public_key.0);
+    let pk = AttributeSessionPublicKey::from_point(*public_key.0);
     rerandomize(&v.0, &pk, &mut rng).into()
 }
 
@@ -251,7 +253,7 @@ pub fn wasm_rerandomize_long_encrypted_pseudonym_known(
     public_key: &WASMPseudonymSessionPublicKey,
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedPseudonym {
-    let pk = PseudonymSessionPublicKey::from(*public_key.0);
+    let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
     rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
 }
 
@@ -273,7 +275,7 @@ pub fn wasm_rerandomize_long_encrypted_attribute_known(
     public_key: &WASMAttributeSessionPublicKey,
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedAttribute {
-    let pk = AttributeSessionPublicKey::from(*public_key.0);
+    let pk = AttributeSessionPublicKey::from_point(*public_key.0);
     rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
 }
 

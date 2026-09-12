@@ -6,6 +6,10 @@
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
 //!
+//! Key types have no implicit conversions from raw scalars or group elements: a key is either
+//! generated, derived from another key, or explicitly constructed with
+//! [`SecretKey::from_scalar`] or [`PublicKey::from_point`].
+//!
 //! # Organization
 //!
 //! - [`types`]: Key type definitions for global and session keys
@@ -18,11 +22,9 @@ pub mod generation;
 pub mod traits;
 pub mod types;
 
-// Re-export commonly used types
 pub use generation::{
     make_attribute_global_keys, make_attribute_session_keys, make_global_key_pair,
-    make_global_keys, make_pseudonym_global_keys, make_pseudonym_session_keys,
-    make_session_key_pair, make_session_keys,
+    make_global_keys, make_pseudonym_global_keys, make_pseudonym_session_keys, make_session_keys,
 };
 pub use traits::{KeyProvider, PublicKey, SecretKey};
 pub use types::{

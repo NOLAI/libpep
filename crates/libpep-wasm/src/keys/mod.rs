@@ -4,7 +4,7 @@ pub mod types;
 
 // Re-export for easier imports
 pub use distribution::{
-    WASMAttributeSessionKeyShare, WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMAttributeSessionKeyShare, WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor, WASMPseudonymSessionKeyShare,
     WASMSessionKeyShares,
 };

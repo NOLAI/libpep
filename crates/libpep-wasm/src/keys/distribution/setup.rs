@@ -1,5 +1,5 @@
 use super::blinding::{
-    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
+    WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
@@ -9,6 +9,7 @@ use crate::keys::types::{
 };
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
 /// Setup a distributed system with global keys.
@@ -22,7 +23,7 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
         WASMPseudonymGlobalPublicKey(WASMGroupElement(*global_public_keys.pseudonym)),
         WASMAttributeGlobalPublicKey(WASMGroupElement(*global_public_keys.attribute)),
     );
-    let blinded = WASMBlindedGlobalKeys(blinded_keys);
+    let blinded = WASMBlindedGlobalSecretKeys(blinded_keys);
     let factors: Vec<WASMBlindingFactor> = blinding_factors
         .into_iter()
         .map(WASMBlindingFactor)
@@ -50,10 +51,10 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
 ) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0.value()))
+        .map(|x| BlindingFactor::from_scalar(*x.0.value()))
         .collect();
     make_blinded_pseudonym_global_secret_key(
-        &PseudonymGlobalSecretKey::from(*global_secret_key.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedPseudonymGlobalSecretKey)
@@ -67,10 +68,10 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
 ) -> Option<WASMBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0.value()))
+        .map(|x| BlindingFactor::from_scalar(*x.0.value()))
         .collect();
     make_blinded_attribute_global_secret_key(
-        &AttributeGlobalSecretKey::from(*global_secret_key.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_secret_key.0),
         &bs,
     )
     .map(WASMBlindedAttributeGlobalSecretKey)

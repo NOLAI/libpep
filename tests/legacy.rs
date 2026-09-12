@@ -7,6 +7,7 @@ mod legacy_pep_repo_tests {
     use libpep::factors::{make_pseudonymisation_factor, PseudonymizationSecret};
     use libpep::keys::distribution::blinding::BlindingFactor;
     use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
+    use libpep::keys::distribution::SessionKeyShare;
 
     #[test]
     fn test_key_factor_component() {

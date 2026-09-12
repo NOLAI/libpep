@@ -1,131 +1,133 @@
 //! Session key shares for distributed transcryptors.
 //!
-//! This module defines session key shares which are parts of session keys provided by individual
-//! transcryptors. By combining all shares with blinded global secret keys, session keys can be derived.
+//! A session key share is one transcryptor's contribution to a session key. Combining all shares
+//! with the corresponding [blinded global secret key](super::blinding) yields the session key;
+//! a single share reveals nothing about it on its own.
+//!
+//! Shares are protocol material, not keys: no data is encrypted towards them and they have no
+//! associated public key, so they do not implement [`SecretKey`].
 
-use super::blinding::BlindingFactor;
+use super::blinding::{
+    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedPseudonymGlobalSecretKey,
+    BlindingFactor,
+};
 use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
-use derive_more::From;
+use crate::keys::{AttributeSessionSecretKey, PseudonymSessionSecretKey, SecretKey};
+
+/// One transcryptor's contribution to a session key.
+///
+/// The associated types tie a share to the rekey factor it is made from, the blinded global
+/// secret key it is combined with, and the session secret key that combination yields.
+pub trait SessionKeyShare: Sized {
+    /// The rekey factor this share is made from.
+    type RekeyFactor: RekeyFactor;
+    /// The blinded global secret key this share is combined with.
+    type BlindedGlobalSecretKey: BlindedGlobalSecretKey;
+    /// The session secret key that combining the shares yields.
+    type SessionSecretKey: SecretKey;
+
+    /// The scalar value of this share.
+    fn value(&self) -> &ScalarNonZero;
+
+    /// Construct from a raw scalar.
+    fn from_scalar(scalar: ScalarNonZero) -> Self;
+
+    /// Create a share from a rekey factor and this transcryptor's blinding factor.
+    ///
+    /// The share is the product of the two, so that the blinding factors cancel out against the
+    /// blinded global secret key when the shares are combined.
+    fn from_rekey_factor(
+        rekey_factor: &Self::RekeyFactor,
+        blinding_factor: &BlindingFactor,
+    ) -> Self {
+        Self::from_scalar(rekey_factor.scalar() * *blinding_factor.value())
+    }
+
+    /// Encode as a byte array.
+    fn to_bytes(&self) -> [u8; 32] {
+        self.value().to_bytes()
+    }
+
+    /// Encode as a hexadecimal string.
+    fn to_hex(&self) -> String {
+        self.value().to_hex()
+    }
+
+    /// Decode from a byte array.
+    fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
+        ScalarNonZero::from_bytes(bytes).map(Self::from_scalar)
+    }
+
+    /// Decode from a slice of bytes.
+    fn from_slice(slice: &[u8]) -> Option<Self> {
+        ScalarNonZero::from_slice(slice).map(Self::from_scalar)
+    }
+
+    /// Decode from a hexadecimal string.
+    fn from_hex(s: &str) -> Option<Self> {
+        ScalarNonZero::from_hex(s).map(Self::from_scalar)
+    }
+}
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
-/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`](crate::keys::distribution::BlindedPseudonymGlobalSecretKey), a pseudonym session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+/// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionKeyShare(pub(crate) ScalarNonZero);
 
-impl PseudonymSessionKeyShare {
-    /// The scalar value of this share.
-    pub fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
-
-    /// Encode as a byte array.
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
-    }
-
-    /// Encode as a hexadecimal string.
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
-    }
-}
-
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
-/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`](crate::keys::distribution::BlindedAttributeGlobalSecretKey), an attribute session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+/// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionKeyShare(pub(crate) ScalarNonZero);
 
-impl AttributeSessionKeyShare {
-    /// The scalar value of this share.
-    pub fn value(&self) -> &ScalarNonZero {
-        &self.0
-    }
+macro_rules! impl_session_key_share {
+    ($($t:ty { rekey: $rf:ty, blinded: $b:ty, session: $sk:ty }),+ $(,)?) => {$(
+        impl SessionKeyShare for $t {
+            type RekeyFactor = $rf;
+            type BlindedGlobalSecretKey = $b;
+            type SessionSecretKey = $sk;
 
-    /// Encode as a byte array.
-    pub fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
-    }
-
-    /// Encode as a hexadecimal string.
-    pub fn to_hex(&self) -> String {
-        self.0.to_hex()
-    }
+            fn value(&self) -> &ScalarNonZero {
+                &self.0
+            }
+            fn from_scalar(scalar: ScalarNonZero) -> Self {
+                Self(scalar)
+            }
+        }
+    )+};
 }
 
+impl_session_key_share!(
+    PseudonymSessionKeyShare {
+        rekey: PseudonymRekeyFactor,
+        blinded: BlindedPseudonymGlobalSecretKey,
+        session: PseudonymSessionSecretKey
+    },
+    AttributeSessionKeyShare {
+        rekey: AttributeRekeyFactor,
+        blinded: BlindedAttributeGlobalSecretKey,
+        session: AttributeSessionSecretKey
+    },
+);
+
 /// A pair of session key shares containing both pseudonym and attribute shares.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SessionKeyShares {
     pub pseudonym: PseudonymSessionKeyShare,
     pub attribute: AttributeSessionKeyShare,
 }
 
-impl PseudonymSessionKeyShare {
-    /// Decode from a byte array.
-    pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        ScalarNonZero::from_bytes(bytes).map(Self)
-    }
-    /// Decode from a slice of bytes.
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        ScalarNonZero::from_slice(slice).map(Self)
-    }
-    /// Decode from a hexadecimal string.
-    pub fn from_hex(s: &str) -> Option<Self> {
-        ScalarNonZero::from_hex(s).map(Self)
-    }
-}
-
-impl AttributeSessionKeyShare {
-    /// Decode from a byte array.
-    pub fn from_bytes(bytes: &[u8; 32]) -> Option<Self> {
-        ScalarNonZero::from_bytes(bytes).map(Self)
-    }
-    /// Decode from a slice of bytes.
-    pub fn from_slice(slice: &[u8]) -> Option<Self> {
-        ScalarNonZero::from_slice(slice).map(Self)
-    }
-    /// Decode from a hexadecimal string.
-    pub fn from_hex(s: &str) -> Option<Self> {
-        ScalarNonZero::from_hex(s).map(Self)
-    }
-}
-
-/// Trait for creating session key shares from rekey factors.
-/// This enables polymorphic share generation for both pseudonym and attribute keys.
-pub trait MakeSessionKeyShare<R: RekeyFactor>: Sized {
-    /// Create a session key share from a rekey factor and blinding factor.
-    fn from_rekey_factor(rekey_factor: &R, blinding_factor: &BlindingFactor) -> Self;
-}
-
-impl MakeSessionKeyShare<PseudonymRekeyFactor> for PseudonymSessionKeyShare {
-    fn from_rekey_factor(
-        rekey_factor: &PseudonymRekeyFactor,
-        blinding_factor: &BlindingFactor,
-    ) -> Self {
-        PseudonymSessionKeyShare(rekey_factor.scalar() * *blinding_factor.value())
-    }
-}
-
-impl MakeSessionKeyShare<AttributeRekeyFactor> for AttributeSessionKeyShare {
-    fn from_rekey_factor(
-        rekey_factor: &AttributeRekeyFactor,
-        blinding_factor: &BlindingFactor,
-    ) -> Self {
-        AttributeSessionKeyShare(rekey_factor.scalar() * *blinding_factor.value())
-    }
-}
-
 /// Create a session key share from a rekey factor and blinding factor.
 /// Automatically works for both pseudonym and attribute key shares based on the types.
-pub fn make_session_key_share<R, S>(rekey_factor: &R, blinding_factor: &BlindingFactor) -> S
-where
-    R: RekeyFactor,
-    S: MakeSessionKeyShare<R>,
-{
+pub fn make_session_key_share<S: SessionKeyShare>(
+    rekey_factor: &S::RekeyFactor,
+    blinding_factor: &BlindingFactor,
+) -> S {
     S::from_rekey_factor(rekey_factor, blinding_factor)
 }
 

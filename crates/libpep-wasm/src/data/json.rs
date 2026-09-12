@@ -23,6 +23,11 @@ use libpep::factors::TranscryptionInfo;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::keys::GlobalPublicKeys;
 use libpep::keys::SessionKeys;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::{
+    AttributeGlobalPublicKey, AttributeGlobalSecretKey, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey, PublicKey, SecretKey,
+};
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use serde_json::Value;
@@ -446,8 +451,8 @@ pub fn wasm_encrypt_json_global(
 ) -> WASMEncryptedPEPJSONValue {
     let mut rng = rand::rng();
     let keys = GlobalPublicKeys {
-        pseudonym: (*global_keys.pseudonym().0).into(),
-        attribute: (*global_keys.attribute().0).into(),
+        pseudonym: PseudonymGlobalPublicKey::from_point(*global_keys.pseudonym().0),
+        attribute: AttributeGlobalPublicKey::from_point(*global_keys.attribute().0),
     };
     WASMEncryptedPEPJSONValue(encrypt_global(&value.0, &keys, &mut rng))
 }
@@ -461,8 +466,8 @@ pub fn wasm_decrypt_json_global(
     global_secret_keys: &WASMGlobalSecretKeys,
 ) -> Result<WASMPEPJSONValue, JsValue> {
     let keys = libpep::keys::GlobalSecretKeys {
-        pseudonym: global_secret_keys.pseudonym().0 .0.into(),
-        attribute: global_secret_keys.attribute().0 .0.into(),
+        pseudonym: PseudonymGlobalSecretKey::from_scalar(global_secret_keys.pseudonym().0 .0),
+        attribute: AttributeGlobalSecretKey::from_scalar(global_secret_keys.attribute().0 .0),
     };
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt_global(&encrypted.0, &keys)

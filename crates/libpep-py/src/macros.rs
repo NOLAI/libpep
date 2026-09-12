@@ -444,7 +444,7 @@ macro_rules! py_scalar_key_impl {
         impl $w {
             #[new]
             fn new(x: PyScalarNonZero) -> Self {
-                $w($core::from(x.0))
+                $w($core::from_scalar(x.0))
             }
 
             #[pyo3(name = "to_bytes")]

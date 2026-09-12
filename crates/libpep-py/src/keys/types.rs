@@ -4,6 +4,8 @@ use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::keys::types::*;
+use libpep::keys::PublicKey;
+use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -97,8 +99,8 @@ impl PyGlobalPublicKeys {
 impl From<PyGlobalPublicKeys> for GlobalPublicKeys {
     fn from(py_keys: PyGlobalPublicKeys) -> Self {
         GlobalPublicKeys {
-            pseudonym: py_keys.pseudonym.0 .0.into(),
-            attribute: py_keys.attribute.0 .0.into(),
+            pseudonym: PseudonymGlobalPublicKey::from_point(py_keys.pseudonym.0 .0),
+            attribute: AttributeGlobalPublicKey::from_point(py_keys.attribute.0 .0),
         }
     }
 }
@@ -132,8 +134,8 @@ impl PyGlobalSecretKeys {
 impl From<PyGlobalSecretKeys> for GlobalSecretKeys {
     fn from(py_keys: PyGlobalSecretKeys) -> Self {
         GlobalSecretKeys {
-            pseudonym: py_keys.pseudonym.0 .0.into(),
-            attribute: py_keys.attribute.0 .0.into(),
+            pseudonym: PseudonymGlobalSecretKey::from_scalar(py_keys.pseudonym.0 .0),
+            attribute: AttributeGlobalSecretKey::from_scalar(py_keys.attribute.0 .0),
         }
     }
 }
@@ -270,12 +272,12 @@ impl From<PySessionKeys> for SessionKeys {
     fn from(py_keys: PySessionKeys) -> Self {
         SessionKeys {
             pseudonym: PseudonymSessionKeys {
-                public: py_keys.pseudonym.public.0 .0.into(),
-                secret: py_keys.pseudonym.secret.0 .0.into(),
+                public: PseudonymSessionPublicKey::from_point(py_keys.pseudonym.public.0 .0),
+                secret: PseudonymSessionSecretKey::from_scalar(py_keys.pseudonym.secret.0 .0),
             },
             attribute: AttributeSessionKeys {
-                public: py_keys.attribute.public.0 .0.into(),
-                secret: py_keys.attribute.secret.0 .0.into(),
+                public: AttributeSessionPublicKey::from_point(py_keys.attribute.public.0 .0),
+                secret: AttributeSessionSecretKey::from_scalar(py_keys.attribute.secret.0 .0),
             },
         }
     }

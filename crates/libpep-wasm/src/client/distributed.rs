@@ -12,7 +12,7 @@ use crate::data::records::{WASMRecord, WASMRecordEncrypted};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
-use crate::keys::distribution::WASMBlindedGlobalKeys;
+use crate::keys::distribution::WASMBlindedGlobalSecretKeys;
 use crate::keys::types::WASMSessionKeys;
 use crate::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
@@ -20,8 +20,9 @@ use crate::keys::{
 use derive_more::{Deref, From, Into};
 use libpep::client::Client;
 use libpep::client::Distributed;
+use libpep::keys::distribution::SessionKeyShare;
 use libpep::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalKeys, PseudonymSessionKeyShare, SessionKeyShares,
+    AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShares,
 };
 use wasm_bindgen::prelude::*;
 
@@ -34,17 +35,17 @@ pub struct WASMClient(Client);
 impl WASMClient {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        blinded_global_keys: &WASMBlindedGlobalKeys,
+        blinded_global_keys: &WASMBlindedGlobalSecretKeys,
         session_key_shares: Vec<WASMSessionKeyShares>,
     ) -> Self {
         let shares: Vec<SessionKeyShares> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare::from(*x.0.pseudonym.value()),
-                attribute: AttributeSessionKeyShare::from(*x.0.attribute.value()),
+                pseudonym: PseudonymSessionKeyShare::from_scalar(*x.0.pseudonym.value()),
+                attribute: AttributeSessionKeyShare::from_scalar(*x.0.attribute.value()),
             })
             .collect();
-        let blinded_keys = BlindedGlobalKeys {
+        let blinded_keys = BlindedGlobalSecretKeys {
             pseudonym: blinded_global_keys.0.pseudonym,
             attribute: blinded_global_keys.0.attribute,
         };

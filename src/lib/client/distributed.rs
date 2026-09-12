@@ -1,91 +1,68 @@
 //! Distributed client for reconstructing session keys from shares.
+//!
+//! A session secret key is the blinded global secret key multiplied by one session key share
+//! per transcryptor: the blinding factors in the shares cancel against those in the blinded
+//! key, leaving the global secret key times the rekey factors. Replacing one transcryptor's
+//! share (when that transcryptor moves the client to another session) divides out the old share
+//! and multiplies in the new one.
 
-use crate::keys::SessionKeys;
+use crate::keys::distribution::{
+    AttributeSessionKeyShare, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey,
+    BlindedGlobalSecretKeys, BlindedPseudonymGlobalSecretKey, PseudonymSessionKeyShare,
+    SessionKeyShare, SessionKeyShares,
+};
+use crate::keys::{
+    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey, SecretKey,
+    SessionKeys,
+};
 
-/// Trait for session key share types that define their associated key types.
-///
-/// Secret material is accessed through explicit [`value`](Self::value) calls rather than
-/// `Deref`, so every read of a secret scalar is visible at the call site.
-pub trait SessionKeyShare: Sized {
-    /// The scalar value of this share.
-    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero;
+/// The session public and secret key that a share type reconstructs.
+type SessionKeyPair<S> = (
+    <<S as SessionKeyShare>::SessionSecretKey as SecretKey>::PublicKeyType,
+    <S as SessionKeyShare>::SessionSecretKey,
+);
 
-    type PublicKeyType: From<crate::elgamal::arithmetic::group_elements::GroupElement>;
-    type SecretKeyType: crate::keys::SecretKey
-        + From<crate::elgamal::arithmetic::scalars::ScalarNonZero>;
-    type BlindedGlobalSecretKeyType: crate::keys::SecretKey;
-}
-
-impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
-    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
-        self.value()
-    }
-    type PublicKeyType = crate::keys::PseudonymSessionPublicKey;
-    type SecretKeyType = crate::keys::PseudonymSessionSecretKey;
-    type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedPseudonymGlobalSecretKey;
-}
-
-impl SessionKeyShare for crate::keys::distribution::AttributeSessionKeyShare {
-    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
-        self.value()
-    }
-    type PublicKeyType = crate::keys::AttributeSessionPublicKey;
-    type SecretKeyType = crate::keys::AttributeSessionSecretKey;
-    type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedAttributeGlobalSecretKey;
-}
-
-/// Polymorphic function to reconstruct a session key from a blinded global secret key and session key shares.
-/// Automatically works for both pseudonym and attribute keys based on the types.
-pub fn make_session_key<S>(
-    blinded_global_secret_key: S::BlindedGlobalSecretKeyType,
+/// Reconstruct a session key from a blinded global secret key and one session key share per
+/// transcryptor. Works for both pseudonym and attribute keys based on the share type.
+pub fn make_session_key<S: SessionKeyShare>(
+    blinded_global_secret_key: S::BlindedGlobalSecretKey,
     session_key_shares: &[S],
-) -> (S::PublicKeyType, S::SecretKeyType)
-where
-    S: SessionKeyShare,
-{
-    use crate::keys::SecretKey;
-    let secret = S::SecretKeyType::from(
+) -> SessionKeyPair<S> {
+    let secret = S::SessionSecretKey::from_scalar(
         session_key_shares
             .iter()
             .fold(*blinded_global_secret_key.value(), |acc, x| {
                 acc * *x.value()
             }),
     );
-    let public =
-        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
-    (public, secret)
+    (secret.public_key(), secret)
 }
 
 /// Reconstruct a pseudonym session key from a blinded global secret key and session key shares.
 pub fn make_pseudonym_session_key(
-    blinded_global_secret_key: crate::keys::distribution::BlindedPseudonymGlobalSecretKey,
-    session_key_shares: &[crate::keys::distribution::PseudonymSessionKeyShare],
-) -> (
-    crate::keys::PseudonymSessionPublicKey,
-    crate::keys::PseudonymSessionSecretKey,
-) {
+    blinded_global_secret_key: BlindedPseudonymGlobalSecretKey,
+    session_key_shares: &[PseudonymSessionKeyShare],
+) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
     make_session_key(blinded_global_secret_key, session_key_shares)
 }
 
 /// Reconstruct an attribute session key from a blinded global secret key and session key shares.
 pub fn make_attribute_session_key(
-    blinded_global_secret_key: crate::keys::distribution::BlindedAttributeGlobalSecretKey,
-    session_key_shares: &[crate::keys::distribution::AttributeSessionKeyShare],
-) -> (
-    crate::keys::AttributeSessionPublicKey,
-    crate::keys::AttributeSessionSecretKey,
-) {
+    blinded_global_secret_key: BlindedAttributeGlobalSecretKey,
+    session_key_shares: &[AttributeSessionKeyShare],
+) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
     make_session_key(blinded_global_secret_key, session_key_shares)
 }
 
 /// Reconstruct session keys (both pseudonym and attribute) from blinded global secret keys and session key shares.
 pub fn make_session_keys_distributed(
-    blinded_global_keys: crate::keys::distribution::BlindedGlobalKeys,
-    session_key_shares: &[crate::keys::distribution::SessionKeyShares],
+    blinded_global_keys: BlindedGlobalSecretKeys,
+    session_key_shares: &[SessionKeyShares],
 ) -> SessionKeys {
-    let pseudonym_shares: Vec<crate::keys::distribution::PseudonymSessionKeyShare> =
+    let pseudonym_shares: Vec<PseudonymSessionKeyShare> =
         session_key_shares.iter().map(|s| s.pseudonym).collect();
-    let attribute_shares: Vec<crate::keys::distribution::AttributeSessionKeyShare> =
+    let attribute_shares: Vec<AttributeSessionKeyShare> =
         session_key_shares.iter().map(|s| s.attribute).collect();
 
     let (pseudonym_public, pseudonym_secret) =
@@ -94,47 +71,38 @@ pub fn make_session_keys_distributed(
         make_session_key(blinded_global_keys.attribute, &attribute_shares);
 
     SessionKeys {
-        pseudonym: crate::keys::PseudonymSessionKeys {
+        pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
             secret: pseudonym_secret,
         },
-        attribute: crate::keys::AttributeSessionKeys {
+        attribute: AttributeSessionKeys {
             public: attribute_public,
             secret: attribute_secret,
         },
     }
 }
 
-/// Polymorphic function to update a session key with new session key shares.
-/// Automatically works for both pseudonym and attribute keys based on the types.
-pub fn update_session_key<S>(
-    session_secret_key: S::SecretKeyType,
+/// Replace one transcryptor's share in a session key with a new one.
+/// Works for both pseudonym and attribute keys based on the share type.
+pub fn update_session_key<S: SessionKeyShare>(
+    session_secret_key: S::SessionSecretKey,
     old_session_key_share: S,
     new_session_key_share: S,
-) -> (S::PublicKeyType, S::SecretKeyType)
-where
-    S: SessionKeyShare,
-{
-    use crate::keys::SecretKey;
-    let secret = S::SecretKeyType::from(
+) -> SessionKeyPair<S> {
+    let secret = S::SessionSecretKey::from_scalar(
         *session_secret_key.value()
             * old_session_key_share.value().invert()
             * *new_session_key_share.value(),
     );
-    let public =
-        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
-    (public, secret)
+    (secret.public_key(), secret)
 }
 
 /// Update a pseudonym session key with new session key shares.
 pub fn update_pseudonym_session_key(
-    session_secret_key: crate::keys::PseudonymSessionSecretKey,
-    old_session_key_share: crate::keys::distribution::PseudonymSessionKeyShare,
-    new_session_key_share: crate::keys::distribution::PseudonymSessionKeyShare,
-) -> (
-    crate::keys::PseudonymSessionPublicKey,
-    crate::keys::PseudonymSessionSecretKey,
-) {
+    session_secret_key: PseudonymSessionSecretKey,
+    old_session_key_share: PseudonymSessionKeyShare,
+    new_session_key_share: PseudonymSessionKeyShare,
+) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
     update_session_key(
         session_secret_key,
         old_session_key_share,
@@ -144,13 +112,10 @@ pub fn update_pseudonym_session_key(
 
 /// Update an attribute session key with new session key shares.
 pub fn update_attribute_session_key(
-    session_secret_key: crate::keys::AttributeSessionSecretKey,
-    old_session_key_share: crate::keys::distribution::AttributeSessionKeyShare,
-    new_session_key_share: crate::keys::distribution::AttributeSessionKeyShare,
-) -> (
-    crate::keys::AttributeSessionPublicKey,
-    crate::keys::AttributeSessionSecretKey,
-) {
+    session_secret_key: AttributeSessionSecretKey,
+    old_session_key_share: AttributeSessionKeyShare,
+    new_session_key_share: AttributeSessionKeyShare,
+) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
     update_session_key(
         session_secret_key,
         old_session_key_share,
@@ -158,11 +123,11 @@ pub fn update_attribute_session_key(
     )
 }
 
-/// Update session keys (both pseudonym and attribute) from old session key shares to new ones.
+/// Update session keys (both pseudonym and attribute) with new session key shares.
 pub fn update_session_keys(
     current_keys: SessionKeys,
-    old_shares: crate::keys::distribution::SessionKeyShares,
-    new_shares: crate::keys::distribution::SessionKeyShares,
+    old_shares: SessionKeyShares,
+    new_shares: SessionKeyShares,
 ) -> SessionKeys {
     let (pseudonym_public, pseudonym_secret) = update_session_key(
         current_keys.pseudonym.secret,
@@ -176,11 +141,11 @@ pub fn update_session_keys(
     );
 
     SessionKeys {
-        pseudonym: crate::keys::PseudonymSessionKeys {
+        pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
             secret: pseudonym_secret,
         },
-        attribute: crate::keys::AttributeSessionKeys {
+        attribute: AttributeSessionKeys {
             public: attribute_public,
             secret: attribute_secret,
         },
@@ -189,35 +154,31 @@ pub fn update_session_keys(
 
 /// Trait to update and extract session keys from SessionKeys based on the share type.
 pub trait SessionKeyUpdater<S: SessionKeyShare> {
-    fn get_current_secret(&self) -> S::SecretKeyType;
-    fn set_keys(&mut self, public: S::PublicKeyType, secret: S::SecretKeyType);
+    fn get_current_secret(&self) -> S::SessionSecretKey;
+    fn set_keys(
+        &mut self,
+        public: <S::SessionSecretKey as SecretKey>::PublicKeyType,
+        secret: S::SessionSecretKey,
+    );
 }
 
-impl SessionKeyUpdater<crate::keys::distribution::PseudonymSessionKeyShare> for SessionKeys {
-    fn get_current_secret(&self) -> crate::keys::PseudonymSessionSecretKey {
+impl SessionKeyUpdater<PseudonymSessionKeyShare> for SessionKeys {
+    fn get_current_secret(&self) -> PseudonymSessionSecretKey {
         self.pseudonym.secret
     }
 
-    fn set_keys(
-        &mut self,
-        public: crate::keys::PseudonymSessionPublicKey,
-        secret: crate::keys::PseudonymSessionSecretKey,
-    ) {
+    fn set_keys(&mut self, public: PseudonymSessionPublicKey, secret: PseudonymSessionSecretKey) {
         self.pseudonym.public = public;
         self.pseudonym.secret = secret;
     }
 }
 
-impl SessionKeyUpdater<crate::keys::distribution::AttributeSessionKeyShare> for SessionKeys {
-    fn get_current_secret(&self) -> crate::keys::AttributeSessionSecretKey {
+impl SessionKeyUpdater<AttributeSessionKeyShare> for SessionKeys {
+    fn get_current_secret(&self) -> AttributeSessionSecretKey {
         self.attribute.secret
     }
 
-    fn set_keys(
-        &mut self,
-        public: crate::keys::AttributeSessionPublicKey,
-        secret: crate::keys::AttributeSessionSecretKey,
-    ) {
+    fn set_keys(&mut self, public: AttributeSessionPublicKey, secret: AttributeSessionSecretKey) {
         self.attribute.public = public;
         self.attribute.secret = secret;
     }
@@ -227,8 +188,8 @@ impl SessionKeyUpdater<crate::keys::distribution::AttributeSessionKeyShare> for 
 pub trait Distributed {
     /// Create a new PEP client from blinded global keys and session key shares.
     fn from_shares(
-        blinded_global_keys: crate::keys::distribution::BlindedGlobalKeys,
-        session_key_shares: &[crate::keys::distribution::SessionKeyShares],
+        blinded_global_keys: BlindedGlobalSecretKeys,
+        session_key_shares: &[SessionKeyShares],
     ) -> Self;
 
     /// Update a session key share from one session to another.
@@ -242,15 +203,15 @@ pub trait Distributed {
     /// This is a convenience method that updates both shares together.
     fn update_session_secret_keys(
         &mut self,
-        old_key_shares: crate::keys::distribution::SessionKeyShares,
-        new_key_shares: crate::keys::distribution::SessionKeyShares,
+        old_key_shares: SessionKeyShares,
+        new_key_shares: SessionKeyShares,
     );
 }
 
 impl Distributed for super::Client {
     fn from_shares(
-        blinded_global_keys: crate::keys::distribution::BlindedGlobalKeys,
-        session_key_shares: &[crate::keys::distribution::SessionKeyShares],
+        blinded_global_keys: BlindedGlobalSecretKeys,
+        session_key_shares: &[SessionKeyShares],
     ) -> Self {
         let keys = make_session_keys_distributed(blinded_global_keys, session_key_shares);
         Self::new(keys)
@@ -268,8 +229,8 @@ impl Distributed for super::Client {
 
     fn update_session_secret_keys(
         &mut self,
-        old_key_shares: crate::keys::distribution::SessionKeyShares,
-        new_key_shares: crate::keys::distribution::SessionKeyShares,
+        old_key_shares: SessionKeyShares,
+        new_key_shares: SessionKeyShares,
     ) {
         self.keys = update_session_keys(self.keys, old_key_shares, new_key_shares);
     }
