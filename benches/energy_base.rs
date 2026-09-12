@@ -46,7 +46,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let mut rng_inner = rand::rng();
                 let _ = encrypt(&message, &public_key, &mut rng_inner);
@@ -67,7 +67,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = decrypt(&encrypted, &secret_key);
             }
@@ -88,7 +88,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rerandomize(&encrypted, &r);
@@ -112,7 +112,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = reshuffle(&encrypted, &s);
             }
@@ -133,7 +133,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = rekey(&encrypted, &k);
             }
@@ -155,7 +155,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = rsk(&encrypted, &s, &k);
             }
@@ -178,7 +178,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rrsk(&encrypted, &r, &s, &k);
@@ -203,7 +203,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = reshuffle2(&encrypted, &s_from, &s_to);
             }
@@ -225,7 +225,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = rekey2(&encrypted, &k_from, &k_to);
             }
@@ -249,7 +249,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let _ = rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
             }
@@ -274,7 +274,7 @@ fn main() {
             iterations,
         };
 
-        bench.benchmark(metadata, &|| {
+        bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 #[cfg(feature = "elgamal3")]
                 let _ = rrsk2(&encrypted, &r, &s_from, &s_to, &k_from, &k_to);
