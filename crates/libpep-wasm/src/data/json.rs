@@ -502,7 +502,8 @@ pub fn wasm_bytes_to_number(bytes: Vec<u8>) -> Result<f64, JsValue> {
     let arr: [u8; 9] = bytes
         .try_into()
         .map_err(|_| JsValue::from_str("Invalid byte array"))?;
-    let num = utils::bytes_to_number(&arr);
+    let num = utils::bytes_to_number(&arr)
+        .map_err(|e| JsValue::from_str(&format!("Invalid number encoding: {e}")))?;
     Ok(num.as_f64().unwrap_or(0.0))
 }
 

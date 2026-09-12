@@ -4,9 +4,9 @@ use crate::keys::types::{
 };
 use crate::macros::py_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -68,7 +68,7 @@ impl PyBlindingFactor {
     }
 
     fn __eq__(&self, other: &PyBlindingFactor) -> bool {
-        *self.0 == *other.0
+        self.0.value() == other.0.value()
     }
 }
 
@@ -131,7 +131,7 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
 ) -> PyResult<PyBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_pseudonym_global_secret_key(
         &PseudonymGlobalSecretKey::from(*global_secret_key.0),
@@ -150,7 +150,7 @@ pub fn py_make_blinded_attribute_global_secret_key(
 ) -> PyResult<PyBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_attribute_global_secret_key(
         &AttributeGlobalSecretKey::from(*global_secret_key.0),
@@ -169,7 +169,7 @@ pub fn py_make_blinded_global_keys(
 ) -> PyResult<PyBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_global_keys(
         &PseudonymGlobalSecretKey::from(*global_secret_keys.pseudonym.0),

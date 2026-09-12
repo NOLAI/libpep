@@ -2,7 +2,6 @@ use crate::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use wasm_bindgen::prelude::*;
@@ -103,7 +102,7 @@ pub fn wasm_make_blinded_global_keys(
 ) -> Option<WASMBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_global_keys(
         &PseudonymGlobalSecretKey::from(*pseudonym_global_secret_key.0),

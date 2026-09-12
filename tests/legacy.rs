@@ -33,14 +33,14 @@ mod legacy_pep_repo_tests {
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
             let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
             assert_eq!(
-                pseudo_factor.0.to_hex().to_ascii_uppercase(),
+                pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor
             );
 
             let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
             // Note: PEP repo uses the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
             // We wrap the scalar in a PseudonymRekeyFactor for API compatibility.
-            let rekey_factor = PseudonymRekeyFactor::from(pseudo_factor.0);
+            let rekey_factor = PseudonymRekeyFactor::from(pseudo_factor.scalar());
             let session_key_share =
                 make_pseudonym_session_key_share(&rekey_factor, &blinding_factor);
             assert_eq!(

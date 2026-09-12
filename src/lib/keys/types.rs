@@ -76,7 +76,7 @@ pub struct AttributeSessionKeys {
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt pseudonyms with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
@@ -88,7 +88,7 @@ pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt attributes with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);

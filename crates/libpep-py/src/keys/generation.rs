@@ -47,7 +47,7 @@ pub fn py_make_pseudonym_session_keys(
     );
     PyPseudonymSessionKeyPair {
         public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*public)),
-        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(*secret_key)),
+        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
     }
 }
 
@@ -66,7 +66,7 @@ pub fn py_make_attribute_session_keys(
     );
     PyAttributeSessionKeyPair {
         public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*public)),
-        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(*secret_key)),
+        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
     }
 }
 
@@ -112,13 +112,13 @@ pub fn py_make_session_keys(
         pseudonym: PyPseudonymSessionKeys {
             public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*keys.pseudonym.public)),
             secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(
-                *keys.pseudonym.secret,
+                *keys.pseudonym.secret.value(),
             )),
         },
         attribute: PyAttributeSessionKeys {
             public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*keys.attribute.public)),
             secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(
-                *keys.attribute.secret,
+                *keys.attribute.secret.value(),
             )),
         },
     }

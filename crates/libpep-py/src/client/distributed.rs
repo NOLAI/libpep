@@ -44,8 +44,8 @@ impl PyClient {
         let shares: Vec<SessionKeyShares> = session_key_shares
             .into_iter()
             .map(|x| SessionKeyShares {
-                pseudonym: PseudonymSessionKeyShare::from(*x.pseudonym.0),
-                attribute: AttributeSessionKeyShare::from(*x.attribute.0),
+                pseudonym: PseudonymSessionKeyShare::from(*x.pseudonym.0.value()),
+                attribute: AttributeSessionKeyShare::from(*x.attribute.0.value()),
             })
             .collect();
         let blinded_keys = BlindedGlobalKeys {
@@ -68,11 +68,11 @@ impl PyClient {
         PySessionKeys {
             pseudonym: PyPseudonymSessionKeys {
                 public: PyPseudonymSessionPublicKey((*keys.pseudonym.public).into()),
-                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
+                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret.value()).into()),
             },
             attribute: PyAttributeSessionKeys {
                 public: PyAttributeSessionPublicKey((*keys.attribute.public).into()),
-                secret: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
+                secret: PyAttributeSessionSecretKey((*keys.attribute.secret.value()).into()),
             },
         }
     }
@@ -83,11 +83,11 @@ impl PyClient {
         PySessionKeys {
             pseudonym: PyPseudonymSessionKeys {
                 public: PyPseudonymSessionPublicKey((*keys.pseudonym.public).into()),
-                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
+                secret: PyPseudonymSessionSecretKey((*keys.pseudonym.secret.value()).into()),
             },
             attribute: PyAttributeSessionKeys {
                 public: PyAttributeSessionPublicKey((*keys.attribute.public).into()),
-                secret: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
+                secret: PyAttributeSessionSecretKey((*keys.attribute.secret.value()).into()),
             },
         }
     }
@@ -105,8 +105,8 @@ impl PyClient {
     fn py_session_secret_keys(&self) -> PySessionSecretKeys {
         let keys = self.0.dump();
         PySessionSecretKeys {
-            pseudonym: PyPseudonymSessionSecretKey((*keys.pseudonym.secret).into()),
-            attribute: PyAttributeSessionSecretKey((*keys.attribute.secret).into()),
+            pseudonym: PyPseudonymSessionSecretKey((*keys.pseudonym.secret.value()).into()),
+            attribute: PyAttributeSessionSecretKey((*keys.attribute.secret.value()).into()),
         }
     }
 
@@ -534,12 +534,12 @@ impl PyClient {
     ) {
         use libpep::client::distributed::Distributed;
         let old_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare::from(*old_key_shares.pseudonym.0),
-            attribute: AttributeSessionKeyShare::from(*old_key_shares.attribute.0),
+            pseudonym: PseudonymSessionKeyShare::from(*old_key_shares.pseudonym.0.value()),
+            attribute: AttributeSessionKeyShare::from(*old_key_shares.attribute.0.value()),
         };
         let new_shares = SessionKeyShares {
-            pseudonym: PseudonymSessionKeyShare::from(*new_key_shares.pseudonym.0),
-            attribute: AttributeSessionKeyShare::from(*new_key_shares.attribute.0),
+            pseudonym: PseudonymSessionKeyShare::from(*new_key_shares.pseudonym.0.value()),
+            attribute: AttributeSessionKeyShare::from(*new_key_shares.attribute.0.value()),
         };
         self.0.update_session_secret_keys(old_shares, new_shares);
     }

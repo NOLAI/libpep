@@ -135,7 +135,7 @@ impl PyPseudonymizationInfo {
     #[pyo3(name = "rev")]
     fn rev(&self) -> Self {
         PyPseudonymizationInfo(PyPseudonymRSKFactors {
-            s: PyReshuffleFactor(ReshuffleFactor::from(self.0.s.0 .0.invert())),
+            s: PyReshuffleFactor(ReshuffleFactor::from(self.0.s.0.scalar().invert())),
             k: PyPseudonymRekeyFactor(PseudonymRekeyFactor::from(self.0.k.0.scalar().invert())),
         })
     }

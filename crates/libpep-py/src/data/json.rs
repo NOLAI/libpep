@@ -477,9 +477,10 @@ pub fn py_number_to_bytes(n: f64) -> [u8; 9] {
 /// Convert bytes to a JSON number (9 bytes: 1 byte type tag + 8 bytes data).
 #[pyfunction]
 #[pyo3(name = "bytes_to_number")]
-pub fn py_bytes_to_number(bytes: [u8; 9]) -> f64 {
-    let num = utils::bytes_to_number(&bytes);
-    num.as_f64().unwrap_or(0.0)
+pub fn py_bytes_to_number(bytes: [u8; 9]) -> PyResult<f64> {
+    let num = utils::bytes_to_number(&bytes)
+        .map_err(|e| PyValueError::new_err(format!("Invalid number encoding: {e}")))?;
+    Ok(num.as_f64().unwrap_or(0.0))
 }
 
 /// Unifies multiple JSON structures by taking the maximum block count for each field.

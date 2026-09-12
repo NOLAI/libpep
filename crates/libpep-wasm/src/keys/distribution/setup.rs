@@ -50,7 +50,7 @@ pub fn wasm_make_blinded_pseudonym_global_secret_key(
 ) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_pseudonym_global_secret_key(
         &PseudonymGlobalSecretKey::from(*global_secret_key.0),
@@ -67,7 +67,7 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
 ) -> Option<WASMBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_attribute_global_secret_key(
         &AttributeGlobalSecretKey::from(*global_secret_key.0),

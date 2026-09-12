@@ -12,6 +12,97 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Core crate (default features: long, offline, batch, serde, json, build-binary)
+          - package: "libpep"
+            features: ""
+            name: "libpep default"
+          - package: "libpep"
+            features: "elgamal3"
+            name: "libpep default+elgamal3"
+          - package: "libpep"
+            features: "legacy"
+            name: "libpep default+legacy"
+          - package: "libpep"
+            features: "insecure"
+            name: "libpep default+insecure"
+          # Without default features (feature gating)
+          - package: "libpep"
+            features: ""
+            name: "libpep no-default"
+            args: "--no-default-features"
+          - package: "libpep"
+            features: "batch,insecure"
+            name: "libpep no-default+batch+insecure"
+            args: "--no-default-features"
+          - package: "libpep"
+            features: "json"
+            name: "libpep no-default+json"
+            args: "--no-default-features"
+          # Python binding crate
+          - package: "libpep-py"
+            features: ""
+            name: "libpep-py default"
+          - package: "libpep-py"
+            features: "elgamal3"
+            name: "libpep-py default+elgamal3"
+          - package: "libpep-py"
+            features: "insecure"
+            name: "libpep-py default+insecure"
+          # WASM binding crate
+          - package: "libpep-wasm"
+            features: ""
+            name: "libpep-wasm default"
+          - package: "libpep-wasm"
+            features: "elgamal3"
+            name: "libpep-wasm default+elgamal3"
+          - package: "libpep-wasm"
+            features: "insecure"
+            name: "libpep-wasm default+insecure"
+    name: cargo clippy (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -p ${{ matrix.package }} --all-targets ${{ matrix.args }} --features "${{ matrix.features }}" -- -D warnings
+
+  fmt:
+    runs-on: ubuntu-latest
+    name: cargo fmt
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo fmt --all -- --check
+
+  msrv:
+    runs-on: ubuntu-latest
+    name: cargo check (MSRV 1.85)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.85.0
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
+      - run: cargo check -p libpep-py
+      - run: cargo check -p libpep-wasm
+      - run: cargo check -p libpep-wasm --target wasm32-unknown-unknown
+
+  feature-powerset:
+    runs-on: ubuntu-latest
+    name: cargo hack (feature powerset, depth 2)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-hack
+      - run: cargo hack check -p libpep --feature-powerset --depth 2 --no-dev-deps
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
           - package: "libpep"
             features: ""
             name: "libpep default"
@@ -60,13 +151,17 @@ jobs:
       - name: Install dependencies and build Python extension
         run: |
           source .venv/bin/activate
-          pip install maturin pytest
+          pip install maturin
           cd crates/libpep-py
           maturin develop --features insecure
       - name: Run Python tests
         run: |
           source .venv/bin/activate
           python -m unittest discover crates/libpep-py/tests -v
+      - name: Check type stubs are in sync
+        run: |
+          source .venv/bin/activate
+          python scripts/generate_python_stubs.py --check
 
   test-wasm:
     runs-on: ubuntu-latest
