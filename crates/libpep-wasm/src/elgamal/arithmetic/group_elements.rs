@@ -1,6 +1,6 @@
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::group_elements::{GroupElement, G};
+use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use wasm_bindgen::prelude::*;
 
 /// Element on a group. Can not be converted to a scalar. Supports addition and subtraction. Multiplication by a scalar is supported.

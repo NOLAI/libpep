@@ -1,10 +1,10 @@
 //! PEP primitives for [rekey]ing, [reshuffle]ing, [rerandomize]ation of [ElGamal] ciphertexts, their
 //! transitive and reversible n-PEP extensions, and combined versions.
 #[cfg(not(feature = "elgamal3"))]
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::group_elements::G;
-use crate::arithmetic::scalars::ScalarNonZero;
-use crate::core::elgamal::*;
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::group_elements::G;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::*;
 
 /// Change the representation of a ciphertext without changing the contents.
 /// Used to make multiple unlinkable copies of the same ciphertext (when disclosing a single
@@ -214,8 +214,8 @@ pub fn rrsk2(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::arithmetic::group_elements::GroupElement;
-    use crate::core::elgamal::{decrypt, encrypt};
+    use crate::elgamal::arithmetic::group_elements::GroupElement;
+    use crate::elgamal::{decrypt, encrypt};
 
     #[test]
     fn rekey() {

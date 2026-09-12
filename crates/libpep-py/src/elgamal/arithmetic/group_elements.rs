@@ -1,6 +1,6 @@
-use crate::arithmetic::PyScalarNonZero;
+use crate::elgamal::arithmetic::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::group_elements::{GroupElement, G};
+use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

@@ -10,7 +10,6 @@
 //!
 //! For detailed information about the two types of padding, see the [`padding`](crate::data::padding) module.
 
-use crate::arithmetic::scalars::ScalarNonZero;
 use crate::data::padding::external::{create_external_padding_block, is_external_padding_block};
 use crate::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
@@ -19,6 +18,7 @@ use crate::data::simple::{
 #[cfg(feature = "batch")]
 use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::TranscryptionInfo;
 use crate::factors::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -936,7 +936,7 @@ impl Pseudonymizable for LongEncryptedPseudonym {
             .iter()
             .map(|block| {
                 #[cfg(feature = "elgamal3")]
-                let value = crate::core::primitives::rsk_precomputed(
+                let value = crate::elgamal::primitives::rsk_precomputed(
                     block.value(),
                     &info.s.0,
                     &info.k.0,
@@ -944,7 +944,7 @@ impl Pseudonymizable for LongEncryptedPseudonym {
                 );
                 #[cfg(not(feature = "elgamal3"))]
                 let value =
-                    crate::core::primitives::rsk_precomputed(block.value(), &info.s.0, &ski);
+                    crate::elgamal::primitives::rsk_precomputed(block.value(), &info.s.0, &ski);
                 EncryptedPseudonym::from_value(value)
             })
             .collect();
@@ -963,9 +963,9 @@ impl Rekeyable for LongEncryptedPseudonym {
             .map(|block| {
                 #[cfg(feature = "elgamal3")]
                 let value =
-                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
                 #[cfg(not(feature = "elgamal3"))]
-                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                let value = crate::elgamal::primitives::rekey_precomputed(block.value(), &k_inv);
                 EncryptedPseudonym::from_value(value)
             })
             .collect();
@@ -984,9 +984,9 @@ impl Rekeyable for LongEncryptedAttribute {
             .map(|block| {
                 #[cfg(feature = "elgamal3")]
                 let value =
-                    crate::core::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
                 #[cfg(not(feature = "elgamal3"))]
-                let value = crate::core::primitives::rekey_precomputed(block.value(), &k_inv);
+                let value = crate::elgamal::primitives::rekey_precomputed(block.value(), &k_inv);
                 EncryptedAttribute::from_value(value)
             })
             .collect();

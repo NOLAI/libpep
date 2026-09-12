@@ -2,7 +2,7 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalKeys, PyBlindedPseudonymGlobalSecretKey,
     PyBlindingFactor,
 };
-use crate::arithmetic::group_elements::PyGroupElement;
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::keys::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };

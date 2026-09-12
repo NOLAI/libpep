@@ -1,5 +1,5 @@
-use crate::arithmetic::group_elements::WASMGroupElement;
-use crate::core::elgamal::WASMElGamal;
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::WASMElGamal;
 use crate::macros::{wasm_encrypted_impl, wasm_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;

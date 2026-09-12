@@ -8,15 +8,16 @@ use crate::keys::SessionKeys;
 /// `Deref`, so every read of a secret scalar is visible at the call site.
 pub trait SessionKeyShare: Sized {
     /// The scalar value of this share.
-    fn value(&self) -> &crate::arithmetic::scalars::ScalarNonZero;
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero;
 
-    type PublicKeyType: From<crate::arithmetic::group_elements::GroupElement>;
-    type SecretKeyType: crate::keys::SecretKey + From<crate::arithmetic::scalars::ScalarNonZero>;
+    type PublicKeyType: From<crate::elgamal::arithmetic::group_elements::GroupElement>;
+    type SecretKeyType: crate::keys::SecretKey
+        + From<crate::elgamal::arithmetic::scalars::ScalarNonZero>;
     type BlindedGlobalSecretKeyType: crate::keys::SecretKey;
 }
 
 impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
-    fn value(&self) -> &crate::arithmetic::scalars::ScalarNonZero {
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
         self.value()
     }
     type PublicKeyType = crate::keys::PseudonymSessionPublicKey;
@@ -25,7 +26,7 @@ impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
 }
 
 impl SessionKeyShare for crate::keys::distribution::AttributeSessionKeyShare {
-    fn value(&self) -> &crate::arithmetic::scalars::ScalarNonZero {
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
         self.value()
     }
     type PublicKeyType = crate::keys::AttributeSessionPublicKey;
@@ -50,7 +51,8 @@ where
                 acc * *x.value()
             }),
     );
-    let public = S::PublicKeyType::from(*secret.value() * crate::arithmetic::group_elements::G);
+    let public =
+        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
     (public, secret)
 }
 
@@ -119,7 +121,8 @@ where
             * old_session_key_share.value().invert()
             * *new_session_key_share.value(),
     );
-    let public = S::PublicKeyType::from(*secret.value() * crate::arithmetic::group_elements::G);
+    let public =
+        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
     (public, secret)
 }
 

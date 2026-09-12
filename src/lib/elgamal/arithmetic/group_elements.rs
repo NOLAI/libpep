@@ -76,7 +76,7 @@ impl GroupElement {
     ///
     /// The elligator2-based map also serves a security purpose: it makes it infeasible to choose
     /// inputs whose encodings have a known discrete-log relation, which pseudonym unlinkability
-    /// relies on (see [`reshuffle`](crate::core::primitives::reshuffle)).
+    /// relies on (see [`reshuffle`](crate::elgamal::primitives::reshuffle)).
     #[must_use]
     pub fn from_lizard(v: &[u8; 16]) -> Self {
         Self(RistrettoPoint::lizard_encode::<Sha256>(v))
@@ -310,7 +310,7 @@ impl std::ops::Mul<GroupElement> for ScalarCanBeZero {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 
     #[test]
     fn encode_decode() {

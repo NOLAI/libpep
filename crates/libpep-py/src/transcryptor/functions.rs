@@ -1,12 +1,12 @@
 //! Python bindings for transcryption functions.
 
-use crate::arithmetic::PyScalarNonZero;
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
+use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::factors::contexts::{
     PyAttributeRekeyInfo, PyPseudonymRekeyFactor, PyPseudonymizationInfo, PyTranscryptionInfo,
 };

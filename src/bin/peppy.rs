@@ -2,7 +2,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use commandy_macros::*;
-use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 #[cfg(feature = "json")]
 use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
 use libpep::data::long::{
@@ -13,6 +12,7 @@ use libpep::data::simple::{
     Pseudonym,
 };
 use libpep::data::traits::{Encryptable, Encrypted};
+use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};

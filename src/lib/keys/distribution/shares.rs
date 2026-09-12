@@ -4,7 +4,7 @@
 //! transcryptors. By combining all shares with blinded global secret keys, session keys can be derived.
 
 use super::blinding::BlindingFactor;
-use crate::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
 use derive_more::From;
 

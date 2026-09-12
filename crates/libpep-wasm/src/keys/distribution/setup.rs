@@ -2,7 +2,7 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::keys::types::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMGlobalPublicKeys,
     WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
