@@ -1,48 +1,37 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
-//! This library implements PEP cryptography based on [`ElGamal`](elgamal) encrypted messages.
-//! It can be used to encrypt data and re-encrypt it for different keys without decrypting the data,
-//! while pseudonymizing encrypted identifiers in the data.
+//! This library implements *n-PEP*, a scheme for end-to-end encrypted, pseudonymized data
+//! sharing. Every party knows its data subjects under its own pseudonyms, which cannot be linked
+//! to another party's. Encrypted data is blindly re-encrypted (*transcrypted*) for a receiving
+//! party by semi-trusted *transcryptors*, which convert the pseudonyms in it to the receiver's
+//! domain without decrypting anything. Transcryption can be distributed over `n` transcryptors,
+//! so that every transcryptor can independently monitor and block data exchanges, while
+//! confidentiality and pseudonym unlinkability hold as long as at least one of them remains
+//! uncompromised.
 //!
-//! In the `ElGamal` scheme, a message `M` can be encrypted for a receiver which has public key `Y`
-//! associated with it, belonging to secret key `y`.
-//! Using the PEP cryptography, these encrypted messages can blindly be *transcrypted* from one key
-//! to another by one or more semi-trusted parties (*transcryptors*), without the need to decrypt
-//! the message inbetween.
-//! Meanwhile, if the message contains an identifier of a data subject, this identifier can be
-//! pseudonymized.
-//! This enables end-to-end encrypted data sharing with built-in pseudonymization.
-//! Transcryption can be distributed over multiple transcryptors, such that every transcryptor can
-//! independently monitor and block data exchanges, while confidentiality and pseudonym
-//! unlinkability hold as long as at least one transcryptor remains uncompromised.
+//! The cryptographic background, a quick start and the relation to OPRFs and proxy re-encryption
+//! are described in the [README](https://github.com/NOLAI/libpep#readme). The scheme is described
+//! in the paper by [Job Doesburg](https://jobdoesburg.nl),
+//! [Bernard van Gastel](https://sustainablesoftware.info) and
+//! [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
+//! *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*,
+//! **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**,
+//! Lecture Notes in Computer Science, Springer
+//! ([PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)).
 //!
-//! Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the
-//! pseudorandomness of the Diffie-Hellman PRF that [reshuffling](elgamal::primitives::reshuffle)
-//! obliviously evaluates; both hold under the Decisional Diffie-Hellman assumption in the
-//! Ristretto group.
-//! Since at the time of initial encryption, the future recipient does not need to be specified,
-//! data sharing can be done *asynchronously*. This means that encrypted data can be
-//! stored long-term before it is shared at any point in the future.
+//! ## Organization
 //!
-//! This library provides both a low-level [elgamal] API for `ElGamal` encryption and the PEP
-//! [primitives](elgamal::primitives), and a high-level API for
-//! [pseudonymization](transcryptor::pseudonymize) and [rekeying](transcryptor::rekey)
-//! (i.e. [transcryption](transcryptor::transcrypt)) of [`Pseudonym`](data::simple::Pseudonym)s
-//! and [`Attribute`](data::simple::Attribute)s using this cryptographic concept.
-//!
-//! This library primarily implements the *n-PEP* scheme, described in the paper by
-//! [Job Doesburg](https://jobdoesburg.nl), [Bernard van Gastel](https://sustainablesoftware.info)
-//! and [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
-//! *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*.
-//! In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**,
-//! Lecture Notes in Computer Science, Springer.
-//! [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
-//!
-//! n-PEP extends the original PEP framework, which was initially described in the article by
-//! Eric Verheul and Bart Jacobs,
-//! *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*.
-//! In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172.
-//! [PDF](https://repository.ubn.ru.nl/bitstream/handle/2066/178461/178461.pdf?sequence=1)
+//! - [`client`] and [`transcryptor`] are the high-level API for the two roles: encryption and
+//!   decryption on one side, [pseudonymization](transcryptor::pseudonymize),
+//!   [rekeying](transcryptor::rekey) and [transcryption](transcryptor::transcrypt) on the other.
+//!   Both have distributed variants that work with session key shares.
+//! - [`data`] holds the [`Pseudonym`](data::simple::Pseudonym) and
+//!   [`Attribute`](data::simple::Attribute) types, their encrypted forms, long variants, records
+//!   and JSON documents, and the traits the high-level API is generic over.
+//! - [`keys`], [`contexts`] and [`factors`] are the key, identifier and factor material that the
+//!   two roles exchange.
+//! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
+//!   [primitives](elgamal::primitives) and the group [arithmetic](elgamal::arithmetic).
 //!
 //! ## Feature flags
 //!
@@ -77,3 +66,8 @@ pub mod factors;
 pub mod keys;
 pub mod prelude;
 pub mod transcryptor;
+
+/// Runs the README's quick start as a doctest, in the default ciphertext mode it is written for.
+#[cfg(all(doctest, not(feature = "elgamal3")))]
+#[doc = include_str!("../../README.md")]
+pub struct ReadmeDoctests;
