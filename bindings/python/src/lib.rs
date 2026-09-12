@@ -11,6 +11,11 @@ pub mod factors;
 pub mod keys;
 pub mod transcryptor;
 
+#[cfg(feature = "verifiable")]
+pub mod verifier;
+
+pub mod errors;
+
 use pyo3::prelude::*;
 
 /// Creates a named submodule, runs the given registration closure on it, attaches it to the
@@ -32,6 +37,7 @@ pub(crate) fn add_submodule<'py>(
 }
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    errors::register(m)?;
     add_submodule(m, "libpep.elgamal", |sm| elgamal::register_module(sm))?;
     add_submodule(m, "libpep.client", |sm| {
         client::types::register(sm)?;
@@ -56,16 +62,27 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         data::long::register(sm)?;
         data::padding::register(sm)?;
         data::records::register(sm)?;
+        #[cfg(feature = "batch")]
+        data::batch::register(sm)?;
+        #[cfg(all(feature = "batch", feature = "verifiable"))]
+        data::verifiable_batch::register(sm)?;
         Ok(())
     })?;
     #[cfg(feature = "json")]
     add_submodule(&data_module, "libpep.data.json", |sm| {
-        data::json::register(sm)
+        data::json::register(sm)?;
+        #[cfg(feature = "verifiable")]
+        data::verifiable_json::register(sm)?;
+        Ok(())
     })?;
     #[cfg(not(feature = "json"))]
     drop(data_module);
     add_submodule(m, "libpep.contexts", |sm| contexts::register(sm))?;
     add_submodule(m, "libpep.factors", |sm| factors::register(sm))?;
+    #[cfg(feature = "verifiable")]
+    add_submodule(m, "libpep.verifier", |sm| {
+        verifier::register_verifier_module(sm)
+    })?;
     Ok(())
 }
 

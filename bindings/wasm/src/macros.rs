@@ -154,8 +154,8 @@ macro_rules! wasm_point_key_impl {
 
             #[wasm_bindgen(js_name = fromHex)]
             pub fn from_hex(hex: &str) -> Option<Self> {
-                use libpep::elgamal::arithmetic::group_elements::GroupElement;
-                GroupElement::from_hex(hex).map(|x| Self(x.into()))
+                libpep::elgamal::arithmetic::group_elements::GroupElement::from_hex(hex)
+                    .map(|x| Self(x.into()))
             }
         }
     };
@@ -207,6 +207,7 @@ macro_rules! wasm_pair_impl {
 
 /// Methods of a long plaintext wrapper (a [`libpep::data::long::LongPseudonym`]-shaped type):
 /// vector constructor, padded string/byte codecs, block padding and accessors.
+#[allow(unused_macros)]
 macro_rules! wasm_long_plaintext_impl {
     ($w:ident wraps $core:ident of $item_w:ident($item_core:ident) as $js:ident,
      ctor($arg:ident, doc = $ctor_doc:tt), items($items:ident, doc = $items_doc:tt)) => {
@@ -283,6 +284,7 @@ macro_rules! wasm_long_plaintext_impl {
 
 /// Methods of a long encrypted wrapper (a [`libpep::data::long::LongEncryptedPseudonym`]-shaped
 /// type): vector constructor, pipe-delimited serialization and accessors.
+#[allow(unused_macros)]
 macro_rules! wasm_long_encrypted_impl {
     ($w:ident wraps $core:ident of $item_w:ident($item_core:ident) as $js:ident,
      ctor($arg:ident, doc = $ctor_doc:tt), items($items:ident as $items_js:ident, doc = $items_doc:tt)) => {
@@ -366,6 +368,7 @@ macro_rules! wasm_scalar_key_impl {
 
 /// Generates the session encrypt/decrypt function triple (encrypt, decrypt under elgamal3
 /// returning Option, decrypt otherwise) for one plaintext/encrypted type pair.
+#[allow(unused_macros)]
 macro_rules! wasm_session_crypt_fns {
     ($($(#[$cfg:meta])* fns($enc_js:literal $encf:ident, $dec_js:literal $decf:ident)
         for $m:ty => $e:ty, key($kpub:ty => $ckpub:ident, $ksec:ty => $cksec:ident);)+) => {$(
@@ -397,6 +400,7 @@ macro_rules! wasm_session_crypt_fns {
 
 /// Generates the global (offline) encrypt/decrypt function triple for one
 /// plaintext/encrypted type pair.
+#[allow(unused_macros)]
 macro_rules! wasm_global_crypt_fns {
     ($(fns($enc_js:literal $encf:ident, $dec_js:literal $decf:ident)
         for $m:ty => $e:ty, key($kpub:ty => $ckpub:ident, $ksec:ty => $cksec:ident);)+) => {$(
@@ -428,7 +432,6 @@ macro_rules! wasm_global_crypt_fns {
 }
 
 pub(crate) use {
-    wasm_encrypted_impl, wasm_global_crypt_fns, wasm_long_encrypted_impl, wasm_long_plaintext_impl,
-    wasm_pair_impl, wasm_plaintext_impl, wasm_point_key_impl, wasm_scalar_key_impl,
-    wasm_session_crypt_fns,
+    wasm_encrypted_impl, wasm_pair_impl, wasm_plaintext_impl, wasm_point_key_impl,
+    wasm_scalar_key_impl,
 };

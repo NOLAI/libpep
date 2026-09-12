@@ -6,12 +6,14 @@ use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
+use crate::data::records::{WASMEncryptedRecord, WASMRecord};
 #[cfg(feature = "long")]
-use crate::data::records::{WASMLongRecord, WASMLongRecordEncrypted};
-use crate::data::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::records::{WASMLongEncryptedRecord, WASMLongRecord};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+#[cfg(feature = "batch")]
+use crate::errors::batch_err_to_js;
 use crate::keys::distribution::WASMBlindedGlobalSecretKeys;
 use crate::keys::types::WASMSessionKeys;
 use crate::keys::{
@@ -59,6 +61,13 @@ impl WASMClient {
 
     #[wasm_bindgen(js_name = dump)]
     pub fn wasm_dump(&self) -> WASMSessionKeys {
+        (*self.dump()).into()
+    }
+
+    /// Session keys getter — equivalent to `dump()` but exposed as a JS
+    /// property for parity with the Python `Client.session_keys` getter.
+    #[wasm_bindgen(getter, js_name = sessionKeys)]
+    pub fn wasm_session_keys(&self) -> WASMSessionKeys {
         (*self.dump()).into()
     }
 
@@ -199,7 +208,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedAttribute::from)
@@ -218,7 +228,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?
+            .into_items();
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
 
@@ -233,7 +244,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMAttribute::from).collect())
     }
 
@@ -248,7 +259,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPseudonym::from).collect())
     }
 
@@ -264,7 +275,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedAttribute::from)
@@ -283,7 +295,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
@@ -301,7 +314,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMLongAttribute::from).collect())
     }
 
@@ -316,13 +329,13 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMLongPseudonym::from).collect())
     }
 
     /// Encrypt a Record using session keys.
     #[wasm_bindgen(js_name = encryptRecord)]
-    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMRecordEncrypted {
+    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMEncryptedRecord {
         let mut rng = rand::rng();
         use libpep::data::records::Record;
         use libpep::data::traits::Encryptable;
@@ -334,7 +347,7 @@ impl WASMClient {
     /// Decrypt an encrypted Record using session keys.
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = decryptRecord)]
-    pub fn wasm_decrypt_record(&self, encrypted: WASMRecordEncrypted) -> Option<WASMRecord> {
+    pub fn wasm_decrypt_record(&self, encrypted: WASMEncryptedRecord) -> Option<WASMRecord> {
         use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -344,7 +357,7 @@ impl WASMClient {
     /// Decrypt an encrypted Record using session keys.
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = decryptRecord)]
-    pub fn wasm_decrypt_record(&self, encrypted: WASMRecordEncrypted) -> WASMRecord {
+    pub fn wasm_decrypt_record(&self, encrypted: WASMEncryptedRecord) -> WASMRecord {
         use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -354,7 +367,7 @@ impl WASMClient {
     /// Encrypt a LongRecord using session keys.
     #[cfg(feature = "long")]
     #[wasm_bindgen(js_name = encryptLongRecord)]
-    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongRecordEncrypted {
+    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongEncryptedRecord {
         let mut rng = rand::rng();
         use libpep::data::records::LongRecord;
         use libpep::data::traits::Encryptable;
@@ -368,7 +381,7 @@ impl WASMClient {
     #[wasm_bindgen(js_name = decryptLongRecord)]
     pub fn wasm_decrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
     ) -> Option<WASMLongRecord> {
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Encrypted;
@@ -379,7 +392,7 @@ impl WASMClient {
     /// Decrypt an encrypted LongRecord using session keys.
     #[cfg(all(feature = "long", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = decryptLongRecord)]
-    pub fn wasm_decrypt_long_record(&self, encrypted: WASMLongRecordEncrypted) -> WASMLongRecord {
+    pub fn wasm_decrypt_long_record(&self, encrypted: WASMLongEncryptedRecord) -> WASMLongRecord {
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
@@ -409,7 +422,8 @@ impl WASMClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_values, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?
+            .into_items();
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedPEPJSONValue)
@@ -446,7 +460,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
     }
 
@@ -461,7 +475,7 @@ impl WASMClient {
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
     }
 }

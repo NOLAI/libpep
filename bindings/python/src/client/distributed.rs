@@ -10,15 +10,19 @@ use crate::data::records::{PyEncryptedRecord, PyRecord};
 #[cfg(feature = "long")]
 use crate::data::records::{PyLongEncryptedRecord, PyLongRecord};
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
-use crate::keys::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
-use crate::keys::{
-    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyBlindedGlobalSecretKeys,
-    PyPseudonymSessionPublicKey, PyPseudonymSessionSecretKey,
+use crate::keys::distribution::blinding::PyBlindedGlobalSecretKeys;
+use crate::keys::distribution::shares::{
+    PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys,
 };
-use crate::keys::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
+use crate::keys::types::{PyAttributeSessionKeys, PyPseudonymSessionKeys, PySessionKeys};
+use crate::keys::types::{
+    PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
+    PyPseudonymSessionSecretKey,
+};
 use derive_more::{Deref, From, Into};
-use libpep::client::distributed::make_session_keys_distributed;
+use libpep::client::distributed::{make_session_keys_distributed, Distributed};
 use libpep::client::Client;
+use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::keys::distribution::SessionKeyShare;
 use libpep::keys::distribution::{
     AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShares,
@@ -27,7 +31,6 @@ use libpep::keys::*;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
-#[cfg(feature = "batch")]
 use pyo3::IntoPyObjectExt;
 
 /// A PEP client.
@@ -146,7 +149,6 @@ impl PyClient {
 
         // Try Record - uses SessionKeys directly
         if let Ok(r) = message.extract::<PyRecord>() {
-            use libpep::data::traits::Encryptable;
             let result = r.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(result))?.into_any());
         }
@@ -154,7 +156,6 @@ impl PyClient {
         // Try LongRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(lr) = message.extract::<PyLongRecord>() {
-            use libpep::data::traits::Encryptable;
             let result = lr.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
@@ -162,7 +163,6 @@ impl PyClient {
         // Try PEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(j) = message.extract::<PyPEPJSONValue>() {
-            use libpep::data::traits::Encryptable;
             let result = j.0.encrypt(self.0.dump(), &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
@@ -219,7 +219,6 @@ impl PyClient {
 
         // Try EncryptedRecord - uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-            use libpep::data::traits::Encrypted;
             let result =
                 er.0.decrypt(self.0.dump())
                     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))?;
@@ -229,7 +228,6 @@ impl PyClient {
         // Try LongEncryptedRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
-            use libpep::data::traits::Encrypted;
             let result = ler
                 .0
                 .decrypt(self.0.dump())
@@ -240,7 +238,6 @@ impl PyClient {
         // Try EncryptedPEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-            use libpep::data::traits::Encrypted;
             let result =
                 ej.0.decrypt(self.0.dump())
                     .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))?;
@@ -287,7 +284,6 @@ impl PyClient {
 
         // Try EncryptedRecord - uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-            use libpep::data::traits::Encrypted;
             let result = er.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyRecord(result))?.into_any());
         }
@@ -295,7 +291,6 @@ impl PyClient {
         // Try LongEncryptedRecord - uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
-            use libpep::data::traits::Encrypted;
             let result = ler.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyLongRecord(result))?.into_any());
         }
@@ -303,7 +298,6 @@ impl PyClient {
         // Try EncryptedPEPJSONValue - uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-            use libpep::data::traits::Encrypted;
             let result = ej.0.decrypt(self.0.dump());
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
@@ -326,7 +320,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedPseudonym> =
                 result.into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -338,7 +333,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedAttribute> =
                 result.into_iter().map(PyEncryptedAttribute).collect();
             return py_result.into_py_any(py);
@@ -351,7 +347,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyLongEncryptedPseudonym> =
                 result.into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -364,7 +361,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyLongEncryptedAttribute> =
                 result.into_iter().map(PyLongEncryptedAttribute).collect();
             return py_result.into_py_any(py);
@@ -377,7 +375,8 @@ impl PyClient {
             let result = self
                 .0
                 .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?
+                .into_items();
             let py_result: Vec<PyEncryptedPEPJSONValue> =
                 result.into_iter().map(PyEncryptedPEPJSONValue).collect();
             return py_result.into_py_any(py);
@@ -533,7 +532,6 @@ impl PyClient {
         old_key_shares: &PySessionKeyShares,
         new_key_shares: &PySessionKeyShares,
     ) {
-        use libpep::client::distributed::Distributed;
         let old_shares = SessionKeyShares {
             pseudonym: PseudonymSessionKeyShare::from_scalar(*old_key_shares.pseudonym.0.value()),
             attribute: AttributeSessionKeyShare::from_scalar(*old_key_shares.attribute.0.value()),

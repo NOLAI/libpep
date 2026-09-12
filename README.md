@@ -69,16 +69,17 @@ let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying
 let pseudonym_a = Pseudonym::random(rng);
 let encrypted = encrypt(&pseudonym_a, &keys_a.pseudonym.public, rng);
 
-// The transcryptor converts it to B's domain and session, without decrypting it.
+// The transcryptor converts it to B's domain and session, without decrypting it. It needs
+// the key the ciphertext is currently encrypted under to rerandomize it along the way.
 let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-let transcrypted = transcryptor.transcrypt(&encrypted, &info);
+let transcrypted = transcryptor.transcrypt(&encrypted, &info, &keys_a.pseudonym.public, rng);
 
 // B decrypts its own pseudonym for the same subject, which is unlinkable to A's.
 let pseudonym_b = decrypt(&transcrypted, &keys_b.pseudonym.secret);
 assert_ne!(pseudonym_a, pseudonym_b);
 
 // Transcryption is reversible: converting back yields A's pseudonym again.
-let back = transcryptor.transcrypt(&transcrypted, &info.reverse());
+let back = transcryptor.transcrypt(&transcrypted, &info.reverse(), &keys_b.pseudonym.public, rng);
 assert_eq!(pseudonym_a, decrypt(&back, &keys_a.pseudonym.secret));
 ```
 
@@ -127,7 +128,15 @@ The factor `k` is tied to the *encryption context* of a party, typically its cur
 `rsk(in, s, k)` performs both at once, and `reshuffle2`, `rekey2` and `rsk2` are the transitive and reversible n-PEP variants that convert directly between two domains or sessions, applying `s = s_from^-1 * s_to` and `k = k_from^-1 * k_to`.
 
 When the same encrypted pseudonym is used more than once, it is rerandomized every time, so that comparing ciphertexts byte for byte reveals nothing.
-Mixing fresh randomness into a ciphertext before reshuffling also protects against plaintext injection at transcryption.
+Mixing fresh randomness into a ciphertext before reshuffling also protects against plaintext injection at transcryption, which is why pseudonymization and transcryption always rerandomize, and in the default ciphertext mode take the public key the ciphertext is encrypted under.
+
+### Verifiable transcryption
+
+With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and `k·G` to each factor, and every transcryption can produce a zero-knowledge proof that exactly the committed factors were applied.
+The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat–Shamir transform, and can be verified in batch.
+Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well.
+This closes the gap noted under [As a three-party OPRF](#as-a-three-party-oprf): a transcryptor that applies a wrong factor is now detected.
+The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
 
 ## Relation to other primitives
 
@@ -159,12 +168,13 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | Module | Description |
 |--------|-------------|
 | `client` | Encryption and decryption with session keys, or with global public keys for offline encryption; the `Distributed` extension reconstructs session keys from shares |
-| `transcryptor` | Pseudonymization, rekeying and transcryption, single and in batch; `DistributedTranscryptor` produces session key shares |
+| `transcryptor` | Pseudonymization, rekeying and transcryption, single and in batch; `DistributedTranscryptor` produces session key shares; with the `verifiable` feature, the same operations with zero-knowledge proofs of correct transcryption |
 | `data` | `Pseudonym` and `Attribute`, their long (multi-block) variants, records, and JSON documents with nested pseudonyms and attributes |
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and the Ristretto scalar and group element arithmetic in `elgamal::arithmetic` |
+| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, the Ristretto scalar and group element arithmetic in `elgamal::arithmetic`, and the verifiable variants of the primitives with their proofs in `elgamal::verifiable` |
+| `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
@@ -179,8 +189,11 @@ Default features:
 - `serde`: serialization and deserialization support via Serde.
 - `json`: JSON documents with nested pseudonyms and attributes.
 - `build-binary`: the `peppy` command-line tool.
+- `batch-pk`: batches carry the public key their ciphertexts are encrypted under, so batch operations that rerandomize do not need it as a separate argument. No effect under `elgamal3`, where every ciphertext carries its key.
+- `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat–Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
 
 Optional features:
+- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor.
 - `elgamal3`: ciphertexts additionally encode the public key they were encrypted for, the `(B, C, Y)` triple encoding of the original PEP framework.
   This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations.
   Decryption functions return an `Option` (or an error for batches) instead of a plain value.

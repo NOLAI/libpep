@@ -16,11 +16,11 @@ use crate::keys::types::{
 };
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey};
-use crate::keys::PySessionKeys;
-use crate::keys::{
+use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+use crate::keys::PySessionKeys;
 use crate::macros::py_dispatch;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::client::decrypt_global;
@@ -250,7 +250,7 @@ py_dispatch!(
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
         #[cfg(feature = "json")]
-        (pk in public_key: PyGlobalPublicKeys, json in message: PyPEPJSONValue) => {
+        (json in message: PyPEPJSONValue, pk in public_key: PyGlobalPublicKeys) => {
             let keys = GlobalPublicKeys::from(pk);
             let mut rng = rand::rng();
             let result = encrypt_global(&json.0, &keys, &mut rng);
@@ -393,6 +393,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPseudonym(e))
@@ -421,6 +422,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedAttribute(e))
@@ -451,6 +453,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedPseudonym(e))
@@ -481,6 +484,7 @@ pub fn py_encrypt_batch(
             )
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyLongEncryptedAttribute(e))
@@ -507,6 +511,7 @@ pub fn py_encrypt_batch(
             let encrypted = encrypt_batch(&rust_msgs, &keys, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
+                .into_items()
                 .into_iter()
                 .map(|e| {
                     Py::new(py, PyEncryptedPEPJSONValue(e))
