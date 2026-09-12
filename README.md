@@ -14,6 +14,7 @@ It enables secure, end-to-end encrypted, pseudonymized data sharing between part
 Encrypted data can blindly be re-encrypted (*transcrypted*) for different keys by semi-trusted *transcryptors*, without decrypting the data and while pseudonymizing encrypted identifiers in the data.
 Following the principle of *distributed trust*, transcryption can be distributed over `n` transcryptors: every transcryptor can independently monitor and block data exchanges, while confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
 The library primarily implements the *n-PEP* scheme (see [Background](#background)).
+In terms of other primitives, the pseudonymisation step is an oblivious evaluation of the same DH-PRF as an [RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html) OPRF, and the re-encryption step is ordinary ElGamal proxy re-encryption (see [Relation to other primitives](#relation-to-other-primitives)).
 
 In the ElGamal scheme, a message `M` can be encrypted for a receiver which has public key `Y` associated with it, belonging to secret key `y`. 
 This encryption is random (polymorphic): every time a different random `b` is used, results in different ciphertexts (encrypted messages).
@@ -58,6 +59,36 @@ Mixing fresh randomness into a ciphertext before reshuffling also protects again
 The `reshuffle(in, s)` and `rekey(in, k)` can be combined in a slightly more efficient `rsk(in, s, k)`.
 
 Additionally, `reshuffle2(in, s_from, s_to)` and `rekey2(in, k_from, k_to)`, as well as `rsk2(...)`, are the transitive and reversible n-PEP variants that convert directly between two domains or sessions, effectively applying `s = s_from^-1 * s_to` and `k = k_from^-1 * k_to`.
+
+## Relation to other primitives
+
+libpep combines two familiar primitives: `reshuffle` is an OPRF evaluation and `rekey` is a proxy re-encryption, applied to the same ciphertext.
+
+### As a three-party OPRF
+
+[RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html) specifies oblivious pseudorandom functions over prime-order groups as a two-party protocol: a *Client* (or *requester*) blinds an input, a *Server* (or *evaluator*) applies its secret key `skS`, and the client unblinds to obtain `F_skS(input)`, with the server learning neither input nor output.
+
+libpep evaluates the same DH-PRF `F_s(M) = s*M`, but splits the requester role over a **sender** and a **recipient**, with the **transcryptor** as evaluator.
+ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the recipient's decryption unblinds.
+The transcryptor learns neither `M` nor `s*M`, and neither sender nor recipient learns `s`.
+
+Because blinding and unblinding are performed by different parties, evaluation is non-interactive and asynchronous: the sender can encrypt before the recipient is known, and the PRF output appears only in the recipient's domain.
+
+Two differences with the RFC are worth noting.
+RFC 9497 defines the PRF as `F_s(M) = s*H(M)`, hashing into the group first; libpep omits `H` and instead relies on origin identifiers being uniformly random group elements, as described under [Applications](#applications).
+And the RFC's VOPRF and POPRF modes provide verifiability, whereas plain PEP transcryption does not: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
+
+### As proxy re-encryption with built-in pseudonymisation
+
+`rekey` is ordinary unidirectional [proxy re-encryption](https://en.wikipedia.org/wiki/Proxy_re-encryption) over ElGamal: it transforms `Enc(b, M, Y)` into `Enc(k^-1*b, M, k*Y)`, decryptable by `k*y`.
+The message component is untouched, and the transcryptor acts as the proxy without learning the message or holding either secret key.
+
+`reshuffle` adds the one transformation a plain proxy cannot do, mapping `M` to `s*M`.
+Attributes are never reshuffled — transcrypting an `EncryptedAttribute` is a `rekey` and nothing else — so for attributes the scheme is exactly proxy re-encryption.
+For identifiers, the same homomorphic step that re-encrypts a pseudonym for a new recipient also rewrites it into that recipient's domain, so no global identifier is ever exposed.
+
+This is what the name refers to: *polymorphic* encryption is the proxy re-encryption, and *pseudonymisation* is the PRF evaluation carried out in the same step.
+`rsk(in, s, k)` performs both at once.
 
 ## Installation
 
