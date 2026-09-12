@@ -40,7 +40,7 @@ jobs:
       - name: Check versions
         run: |
           # Get package.json version
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_VERSION=$(node -p "require('./crates/libpep-wasm/package.json').version")
           
           # Get Cargo.toml version
           CARGO_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name=="libpep") | .version')

@@ -56,7 +56,9 @@ jobs:
       - run: npm install -g npm@latest
       - run: cargo install wasm-pack
       - run: npm run build
+        working-directory: crates/libpep-wasm
       - run: npm publish --provenance --access public
+        working-directory: crates/libpep-wasm
 
   publish-pypi:
     runs-on: ubuntu-latest
