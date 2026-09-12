@@ -21,6 +21,7 @@ use crate::keys::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
     PyPseudonymSessionSecretKey,
 };
+use crate::macros::py_dispatch;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
@@ -46,408 +47,256 @@ use pyo3::types::PyAny;
 // Polymorphic Encryption/Decryption Functions
 // ============================================================================
 
-/// Polymorphic encrypt function - works with any encryptable type.
-///
-/// Supports:
-/// - Pseudonym + PseudonymSessionPublicKey
-/// - Attribute + AttributeSessionPublicKey
-/// - LongPseudonym + PseudonymSessionPublicKey
-/// - LongAttribute + AttributeSessionPublicKey
-/// - Record + SessionKeys
-/// - LongRecord + SessionKeys
-/// - PEPJSONValue + SessionKeys
-#[pyfunction]
-#[pyo3(name = "encrypt")]
-pub fn py_encrypt(data: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
-    let py = data.py();
-
-    // Try Pseudonym + PseudonymSessionPublicKey
-    if let (Ok(p), Ok(k)) = (
-        data.extract::<PyPseudonym>(),
-        key.extract::<PyPseudonymSessionPublicKey>(),
-    ) {
-        let mut rng = rand::rng();
-        let encrypted = encrypt(&p.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
-        return Ok(Py::new(py, PyEncryptedPseudonym(encrypted))?.into_any());
+py_dispatch!(
+    /// Polymorphic encrypt function - works with any encryptable type.
+    ///
+    /// Supports:
+    /// - Pseudonym + PseudonymSessionPublicKey
+    /// - Attribute + AttributeSessionPublicKey
+    /// - LongPseudonym + PseudonymSessionPublicKey
+    /// - LongAttribute + AttributeSessionPublicKey
+    /// - Record + SessionKeys
+    /// - LongRecord + SessionKeys
+    /// - PEPJSONValue + SessionKeys
+    #[pyfunction]
+    #[pyo3(name = "encrypt")]
+    fn py_encrypt(data, key) with py err "encrypt() requires (Pseudonym|Attribute|LongPseudonym|LongAttribute|Record|LongRecord|PEPJSONValue) and matching key type" {
+        (p in data: PyPseudonym, k in key: PyPseudonymSessionPublicKey) => {
+            let mut rng = rand::rng();
+            let encrypted = encrypt(&p.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
+            return Ok(Py::new(py, PyEncryptedPseudonym(encrypted))?.into_any());
+        }
+        (a in data: PyAttribute, k in key: PyAttributeSessionPublicKey) => {
+            let mut rng = rand::rng();
+            let encrypted = encrypt(&a.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
+            return Ok(Py::new(py, PyEncryptedAttribute(encrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (lp in data: PyLongPseudonym, k in key: PyPseudonymSessionPublicKey) => {
+            let mut rng = rand::rng();
+            let encrypted = encrypt(&lp.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
+            return Ok(Py::new(py, PyLongEncryptedPseudonym(encrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (la in data: PyLongAttribute, k in key: PyAttributeSessionPublicKey) => {
+            let mut rng = rand::rng();
+            let encrypted = encrypt(&la.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
+            return Ok(Py::new(py, PyLongEncryptedAttribute(encrypted))?.into_any());
+        }
+        (rec in data: PyRecord, k in key: PySessionKeys) => {
+            let mut rng = rand::rng();
+            let keys: SessionKeys = k.clone().into();
+            let encrypted = encrypt(&rec.0, &keys, &mut rng);
+            return Ok(Py::new(py, PyEncryptedRecord(encrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (lrec in data: PyLongRecord, k in key: PySessionKeys) => {
+            let mut rng = rand::rng();
+            let keys: SessionKeys = k.clone().into();
+            let encrypted = encrypt(&lrec.0, &keys, &mut rng);
+            return Ok(Py::new(py, PyLongEncryptedRecord(encrypted))?.into_any());
+        }
+        #[cfg(feature = "json")]
+        (json in data: PyPEPJSONValue, k in key: PySessionKeys) => {
+            let mut rng = rand::rng();
+            let keys: SessionKeys = k.clone().into();
+            let encrypted = encrypt(&json.0, &keys, &mut rng);
+            return Ok(Py::new(py, PyEncryptedPEPJSONValue(encrypted))?.into_any());
+        }
     }
+);
 
-    // Try Attribute + AttributeSessionPublicKey
-    if let (Ok(a), Ok(k)) = (
-        data.extract::<PyAttribute>(),
-        key.extract::<PyAttributeSessionPublicKey>(),
-    ) {
-        let mut rng = rand::rng();
-        let encrypted = encrypt(&a.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
-        return Ok(Py::new(py, PyEncryptedAttribute(encrypted))?.into_any());
+py_dispatch!(
+    /// Polymorphic decrypt function - works with any encrypted type.
+    #[cfg(feature = "elgamal3")]
+    #[pyfunction]
+    #[pyo3(name = "decrypt")]
+    #[allow(clippy::expect_used)]
+    fn py_decrypt(encrypted, key) with py err "decrypt() requires encrypted type and matching key type" {
+        (ep in encrypted: PyEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
+            return decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0))
+                .map(|p| {
+                    Py::new(py, PyPseudonym(p))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
+        }
+        (ea in encrypted: PyEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
+            return decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0))
+                .map(|a| {
+                    Py::new(py, PyAttribute(a))
+                        .expect("PyO3 allocation failed")
+                        .into_any()
+                })
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
+        }
+        #[cfg(feature = "long")]
+        (lep in encrypted: PyLongEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
+            return decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0))
+                .map(|p| Py::new(py, PyLongPseudonym(p)).map(|p| p.into_any()))
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
+        }
+        #[cfg(feature = "long")]
+        (lea in encrypted: PyLongEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
+            return decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0))
+                .map(|a| Py::new(py, PyLongAttribute(a)).map(|a| a.into_any()))
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
+        }
+        (er in encrypted: PyEncryptedRecord, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            return decrypt(&er.0, &keys)
+                .map(|r| Py::new(py, PyRecord(r)).map(|p| p.into_any()))
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
+        }
+        #[cfg(feature = "long")]
+        (ler in encrypted: PyLongEncryptedRecord, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            return decrypt(&ler.0, &keys)
+                .map(|r| Py::new(py, PyLongRecord(r)).map(|p| p.into_any()))
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
+        }
+        #[cfg(feature = "json")]
+        (ej in encrypted: PyEncryptedPEPJSONValue, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            return decrypt(&ej.0, &keys)
+                .map(|j| Py::new(py, PyPEPJSONValue(j)).map(|p| p.into_any()))
+                .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
+        }
     }
+);
 
-    // Try LongPseudonym + PseudonymSessionPublicKey
-    #[cfg(feature = "long")]
-    if let (Ok(lp), Ok(k)) = (
-        data.extract::<PyLongPseudonym>(),
-        key.extract::<PyPseudonymSessionPublicKey>(),
-    ) {
-        let mut rng = rand::rng();
-        let encrypted = encrypt(&lp.0, &PseudonymSessionPublicKey::from(*k.0), &mut rng);
-        return Ok(Py::new(py, PyLongEncryptedPseudonym(encrypted))?.into_any());
+py_dispatch!(
+    /// Polymorphic decrypt function - works with any encrypted type.
+    #[cfg(not(feature = "elgamal3"))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt")]
+    fn py_decrypt(encrypted, key) with py err "decrypt() requires encrypted type and matching key type" {
+        (ep in encrypted: PyEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
+            let decrypted = decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0));
+            return Ok(Py::new(py, PyPseudonym(decrypted))?.into_any());
+        }
+        (ea in encrypted: PyEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
+            let decrypted = decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0));
+            return Ok(Py::new(py, PyAttribute(decrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (lep in encrypted: PyLongEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
+            let decrypted = decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0));
+            return Ok(Py::new(py, PyLongPseudonym(decrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (lea in encrypted: PyLongEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
+            let decrypted = decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0));
+            return Ok(Py::new(py, PyLongAttribute(decrypted))?.into_any());
+        }
+        (er in encrypted: PyEncryptedRecord, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            let decrypted = decrypt(&er.0, &keys);
+            return Ok(Py::new(py, PyRecord(decrypted))?.into_any());
+        }
+        #[cfg(feature = "long")]
+        (ler in encrypted: PyLongEncryptedRecord, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            let decrypted = decrypt(&ler.0, &keys);
+            return Ok(Py::new(py, PyLongRecord(decrypted))?.into_any());
+        }
+        #[cfg(feature = "json")]
+        (ej in encrypted: PyEncryptedPEPJSONValue, k in key: PySessionKeys) => {
+            let keys: SessionKeys = k.clone().into();
+            let decrypted = decrypt(&ej.0, &keys);
+            return Ok(Py::new(py, PyPEPJSONValue(decrypted))?.into_any());
+        }
     }
-
-    // Try LongAttribute + AttributeSessionPublicKey
-    #[cfg(feature = "long")]
-    if let (Ok(la), Ok(k)) = (
-        data.extract::<PyLongAttribute>(),
-        key.extract::<PyAttributeSessionPublicKey>(),
-    ) {
-        let mut rng = rand::rng();
-        let encrypted = encrypt(&la.0, &AttributeSessionPublicKey::from(*k.0), &mut rng);
-        return Ok(Py::new(py, PyLongEncryptedAttribute(encrypted))?.into_any());
-    }
-
-    // Try Record + SessionKeys
-    if let (Ok(rec), Ok(k)) = (data.extract::<PyRecord>(), key.extract::<PySessionKeys>()) {
-        let mut rng = rand::rng();
-        let keys: SessionKeys = k.clone().into();
-        let encrypted = encrypt(&rec.0, &keys, &mut rng);
-        return Ok(Py::new(py, PyEncryptedRecord(encrypted))?.into_any());
-    }
-
-    // Try LongRecord + SessionKeys
-    #[cfg(feature = "long")]
-    if let (Ok(lrec), Ok(k)) = (
-        data.extract::<PyLongRecord>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let mut rng = rand::rng();
-        let keys: SessionKeys = k.clone().into();
-        let encrypted = encrypt(&lrec.0, &keys, &mut rng);
-        return Ok(Py::new(py, PyLongEncryptedRecord(encrypted))?.into_any());
-    }
-
-    // Try PEPJSONValue + SessionKeys
-    #[cfg(feature = "json")]
-    if let (Ok(json), Ok(k)) = (
-        data.extract::<PyPEPJSONValue>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let mut rng = rand::rng();
-        let keys: SessionKeys = k.clone().into();
-        let encrypted = encrypt(&json.0, &keys, &mut rng);
-        return Ok(Py::new(py, PyEncryptedPEPJSONValue(encrypted))?.into_any());
-    }
-
-    Err(PyTypeError::new_err(
-        "encrypt() requires (Pseudonym|Attribute|LongPseudonym|LongAttribute|Record|LongRecord|PEPJSONValue) and matching key type"
-    ))
-}
-
-/// Polymorphic decrypt function - works with any encrypted type.
-#[cfg(feature = "elgamal3")]
-#[pyfunction]
-#[pyo3(name = "decrypt")]
-#[allow(clippy::expect_used)]
-pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try EncryptedPseudonym + PseudonymSessionSecretKey
-    if let (Ok(ep), Ok(k)) = (
-        encrypted.extract::<PyEncryptedPseudonym>(),
-        key.extract::<PyPseudonymSessionSecretKey>(),
-    ) {
-        return decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0))
-            .map(|p| {
-                Py::new(py, PyPseudonym(p))
-                    .expect("PyO3 allocation failed")
-                    .into_any()
-            })
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
-    }
-
-    // Try EncryptedAttribute + AttributeSessionSecretKey
-    if let (Ok(ea), Ok(k)) = (
-        encrypted.extract::<PyEncryptedAttribute>(),
-        key.extract::<PyAttributeSessionSecretKey>(),
-    ) {
-        return decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0))
-            .map(|a| {
-                Py::new(py, PyAttribute(a))
-                    .expect("PyO3 allocation failed")
-                    .into_any()
-            })
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
-    }
-
-    // Try LongEncryptedPseudonym + PseudonymSessionSecretKey
-    #[cfg(feature = "long")]
-    if let (Ok(lep), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedPseudonym>(),
-        key.extract::<PyPseudonymSessionSecretKey>(),
-    ) {
-        return decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0))
-            .map(|p| Py::new(py, PyLongPseudonym(p)).map(|p| p.into_any()))
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
-    }
-
-    // Try LongEncryptedAttribute + AttributeSessionSecretKey
-    #[cfg(feature = "long")]
-    if let (Ok(lea), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedAttribute>(),
-        key.extract::<PyAttributeSessionSecretKey>(),
-    ) {
-        return decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0))
-            .map(|a| Py::new(py, PyLongAttribute(a)).map(|a| a.into_any()))
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
-    }
-
-    // Try EncryptedRecord + SessionKeys
-    if let (Ok(er), Ok(k)) = (
-        encrypted.extract::<PyEncryptedRecord>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        return decrypt(&er.0, &keys)
-            .map(|r| Py::new(py, PyRecord(r)).map(|p| p.into_any()))
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
-    }
-
-    // Try LongEncryptedRecord + SessionKeys
-    #[cfg(feature = "long")]
-    if let (Ok(ler), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedRecord>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        return decrypt(&ler.0, &keys)
-            .map(|r| Py::new(py, PyLongRecord(r)).map(|p| p.into_any()))
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
-    }
-
-    // Try EncryptedPEPJSONValue + SessionKeys
-    #[cfg(feature = "json")]
-    if let (Ok(ej), Ok(k)) = (
-        encrypted.extract::<PyEncryptedPEPJSONValue>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        return decrypt(&ej.0, &keys)
-            .map(|j| Py::new(py, PyPEPJSONValue(j)).map(|p| p.into_any()))
-            .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
-    }
-
-    Err(PyTypeError::new_err(
-        "decrypt() requires encrypted type and matching key type",
-    ))
-}
-
-/// Polymorphic decrypt function - works with any encrypted type.
-#[cfg(not(feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "decrypt")]
-pub fn py_decrypt(encrypted: &Bound<PyAny>, key: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try EncryptedPseudonym + PseudonymSessionSecretKey
-    if let (Ok(ep), Ok(k)) = (
-        encrypted.extract::<PyEncryptedPseudonym>(),
-        key.extract::<PyPseudonymSessionSecretKey>(),
-    ) {
-        let decrypted = decrypt(&ep.0, &PseudonymSessionSecretKey::from(*k.0));
-        return Ok(Py::new(py, PyPseudonym(decrypted))?.into_any());
-    }
-
-    // Try EncryptedAttribute + AttributeSessionSecretKey
-    if let (Ok(ea), Ok(k)) = (
-        encrypted.extract::<PyEncryptedAttribute>(),
-        key.extract::<PyAttributeSessionSecretKey>(),
-    ) {
-        let decrypted = decrypt(&ea.0, &AttributeSessionSecretKey::from(*k.0));
-        return Ok(Py::new(py, PyAttribute(decrypted))?.into_any());
-    }
-
-    // Try LongEncryptedPseudonym + PseudonymSessionSecretKey
-    #[cfg(feature = "long")]
-    if let (Ok(lep), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedPseudonym>(),
-        key.extract::<PyPseudonymSessionSecretKey>(),
-    ) {
-        let decrypted = decrypt(&lep.0, &PseudonymSessionSecretKey::from(*k.0));
-        return Ok(Py::new(py, PyLongPseudonym(decrypted))?.into_any());
-    }
-
-    // Try LongEncryptedAttribute + AttributeSessionSecretKey
-    #[cfg(feature = "long")]
-    if let (Ok(lea), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedAttribute>(),
-        key.extract::<PyAttributeSessionSecretKey>(),
-    ) {
-        let decrypted = decrypt(&lea.0, &AttributeSessionSecretKey::from(*k.0));
-        return Ok(Py::new(py, PyLongAttribute(decrypted))?.into_any());
-    }
-
-    // Try EncryptedRecord + SessionKeys
-    if let (Ok(er), Ok(k)) = (
-        encrypted.extract::<PyEncryptedRecord>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        let decrypted = decrypt(&er.0, &keys);
-        return Ok(Py::new(py, PyRecord(decrypted))?.into_any());
-    }
-
-    // Try LongEncryptedRecord + SessionKeys
-    #[cfg(feature = "long")]
-    if let (Ok(ler), Ok(k)) = (
-        encrypted.extract::<PyLongEncryptedRecord>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        let decrypted = decrypt(&ler.0, &keys);
-        return Ok(Py::new(py, PyLongRecord(decrypted))?.into_any());
-    }
-
-    // Try EncryptedPEPJSONValue + SessionKeys
-    #[cfg(feature = "json")]
-    if let (Ok(ej), Ok(k)) = (
-        encrypted.extract::<PyEncryptedPEPJSONValue>(),
-        key.extract::<PySessionKeys>(),
-    ) {
-        let keys: SessionKeys = k.clone().into();
-        let decrypted = decrypt(&ej.0, &keys);
-        return Ok(Py::new(py, PyPEPJSONValue(decrypted))?.into_any());
-    }
-
-    Err(PyTypeError::new_err(
-        "decrypt() requires encrypted type and matching key type",
-    ))
-}
+);
 
 // ============================================================================
 // Offline Encryption Functions
 // ============================================================================
 
-/// Polymorphic encrypt_global function for offline encryption.
-/// Works with any encryptable type using global public keys.
-#[cfg(feature = "offline")]
-#[pyfunction]
-#[pyo3(name = "encrypt_global")]
-pub fn py_encrypt_global(message: &Bound<PyAny>, public_key: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
-    let py = message.py();
-    let mut rng = rand::rng();
-
-    // Try Pseudonym with PseudonymGlobalPublicKey
-    if let Ok(p) = message.extract::<PyPseudonym>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
+py_dispatch!(
+    /// Polymorphic encrypt_global function for offline encryption.
+    /// Works with any encryptable type using global public keys.
+    #[cfg(feature = "offline")]
+    #[pyfunction]
+    #[pyo3(name = "encrypt_global")]
+    fn py_encrypt_global(message, public_key) with py err "encrypt_global() requires (unencrypted_type, matching_global_public_key)" {
+        (p in message: PyPseudonym, pk in public_key: PyPseudonymGlobalPublicKey) => {
             let key = PseudonymGlobalPublicKey::from(*pk.0);
+            let mut rng = rand::rng();
             let result = encrypt_global(&p.0, &key, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
-    }
-
-    // Try Attribute with AttributeGlobalPublicKey
-    if let Ok(a) = message.extract::<PyAttribute>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
+        (a in message: PyAttribute, pk in public_key: PyAttributeGlobalPublicKey) => {
             let key = AttributeGlobalPublicKey::from(*pk.0);
+            let mut rng = rand::rng();
             let result = encrypt_global(&a.0, &key, &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
         }
-    }
-
-    // Try LongPseudonym with PseudonymGlobalPublicKey
-    #[cfg(feature = "long")]
-    if let Ok(lp) = message.extract::<PyLongPseudonym>() {
-        if let Ok(pk) = public_key.extract::<PyPseudonymGlobalPublicKey>() {
+        #[cfg(feature = "long")]
+        (lp in message: PyLongPseudonym, pk in public_key: PyPseudonymGlobalPublicKey) => {
             let key = PseudonymGlobalPublicKey::from(*pk.0);
+            let mut rng = rand::rng();
             let result = encrypt_global(&lp.0, &key, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
-    }
-
-    // Try LongAttribute with AttributeGlobalPublicKey
-    #[cfg(feature = "long")]
-    if let Ok(la) = message.extract::<PyLongAttribute>() {
-        if let Ok(pk) = public_key.extract::<PyAttributeGlobalPublicKey>() {
+        #[cfg(feature = "long")]
+        (la in message: PyLongAttribute, pk in public_key: PyAttributeGlobalPublicKey) => {
             let key = AttributeGlobalPublicKey::from(*pk.0);
+            let mut rng = rand::rng();
             let result = encrypt_global(&la.0, &key, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
-    }
-
-    // Try PEPJSONValue with GlobalPublicKeys
-    #[cfg(feature = "json")]
-    if let Ok(pk) = public_key.extract::<PyGlobalPublicKeys>() {
-        if let Ok(json) = message.extract::<PyPEPJSONValue>() {
+        #[cfg(feature = "json")]
+        (pk in public_key: PyGlobalPublicKeys, json in message: PyPEPJSONValue) => {
             let keys = GlobalPublicKeys::from(pk);
+            let mut rng = rand::rng();
             let result = encrypt_global(&json.0, &keys, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "encrypt_global() requires (unencrypted_type, matching_global_public_key)",
-    ))
-}
-
-/// Polymorphic decrypt_global function for offline decryption.
-/// Works with any encrypted type using global secret keys.
-/// Returns None if decryption fails (elgamal3 feature).
-#[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
-#[pyfunction]
-#[pyo3(name = "decrypt_global")]
-pub fn py_decrypt_global(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try EncryptedPseudonym with PseudonymGlobalSecretKey
-    if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+py_dispatch!(
+    /// Polymorphic decrypt_global function for offline decryption.
+    /// Works with any encrypted type using global secret keys.
+    /// Returns None if decryption fails (elgamal3 feature).
+    #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_global")]
+    fn py_decrypt_global(encrypted, secret_key) with py err "decrypt_global() requires (encrypted_type, matching_global_secret_key)" {
+        (ep in encrypted: PyEncryptedPseudonym, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&ep.0, &key) {
                 return Ok(Py::new(py, PyPseudonym(result))?.into_any());
             }
             return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
         }
-    }
-
-    // Try EncryptedAttribute with AttributeGlobalSecretKey
-    if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        (ea in encrypted: PyEncryptedAttribute, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&ea.0, &key) {
                 return Ok(Py::new(py, PyAttribute(result))?.into_any());
             }
             return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
         }
-    }
-
-    // Try LongEncryptedPseudonym with PseudonymGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (lep in encrypted: PyLongEncryptedPseudonym, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&lep.0, &key) {
                 return Ok(Py::new(py, PyLongPseudonym(result))?.into_any());
             }
             return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
         }
-    }
-
-    // Try LongEncryptedAttribute with AttributeGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (lea in encrypted: PyLongEncryptedAttribute, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             if let Some(result) = decrypt_global(&lea.0, &key) {
                 return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
             }
             return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
         }
-    }
-
-    // Try EncryptedPEPJSONValue with GlobalSecretKeys
-    #[cfg(feature = "json")]
-    if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+        #[cfg(feature = "json")]
+        (ej in encrypted: PyEncryptedPEPJSONValue, sk in secret_key: PyGlobalSecretKeys) => {
             let keys = GlobalSecretKeys {
                 pseudonym: PseudonymGlobalSecretKey::from(*sk.pseudonym.0),
                 attribute: AttributeGlobalSecretKey::from(*sk.attribute.0),
@@ -458,65 +307,39 @@ pub fn py_decrypt_global(
             return Err(pyo3::exceptions::PyValueError::new_err("Decryption failed"));
         }
     }
+);
 
-    Err(PyTypeError::new_err(
-        "decrypt_global() requires (encrypted_type, matching_global_secret_key)",
-    ))
-}
-
-/// Polymorphic decrypt_global function for offline decryption.
-/// Works with any encrypted type using global secret keys.
-#[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
-#[pyfunction]
-#[pyo3(name = "decrypt_global")]
-pub fn py_decrypt_global(
-    encrypted: &Bound<PyAny>,
-    secret_key: &Bound<PyAny>,
-) -> PyResult<Py<PyAny>> {
-    let py = encrypted.py();
-
-    // Try EncryptedPseudonym with PseudonymGlobalSecretKey
-    if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+py_dispatch!(
+    /// Polymorphic decrypt_global function for offline decryption.
+    /// Works with any encrypted type using global secret keys.
+    #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
+    #[pyfunction]
+    #[pyo3(name = "decrypt_global")]
+    fn py_decrypt_global(encrypted, secret_key) with py err "decrypt_global() requires (encrypted_type, matching_global_secret_key)" {
+        (ep in encrypted: PyEncryptedPseudonym, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&ep.0, &key);
             return Ok(Py::new(py, PyPseudonym(result))?.into_any());
         }
-    }
-
-    // Try EncryptedAttribute with AttributeGlobalSecretKey
-    if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        (ea in encrypted: PyEncryptedAttribute, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&ea.0, &key);
             return Ok(Py::new(py, PyAttribute(result))?.into_any());
         }
-    }
-
-    // Try LongEncryptedPseudonym with PseudonymGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-        if let Ok(sk) = secret_key.extract::<PyPseudonymGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (lep in encrypted: PyLongEncryptedPseudonym, sk in secret_key: PyPseudonymGlobalSecretKey) => {
             let key = PseudonymGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&lep.0, &key);
             return Ok(Py::new(py, PyLongPseudonym(result))?.into_any());
         }
-    }
-
-    // Try LongEncryptedAttribute with AttributeGlobalSecretKey
-    #[cfg(feature = "long")]
-    if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
-        if let Ok(sk) = secret_key.extract::<PyAttributeGlobalSecretKey>() {
+        #[cfg(feature = "long")]
+        (lea in encrypted: PyLongEncryptedAttribute, sk in secret_key: PyAttributeGlobalSecretKey) => {
             let key = AttributeGlobalSecretKey::from(*sk.0);
             let result = decrypt_global(&lea.0, &key);
             return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
         }
-    }
-
-    // Try EncryptedPEPJSONValue with GlobalSecretKeys
-    #[cfg(feature = "json")]
-    if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        if let Ok(sk) = secret_key.extract::<PyGlobalSecretKeys>() {
+        #[cfg(feature = "json")]
+        (ej in encrypted: PyEncryptedPEPJSONValue, sk in secret_key: PyGlobalSecretKeys) => {
             let keys = GlobalSecretKeys {
                 pseudonym: PseudonymGlobalSecretKey::from(*sk.pseudonym.0),
                 attribute: AttributeGlobalSecretKey::from(*sk.attribute.0),
@@ -525,11 +348,7 @@ pub fn py_decrypt_global(
             return Ok(Py::new(py, PyPEPJSONValue(result))?.into_any());
         }
     }
-
-    Err(PyTypeError::new_err(
-        "decrypt_global() requires (encrypted_type, matching_global_secret_key)",
-    ))
-}
+);
 
 // ============================================================================
 // Batch Functions

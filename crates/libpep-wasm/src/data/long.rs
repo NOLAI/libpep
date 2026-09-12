@@ -1,6 +1,7 @@
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+use crate::macros::{wasm_long_encrypted_impl, wasm_long_plaintext_impl};
 use derive_more::{Deref, From};
 use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
@@ -13,275 +14,36 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(js_name = LongPseudonym)]
 pub struct WASMLongPseudonym(pub(crate) LongPseudonym);
 
-#[wasm_bindgen(js_class = LongPseudonym)]
-impl WASMLongPseudonym {
-    /// Create from a vector of pseudonyms.
-    #[wasm_bindgen(constructor)]
-    pub fn new(pseudonyms: Vec<WASMPseudonym>) -> Self {
-        let rust_pseudonyms: Vec<Pseudonym> = pseudonyms.into_iter().map(|p| p.0).collect();
-        Self(LongPseudonym(rust_pseudonyms))
-    }
-
-    /// Encodes an arbitrary-length string into a `LongPseudonym` using PKCS#7 padding.
-    #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> WASMLongPseudonym {
-        Self(LongPseudonym::from_string_padded(text))
-    }
-
-    /// Encodes an arbitrary-length byte array into a `LongPseudonym` using PKCS#7 padding.
-    #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> WASMLongPseudonym {
-        Self(LongPseudonym::from_bytes_padded(data))
-    }
-
-    /// Decodes the `LongPseudonym` back to the original string.
-    #[wasm_bindgen(js_name = toStringPadded)]
-    pub fn to_string_padded(&self) -> Result<String, JsError> {
-        self.0
-            .to_string_padded()
-            .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
-    }
-
-    /// Decodes the `LongPseudonym` back to the original byte array.
-    #[wasm_bindgen(js_name = toBytesPadded)]
-    pub fn to_bytes_padded(&self) -> Result<Vec<u8>, JsError> {
-        self.0
-            .to_bytes_padded()
-            .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
-    }
-
-    /// Pads this LongPseudonym to a target number of blocks for batch unlinkability.
-    ///
-    /// In batch transcryption, all values must have identical structure to prevent
-    /// linkability attacks. This method adds external padding blocks to normalize
-    /// different-sized pseudonyms to the same structure.
-    ///
-    /// # Arguments
-    ///
-    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
-    ///
-    /// # Returns
-    ///
-    /// A new LongPseudonym padded to the target number of blocks
-    ///
-    /// # Errors
-    ///
-    /// Throws an error if the current number of blocks exceeds the target
-    #[wasm_bindgen(js_name = padTo)]
-    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongPseudonym, JsError> {
-        self.0
-            .pad_to(target_blocks)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
-    }
-
-    /// Get the underlying pseudonyms.
-    #[wasm_bindgen(getter)]
-    pub fn pseudonyms(&self) -> Vec<WASMPseudonym> {
-        self.0 .0.iter().map(|p| WASMPseudonym(*p)).collect()
-    }
-
-    /// Get the number of pseudonym blocks.
-    #[wasm_bindgen(getter)]
-    pub fn length(&self) -> usize {
-        self.0 .0.len()
-    }
-
-    /// Clone this object.
-    #[wasm_bindgen(js_name = clone)]
-    pub fn clone_js(&self) -> Self {
-        self.clone()
-    }
-}
+wasm_long_plaintext_impl!(WASMLongPseudonym wraps LongPseudonym of WASMPseudonym(Pseudonym) as LongPseudonym,
+    ctor(pseudonyms, doc = "Create from a vector of pseudonyms."),
+    items(pseudonyms, doc = "Get the underlying pseudonyms."));
 
 /// A collection of attributes that together represent a larger data value using PKCS#7 padding.
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 #[wasm_bindgen(js_name = LongAttribute)]
 pub struct WASMLongAttribute(pub(crate) LongAttribute);
 
-#[wasm_bindgen(js_class = LongAttribute)]
-impl WASMLongAttribute {
-    /// Create from a vector of attributes.
-    #[wasm_bindgen(constructor)]
-    pub fn new(attributes: Vec<WASMAttribute>) -> Self {
-        let rust_attributes: Vec<Attribute> = attributes.into_iter().map(|a| a.0).collect();
-        Self(LongAttribute(rust_attributes))
-    }
-
-    /// Encodes an arbitrary-length string into a `LongAttribute` using PKCS#7 padding.
-    #[wasm_bindgen(js_name = fromStringPadded)]
-    pub fn from_string_padded(text: &str) -> WASMLongAttribute {
-        Self(LongAttribute::from_string_padded(text))
-    }
-
-    /// Encodes an arbitrary-length byte array into a `LongAttribute` using PKCS#7 padding.
-    #[wasm_bindgen(js_name = fromBytesPadded)]
-    pub fn from_bytes_padded(data: &[u8]) -> WASMLongAttribute {
-        Self(LongAttribute::from_bytes_padded(data))
-    }
-
-    /// Decodes the `LongAttribute` back to the original string.
-    #[wasm_bindgen(js_name = toStringPadded)]
-    pub fn to_string_padded(&self) -> Result<String, JsError> {
-        self.0
-            .to_string_padded()
-            .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
-    }
-
-    /// Decodes the `LongAttribute` back to the original byte array.
-    #[wasm_bindgen(js_name = toBytesPadded)]
-    pub fn to_bytes_padded(&self) -> Result<Vec<u8>, JsError> {
-        self.0
-            .to_bytes_padded()
-            .map_err(|e| JsError::new(&format!("Decoding failed: {e}")))
-    }
-
-    /// Pads this LongAttribute to a target number of blocks for batch operations.
-    ///
-    /// This is useful for batch operations where all attributes must have the same structure.
-    /// The padding blocks are automatically detected and skipped during decoding.
-    ///
-    /// # Arguments
-    ///
-    /// * `targetBlocks` - The desired number of blocks (must be >= current block count)
-    ///
-    /// # Returns
-    ///
-    /// A new LongAttribute padded to the target number of blocks
-    ///
-    /// # Errors
-    ///
-    /// Throws an error if the current number of blocks exceeds the target
-    #[wasm_bindgen(js_name = padTo)]
-    pub fn pad_to(&self, target_blocks: usize) -> Result<WASMLongAttribute, JsError> {
-        self.0
-            .pad_to(target_blocks)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Padding failed: {e}")))
-    }
-
-    /// Get the underlying attributes.
-    #[wasm_bindgen(getter)]
-    pub fn attributes(&self) -> Vec<WASMAttribute> {
-        self.0 .0.iter().map(|a| WASMAttribute(*a)).collect()
-    }
-
-    /// Get the number of attribute blocks.
-    #[wasm_bindgen(getter)]
-    pub fn length(&self) -> usize {
-        self.0 .0.len()
-    }
-
-    /// Clone this object.
-    #[wasm_bindgen(js_name = clone)]
-    pub fn clone_js(&self) -> Self {
-        self.clone()
-    }
-}
+wasm_long_plaintext_impl!(WASMLongAttribute wraps LongAttribute of WASMAttribute(Attribute) as LongAttribute,
+    ctor(attributes, doc = "Create from a vector of attributes."),
+    items(attributes, doc = "Get the underlying attributes."));
 
 /// A collection of encrypted pseudonyms that can be serialized as a pipe-delimited string.
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 #[wasm_bindgen(js_name = LongEncryptedPseudonym)]
 pub struct WASMLongEncryptedPseudonym(pub(crate) LongEncryptedPseudonym);
 
-#[wasm_bindgen(js_class = LongEncryptedPseudonym)]
-impl WASMLongEncryptedPseudonym {
-    /// Create from a vector of encrypted pseudonyms.
-    #[wasm_bindgen(constructor)]
-    pub fn new(encrypted_pseudonyms: Vec<WASMEncryptedPseudonym>) -> Self {
-        let rust_enc_pseudonyms: Vec<EncryptedPseudonym> =
-            encrypted_pseudonyms.into_iter().map(|p| p.0).collect();
-        Self(LongEncryptedPseudonym(rust_enc_pseudonyms))
-    }
-
-    /// Serializes to a pipe-delimited base64 string.
-    #[wasm_bindgen]
-    pub fn serialize(&self) -> String {
-        self.0.serialize()
-    }
-
-    /// Deserializes from a pipe-delimited base64 string.
-    #[wasm_bindgen]
-    pub fn deserialize(s: &str) -> Result<WASMLongEncryptedPseudonym, JsError> {
-        LongEncryptedPseudonym::deserialize(s)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Deserialization failed: {e}")))
-    }
-
-    /// Get the underlying encrypted pseudonyms.
-    #[wasm_bindgen(getter, js_name = encryptedPseudonyms)]
-    pub fn encrypted_pseudonyms(&self) -> Vec<WASMEncryptedPseudonym> {
-        self.0
-             .0
-            .iter()
-            .map(|p| WASMEncryptedPseudonym(*p))
-            .collect()
-    }
-
-    /// Get the number of encrypted pseudonym blocks.
-    #[wasm_bindgen(getter)]
-    pub fn length(&self) -> usize {
-        self.0 .0.len()
-    }
-
-    /// Clone this object.
-    #[wasm_bindgen(js_name = clone)]
-    pub fn clone_js(&self) -> Self {
-        self.clone()
-    }
-}
+wasm_long_encrypted_impl!(WASMLongEncryptedPseudonym wraps LongEncryptedPseudonym of WASMEncryptedPseudonym(EncryptedPseudonym) as LongEncryptedPseudonym,
+    ctor(encrypted_pseudonyms, doc = "Create from a vector of encrypted pseudonyms."),
+    items(encrypted_pseudonyms as encryptedPseudonyms, doc = "Get the underlying encrypted pseudonyms."));
 
 /// A collection of encrypted attributes that can be serialized as a pipe-delimited string.
 #[derive(Clone, Eq, PartialEq, Debug, From, Deref)]
 #[wasm_bindgen(js_name = LongEncryptedAttribute)]
 pub struct WASMLongEncryptedAttribute(pub(crate) LongEncryptedAttribute);
 
-#[wasm_bindgen(js_class = LongEncryptedAttribute)]
-impl WASMLongEncryptedAttribute {
-    /// Create from a vector of encrypted attributes.
-    #[wasm_bindgen(constructor)]
-    pub fn new(encrypted_attributes: Vec<WASMEncryptedAttribute>) -> Self {
-        let rust_enc_attributes: Vec<EncryptedAttribute> =
-            encrypted_attributes.into_iter().map(|a| a.0).collect();
-        Self(LongEncryptedAttribute(rust_enc_attributes))
-    }
-
-    /// Serializes to a pipe-delimited base64 string.
-    #[wasm_bindgen]
-    pub fn serialize(&self) -> String {
-        self.0.serialize()
-    }
-
-    /// Deserializes from a pipe-delimited base64 string.
-    #[wasm_bindgen]
-    pub fn deserialize(s: &str) -> Result<WASMLongEncryptedAttribute, JsError> {
-        LongEncryptedAttribute::deserialize(s)
-            .map(Self)
-            .map_err(|e| JsError::new(&format!("Deserialization failed: {e}")))
-    }
-
-    /// Get the underlying encrypted attributes.
-    #[wasm_bindgen(getter, js_name = encryptedAttributes)]
-    pub fn encrypted_attributes(&self) -> Vec<WASMEncryptedAttribute> {
-        self.0
-             .0
-            .iter()
-            .map(|a| WASMEncryptedAttribute(*a))
-            .collect()
-    }
-
-    /// Get the number of encrypted attribute blocks.
-    #[wasm_bindgen(getter)]
-    pub fn length(&self) -> usize {
-        self.0 .0.len()
-    }
-
-    /// Clone this object.
-    #[wasm_bindgen(js_name = clone)]
-    pub fn clone_js(&self) -> Self {
-        self.clone()
-    }
-}
+wasm_long_encrypted_impl!(WASMLongEncryptedAttribute wraps LongEncryptedAttribute of WASMEncryptedAttribute(EncryptedAttribute) as LongEncryptedAttribute,
+    ctor(encrypted_attributes, doc = "Create from a vector of encrypted attributes."),
+    items(encrypted_attributes as encryptedAttributes, doc = "Get the underlying encrypted attributes."));
 
 #[cfg(feature = "batch")]
 use crate::factors::contexts::WASMTranscryptionInfo;
