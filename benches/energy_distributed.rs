@@ -60,7 +60,7 @@ fn main() {
                     num_attributes_per_entity,
                 };
 
-                bench.benchmark(metadata, &|| {
+                bench.benchmark(metadata, || {
                     process_entities_individually(
                         &entities, &systems, &domain_a, &domain_b, &session_a, &session_b,
                     );
@@ -93,7 +93,7 @@ fn main() {
                     num_attributes_per_entity,
                 };
 
-                bench.benchmark(metadata, &|| {
+                bench.benchmark(metadata, || {
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
