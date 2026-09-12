@@ -3,30 +3,83 @@
 //! This module provides blinding factors used to blind global secret keys during system setup,
 //! making it impossible to derive keys without cooperation of the transcryptors.
 
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use crate::keys::*;
-use derive_more::{Deref, From};
+use derive_more::From;
 use rand_core::{CryptoRng, Rng};
 
 /// A blinding factor used to blind a global secret key during system setup.
-#[derive(Copy, Clone, Debug, From, Deref)]
+#[derive(Copy, Clone, Debug, From)]
 pub struct BlindingFactor(pub(crate) ScalarNonZero);
+
+impl BlindingFactor {
+    /// The scalar value of this blinding factor.
+    pub fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+
+    /// Encode as a byte array.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
+    }
+
+    /// Encode as a hexadecimal string.
+    pub fn to_hex(&self) -> String {
+        self.0.to_hex()
+    }
+}
 
 /// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedPseudonymGlobalSecretKey(pub(crate) ScalarNonZero);
 
+impl crate::keys::SecretKey for BlindedPseudonymGlobalSecretKey {
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+
+impl BlindedPseudonymGlobalSecretKey {
+    /// Encode as a byte array.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
+    }
+
+    /// Encode as a hexadecimal string.
+    pub fn to_hex(&self) -> String {
+        self.0.to_hex()
+    }
+}
+
 /// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug, From, Deref)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BlindedAttributeGlobalSecretKey(pub(crate) ScalarNonZero);
+
+impl crate::keys::SecretKey for BlindedAttributeGlobalSecretKey {
+    fn value(&self) -> &ScalarNonZero {
+        &self.0
+    }
+}
+
+impl BlindedAttributeGlobalSecretKey {
+    /// Encode as a byte array.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
+    }
+
+    /// Encode as a hexadecimal string.
+    pub fn to_hex(&self) -> String {
+        self.0.to_hex()
+    }
+}
 
 /// A pair of blinded global secret keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]

@@ -5,6 +5,7 @@ resolver = "2"
 [workspace.package]
 version = "0.14.0"
 edition = "2021"
+rust-version = "1.85"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 license = "Apache-2.0"
 repository = "https://github.com/NOLAI/libpep"
@@ -16,6 +17,7 @@ libpep = { version = "0.14.0", path = ".", default-features = false }
 name = "libpep"
 edition.workspace = true
 version.workspace = true
+rust-version.workspace = true
 authors.workspace = true
 homepage = "https://github.com/NOLAI/libpep"
 repository.workspace = true
@@ -38,7 +40,7 @@ json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption supp
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
-build-binary = ["buildinfy","commandy","commandy_macros","rand"] # Build the peppy command line utility
+build-binary = ["buildinfy","commandy","commandy_macros","rand","long","offline"] # Build the peppy command line utility (requires long and offline)
 
 [lints]
 workspace = true

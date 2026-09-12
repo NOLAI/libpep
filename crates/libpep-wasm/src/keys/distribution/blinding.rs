@@ -1,7 +1,7 @@
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
+use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use wasm_bindgen::prelude::*;
@@ -55,66 +55,14 @@ impl WASMBlindingFactor {
 #[wasm_bindgen(js_name = BlindedPseudonymGlobalSecretKey)]
 pub struct WASMBlindedPseudonymGlobalSecretKey(pub(crate) BlindedPseudonymGlobalSecretKey);
 
-#[wasm_bindgen(js_class = "BlindedPseudonymGlobalSecretKey")]
-impl WASMBlindedPseudonymGlobalSecretKey {
-    #[wasm_bindgen(constructor)]
-    pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey::from(x.0))
-    }
-
-    #[wasm_bindgen(js_name = toBytes)]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.to_bytes().to_vec()
-    }
-
-    #[wasm_bindgen(js_name = fromBytes)]
-    pub fn from_bytes(bytes: Vec<u8>) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
-        BlindedPseudonymGlobalSecretKey::from_slice(&bytes).map(WASMBlindedPseudonymGlobalSecretKey)
-    }
-
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(self) -> String {
-        self.0.to_hex()
-    }
-
-    #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Option<WASMBlindedPseudonymGlobalSecretKey> {
-        BlindedPseudonymGlobalSecretKey::from_hex(hex).map(WASMBlindedPseudonymGlobalSecretKey)
-    }
-}
+wasm_scalar_key_impl!(WASMBlindedPseudonymGlobalSecretKey wraps BlindedPseudonymGlobalSecretKey as "BlindedPseudonymGlobalSecretKey");
 
 /// A blinded attribute global secret key.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = BlindedAttributeGlobalSecretKey)]
 pub struct WASMBlindedAttributeGlobalSecretKey(pub(crate) BlindedAttributeGlobalSecretKey);
 
-#[wasm_bindgen(js_class = "BlindedAttributeGlobalSecretKey")]
-impl WASMBlindedAttributeGlobalSecretKey {
-    #[wasm_bindgen(constructor)]
-    pub fn new(x: WASMScalarNonZero) -> Self {
-        WASMBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey::from(x.0))
-    }
-
-    #[wasm_bindgen(js_name = toBytes)]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.to_bytes().to_vec()
-    }
-
-    #[wasm_bindgen(js_name = fromBytes)]
-    pub fn from_bytes(bytes: Vec<u8>) -> Option<WASMBlindedAttributeGlobalSecretKey> {
-        BlindedAttributeGlobalSecretKey::from_slice(&bytes).map(WASMBlindedAttributeGlobalSecretKey)
-    }
-
-    #[wasm_bindgen(js_name = toHex)]
-    pub fn to_hex(self) -> String {
-        self.0.to_hex()
-    }
-
-    #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Option<WASMBlindedAttributeGlobalSecretKey> {
-        BlindedAttributeGlobalSecretKey::from_hex(hex).map(WASMBlindedAttributeGlobalSecretKey)
-    }
-}
+wasm_scalar_key_impl!(WASMBlindedAttributeGlobalSecretKey wraps BlindedAttributeGlobalSecretKey as "BlindedAttributeGlobalSecretKey");
 
 /// A pair of blinded global secret keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
@@ -154,7 +102,7 @@ pub fn wasm_make_blinded_global_keys(
 ) -> Option<WASMBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     make_blinded_global_keys(
         &PseudonymGlobalSecretKey::from(*pseudonym_global_secret_key.0),

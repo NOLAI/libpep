@@ -1,10 +1,10 @@
 //! Cryptographic factor types for rerandomization, reshuffling, and rekeying operations.
 
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::EncryptionContext;
 use derive_more::From;
 
-/// High-level type for the factor used to [`rerandomize`](crate::core::primitives::rerandomize) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
+/// High-level type for the factor used to [`rerandomize`](crate::elgamal::primitives::rerandomize) an [ElGamal](crate::elgamal::ElGamal) ciphertext.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct RerandomizeFactor(pub(crate) ScalarNonZero);
 
@@ -15,19 +15,26 @@ impl RerandomizeFactor {
     }
 }
 
-/// High-level type for the factor used to [`reshuffle`](crate::core::primitives::reshuffle) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext.
+/// High-level type for the factor used to [`reshuffle`](crate::elgamal::primitives::reshuffle) an [ElGamal](crate::elgamal::ElGamal) ciphertext.
 ///
 /// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
 /// the factors of two domains (or their ratio) can link pseudonyms between those domains.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct ReshuffleFactor(pub ScalarNonZero);
+pub struct ReshuffleFactor(pub(crate) ScalarNonZero);
+
+impl ReshuffleFactor {
+    /// The scalar value of this factor.
+    pub fn scalar(&self) -> ScalarNonZero {
+        self.0
+    }
+}
 
 /// Trait for rekey factors that can be extracted to a scalar.
 pub trait RekeyFactor {
     fn scalar(&self) -> ScalarNonZero;
 }
 
-/// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
+/// High-level type for the factor used to [`rekey`](crate::elgamal::primitives::rekey) an [ElGamal](crate::elgamal::ElGamal) ciphertext for pseudonyms.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct PseudonymRekeyFactor(pub(crate) ScalarNonZero);
 
@@ -37,7 +44,7 @@ impl RekeyFactor for PseudonymRekeyFactor {
     }
 }
 
-/// High-level type for the factor used to [`rekey`](crate::core::primitives::rekey) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for attributes.
+/// High-level type for the factor used to [`rekey`](crate::elgamal::primitives::rekey) an [ElGamal](crate::elgamal::ElGamal) ciphertext for attributes.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 pub struct AttributeRekeyFactor(pub(crate) ScalarNonZero);
 
@@ -47,7 +54,7 @@ impl RekeyFactor for AttributeRekeyFactor {
     }
 }
 
-/// High-level type for the factors used to [`rsk`](crate::core::primitives::rsk) an [ElGamal](crate::core::elgamal::ElGamal) ciphertext for pseudonyms.
+/// High-level type for the factors used to [`rsk`](crate::elgamal::primitives::rsk) an [ElGamal](crate::elgamal::ElGamal) ciphertext for pseudonyms.
 /// Contains both the reshuffle factor (`s`) and the rekey factor (`k`).
 #[derive(Eq, PartialEq, Clone, Copy, Debug, From)]
 pub struct PseudonymRSKFactors {
@@ -59,17 +66,17 @@ pub struct PseudonymRSKFactors {
 
 /// The information required to perform n-PEP pseudonymization from one domain and session to another.
 /// The pseudonymization info consists of a reshuffle and rekey factor.
-/// For efficiency, we do not actually use the [`rsk2`](crate::core::primitives::rsk2) operation, but instead use the regular [`rsk`](crate::core::primitives::rsk) operation
+/// For efficiency, we do not actually use the [`rsk2`](crate::elgamal::primitives::rsk2) operation, but instead use the regular [`rsk`](crate::elgamal::primitives::rsk) operation
 /// with precomputed reshuffle and rekey factors, which is equivalent but more efficient.
 pub type PseudonymizationInfo = PseudonymRSKFactors;
 
 /// The information required to perform n-PEP rekeying of pseudonyms from one session to another.
-/// For efficiency, we do not actually use the [`rekey2`](crate::core::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::core::primitives::rekey) operation
+/// For efficiency, we do not actually use the [`rekey2`](crate::elgamal::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::elgamal::primitives::rekey) operation
 /// with a precomputed rekey factor, which is equivalent but more efficient.
 pub type PseudonymRekeyInfo = PseudonymRekeyFactor;
 
 /// The information required to perform n-PEP rekeying of attributes from one session to another.
-/// For efficiency, we do not actually use the [`rekey2`](crate::core::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::core::primitives::rekey) operation
+/// For efficiency, we do not actually use the [`rekey2`](crate::elgamal::primitives::rekey2) operation, but instead use the regular [`rekey`](crate::elgamal::primitives::rekey) operation
 /// with a precomputed rekey factor, which is equivalent but more efficient.
 pub type AttributeRekeyInfo = AttributeRekeyFactor;
 

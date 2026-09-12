@@ -1,7 +1,10 @@
-use crate::arithmetic::group_elements::WASMGroupElement;
-use crate::arithmetic::scalars::WASMScalarNonZero;
+pub mod arithmetic;
+pub mod primitives;
+
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::core::elgamal::{decrypt, encrypt, ElGamal};
+use libpep::elgamal::{decrypt, encrypt, ElGamal};
 use wasm_bindgen::prelude::*;
 
 /// An ElGamal ciphertext.

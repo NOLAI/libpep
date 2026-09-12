@@ -1,6 +1,6 @@
 //! WASM bindings for cryptographic factor types.
 
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::factors::RekeyFactor;
@@ -38,7 +38,7 @@ impl WASMReshuffleFactor {
 
     #[wasm_bindgen(js_name = scalar)]
     pub fn wasm_scalar(&self) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0 .0)
+        WASMScalarNonZero(self.0.scalar())
     }
 }
 

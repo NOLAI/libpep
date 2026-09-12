@@ -3,7 +3,7 @@
 #[cfg(any(feature = "insecure", feature = "offline"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{BatchEncryptable, Encrypted};
-use crate::transcryptor::batch::BatchError;
+use crate::errors::BatchError;
 use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic batch encryption.

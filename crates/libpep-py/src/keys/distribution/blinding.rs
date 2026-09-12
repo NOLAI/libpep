@@ -1,11 +1,12 @@
-use crate::arithmetic::scalars::PyScalarNonZero;
+use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::types::{
     PyAttributeGlobalSecretKey, PyGlobalSecretKeys, PyPseudonymGlobalSecretKey,
 };
+use crate::macros::py_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::scalars::ScalarTraits;
 use libpep::keys::distribution::*;
 use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -67,7 +68,7 @@ impl PyBlindingFactor {
     }
 
     fn __eq__(&self, other: &PyBlindingFactor) -> bool {
-        *self.0 == *other.0
+        self.0.value() == other.0.value()
     }
 }
 
@@ -76,94 +77,14 @@ impl PyBlindingFactor {
 #[pyclass(name = "BlindedPseudonymGlobalSecretKey", from_py_object)]
 pub struct PyBlindedPseudonymGlobalSecretKey(pub(crate) BlindedPseudonymGlobalSecretKey);
 
-#[pymethods]
-impl PyBlindedPseudonymGlobalSecretKey {
-    #[new]
-    fn new(x: PyScalarNonZero) -> Self {
-        PyBlindedPseudonymGlobalSecretKey(BlindedPseudonymGlobalSecretKey::from(x.0))
-    }
-
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0.to_bytes()).into()
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<PyBlindedPseudonymGlobalSecretKey> {
-        BlindedPseudonymGlobalSecretKey::from_slice(bytes).map(PyBlindedPseudonymGlobalSecretKey)
-    }
-
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<PyBlindedPseudonymGlobalSecretKey> {
-        BlindedPseudonymGlobalSecretKey::from_hex(hex).map(PyBlindedPseudonymGlobalSecretKey)
-    }
-
-    fn __repr__(&self) -> String {
-        format!("BlindedPseudonymGlobalSecretKey::from({})", self.as_hex())
-    }
-
-    fn __str__(&self) -> String {
-        self.as_hex()
-    }
-
-    fn __eq__(&self, other: &PyBlindedPseudonymGlobalSecretKey) -> bool {
-        self.0 == other.0
-    }
-}
+py_scalar_key_impl!(PyBlindedPseudonymGlobalSecretKey wraps BlindedPseudonymGlobalSecretKey as "BlindedPseudonymGlobalSecretKey");
 
 /// A blinded attribute global secret key.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[pyclass(name = "BlindedAttributeGlobalSecretKey", from_py_object)]
 pub struct PyBlindedAttributeGlobalSecretKey(pub(crate) BlindedAttributeGlobalSecretKey);
 
-#[pymethods]
-impl PyBlindedAttributeGlobalSecretKey {
-    #[new]
-    fn new(x: PyScalarNonZero) -> Self {
-        PyBlindedAttributeGlobalSecretKey(BlindedAttributeGlobalSecretKey::from(x.0))
-    }
-
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0.to_bytes()).into()
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<PyBlindedAttributeGlobalSecretKey> {
-        BlindedAttributeGlobalSecretKey::from_slice(bytes).map(PyBlindedAttributeGlobalSecretKey)
-    }
-
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<PyBlindedAttributeGlobalSecretKey> {
-        BlindedAttributeGlobalSecretKey::from_hex(hex).map(PyBlindedAttributeGlobalSecretKey)
-    }
-
-    fn __repr__(&self) -> String {
-        format!("BlindedAttributeGlobalSecretKey::from({})", self.as_hex())
-    }
-
-    fn __str__(&self) -> String {
-        self.as_hex()
-    }
-
-    fn __eq__(&self, other: &PyBlindedAttributeGlobalSecretKey) -> bool {
-        self.0 == other.0
-    }
-}
+py_scalar_key_impl!(PyBlindedAttributeGlobalSecretKey wraps BlindedAttributeGlobalSecretKey as "BlindedAttributeGlobalSecretKey");
 
 /// A pair of blinded global secret keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into)]
@@ -210,7 +131,7 @@ pub fn py_make_blinded_pseudonym_global_secret_key(
 ) -> PyResult<PyBlindedPseudonymGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_pseudonym_global_secret_key(
         &PseudonymGlobalSecretKey::from(*global_secret_key.0),
@@ -229,7 +150,7 @@ pub fn py_make_blinded_attribute_global_secret_key(
 ) -> PyResult<PyBlindedAttributeGlobalSecretKey> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_attribute_global_secret_key(
         &AttributeGlobalSecretKey::from(*global_secret_key.0),
@@ -248,7 +169,7 @@ pub fn py_make_blinded_global_keys(
 ) -> PyResult<PyBlindedGlobalKeys> {
     let bs: Vec<BlindingFactor> = blinding_factors
         .into_iter()
-        .map(|x| BlindingFactor::from(*x.0))
+        .map(|x| BlindingFactor::from(*x.0.value()))
         .collect();
     let result = make_blinded_global_keys(
         &PseudonymGlobalSecretKey::from(*global_secret_keys.pseudonym.0),

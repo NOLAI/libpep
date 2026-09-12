@@ -1,6 +1,9 @@
-use crate::arithmetic::{PyGroupElement, PyScalarNonZero};
+pub mod arithmetic;
+pub mod primitives;
+
+use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
 use derive_more::{Deref, From, Into};
-use libpep::core::elgamal::{decrypt, encrypt, ElGamal};
+use libpep::elgamal::{decrypt, encrypt, ElGamal};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -75,9 +78,15 @@ pub fn decrypt_py(encrypted: &PyElGamal, y: &PyScalarNonZero) -> PyGroupElement 
     decrypt(&encrypted.0, &y.0).into()
 }
 
-pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyElGamal>()?;
     m.add_function(wrap_pyfunction!(encrypt_py, m)?)?;
     m.add_function(wrap_pyfunction!(decrypt_py, m)?)?;
+    crate::add_submodule(m, "libpep.elgamal.arithmetic", |sm| {
+        arithmetic::register_module(sm)
+    })?;
+    crate::add_submodule(m, "libpep.elgamal.primitives", |sm| {
+        primitives::register(sm)
+    })?;
     Ok(())
 }

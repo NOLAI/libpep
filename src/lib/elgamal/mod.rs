@@ -1,7 +1,16 @@
-//! ElGamal [encrypt]ion and [decrypt]ion.
+//! ElGamal [encrypt]ion and [decrypt]ion, the underlying group [arithmetic], and the low-level
+//! (n)-PEP [primitives] that operate on ElGamal ciphertexts.
+//!
+//! This module is intended for non-standard use cases where the individual (n)-PEP primitives
+//! are needed.
+//! For most use cases, the [high-level](crate::transcryptor) API should be used, which provides
+//! a more user-friendly and safer interface.
 
-use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::arithmetic::scalars::ScalarNonZero;
+pub mod arithmetic;
+pub mod primitives;
+
+use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, Rng};

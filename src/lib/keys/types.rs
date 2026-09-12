@@ -3,8 +3,8 @@
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
 
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use derive_more::{Deref, From};
 
 /// A pair of global public keys containing both pseudonym and attribute keys.
@@ -76,7 +76,7 @@ pub struct AttributeSessionKeys {
 pub struct PseudonymSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt pseudonyms with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
@@ -88,7 +88,7 @@ pub struct PseudonymSessionSecretKey(pub(crate) ScalarNonZero);
 pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 
 /// A session secret key used to decrypt attributes with.
-#[derive(Copy, Clone, Debug, Deref, From, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, From, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);

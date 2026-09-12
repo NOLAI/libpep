@@ -1,7 +1,8 @@
-use crate::arithmetic::group_elements::PyGroupElement;
-use crate::arithmetic::scalars::PyScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
+use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
-use libpep::arithmetic::group_elements::GroupElement;
+use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::types::*;
 use pyo3::prelude::*;
@@ -33,82 +34,14 @@ pub struct PyAttributeGlobalSecretKey(pub PyScalarNonZero);
 #[pyclass(name = "PseudonymSessionPublicKey", from_py_object)]
 pub struct PyPseudonymSessionPublicKey(pub PyGroupElement);
 
-#[pymethods]
-#[allow(clippy::wrong_self_convention)]
-impl PyPseudonymSessionPublicKey {
-    /// Returns the group element associated with this public key.
-    #[pyo3(name = "to_point")]
-    fn to_point(&self) -> PyGroupElement {
-        self.0
-    }
-
-    /// Encodes the public key as a byte array.
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0 .0.to_bytes()).into()
-    }
-
-    /// Decodes a public key from a byte array.
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(bytes).map(|x| Self(x.into()))
-    }
-
-    /// Encodes the public key as a hexadecimal string.
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    /// Decodes a public key from a hexadecimal string.
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<Self> {
-        GroupElement::from_hex(hex).map(|x| Self(x.into()))
-    }
-}
+py_session_pubkey_impl!(PyPseudonymSessionPublicKey);
 
 /// An attribute session public key used to encrypt attributes against.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[pyclass(name = "AttributeSessionPublicKey", from_py_object)]
 pub struct PyAttributeSessionPublicKey(pub PyGroupElement);
 
-#[pymethods]
-#[allow(clippy::wrong_self_convention)]
-impl PyAttributeSessionPublicKey {
-    /// Returns the group element associated with this public key.
-    #[pyo3(name = "to_point")]
-    fn to_point(&self) -> PyGroupElement {
-        self.0
-    }
-
-    /// Encodes the public key as a byte array.
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0 .0.to_bytes()).into()
-    }
-
-    /// Decodes a public key from a byte array.
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(bytes).map(|x| Self(x.into()))
-    }
-
-    /// Encodes the public key as a hexadecimal string.
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    /// Decodes a public key from a hexadecimal string.
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<Self> {
-        GroupElement::from_hex(hex).map(|x| Self(x.into()))
-    }
-}
+py_session_pubkey_impl!(PyAttributeSessionPublicKey);
 
 /// A pseudonym global public key from which pseudonym session keys are derived.
 /// Can also be used to encrypt pseudonyms against, if no session key is available or using a session
@@ -117,56 +50,7 @@ impl PyAttributeSessionPublicKey {
 #[pyclass(name = "PseudonymGlobalPublicKey", from_py_object)]
 pub struct PyPseudonymGlobalPublicKey(pub PyGroupElement);
 
-#[pymethods]
-#[allow(clippy::wrong_self_convention)]
-impl PyPseudonymGlobalPublicKey {
-    /// Creates a new pseudonym global public key from a group element.
-    #[new]
-    fn new(x: PyGroupElement) -> Self {
-        Self(x.0.into())
-    }
-
-    /// Returns the group element associated with this public key.
-    #[pyo3(name = "to_point")]
-    fn to_point(&self) -> PyGroupElement {
-        self.0
-    }
-
-    /// Encodes the public key as a byte array.
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0 .0.to_bytes()).into()
-    }
-
-    /// Decodes a public key from a byte array.
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(bytes).map(|x| Self(x.into()))
-    }
-
-    /// Encodes the public key as a hexadecimal string.
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    /// Decodes a public key from a hexadecimal string.
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<Self> {
-        let x = GroupElement::from_hex(hex)?;
-        Some(Self(x.into()))
-    }
-
-    fn __repr__(&self) -> String {
-        format!("PseudonymGlobalPublicKey::from({})", self.as_hex())
-    }
-
-    fn __str__(&self) -> String {
-        self.as_hex()
-    }
-}
+py_global_pubkey_impl!(PyPseudonymGlobalPublicKey as "PseudonymGlobalPublicKey");
 
 /// An attribute global public key from which attribute session keys are derived.
 /// Can also be used to encrypt attributes against, if no session key is available or using a session
@@ -175,56 +59,7 @@ impl PyPseudonymGlobalPublicKey {
 #[pyclass(name = "AttributeGlobalPublicKey", from_py_object)]
 pub struct PyAttributeGlobalPublicKey(pub PyGroupElement);
 
-#[pymethods]
-#[allow(clippy::wrong_self_convention)]
-impl PyAttributeGlobalPublicKey {
-    /// Creates a new attribute global public key from a group element.
-    #[new]
-    fn new(x: PyGroupElement) -> Self {
-        Self(x.0.into())
-    }
-
-    /// Returns the group element associated with this public key.
-    #[pyo3(name = "to_point")]
-    fn to_point(&self) -> PyGroupElement {
-        self.0
-    }
-
-    /// Encodes the public key as a byte array.
-    #[pyo3(name = "to_bytes")]
-    fn encode(&self, py: Python) -> Py<PyAny> {
-        PyBytes::new(py, &self.0 .0.to_bytes()).into()
-    }
-
-    /// Decodes a public key from a byte array.
-    #[staticmethod]
-    #[pyo3(name = "from_bytes")]
-    fn decode(bytes: &[u8]) -> Option<Self> {
-        GroupElement::from_slice(bytes).map(|x| Self(x.into()))
-    }
-
-    /// Encodes the public key as a hexadecimal string.
-    #[pyo3(name = "to_hex")]
-    fn as_hex(&self) -> String {
-        self.0.to_hex()
-    }
-
-    /// Decodes a public key from a hexadecimal string.
-    #[staticmethod]
-    #[pyo3(name = "from_hex")]
-    fn from_hex(hex: &str) -> Option<Self> {
-        let x = GroupElement::from_hex(hex)?;
-        Some(Self(x.into()))
-    }
-
-    fn __repr__(&self) -> String {
-        format!("AttributeGlobalPublicKey::from({})", self.as_hex())
-    }
-
-    fn __str__(&self) -> String {
-        self.as_hex()
-    }
-}
+py_global_pubkey_impl!(PyAttributeGlobalPublicKey as "AttributeGlobalPublicKey");
 
 /// A pair of global public keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]

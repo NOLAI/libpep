@@ -2,8 +2,8 @@
 
 use super::traits::SecretKey;
 use super::types::*;
-use crate::arithmetic::group_elements::{GroupElement, G};
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::contexts::EncryptionContext;
 use crate::factors::RekeyFactor;
 use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret};
@@ -172,8 +172,14 @@ mod tests {
         let session = make_session_keys(&global_sk, &context, &secret);
 
         // Verify session public keys match session secret keys
-        assert_eq!(*session.pseudonym.public, *session.pseudonym.secret * G);
-        assert_eq!(*session.attribute.public, *session.attribute.secret * G);
+        assert_eq!(
+            *session.pseudonym.public,
+            *session.pseudonym.secret.value() * G
+        );
+        assert_eq!(
+            *session.attribute.public,
+            *session.attribute.secret.value() * G
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! Python bindings for cryptographic factor types.
 
-use crate::arithmetic::PyScalarNonZero;
+use crate::elgamal::arithmetic::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::factors::RekeyFactor;
@@ -38,7 +38,7 @@ impl PyReshuffleFactor {
 
     #[pyo3(name = "scalar")]
     pub fn py_scalar(&self) -> PyScalarNonZero {
-        PyScalarNonZero(self.0 .0)
+        PyScalarNonZero(self.0.scalar())
     }
 }
 

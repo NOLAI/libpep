@@ -3,24 +3,32 @@
 use crate::keys::SessionKeys;
 
 /// Trait for session key share types that define their associated key types.
-pub trait SessionKeyShare:
-    std::ops::Deref<Target = crate::arithmetic::scalars::ScalarNonZero> + Sized
-{
-    type PublicKeyType: From<crate::arithmetic::group_elements::GroupElement>;
-    type SecretKeyType: std::ops::Deref<Target = crate::arithmetic::scalars::ScalarNonZero>
-        + From<crate::arithmetic::scalars::ScalarNonZero>;
-    type BlindedGlobalSecretKeyType: std::ops::Deref<
-        Target = crate::arithmetic::scalars::ScalarNonZero,
-    >;
+///
+/// Secret material is accessed through explicit [`value`](Self::value) calls rather than
+/// `Deref`, so every read of a secret scalar is visible at the call site.
+pub trait SessionKeyShare: Sized {
+    /// The scalar value of this share.
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero;
+
+    type PublicKeyType: From<crate::elgamal::arithmetic::group_elements::GroupElement>;
+    type SecretKeyType: crate::keys::SecretKey
+        + From<crate::elgamal::arithmetic::scalars::ScalarNonZero>;
+    type BlindedGlobalSecretKeyType: crate::keys::SecretKey;
 }
 
 impl SessionKeyShare for crate::keys::distribution::PseudonymSessionKeyShare {
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
+        self.value()
+    }
     type PublicKeyType = crate::keys::PseudonymSessionPublicKey;
     type SecretKeyType = crate::keys::PseudonymSessionSecretKey;
     type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedPseudonymGlobalSecretKey;
 }
 
 impl SessionKeyShare for crate::keys::distribution::AttributeSessionKeyShare {
+    fn value(&self) -> &crate::elgamal::arithmetic::scalars::ScalarNonZero {
+        self.value()
+    }
     type PublicKeyType = crate::keys::AttributeSessionPublicKey;
     type SecretKeyType = crate::keys::AttributeSessionSecretKey;
     type BlindedGlobalSecretKeyType = crate::keys::distribution::BlindedAttributeGlobalSecretKey;
@@ -35,12 +43,16 @@ pub fn make_session_key<S>(
 where
     S: SessionKeyShare,
 {
+    use crate::keys::SecretKey;
     let secret = S::SecretKeyType::from(
         session_key_shares
             .iter()
-            .fold(*blinded_global_secret_key, |acc, x| acc * **x),
+            .fold(*blinded_global_secret_key.value(), |acc, x| {
+                acc * *x.value()
+            }),
     );
-    let public = S::PublicKeyType::from(*secret * crate::arithmetic::group_elements::G);
+    let public =
+        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
     (public, secret)
 }
 
@@ -103,10 +115,14 @@ pub fn update_session_key<S>(
 where
     S: SessionKeyShare,
 {
+    use crate::keys::SecretKey;
     let secret = S::SecretKeyType::from(
-        *session_secret_key * old_session_key_share.invert() * *new_session_key_share,
+        *session_secret_key.value()
+            * old_session_key_share.value().invert()
+            * *new_session_key_share.value(),
     );
-    let public = S::PublicKeyType::from(*secret * crate::arithmetic::group_elements::G);
+    let public =
+        S::PublicKeyType::from(*secret.value() * crate::elgamal::arithmetic::group_elements::G);
     (public, secret)
 }
 

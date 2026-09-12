@@ -71,7 +71,7 @@ impl Client {
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<M::EncryptedType>, crate::errors::BatchError>
     where
         M: BatchEncryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
@@ -86,7 +86,7 @@ impl Client {
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<M::EncryptedType>, crate::errors::BatchError>
     where
         M: Encryptable,
         SessionKeys: KeyProvider<M::PublicKeyType>,
@@ -102,7 +102,7 @@ impl Client {
     pub fn decrypt_batch<E>(
         &self,
         encrypted: &[E],
-    ) -> Result<Vec<E::UnencryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<E::UnencryptedType>, crate::errors::BatchError>
     where
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
@@ -116,7 +116,7 @@ impl Client {
     pub fn decrypt_batch<E>(
         &self,
         encrypted: &[E],
-    ) -> Result<Vec<E::UnencryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<E::UnencryptedType>, crate::errors::BatchError>
     where
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
@@ -160,7 +160,7 @@ impl OfflineClient {
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::transcryptor::BatchError>
+    ) -> Result<Vec<M::EncryptedType>, crate::errors::BatchError>
     where
         M: Encryptable,
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,

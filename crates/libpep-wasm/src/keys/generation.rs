@@ -1,8 +1,8 @@
 //! WASM bindings for key generation functions.
 
 use super::types::*;
-use crate::arithmetic::group_elements::WASMGroupElement;
-use crate::arithmetic::scalars::WASMScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
+use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::contexts::WASMEncryptionContext;
 use crate::factors::secrets::WASMEncryptionSecret;
 use libpep::keys::generation::*;
@@ -63,7 +63,7 @@ pub fn wasm_make_pseudonym_session_keys(
     );
     WASMPseudonymSessionKeyPair::new(
         WASMPseudonymSessionPublicKey(WASMGroupElement::from(*public)),
-        WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(*secret_key)),
+        WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
     )
 }
 
@@ -81,7 +81,7 @@ pub fn wasm_make_attribute_session_keys(
     );
     WASMAttributeSessionKeyPair::new(
         WASMAttributeSessionPublicKey(WASMGroupElement::from(*public)),
-        WASMAttributeSessionSecretKey(WASMScalarNonZero::from(*secret_key)),
+        WASMAttributeSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
     )
 }
 

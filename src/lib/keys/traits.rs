@@ -1,8 +1,8 @@
 //! Traits for public and secret keys.
 
 use super::types::*;
-use crate::arithmetic::group_elements::GroupElement;
-use crate::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 
 /// A trait for public keys, which can be encoded and decoded from byte arrays and hex strings.
 pub trait PublicKey {

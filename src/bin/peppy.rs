@@ -2,7 +2,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use commandy_macros::*;
-use libpep::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 #[cfg(feature = "json")]
 use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
 use libpep::data::long::{
@@ -13,6 +12,7 @@ use libpep::data::simple::{
     Pseudonym,
 };
 use libpep::data::traits::{Encryptable, Encrypted};
+use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::TranscryptionInfo;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
@@ -21,10 +21,12 @@ use libpep::keys::distribution::{make_distributed_global_keys, BlindingFactor};
 use libpep::keys::make_session_keys;
 use libpep::keys::{
     make_pseudonym_global_keys, make_pseudonym_session_keys, AttributeGlobalPublicKey,
-    AttributeGlobalSecretKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    GlobalSecretKeys, PseudonymGlobalPublicKey, PseudonymGlobalSecretKey,
-    PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey, SecretKey,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
+    SecretKey,
 };
+#[cfg(feature = "json")]
+use libpep::keys::{AttributeGlobalSecretKey, GlobalSecretKeys};
 use libpep::transcryptor::transcrypt;
 use std::cmp::Ordering;
 
@@ -794,11 +796,17 @@ fn main() {
             eprintln!("  - Attributes: {}", global_public_keys.attribute.to_hex());
             eprintln!("  - Pseudonyms: {}", global_public_keys.pseudonym.to_hex());
             eprintln!("Blinded secret keys:");
-            eprintln!("  - Attributes: {}", blinded_global_keys.attribute.to_hex());
-            eprintln!("  - Pseudonyms: {}", blinded_global_keys.pseudonym.to_hex());
+            eprintln!(
+                "  - Attributes: {}",
+                blinded_global_keys.attribute.value().to_hex()
+            );
+            eprintln!(
+                "  - Pseudonyms: {}",
+                blinded_global_keys.pseudonym.value().to_hex()
+            );
             eprintln!("Blinding factors (keep secret):");
             for factor in &blinding_factors {
-                eprintln!("  - {}", factor.to_hex());
+                eprintln!("  - {}", factor.value().to_hex());
             }
         }
         None => {

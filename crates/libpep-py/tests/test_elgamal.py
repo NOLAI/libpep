@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 """
-Python integration tests for base/core module.
+Python integration tests for the low-level elgamal module.
 Tests ElGamal encryption/decryption and PEP primitive operations.
-
-NOTE: The base module (libpep.core) with ElGamal and primitives is NOT exposed
-in the Python bindings as these are low-level internal functions. These tests will be skipped
-unless the core module is explicitly registered in the Python bindings.
 
 For high-level operations, use encrypt/decrypt from libpep and Pseudonym/Attribute from libpep.data instead.
 """
 
 import unittest
 
-from libpep.arithmetic.group_elements import GroupElement
-from libpep.arithmetic.scalars import ScalarNonZero
-from libpep.core.elgamal import encrypt, decrypt, ElGamal
-from libpep.core.primitives import (
+from libpep.elgamal.arithmetic.group_elements import GroupElement
+from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+from libpep.elgamal import encrypt, decrypt, ElGamal
+from libpep.elgamal.primitives import (
     rekey,
     rekey2,
     rerandomize,

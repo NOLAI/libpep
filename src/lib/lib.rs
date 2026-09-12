@@ -1,6 +1,6 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
-//! This library implements PEP cryptography based on [`ElGamal`](core::elgamal) encrypted messages.
+//! This library implements PEP cryptography based on [`ElGamal`](elgamal) encrypted messages.
 //! It can be used to encrypt data and re-encrypt it for different keys without decrypting the data,
 //! while pseudonymizing encrypted identifiers in the data.
 //!
@@ -17,15 +17,15 @@
 //! unlinkability hold as long as at least one transcryptor remains uncompromised.
 //!
 //! Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the
-//! pseudorandomness of the Diffie-Hellman PRF that [reshuffling](core::primitives::reshuffle)
+//! pseudorandomness of the Diffie-Hellman PRF that [reshuffling](elgamal::primitives::reshuffle)
 //! obliviously evaluates; both hold under the Decisional Diffie-Hellman assumption in the
 //! Ristretto group.
 //! Since at the time of initial encryption, the future recipient does not need to be specified,
 //! data sharing can be done *asynchronously*. This means that encrypted data can be
 //! stored long-term before it is shared at any point in the future.
 //!
-//! This library provides both a [core] API for `ElGamal` encryption and the PEP
-//! [primitives](core::primitives), and a high-level API for
+//! This library provides both a low-level [elgamal] API for `ElGamal` encryption and the PEP
+//! [primitives](elgamal::primitives), and a high-level API for
 //! [pseudonymization](transcryptor::pseudonymize) and [rekeying](transcryptor::rekey)
 //! (i.e. [transcryption](transcryptor::transcrypt)) of [`Pseudonym`](data::simple::Pseudonym)s
 //! and [`Attribute`](data::simple::Attribute)s using this cryptographic concept.
@@ -68,10 +68,10 @@
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
 
-pub mod arithmetic;
 pub mod client;
-pub mod core;
 pub mod data;
+pub mod elgamal;
+pub mod errors;
 pub mod factors;
 pub mod keys;
 pub mod prelude;

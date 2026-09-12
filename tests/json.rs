@@ -323,7 +323,7 @@ fn test_json_batch_transcryption_different_structures() {
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");
     match result {
-        Err(libpep::transcryptor::BatchError::InconsistentStructure { .. }) => {
+        Err(libpep::errors::BatchError::InconsistentStructure { .. }) => {
             // Expected error
         }
         _ => panic!("Expected InconsistentStructure error"),

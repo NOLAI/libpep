@@ -99,8 +99,7 @@ The library is organized into the following main modules, each providing a diffe
 
 | Module | Description |
 |--------|-------------|
-| `arithmetic` | Basic arithmetic operations on scalars and group elements using Curve25519 |
-| `core` | Low-level ElGamal encryption/decryption and PEP primitives (`rekey`, `reshuffle`, `rerandomize`) |
+| `elgamal` | Low-level ElGamal encryption/decryption, PEP primitives (`rekey`, `reshuffle`, `rerandomize`) in `elgamal::primitives`, and the underlying Curve25519 scalar and group element arithmetic in `elgamal::arithmetic` |
 | `data` | Data types: `Pseudonym`, `Attribute`, JSON structures, long data support, and padding |
 | `keys` | Key management: global keys, session keys, key generation, and distributed key setup |
 | `factors` | Cryptographic factors: secrets, rekey/reshuffle/rerandomize factors, and derivation functions |
@@ -173,6 +172,7 @@ These have incompatible linking requirements and cannot coexist in the same buil
 ## Security and Implementation
 
 This library uses Ristretto encoding on Curve25519, implemented in the [`curve25519-dalek` crate](https://docs.rs/curve25519-dalek/latest/curve25519_dalek/), offering 128 bits of security.
+The minimum supported Rust version (MSRV) is 1.85; raising it is considered a semver-relevant change.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the Decisional Diffie–Hellman (DDH) assumption in the Ristretto group and thus ultimately on the hardness of the discrete logarithm problem.
 
 ### Security Considerations

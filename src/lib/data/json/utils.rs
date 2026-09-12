@@ -52,7 +52,7 @@ pub(crate) fn number_to_bytes(n: &serde_json::Number) -> [u8; 9] {
 }
 
 /// Convert bytes to a JSON number (9 bytes: 1 byte type tag + 8 bytes data).
-pub(crate) fn bytes_to_number(bytes: &[u8; 9]) -> serde_json::Number {
+pub(crate) fn bytes_to_number(bytes: &[u8; 9]) -> Result<serde_json::Number, JsonError> {
     let type_tag = bytes[0];
     let data_bytes: [u8; 8] = match bytes[1..].try_into() {
         Ok(bytes) => bytes,
@@ -63,22 +63,22 @@ pub(crate) fn bytes_to_number(bytes: &[u8; 9]) -> serde_json::Number {
         0x00 => {
             // u64
             let u = u64::from_be_bytes(data_bytes);
-            serde_json::Number::from(u)
+            Ok(serde_json::Number::from(u))
         }
         0x01 => {
             // i64
             let i = i64::from_be_bytes(data_bytes);
-            serde_json::Number::from(i)
+            Ok(serde_json::Number::from(i))
         }
         0x02 => {
             // f64
             let bits = u64::from_be_bytes(data_bytes);
             let f = f64::from_bits(bits);
-            match serde_json::Number::from_f64(f) {
-                Some(n) => n,
-                None => panic!("Number should be finite but got: {}", f),
-            }
+            serde_json::Number::from_f64(f)
+                .ok_or_else(|| JsonError::InvalidNumberEncoding(format!("non-finite float: {f}")))
         }
-        _ => panic!("Invalid number type tag: 0x{:02x}", type_tag),
+        got => Err(JsonError::InvalidNumberEncoding(format!(
+            "invalid number type tag: 0x{got:02x}"
+        ))),
     }
 }
