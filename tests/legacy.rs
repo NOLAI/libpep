@@ -49,11 +49,4 @@ mod legacy_pep_repo_tests {
             )
         }
     }
-
-    // TODO: test_pseudonymization is incomplete and uses the removed PEPSystem struct
-    // This test needs to be reimplemented with the new distributed module API
-    // #[test]
-    // fn test_pseudonymization() {
-    //     // ...
-    // }
 }

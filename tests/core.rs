@@ -19,6 +19,8 @@ use libpep::transcryptor::transcrypt_batch;
 use libpep::transcryptor::{pseudonymize, rekey, transcrypt};
 #[cfg(feature = "batch")]
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
+#[cfg(feature = "batch")]
+use std::collections::HashSet;
 
 #[test]
 fn test_core_flow() {
@@ -165,30 +167,30 @@ fn test_batch() {
 
     let attribute_rekey_info = transcryption_info.attribute;
 
-    let _rekeyed = rekey_batch(&mut attributes, &attribute_rekey_info, rng);
-    let _pseudonymized = pseudonymize_batch(&mut pseudonyms, &transcryption_info.pseudonym, rng);
+    // Batch operations apply the same transformation as the single-item functions, but shuffle
+    // the order so that outputs cannot be linked to inputs by position.
+    let rekeyed = rekey_batch(&mut attributes.clone(), &attribute_rekey_info, rng).unwrap();
+    let expected: Vec<_> = attributes
+        .iter()
+        .map(|a| rekey(a, &attribute_rekey_info))
+        .collect();
+    assert_eq!(
+        rekeyed.iter().collect::<HashSet<_>>(),
+        expected.iter().collect::<HashSet<_>>()
+    );
+    assert_ne!(rekeyed.to_vec(), expected, "batch should be shuffled");
 
-    let mut data: Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)> = vec![];
-    for _ in 0..10 {
-        let pseudonyms: Vec<EncryptedPseudonym> = (0..10)
-            .map(|_| encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng))
-            .collect();
-        let attributes: Vec<EncryptedAttribute> = (0..10)
-            .map(|_| encrypt(&Attribute::random(rng), &attribute_session1_public, rng))
-            .collect();
-        data.push((pseudonyms, attributes));
-    }
-
-    // Note: The old transcrypt_batch function expected a specific EncryptedRecord structure.
-    // The new polymorphic trait-based functions don't have this structure validation.
-    // This specific test is commented out as it tests an API that's being phased out.
-    // let _transcrypted = transcrypt_batch(data, &transcryption_info, rng)
-    //     .expect("Batch transcryption should succeed");
-
-    // TODO check that the batch is indeed shuffled
-
-    // The test still verifies that rekey_batch and pseudonymize_batch work correctly
-    let _ = data; // Use the data to avoid unused variable warning
+    let pseudonymized =
+        pseudonymize_batch(&mut pseudonyms.clone(), &transcryption_info.pseudonym, rng).unwrap();
+    let expected: Vec<_> = pseudonyms
+        .iter()
+        .map(|p| pseudonymize(p, &transcryption_info.pseudonym))
+        .collect();
+    assert_eq!(
+        pseudonymized.iter().collect::<HashSet<_>>(),
+        expected.iter().collect::<HashSet<_>>()
+    );
+    assert_ne!(pseudonymized.to_vec(), expected, "batch should be shuffled");
 }
 
 #[test]

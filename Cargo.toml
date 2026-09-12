@@ -3,7 +3,7 @@ members = [".", "crates/libpep-py", "crates/libpep-wasm"]
 resolver = "2"
 
 [workspace.package]
-version = "0.14.0"
+version = "0.13.0"
 edition = "2021"
 rust-version = "1.85"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
@@ -11,7 +11,7 @@ license = "Apache-2.0"
 repository = "https://github.com/NOLAI/libpep"
 
 [workspace.dependencies]
-libpep = { version = "0.14.0", path = ".", default-features = false }
+libpep = { version = "0.13.0", path = ".", default-features = false }
 
 [package]
 name = "libpep"
@@ -27,7 +27,7 @@ keywords = ["crypto", "pep", "pseudonymization"]
 categories = ["cryptography", "algorithms"]
 description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
-exclude = ["crates", "pkg", "pkg-web", "tests/wasm", "node_modules"]
+exclude = ["crates", "pkg", "pkg-web", "node_modules"]
 
 [features]
 default = ["build-binary", "long", "offline", "batch", "serde", "json"]
@@ -58,8 +58,8 @@ required-features = ["build-binary"]
 curve25519-dalek = { version = "=5.0.0", features = ["rand_core", "lizard"] }
 rand_core = "^0.10"
 rand = { version = "^0.10", optional = true }
-sha2 = "^0.11.0-rc.5"
-hmac = "^0.13.0-rc.5"
+sha2 = "^0.11.0"
+hmac = "^0.13.0"
 derive_more = { version = "^2.0", features = ["deref", "from", "into"] }
 hex = "^0.4"
 base64 = "^0.23.0"

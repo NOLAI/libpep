@@ -171,7 +171,8 @@ The library provides convenient prelude modules for common operations:
 The library supports distributed n-PEP operations where multiple transcryptors cooperatively perform pseudonymization and rekeying without any single party having access to the global secret keys:
 
 - Key distribution setup is in `keys::distribution`
-- The distributed transcryptor implementation can be found in distributed server/client components
+- The transcryptor side is `transcryptor::DistributedTranscryptor`, which produces session key shares
+- The client side is the `client::Distributed` extension trait, which reconstructs and updates session keys from shares
 
 For detailed API documentation, see [docs.rs/libpep](https://docs.rs/libpep)
 
@@ -190,15 +191,11 @@ The following features are available:
 - `build-binary`: builds the `peppy` command-line tool.
 
 **Optional features:**
-- `python`: enables Python bindings via PyO3 (mutually exclusive with `wasm`).
-- `wasm`: enables WebAssembly bindings via wasm-bindgen (mutually exclusive with `python`).
 - `elgamal3`: enables ElGamal triple encryption (the `(B, C, Y)` triple encoding of the original basic-PEP framework), where ciphertexts additionally encode the public key they were encrypted for. This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations. **This feature changes API signatures**: decryption functions return `Option` (or an error for batches) instead of a plain value, since key mismatch becomes detectable. Choose one mode for your deployment; the two modes are not wire-compatible.
 - `legacy`: enables compatibility with the legacy PEP repository implementation, which uses a different function to derive scalars from domains, contexts, and secrets. Implies `elgamal3`, `offline` and `global-pseudonyms`. Only use this for interoperability with existing legacy PEP deployments.
 - `insecure`: enables methods that use global *secret* keys directly, such as offline decryption (`decrypt_global`). In the intended security model, the global secret key is discarded after distributed setup and never exists in one place; retaining it to use these methods gives whoever holds it the ability to decrypt everything. Only intended for testing and for special deployments that consciously accept this.
 - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (using reshuffle factor 1). Global pseudonyms are linkable across all domains, which defeats the purpose of domain-specific pseudonymization; only use this when such linkability is an explicit requirement.
 
-**Note:** The `python` and `wasm` features are mutually exclusive because PyO3 (Python bindings) builds a cdylib that links to the Python interpreter, while wasm-bindgen builds a cdylib targeting WebAssembly.
-These have incompatible linking requirements and cannot coexist in the same build.
 
 ## Security and Implementation
 
@@ -227,7 +224,7 @@ There are specific classes for `ScalarNonZero` and `ScalarCanBeZero`, since for 
 ## Development
 
 ### Prerequisites
-- Rust 1.70+ (MSRV)
+- Rust 1.85+ (MSRV)
 - Node.js 18+ (for WASM bindings)
 - Python 3.8+ (for Python bindings)
 
