@@ -18,14 +18,13 @@ use crate::keys::PyGlobalPublicKeys;
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "offline")]
 use libpep::client::OfflineClient;
+use libpep::data::traits::Encryptable;
 #[cfg(feature = "offline")]
 use libpep::keys::*;
 #[cfg(feature = "offline")]
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
-#[cfg(feature = "offline")]
 use pyo3::types::PyAny;
-#[cfg(all(feature = "offline", feature = "batch"))]
 use pyo3::IntoPyObjectExt;
 
 /// An offline PEP client that can only encrypt (not decrypt).
@@ -39,9 +38,10 @@ pub struct PyOfflineClient(pub(crate) OfflineClient);
 impl PyOfflineClient {
     #[new]
     fn new(global_public_keys: &PyGlobalPublicKeys) -> Self {
-        Self(OfflineClient::new(GlobalPublicKeys::from(
-            *global_public_keys,
-        )))
+        Self(OfflineClient::new(GlobalPublicKeys {
+            pseudonym: PseudonymGlobalPublicKey::from_point(global_public_keys.pseudonym.0 .0),
+            attribute: AttributeGlobalPublicKey::from_point(global_public_keys.attribute.0 .0),
+        }))
     }
 
     /// Polymorphic encrypt that works with any encryptable type.
@@ -159,7 +159,6 @@ impl PyOfflineClient {
     /// Encrypt a Record using global public keys (offline mode).
     #[pyo3(name = "encrypt_record")]
     fn py_encrypt_record(&self, record: &PyRecord) -> PyResult<PyEncryptedRecord> {
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = record
             .0
@@ -171,7 +170,6 @@ impl PyOfflineClient {
     #[cfg(feature = "long")]
     #[pyo3(name = "encrypt_long_record")]
     fn py_encrypt_long_record(&self, record: &PyLongRecord) -> PyResult<PyLongEncryptedRecord> {
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = record
             .0
@@ -183,14 +181,12 @@ impl PyOfflineClient {
     #[cfg(feature = "json")]
     #[pyo3(name = "encrypt_json")]
     fn py_encrypt_json(&self, value: &PyPEPJSONValue) -> PyResult<PyEncryptedPEPJSONValue> {
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let result = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
         Ok(PyEncryptedPEPJSONValue(result))
     }
 }
 
-#[cfg_attr(not(feature = "offline"), allow(unused_variables))]
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "offline")]
     m.add_class::<PyOfflineClient>()?;

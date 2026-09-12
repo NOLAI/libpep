@@ -17,11 +17,14 @@ crate-type = ["cdylib", "rlib"]
 workspace = true
 
 [features]
-default = ["long", "offline", "batch", "serde", "json"]
+default = ["long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
 serde = ["libpep/serde"]
 long = ["libpep/long"]
 offline = ["libpep/offline"]
 batch = ["libpep/batch"]
+batch-pk = ["libpep/batch-pk", "batch"]
+verifiable = ["libpep/verifiable"]
+verifiable-derivation = ["libpep/verifiable-derivation", "verifiable"]
 json = ["libpep/json", "long", "serde"]
 elgamal3 = ["libpep/elgamal3"]
 global-pseudonyms = ["libpep/global-pseudonyms", "offline"]
@@ -31,7 +34,8 @@ extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 libpep = { workspace = true }
-pyo3 = { version = "0.29" }
+pyo3 = { version = "0.29", features = ["multiple-pymethods"] }
 derive_more = { version = "^2.1", features = ["from", "into", "deref"] }
+hex = "^0.4"
 rand = "^0.10"
 serde_json = "^1.0"

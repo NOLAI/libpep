@@ -14,6 +14,11 @@ pub mod derivation;
 pub mod secrets;
 pub mod types;
 
+#[cfg(feature = "verifiable")]
+pub mod commitments;
+#[cfg(feature = "verifiable-derivation")]
+pub mod verifiable;
+
 pub use derivation::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
 };
@@ -21,4 +26,15 @@ pub use secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
     PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
+};
+
+#[cfg(feature = "verifiable")]
+pub use commitments::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
+};
+#[cfg(feature = "verifiable-derivation")]
+pub use verifiable::{
+    MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,
+    MasterRekeyingSecret,
 };
