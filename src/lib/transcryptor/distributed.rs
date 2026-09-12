@@ -1,6 +1,6 @@
 //! Distributed transcryptor for generating session key shares.
 
-use crate::factors::contexts::EncryptionContext;
+use crate::contexts::EncryptionContext;
 use crate::factors::{EncryptionSecret, PseudonymizationSecret};
 
 /// A distributed PEP transcryptor system that extends [`super::types::Transcryptor`] with blinding factor support

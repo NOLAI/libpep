@@ -21,6 +21,7 @@ from pathlib import Path
 
 import libpep
 import libpep.client
+import libpep.contexts
 import libpep.data
 import libpep.data.json
 import libpep.elgamal
@@ -35,6 +36,7 @@ import libpep.transcryptor
 MODULES = {
     "__init__": libpep,
     "client": libpep.client,
+    "contexts": libpep.contexts,
     "data/__init__": libpep.data,
     "data/json": libpep.data.json,
     "elgamal/__init__": libpep.elgamal,

@@ -956,14 +956,14 @@ impl Rekeyable for LongEncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        let k_inv = info.0.invert();
+        let k_inv = info.k.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
             .map(|block| {
                 #[cfg(feature = "elgamal3")]
                 let value =
-                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.k.0, &k_inv);
                 #[cfg(not(feature = "elgamal3"))]
                 let value = crate::elgamal::primitives::rekey_precomputed(block.value(), &k_inv);
                 EncryptedPseudonym::from_value(value)
@@ -977,14 +977,14 @@ impl Rekeyable for LongEncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
     fn rekey(&self, info: &Self::RekeyInfo) -> Self {
-        let k_inv = info.0.invert();
+        let k_inv = info.k.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
             .iter()
             .map(|block| {
                 #[cfg(feature = "elgamal3")]
                 let value =
-                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.0, &k_inv);
+                    crate::elgamal::primitives::rekey_precomputed(block.value(), &info.k.0, &k_inv);
                 #[cfg(not(feature = "elgamal3"))]
                 let value = crate::elgamal::primitives::rekey_precomputed(block.value(), &k_inv);
                 EncryptedAttribute::from_value(value)
@@ -1146,7 +1146,7 @@ fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, E
 mod tests {
     use super::*;
     use crate::client::encrypt;
-    use crate::factors::contexts::EncryptionContext;
+    use crate::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
     use crate::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
     use std::io::ErrorKind;

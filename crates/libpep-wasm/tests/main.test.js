@@ -310,7 +310,7 @@ test('test batch long operations', async () => {
     // Test batch rekeying of long pseudonyms
     const rekeyedPseudonyms = rekeyLongPseudonymBatch(
         longPseudonyms.map(p => p.clone()),
-        transcryptionInfo.pseudonym.k
+        transcryptionInfo.pseudonym.rekeyInfo
     );
     expect(rekeyedPseudonyms.length).toEqual(3);
 

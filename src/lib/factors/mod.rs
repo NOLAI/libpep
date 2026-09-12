@@ -1,28 +1,24 @@
-//! Cryptographic factors and secrets for pseudonymization, rekeying, and rerandomization.
-//!
-//! This module provides:
-//! - Secret types for storing pseudonymization and encryption secrets
-//! - Factor types (ReshuffleFactor, RekeyFactor, RerandomizeFactor) for cryptographic operations
-//! - Derivation functions for computing factors from secrets and contexts
+//! Cryptographic factors for pseudonymization, rekeying and rerandomization, and their derivation
+//! from secrets and [contexts](crate::contexts).
 //!
 //! # Organization
 //!
-//! - [`contexts`]: Context types (PseudonymizationDomain, EncryptionContext)
-//! - [`secrets`]: Secret types (PseudonymizationSecret, EncryptionSecret)
-//! - [`types`]: Factor types and Info type aliases
+//! - [`types`]: Factor types (`ReshuffleFactor`, `PseudonymRekeyFactor`, `AttributeRekeyFactor`,
+//!   `RerandomizeFactor`) and the info types that bundle the factors for one transcryption
+//!   (`PseudonymizationInfo`, `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `TranscryptionInfo`)
+//! - [`secrets`]: Secret types (`PseudonymizationSecret`, `EncryptionSecret`) from which factors
+//!   are derived
+//! - [`derivation`]: Derivation of factors from secrets and contexts
 
-pub mod contexts;
+pub mod derivation;
 pub mod secrets;
 pub mod types;
 
-// Re-export commonly used types
-pub use contexts::{EncryptionContext, PseudonymizationDomain};
-pub use secrets::{
+pub use derivation::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
-    EncryptionSecret, PseudonymizationSecret, Secret,
 };
+pub use secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 pub use types::{
-    AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRSKFactors, PseudonymRekeyFactor,
-    PseudonymRekeyInfo, PseudonymizationInfo, RekeyFactor, RekeyInfoProvider, RerandomizeFactor,
-    ReshuffleFactor, TranscryptionInfo,
+    AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
+    PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
 };

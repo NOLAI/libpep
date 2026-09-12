@@ -220,8 +220,8 @@ impl EncryptedPEPJSONValue {
 mod tests {
     use super::*;
     use crate::client::encrypt;
+    use crate::contexts::EncryptionContext;
     use crate::data::json::data::PEPJSONValue;
-    use crate::factors::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,

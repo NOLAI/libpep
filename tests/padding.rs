@@ -1,10 +1,10 @@
 #![cfg(feature = "long")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::long::LongPseudonym;
 use libpep::data::simple::{EncryptedPseudonym, Pseudonym};
 use libpep::data::traits::{Encryptable, Encrypted};
-use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
 use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::pseudonymize;

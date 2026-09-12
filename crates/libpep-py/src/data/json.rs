@@ -1,14 +1,14 @@
 //! Python bindings for PEP JSON encryption.
 
+use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::data::utils;
+use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 #[cfg(feature = "batch")]
-use crate::factors::contexts::PyTranscryptionInfo;
-use crate::factors::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
+use crate::factors::types::PyTranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::types::PyGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::types::PyGlobalSecretKeys;
-use crate::keys::types::{PyEncryptionSecret, PyPseudonymizationSecret};
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]

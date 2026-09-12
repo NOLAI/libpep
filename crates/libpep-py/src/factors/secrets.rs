@@ -1,52 +1,50 @@
-//! Python bindings for secret types and factor derivation functions.
+//! Python bindings for the secrets from which factors are derived.
 
-use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::factors::*;
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use pyo3::prelude::*;
 
-use crate::factors::types::{PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyReshuffleFactor};
+/// Pseudonymization secret used to derive reshuffle factors from pseudonymization domains.
+/// A secret is a byte array of arbitrary length.
+#[derive(Clone, Debug)]
+#[pyclass(name = "PseudonymizationSecret", from_py_object)]
+pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
 
-// Re-export the secret types from keys::py::types to avoid duplicate definitions
-pub use crate::keys::types::{PyEncryptionSecret, PyPseudonymizationSecret};
+#[pymethods]
+impl PyPseudonymizationSecret {
+    #[new]
+    fn new(data: Vec<u8>) -> Self {
+        Self(PseudonymizationSecret::from(data))
+    }
 
-/// Derive a pseudonym rekey factor from a secret and a context.
-#[pyfunction]
-#[pyo3(name = "make_pseudonym_rekey_factor")]
-pub fn py_make_pseudonym_rekey_factor(
-    secret: &PyEncryptionSecret,
-    context: &str,
-) -> PyPseudonymRekeyFactor {
-    make_pseudonym_rekey_factor(&secret.0, &EncryptionContext::from(context)).into()
+    #[staticmethod]
+    #[pyo3(name = "from")]
+    fn py_from(data: Vec<u8>) -> Self {
+        Self(PseudonymizationSecret::from(data))
+    }
 }
 
-/// Derive an attribute rekey factor from a secret and a context.
-#[pyfunction]
-#[pyo3(name = "make_attribute_rekey_factor")]
-pub fn py_make_attribute_rekey_factor(
-    secret: &PyEncryptionSecret,
-    context: &str,
-) -> PyAttributeRekeyFactor {
-    make_attribute_rekey_factor(&secret.0, &EncryptionContext::from(context)).into()
-}
+/// Encryption secret used to derive rekey factors from encryption contexts.
+/// A secret is a byte array of arbitrary length.
+#[derive(Clone, Debug)]
+#[pyclass(name = "EncryptionSecret", from_py_object)]
+pub struct PyEncryptionSecret(pub(crate) EncryptionSecret);
 
-/// Derive a pseudonymisation factor from a secret and a domain.
-#[pyfunction]
-#[pyo3(name = "make_pseudonymisation_factor")]
-pub fn py_make_pseudonymisation_factor(
-    secret: &PyPseudonymizationSecret,
-    domain: &str,
-) -> PyReshuffleFactor {
-    make_pseudonymisation_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
+#[pymethods]
+impl PyEncryptionSecret {
+    #[new]
+    fn new(data: Vec<u8>) -> Self {
+        Self(EncryptionSecret::from(data))
+    }
+
+    #[staticmethod]
+    #[pyo3(name = "from")]
+    fn py_from(data: Vec<u8>) -> Self {
+        Self(EncryptionSecret::from(data))
+    }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Register the secret classes (defined in keys module but re-exported here)
     m.add_class::<PyPseudonymizationSecret>()?;
     m.add_class::<PyEncryptionSecret>()?;
-
-    // Register the factory functions
-    m.add_function(wrap_pyfunction!(py_make_pseudonym_rekey_factor, m)?)?;
-    m.add_function(wrap_pyfunction!(py_make_attribute_rekey_factor, m)?)?;
-    m.add_function(wrap_pyfunction!(py_make_pseudonymisation_factor, m)?)?;
     Ok(())
 }

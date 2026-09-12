@@ -8,13 +8,12 @@ use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::records::WASMLongRecordEncrypted;
 use crate::data::records::WASMRecordEncrypted;
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::factors::contexts::{
+use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
 use libpep::data::records::EncryptedRecord;
 #[cfg(feature = "long")]
 use libpep::data::records::LongEncryptedRecord;
-use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use wasm_bindgen::prelude::*;
 
@@ -26,7 +25,7 @@ pub fn wasm_pseudonymize_batch(
 ) -> Result<Vec<WASMEncryptedPseudonym>, String> {
     let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
     let mut rng = rand::rng();
-    pseudonymize_batch(&mut rust_enc, &PseudonymizationInfo::from(info.0), &mut rng)
+    pseudonymize_batch(&mut rust_enc, &info.0, &mut rng)
         .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -40,7 +39,7 @@ pub fn wasm_pseudonymize_long_batch(
 ) -> Result<Vec<WASMLongEncryptedPseudonym>, String> {
     let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
     let mut rng = rand::rng();
-    pseudonymize_batch(&mut rust_enc, &PseudonymizationInfo::from(info.0), &mut rng)
+    pseudonymize_batch(&mut rust_enc, &info.0, &mut rng)
         .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -53,7 +52,7 @@ pub fn wasm_rekey_attribute_batch(
 ) -> Result<Vec<WASMEncryptedAttribute>, String> {
     let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0).collect();
     let mut rng = rand::rng();
-    rekey_batch(&mut rust_enc, &AttributeRekeyInfo::from(info.0), &mut rng)
+    rekey_batch(&mut rust_enc, &info.0, &mut rng)
         .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
         .map_err(|e| e.to_string())
 }
@@ -67,7 +66,7 @@ pub fn wasm_rekey_long_attribute_batch(
 ) -> Result<Vec<WASMLongEncryptedAttribute>, String> {
     let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
     let mut rng = rand::rng();
-    rekey_batch(&mut rust_enc, &AttributeRekeyInfo::from(info.0), &mut rng)
+    rekey_batch(&mut rust_enc, &info.0, &mut rng)
         .map(|result| result.into_vec().into_iter().map(|e| e.into()).collect())
         .map_err(|e| e.to_string())
 }

@@ -3,7 +3,6 @@ use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::types::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
@@ -136,46 +135,6 @@ impl From<PyGlobalSecretKeys> for GlobalSecretKeys {
             pseudonym: py_keys.pseudonym.0 .0.into(),
             attribute: py_keys.attribute.0 .0.into(),
         }
-    }
-}
-
-/// Pseudonymization secret used to derive a reshuffle factor from a pseudonymization domain (see [`libpep::factors::ReshuffleFactor`]).
-/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
-#[derive(Clone, Debug, From)]
-#[pyclass(name = "PseudonymizationSecret", from_py_object)]
-pub struct PyPseudonymizationSecret(pub(crate) PseudonymizationSecret);
-
-/// Encryption secret used to derive rekey factors from an encryption context (see [`libpep::factors::PseudonymRekeyInfo`] and [`libpep::factors::AttributeRekeyInfo`]).
-/// A `secret` is a byte array of arbitrary length, which is used to derive pseudonymization and rekeying factors from domains and sessions.
-#[derive(Clone, Debug, From)]
-#[pyclass(name = "EncryptionSecret", from_py_object)]
-pub struct PyEncryptionSecret(pub(crate) EncryptionSecret);
-
-#[pymethods]
-impl PyPseudonymizationSecret {
-    #[new]
-    fn new(data: Vec<u8>) -> Self {
-        Self(PseudonymizationSecret::from(data))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from")]
-    fn py_from(data: Vec<u8>) -> Self {
-        Self(PseudonymizationSecret::from(data))
-    }
-}
-
-#[pymethods]
-impl PyEncryptionSecret {
-    #[new]
-    fn new(data: Vec<u8>) -> Self {
-        Self(EncryptionSecret::from(data))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from")]
-    fn py_from(data: Vec<u8>) -> Self {
-        Self(EncryptionSecret::from(data))
     }
 }
 
@@ -336,8 +295,6 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionKeys>()?;
     m.add_class::<PyAttributeSessionKeys>()?;
     m.add_class::<PySessionKeys>()?;
-    m.add_class::<PyPseudonymizationSecret>()?;
-    m.add_class::<PyEncryptionSecret>()?;
     m.add_class::<PyPseudonymGlobalKeyPair>()?;
     m.add_class::<PyAttributeGlobalKeyPair>()?;
     m.add_class::<PyPseudonymSessionKeyPair>()?;

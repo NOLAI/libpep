@@ -1,5 +1,6 @@
 //! Python bindings for distributed transcryptor.
 
+use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPEPJSONValue;
 #[cfg(feature = "long")]
@@ -8,9 +9,8 @@ use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::records::PyLongEncryptedRecord;
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::factors::contexts::{
-    PyAttributeRekeyInfo, PyEncryptionContext, PyPseudonymRekeyFactor, PyPseudonymizationDomain,
-    PyPseudonymizationInfo, PyTranscryptionInfo,
+use crate::factors::types::{
+    PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use crate::keys::distribution::PyBlindingFactor;
 use crate::keys::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
@@ -86,8 +86,8 @@ impl PyDistributedTranscryptor {
         &self,
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-    ) -> PyPseudonymRekeyFactor {
-        PyPseudonymRekeyFactor(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
+    ) -> PyPseudonymRekeyInfo {
+        PyPseudonymRekeyInfo(self.pseudonym_rekey_info(&session_from.0, &session_to.0))
     }
 
     #[pyo3(name = "pseudonymization_info")]
@@ -144,25 +144,25 @@ impl PyDistributedTranscryptor {
             }
         }
 
-        // Try EncryptedPseudonym with PseudonymRekeyFactor
+        // Try EncryptedPseudonym with PseudonymRekeyInfo
         if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-            if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+            if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
                 let result = self.0.rekey(&ep.0, &info.0);
                 return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
             }
         }
 
-        // Try LongEncryptedPseudonym with PseudonymRekeyFactor
+        // Try LongEncryptedPseudonym with PseudonymRekeyInfo
         #[cfg(feature = "long")]
         if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-            if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyFactor>() {
+            if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
                 let result = self.0.rekey(&lep.0, &info.0);
                 return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
             }
         }
 
         Err(PyTypeError::new_err(
-            "rekey() requires (EncryptedAttribute | LongEncryptedAttribute, AttributeRekeyInfo) or (EncryptedPseudonym | LongEncryptedPseudonym, PseudonymRekeyFactor)",
+            "rekey() requires (EncryptedAttribute | LongEncryptedAttribute, AttributeRekeyInfo) or (EncryptedPseudonym | LongEncryptedPseudonym, PseudonymRekeyInfo)",
         ))
     }
 

@@ -1,19 +1,11 @@
-//! WASM bindings for secret types and factor derivation functions.
+//! WASM bindings for the secrets from which factors are derived.
 
-use crate::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use derive_more::{Deref, From, Into};
-use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::factors::*;
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use wasm_bindgen::prelude::*;
 
-use crate::factors::types::{
-    WASMAttributeRekeyFactor, WASMPseudonymRekeyFactor, WASMReshuffleFactor,
-};
-
-/// Pseudonymization secret used to derive a [`ReshuffleFactor`] from a [`PseudonymizationDomain`].
-///
-/// [`ReshuffleFactor`]: libpep::factors::ReshuffleFactor
-/// [`PseudonymizationDomain`]: libpep::factors::contexts::PseudonymizationDomain
+/// Pseudonymization secret used to derive reshuffle factors from pseudonymization domains.
+/// A secret is a byte array of arbitrary length.
 #[derive(Clone, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = PseudonymizationSecret)]
 pub struct WASMPseudonymizationSecret(pub(crate) PseudonymizationSecret);
@@ -33,7 +25,8 @@ impl WASMPseudonymizationSecret {
     }
 }
 
-/// Encryption secret used to derive rekey factors from an [`EncryptionContext`].
+/// Encryption secret used to derive rekey factors from encryption contexts.
+/// A secret is a byte array of arbitrary length.
 #[derive(Clone, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = EncryptionSecret)]
 pub struct WASMEncryptionSecret(pub(crate) EncryptionSecret);
@@ -51,31 +44,4 @@ impl WASMEncryptionSecret {
     pub fn wasm_from(secret: Vec<u8>) -> Self {
         Self(EncryptionSecret::from(secret))
     }
-}
-
-/// Derive a pseudonym rekey factor from a secret and a context.
-#[wasm_bindgen(js_name = makePseudonymRekeyFactor)]
-pub fn wasm_make_pseudonym_rekey_factor(
-    secret: &WASMEncryptionSecret,
-    context: &str,
-) -> WASMPseudonymRekeyFactor {
-    make_pseudonym_rekey_factor(&secret.0, &EncryptionContext::from(context)).into()
-}
-
-/// Derive an attribute rekey factor from a secret and a context.
-#[wasm_bindgen(js_name = makeAttributeRekeyFactor)]
-pub fn wasm_make_attribute_rekey_factor(
-    secret: &WASMEncryptionSecret,
-    context: &str,
-) -> WASMAttributeRekeyFactor {
-    make_attribute_rekey_factor(&secret.0, &EncryptionContext::from(context)).into()
-}
-
-/// Derive a pseudonymisation factor from a secret and a domain.
-#[wasm_bindgen(js_name = makePseudonymisationFactor)]
-pub fn wasm_make_pseudonymisation_factor(
-    secret: &WASMPseudonymizationSecret,
-    domain: &str,
-) -> WASMReshuffleFactor {
-    make_pseudonymisation_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
 }

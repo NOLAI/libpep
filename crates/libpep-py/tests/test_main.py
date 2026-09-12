@@ -25,6 +25,8 @@ from libpep.factors import (
     PseudonymizationInfo,
     AttributeRekeyInfo,
     TranscryptionInfo,
+)
+from libpep.contexts import (
     PseudonymizationDomain,
     EncryptionContext,
 )

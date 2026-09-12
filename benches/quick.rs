@@ -4,8 +4,8 @@
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::client::{Client, Distributed};
+use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-use libpep::factors::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;

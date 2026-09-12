@@ -26,6 +26,8 @@ from libpep.factors import (
     TranscryptionInfo,
     PseudonymizationInfo,
     AttributeRekeyInfo,
+)
+from libpep.contexts import (
     PseudonymizationDomain,
     EncryptionContext,
 )
@@ -102,7 +104,7 @@ class TestDistributed(unittest.TestCase):
         )
 
         # Test reverse operation
-        transcryption_rev = transcryption_info.rev()
+        transcryption_rev = transcryption_info.reverse()
         self.assertIsNotNone(transcryption_rev)
 
 
