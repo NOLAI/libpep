@@ -40,7 +40,7 @@ json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption supp
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
-build-binary = ["buildinfy","commandy","commandy_macros","rand","long","offline"] # Build the peppy command line utility (requires long and offline)
+build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline"] # Build the peppy command line utility (requires long and offline)
 
 [lints]
 workspace = true
@@ -65,10 +65,10 @@ hex = "^0.4"
 base64 = "^0.23.0"
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0", optional = true }
-buildinfy = { version = "^0.2", optional = true }
-commandy = { version = "^0.2", optional = true }
-commandy_macros = { version = "^0.2", optional = true }
 thiserror = "^2.0"
+clap = { version = "^4.6", features = ["derive", "wrap_help"], optional = true }
+clap_complete = { version = "^4.6", optional = true }
+clap_mangen = { version = "^0.3", optional = true }
 
 [dev-dependencies]
 serde_json = "^1.0"
