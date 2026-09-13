@@ -71,14 +71,36 @@ def first_doc_line(obj) -> str | None:
     return doc.split("\n")[0].strip()
 
 
+# Members inherited unchanged from these builtins are not part of the libpep API and
+# vary between Python versions (e.g. BaseException.add_note since 3.11), so they are
+# left out to keep the generated stubs identical regardless of the Python used.
+BUILTIN_BASES = (object, BaseException)
+
+
+def is_inherited_builtin(cls: type, mname: str) -> bool:
+    member = inspect.getattr_static(cls, mname)
+    return any(
+        mname in vars(base) and member is vars(base)[mname] for base in BUILTIN_BASES
+    )
+
+
 def stub_class(name: str, cls: type) -> list[str]:
-    lines = [f"class {name}:"]
+    bases = [b.__name__ for b in cls.__bases__ if b is not object]
+    lines = [f"class {name}" + (f"({', '.join(bases)})" if bases else "") + ":"]
     doc = first_doc_line(cls)
     if doc:
         lines.append(f'    """{doc}"""')
     members = []
+    # PyO3 exposes a `#[new]` constructor through `__new__` and the class's own text
+    # signature; `__init__` itself is always the inherited builtin one.
+    ctor = getattr(cls, "__text_signature__", None)
+    if ctor:
+        params = [p.strip() for p in ctor.strip("()").split(",") if p.strip()]
+        members.append("    def __init__(" + ", ".join(["self"] + params) + "): ...")
     for mname in sorted(dir(cls)):
-        if mname.startswith("_") and mname not in ("__init__", "__eq__", "__len__"):
+        if mname.startswith("_") and mname not in ("__eq__", "__len__"):
+            continue
+        if is_inherited_builtin(cls, mname):
             continue
         member = inspect.getattr_static(cls, mname)
         obj = getattr(cls, mname)
@@ -91,17 +113,7 @@ def stub_class(name: str, cls: type) -> list[str]:
             members.append(f"    @property")
             members.append(f"    def {mname}(self): ...")
         elif callable(obj):
-            if mname == "__init__":
-                ctor = getattr(cls, "__text_signature__", None)
-                if ctor:
-                    params = [p.strip() for p in ctor.strip("()").split(",") if p.strip()]
-                    members.append(
-                        "    def __init__(" + ", ".join(["self"] + params) + "): ..."
-                    )
-                else:
-                    members.append("    def __init__(self, *args, **kwargs): ...")
-            else:
-                members.append(f"    def {mname}{signature_of(obj, True)}: ...")
+            members.append(f"    def {mname}{signature_of(obj, True)}: ...")
     if not members:
         members = ["    ..."]
     return lines + members

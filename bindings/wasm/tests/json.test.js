@@ -54,7 +54,8 @@ test('test json transcryption with builder', async () => {
         session,
         session,
         pseudoSecret,
-        encSecret
+        encSecret,
+        sessionKeys
     );
 
     // Verify that the encrypted structures are different after transcryption
@@ -122,7 +123,8 @@ test('test json batch transcryption same structure', async () => {
 
     const transcryptedBatch = transcryptJsonBatch(
         [encrypted1, encrypted2],
-        transcryptionInfo
+        transcryptionInfo,
+        sessionKeys
     );
 
     // Verify we got 2 records back
@@ -200,7 +202,7 @@ test('test json batch transcryption different structures', async () => {
 
     // Verify we get an error about structure mismatch
     expect(() => {
-        transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo);
+        transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo, sessionKeys);
     }).toThrow(/Inconsistent structure in batch/);
 });
 
@@ -255,12 +257,12 @@ test('test json batch transcryption same structure different lengths', async () 
 
     // Verify we get an error about structure mismatch
     expect(() => {
-        transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo);
+        transcryptJsonBatch([encrypted1, encrypted2], transcryptionInfo, sessionKeys);
     }).toThrow(/Inconsistent structure in batch/);
 
     // We can encrypt them in a batch which automatically adds padding to make structures consistent
     const encryptedBatch = encryptJsonBatch([record1, record2], sessionKeys);
-    const transcryptedBatch = transcryptJsonBatch(encryptedBatch, transcryptionInfo);
+    const transcryptedBatch = transcryptJsonBatch(encryptedBatch, transcryptionInfo, sessionKeys);
 
     // Verify we got 2 records back
     expect(transcryptedBatch.length).toBe(2);

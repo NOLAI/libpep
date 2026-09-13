@@ -16,6 +16,12 @@ pub mod blinding;
 pub mod setup;
 pub mod shares;
 
+#[cfg(feature = "verifiable")]
+pub mod proofs;
+
 pub use blinding::*;
 pub use setup::*;
 pub use shares::*;
+
+#[cfg(feature = "verifiable")]
+pub use proofs::*;
