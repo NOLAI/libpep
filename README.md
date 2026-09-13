@@ -22,7 +22,7 @@ It ships as a Rust crate with Python and JavaScript/WebAssembly bindings that mi
 Rust, in `Cargo.toml`:
 ```toml
 [dependencies]
-libpep = "0.13"
+libpep = "0.14"
 ```
 
 Python, importable as `libpep`:
