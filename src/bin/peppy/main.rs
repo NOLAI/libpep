@@ -1,7 +1,8 @@
 //! `peppy`: command-line interface to libpep.
 //!
 //! The first word of a command is the kind of thing operated on (`keys`, `factors`,
-//! `pseudonym`, `attribute`, `json`, `elgamal`, `scalar`, `point`), the second the operation.
+//! `pseudonym`, `attribute`, `json`, `batch`, `elgamal`, `scalar`, `point`), the second the
+//! operation.
 //! See `peppy --help` and the README for a worked session.
 
 // The CLI reports errors through `io::Error`; the two remaining `expect`s are on
@@ -9,6 +10,8 @@
 #![allow(clippy::expect_used)]
 
 mod arith;
+#[cfg(all(feature = "batch", feature = "wire"))]
+mod batch;
 mod data;
 mod elgamal;
 mod factors;
@@ -58,6 +61,10 @@ enum Command {
     #[cfg(feature = "json")]
     #[command(subcommand)]
     Json(json::Json),
+    /// Wire-format batches of ciphertexts (draft-doesburg-cfrg-coprf).
+    #[cfg(all(feature = "batch", feature = "wire"))]
+    #[command(subcommand)]
+    Batch(batch::Batch),
     /// The raw ElGamal primitives on ciphertexts and scalar factors.
     #[command(subcommand)]
     Elgamal(elgamal::Elgamal),
@@ -82,6 +89,8 @@ fn run(command: Command, out: &mut Output) -> io::Result<()> {
         Command::Attribute(cmd) => data::run_attribute(cmd, &mut rng, out),
         #[cfg(feature = "json")]
         Command::Json(cmd) => json::run(cmd, &mut rng, out),
+        #[cfg(all(feature = "batch", feature = "wire"))]
+        Command::Batch(cmd) => batch::run(cmd, &mut rng, out),
         Command::Elgamal(cmd) => elgamal::run(cmd, &mut rng, out),
         Command::Scalar(cmd) => arith::run_scalar(cmd, &mut rng, out),
         Command::Point(cmd) => arith::run_point(cmd, &mut rng, out),

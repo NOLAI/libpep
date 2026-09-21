@@ -102,6 +102,7 @@ The `peppy` tool exposes the library on the command line. The first word names w
 | `factors` | `reshuffle`, `rekey`, `info` |
 | `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, and `pseudonymize` for pseudonyms |
 | `json` | `encrypt`, `decrypt`, `transcrypt` |
+| `batch` | `transcrypt`: a wire-format batch request (draft-doesburg-cfrg-coprf) to a response |
 | `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
 | `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `from-hash` |
 
@@ -207,6 +208,7 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
 | `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and the Ristretto scalar and group element arithmetic in `elgamal::arithmetic` |
+| `wire` | The byte-level `BatchRequest` and `BatchResponse` of [draft-doesburg-cfrg-coprf](https://datatracker.ietf.org/doc/draft-doesburg-cfrg-coprf/) and the session key share encoding, for exchanging batches between implementations; `Transcryptor::transcrypt_wire` answers a request |
 
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
@@ -220,6 +222,7 @@ Default features:
 - `batch`: batch transcryption with shuffling, so that outputs cannot be linked to inputs by position.
 - `serde`: serialization and deserialization support via Serde.
 - `json`: JSON documents with nested pseudonyms and attributes.
+- `wire`: the byte-level wire formats of draft-doesburg-cfrg-coprf (batch requests and responses, session key shares).
 - `build-binary`: the `peppy` command-line tool.
 
 Optional features:
