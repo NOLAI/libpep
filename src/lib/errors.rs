@@ -33,4 +33,8 @@ pub enum BatchError {
     #[cfg(feature = "json")]
     #[error(transparent)]
     JsonError(#[from] JsonError),
+    /// A wire-format batch request could not be interpreted or the response not encoded.
+    #[cfg(feature = "wire")]
+    #[error(transparent)]
+    Wire(#[from] crate::wire::WireError),
 }
