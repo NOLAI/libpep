@@ -88,21 +88,21 @@ py_dispatch!(
         (rec in data: PyRecord, k in key: PySessionKeys) => {
             let mut rng = rand::rng();
             let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&rec.0, &keys, &mut rng);
+            let encrypted = encrypt(&rec.0, &keys.public_keys(), &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(encrypted))?.into_any());
         }
         #[cfg(feature = "long")]
         (lrec in data: PyLongRecord, k in key: PySessionKeys) => {
             let mut rng = rand::rng();
             let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&lrec.0, &keys, &mut rng);
+            let encrypted = encrypt(&lrec.0, &keys.public_keys(), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(encrypted))?.into_any());
         }
         #[cfg(feature = "json")]
         (json in data: PyPEPJSONValue, k in key: PySessionKeys) => {
             let mut rng = rand::rng();
             let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&json.0, &keys, &mut rng);
+            let encrypted = encrypt(&json.0, &keys.public_keys(), &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(encrypted))?.into_any());
         }
     }
@@ -504,7 +504,7 @@ pub fn py_encrypt_batch(
                 })
                 .collect();
             let keys: SessionKeys = sk.clone().into();
-            let encrypted = encrypt_batch(&rust_msgs, &keys, &mut rng)
+            let encrypted = encrypt_batch(&rust_msgs, &keys.public_keys(), &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
                 .into_iter()

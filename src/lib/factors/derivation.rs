@@ -4,7 +4,9 @@
 use super::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use super::types::*;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+#[cfg(not(feature = "legacy"))]
+use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarTraits};
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 #[cfg(feature = "legacy")]
@@ -91,6 +93,7 @@ fn make_factor(typ: u32, secret: &Secret, payload: &String) -> ScalarNonZero {
 }
 
 /// Reduce a 64-byte hash to a scalar, rejecting 0 and 1.
+#[cfg(not(feature = "legacy"))]
 fn scalar_from_hash_excluding_zero_and_one(bytes: &[u8; 64]) -> Option<ScalarNonZero> {
     let scalar = ScalarCanBeZero::from_hash(bytes);
     if scalar.is_zero() || scalar == ScalarCanBeZero::one() {

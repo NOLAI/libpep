@@ -34,14 +34,6 @@ def decrypt_batch(encrypted, secret_key):
     """Polymorphic batch decryption."""
     ...
 
-def decrypt_global(encrypted, secret_key):
-    """Polymorphic decrypt_global function for offline decryption."""
-    ...
-
-def decrypt_global_batch(encrypted, secret_key):
-    """Polymorphic batch decryption with global secret key."""
-    ...
-
 def encrypt(data, key):
     """Polymorphic encrypt function - works with any encryptable type."""
     ...
@@ -58,14 +50,14 @@ def encrypt_global_batch(messages, public_key):
     """Polymorphic batch encryption with global public key."""
     ...
 
-def pseudonymize_batch(encrypted, pseudonymization_info):
+def pseudonymize_batch(encrypted, pseudonymization_info, public_key=None):
     """Polymorphic batch pseudonymization of a list of encrypted pseudonyms."""
     ...
 
-def rekey_batch(encrypted, rekey_info):
+def rekey_batch(encrypted, rekey_info, public_key=None):
     """Polymorphic batch rekeying of a list of encrypted attributes."""
     ...
 
-def transcrypt_batch(encrypted, transcryption_info):
+def transcrypt_batch(encrypted, transcryption_info, public_key=None):
     """Polymorphic batch transcryption of a list of encrypted data."""
     ...

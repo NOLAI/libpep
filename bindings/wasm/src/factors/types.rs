@@ -1,10 +1,15 @@
 //! WASM bindings for factor types and the transcryption info types that bundle them.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
+use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::keys::types::{
+    WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
+};
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
+use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
 use wasm_bindgen::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -130,6 +135,19 @@ impl WASMPseudonymizationInfo {
     pub fn reverse(&self) -> Self {
         Self(self.0.reverse())
     }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    #[wasm_bindgen(js_name = rekeyPublicKey)]
+    pub fn rekey_public_key(
+        &self,
+        before: &WASMPseudonymSessionPublicKey,
+    ) -> WASMPseudonymSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&PseudonymSessionPublicKey::from_point(*before.0));
+        WASMPseudonymSessionPublicKey(WASMGroupElement::from(*after))
+    }
 }
 
 /// The information required to rekey pseudonyms from one session to another.
@@ -163,6 +181,19 @@ impl WASMPseudonymRekeyInfo {
     pub fn reverse(&self) -> Self {
         Self(self.0.reverse())
     }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    #[wasm_bindgen(js_name = rekeyPublicKey)]
+    pub fn rekey_public_key(
+        &self,
+        before: &WASMPseudonymSessionPublicKey,
+    ) -> WASMPseudonymSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&PseudonymSessionPublicKey::from_point(*before.0));
+        WASMPseudonymSessionPublicKey(WASMGroupElement::from(*after))
+    }
 }
 
 /// The information required to rekey attributes from one session to another.
@@ -195,6 +226,19 @@ impl WASMAttributeRekeyInfo {
     #[wasm_bindgen(js_name = reverse)]
     pub fn reverse(&self) -> Self {
         Self(self.0.reverse())
+    }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    #[wasm_bindgen(js_name = rekeyPublicKey)]
+    pub fn rekey_public_key(
+        &self,
+        before: &WASMAttributeSessionPublicKey,
+    ) -> WASMAttributeSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&AttributeSessionPublicKey::from_point(*before.0));
+        WASMAttributeSessionPublicKey(WASMGroupElement::from(*after))
     }
 }
 
@@ -242,6 +286,13 @@ impl WASMTranscryptionInfo {
     #[wasm_bindgen(js_name = reverse)]
     pub fn reverse(&self) -> Self {
         Self(self.0.reverse())
+    }
+
+    /// The public keys that data transcrypted with this info is encrypted under, given the keys it
+    /// was encrypted under before. A transcryptor passes this on with the ciphertext.
+    #[wasm_bindgen(js_name = rekeyPublicKeys)]
+    pub fn rekey_public_keys(&self, before: &WASMSessionPublicKeys) -> WASMSessionPublicKeys {
+        self.0.rekey_public_keys(&(*before).into()).into()
     }
 }
 

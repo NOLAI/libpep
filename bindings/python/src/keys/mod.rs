@@ -1,5 +1,6 @@
 pub mod distribution;
 pub mod generation;
+pub mod pk;
 pub mod types;
 
 pub use distribution::{

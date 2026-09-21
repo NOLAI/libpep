@@ -18,12 +18,13 @@ use pyo3::types::PyAny;
 /// Polymorphic batch pseudonymization.
 /// Accepts a mutable list of encrypted pseudonyms and pseudonymization info.
 #[pyfunction]
-#[pyo3(name = "pseudonymize_batch")]
+#[pyo3(name = "pseudonymize_batch", signature = (encrypted, info, public_key=None))]
 #[allow(clippy::expect_used)]
 pub fn py_pseudonymize_batch(
     py: Python,
     encrypted: Vec<Bound<PyAny>>,
     info: &PyPseudonymizationInfo,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<Py<PyAny>>> {
     if encrypted.is_empty() {
         return Ok(Vec::new());
@@ -39,7 +40,7 @@ pub fn py_pseudonymize_batch(
             .map(|e| e.extract::<PyEncryptedPseudonym>())
             .collect::<Result<Vec<_>, _>>()?;
         let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &mut rng)
+        let result = crate::transcrypt_with!(pseudonymize_batch, &mut rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()
@@ -60,7 +61,7 @@ pub fn py_pseudonymize_batch(
             .map(|e| e.extract::<PyLongEncryptedPseudonym>())
             .collect::<Result<Vec<_>, _>>()?;
         let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0.clone()).collect();
-        let result = pseudonymize_batch(&mut rust_encs, &pseudonymization_info, &mut rng)
+        let result = crate::transcrypt_with!(pseudonymize_batch, &mut rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()
@@ -81,12 +82,13 @@ pub fn py_pseudonymize_batch(
 /// Polymorphic batch rekeying.
 /// Accepts a mutable list of encrypted values and rekey info.
 #[pyfunction]
-#[pyo3(name = "rekey_batch")]
+#[pyo3(name = "rekey_batch", signature = (encrypted, rekey_info, public_key=None))]
 #[allow(clippy::expect_used)]
 pub fn py_rekey_batch(
     py: Python,
     encrypted: Vec<Bound<PyAny>>,
     rekey_info: &Bound<PyAny>,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<Py<PyAny>>> {
     if encrypted.is_empty() {
         return Ok(Vec::new());
@@ -105,7 +107,7 @@ pub fn py_rekey_batch(
                         .0
                 })
                 .collect();
-            let result = rekey_batch(&mut rust_encs, &info.0, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_vec()
@@ -132,7 +134,7 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            let result = rekey_batch(&mut rust_encs, &info.0, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_vec()
@@ -158,7 +160,7 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = rekey_batch(&mut rust_encs, &rust_info, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_vec()
@@ -186,7 +188,7 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = rekey_batch(&mut rust_encs, &rust_info, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_vec()
@@ -208,12 +210,13 @@ pub fn py_rekey_batch(
 /// Polymorphic batch transcryption.
 /// Accepts a mutable list of encrypted values and transcryption info.
 #[pyfunction]
-#[pyo3(name = "transcrypt_batch")]
+#[pyo3(name = "transcrypt_batch", signature = (encrypted, info, public_key=None))]
 #[allow(clippy::expect_used)]
 pub fn py_transcrypt_batch(
     py: Python,
     encrypted: Vec<Bound<PyAny>>,
     info: &PyTranscryptionInfo,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<Py<PyAny>>> {
     if encrypted.is_empty() {
         return Ok(Vec::new());
@@ -232,7 +235,7 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()
@@ -255,7 +258,7 @@ pub fn py_transcrypt_batch(
                     .0
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::attribute, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()
@@ -279,7 +282,7 @@ pub fn py_transcrypt_batch(
                     .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()
@@ -304,7 +307,7 @@ pub fn py_transcrypt_batch(
                     .clone()
             })
             .collect();
-        let result = transcrypt_batch(&mut rust_encs, &transcryption_info, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_vec()

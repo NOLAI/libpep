@@ -104,7 +104,7 @@ impl PyEncryptedRecord {
 pub fn py_encrypt_record(record: &PyRecord, session_keys: &PySessionKeys) -> PyEncryptedRecord {
     let mut rng = rand::rng();
     let keys: SessionKeys = session_keys.clone().into();
-    PyEncryptedRecord(encrypt(&record.0, &keys, &mut rng))
+    PyEncryptedRecord(encrypt(&record.0, &keys.public_keys(), &mut rng))
 }
 
 /// Decrypt an EncryptedRecord using session keys.
@@ -270,7 +270,7 @@ pub fn py_encrypt_long_record(
 ) -> PyLongEncryptedRecord {
     let mut rng = rand::rng();
     let keys: SessionKeys = session_keys.clone().into();
-    PyLongEncryptedRecord(encrypt(&record.0, &keys, &mut rng))
+    PyLongEncryptedRecord(encrypt(&record.0, &keys.public_keys(), &mut rng))
 }
 
 #[cfg(feature = "long")]

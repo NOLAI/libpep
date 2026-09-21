@@ -327,7 +327,7 @@ impl WASMClient {
         use libpep::data::records::Record;
         use libpep::data::traits::Encryptable;
         let rust_record: Record = record.into();
-        let encrypted = rust_record.encrypt(self.0.dump(), &mut rng);
+        let encrypted = rust_record.encrypt(&self.0.dump().public_keys(), &mut rng);
         encrypted.into()
     }
 
@@ -359,7 +359,7 @@ impl WASMClient {
         use libpep::data::records::LongRecord;
         use libpep::data::traits::Encryptable;
         let rust_record: LongRecord = record.into();
-        let encrypted = rust_record.encrypt(self.0.dump(), &mut rng);
+        let encrypted = rust_record.encrypt(&self.0.dump().public_keys(), &mut rng);
         encrypted.into()
     }
 
@@ -393,7 +393,7 @@ impl WASMClient {
         let mut rng = rand::rng();
         use libpep::data::traits::Encryptable;
         let rust_value = value.0;
-        let encrypted = rust_value.encrypt(self.0.dump(), &mut rng);
+        let encrypted = rust_value.encrypt(&self.0.dump().public_keys(), &mut rng);
         WASMEncryptedPEPJSONValue(encrypted)
     }
 

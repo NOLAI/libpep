@@ -1,10 +1,14 @@
 //! Python bindings for factor types and the transcryption info types that bundle them.
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
+use crate::keys::distribution::shares::PySessionPublicKeys;
+use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
+use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
 use pyo3::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -129,6 +133,18 @@ impl PyPseudonymizationInfo {
     fn reverse(&self) -> Self {
         Self(self.0.reverse())
     }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    fn rekey_public_key(
+        &self,
+        before: &PyPseudonymSessionPublicKey,
+    ) -> PyPseudonymSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&PseudonymSessionPublicKey::from_point(before.0 .0));
+        PyPseudonymSessionPublicKey(PyGroupElement(*after.value()))
+    }
 }
 
 /// The information required to rekey pseudonyms from one session to another.
@@ -161,6 +177,18 @@ impl PyPseudonymRekeyInfo {
     fn reverse(&self) -> Self {
         Self(self.0.reverse())
     }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    fn rekey_public_key(
+        &self,
+        before: &PyPseudonymSessionPublicKey,
+    ) -> PyPseudonymSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&PseudonymSessionPublicKey::from_point(before.0 .0));
+        PyPseudonymSessionPublicKey(PyGroupElement(*after.value()))
+    }
 }
 
 /// The information required to rekey attributes from one session to another.
@@ -192,6 +220,18 @@ impl PyAttributeRekeyInfo {
     /// The info for the opposite direction.
     fn reverse(&self) -> Self {
         Self(self.0.reverse())
+    }
+
+    /// The public key that ciphertexts transcrypted with this info are encrypted under, given the
+    /// key they were encrypted under before. A transcryptor passes this on with the ciphertext.
+    fn rekey_public_key(
+        &self,
+        before: &PyAttributeSessionPublicKey,
+    ) -> PyAttributeSessionPublicKey {
+        let after = self
+            .0
+            .rekey_public_key(&AttributeSessionPublicKey::from_point(before.0 .0));
+        PyAttributeSessionPublicKey(PyGroupElement(*after.value()))
     }
 }
 
@@ -238,6 +278,12 @@ impl PyTranscryptionInfo {
     /// The info for the opposite direction.
     fn reverse(&self) -> Self {
         Self(self.0.reverse())
+    }
+
+    /// The public keys that data transcrypted with this info is encrypted under, given the keys it
+    /// was encrypted under before. A transcryptor passes this on with the ciphertext.
+    fn rekey_public_keys(&self, before: &PySessionPublicKeys) -> PySessionPublicKeys {
+        self.0.rekey_public_keys(&(*before).into()).into()
     }
 }
 

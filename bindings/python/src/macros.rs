@@ -520,3 +520,40 @@ pub(crate) use {
     py_dispatch, py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl,
     py_long_plaintext_impl, py_plaintext_impl, py_scalar_key_impl, py_session_pubkey_impl,
 };
+
+/// Call a transcryption function or method with the argument list of the active ciphertext
+/// encoding: with `elgamal3` the ciphertext carries its public key; otherwise the key is extracted
+/// from the optional Python argument with `$extract` (see [`crate::keys::pk`]).
+#[macro_export]
+macro_rules! transcrypt_with {
+    ($f:path, $enc:expr, $info:expr, $pk:expr => $extract:path, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $f($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $f($enc, $info, &$extract($pk)?, $rng);
+        result
+    }};
+    (@on $obj:expr, . $m:ident, $info:expr, $pk:expr => $extract:path, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $obj.$m($info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $obj.$m($info, &$extract($pk)?, $rng);
+        result
+    }};
+    ($obj:expr, . $m:ident, $enc:expr, $info:expr, $pk:expr => $extract:path, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $obj.$m($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $obj.$m($enc, $info, &$extract($pk)?, $rng);
+        result
+    }};
+}

@@ -51,12 +51,20 @@ test('n_pep', async () => {
     const encPseudo = clientA.encryptPseudonym(pseudonym);
     const encData = clientA.encryptData(data);
 
-    // Transcrypt pseudonym and rekey data.
-    const transcryptedPseudo = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1)), encPseudo);
+    // Transcrypt pseudonym and rekey data. Every transcryptor rerandomizes, which needs the key the
+    // ciphertext is currently encrypted under: the sender's session key for the first transcryptor
+    // and the key output by the previous transcryptor for the others, so the key travels along.
+    const keysA1 = clientA.dump().publicKeys();
+    const [transcryptedPseudo, keyB1Pseudonym] = systems.reduce(([acc, key], system) => {
+        const info = system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1);
+        return [system.pseudonymize(acc, info, key), info.rekeyPublicKey(key)];
+    }, [encPseudo, keysA1.pseudonym]);
+    expect(keyB1Pseudonym[0].toHex()).toEqual(clientB.dump().pseudonym.public[0].toHex());
 
-    const transcryptedData = systems.reduce((acc, system) =>
-        system.rekey(acc, system.attributeRekeyInfo(sessionA1, sessionB1)), encData);
+    const [transcryptedData] = systems.reduce(([acc, key], system) => {
+        const info = system.attributeRekeyInfo(sessionA1, sessionB1);
+        return [system.rekey(acc, info, key), info.rekeyPublicKey(key)];
+    }, [encData, keysA1.attribute]);
 
     // Decrypt pseudonym and data.
     const decPseudo = clientB.decryptPseudonym(transcryptedPseudo);
@@ -67,8 +75,10 @@ test('n_pep', async () => {
     expect(decPseudo).not.toEqual(pseudonym);
 
     // Reverse pseudonymization.
-    const revPseudonymized = systems.reduce((acc, system) =>
-        system.pseudonymize(acc, system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1).reverse()), transcryptedPseudo);
+    const [revPseudonymized] = systems.reduce(([acc, key], system) => {
+        const info = system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1).reverse();
+        return [system.pseudonymize(acc, info, key), info.rekeyPublicKey(key)];
+    }, [transcryptedPseudo, keyB1Pseudonym]);
 
     const revDecPseudo = clientA.decryptPseudonym(revPseudonymized);
     expect(revDecPseudo.toHex()).toEqual(pseudonym.toHex());
