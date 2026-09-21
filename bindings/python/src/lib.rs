@@ -10,6 +10,8 @@ pub mod elgamal;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
+#[cfg(feature = "wire")]
+pub mod wire;
 
 use pyo3::prelude::*;
 
@@ -66,6 +68,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     drop(data_module);
     add_submodule(m, "libpep.contexts", |sm| contexts::register(sm))?;
     add_submodule(m, "libpep.factors", |sm| factors::register(sm))?;
+    #[cfg(feature = "wire")]
+    add_submodule(m, "libpep.wire", |sm| wire::register(sm))?;
     Ok(())
 }
 

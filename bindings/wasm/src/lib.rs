@@ -10,3 +10,5 @@ pub mod elgamal;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
+#[cfg(feature = "wire")]
+pub mod wire;

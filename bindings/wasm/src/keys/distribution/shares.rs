@@ -65,6 +65,23 @@ impl WASMSessionKeyShares {
     pub fn attribute(&self) -> WASMAttributeSessionKeyShare {
         WASMAttributeSessionKeyShare(self.0.attribute)
     }
+
+    /// Encode as the pseudonym share followed by the attribute share (32 bytes each), the
+    /// session key share encoding of draft-doesburg-cfrg-coprf.
+    #[cfg(feature = "wire")]
+    #[wasm_bindgen(js_name = toBytes)]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes().to_vec()
+    }
+
+    /// Decode from `toBytes`. Throws for a wrong length or a zero share.
+    #[cfg(feature = "wire")]
+    #[wasm_bindgen(js_name = fromBytes)]
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<WASMSessionKeyShares, JsValue> {
+        SessionKeyShares::from_slice(&bytes)
+            .map(WASMSessionKeyShares)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
 }
 
 /// Combines pseudonym session key shares.

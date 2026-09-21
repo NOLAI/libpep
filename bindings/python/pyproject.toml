@@ -37,7 +37,7 @@ Documentation = "https://docs.rs/libpep"
 dev = ["maturin>=1.0"]
 
 [tool.maturin]
-features = ["extension-module", "json", "long", "offline", "batch", "serde"]
+features = ["extension-module", "json", "long", "offline", "batch", "serde", "wire"]
 module-name = "libpep"
 include = [{ path = "libpep-stubs/**/*.pyi", format = ["wheel", "sdist"] }]
 
