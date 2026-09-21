@@ -39,18 +39,28 @@ impl GroupElement {
     /// Curve25519 has exactly 2^255 - 19 points.
     /// Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order
     /// 2^252 + 27742317777372353535851937790883648493 (the Elligator mapping takes 253 bits).
+    ///
+    /// The identity element is rejected as well: no valid pseudonym, attribute, public key or
+    /// ciphertext component is the identity, and accepting it would make proof verification
+    /// equations vacuous. Use [`GroupElement::identity`] to construct it deliberately.
     #[must_use]
     pub fn from_bytes(v: &[u8; 32]) -> Option<Self> {
-        CompressedRistretto(*v).decompress().map(Self)
+        CompressedRistretto(*v)
+            .decompress()
+            .map(Self)
+            .filter(|p| *p != Self::identity())
     }
 
     /// Create from a byte slice.
+    /// Returns `None` if the slice is not 32 bytes, not a valid encoding, or the identity element
+    /// (see [`GroupElement::from_bytes`]).
     #[must_use]
     pub fn from_slice(v: &[u8]) -> Option<Self> {
         CompressedRistretto::from_slice(v)
             .ok()?
             .decompress()
             .map(Self)
+            .filter(|p| *p != Self::identity())
     }
 
     /// Convert to a 32-byte array.
@@ -104,12 +114,7 @@ impl GroupElement {
             Ok(v) => v,
             Err(_) => return None,
         };
-        // SAFETY: hex::decode of 64 chars produces exactly 32 bytes, so from_slice cannot fail
-        #[allow(clippy::unwrap_used)]
-        CompressedRistretto::from_slice(&bytes)
-            .unwrap()
-            .decompress()
-            .map(Self)
+        Self::from_slice(&bytes)
     }
 
     /// Convert to a hexadecimal string.
@@ -311,6 +316,15 @@ impl std::ops::Mul<GroupElement> for ScalarCanBeZero {
 mod tests {
     use super::*;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+
+    #[test]
+    fn deserialization_rejects_the_identity() {
+        let identity = GroupElement::identity();
+        assert!(GroupElement::from_bytes(&identity.to_bytes()).is_none());
+        assert!(GroupElement::from_slice(&identity.to_bytes()).is_none());
+        assert_eq!(GroupElement::from_hex(&identity.to_hex()), None);
+        assert_eq!(GroupElement::from_bytes(&G.to_bytes()), Some(G));
+    }
 
     #[test]
     fn encode_decode() {

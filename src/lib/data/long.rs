@@ -929,7 +929,7 @@ impl Encrypted for LongEncryptedAttribute {
 // Transcryption trait implementations for long types
 
 impl Pseudonymizable for LongEncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+    fn pseudonymize_raw(&self, info: &PseudonymizationInfo) -> Self {
         let ski = info.s.0 * info.k.0.invert();
         let pseudonymized_blocks: Vec<_> = self
             .encrypted_blocks()
@@ -955,7 +955,7 @@ impl Pseudonymizable for LongEncryptedPseudonym {
 impl Rekeyable for LongEncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
-    fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
         let k_inv = info.k.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
@@ -976,7 +976,7 @@ impl Rekeyable for LongEncryptedPseudonym {
 impl Rekeyable for LongEncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
-    fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
         let k_inv = info.k.0.invert();
         let rekeyed_blocks: Vec<_> = self
             .encrypted_blocks()
@@ -995,14 +995,14 @@ impl Rekeyable for LongEncryptedAttribute {
 }
 
 impl Transcryptable for LongEncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
+        self.pseudonymize_raw(&info.pseudonym)
     }
 }
 
 impl Transcryptable for LongEncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.rekey(&info.attribute)
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
+        self.rekey_raw(&info.attribute)
     }
 }
 

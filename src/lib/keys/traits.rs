@@ -102,53 +102,59 @@ impl_key_pair!(
 /// Trait to provide the correct key from SessionKeys or GlobalPublicKeys based on the key type.
 /// This enables polymorphic key access in the Client.
 pub trait KeyProvider<K> {
-    fn get_key(&self) -> &K;
+    fn get_key(&self) -> K;
 }
 
 impl KeyProvider<PseudonymSessionPublicKey> for SessionKeys {
-    fn get_key(&self) -> &PseudonymSessionPublicKey {
-        &self.pseudonym.public
+    fn get_key(&self) -> PseudonymSessionPublicKey {
+        self.pseudonym.public
     }
 }
 
 impl KeyProvider<AttributeSessionPublicKey> for SessionKeys {
-    fn get_key(&self) -> &AttributeSessionPublicKey {
-        &self.attribute.public
+    fn get_key(&self) -> AttributeSessionPublicKey {
+        self.attribute.public
     }
 }
 
 impl KeyProvider<PseudonymSessionSecretKey> for SessionKeys {
-    fn get_key(&self) -> &PseudonymSessionSecretKey {
-        &self.pseudonym.secret
+    fn get_key(&self) -> PseudonymSessionSecretKey {
+        self.pseudonym.secret
     }
 }
 
 impl KeyProvider<AttributeSessionSecretKey> for SessionKeys {
-    fn get_key(&self) -> &AttributeSessionSecretKey {
-        &self.attribute.secret
+    fn get_key(&self) -> AttributeSessionSecretKey {
+        self.attribute.secret
     }
 }
 
 impl KeyProvider<SessionKeys> for SessionKeys {
-    fn get_key(&self) -> &SessionKeys {
-        self
+    fn get_key(&self) -> SessionKeys {
+        *self
+    }
+}
+
+impl KeyProvider<SessionPublicKeys> for SessionKeys {
+    fn get_key(&self) -> SessionPublicKeys {
+        self.public_keys()
     }
 }
 
 impl KeyProvider<PseudonymGlobalPublicKey> for GlobalPublicKeys {
-    fn get_key(&self) -> &PseudonymGlobalPublicKey {
-        &self.pseudonym
+    fn get_key(&self) -> PseudonymGlobalPublicKey {
+        self.pseudonym
     }
 }
 
 impl KeyProvider<AttributeGlobalPublicKey> for GlobalPublicKeys {
-    fn get_key(&self) -> &AttributeGlobalPublicKey {
-        &self.attribute
+    fn get_key(&self) -> AttributeGlobalPublicKey {
+        self.attribute
     }
 }
 
 impl KeyProvider<GlobalPublicKeys> for GlobalPublicKeys {
-    fn get_key(&self) -> &GlobalPublicKeys {
-        self
+    fn get_key(&self) -> GlobalPublicKeys {
+        *self
     }
 }

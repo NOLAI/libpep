@@ -263,7 +263,7 @@ mod tests {
             "count": 42
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         let structure = encrypted.structure();
 
         let expected = JSONStructure::Object(vec![
@@ -281,14 +281,14 @@ mod tests {
 
         // Short string (1 block)
         let short_pep = PEPJSONValue::from_value(&json!("hi"));
-        let short = encrypt(&short_pep, &keys, &mut rng);
+        let short = encrypt(&short_pep, &keys.public_keys(), &mut rng);
         assert_eq!(short.structure(), JSONStructure::String(1));
 
         // Longer string (multiple blocks - each block is 16 bytes)
         let long_pep = PEPJSONValue::from_value(&json!(
             "This is a longer string that will need multiple blocks"
         ));
-        let long = encrypt(&long_pep, &keys, &mut rng);
+        let long = encrypt(&long_pep, &keys.public_keys(), &mut rng);
         if let JSONStructure::String(blocks) = long.structure() {
             assert!(blocks > 1);
         } else {
@@ -297,15 +297,15 @@ mod tests {
 
         // Primitives
         let null_pep = PEPJSONValue::from_value(&json!(null));
-        let null = encrypt(&null_pep, &keys, &mut rng);
+        let null = encrypt(&null_pep, &keys.public_keys(), &mut rng);
         assert_eq!(null.structure(), JSONStructure::Null);
 
         let bool_pep = PEPJSONValue::from_value(&json!(true));
-        let bool_val = encrypt(&bool_pep, &keys, &mut rng);
+        let bool_val = encrypt(&bool_pep, &keys.public_keys(), &mut rng);
         assert_eq!(bool_val.structure(), JSONStructure::Bool);
 
         let num_pep = PEPJSONValue::from_value(&json!(42));
-        let num = encrypt(&num_pep, &keys, &mut rng);
+        let num = encrypt(&num_pep, &keys.public_keys(), &mut rng);
         assert_eq!(num.structure(), JSONStructure::Number);
     }
 
@@ -319,7 +319,7 @@ mod tests {
             "name": "Alice",
             "age": 30
         });
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         let structure = encrypted.structure();
 
         let expected = JSONStructure::Object(vec![
@@ -338,10 +338,10 @@ mod tests {
 
         // Two values with the same structure
         let pep_value1 = PEPJSONValue::from_value(&json!({"name": "Alice", "age": 30}));
-        let value1 = encrypt(&pep_value1, &keys, &mut rng);
+        let value1 = encrypt(&pep_value1, &keys.public_keys(), &mut rng);
 
         let pep_value2 = PEPJSONValue::from_value(&json!({"name": "Bob", "age": 25}));
-        let value2 = encrypt(&pep_value2, &keys, &mut rng);
+        let value2 = encrypt(&pep_value2, &keys.public_keys(), &mut rng);
 
         // Same structure (same string lengths map to same block counts)
         assert_eq!(value1.structure(), value2.structure());
@@ -350,7 +350,7 @@ mod tests {
         let pep_value3 = PEPJSONValue::from_value(
             &json!({"name": "A very long name that needs more blocks", "age": 25}),
         );
-        let value3 = encrypt(&pep_value3, &keys, &mut rng);
+        let value3 = encrypt(&pep_value3, &keys.public_keys(), &mut rng);
 
         assert_ne!(value1.structure(), value3.structure());
     }
@@ -367,7 +367,7 @@ mod tests {
             },
             "scores": [88, 91, 85]
         }));
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         let structure = encrypted.structure();
 
         let expected = JSONStructure::Object(vec![
@@ -404,7 +404,7 @@ mod tests {
             "age": 30,
             "scores": [88, 91, 85]
         });
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
 
         let structure = encrypted.structure();
 
@@ -610,9 +610,9 @@ mod tests {
         }));
 
         // Encrypt them
-        let enc1 = encrypt(&user1, &keys, &mut rng);
-        let enc2 = encrypt(&user2, &keys, &mut rng);
-        let enc3 = encrypt(&user3, &keys, &mut rng);
+        let enc1 = encrypt(&user1, &keys.public_keys(), &mut rng);
+        let enc2 = encrypt(&user2, &keys.public_keys(), &mut rng);
+        let enc3 = encrypt(&user3, &keys.public_keys(), &mut rng);
 
         // Get their structures
         let struct1 = enc1.structure();

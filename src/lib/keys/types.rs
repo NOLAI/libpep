@@ -53,6 +53,31 @@ pub struct SessionKeys {
     pub attribute: AttributeSessionKeys,
 }
 
+/// The public halves of [`SessionKeys`]: what a sender needs to encrypt towards a session, and what
+/// a transcryptor needs to rerandomize ciphertexts encrypted for it.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SessionPublicKeys {
+    pub pseudonym: PseudonymSessionPublicKey,
+    pub attribute: AttributeSessionPublicKey,
+}
+
+impl SessionKeys {
+    /// The public keys of this session.
+    pub fn public_keys(&self) -> SessionPublicKeys {
+        SessionPublicKeys {
+            pseudonym: self.pseudonym.public,
+            attribute: self.attribute.public,
+        }
+    }
+}
+
+impl From<&SessionKeys> for SessionPublicKeys {
+    fn from(keys: &SessionKeys) -> Self {
+        keys.public_keys()
+    }
+}
+
 /// A pseudonym session key pair containing both public and secret keys.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

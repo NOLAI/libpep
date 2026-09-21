@@ -38,7 +38,7 @@ impl Client {
         SessionKeys: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {
-        message.encrypt(self.keys.get_key(), rng)
+        message.encrypt(&self.keys.get_key(), rng)
     }
 
     /// Decrypt encrypted data with the appropriate session secret key.
@@ -50,7 +50,7 @@ impl Client {
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
     {
-        encrypted.decrypt(self.keys.get_key())
+        encrypted.decrypt(&self.keys.get_key())
     }
 
     /// Decrypt encrypted data with the appropriate session secret key.
@@ -61,7 +61,7 @@ impl Client {
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
     {
-        encrypted.decrypt(self.keys.get_key())
+        encrypted.decrypt(&self.keys.get_key())
     }
 
     /// Encrypt a batch of messages with the appropriate session public key.
@@ -77,7 +77,7 @@ impl Client {
         SessionKeys: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {
-        super::batch::encrypt_batch(messages, self.keys.get_key(), rng)
+        super::batch::encrypt_batch(messages, &self.keys.get_key(), rng)
     }
 
     /// Encrypt a batch of messages without padding or preprocessing.
@@ -92,7 +92,7 @@ impl Client {
         SessionKeys: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {
-        super::batch::encrypt_batch_raw(messages, self.keys.get_key(), rng)
+        super::batch::encrypt_batch_raw(messages, &self.keys.get_key(), rng)
     }
 
     /// Decrypt a batch of encrypted messages with the appropriate session secret key.
@@ -107,7 +107,7 @@ impl Client {
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
     {
-        super::batch::decrypt_batch(encrypted, self.keys.get_key())
+        super::batch::decrypt_batch(encrypted, &self.keys.get_key())
     }
 
     /// Decrypt a batch of encrypted messages with the appropriate session secret key.
@@ -121,7 +121,7 @@ impl Client {
         E: Encrypted,
         SessionKeys: KeyProvider<E::SecretKeyType>,
     {
-        super::batch::decrypt_batch(encrypted, self.keys.get_key())
+        super::batch::decrypt_batch(encrypted, &self.keys.get_key())
     }
 }
 
@@ -150,7 +150,7 @@ impl OfflineClient {
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
         R: Rng + CryptoRng,
     {
-        message.encrypt_global(self.global_public_keys.get_key(), rng)
+        message.encrypt_global(&self.global_public_keys.get_key(), rng)
     }
 
     /// Encrypt a batch of messages with the appropriate global public key.
@@ -166,6 +166,6 @@ impl OfflineClient {
         GlobalPublicKeys: KeyProvider<M::GlobalPublicKeyType>,
         R: Rng + CryptoRng,
     {
-        super::batch::encrypt_global_batch(messages, self.global_public_keys.get_key(), rng)
+        super::batch::encrypt_global_batch(messages, &self.global_public_keys.get_key(), rng)
     }
 }

@@ -10,6 +10,21 @@ use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::pseudonymize;
 use std::io::Error;
 
+/// Call a transcryption function with the argument list of the active ciphertext encoding: with
+/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
+macro_rules! tx {
+    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $f($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $f($enc, $info, $pk, $rng);
+        result
+    }};
+}
+
 #[test]
 fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Initialize test environment
@@ -52,7 +67,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
     // Step 4: Pseudonymize (transform) the encrypted pseudonyms
     let transformed_pseudonyms: Vec<EncryptedPseudonym> = encrypted_pseudonyms
         .iter()
-        .map(|ep| pseudonymize(ep, &pseudo_info))
+        .map(|ep| tx!(pseudonymize, ep, &pseudo_info, &session_public, &mut rng))
         .collect();
 
     // Step 5: Decrypt the transformed pseudonyms
@@ -88,7 +103,15 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
 
     let reverse_transformed: Vec<EncryptedPseudonym> = re_encrypted_pseudonyms
         .iter()
-        .map(|ep| pseudonymize(ep, &reverse_pseudo_info))
+        .map(|ep| {
+            tx!(
+                pseudonymize,
+                ep,
+                &reverse_pseudo_info,
+                &session_public,
+                &mut rng
+            )
+        })
         .collect();
 
     let reverse_decrypted: Vec<Pseudonym> = reverse_transformed

@@ -12,7 +12,7 @@ use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::factors::TranscryptionInfo;
 #[cfg(feature = "offline")]
 use crate::keys::GlobalPublicKeys;
-use crate::keys::SessionKeys;
+use crate::keys::{SessionKeys, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -348,7 +348,7 @@ impl LongEncryptedRecord {
 
 impl Encryptable for Record {
     type EncryptedType = EncryptedRecord;
-    type PublicKeyType = SessionKeys;
+    type PublicKeyType = SessionPublicKeys;
 
     #[cfg(feature = "offline")]
     type GlobalPublicKeyType = GlobalPublicKeys;
@@ -361,12 +361,12 @@ impl Encryptable for Record {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.encrypt(&keys.pseudonym.public, rng))
+                .map(|p| p.encrypt(&keys.pseudonym, rng))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.encrypt(&keys.attribute.public, rng))
+                .map(|a| a.encrypt(&keys.attribute, rng))
                 .collect(),
         }
     }
@@ -482,7 +482,7 @@ impl Encrypted for EncryptedRecord {
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
+    fn rerandomize<R>(&self, keys: &SessionPublicKeys, rng: &mut R) -> Self
     where
         R: Rng + CryptoRng,
     {
@@ -490,12 +490,12 @@ impl Encrypted for EncryptedRecord {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.rerandomize(&keys.pseudonym.public, rng))
+                .map(|p| p.rerandomize(&keys.pseudonym, rng))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.rerandomize(&keys.attribute.public, rng))
+                .map(|a| a.rerandomize(&keys.attribute, rng))
                 .collect(),
         }
     }
@@ -519,29 +519,37 @@ impl Encrypted for EncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize_known(
         &self,
-        keys: &SessionKeys,
+        keys: &SessionPublicKeys,
         factor: &crate::factors::RerandomizeFactor,
     ) -> Self {
         EncryptedRecord {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.rerandomize_known(&keys.pseudonym.public, factor))
+                .map(|p| p.rerandomize_known(&keys.pseudonym, factor))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.rerandomize_known(&keys.attribute.public, factor))
+                .map(|a| a.rerandomize_known(&keys.attribute, factor))
                 .collect(),
         }
     }
 }
 
 impl Transcryptable for EncryptedRecord {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
         EncryptedRecord {
-            pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
-            attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt_raw(info))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt_raw(info))
+                .collect(),
         }
     }
 }
@@ -570,7 +578,7 @@ impl<'de> Deserialize<'de> for EncryptedRecord {
 #[cfg(feature = "long")]
 impl Encryptable for LongRecord {
     type EncryptedType = LongEncryptedRecord;
-    type PublicKeyType = SessionKeys;
+    type PublicKeyType = SessionPublicKeys;
 
     #[cfg(feature = "offline")]
     type GlobalPublicKeyType = GlobalPublicKeys;
@@ -583,12 +591,12 @@ impl Encryptable for LongRecord {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.encrypt(&keys.pseudonym.public, rng))
+                .map(|p| p.encrypt(&keys.pseudonym, rng))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.encrypt(&keys.attribute.public, rng))
+                .map(|a| a.encrypt(&keys.attribute, rng))
                 .collect(),
         }
     }
@@ -706,7 +714,7 @@ impl Encrypted for LongEncryptedRecord {
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn rerandomize<R>(&self, keys: &SessionKeys, rng: &mut R) -> Self
+    fn rerandomize<R>(&self, keys: &SessionPublicKeys, rng: &mut R) -> Self
     where
         R: Rng + CryptoRng,
     {
@@ -714,12 +722,12 @@ impl Encrypted for LongEncryptedRecord {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.rerandomize(&keys.pseudonym.public, rng))
+                .map(|p| p.rerandomize(&keys.pseudonym, rng))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.rerandomize(&keys.attribute.public, rng))
+                .map(|a| a.rerandomize(&keys.attribute, rng))
                 .collect(),
         }
     }
@@ -743,19 +751,19 @@ impl Encrypted for LongEncryptedRecord {
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize_known(
         &self,
-        keys: &SessionKeys,
+        keys: &SessionPublicKeys,
         factor: &crate::factors::RerandomizeFactor,
     ) -> Self {
         LongEncryptedRecord {
             pseudonyms: self
                 .pseudonyms
                 .iter()
-                .map(|p| p.rerandomize_known(&keys.pseudonym.public, factor))
+                .map(|p| p.rerandomize_known(&keys.pseudonym, factor))
                 .collect(),
             attributes: self
                 .attributes
                 .iter()
-                .map(|a| a.rerandomize_known(&keys.attribute.public, factor))
+                .map(|a| a.rerandomize_known(&keys.attribute, factor))
                 .collect(),
         }
     }
@@ -763,10 +771,18 @@ impl Encrypted for LongEncryptedRecord {
 
 #[cfg(feature = "long")]
 impl Transcryptable for LongEncryptedRecord {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
         LongEncryptedRecord {
-            pseudonyms: self.pseudonyms.iter().map(|p| p.transcrypt(info)).collect(),
-            attributes: self.attributes.iter().map(|a| a.transcrypt(info)).collect(),
+            pseudonyms: self
+                .pseudonyms
+                .iter()
+                .map(|p| p.transcrypt_raw(info))
+                .collect(),
+            attributes: self
+                .attributes
+                .iter()
+                .map(|a| a.transcrypt_raw(info))
+                .collect(),
         }
     }
 }

@@ -22,6 +22,32 @@ use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 #[cfg(feature = "batch")]
 use std::collections::HashSet;
 
+/// Call a transcryption function with the argument list of the active ciphertext encoding: with
+/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
+macro_rules! tx {
+    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $f($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $f($enc, $info, $pk, $rng);
+        result
+    }};
+}
+
+/// Decrypt with the active ciphertext encoding (with `elgamal3`, decryption can fail).
+macro_rules! dec {
+    ($enc:expr, $sk:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = decrypt($enc, $sk).expect("decryption should succeed");
+        #[cfg(not(feature = "elgamal3"))]
+        let result = decrypt($enc, $sk);
+        result
+    }};
+}
+
 #[test]
 fn test_core_flow() {
     let rng = &mut rand::rng();
@@ -37,7 +63,7 @@ fn test_core_flow() {
 
     let (pseudonym_session1_public, pseudonym_session1_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_pseudonym_session2_public, pseudonym_session2_secret) =
+    let (pseudonym_session2_public, pseudonym_session2_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
     let (attribute_session1_public, attribute_session1_secret) =
         make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
@@ -91,7 +117,13 @@ fn test_core_flow() {
     );
     let attribute_rekey_info = transcryption_info.attribute;
 
-    let rekeyed = rekey(&enc_data, &attribute_rekey_info);
+    let rekeyed = tx!(
+        rekey,
+        &enc_data,
+        &attribute_rekey_info,
+        &attribute_session1_public,
+        rng
+    );
     #[cfg(feature = "elgamal3")]
     let rekeyed_dec =
         decrypt(&rekeyed, &attribute_session2_secret).expect("decryption should succeed");
@@ -100,7 +132,13 @@ fn test_core_flow() {
 
     assert_eq!(data, rekeyed_dec);
 
-    let pseudonymized = transcrypt(&enc_pseudo, &transcryption_info);
+    let pseudonymized = tx!(
+        transcrypt,
+        &enc_pseudo,
+        &transcryption_info,
+        &pseudonym_session1_public,
+        rng
+    );
     #[cfg(feature = "elgamal3")]
     let pseudonymized_dec =
         decrypt(&pseudonymized, &pseudonym_session2_secret).expect("decryption should succeed");
@@ -109,7 +147,13 @@ fn test_core_flow() {
 
     assert_ne!(pseudo, pseudonymized_dec);
 
-    let rev_pseudonymized = transcrypt(&pseudonymized, &transcryption_info.reverse());
+    let rev_pseudonymized = tx!(
+        transcrypt,
+        &pseudonymized,
+        &transcryption_info.reverse(),
+        &pseudonym_session2_public,
+        rng
+    );
     #[cfg(feature = "elgamal3")]
     let rev_pseudonymized_dec =
         decrypt(&rev_pseudonymized, &pseudonym_session1_secret).expect("decryption should succeed");
@@ -134,26 +178,24 @@ fn test_batch() {
 
     let (pseudonym_session1_public, _pseudonym_session1_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_pseudonym_session2_public, _pseudonym_session2_secret) =
+    let (_pseudonym_session2_public, pseudonym_session2_secret) =
         make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
     let (attribute_session1_public, _attribute_session1_secret) =
         make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
-    let (_attribute_session2_public, _attribute_session2_secret) =
+    let (_attribute_session2_public, attribute_session2_secret) =
         make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
 
     let mut attributes = vec![];
+    let mut attribute_values = vec![];
     let mut pseudonyms = vec![];
+    let mut pseudonym_values = vec![];
     for _ in 0..10 {
-        attributes.push(encrypt(
-            &Attribute::random(rng),
-            &attribute_session1_public,
-            rng,
-        ));
-        pseudonyms.push(encrypt(
-            &Pseudonym::random(rng),
-            &pseudonym_session1_public,
-            rng,
-        ));
+        let attribute = Attribute::random(rng);
+        attributes.push(encrypt(&attribute, &attribute_session1_public, rng));
+        attribute_values.push(attribute);
+        let pseudonym = Pseudonym::random(rng);
+        pseudonyms.push(encrypt(&pseudonym, &pseudonym_session1_public, rng));
+        pseudonym_values.push(pseudonym);
     }
 
     let transcryption_info = TranscryptionInfo::new(
@@ -167,30 +209,59 @@ fn test_batch() {
 
     let attribute_rekey_info = transcryption_info.attribute;
 
-    // Batch operations apply the same transformation as the single-item functions, but shuffle
-    // the order so that outputs cannot be linked to inputs by position.
-    let rekeyed = rekey_batch(&mut attributes.clone(), &attribute_rekey_info, rng).unwrap();
-    let expected: Vec<_> = attributes
+    // Batch operations apply the same transformation as the single-item functions (compared after
+    // decryption, since every transcryption rerandomizes), but shuffle the order so that outputs
+    // cannot be linked to inputs by position.
+    let rekeyed = tx!(
+        rekey_batch,
+        &mut attributes.clone(),
+        &attribute_rekey_info,
+        &attribute_session1_public,
+        rng
+    )
+    .unwrap();
+    let decrypted: Vec<_> = rekeyed
         .iter()
-        .map(|a| rekey(a, &attribute_rekey_info))
+        .map(|a| dec!(a, &attribute_session2_secret))
         .collect();
     assert_eq!(
-        rekeyed.iter().collect::<HashSet<_>>(),
-        expected.iter().collect::<HashSet<_>>()
+        decrypted.iter().collect::<HashSet<_>>(),
+        attribute_values.iter().collect::<HashSet<_>>()
     );
-    assert_ne!(rekeyed.to_vec(), expected, "batch should be shuffled");
+    assert_ne!(decrypted, attribute_values, "batch should be shuffled");
 
-    let pseudonymized =
-        pseudonymize_batch(&mut pseudonyms.clone(), &transcryption_info.pseudonym, rng).unwrap();
+    let pseudonymized = tx!(
+        pseudonymize_batch,
+        &mut pseudonyms.clone(),
+        &transcryption_info.pseudonym,
+        &pseudonym_session1_public,
+        rng
+    )
+    .unwrap();
     let expected: Vec<_> = pseudonyms
         .iter()
-        .map(|p| pseudonymize(p, &transcryption_info.pseudonym))
+        .map(|p| {
+            dec!(
+                &tx!(
+                    pseudonymize,
+                    p,
+                    &transcryption_info.pseudonym,
+                    &pseudonym_session1_public,
+                    rng
+                ),
+                &pseudonym_session2_secret
+            )
+        })
+        .collect();
+    let decrypted: Vec<_> = pseudonymized
+        .iter()
+        .map(|p| dec!(p, &pseudonym_session2_secret))
         .collect();
     assert_eq!(
-        pseudonymized.iter().collect::<HashSet<_>>(),
+        decrypted.iter().collect::<HashSet<_>>(),
         expected.iter().collect::<HashSet<_>>()
     );
-    assert_ne!(pseudonymized.to_vec(), expected, "batch should be shuffled");
+    assert_ne!(decrypted, expected, "batch should be shuffled");
 }
 
 #[test]
@@ -249,19 +320,23 @@ fn test_batch_long() {
     );
 
     // Test batch rekeying of long pseudonyms
-    let rekeyed_pseudonyms = rekey_batch(
+    let rekeyed_pseudonyms = tx!(
+        rekey_batch,
         &mut long_pseudonyms.clone(),
         &transcryption_info.pseudonym.into(),
-        rng,
+        &pseudonym_session1_public,
+        rng
     )
     .unwrap();
     assert_eq!(rekeyed_pseudonyms.len(), 3);
 
     // Test batch rekeying of long attributes
-    let rekeyed_attributes = rekey_batch(
+    let rekeyed_attributes = tx!(
+        rekey_batch,
         &mut long_attributes.clone(),
         &transcryption_info.attribute,
-        rng,
+        &attribute_session1_public,
+        rng
     )
     .unwrap();
     assert_eq!(rekeyed_attributes.len(), 3);
@@ -278,10 +353,12 @@ fn test_batch_long() {
     }
 
     // Test batch pseudonymization of long pseudonyms
-    let pseudonymized = pseudonymize_batch(
+    let pseudonymized = tx!(
+        pseudonymize_batch,
         &mut long_pseudonyms.clone(),
         &transcryption_info.pseudonym,
-        rng,
+        &pseudonym_session1_public,
+        rng
     )
     .unwrap();
     assert_eq!(pseudonymized.len(), 3);
@@ -318,8 +395,18 @@ fn test_batch_long() {
         .collect();
 
     let mut data_slice: Vec<_> = data.into_iter().collect();
-    let transcrypted = transcrypt_batch(&mut data_slice, &transcryption_info, rng)
-        .expect("Batch transcryption should succeed");
+    let session1_public = SessionPublicKeys {
+        pseudonym: pseudonym_session1_public,
+        attribute: attribute_session1_public,
+    };
+    let transcrypted = tx!(
+        transcrypt_batch,
+        &mut data_slice,
+        &transcryption_info,
+        &session1_public,
+        rng
+    )
+    .expect("Batch transcryption should succeed");
     assert_eq!(transcrypted.len(), 3);
 
     // Verify each entity has one pseudonym and one attribute
@@ -366,7 +453,13 @@ fn test_pseudonymize_changes_encryption_context() {
         &pseudo_secret,
         &enc_secret,
     );
-    let pseudonymized = pseudonymize(&encrypted, &info);
+    let pseudonymized = tx!(
+        pseudonymize,
+        &encrypted,
+        &info,
+        &from_session.pseudonym.public,
+        &mut rng
+    );
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&pseudonymized, &to_session.pseudonym.secret).expect("decrypt failed");
@@ -390,7 +483,13 @@ fn test_rekey_pseudonym_preserves_plaintext() {
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
     let rekey_info = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
-    let rekeyed = rekey(&encrypted, &rekey_info);
+    let rekeyed = tx!(
+        rekey,
+        &encrypted,
+        &rekey_info,
+        &from_session.pseudonym.public,
+        &mut rng
+    );
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&rekeyed, &to_session.pseudonym.secret).expect("decrypt failed");
@@ -414,7 +513,13 @@ fn test_rekey_attribute_preserves_plaintext() {
     let encrypted = encrypt(&attribute, &from_session.attribute.public, &mut rng);
 
     let rekey_info = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
-    let rekeyed = rekey(&encrypted, &rekey_info);
+    let rekeyed = tx!(
+        rekey,
+        &encrypted,
+        &rekey_info,
+        &from_session.attribute.public,
+        &mut rng
+    );
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&rekeyed, &to_session.attribute.secret).expect("decrypt failed");
@@ -448,7 +553,13 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
         &pseudo_secret,
         &enc_secret,
     );
-    let transcrypted = transcrypt(&encrypted, &info);
+    let transcrypted = tx!(
+        transcrypt,
+        &encrypted,
+        &info,
+        &from_session.pseudonym.public,
+        &mut rng
+    );
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&transcrypted, &to_session.pseudonym.secret).expect("decrypt failed");
@@ -482,7 +593,13 @@ fn test_transcrypt_attribute_rekeys_only() {
         &pseudo_secret,
         &enc_secret,
     );
-    let transcrypted = transcrypt(&encrypted, &info);
+    let transcrypted = tx!(
+        transcrypt,
+        &encrypted,
+        &info,
+        &from_session.attribute.public,
+        &mut rng
+    );
 
     #[cfg(feature = "elgamal3")]
     let decrypted = decrypt(&transcrypted, &to_session.attribute.secret).expect("decrypt failed");
@@ -506,7 +623,13 @@ fn test_polymorphic_rekey_works_for_both_types() {
     let pseudonym = Pseudonym::random(&mut rng);
     let enc_p = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
     let rekey_p = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
-    let rekeyed_p = rekey(&enc_p, &rekey_p);
+    let rekeyed_p = tx!(
+        rekey,
+        &enc_p,
+        &rekey_p,
+        &from_session.pseudonym.public,
+        &mut rng
+    );
     #[cfg(feature = "elgamal3")]
     let decrypted_p = decrypt(&rekeyed_p, &to_session.pseudonym.secret).expect("decrypt failed");
     #[cfg(not(feature = "elgamal3"))]
@@ -517,10 +640,60 @@ fn test_polymorphic_rekey_works_for_both_types() {
     let attribute = Attribute::random(&mut rng);
     let enc_a = encrypt(&attribute, &from_session.attribute.public, &mut rng);
     let rekey_a = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
-    let rekeyed_a = rekey(&enc_a, &rekey_a);
+    let rekeyed_a = tx!(
+        rekey,
+        &enc_a,
+        &rekey_a,
+        &from_session.attribute.public,
+        &mut rng
+    );
     #[cfg(feature = "elgamal3")]
     let decrypted_a = decrypt(&rekeyed_a, &to_session.attribute.secret).expect("decrypt failed");
     #[cfg(not(feature = "elgamal3"))]
     let decrypted_a = decrypt(&rekeyed_a, &to_session.attribute.secret);
     assert_eq!(attribute, decrypted_a);
+}
+
+/// A malicious sender places a pseudonym directly in the ciphertext (`(B, M)` with an arbitrary
+/// `B`). A plain reshuffle would return `s * M` in the clear; the rerandomizing operation hides the
+/// result under the receiver's key regardless of the input.
+#[test]
+fn plaintext_injection_is_blocked_by_rerandomization() {
+    use libpep::data::traits::Pseudonymizable;
+    #[cfg(feature = "elgamal3")]
+    use libpep::keys::PublicKey;
+    let mut rng = rand::rng();
+    let (_, global_sk) = make_global_keys(&mut rng);
+    let enc_secret = EncryptionSecret::from(b"enc".to_vec());
+    let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
+    let from_ctx = EncryptionContext::from("from");
+    let to_ctx = EncryptionContext::from("to");
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+    let info = PseudonymizationInfo::new(
+        &PseudonymizationDomain::from("domain-from"),
+        &PseudonymizationDomain::from("domain-to"),
+        &from_ctx,
+        &to_ctx,
+        &pseudo_secret,
+        &enc_secret,
+    );
+
+    let pseudonym = Pseudonym::random(&mut rng);
+    let malformed = EncryptedPseudonym::from_value(libpep::elgamal::ElGamal {
+        gb: libpep::elgamal::arithmetic::group_elements::GroupElement::random(&mut rng),
+        gc: *pseudonym.value(),
+        #[cfg(feature = "elgamal3")]
+        gy: *from_session.pseudonym.public.value(),
+    });
+    let leaked = info.s.scalar() * pseudonym.value();
+
+    // Without rerandomization the reshuffled pseudonym is exposed in the C component.
+    assert_eq!(malformed.pseudonymize_raw(&info).value().gc, leaked);
+
+    // With rerandomization it is not.
+    #[cfg(feature = "elgamal3")]
+    let protected = malformed.pseudonymize(&info, &mut rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let protected = malformed.pseudonymize(&info, &from_session.pseudonym.public, &mut rng);
+    assert_ne!(protected.value().gc, leaked);
 }
