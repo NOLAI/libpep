@@ -6,7 +6,6 @@ use super::group::{Group, InvertibleEncoding};
 use super::group_elements::{GroupElement, G};
 use super::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use rand_core::{CryptoRng, Rng};
-use sha2::{Digest, Sha512};
 
 /// The ristretto255 group with SHA-512, ciphersuite `ristretto255-SHA512` of RFC 9497.
 ///
@@ -45,12 +44,11 @@ impl Group for Ristretto255 {
     }
 
     fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
-        let uniform = expand_message_xmd::<64>(msg, dst);
-        GroupElement::from_hash(&uniform)
+        super::hashing::hash_to_group(msg, dst)
     }
 
     fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> Option<ScalarNonZero> {
-        let uniform = expand_message_xmd::<64>(msg, dst);
+        let uniform = super::hashing::expand_64(msg, dst);
         Self::scalar_from_uniform_bytes(&uniform)
     }
 
@@ -113,83 +111,28 @@ impl InvertibleEncoding for Ristretto255 {
     }
 }
 
-/// `expand_message_xmd` of RFC 9380, Section 5.3.1, with SHA-512, producing `LEN` bytes.
-///
-/// Panics if `dst` is longer than 255 bytes, as the RFC requires callers to guarantee.
-fn expand_message_xmd<const LEN: usize>(msg: &[u8], dst: &[u8]) -> [u8; LEN] {
-    const B_IN_BYTES: usize = 64;
-    const S_IN_BYTES: usize = 128;
-    assert!(
-        dst.len() <= 255,
-        "domain separation tag longer than 255 bytes"
-    );
-    assert!(
-        LEN <= 255 * B_IN_BYTES,
-        "expand_message_xmd output too long"
-    );
-    let ell = LEN.div_ceil(B_IN_BYTES);
-    // Unwrap is safe: LEN <= 255 * 64 < 2^16, dst.len() <= 255, ell <= 255.
-    #[allow(clippy::unwrap_used)]
-    let (dst_len, len_hi, len_lo, _) = (
-        u8::try_from(dst.len()).unwrap(),
-        u8::try_from(LEN >> 8).unwrap(),
-        u8::try_from(LEN & 0xff).unwrap(),
-        u8::try_from(ell).unwrap(),
-    );
-
-    let mut hasher = Sha512::new();
-    hasher.update([0u8; S_IN_BYTES]);
-    hasher.update(msg);
-    hasher.update([len_hi, len_lo, 0]);
-    hasher.update(dst);
-    hasher.update([dst_len]);
-    let b_0: [u8; B_IN_BYTES] = hasher.finalize().into();
-
-    let mut out = [0u8; LEN];
-    let mut b_prev = [0u8; B_IN_BYTES];
-    for i in 1..=ell {
-        let mut hasher = Sha512::new();
-        if i == 1 {
-            hasher.update(b_0);
-        } else {
-            let mut xored = b_0;
-            for (x, p) in xored.iter_mut().zip(b_prev.iter()) {
-                *x ^= p;
-            }
-            hasher.update(xored);
-        }
-        // Unwrap is safe: i <= ell <= 255.
-        #[allow(clippy::unwrap_used)]
-        hasher.update([u8::try_from(i).unwrap()]);
-        hasher.update(dst);
-        hasher.update([dst_len]);
-        b_prev = hasher.finalize().into();
-        let start = (i - 1) * B_IN_BYTES;
-        let end = LEN.min(start + B_IN_BYTES);
-        out[start..end].copy_from_slice(&b_prev[..end - start]);
-    }
-    out
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 
-    /// RFC 9380, Appendix K.3: expand_message_xmd(SHA-512).
+    /// RFC 9380, Appendix K.3: expand_message_xmd(SHA-512), through the shared expander in
+    /// [`super::hashing`] that `Ristretto255` hashes with.
     #[test]
     fn expand_message_xmd_sha512_vectors() {
+        use super::super::hashing::expand_message_xmd;
+        use sha2::Sha512;
         let dst = b"QUUX-V01-CS02-with-expander-SHA512-256";
         assert_eq!(
-            hex::encode(expand_message_xmd::<32>(b"", dst)),
+            hex::encode(expand_message_xmd::<Sha512>(b"", dst, 32)),
             "6b9a7312411d92f921c6f68ca0b6380730a1a4d982c507211a90964c394179ba"
         );
         assert_eq!(
-            hex::encode(expand_message_xmd::<32>(b"abc", dst)),
+            hex::encode(expand_message_xmd::<Sha512>(b"abc", dst, 32)),
             "0da749f12fbe5483eb066a5f595055679b976e93abe9be6f0f6318bce7aca8dc"
         );
         assert_eq!(
-            hex::encode(expand_message_xmd::<128>(b"", dst)),
+            hex::encode(expand_message_xmd::<Sha512>(b"", dst, 128)),
             "41b037d1734a5f8df225dd8c7de38f851efdb45c372887be655212d07251b921b052b62eaed99b46f72f2ef4cc96bfaf254ebbbec091e1a3b9e4fb5e5b619d2e0c5414800a1d882b62bb5cd1778f098b8eb6cb399d5d9d18f5d5842cf5d13d7eb00a7cff859b605da678b318bd0e65ebff70bec88c753b159a805d2c89c55961"
         );
     }
