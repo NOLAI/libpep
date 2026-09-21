@@ -38,6 +38,7 @@ const {
     transcryptLongBatch,
     LongEncryptedRecord,
     EncryptedRecord,
+    SessionPublicKeys,
 } = require("../pkg/libpep.js");
 
 test('test high level', async () => {
@@ -75,17 +76,17 @@ test('test high level', async () => {
     const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
     const rekeyInfo = new AttributeRekeyInfo(session1, session2, encSecret);
 
-    const rekeyed = rekeyAttribute(encData, rekeyInfo);
+    const rekeyed = rekeyAttribute(encData, rekeyInfo, attributeSession1Keys.public);
     const rekeyedDec = decryptAttribute(rekeyed, attributeSession2Keys.secret);
 
     expect(data.toHex()).toEqual(rekeyedDec.toHex());
 
-    const pseudonymized = pseudonymize(encPseudo, pseudoInfo);
+    const pseudonymized = pseudonymize(encPseudo, pseudoInfo, pseudonymSession1Keys.public);
     const pseudonymizedDec = decryptPseudonym(pseudonymized, pseudonymSession2Keys.secret);
 
     expect(pseudo.toHex()).not.toEqual(pseudonymizedDec.toHex());
 
-    const revPseudonymized = pseudonymize(pseudonymized, pseudoInfo.reverse());
+    const revPseudonymized = pseudonymize(pseudonymized, pseudoInfo.reverse(), pseudonymSession2Keys.public);
     const revPseudonymizedDec = decryptPseudonym(revPseudonymized, pseudonymSession1Keys.secret);
 
     expect(pseudo.toHex()).toEqual(revPseudonymizedDec.toHex());
@@ -310,14 +311,16 @@ test('test batch long operations', async () => {
     // Test batch rekeying of long pseudonyms
     const rekeyedPseudonyms = rekeyLongPseudonymBatch(
         longPseudonyms.map(p => p.clone()),
-        transcryptionInfo.pseudonym.rekeyInfo
+        transcryptionInfo.pseudonym.rekeyInfo,
+        pseudonymSession1Keys.public
     );
     expect(rekeyedPseudonyms.length).toEqual(3);
 
     // Test batch rekeying of long attributes
     const rekeyedAttributes = rekeyLongAttributeBatch(
         longAttributes.map(a => a.clone()),
-        transcryptionInfo.attribute
+        transcryptionInfo.attribute,
+        attributeSession1Keys.public
     );
     expect(rekeyedAttributes.length).toEqual(3);
 
@@ -331,7 +334,8 @@ test('test batch long operations', async () => {
     // Test batch pseudonymization of long pseudonyms
     const pseudonymized = pseudonymizeLongBatch(
         longPseudonyms.map(p => p.clone()),
-        transcryptionInfo.pseudonym
+        transcryptionInfo.pseudonym,
+        pseudonymSession1Keys.public
     );
     expect(pseudonymized.length).toEqual(3);
 
@@ -356,7 +360,11 @@ test('test batch long operations', async () => {
         data.push(new LongEncryptedRecord(pseudonyms, attributes));
     }
 
-    const transcrypted = transcryptLongBatch(data, transcryptionInfo);
+    const transcrypted = transcryptLongBatch(
+        data,
+        transcryptionInfo,
+        new SessionPublicKeys(pseudonymSession1Keys.public, attributeSession1Keys.public)
+    );
     expect(transcrypted.length).toEqual(3);
 
     // Verify each entity has one pseudonym and one attribute
@@ -411,7 +419,11 @@ test.skip('test batch transcrypt', async () => {
         const entityData = new EncryptedRecord(pseudonyms, dataPoints);
         messages.push(entityData);
     }
-    const transcrypted = transcryptBatch(messages, transcryptionInfo);
+    const transcrypted = transcryptBatch(
+        messages,
+        transcryptionInfo,
+        new SessionPublicKeys(pseudonymSession1Keys.public, attributeSession1Keys.public)
+    );
     expect(transcrypted.length).toEqual(messages.length);
 
     // Verify structure is maintained

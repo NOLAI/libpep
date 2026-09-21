@@ -147,7 +147,7 @@ impl PyClient {
         // Try Record - uses SessionKeys directly
         if let Ok(r) = message.extract::<PyRecord>() {
             use libpep::data::traits::Encryptable;
-            let result = r.0.encrypt(self.0.dump(), &mut rng);
+            let result = r.0.encrypt(&self.0.dump().public_keys(), &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(result))?.into_any());
         }
 
@@ -155,7 +155,7 @@ impl PyClient {
         #[cfg(feature = "long")]
         if let Ok(lr) = message.extract::<PyLongRecord>() {
             use libpep::data::traits::Encryptable;
-            let result = lr.0.encrypt(self.0.dump(), &mut rng);
+            let result = lr.0.encrypt(&self.0.dump().public_keys(), &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
 
@@ -163,7 +163,7 @@ impl PyClient {
         #[cfg(feature = "json")]
         if let Ok(j) = message.extract::<PyPEPJSONValue>() {
             use libpep::data::traits::Encryptable;
-            let result = j.0.encrypt(self.0.dump(), &mut rng);
+            let result = j.0.encrypt(&self.0.dump().public_keys(), &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
 

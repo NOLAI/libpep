@@ -38,6 +38,7 @@ macro_rules! tx {
 }
 
 /// Decrypt with the active ciphertext encoding (with `elgamal3`, decryption can fail).
+#[cfg(feature = "batch")]
 macro_rules! dec {
     ($enc:expr, $sk:expr) => {{
         #[cfg(feature = "elgamal3")]

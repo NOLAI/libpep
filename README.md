@@ -70,15 +70,17 @@ let pseudonym_a = Pseudonym::random(rng);
 let encrypted = encrypt(&pseudonym_a, &keys_a.pseudonym.public, rng);
 
 // The transcryptor converts it to B's domain and session, without decrypting it.
+// Every transcryption rerandomizes the ciphertext first, which needs the key it is currently
+// encrypted under (A's session public key here; with the `elgamal3` feature the ciphertext carries it).
 let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-let transcrypted = transcryptor.transcrypt(&encrypted, &info);
+let transcrypted = transcryptor.transcrypt(&encrypted, &info, &keys_a.pseudonym.public, rng);
 
 // B decrypts its own pseudonym for the same subject, which is unlinkable to A's.
 let pseudonym_b = decrypt(&transcrypted, &keys_b.pseudonym.secret);
 assert_ne!(pseudonym_a, pseudonym_b);
 
 // Transcryption is reversible: converting back yields A's pseudonym again.
-let back = transcryptor.transcrypt(&transcrypted, &info.reverse());
+let back = transcryptor.transcrypt(&transcrypted, &info.reverse(), &keys_b.pseudonym.public, rng);
 assert_eq!(pseudonym_a, decrypt(&back, &keys_a.pseudonym.secret));
 ```
 
@@ -87,6 +89,7 @@ With the `json` feature, whole JSON documents with nested pseudonyms and attribu
 
 In the distributed setting, `keys::distribution::make_distributed_global_keys` produces a blinded global key and one blinding factor per transcryptor, each `transcryptor::DistributedTranscryptor` hands a client a *session key share*, and `client::Client::from_shares` reconstructs the session keys from the shares.
 No party ever holds the global secret key.
+The public key a ciphertext is encrypted under travels with it from transcryptor to transcryptor: each obtains the next key with `rekey_public_key` on its transcryption info (the CLI prints it as `key`).
 [`tests/distributed.rs`](tests/distributed.rs) walks through this flow; the Python and JavaScript test suites under [`bindings/`](bindings/) do the same in those languages.
 
 ## Command line

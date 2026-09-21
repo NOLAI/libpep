@@ -1,5 +1,6 @@
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
@@ -243,6 +244,15 @@ pub struct PySessionKeys {
 
 #[pymethods]
 impl PySessionKeys {
+    /// The public keys of this session: what a sender needs to encrypt towards it, and what a
+    /// transcryptor needs to rerandomize ciphertexts encrypted for it.
+    fn public_keys(&self) -> PySessionPublicKeys {
+        PySessionPublicKeys {
+            pseudonym: self.pseudonym.public,
+            attribute: self.attribute.public,
+        }
+    }
+
     /// Create new session keys.
     ///
     /// Args:
@@ -302,4 +312,22 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymSessionKeyPair>()?;
     m.add_class::<PyAttributeSessionKeyPair>()?;
     Ok(())
+}
+
+impl From<PySessionPublicKeys> for SessionPublicKeys {
+    fn from(py_keys: PySessionPublicKeys) -> Self {
+        SessionPublicKeys {
+            pseudonym: PseudonymSessionPublicKey::from_point(py_keys.pseudonym.0 .0),
+            attribute: AttributeSessionPublicKey::from_point(py_keys.attribute.0 .0),
+        }
+    }
+}
+
+impl From<SessionPublicKeys> for PySessionPublicKeys {
+    fn from(keys: SessionPublicKeys) -> Self {
+        PySessionPublicKeys {
+            pseudonym: PyPseudonymSessionPublicKey(PyGroupElement(*keys.pseudonym.value())),
+            attribute: PyAttributeSessionPublicKey(PyGroupElement(*keys.attribute.value())),
+        }
+    }
 }

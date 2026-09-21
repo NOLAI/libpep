@@ -126,10 +126,13 @@ impl PyEncryptedPEPJSONValue {
     ///     to_session: Target encryption session
     ///     pseudonymization_secret: Pseudonymization secret
     ///     encryption_secret: Encryption secret
+    ///     public_key: The session public keys the document is encrypted under (required
+    ///         without the elgamal3 feature; SessionPublicKeys or SessionKeys)
     ///
     /// Returns:
     ///     A transcrypted EncryptedPEPJSONValue
-    #[pyo3(name = "transcrypt")]
+    #[pyo3(name = "transcrypt", signature = (from_domain, to_domain, from_session, to_session, pseudonymization_secret, encryption_secret, public_key=None))]
+    #[allow(clippy::too_many_arguments)]
     fn transcrypt(
         &self,
         from_domain: &PyPseudonymizationDomain,
@@ -138,7 +141,9 @@ impl PyEncryptedPEPJSONValue {
         to_session: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Self> {
+        let mut rng = rand::rng();
         let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
@@ -148,7 +153,7 @@ impl PyEncryptedPEPJSONValue {
             &encryption_secret.0,
         );
 
-        let transcrypted = self.0.transcrypt(&transcryption_info);
+        let transcrypted = crate::transcrypt_with!(@on self.0, .transcrypt, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);
         Ok(Self(transcrypted))
     }
 
@@ -299,15 +304,16 @@ impl PyPEPJSONBuilder {
 ///     A shuffled list of transcrypted EncryptedPEPJSONValue objects
 #[cfg(feature = "batch")]
 #[pyfunction]
-#[pyo3(name = "transcrypt_batch")]
+#[pyo3(name = "transcrypt_batch", signature = (values, transcryption_info, public_key=None))]
 pub fn py_transcrypt_batch(
     values: Vec<PyEncryptedPEPJSONValue>,
     transcryption_info: &PyTranscryptionInfo,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
     let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &mut rng)
+    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &mut rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted
@@ -322,15 +328,16 @@ pub fn py_transcrypt_batch(
 /// This is a simpler version that accepts a PyTranscryptionInfo.
 #[cfg(feature = "batch")]
 #[pyfunction]
-#[pyo3(name = "transcrypt_json_batch")]
+#[pyo3(name = "transcrypt_json_batch", signature = (values, transcryption_info, public_key=None))]
 pub fn py_transcrypt_json_batch(
     values: Vec<PyEncryptedPEPJSONValue>,
     transcryption_info: &PyTranscryptionInfo,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<PyEncryptedPEPJSONValue>> {
     let mut rng = rand::rng();
     let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = transcrypt_batch(&mut rust_values, &info, &mut rng)
+    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &mut rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted

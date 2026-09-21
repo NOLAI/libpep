@@ -10,6 +10,8 @@ use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::types::WASMGlobalSecretKeys;
 use crate::keys::types::WASMSessionKeys;
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::types::WASMSessionPublicKeys;
 use libpep::client::{decrypt, encrypt};
 #[cfg(feature = "batch")]
 use libpep::client::{decrypt_batch, encrypt_batch};
@@ -131,6 +133,7 @@ impl WASMEncryptedPEPJSONValue {
         WASMJSONStructure(self.0.structure())
     }
 
+    #[cfg(feature = "elgamal3")]
     /// Transcrypt this EncryptedPEPJSONValue from one context to another.
     ///
     /// # Arguments
@@ -155,6 +158,7 @@ impl WASMEncryptedPEPJSONValue {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+        let mut rng = rand::rng();
         let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
@@ -164,7 +168,49 @@ impl WASMEncryptedPEPJSONValue {
             &encryption_secret.0,
         );
 
-        let transcrypted = self.0.transcrypt(&transcryption_info);
+        let transcrypted = self.0.transcrypt(&transcryption_info, &mut rng);
+        Ok(WASMEncryptedPEPJSONValue(transcrypted))
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    /// Transcrypt this EncryptedPEPJSONValue from one context to another.
+    ///
+    /// # Arguments
+    ///
+    /// * `from_domain` - Source pseudonymization domain
+    /// * `to_domain` - Target pseudonymization domain
+    /// * `from_session` - Source encryption session (optional)
+    /// * `to_session` - Target encryption session (optional)
+    /// * `pseudonymization_secret` - Pseudonymization secret
+    /// * `encryption_secret` - Encryption secret
+    ///
+    /// # Returns
+    ///
+    /// A transcrypted EncryptedPEPJSONValue
+    #[wasm_bindgen]
+    #[allow(clippy::too_many_arguments)]
+    pub fn transcrypt(
+        &self,
+        from_domain: &WASMPseudonymizationDomain,
+        to_domain: &WASMPseudonymizationDomain,
+        from_session: &WASMEncryptionContext,
+        to_session: &WASMEncryptionContext,
+        pseudonymization_secret: &WASMPseudonymizationSecret,
+        encryption_secret: &WASMEncryptionSecret,
+        public_key: &WASMSessionPublicKeys,
+    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+        let mut rng = rand::rng();
+        let pk = libpep::keys::SessionPublicKeys::from(public_key);
+        let transcryption_info = TranscryptionInfo::new(
+            &from_domain.0,
+            &to_domain.0,
+            &from_session.0,
+            &to_session.0,
+            &pseudonymization_secret.0,
+            &encryption_secret.0,
+        );
+
+        let transcrypted = self.0.transcrypt(&transcryption_info, &pk, &mut rng);
         Ok(WASMEncryptedPEPJSONValue(transcrypted))
     }
 
@@ -329,7 +375,7 @@ pub fn wasm_encrypt_json(
 ) -> WASMEncryptedPEPJSONValue {
     let mut rng = rand::rng();
     let keys: SessionKeys = (*session_keys).into();
-    let encrypted = encrypt(&value.0, &keys, &mut rng);
+    let encrypted = encrypt(&value.0, &keys.public_keys(), &mut rng);
     WASMEncryptedPEPJSONValue(encrypted)
 }
 
@@ -351,7 +397,7 @@ pub fn wasm_encrypt_json_batch(
     let mut rng = rand::rng();
     let keys: SessionKeys = (*session_keys).into();
     let rust_values: Vec<PEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let encrypted = encrypt_batch(&rust_values, &keys, &mut rng)
+    let encrypted = encrypt_batch(&rust_values, &keys.public_keys(), &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(encrypted
@@ -408,6 +454,7 @@ pub fn wasm_decrypt_json_batch(
     Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
 }
 
+#[cfg(feature = "elgamal3")]
 /// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
 ///
 /// # Arguments
@@ -431,6 +478,41 @@ pub fn wasm_transcrypt_json_batch(
     let mut rng = rand::rng();
     let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
     let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &mut rng)
+        .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
+
+    Ok(transcrypted
+        .into_vec()
+        .into_iter()
+        .map(WASMEncryptedPEPJSONValue)
+        .collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+/// Transcrypt a batch of EncryptedPEPJSONValues using a TranscryptionInfo object.
+///
+/// # Arguments
+///
+/// * `values` - Array of EncryptedPEPJSONValue objects
+/// * `transcryption_info` - TranscryptionInfo containing all transcryption parameters
+///
+/// # Returns
+///
+/// A shuffled array of transcrypted EncryptedPEPJSONValue objects
+///
+/// # Errors
+///
+/// Returns an error if the values don't all have the same structure
+#[cfg(feature = "batch")]
+#[wasm_bindgen(js_name = transcryptJsonBatch)]
+pub fn wasm_transcrypt_json_batch(
+    values: Vec<WASMEncryptedPEPJSONValue>,
+    transcryption_info: &WASMTranscryptionInfo,
+    public_key: &WASMSessionPublicKeys,
+) -> Result<Vec<WASMEncryptedPEPJSONValue>, JsValue> {
+    let pk = libpep::keys::SessionPublicKeys::from(public_key);
+    let mut rng = rand::rng();
+    let mut rust_values: Vec<EncryptedPEPJSONValue> = values.into_iter().map(|v| v.0).collect();
+    let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(transcrypted

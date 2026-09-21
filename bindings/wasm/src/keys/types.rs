@@ -171,6 +171,55 @@ wasm_pair_impl!(WASMSessionKeys as "SessionKeys" {
     attribute: WASMAttributeSessionKeys
 }, js_constructor);
 
+/// The public halves of session keys: what a sender needs to encrypt towards a session, and what a
+/// transcryptor needs to rerandomize ciphertexts encrypted for it.
+#[wasm_bindgen(js_name = SessionPublicKeys)]
+#[derive(Clone, Copy)]
+pub struct WASMSessionPublicKeys {
+    pseudonym: WASMPseudonymSessionPublicKey,
+    attribute: WASMAttributeSessionPublicKey,
+}
+wasm_pair_impl!(WASMSessionPublicKeys as "SessionPublicKeys" {
+    pseudonym: WASMPseudonymSessionPublicKey,
+    attribute: WASMAttributeSessionPublicKey
+}, js_constructor);
+
+#[wasm_bindgen(js_class = "SessionKeys")]
+impl WASMSessionKeys {
+    /// The public keys of this session.
+    #[wasm_bindgen(js_name = publicKeys)]
+    pub fn public_keys(&self) -> WASMSessionPublicKeys {
+        WASMSessionPublicKeys {
+            pseudonym: self.pseudonym.public,
+            attribute: self.attribute.public,
+        }
+    }
+}
+
+impl From<WASMSessionPublicKeys> for SessionPublicKeys {
+    fn from(keys: WASMSessionPublicKeys) -> Self {
+        SessionPublicKeys {
+            pseudonym: PseudonymSessionPublicKey::from_point(keys.pseudonym.0 .0),
+            attribute: AttributeSessionPublicKey::from_point(keys.attribute.0 .0),
+        }
+    }
+}
+
+impl From<&WASMSessionPublicKeys> for SessionPublicKeys {
+    fn from(keys: &WASMSessionPublicKeys) -> Self {
+        (*keys).into()
+    }
+}
+
+impl From<SessionPublicKeys> for WASMSessionPublicKeys {
+    fn from(keys: SessionPublicKeys) -> Self {
+        WASMSessionPublicKeys {
+            pseudonym: WASMPseudonymSessionPublicKey(WASMGroupElement::from(*keys.pseudonym)),
+            attribute: WASMAttributeSessionPublicKey(WASMGroupElement::from(*keys.attribute)),
+        }
+    }
+}
+
 impl From<WASMSessionKeys> for SessionKeys {
     fn from(keys: WASMSessionKeys) -> Self {
         SessionKeys {

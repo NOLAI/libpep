@@ -25,24 +25,26 @@ use pyo3::types::PyAny;
 
 /// Polymorphic pseudonymize - works with EncryptedPseudonym or LongEncryptedPseudonym.
 #[pyfunction]
-#[pyo3(name = "pseudonymize")]
+#[pyo3(name = "pseudonymize", signature = (encrypted, pseudonymization_info, public_key=None))]
 pub fn py_pseudonymize(
     encrypted: &Bound<PyAny>,
     pseudonymization_info: &PyPseudonymizationInfo,
+    public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Py<PyAny>> {
+    let mut rng = rand::rng();
     let py = encrypted.py();
     let info = PseudonymizationInfo::from(pseudonymization_info);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        let result = pseudonymize(&ep.0, &info);
+        let result = crate::transcrypt_with!(pseudonymize, &ep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
         return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
     }
 
     // Try LongEncryptedPseudonym
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-        let result = pseudonymize(&lep.0, &info);
+        let result = crate::transcrypt_with!(pseudonymize, &lep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
         return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
     }
 
@@ -55,14 +57,19 @@ pub fn py_pseudonymize(
 /// Accepts EncryptedPseudonym, EncryptedAttribute, LongEncryptedPseudonym, or LongEncryptedAttribute.
 /// The rekey_info must be either PyPseudonymRekeyInfo or PyAttributeRekeyInfo.
 #[pyfunction]
-#[pyo3(name = "rekey")]
-pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
+#[pyo3(name = "rekey", signature = (encrypted, rekey_info, public_key=None))]
+pub fn py_rekey(
+    encrypted: &Bound<PyAny>,
+    rekey_info: &Bound<PyAny>,
+    public_key: Option<&Bound<PyAny>>,
+) -> PyResult<Py<PyAny>> {
+    let mut rng = rand::rng();
     let py = encrypted.py();
 
     // Try EncryptedPseudonym with PseudonymRekeyInfo
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
         if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-            let result = rekey(&ep.0, &info.0);
+            let result = crate::transcrypt_with!(rekey, &ep.0, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
     }
@@ -71,7 +78,7 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
     #[cfg(feature = "long")]
     if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
         if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-            let result = rekey(&lep.0, &info.0);
+            let result = crate::transcrypt_with!(rekey, &lep.0, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
     }
@@ -80,7 +87,7 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
         if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
             let info_rust = AttributeRekeyInfo::from(&info);
-            let result = rekey(&ea.0, &info_rust);
+            let result = crate::transcrypt_with!(rekey, &ea.0, &info_rust, public_key => crate::keys::pk::attribute, &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
         }
     }
@@ -90,7 +97,7 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
     if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
         if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
             let info_rust = AttributeRekeyInfo::from(&info);
-            let result = rekey(&lea.0, &info_rust);
+            let result = crate::transcrypt_with!(rekey, &lea.0, &info_rust, public_key => crate::keys::pk::attribute, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
     }
@@ -101,33 +108,38 @@ pub fn py_rekey(encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult
 }
 /// Polymorphic transcrypt function - works with any transcryptable type.
 #[pyfunction]
-#[pyo3(name = "transcrypt")]
-pub fn py_transcrypt(encrypted: &Bound<PyAny>, info: &PyTranscryptionInfo) -> PyResult<Py<PyAny>> {
+#[pyo3(name = "transcrypt", signature = (encrypted, info, public_key=None))]
+pub fn py_transcrypt(
+    encrypted: &Bound<PyAny>,
+    info: &PyTranscryptionInfo,
+    public_key: Option<&Bound<PyAny>>,
+) -> PyResult<Py<PyAny>> {
+    let mut rng = rand::rng();
     let py = encrypted.py();
     let transcryption_info = TranscryptionInfo::from(info);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-        let transcrypted = transcrypt(&ep.0, &transcryption_info);
+        let transcrypted = crate::transcrypt_with!(transcrypt, &ep.0, &transcryption_info, public_key => crate::keys::pk::pseudonym, &mut rng);
         return Ok(Py::new(py, PyEncryptedPseudonym(transcrypted))?.into_any());
     }
 
     // Try EncryptedAttribute
     if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
-        let transcrypted = transcrypt(&ea.0, &transcryption_info);
+        let transcrypted = crate::transcrypt_with!(transcrypt, &ea.0, &transcryption_info, public_key => crate::keys::pk::attribute, &mut rng);
         return Ok(Py::new(py, PyEncryptedAttribute(transcrypted))?.into_any());
     }
 
     // Try EncryptedRecord
     if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-        let transcrypted = transcrypt(&er.0, &transcryption_info);
+        let transcrypted = crate::transcrypt_with!(transcrypt, &er.0, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);
         return Ok(Py::new(py, PyEncryptedRecord(transcrypted))?.into_any());
     }
 
     // Try EncryptedPEPJSONValue
     #[cfg(feature = "json")]
     if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-        let transcrypted = transcrypt(&ej.0, &transcryption_info);
+        let transcrypted = crate::transcrypt_with!(transcrypt, &ej.0, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);
         return Ok(Py::new(py, PyEncryptedPEPJSONValue(transcrypted))?.into_any());
     }
 

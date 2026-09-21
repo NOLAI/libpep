@@ -123,14 +123,20 @@ impl PyDistributedTranscryptor {
     }
 
     /// Polymorphic rekey that works with any rekeyable type.
-    #[pyo3(name = "rekey")]
-    fn py_rekey(&self, encrypted: &Bound<PyAny>, rekey_info: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
+    #[pyo3(name = "rekey", signature = (encrypted, rekey_info, public_key=None))]
+    fn py_rekey(
+        &self,
+        encrypted: &Bound<PyAny>,
+        rekey_info: &Bound<PyAny>,
+        public_key: Option<&Bound<PyAny>>,
+    ) -> PyResult<Py<PyAny>> {
+        let mut rng = rand::rng();
         let py = encrypted.py();
 
         // Try EncryptedAttribute with AttributeRekeyInfo
         if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
             if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-                let result = self.0.rekey(&ea.0, &AttributeRekeyInfo::from(&info));
+                let result = crate::transcrypt_with!(self.0, .rekey, &ea.0, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng);
                 return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
             }
         }
@@ -139,7 +145,7 @@ impl PyDistributedTranscryptor {
         #[cfg(feature = "long")]
         if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
             if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-                let result = self.0.rekey(&lea.0, &AttributeRekeyInfo::from(&info));
+                let result = crate::transcrypt_with!(self.0, .rekey, &lea.0, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng);
                 return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
             }
         }
@@ -147,7 +153,7 @@ impl PyDistributedTranscryptor {
         // Try EncryptedPseudonym with PseudonymRekeyInfo
         if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
             if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-                let result = self.0.rekey(&ep.0, &info.0);
+                let result = crate::transcrypt_with!(self.0, .rekey, &ep.0, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng);
                 return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
             }
         }
@@ -156,7 +162,7 @@ impl PyDistributedTranscryptor {
         #[cfg(feature = "long")]
         if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
             if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-                let result = self.0.rekey(&lep.0, &info.0);
+                let result = crate::transcrypt_with!(self.0, .rekey, &lep.0, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng);
                 return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
             }
         }
@@ -167,25 +173,27 @@ impl PyDistributedTranscryptor {
     }
 
     /// Polymorphic pseudonymize that works with any pseudonymizable type.
-    #[pyo3(name = "pseudonymize")]
+    #[pyo3(name = "pseudonymize", signature = (encrypted, pseudonymization_info, public_key=None))]
     fn py_pseudonymize(
         &self,
         encrypted: &Bound<PyAny>,
         pseudonymization_info: &PyPseudonymizationInfo,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Py<PyAny>> {
+        let mut rng = rand::rng();
         let py = encrypted.py();
         let info = PseudonymizationInfo::from(pseudonymization_info);
 
         // Try EncryptedPseudonym
         if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-            let result = self.0.pseudonymize(&ep.0, &info);
+            let result = crate::transcrypt_with!(self.0, .pseudonymize, &ep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
 
         // Try LongEncryptedPseudonym
         #[cfg(feature = "long")]
         if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-            let result = self.0.pseudonymize(&lep.0, &info);
+            let result = crate::transcrypt_with!(self.0, .pseudonymize, &lep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
 
@@ -195,58 +203,60 @@ impl PyDistributedTranscryptor {
     }
 
     /// Polymorphic transcrypt that works with any transcryptable type.
-    #[pyo3(name = "transcrypt")]
+    #[pyo3(name = "transcrypt", signature = (encrypted, transcryption_info, public_key=None))]
     fn py_transcrypt(
         &self,
         encrypted: &Bound<PyAny>,
         transcryption_info: &PyTranscryptionInfo,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Py<PyAny>> {
+        let mut rng = rand::rng();
         let py = encrypted.py();
         let info = TranscryptionInfo::from(transcryption_info);
 
         // Try EncryptedPseudonym
         if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
-            let result = self.0.transcrypt(&ep.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &ep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(result))?.into_any());
         }
 
         // Try EncryptedAttribute
         if let Ok(ea) = encrypted.extract::<PyEncryptedAttribute>() {
-            let result = self.0.transcrypt(&ea.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &ea.0, &info, public_key => crate::keys::pk::attribute, &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(result))?.into_any());
         }
 
         // Try LongEncryptedPseudonym
         #[cfg(feature = "long")]
         if let Ok(lep) = encrypted.extract::<PyLongEncryptedPseudonym>() {
-            let result = self.0.transcrypt(&lep.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &lep.0, &info, public_key => crate::keys::pk::pseudonym, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(result))?.into_any());
         }
 
         // Try LongEncryptedAttribute
         #[cfg(feature = "long")]
         if let Ok(lea) = encrypted.extract::<PyLongEncryptedAttribute>() {
-            let result = self.0.transcrypt(&lea.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &lea.0, &info, public_key => crate::keys::pk::attribute, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
 
         // Try EncryptedRecord
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
-            let result = self.0.transcrypt(&er.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &er.0, &info, public_key => crate::keys::pk::session, &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(result))?.into_any());
         }
 
         // Try LongEncryptedRecord
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
-            let result = self.0.transcrypt(&ler.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &ler.0, &info, public_key => crate::keys::pk::session, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
 
         // Try EncryptedPEPJSONValue
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
-            let result = self.0.transcrypt(&ej.0, &info);
+            let result = crate::transcrypt_with!(self.0, .transcrypt, &ej.0, &info, public_key => crate::keys::pk::session, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
         }
 
@@ -257,11 +267,12 @@ impl PyDistributedTranscryptor {
 
     /// Polymorphic batch rekeying.
     #[cfg(feature = "batch")]
-    #[pyo3(name = "rekey_batch")]
+    #[pyo3(name = "rekey_batch", signature = (encrypted, rekey_info, public_key=None))]
     fn py_rekey_batch(
         &self,
         encrypted: &Bound<PyAny>,
         rekey_info: &Bound<PyAny>,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Py<PyAny>> {
         let py = encrypted.py();
         let mut rng = rand::rng();
@@ -270,9 +281,7 @@ impl PyDistributedTranscryptor {
         if let Ok(eas) = encrypted.extract::<Vec<PyEncryptedAttribute>>() {
             if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
                 let mut enc: Vec<_> = eas.into_iter().map(|e| e.0).collect();
-                let result = self
-                    .0
-                    .rekey_batch(&mut enc, &AttributeRekeyInfo::from(&info), &mut rng)
+                let result = crate::transcrypt_with!(self.0, .rekey_batch, &mut enc, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng)
                     .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
                 let py_result: Vec<PyEncryptedAttribute> = result
                     .into_vec()
@@ -288,9 +297,7 @@ impl PyDistributedTranscryptor {
         if let Ok(leas) = encrypted.extract::<Vec<PyLongEncryptedAttribute>>() {
             if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
                 let mut enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
-                let result = self
-                    .0
-                    .rekey_batch(&mut enc, &AttributeRekeyInfo::from(&info), &mut rng)
+                let result = crate::transcrypt_with!(self.0, .rekey_batch, &mut enc, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng)
                     .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
                 let py_result: Vec<PyLongEncryptedAttribute> = result
                     .into_vec()
@@ -308,11 +315,12 @@ impl PyDistributedTranscryptor {
 
     /// Polymorphic batch pseudonymization.
     #[cfg(feature = "batch")]
-    #[pyo3(name = "pseudonymize_batch")]
+    #[pyo3(name = "pseudonymize_batch", signature = (encrypted, pseudonymization_info, public_key=None))]
     fn py_pseudonymize_batch(
         &self,
         encrypted: &Bound<PyAny>,
         pseudonymization_info: &PyPseudonymizationInfo,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Py<PyAny>> {
         let py = encrypted.py();
         let mut rng = rand::rng();
@@ -321,9 +329,7 @@ impl PyDistributedTranscryptor {
         // Try Vec<EncryptedPseudonym>
         if let Ok(eps) = encrypted.extract::<Vec<PyEncryptedPseudonym>>() {
             let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &mut rng)
+            let result = crate::transcrypt_with!(self.0, .pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyEncryptedPseudonym> = result
                 .into_vec()
@@ -337,9 +343,7 @@ impl PyDistributedTranscryptor {
         #[cfg(feature = "long")]
         if let Ok(leps) = encrypted.extract::<Vec<PyLongEncryptedPseudonym>>() {
             let mut enc: Vec<_> = leps.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .pseudonymize_batch(&mut enc, &info, &mut rng)
+            let result = crate::transcrypt_with!(self.0, .pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyLongEncryptedPseudonym> = result
                 .into_vec()
@@ -356,11 +360,12 @@ impl PyDistributedTranscryptor {
 
     /// Polymorphic batch transcryption.
     #[cfg(feature = "batch")]
-    #[pyo3(name = "transcrypt_batch")]
+    #[pyo3(name = "transcrypt_batch", signature = (encrypted, transcryption_info, public_key=None))]
     fn py_transcrypt_batch(
         &self,
         encrypted: &Bound<PyAny>,
         transcryption_info: &PyTranscryptionInfo,
+        public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Py<PyAny>> {
         let py = encrypted.py();
         let mut rng = rand::rng();
@@ -369,9 +374,7 @@ impl PyDistributedTranscryptor {
         // Try Vec<EncryptedRecord>
         if let Ok(ers) = encrypted.extract::<Vec<PyEncryptedRecord>>() {
             let mut enc: Vec<_> = ers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
+            let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyEncryptedRecord> = result
                 .into_vec()
@@ -385,9 +388,7 @@ impl PyDistributedTranscryptor {
         #[cfg(feature = "long")]
         if let Ok(lers) = encrypted.extract::<Vec<PyLongEncryptedRecord>>() {
             let mut enc: Vec<_> = lers.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
+            let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyLongEncryptedRecord> = result
                 .into_vec()
@@ -401,9 +402,7 @@ impl PyDistributedTranscryptor {
         #[cfg(feature = "json")]
         if let Ok(ejs) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
             let mut enc: Vec<_> = ejs.into_iter().map(|e| e.0).collect();
-            let result = self
-                .0
-                .transcrypt_batch(&mut enc, &info, &mut rng)
+            let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
             let py_result: Vec<PyEncryptedPEPJSONValue> = result
                 .into_vec()
