@@ -7,6 +7,7 @@ use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+mod common;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
 use std::hint::black_box;
@@ -88,11 +89,16 @@ fn bench_pseudonym_roundtrip(c: &mut Criterion) {
     c.bench_function("pseudonym_roundtrip_100", |b| {
         b.iter(|| {
             for enc in &encrypted {
-                let transcrypted = systems.iter().fold(*enc, |acc, system| {
-                    let info =
-                        system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                    system.transcrypt(&acc, &info)
-                });
+                let transcrypted = common::transcrypt_chain(
+                    &systems,
+                    *enc,
+                    client_a.dump().pseudonym.public,
+                    |system| {
+                        system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
+                    },
+                    |info, key| info.pseudonym.rekey_public_key(key),
+                    rng,
+                );
                 black_box(transcrypted);
             }
         })
@@ -116,14 +122,14 @@ fn bench_pseudonym_roundtrip_batch(c: &mut Criterion) {
     c.bench_function("pseudonym_roundtrip_batch_100", |b| {
         b.iter(|| {
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
-            for system in &systems {
-                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system
-                    .transcrypt_batch(&mut working, &info, rng)
-                    .expect("transcrypt batch")
-                    .to_vec();
-            }
+            let working = common::transcrypt_batch_chain(
+                &systems,
+                encrypted_base.clone(),
+                client_a.dump().pseudonym.public,
+                |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
+                |info, key| info.pseudonym.rekey_public_key(key),
+                rng,
+            );
             black_box(working);
         })
     });
@@ -143,10 +149,14 @@ fn bench_attribute_roundtrip(c: &mut Criterion) {
     c.bench_function("attribute_roundtrip_100", |b| {
         b.iter(|| {
             for enc in &encrypted {
-                let rekeyed = systems.iter().fold(*enc, |acc, system| {
-                    let info = system.attribute_rekey_info(&session_a, &session_b);
-                    system.rekey(&acc, &info)
-                });
+                let rekeyed = common::rekey_chain(
+                    &systems,
+                    *enc,
+                    client_a.dump().attribute.public,
+                    |system| system.attribute_rekey_info(&session_a, &session_b),
+                    |info, key| info.rekey_public_key(key),
+                    rng,
+                );
                 black_box(rekeyed);
             }
         })
@@ -170,14 +180,14 @@ fn bench_attribute_roundtrip_batch(c: &mut Criterion) {
     c.bench_function("attribute_roundtrip_batch_100", |b| {
         b.iter(|| {
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
-            for system in &systems {
-                let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system
-                    .rekey_batch(&mut working, &info, rng)
-                    .expect("rekey batch")
-                    .to_vec();
-            }
+            let working = common::rekey_batch_chain(
+                &systems,
+                encrypted_base.clone(),
+                client_a.dump().attribute.public,
+                |system| system.attribute_rekey_info(&session_a, &session_b),
+                |info, key| info.rekey_public_key(key),
+                rng,
+            );
             black_box(working);
         })
     });
@@ -200,11 +210,16 @@ fn bench_long_pseudonym_roundtrip(c: &mut Criterion) {
     c.bench_function("long_pseudonym_roundtrip_100", |b| {
         b.iter(|| {
             for enc in &encrypted {
-                let transcrypted = systems.iter().fold(enc.clone(), |acc, system| {
-                    let info =
-                        system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                    system.transcrypt(&acc, &info)
-                });
+                let transcrypted = common::transcrypt_chain(
+                    &systems,
+                    enc.clone(),
+                    client_a.dump().pseudonym.public,
+                    |system| {
+                        system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
+                    },
+                    |info, key| info.pseudonym.rekey_public_key(key),
+                    rng,
+                );
                 black_box(transcrypted);
             }
         })
@@ -228,14 +243,14 @@ fn bench_long_pseudonym_roundtrip_batch(c: &mut Criterion) {
     c.bench_function("long_pseudonym_roundtrip_batch_100", |b| {
         b.iter(|| {
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
-            for system in &systems {
-                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system
-                    .transcrypt_batch(&mut working, &info, rng)
-                    .expect("transcrypt batch")
-                    .to_vec();
-            }
+            let working = common::transcrypt_batch_chain(
+                &systems,
+                encrypted_base.clone(),
+                client_a.dump().pseudonym.public,
+                |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
+                |info, key| info.pseudonym.rekey_public_key(key),
+                rng,
+            );
             black_box(working);
         })
     });
@@ -258,10 +273,14 @@ fn bench_long_attribute_roundtrip(c: &mut Criterion) {
     c.bench_function("long_attribute_roundtrip_100", |b| {
         b.iter(|| {
             for enc in &encrypted {
-                let rekeyed = systems.iter().fold(enc.clone(), |acc, system| {
-                    let info = system.attribute_rekey_info(&session_a, &session_b);
-                    system.rekey(&acc, &info)
-                });
+                let rekeyed = common::rekey_chain(
+                    &systems,
+                    enc.clone(),
+                    client_a.dump().attribute.public,
+                    |system| system.attribute_rekey_info(&session_a, &session_b),
+                    |info, key| info.rekey_public_key(key),
+                    rng,
+                );
                 black_box(rekeyed);
             }
         })
@@ -285,14 +304,14 @@ fn bench_long_attribute_roundtrip_batch(c: &mut Criterion) {
     c.bench_function("long_attribute_roundtrip_batch_100", |b| {
         b.iter(|| {
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
-            for system in &systems {
-                let info = system.attribute_rekey_info(&session_a, &session_b);
-                working = system
-                    .rekey_batch(&mut working, &info, rng)
-                    .expect("rekey batch")
-                    .to_vec();
-            }
+            let working = common::rekey_batch_chain(
+                &systems,
+                encrypted_base.clone(),
+                client_a.dump().attribute.public,
+                |system| system.attribute_rekey_info(&session_a, &session_b),
+                |info, key| info.rekey_public_key(key),
+                rng,
+            );
             black_box(working);
         })
     });
@@ -322,14 +341,16 @@ fn bench_json_roundtrip(c: &mut Criterion) {
     c.bench_function("json_roundtrip_100", |b| {
         b.iter(|| {
             for enc in &encrypted {
-                let transcrypted =
-                    systems
-                        .iter()
-                        .fold(enc.clone(), |acc, system: &DistributedTranscryptor| {
-                            let info = system
-                                .transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                            system.transcrypt(&acc, &info)
-                        });
+                let transcrypted = common::transcrypt_chain(
+                    &systems,
+                    enc.clone(),
+                    client_a.dump().public_keys(),
+                    |system| {
+                        system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
+                    },
+                    |info, keys| info.rekey_public_keys(keys),
+                    rng,
+                );
                 black_box(transcrypted);
             }
         })
@@ -360,14 +381,14 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
     c.bench_function("json_roundtrip_batch_100", |b| {
         b.iter(|| {
             let rng = &mut rng();
-            let mut working = encrypted_base.clone();
-            for system in &systems {
-                let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-                working = system
-                    .transcrypt_batch(&mut working, &info, rng)
-                    .expect("transcrypt batch")
-                    .to_vec();
-            }
+            let working = common::transcrypt_batch_chain(
+                &systems,
+                encrypted_base.clone(),
+                client_a.dump().public_keys(),
+                |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
+                |info, keys| info.rekey_public_keys(keys),
+                rng,
+            );
             black_box(working);
         })
     });

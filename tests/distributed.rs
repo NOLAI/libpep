@@ -59,16 +59,55 @@ fn n_pep() {
     let enc_pseudo = client_a.encrypt(&pseudonym, rng);
     let enc_data = client_a.encrypt(&data, rng);
 
+    // Each transcryptor rerandomizes, which (without `elgamal3`) needs the key the ciphertext is
+    // currently encrypted under: the sender's session key for the first transcryptor, and the key
+    // output by the previous transcryptor for the others. The key travels with the ciphertext.
+    #[cfg(not(feature = "elgamal3"))]
+    let keys_a1 = client_a.dump().public_keys();
+
+    #[cfg(feature = "elgamal3")]
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
         let transcryption_info =
             system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
-        system.transcrypt(&acc, &transcryption_info)
+        system.transcrypt(&acc, &transcryption_info, rng)
     });
+    #[cfg(not(feature = "elgamal3"))]
+    let (transcrypted_pseudo, keys_b1_pseudonym) =
+        systems
+            .iter()
+            .fold((enc_pseudo, keys_a1.pseudonym), |(acc, key), system| {
+                let transcryption_info =
+                    system.transcryption_info(&domain_a, &domain_b, &session_a1, &session_b1);
+                (
+                    system.transcrypt(&acc, &transcryption_info, &key, rng),
+                    transcryption_info.pseudonym.rekey_public_key(&key),
+                )
+            });
+    #[cfg(not(feature = "elgamal3"))]
+    assert_eq!(
+        keys_b1_pseudonym,
+        client_b.dump().pseudonym.public,
+        "the key output by the last transcryptor is the receiver's session key"
+    );
 
+    #[cfg(feature = "elgamal3")]
     let transcrypted_data = systems.iter().fold(enc_data, |acc, system| {
         let rekey_info = system.attribute_rekey_info(&session_a1, &session_b1);
-        system.rekey(&acc, &rekey_info)
+        system.rekey(&acc, &rekey_info, rng)
     });
+    #[cfg(not(feature = "elgamal3"))]
+    let (transcrypted_data, keys_b1_attribute) =
+        systems
+            .iter()
+            .fold((enc_data, keys_a1.attribute), |(acc, key), system| {
+                let rekey_info = system.attribute_rekey_info(&session_a1, &session_b1);
+                (
+                    system.rekey(&acc, &rekey_info, &key, rng),
+                    rekey_info.rekey_public_key(&key),
+                )
+            });
+    #[cfg(not(feature = "elgamal3"))]
+    assert_eq!(keys_b1_attribute, client_b.dump().attribute.public);
 
     #[cfg(feature = "elgamal3")]
     let dec_pseudo = client_b
@@ -91,11 +130,25 @@ fn n_pep() {
         assert_ne!(pseudonym, dec_pseudo);
     }
 
+    #[cfg(feature = "elgamal3")]
     let rev_pseudonymized = systems.iter().fold(transcrypted_pseudo, |acc, system| {
         let pseudo_info =
             system.pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1);
-        system.pseudonymize(&acc, &pseudo_info.reverse())
+        system.pseudonymize(&acc, &pseudo_info.reverse(), rng)
     });
+    #[cfg(not(feature = "elgamal3"))]
+    let (rev_pseudonymized, _) = systems.iter().fold(
+        (transcrypted_pseudo, keys_b1_pseudonym),
+        |(acc, key), system| {
+            let pseudo_info = system
+                .pseudonymization_info(&domain_a, &domain_b, &session_a1, &session_b1)
+                .reverse();
+            (
+                system.pseudonymize(&acc, &pseudo_info, &key, rng),
+                pseudo_info.rekey_public_key(&key),
+            )
+        },
+    );
 
     #[cfg(feature = "elgamal3")]
     let rev_dec_pseudo = client_a

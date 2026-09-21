@@ -476,7 +476,7 @@ impl ElGamalEncrypted for EncryptedAttribute {
 // Transcryption trait implementations
 
 impl Pseudonymizable for EncryptedPseudonym {
-    fn pseudonymize(&self, info: &PseudonymizationInfo) -> Self {
+    fn pseudonymize_raw(&self, info: &PseudonymizationInfo) -> Self {
         EncryptedPseudonym::from_value(crate::elgamal::primitives::rsk(
             self.value(),
             &info.s.0,
@@ -488,7 +488,7 @@ impl Pseudonymizable for EncryptedPseudonym {
 impl Rekeyable for EncryptedPseudonym {
     type RekeyInfo = PseudonymRekeyInfo;
 
-    fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
         EncryptedPseudonym::from_value(crate::elgamal::primitives::rekey(self.value(), &info.k.0))
     }
 }
@@ -496,20 +496,20 @@ impl Rekeyable for EncryptedPseudonym {
 impl Rekeyable for EncryptedAttribute {
     type RekeyInfo = AttributeRekeyInfo;
 
-    fn rekey(&self, info: &Self::RekeyInfo) -> Self {
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
         EncryptedAttribute::from_value(crate::elgamal::primitives::rekey(self.value(), &info.k.0))
     }
 }
 
 impl Transcryptable for EncryptedPseudonym {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.pseudonymize(&info.pseudonym)
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
+        self.pseudonymize_raw(&info.pseudonym)
     }
 }
 
 impl Transcryptable for EncryptedAttribute {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
-        self.rekey(&info.attribute)
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
+        self.rekey_raw(&info.attribute)
     }
 }
 #[cfg(feature = "batch")]

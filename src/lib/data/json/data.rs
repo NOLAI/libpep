@@ -21,7 +21,7 @@ use crate::factors::TranscryptionInfo;
 use crate::keys::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use crate::keys::GlobalSecretKeys;
-use crate::keys::SessionKeys;
+use crate::keys::{SessionKeys, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -469,7 +469,7 @@ impl PEPJSONValue {
 
 impl Encryptable for PEPJSONValue {
     type EncryptedType = EncryptedPEPJSONValue;
-    type PublicKeyType = SessionKeys;
+    type PublicKeyType = SessionPublicKeys;
 
     #[cfg(feature = "offline")]
     type GlobalPublicKeyType = GlobalPublicKeys;
@@ -482,23 +482,23 @@ impl Encryptable for PEPJSONValue {
         match self {
             PEPJSONValue::Null => EncryptedPEPJSONValue::Null,
             PEPJSONValue::Bool(attr) => {
-                EncryptedPEPJSONValue::Bool(attr.encrypt(&keys.attribute.public, rng))
+                EncryptedPEPJSONValue::Bool(attr.encrypt(&keys.attribute, rng))
             }
             PEPJSONValue::Number(attr) => {
-                EncryptedPEPJSONValue::Number(attr.encrypt(&keys.attribute.public, rng))
+                EncryptedPEPJSONValue::Number(attr.encrypt(&keys.attribute, rng))
             }
             PEPJSONValue::String(attr) => {
-                EncryptedPEPJSONValue::String(attr.encrypt(&keys.attribute.public, rng))
+                EncryptedPEPJSONValue::String(attr.encrypt(&keys.attribute, rng))
             }
             PEPJSONValue::LongString(long_attr) => {
-                EncryptedPEPJSONValue::LongString(long_attr.encrypt(&keys.attribute.public, rng))
+                EncryptedPEPJSONValue::LongString(long_attr.encrypt(&keys.attribute, rng))
             }
             PEPJSONValue::Pseudonym(pseudo) => {
-                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt(&keys.pseudonym.public, rng))
+                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt(&keys.pseudonym, rng))
             }
-            PEPJSONValue::LongPseudonym(long_pseudo) => EncryptedPEPJSONValue::LongPseudonym(
-                long_pseudo.encrypt(&keys.pseudonym.public, rng),
-            ),
+            PEPJSONValue::LongPseudonym(long_pseudo) => {
+                EncryptedPEPJSONValue::LongPseudonym(long_pseudo.encrypt(&keys.pseudonym, rng))
+            }
             PEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
                 arr.iter().map(|item| item.encrypt(keys, rng)).collect(),
             ),
@@ -767,23 +767,23 @@ impl Encrypted for EncryptedPEPJSONValue {
     ) -> Self {
         match self {
             EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => EncryptedPEPJSONValue::Bool(
-                enc.rerandomize_known(&public_key.attribute.public, factor),
-            ),
-            EncryptedPEPJSONValue::Number(enc) => EncryptedPEPJSONValue::Number(
-                enc.rerandomize_known(&public_key.attribute.public, factor),
-            ),
-            EncryptedPEPJSONValue::String(enc) => EncryptedPEPJSONValue::String(
-                enc.rerandomize_known(&public_key.attribute.public, factor),
-            ),
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.rerandomize_known(&public_key.attribute, factor))
+            }
+            EncryptedPEPJSONValue::Number(enc) => {
+                EncryptedPEPJSONValue::Number(enc.rerandomize_known(&public_key.attribute, factor))
+            }
+            EncryptedPEPJSONValue::String(enc) => {
+                EncryptedPEPJSONValue::String(enc.rerandomize_known(&public_key.attribute, factor))
+            }
             EncryptedPEPJSONValue::LongString(enc) => EncryptedPEPJSONValue::LongString(
-                enc.rerandomize_known(&public_key.attribute.public, factor),
+                enc.rerandomize_known(&public_key.attribute, factor),
             ),
             EncryptedPEPJSONValue::Pseudonym(enc) => EncryptedPEPJSONValue::Pseudonym(
-                enc.rerandomize_known(&public_key.pseudonym.public, factor),
+                enc.rerandomize_known(&public_key.pseudonym, factor),
             ),
             EncryptedPEPJSONValue::LongPseudonym(enc) => EncryptedPEPJSONValue::LongPseudonym(
-                enc.rerandomize_known(&public_key.pseudonym.public, factor),
+                enc.rerandomize_known(&public_key.pseudonym, factor),
             ),
             EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
                 arr.iter()
@@ -802,31 +802,33 @@ impl Encrypted for EncryptedPEPJSONValue {
 // Transcryption trait implementation for JSON
 
 impl Transcryptable for EncryptedPEPJSONValue {
-    fn transcrypt(&self, info: &TranscryptionInfo) -> Self {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self {
         match self {
             EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => EncryptedPEPJSONValue::Bool(enc.transcrypt(info)),
+            EncryptedPEPJSONValue::Bool(enc) => {
+                EncryptedPEPJSONValue::Bool(enc.transcrypt_raw(info))
+            }
             EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Number(enc.transcrypt_raw(info))
             }
             EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.transcrypt(info))
+                EncryptedPEPJSONValue::String(enc.transcrypt_raw(info))
             }
             EncryptedPEPJSONValue::LongString(enc) => {
-                EncryptedPEPJSONValue::LongString(enc.transcrypt(info))
+                EncryptedPEPJSONValue::LongString(enc.transcrypt_raw(info))
             }
             EncryptedPEPJSONValue::Pseudonym(enc) => {
-                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt(info))
+                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt_raw(info))
             }
             EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt(info))
+                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt_raw(info))
             }
             EncryptedPEPJSONValue::Array(arr) => {
-                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt(info)).collect())
+                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt_raw(info)).collect())
             }
             EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
                 obj.iter()
-                    .map(|(k, v)| (k.clone(), v.transcrypt(info)))
+                    .map(|(k, v)| (k.clone(), v.transcrypt_raw(info)))
                     .collect(),
             ),
         }
@@ -906,7 +908,7 @@ mod tests {
 
         let value = json!(null);
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -924,7 +926,7 @@ mod tests {
         for b in [true, false] {
             let value = json!(b);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = encrypt(&pep_value, &keys, &mut rng);
+            let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -943,7 +945,7 @@ mod tests {
         for n in test_numbers {
             let value = json!(n);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = encrypt(&pep_value, &keys, &mut rng);
+            let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -957,7 +959,7 @@ mod tests {
         for f in test_floats {
             let value = json!(f);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = encrypt(&pep_value, &keys, &mut rng);
+            let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -981,7 +983,7 @@ mod tests {
         for s in test_strings {
             let value = json!(s);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = encrypt(&pep_value, &keys, &mut rng);
+            let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -998,7 +1000,7 @@ mod tests {
 
         let value = json!([true, 42, "hello", null]);
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1020,7 +1022,7 @@ mod tests {
             "email": null
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1052,7 +1054,7 @@ mod tests {
             }
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1071,7 +1073,7 @@ mod tests {
         for s in test_strings {
             let value = json!(s);
             let pep_value = PEPJSONValue::from_value(&value);
-            let encrypted = encrypt(&pep_value, &keys, &mut rng);
+            let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1092,7 +1094,7 @@ mod tests {
             "number": 123
         });
         let pep_value = PEPJSONValue::from_value(&value);
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
 
         let json_str = serde_json::to_string(&encrypted).expect("serialization should succeed");
         let deserialized: EncryptedPEPJSONValue =
@@ -1118,7 +1120,7 @@ mod tests {
             "name": "Alice",
             "age": 30
         });
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1160,7 +1162,7 @@ mod tests {
             "verified": true,
             "scores": [88, 91, 85]
         });
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -1194,8 +1196,8 @@ mod tests {
         assert_ne!(pep_value1, pep_value3);
 
         // Test EncryptedPEPJSONValue equality (same plaintext encrypts to different ciphertexts)
-        let encrypted1 = encrypt(&pep_value1, &keys, &mut rng);
-        let encrypted2 = encrypt(&pep_value1, &keys, &mut rng);
+        let encrypted1 = encrypt(&pep_value1, &keys.public_keys(), &mut rng);
+        let encrypted2 = encrypt(&pep_value1, &keys.public_keys(), &mut rng);
         // Different encryptions of same plaintext should NOT be equal due to randomness
         assert_ne!(encrypted1, encrypted2);
 
@@ -1300,9 +1302,9 @@ mod tests {
         assert_eq!(long_normalized.structure(), target);
 
         // Encrypt all values
-        let short_encrypted = encrypt(&short_normalized, &keys, &mut rng);
-        let medium_encrypted = encrypt(&medium_normalized, &keys, &mut rng);
-        let long_encrypted = encrypt(&long_normalized, &keys, &mut rng);
+        let short_encrypted = encrypt(&short_normalized, &keys.public_keys(), &mut rng);
+        let medium_encrypted = encrypt(&medium_normalized, &keys.public_keys(), &mut rng);
+        let long_encrypted = encrypt(&long_normalized, &keys.public_keys(), &mut rng);
 
         // All encrypted values should have the same structure
         assert_eq!(short_encrypted.structure(), medium_encrypted.structure());
@@ -1371,8 +1373,8 @@ mod tests {
         assert_eq!(long_normalized.structure(), target);
 
         // Encrypt and verify structures match
-        let short_encrypted = encrypt(&short_normalized, &keys, &mut rng);
-        let long_encrypted = encrypt(&long_normalized, &keys, &mut rng);
+        let short_encrypted = encrypt(&short_normalized, &keys.public_keys(), &mut rng);
+        let long_encrypted = encrypt(&long_normalized, &keys.public_keys(), &mut rng);
 
         assert_eq!(short_encrypted.structure(), long_encrypted.structure());
 
@@ -1434,8 +1436,8 @@ mod tests {
         assert_eq!(obj1_normalized.structure(), obj2_normalized.structure());
 
         // Encrypt both
-        let obj1_encrypted = encrypt(&obj1_normalized, &keys, &mut rng);
-        let obj2_encrypted = encrypt(&obj2_normalized, &keys, &mut rng);
+        let obj1_encrypted = encrypt(&obj1_normalized, &keys.public_keys(), &mut rng);
+        let obj2_encrypted = encrypt(&obj2_normalized, &keys.public_keys(), &mut rng);
 
         // Structures should match
         assert_eq!(obj1_encrypted.structure(), obj2_encrypted.structure());

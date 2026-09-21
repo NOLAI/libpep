@@ -31,5 +31,5 @@ pub use types::{
     AttributeGlobalPublicKey, AttributeGlobalSecretKey, AttributeSessionKeys,
     AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys, GlobalSecretKeys,
     PseudonymGlobalPublicKey, PseudonymGlobalSecretKey, PseudonymSessionKeys,
-    PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys,
+    PseudonymSessionPublicKey, PseudonymSessionSecretKey, SessionKeys, SessionPublicKeys,
 };

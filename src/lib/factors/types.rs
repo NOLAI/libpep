@@ -6,6 +6,9 @@
 //! another: the factor ratios between the two, bundled per data type.
 
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+use crate::keys::{
+    AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey, SessionPublicKeys,
+};
 use derive_more::From;
 
 /// High-level type for the factor used to [`rerandomize`](crate::elgamal::primitives::rerandomize) an [ElGamal](crate::elgamal::ElGamal) ciphertext.
@@ -141,6 +144,53 @@ impl TranscryptionInfo {
         Self {
             pseudonym: self.pseudonym.reverse(),
             attribute: self.attribute.reverse(),
+        }
+    }
+}
+
+// The public key a ciphertext is encrypted under after transcryption. A transcryptor passes this
+// on with the ciphertext, so that the next transcryptor (or the storage) can rerandomize it.
+
+impl PseudonymRekeyInfo {
+    /// The public key that pseudonyms rekeyed with this info are encrypted under, given the key
+    /// they were encrypted under before.
+    pub fn rekey_public_key(
+        &self,
+        before: &PseudonymSessionPublicKey,
+    ) -> PseudonymSessionPublicKey {
+        PseudonymSessionPublicKey::from_point(self.k.0 * *before.value())
+    }
+}
+
+impl AttributeRekeyInfo {
+    /// The public key that attributes rekeyed with this info are encrypted under, given the key
+    /// they were encrypted under before.
+    pub fn rekey_public_key(
+        &self,
+        before: &AttributeSessionPublicKey,
+    ) -> AttributeSessionPublicKey {
+        AttributeSessionPublicKey::from_point(self.k.0 * *before.value())
+    }
+}
+
+impl PseudonymizationInfo {
+    /// The public key that pseudonyms pseudonymized with this info are encrypted under, given the
+    /// key they were encrypted under before.
+    pub fn rekey_public_key(
+        &self,
+        before: &PseudonymSessionPublicKey,
+    ) -> PseudonymSessionPublicKey {
+        PseudonymSessionPublicKey::from_point(self.k.0 * *before.value())
+    }
+}
+
+impl TranscryptionInfo {
+    /// The public keys that data transcrypted with this info is encrypted under, given the keys
+    /// it was encrypted under before.
+    pub fn rekey_public_keys(&self, before: &SessionPublicKeys) -> SessionPublicKeys {
+        SessionPublicKeys {
+            pseudonym: self.pseudonym.rekey_public_key(&before.pseudonym),
+            attribute: self.attribute.rekey_public_key(&before.attribute),
         }
     }
 }

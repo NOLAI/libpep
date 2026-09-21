@@ -150,7 +150,7 @@ mod tests {
             "scores": [88, 91, 85]
         });
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -177,7 +177,7 @@ mod tests {
             "age": 30
         });
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -199,7 +199,7 @@ mod tests {
 
         let pep_value = pep_json!({});
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -219,7 +219,7 @@ mod tests {
             "id2": pseudonym("user2@example.com")
         });
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -244,7 +244,7 @@ mod tests {
             "scores": [1, 2, 3]
         });
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -273,7 +273,7 @@ mod tests {
             "id": pseudonym(user_id)
         });
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 

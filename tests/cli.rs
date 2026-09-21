@@ -96,6 +96,32 @@ fn setup() -> (serde_json::Value, Session, Session) {
     (global.clone(), derive("session-a"), derive("session-b"))
 }
 
+/// The `--key` argument of transcryption commands: the public key the ciphertext is encrypted
+/// under. With `elgamal3` the ciphertext carries it and the argument does not exist.
+fn key_arg(public_key: &str) -> Vec<&str> {
+    #[cfg(feature = "elgamal3")]
+    {
+        let _ = public_key;
+        vec![]
+    }
+    #[cfg(not(feature = "elgamal3"))]
+    {
+        vec!["--key", public_key]
+    }
+}
+
+/// Run a transcryption command with `--json` and return the ciphertext and, without `elgamal3`,
+/// the public key it is now encrypted under (empty otherwise).
+fn transcrypt(args: &[&str]) -> (String, String) {
+    let out = peppy_json(args);
+    let key = out
+        .get("key")
+        .and_then(|k| k.as_str())
+        .unwrap_or("")
+        .to_string();
+    (field(&out, "ciphertext").to_string(), key)
+}
+
 const TRANSCRYPT: [&str; 4] = [
     "--pseudonymization-secret",
     "pseudonymization secret",
@@ -110,6 +136,7 @@ fn pseudonym_round_trip_through_transcryption() {
     let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
     let mut args = vec!["pseudonym", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    args.extend_from_slice(&key_arg(a.public()));
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",
@@ -121,12 +148,15 @@ fn pseudonym_round_trip_through_transcryption() {
         "session-b",
         &encrypted,
     ]);
-    let transcrypted = peppy(&args);
+    let (transcrypted, _key) = transcrypt(&args);
+    #[cfg(not(feature = "elgamal3"))]
+    assert_eq!(_key, b.public(), "transcryption outputs the receiver's key");
     let in_b = peppy(&["pseudonym", "decrypt", "--key", b.secret(), &transcrypted]);
     assert_ne!(in_b, value, "pseudonym must differ between domains");
 
     let mut back = vec!["pseudonym", "transcrypt"];
     back.extend_from_slice(&TRANSCRYPT);
+    back.extend_from_slice(&key_arg(b.public()));
     back.extend_from_slice(&[
         "--from-domain",
         "research",
@@ -138,7 +168,7 @@ fn pseudonym_round_trip_through_transcryption() {
         "session-a",
         &transcrypted,
     ]);
-    let returned = peppy(&back);
+    let (returned, _) = transcrypt(&back);
     let in_a = peppy(&["pseudonym", "decrypt", "--key", a.secret(), &returned]);
     assert_eq!(in_a, value);
     assert_eq!(peppy(&["pseudonym", "decode", &in_a]), "patient-42");
@@ -155,9 +185,9 @@ fn attribute_is_rekeyed_not_reshuffled() {
         field(&a.keys, "attribute_public_key"),
         &value,
     ]);
-    let transcrypted = peppy(&[
-        "attribute",
-        "transcrypt",
+    let mut args = vec!["attribute", "transcrypt"];
+    args.extend_from_slice(&key_arg(field(&a.keys, "attribute_public_key")));
+    args.extend_from_slice(&[
         "--encryption-secret",
         "encryption secret",
         "--from-context",
@@ -166,6 +196,7 @@ fn attribute_is_rekeyed_not_reshuffled() {
         "session-b",
         &encrypted,
     ]);
+    let (transcrypted, _) = transcrypt(&args);
     let decrypted = peppy(&[
         "attribute",
         "decrypt",
@@ -220,17 +251,19 @@ fn explicit_factors_match_the_transcryptor() {
     ]);
     let value = peppy(&["pseudonym", "random"]);
     let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
-    let by_factors = peppy(&[
-        "pseudonym",
-        "pseudonymize",
+    let mut args = vec!["pseudonym", "pseudonymize"];
+    args.extend_from_slice(&key_arg(a.public()));
+    args.extend_from_slice(&[
         "--s",
         field(&info, "reshuffle_factor"),
         "--k",
         field(&info, "pseudonym_rekey_factor"),
         &encrypted,
     ]);
+    let (by_factors, _) = transcrypt(&args);
     let mut args = vec!["pseudonym", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    args.extend_from_slice(&key_arg(a.public()));
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",
@@ -242,7 +275,7 @@ fn explicit_factors_match_the_transcryptor() {
         "session-b",
         &encrypted,
     ]);
-    let by_transcryptor = peppy(&args);
+    let (by_transcryptor, _) = transcrypt(&args);
     let d1 = peppy(&["pseudonym", "decrypt", "--key", b.secret(), &by_factors]);
     let d2 = peppy(&[
         "pseudonym",
@@ -350,10 +383,13 @@ fn distributed_setup_shares_and_reconstruction() {
         field(&setup, "pseudonym_public_key"),
         &value,
     ]);
+    // The key the ciphertext is encrypted under travels with it: the global key at first, then
+    // whatever each transcryptor outputs.
+    let mut current_key = field(&setup, "pseudonym_public_key").to_string();
     for secret in &secrets {
-        current = peppy(&[
-            "pseudonym",
-            "transcrypt",
+        let mut args = vec!["pseudonym", "transcrypt"];
+        args.extend_from_slice(&key_arg(&current_key));
+        args.extend_from_slice(&[
             "--pseudonymization-secret",
             secret,
             "--encryption-secret",
@@ -366,7 +402,14 @@ fn distributed_setup_shares_and_reconstruction() {
             "session-1",
             &current,
         ]);
+        (current, current_key) = transcrypt(&args);
     }
+    #[cfg(not(feature = "elgamal3"))]
+    assert_eq!(
+        current_key,
+        field(&session, "pseudonym_public_key"),
+        "after all transcryptors the key is the reconstructed session key"
+    );
     let decrypted = peppy(&[
         "pseudonym",
         "decrypt",
@@ -399,9 +442,9 @@ fn distributed_setup_shares_and_reconstruction() {
         "--new-share",
         field(&new_share, "pseudonym_share"),
     ]);
-    let moved = peppy(&[
-        "pseudonym",
-        "transcrypt",
+    let mut args = vec!["pseudonym", "transcrypt"];
+    args.extend_from_slice(&key_arg(field(&session, "pseudonym_public_key")));
+    args.extend_from_slice(&[
         "--pseudonymization-secret",
         &secrets[0],
         "--encryption-secret",
@@ -416,6 +459,7 @@ fn distributed_setup_shares_and_reconstruction() {
         "session-2",
         &current,
     ]);
+    let (moved, _) = transcrypt(&args);
     let decrypted = peppy(&[
         "pseudonym",
         "decrypt",
@@ -444,6 +488,8 @@ fn json_documents() {
         .to_string();
     let mut args = vec!["json", "transcrypt"];
     args.extend_from_slice(&TRANSCRYPT);
+    #[cfg(not(feature = "elgamal3"))]
+    args.extend_from_slice(&["--keys", &keys_a]);
     args.extend_from_slice(&[
         "--from-domain",
         "hospital",

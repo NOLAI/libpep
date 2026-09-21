@@ -4,7 +4,11 @@ use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::SessionPublicKeys;
 use libpep::transcryptor::DistributedTranscryptor;
+
+#[path = "common/mod.rs"]
+mod common;
 use rand::rng;
 use std::hint::black_box;
 
@@ -111,30 +115,35 @@ pub fn process_entities_individually(
         Vec<libpep::data::simple::EncryptedAttribute>,
     )],
     systems: &[DistributedTranscryptor],
+    keys: &SessionPublicKeys,
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
+    let rng = &mut rng();
     for (pseudonyms, attributes) in entities {
         // Process all pseudonyms for this entity
         for encrypted in pseudonyms {
-            let _ = systems
-                .iter()
-                .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
-                    let transcryption_info =
-                        system.transcryption_info(domain_a, domain_b, session_a, session_b);
-                    system.transcrypt(&acc, &transcryption_info)
-                });
+            let _ = common::transcrypt_chain(
+                systems,
+                *encrypted,
+                keys.pseudonym,
+                |system| system.transcryption_info(domain_a, domain_b, session_a, session_b),
+                |info, key| info.pseudonym.rekey_public_key(key),
+                rng,
+            );
         }
         // Process all attributes for this entity
         for encrypted in attributes {
-            let _ = systems
-                .iter()
-                .fold(*encrypted, |acc, system: &DistributedTranscryptor| {
-                    let rekey_info = system.attribute_rekey_info(session_a, session_b);
-                    system.rekey(&acc, &rekey_info)
-                });
+            let _ = common::rekey_chain(
+                systems,
+                *encrypted,
+                keys.attribute,
+                |system| system.attribute_rekey_info(session_a, session_b),
+                |info, key| info.rekey_public_key(key),
+                rng,
+            );
         }
     }
 }
@@ -146,29 +155,29 @@ pub fn process_entities_batch(
         Vec<libpep::data::simple::EncryptedAttribute>,
     )>,
     systems: &[DistributedTranscryptor],
+    keys: &SessionPublicKeys,
     domain_a: &PseudonymizationDomain,
     domain_b: &PseudonymizationDomain,
     session_a: &EncryptionContext,
     session_b: &EncryptionContext,
 ) {
     // Convert entity tuples to EncryptedRecord
-    let mut batch: Vec<EncryptedRecord> = entities
+    let batch: Vec<EncryptedRecord> = entities
         .into_iter()
         .map(|(pseudonyms, attributes)| EncryptedRecord::new(pseudonyms, attributes))
         .collect();
 
     let mut batch_rng = rand::rng();
 
-    for system in systems {
-        let transcryption_info =
-            system.transcryption_info(domain_a, domain_b, session_a, session_b);
-        batch = match system.transcrypt_batch(&mut batch, &transcryption_info, &mut batch_rng) {
-            Ok(result) => result.to_vec(),
-            Err(e) => {
-                panic!("Batch transcryption failed during benchmark: {e:?}");
-            }
-        };
-    }
+    let batch = common::transcrypt_batch_chain(
+        systems,
+        batch,
+        *keys,
+        |system| system.transcryption_info(domain_a, domain_b, session_a, session_b),
+        |info, keys| info.rekey_public_keys(keys),
+        &mut batch_rng,
+    );
+    black_box(batch);
 }
 
 // Functions are used by criterion_group! macro, but compiler doesn't recognize this
@@ -218,6 +227,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
                             process_entities_individually(
                                 black_box(&entities),
                                 black_box(&systems),
+                                black_box(&client_a.dump().public_keys()),
                                 black_box(&domain_a),
                                 black_box(&domain_b),
                                 black_box(&session_a),
@@ -280,7 +290,13 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                             || encrypted_data.clone(),
                             |data| {
                                 process_entities_batch(
-                                    data, &systems, &domain_a, &domain_b, &session_a, &session_b,
+                                    data,
+                                    &systems,
+                                    &client_a.dump().public_keys(),
+                                    &domain_a,
+                                    &domain_b,
+                                    &session_a,
+                                    &session_b,
                                 );
                             },
                             criterion::BatchSize::LargeInput,

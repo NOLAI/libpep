@@ -131,6 +131,10 @@ pub struct RerandomizeArgs {
 
 #[derive(Args)]
 pub struct RekeyArgs {
+    /// The public key the ciphertext is encrypted under (hex).
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: String,
     /// The rekey factor from the current to the new session (hex).
     #[arg(long)]
     k: String,
@@ -141,6 +145,10 @@ pub struct RekeyArgs {
 
 #[derive(Args)]
 pub struct PseudonymizeArgs {
+    /// The public key the ciphertext is encrypted under (hex).
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: String,
     /// The reshuffle factor from the current to the new domain (hex).
     #[arg(long)]
     s: String,
@@ -154,6 +162,10 @@ pub struct PseudonymizeArgs {
 
 #[derive(Args)]
 pub struct TranscryptArgs {
+    /// The public key the ciphertext is encrypted under (hex).
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: String,
     /// The transcryptor's pseudonymization secret (pseudonyms only).
     #[arg(long)]
     pseudonymization_secret: Option<String>,
@@ -205,6 +217,9 @@ pub trait Kind {
     type RekeyInfo: Copy;
 
     fn rekey_info(k: ScalarNonZero) -> Self::RekeyInfo;
+    /// The public key a ciphertext is encrypted under after rekeying with `info`.
+    #[cfg_attr(feature = "elgamal3", allow(dead_code))]
+    fn rekey_public_key(info: &Self::RekeyInfo, before: &Self::SessionPk) -> Self::SessionPk;
     fn long_from_blocks(blocks: Vec<Self::Plain>) -> Self::Long;
     fn long_from_text(text: &str) -> Self::Long;
     fn long_to_text(long: &Self::Long) -> std::io::Result<String>;
@@ -240,6 +255,12 @@ macro_rules! impl_kind {
 
             fn rekey_info(k: ScalarNonZero) -> Self::RekeyInfo {
                 <$info>::from(<$factor>::from(k))
+            }
+            fn rekey_public_key(
+                info: &Self::RekeyInfo,
+                before: &Self::SessionPk,
+            ) -> Self::SessionPk {
+                info.rekey_public_key(before)
             }
             fn long_from_blocks(blocks: Vec<Self::Plain>) -> Self::Long {
                 $long(blocks)
@@ -493,30 +514,72 @@ fn rerandomize<K: Kind, R: Rng + CryptoRng>(
     Ok(())
 }
 
-fn rekey<K: Kind>(args: RekeyArgs, out: &mut Output) -> Result<()> {
+/// Emit a transcrypted ciphertext and, without `elgamal3`, the public key it is now encrypted
+/// under, which the next transcryptor (or the storage) needs to rerandomize it.
+macro_rules! emit_transcrypted {
+    ($kind:ty, $cipher:expr, $out:expr, $rng:expr, $key_arg:expr, $info:expr, $op:ident, $next_key:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        {
+            let result = match $cipher {
+                Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, $rng)),
+                Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, $rng)),
+            };
+            result.emit($out);
+        }
+        #[cfg(not(feature = "elgamal3"))]
+        {
+            let key: <$kind as Kind>::SessionPk = io::public_key(&$key_arg, "public key")?;
+            let result = match $cipher {
+                Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, &key, $rng)),
+                Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, &key, $rng)),
+            };
+            result.emit($out);
+            $out.value("key", $next_key(&key).to_hex());
+        }
+    }};
+}
+
+fn rekey<K: Kind, R: Rng + CryptoRng>(
+    args: RekeyArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     let info = K::rekey_info(io::scalar(&args.k, "k")?);
-    let result = match Cipher::<K>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<K>::Short(c.rekey(&info)),
-        Cipher::Long(c) => Cipher::<K>::Long(c.rekey(&info)),
-    };
-    result.emit(out);
+    let cipher = Cipher::<K>::parse(&args.ciphertext)?;
+    emit_transcrypted!(K, cipher, out, rng, args.key, &info, rekey, |key| {
+        K::rekey_public_key(&info, key)
+    });
     Ok(())
 }
 
-fn pseudonymize(args: PseudonymizeArgs, out: &mut Output) -> Result<()> {
+fn pseudonymize<R: Rng + CryptoRng>(
+    args: PseudonymizeArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     let info = PseudonymizationInfo {
         s: ReshuffleFactor::from(io::scalar(&args.s, "s")?),
         k: PseudonymRekeyFactor::from(io::scalar(&args.k, "k")?),
     };
-    let result = match Cipher::<PseudonymKind>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.pseudonymize(&info)),
-        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.pseudonymize(&info)),
-    };
-    result.emit(out);
+    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
+    emit_transcrypted!(
+        PseudonymKind,
+        cipher,
+        out,
+        rng,
+        args.key,
+        &info,
+        pseudonymize,
+        |key| info.rekey_public_key(key)
+    );
     Ok(())
 }
 
-fn transcrypt_pseudonym(args: TranscryptArgs, out: &mut Output) -> Result<()> {
+fn transcrypt_pseudonym<R: Rng + CryptoRng>(
+    args: TranscryptArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     let missing =
         |what: &str| io::Error::input(format!("--{what} is required to transcrypt a pseudonym"));
     let info = TranscryptionInfo::new(
@@ -539,15 +602,25 @@ fn transcrypt_pseudonym(args: TranscryptArgs, out: &mut Output) -> Result<()> {
         )?,
         &io::encryption_secret(&args.encryption_secret)?,
     );
-    let result = match Cipher::<PseudonymKind>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<PseudonymKind>::Short(c.transcrypt(&info)),
-        Cipher::Long(c) => Cipher::<PseudonymKind>::Long(c.transcrypt(&info)),
-    };
-    result.emit(out);
+    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
+    emit_transcrypted!(
+        PseudonymKind,
+        cipher,
+        out,
+        rng,
+        args.key,
+        &info,
+        transcrypt,
+        |key| info.pseudonym.rekey_public_key(key)
+    );
     Ok(())
 }
 
-fn transcrypt_attribute(args: TranscryptArgs, out: &mut Output) -> Result<()> {
+fn transcrypt_attribute<R: Rng + CryptoRng>(
+    args: TranscryptArgs,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
     if args.pseudonymization_secret.is_some()
         || args.from_domain.is_some()
         || args.to_domain.is_some()
@@ -561,11 +634,17 @@ fn transcrypt_attribute(args: TranscryptArgs, out: &mut Output) -> Result<()> {
         &io::context(args.to_context.as_deref())?,
         &io::encryption_secret(&args.encryption_secret)?,
     );
-    let result = match Cipher::<AttributeKind>::parse(&args.ciphertext)? {
-        Cipher::Short(c) => Cipher::<AttributeKind>::Short(c.rekey(&info)),
-        Cipher::Long(c) => Cipher::<AttributeKind>::Long(c.rekey(&info)),
-    };
-    result.emit(out);
+    let cipher = Cipher::<AttributeKind>::parse(&args.ciphertext)?;
+    emit_transcrypted!(
+        AttributeKind,
+        cipher,
+        out,
+        rng,
+        args.key,
+        &info,
+        rekey,
+        |key| info.rekey_public_key(key)
+    );
     Ok(())
 }
 
@@ -584,9 +663,9 @@ pub fn run_pseudonym<R: Rng + CryptoRng>(
         PseudonymCommand::Encrypt(args) => encrypt::<PseudonymKind, R>(args, rng, out),
         PseudonymCommand::Decrypt(args) => decrypt::<PseudonymKind>(args, out),
         PseudonymCommand::Rerandomize(args) => rerandomize::<PseudonymKind, R>(args, rng, out),
-        PseudonymCommand::Rekey(args) => rekey::<PseudonymKind>(args, out),
-        PseudonymCommand::Pseudonymize(args) => pseudonymize(args, out),
-        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, out),
+        PseudonymCommand::Rekey(args) => rekey::<PseudonymKind, R>(args, rng, out),
+        PseudonymCommand::Pseudonymize(args) => pseudonymize(args, rng, out),
+        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, rng, out),
     }
 }
 
@@ -605,7 +684,7 @@ pub fn run_attribute<R: Rng + CryptoRng>(
         AttributeCommand::Encrypt(args) => encrypt::<AttributeKind, R>(args, rng, out),
         AttributeCommand::Decrypt(args) => decrypt::<AttributeKind>(args, out),
         AttributeCommand::Rerandomize(args) => rerandomize::<AttributeKind, R>(args, rng, out),
-        AttributeCommand::Rekey(args) => rekey::<AttributeKind>(args, out),
-        AttributeCommand::Transcrypt(args) => transcrypt_attribute(args, out),
+        AttributeCommand::Rekey(args) => rekey::<AttributeKind, R>(args, rng, out),
+        AttributeCommand::Transcrypt(args) => transcrypt_attribute(args, rng, out),
     }
 }

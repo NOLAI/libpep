@@ -12,6 +12,35 @@ use libpep::pep_json;
 use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
 
+/// Call a transcryption function with the argument list of the active ciphertext encoding: with
+/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
+macro_rules! tx {
+    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $f($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $f($enc, $info, $pk, $rng);
+        result
+    }};
+}
+
+/// As [`tx!`], for a method call `$obj.$method(...)`.
+macro_rules! txm {
+    ($obj:ident . $m:ident, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
+        #[cfg(feature = "elgamal3")]
+        let result = {
+            let _ = &$pk;
+            $obj.$m($enc, $info, $rng)
+        };
+        #[cfg(not(feature = "elgamal3"))]
+        let result = $obj.$m($enc, $info, $pk, $rng);
+        result
+    }};
+}
+
 #[test]
 fn test_json_transcryption_with_macro() {
     let mut rng = rand::rng();
@@ -35,7 +64,7 @@ fn test_json_transcryption_with_macro() {
     });
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys.public_keys(), &mut rng);
 
     // Decrypt to verify original
     #[cfg(feature = "elgamal3")]
@@ -59,7 +88,13 @@ fn test_json_transcryption_with_macro() {
         &enc_secret,
     );
 
-    let transcrypted = encrypted.transcrypt(&transcryption_info);
+    let transcrypted = tx!(
+        Transcryptable::transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &session_keys.public_keys(),
+        &mut rng
+    );
 
     // Verify that the encrypted structures are different after transcryption
     // (The pseudonym has been transformed)
@@ -99,7 +134,7 @@ fn test_json_transcryption_with_builder() {
         .build();
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys, &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys.public_keys(), &mut rng);
 
     // Decrypt to verify original
     #[cfg(feature = "elgamal3")]
@@ -125,7 +160,13 @@ fn test_json_transcryption_with_builder() {
         &enc_secret,
     );
 
-    let transcrypted = encrypted.transcrypt(&transcryption_info);
+    let transcrypted = tx!(
+        Transcryptable::transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &session_keys.public_keys(),
+        &mut rng
+    );
 
     // Decrypt transcrypted data
     #[cfg(feature = "elgamal3")]
@@ -185,8 +226,8 @@ fn test_json_batch_transcryption_same_structure() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys.public_keys(), &mut rng);
 
     // Verify they have the same structure
     let structure1 = encrypted1.structure();
@@ -204,9 +245,15 @@ fn test_json_batch_transcryption_same_structure() {
     );
 
     let mut batch = vec![encrypted1.clone(), encrypted2.clone()];
-    let transcrypted_batch = transcrypt_batch(&mut batch, &transcryption_info, &mut rng)
-        .unwrap()
-        .into_vec();
+    let transcrypted_batch = tx!(
+        transcrypt_batch,
+        &mut batch,
+        &transcryption_info,
+        &session_keys.public_keys(),
+        &mut rng
+    )
+    .unwrap()
+    .into_vec();
 
     // Verify we got 2 records back
     assert_eq!(transcrypted_batch.len(), 2);
@@ -295,8 +342,8 @@ fn test_json_batch_transcryption_different_structures() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys, &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys, &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys.public_keys(), &mut rng);
 
     // Verify they have different structures
     let structure1 = encrypted1.structure();
@@ -318,7 +365,13 @@ fn test_json_batch_transcryption_different_structures() {
 
     // Attempt batch transcryption (this should fail because structures don't match)
     let mut batch = vec![encrypted1, encrypted2];
-    let result = transcrypt_batch(&mut batch, &transcryption_info, &mut rng);
+    let result = tx!(
+        transcrypt_batch,
+        &mut batch,
+        &transcryption_info,
+        &session_keys.public_keys(),
+        &mut rng
+    );
 
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");
@@ -384,7 +437,13 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let transcryption_info =
         transcryptor.transcryption_info(&domain_a, &domain_b, &session, &session);
 
-    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+    let transcrypted = txm!(
+        transcryptor.transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // Verify that the encrypted structures are different after transcryption
     assert_ne!(
@@ -454,7 +513,13 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     let transcryption_info =
         transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
 
-    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+    let transcrypted = txm!(
+        transcryptor.transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 3. Decrypt back to PEPJSONValue using the client
     #[cfg(feature = "elgamal3")]
@@ -496,7 +561,13 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     let transcryption_info_back =
         transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
 
-    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+    let transcrypted_back = txm!(
+        transcryptor.transcrypt,
+        &encrypted_b,
+        &transcryption_info_back,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 7. Decrypt and verify we get back the original values
     #[cfg(feature = "elgamal3")]
@@ -567,7 +638,13 @@ fn test_pseudonym_roundtrip_with_builder() {
     let transcryption_info =
         transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
 
-    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+    let transcrypted = txm!(
+        transcryptor.transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 4. Decrypt back to PEPJSONValue using the client
     #[cfg(feature = "elgamal3")]
@@ -621,7 +698,13 @@ fn test_pseudonym_roundtrip_with_builder() {
     let transcryption_info_back =
         transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
 
-    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+    let transcrypted_back = txm!(
+        transcryptor.transcrypt,
+        &encrypted_b,
+        &transcryption_info_back,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 8. Decrypt and verify we get back the original values
     #[cfg(feature = "elgamal3")]
@@ -678,7 +761,13 @@ fn test_unicode_pseudonyms_and_attributes() {
     let transcryption_info =
         transcryptor.transcryption_info(&domain_from, &domain_to, &session, &session);
 
-    let transcrypted = transcryptor.transcrypt(&encrypted, &transcryption_info);
+    let transcrypted = txm!(
+        transcryptor.transcrypt,
+        &encrypted,
+        &transcryption_info,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 3. Decrypt
     #[cfg(feature = "elgamal3")]
@@ -733,7 +822,13 @@ fn test_unicode_pseudonyms_and_attributes() {
     let transcryption_info_back =
         transcryptor.transcryption_info(&domain_to, &domain_from, &session, &session);
 
-    let transcrypted_back = transcryptor.transcrypt(&encrypted_b, &transcryption_info_back);
+    let transcrypted_back = txm!(
+        transcryptor.transcrypt,
+        &encrypted_b,
+        &transcryption_info_back,
+        &client.dump().public_keys(),
+        &mut rng
+    );
 
     // 7. Decrypt and verify original unicode values restored
     #[cfg(feature = "elgamal3")]

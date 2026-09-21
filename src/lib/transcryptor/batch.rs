@@ -1,15 +1,30 @@
 //! Batch operations for pseudonymization, rekeying, and transcryption with shuffling.
 
+#[cfg(not(feature = "elgamal3"))]
+use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
 use rand_core::{CryptoRng, Rng};
 
 use crate::errors::BatchError;
 
-/// Fisher-Yates shuffle using rand_core
+/// Uniformly random index in `0..n` (n > 0), by rejection sampling on the random 64-bit output so
+/// that the result is unbiased (a plain `% n` is biased for n not dividing 2^64).
+fn random_index<R: Rng + CryptoRng>(n: usize, rng: &mut R) -> usize {
+    let n = n as u64;
+    let zone = u64::MAX - (u64::MAX % n);
+    loop {
+        let v = rng.next_u64();
+        if v < zone {
+            return (v % n) as usize;
+        }
+    }
+}
+
+/// Fisher-Yates shuffle with unbiased index sampling.
 fn shuffle<T, R: Rng + CryptoRng>(slice: &mut [T], rng: &mut R) {
     for i in (1..slice.len()).rev() {
-        let j = (rng.next_u64() as usize) % (i + 1);
+        let j = random_index(i + 1, rng);
         slice.swap(i, j);
     }
 }
@@ -50,6 +65,7 @@ fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(), BatchError
 /// ```rust,ignore
 /// let pseudonymized = pseudonymize_batch(&mut encrypted_pseudonyms, &info, &mut rng)?;
 /// ```
+#[cfg(feature = "elgamal3")]
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
     info: &crate::factors::PseudonymizationInfo,
@@ -61,7 +77,29 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|x| x.pseudonymize(info)).collect())
+    Ok(encrypted
+        .iter()
+        .map(|x| x.pseudonymize(info, rng))
+        .collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn pseudonymize_batch<E, R>(
+    encrypted: &mut [E],
+    info: &crate::factors::PseudonymizationInfo,
+    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> Result<Box<[E]>, BatchError>
+where
+    E: Pseudonymizable + HasStructure + Clone,
+    R: Rng + CryptoRng,
+{
+    validate_structure(encrypted)?;
+    shuffle(encrypted, rng);
+    Ok(encrypted
+        .iter()
+        .map(|x| x.pseudonymize(info, public_key, rng))
+        .collect())
 }
 
 /// Polymorphic batch rekeying with structure validation and shuffling.
@@ -78,6 +116,7 @@ where
 /// ```rust,ignore
 /// let rekeyed = rekey_batch(&mut encrypted_attributes, &info, &mut rng)?;
 /// ```
+#[cfg(feature = "elgamal3")]
 pub fn rekey_batch<E, R>(
     encrypted: &mut [E],
     info: &E::RekeyInfo,
@@ -90,7 +129,27 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|x| x.rekey(info)).collect())
+    Ok(encrypted.iter().map(|x| x.rekey(info, rng)).collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn rekey_batch<E, R>(
+    encrypted: &mut [E],
+    info: &E::RekeyInfo,
+    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> Result<Box<[E]>, BatchError>
+where
+    E: Rekeyable + HasStructure + Clone,
+    E::RekeyInfo: Copy,
+    R: Rng + CryptoRng,
+{
+    validate_structure(encrypted)?;
+    shuffle(encrypted, rng);
+    Ok(encrypted
+        .iter()
+        .map(|x| x.rekey(info, public_key, rng))
+        .collect())
 }
 
 /// Polymorphic batch transcryption with structure validation and shuffling.
@@ -107,6 +166,7 @@ where
 /// ```rust,ignore
 /// let transcrypted = transcrypt_batch(&mut encrypted_records, &info, &mut rng)?;
 /// ```
+#[cfg(feature = "elgamal3")]
 pub fn transcrypt_batch<E, R>(
     encrypted: &mut [E],
     info: &TranscryptionInfo,
@@ -118,5 +178,51 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|x| x.transcrypt(info)).collect())
+    Ok(encrypted.iter().map(|x| x.transcrypt(info, rng)).collect())
+}
+
+#[cfg(not(feature = "elgamal3"))]
+pub fn transcrypt_batch<E, R>(
+    encrypted: &mut [E],
+    info: &TranscryptionInfo,
+    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    rng: &mut R,
+) -> Result<Box<[E]>, BatchError>
+where
+    E: Transcryptable + HasStructure + Clone,
+    R: Rng + CryptoRng,
+{
+    validate_structure(encrypted)?;
+    shuffle(encrypted, rng);
+    Ok(encrypted
+        .iter()
+        .map(|x| x.transcrypt(info, public_key, rng))
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn random_index_stays_in_range() {
+        let rng = &mut rand::rng();
+        for n in [1usize, 2, 3, 7, 100, 1000] {
+            for _ in 0..1000 {
+                assert!(random_index(n, rng) < n);
+            }
+        }
+    }
+
+    #[test]
+    fn shuffle_is_a_permutation() {
+        let rng = &mut rand::rng();
+        let original: Vec<u32> = (0..50).collect();
+        let mut shuffled = original.clone();
+        shuffle(&mut shuffled, rng);
+        let mut sorted = shuffled.clone();
+        sorted.sort_unstable();
+        assert_eq!(sorted, original);
+        assert_ne!(shuffled, original);
+    }
 }

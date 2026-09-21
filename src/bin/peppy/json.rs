@@ -8,6 +8,8 @@ use clap::Subcommand;
 use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
 use libpep::factors::TranscryptionInfo;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::SessionPublicKeys;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
 use rand_core::{CryptoRng, Rng};
 
@@ -39,6 +41,11 @@ pub enum Json {
     },
     /// Transcrypt an encrypted JSON document from one domain and session to another.
     Transcrypt {
+        /// The session public keys the document is encrypted under, as JSON (from
+        /// `keys session derive --json`; the secret keys are ignored).
+        #[cfg(not(feature = "elgamal3"))]
+        #[arg(long)]
+        keys: String,
         /// The transcryptor's pseudonymization secret.
         #[arg(long)]
         pseudonymization_secret: String,
@@ -74,6 +81,22 @@ fn keys_json<T: serde::de::DeserializeOwned>(raw: &str, key: &str, what: &str) -
     serde_json::from_value(value).map_err(|e| io::Error::input(format!("{what}: {e}")))
 }
 
+/// Parse session public keys from either a `SessionPublicKeys` object or a `SessionKeys` object
+/// (as printed by `keys session derive --json`), whose secret keys are ignored.
+#[cfg(not(feature = "elgamal3"))]
+fn public_keys_json(raw: &str) -> Result<SessionPublicKeys> {
+    let text = io::read_arg(raw)?;
+    let mut value: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| io::Error::input(format!("keys: not valid JSON: {e}")))?;
+    if let Some(inner) = value.get_mut("session_keys") {
+        value = inner.take();
+    }
+    if let Ok(keys) = serde_json::from_value::<SessionKeys>(value.clone()) {
+        return Ok(keys.public_keys());
+    }
+    serde_json::from_value(value).map_err(|e| io::Error::input(format!("keys: {e}")))
+}
+
 fn document(raw: &str) -> Result<serde_json::Value> {
     let text = io::read_arg(raw)?;
     serde_json::from_str(&text).map_err(|e| io::Error::input(format!("value: not valid JSON: {e}")))
@@ -96,7 +119,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
                 document.encrypt_global(&keys, rng)
             } else {
                 let keys: SessionKeys = keys_json(&keys, "session_keys", "keys")?;
-                document.encrypt(&keys, rng)
+                document.encrypt(&keys.public_keys(), rng)
             };
             out.value(
                 "encrypted",
@@ -119,6 +142,8 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             out.value("document", json);
         }
         Json::Transcrypt {
+            #[cfg(not(feature = "elgamal3"))]
+            keys,
             pseudonymization_secret,
             encryption_secret,
             from_domain,
@@ -137,10 +162,24 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             );
             let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;
+            #[cfg(feature = "elgamal3")]
+            let transcrypted = encrypted.transcrypt(&info, rng);
+            #[cfg(not(feature = "elgamal3"))]
+            let (transcrypted, keys_after) = {
+                let keys: SessionPublicKeys = public_keys_json(&keys)?;
+                (
+                    encrypted.transcrypt(&info, &keys, rng),
+                    info.rekey_public_keys(&keys),
+                )
+            };
             out.value(
                 "encrypted",
-                serde_json::to_value(encrypted.transcrypt(&info))
-                    .expect("encrypted JSON is serializable"),
+                serde_json::to_value(transcrypted).expect("encrypted JSON is serializable"),
+            );
+            #[cfg(not(feature = "elgamal3"))]
+            out.value(
+                "keys",
+                serde_json::to_value(keys_after).expect("keys are serializable"),
             );
         }
     }

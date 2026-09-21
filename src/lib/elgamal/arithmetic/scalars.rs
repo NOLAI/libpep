@@ -133,6 +133,13 @@ impl ScalarCanBeZero {
         Self(Scalar::ZERO)
     }
 
+    /// Create from a 64-byte hash by reduction modulo the group order. Unlike
+    /// [`ScalarNonZero::from_hash`], zero is returned as zero.
+    #[must_use]
+    pub fn from_hash(v: &[u8; 64]) -> Self {
+        Self(Scalar::from_bytes_mod_order_wide(v))
+    }
+
     /// Check if this scalar is zero.
     /// Uses constant-time comparison to avoid timing side-channels.
     #[must_use]

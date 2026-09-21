@@ -249,7 +249,7 @@ mod tests {
             .attribute("scores", json!([88, 91, 85]))
             .build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -273,7 +273,7 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::new().build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -293,7 +293,7 @@ mod tests {
             .attribute("age", json!(30))
             .build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -318,7 +318,7 @@ mod tests {
             .pseudonym("id2", "user2@example.com")
             .build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -347,7 +347,7 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::from_json(&data, &["id"]).unwrap().build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -373,7 +373,7 @@ mod tests {
             .unwrap()
             .build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
@@ -396,7 +396,7 @@ mod tests {
 
         let pep_value = PEPJSONBuilder::from_json(&data, &[]).unwrap().build();
 
-        let encrypted = encrypt(&pep_value, &keys, &mut rng);
+        let encrypted = encrypt(&pep_value, &keys.public_keys(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
 
