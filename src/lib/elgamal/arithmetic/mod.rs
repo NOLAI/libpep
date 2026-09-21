@@ -16,6 +16,7 @@
 
 pub mod group;
 pub mod group_elements;
+pub mod hashing;
 pub mod ristretto255;
 pub mod scalars;
 
