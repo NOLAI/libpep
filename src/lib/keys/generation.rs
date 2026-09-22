@@ -40,7 +40,6 @@ mod tests {
     use super::*;
     use crate::contexts::EncryptionContext;
     use crate::factors::EncryptionSecret;
-    use crate::protocol::Context;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
     use crate::elgamal::arithmetic::group_elements::G;
@@ -83,7 +82,7 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(
             *session.pseudonym.public,
@@ -102,8 +101,8 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys(&global_sk, &context, &secret, &Context::default());
-        let session2 = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session1 = make_session_keys(&global_sk, &context, &secret);
+        let session2 = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(session1, session2);
     }
@@ -118,13 +117,11 @@ mod tests {
             &global_sk,
             &EncryptionContext::from("context1"),
             &secret,
-            &Context::default(),
         );
         let session2 = make_session_keys(
             &global_sk,
             &EncryptionContext::from("context2"),
             &secret,
-            &Context::default(),
         );
 
         assert_ne!(session1, session2);
@@ -158,7 +155,7 @@ mod tests {
         let context = EncryptionContext::from("test");
         let secret = EncryptionSecret::from(b"secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         let json =
             serde_json::to_string(&session.pseudonym.secret).expect("serialization should succeed");

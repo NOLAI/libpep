@@ -580,7 +580,7 @@ fn pseudonymize<R: Rng + CryptoRng>(
 
 fn transcrypt_pseudonym<R: Rng + CryptoRng>(
     args: TranscryptArgs,
-    protocol: &Context,
+    _protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -605,7 +605,6 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
                 .ok_or_else(|| missing("pseudonymization-secret"))?,
         )?,
         &io::encryption_secret(&args.encryption_secret)?,
-        protocol,
     );
     let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
     emit_transcrypted!(
@@ -623,7 +622,7 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
 
 fn transcrypt_attribute<R: Rng + CryptoRng>(
     args: TranscryptArgs,
-    protocol: &Context,
+    _protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -639,7 +638,6 @@ fn transcrypt_attribute<R: Rng + CryptoRng>(
         &io::context(args.from_context.as_deref())?,
         &io::context(args.to_context.as_deref())?,
         &io::encryption_secret(&args.encryption_secret)?,
-        protocol,
     );
     let cipher = Cipher::<AttributeKind>::parse(&args.ciphertext)?;
     emit_transcrypted!(

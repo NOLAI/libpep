@@ -4,7 +4,6 @@ use libpep::client::{Client, Distributed};
 use libpep::contexts::*;
 use libpep::data::simple::*;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::protocol::Context;
 use libpep::transcryptor::DistributedTranscryptor;
 
 #[test]
@@ -28,7 +27,6 @@ fn n_pep() {
                 pseudonymization_secret,
                 encryption_secret,
                 blinding_factor,
-                Context::default(),
             )
         })
         .collect::<Vec<_>>();
