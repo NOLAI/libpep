@@ -11,38 +11,29 @@ use crate::factors::types::generic::{
 use crate::factors::{EncryptionSecret, PseudonymizationSecret};
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
-use crate::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
-/// a pseudonymisation secret and a rekeying secret, within one protocol [`Context`].
+/// a pseudonymisation secret and a rekeying secret.
 #[derive(Clone)]
 pub struct Transcryptor<G: Group> {
     pub(crate) pseudonymisation_secret: PseudonymizationSecret,
     pub(crate) rekeying_secret: EncryptionSecret,
-    pub(crate) context: Context,
     pub(crate) group: PhantomData<G>,
 }
 
 impl<G: Group> Transcryptor<G> {
-    /// Create a new PEP system with the given secrets, deriving factors within `context`.
+    /// Create a new PEP system with the given secrets.
     pub fn new(
         pseudonymisation_secret: PseudonymizationSecret,
         rekeying_secret: EncryptionSecret,
-        context: Context,
     ) -> Self {
         Self {
             pseudonymisation_secret,
             rekeying_secret,
-            context,
             group: PhantomData,
         }
-    }
-
-    /// The protocol context this transcryptor derives factors within.
-    pub fn context(&self) -> &Context {
-        &self.context
     }
 
     /// Get a reference to the pseudonymisation secret.
@@ -71,7 +62,7 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> AttributeRekeyInfo<G> {
-        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret, &self.context)
+        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
@@ -80,7 +71,7 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> PseudonymRekeyInfo<G> {
-        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret, &self.context)
+        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
@@ -99,7 +90,6 @@ impl<G: Group> Transcryptor<G> {
             session_to,
             &self.pseudonymisation_secret,
             &self.rekeying_secret,
-            &self.context,
         )
     }
 
@@ -119,7 +109,6 @@ impl<G: Group> Transcryptor<G> {
             session_to,
             &self.pseudonymisation_secret,
             &self.rekeying_secret,
-            &self.context,
         )
     }
 

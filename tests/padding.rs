@@ -7,7 +7,6 @@ use libpep::data::simple::{EncryptedPseudonym, Pseudonym};
 use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
 use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
-use libpep::protocol::Context;
 use libpep::transcryptor::pseudonymize;
 use std::io::Error;
 
@@ -41,7 +40,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
 
     // Create session keys
     let (session_public, session_secret) =
-        make_pseudonym_session_keys(&global_secret, &session, &enc_secret, &Context::default());
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
     // Original string to encrypt and pseudonymize
     let original_string = "This is a very long id that will be pseudonymized";
@@ -63,7 +62,6 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
         &session,
         &pseudo_secret,
         &enc_secret,
-        &Context::default(),
     );
 
     // Step 4: Pseudonymize (transform) the encrypted pseudonyms
@@ -101,7 +99,6 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
         &session,
         &pseudo_secret,
         &enc_secret,
-        &Context::default(),
     );
 
     let reverse_transformed: Vec<EncryptedPseudonym> = re_encrypted_pseudonyms

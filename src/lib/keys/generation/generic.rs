@@ -1,7 +1,6 @@
 //! Key generation generic over the [`Group`].
 
 use crate::contexts::EncryptionContext;
-use crate::protocol::Context;
 use crate::elgamal::arithmetic::group::Group;
 use crate::factors::derivation::generic::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor,
@@ -68,12 +67,11 @@ pub fn make_session_keys<G: Group>(
     global: &GlobalSecretKeys<G>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> SessionKeys<G> {
     let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys(&global.pseudonym, session, secret, context);
+        make_pseudonym_session_keys(&global.pseudonym, session, secret);
     let (attribute_public, attribute_secret) =
-        make_attribute_session_keys(&global.attribute, session, secret, context);
+        make_attribute_session_keys(&global.attribute, session, secret);
     SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
@@ -94,9 +92,8 @@ pub fn make_pseudonym_session_keys<G: Group>(
     global: &PseudonymGlobalSecretKey<G>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> (PseudonymSessionPublicKey<G>, PseudonymSessionSecretKey<G>) {
-    let k = make_pseudonym_rekey_factor::<G>(secret, session, context);
+    let k = make_pseudonym_rekey_factor::<G>(secret, session);
     let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -109,9 +106,8 @@ pub fn make_attribute_session_keys<G: Group>(
     global: &AttributeGlobalSecretKey<G>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> (AttributeSessionPublicKey<G>, AttributeSessionSecretKey<G>) {
-    let k = make_attribute_rekey_factor::<G>(secret, session, context);
+    let k = make_attribute_rekey_factor::<G>(secret, session);
     let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }

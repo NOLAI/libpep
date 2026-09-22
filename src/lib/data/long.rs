@@ -280,7 +280,6 @@ mod tests {
             &crate::keys::make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
-            &crate::protocol::Context::default(),
         );
 
         let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization");
@@ -308,7 +307,6 @@ mod tests {
             &crate::keys::make_attribute_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
-            &crate::protocol::Context::default(),
         );
 
         let attributes = LongAttribute::from_string_padded("attribute-test-data");
@@ -365,7 +363,6 @@ mod tests {
             &crate::keys::make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
-            &crate::protocol::Context::default(),
         );
 
         let pseudonyms = LongPseudonym::from_string_padded("serde-test-data");
@@ -394,7 +391,6 @@ mod tests {
             &crate::keys::make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
-            &crate::protocol::Context::default(),
         );
 
         let pseudonym = Pseudonym::from_bytes_padded(b"single").unwrap();

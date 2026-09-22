@@ -105,7 +105,7 @@ fn document(raw: &str) -> Result<serde_json::Value> {
 
 pub fn run<R: Rng + CryptoRng>(
     cmd: Json,
-    protocol: &Context,
+    _protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -165,7 +165,6 @@ pub fn run<R: Rng + CryptoRng>(
                 &io::context(to_context.as_deref())?,
                 &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::encryption_secret(&encryption_secret)?,
-                protocol,
             );
             let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;
