@@ -111,9 +111,14 @@ impl EncryptedBatch<EncryptedPseudonym> {
         Ok(())
     }
 
-    /// Rekey every item in the batch and shuffle. No pk is needed for the
-    /// rekey itself.
-    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    /// Rekey every item in the batch using a caller-supplied recipient public
+    /// key, shuffling their order.
+    pub fn rekey<R>(
+        &mut self,
+        info: &PseudonymRekeyInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
     where
         R: Rng + CryptoRng,
     {
@@ -392,8 +397,14 @@ impl EncryptedBatch<EncryptedAttribute> {
 
 #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
 impl EncryptedBatch<EncryptedAttribute> {
-    /// Rekey every item in the batch and shuffle.
-    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    /// Rekey every item in the batch using a caller-supplied recipient public
+    /// key, shuffling their order.
+    pub fn rekey<R>(
+        &mut self,
+        info: &AttributeRekeyInfo,
+        public_key: &crate::keys::AttributeSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
     where
         R: Rng + CryptoRng,
     {
@@ -588,7 +599,7 @@ impl EncryptedBatch<EncryptedRecord> {
     pub fn transcrypt<R>(
         &mut self,
         info: &TranscryptionInfo,
-        public_key: &crate::keys::SessionKeys,
+        public_key: &crate::keys::SessionPublicKeys,
         rng: &mut R,
     ) -> Result<(), BatchError>
     where
@@ -648,7 +659,7 @@ impl EncryptedBatch<LongEncryptedRecord> {
     pub fn transcrypt<R>(
         &mut self,
         info: &TranscryptionInfo,
-        public_key: &crate::keys::SessionKeys,
+        public_key: &crate::keys::SessionPublicKeys,
         rng: &mut R,
     ) -> Result<(), BatchError>
     where
@@ -710,7 +721,7 @@ impl EncryptedBatch<EncryptedPEPJSONValue> {
     pub fn transcrypt<R>(
         &mut self,
         info: &TranscryptionInfo,
-        public_key: &crate::keys::SessionKeys,
+        public_key: &crate::keys::SessionPublicKeys,
         rng: &mut R,
     ) -> Result<(), BatchError>
     where
