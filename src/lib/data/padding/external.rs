@@ -55,14 +55,16 @@
 //! This means **ALL possible byte sequences can be encoded without ambiguity**, including values
 //! that are all zeros (PKCS#7 changes the last byte)
 
+use crate::elgamal::arithmetic::group::Bytes;
+
 /// Creates an external padding block.
 ///
 /// Format: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 ///
 /// All-zero blocks are impossible for PKCS#7 padded data blocks (valid padding bytes are 0x01-0x10),
 /// making this unambiguous.
-pub(crate) fn create_external_padding_block() -> [u8; 16] {
-    [0u8; 16]
+pub(crate) fn create_external_padding_block<B: Bytes>() -> B {
+    B::zeroed()
 }
 
 /// Checks if a block is an external padding block.
@@ -78,8 +80,8 @@ pub(crate) fn create_external_padding_block() -> [u8; 16] {
 /// This means **ALL possible byte sequences can be encoded without ambiguity**, including:
 /// - Data blocks that are all zeros except the last byte (PKCS#7 will set last byte to 0x01-0x10)
 /// - Any combination of bytes whatsoever
-pub(crate) fn is_external_padding_block(block: &[u8]) -> bool {
-    if block.len() != 16 {
+pub(crate) fn is_external_padding_block<B: Bytes>(block: &[u8]) -> bool {
+    if block.len() != B::len() {
         return false;
     }
 
@@ -95,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_create_external_padding_block() {
-        let block = create_external_padding_block();
+        let block = create_external_padding_block::<[u8; 16]>();
 
         // Check that the entire block is all zeros
         assert_eq!(&block, &[0u8; 16]);
@@ -103,21 +105,21 @@ mod tests {
 
     #[test]
     fn test_is_external_padding_block_valid() {
-        let block = create_external_padding_block();
-        assert!(is_external_padding_block(&block));
+        let block = create_external_padding_block::<[u8; 16]>();
+        assert!(is_external_padding_block::<[u8; 16]>(&block));
     }
 
     #[test]
     fn test_is_external_padding_block_invalid_length() {
         let block = [0x00; 4];
-        assert!(!is_external_padding_block(&block));
+        assert!(!is_external_padding_block::<[u8; 16]>(&block));
     }
 
     #[test]
     fn test_is_external_padding_block_not_all_zeros() {
         let mut block = [0x00; 16];
         block[0] = 0xFF; // Not all zeros
-        assert!(!is_external_padding_block(&block));
+        assert!(!is_external_padding_block::<[u8; 16]>(&block));
     }
 
     #[test]
@@ -129,7 +131,7 @@ mod tests {
         for padding_value in 0x01..=0x10u8 {
             let pkcs7_block = [padding_value; 16];
             // PKCS#7 block is not all zeros
-            assert!(!is_external_padding_block(&pkcs7_block));
+            assert!(!is_external_padding_block::<[u8; 16]>(&pkcs7_block));
         }
     }
 }

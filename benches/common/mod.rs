@@ -7,6 +7,7 @@
 #![allow(dead_code, clippy::expect_used)]
 
 use libpep::data::traits::{Encryptable, Encrypted, HasStructure, Rekeyable, Transcryptable};
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::TranscryptionInfo;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand_core::{CryptoRng, Rng};
@@ -24,7 +25,7 @@ pub fn transcrypt_chain<E, R>(
     rng: &mut R,
 ) -> E
 where
-    E: Transcryptable,
+    E: Transcryptable<Group = Ristretto255>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -59,7 +60,7 @@ pub fn rekey_chain<E, R>(
     rng: &mut R,
 ) -> E
 where
-    E: Rekeyable,
+    E: Rekeyable<Group = Ristretto255>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -92,7 +93,7 @@ pub fn transcrypt_batch_chain<E, R>(
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Transcryptable + HasStructure + Clone,
+    E: Transcryptable<Group = Ristretto255> + HasStructure + Clone,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -131,7 +132,7 @@ pub fn rekey_batch_chain<E, R>(
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Rekeyable + HasStructure + Clone,
+    E: Rekeyable<Group = Ristretto255> + HasStructure + Clone,
     E::RekeyInfo: Copy,
     R: Rng + CryptoRng,
 {

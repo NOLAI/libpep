@@ -6,6 +6,7 @@ use libpep::client::distributed::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
 };
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
     make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
@@ -325,6 +326,6 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
     Ok(())
 }
 
-fn share<S: SessionKeyShare>(raw: &str, what: &str) -> Result<S> {
+fn share<S: SessionKeyShare<Group = Ristretto255>>(raw: &str, what: &str) -> Result<S> {
     Ok(S::from_scalar(io::scalar(raw, what)?))
 }

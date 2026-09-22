@@ -3,7 +3,7 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::factors::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
+use crate::factors::types::generic::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
@@ -16,7 +16,7 @@ use rand_core::{CryptoRng, Rng};
 /// ```
 /// Pseudonymize (rerandomize, reshuffle and rekey) an encrypted pseudonym.
 #[cfg(feature = "elgamal3")]
-pub fn pseudonymize<E, R>(encrypted: &E, info: &PseudonymizationInfo, rng: &mut R) -> E
+pub fn pseudonymize<E, R>(encrypted: &E, info: &PseudonymizationInfo<E::Group>, rng: &mut R) -> E
 where
     E: Pseudonymizable,
     R: Rng + CryptoRng,
@@ -29,7 +29,7 @@ where
 #[cfg(not(feature = "elgamal3"))]
 pub fn pseudonymize<E, R>(
     encrypted: &E,
-    info: &PseudonymizationInfo,
+    info: &PseudonymizationInfo<E::Group>,
     public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
     rng: &mut R,
 ) -> E
@@ -68,7 +68,7 @@ where
 
 /// Transcrypt (rerandomize, then reshuffle and/or rekey) an encrypted value.
 #[cfg(feature = "elgamal3")]
-pub fn transcrypt<E, R>(encrypted: &E, info: &TranscryptionInfo, rng: &mut R) -> E
+pub fn transcrypt<E, R>(encrypted: &E, info: &TranscryptionInfo<E::Group>, rng: &mut R) -> E
 where
     E: Transcryptable,
     R: Rng + CryptoRng,
@@ -81,7 +81,7 @@ where
 #[cfg(not(feature = "elgamal3"))]
 pub fn transcrypt<E, R>(
     encrypted: &E,
-    info: &TranscryptionInfo,
+    info: &TranscryptionInfo<E::Group>,
     public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
     rng: &mut R,
 ) -> E
@@ -127,7 +127,7 @@ where
 /// let rerandomized = rerandomize_known(&encrypted_pseudonym, &factor);
 /// ```
 #[cfg(feature = "elgamal3")]
-pub fn rerandomize_known<E>(encrypted: &E, factor: &RerandomizeFactor) -> E
+pub fn rerandomize_known<E>(encrypted: &E, factor: &RerandomizeFactor<E::Group>) -> E
 where
     E: Encrypted,
 {
@@ -144,7 +144,7 @@ where
 pub fn rerandomize_known<E>(
     encrypted: &E,
     public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
-    factor: &RerandomizeFactor,
+    factor: &RerandomizeFactor<E::Group>,
 ) -> E
 where
     E: Encrypted,

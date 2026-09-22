@@ -1,6 +1,7 @@
 //! JSON structure descriptors and related operations.
 
-use super::data::EncryptedPEPJSONValue;
+use super::data::generic::EncryptedPEPJSONValue;
+use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -189,7 +190,7 @@ fn unify_two_structures(
 }
 
 /// Methods for extracting structure from EncryptedPEPJSONValue
-impl EncryptedPEPJSONValue {
+impl<G: InvertibleEncoding> EncryptedPEPJSONValue<G> {
     /// Get the structure/shape of this EncryptedPEPJSONValue
     pub fn structure(&self) -> JSONStructure {
         match self {

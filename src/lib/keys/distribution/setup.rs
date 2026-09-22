@@ -1,31 +1,15 @@
 //! System setup for distributed transcryptors: blinding factors and blinded global secret keys.
 //!
 //! This module provides functions to set up a distributed system with multiple transcryptors.
+//! The setup is generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
+//! the functions in this module set up a ristretto255 system, as there is nothing to infer the
+//! group from.
+
+pub mod generic;
 
 use super::blinding::*;
-use crate::keys::*;
+use crate::keys::types::*;
 use rand_core::{CryptoRng, Rng};
-
-/// Generic function to setup a distributed system with global keys, blinded global secret key and blinding factors.
-fn make_distributed_global_keys_generic<R, PK, SK, F>(
-    n: usize,
-    rng: &mut R,
-    make_keys: F,
-    make_blinded: fn(&SK, &[BlindingFactor]) -> Option<SK::BlindedType>,
-) -> (PK, SK::BlindedType, Vec<BlindingFactor>)
-where
-    R: Rng + CryptoRng,
-    F: Fn(&mut R) -> (PK, SK),
-    SK: BlindableGlobalSecretKey,
-{
-    let (pk, sk) = make_keys(rng);
-    let blinding_factors: Vec<BlindingFactor> =
-        (0..n).map(|_| BlindingFactor::random(rng)).collect();
-    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
-    #[allow(clippy::unwrap_used)]
-    let bsk = make_blinded(&sk, &blinding_factors).unwrap();
-    (pk, bsk, blinding_factors)
-}
 
 /// Setup a distributed system with pseudonym global keys, a blinded global secret key and a list of
 /// blinding factors for pseudonyms.
@@ -39,12 +23,7 @@ pub fn make_distributed_pseudonym_global_keys<R: Rng + CryptoRng>(
     BlindedPseudonymGlobalSecretKey,
     Vec<BlindingFactor>,
 ) {
-    make_distributed_global_keys_generic(
-        n,
-        rng,
-        make_pseudonym_global_keys,
-        make_blinded_pseudonym_global_secret_key,
-    )
+    generic::make_distributed_pseudonym_global_keys(n, rng)
 }
 
 /// Setup a distributed system with attribute global keys, a blinded global secret key and a list of
@@ -59,12 +38,7 @@ pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
     BlindedAttributeGlobalSecretKey,
     Vec<BlindingFactor>,
 ) {
-    make_distributed_global_keys_generic(
-        n,
-        rng,
-        make_attribute_global_keys,
-        make_blinded_attribute_global_secret_key,
-    )
+    generic::make_distributed_attribute_global_keys(n, rng)
 }
 
 /// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
@@ -82,23 +56,5 @@ pub fn make_distributed_global_keys<R: Rng + CryptoRng>(
     BlindedGlobalSecretKeys,
     Vec<BlindingFactor>,
 ) {
-    let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys(rng);
-    let (attribute_pk, attribute_sk) = make_attribute_global_keys(rng);
-
-    let blinding_factors: Vec<BlindingFactor> =
-        (0..n).map(|_| BlindingFactor::random(rng)).collect();
-
-    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
-    #[allow(clippy::unwrap_used)]
-    let blinded_global_keys =
-        make_blinded_global_keys(&pseudonym_sk, &attribute_sk, &blinding_factors).unwrap();
-
-    (
-        GlobalPublicKeys {
-            pseudonym: pseudonym_pk,
-            attribute: attribute_pk,
-        },
-        blinded_global_keys,
-        blinding_factors,
-    )
+    generic::make_distributed_global_keys(n, rng)
 }

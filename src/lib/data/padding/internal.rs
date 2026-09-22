@@ -40,7 +40,9 @@
 //!
 //! This means **ALL possible byte sequences can be encoded without ambiguity**.
 
-use crate::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use crate::data::simple::generic::{Attribute, Pseudonym};
+use crate::data::simple::ElGamalEncryptable;
+use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 use std::io::{Error, ErrorKind};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
@@ -70,31 +72,43 @@ use std::io::{Error, ErrorKind};
 /// let decoded = attr.to_bytes_padded()?;
 /// assert_eq!(decoded, b"data");
 /// ```
-pub trait Padded: ElGamalEncryptable {
+pub trait Padded: ElGamalEncryptable
+where
+    Self::Group: InvertibleEncoding,
+{
+    /// The block length of the group's invertible encoding (16 bytes on ristretto255).
+    const BLOCK_LENGTH: usize = <Self::Group as InvertibleEncoding>::BLOCK_LENGTH;
+
     /// Encodes an arbitrary byte array using PKCS#7 padding.
     ///
     /// # Parameters
     ///
-    /// - `data`: The bytes to encode (must be at most 15 bytes)
+    /// - `data`: The bytes to encode (must be shorter than a block, at most 15 bytes on
+    ///   ristretto255)
     ///
     /// # Errors
     ///
-    /// Returns an error if the data exceeds 15 bytes.
+    /// Returns an error if the data does not leave room for at least one padding byte.
     fn from_bytes_padded(data: &[u8]) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        if data.len() > 15 {
+        if data.len() >= Self::BLOCK_LENGTH {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                format!("Data too long: {} bytes (max 15)", data.len()),
+                format!(
+                    "Data too long: {} bytes (max {})",
+                    data.len(),
+                    Self::BLOCK_LENGTH - 1
+                ),
             ));
         }
 
         // Create padded block using PKCS#7 padding
-        let padding_byte = (16 - data.len()) as u8;
-        let mut block = [padding_byte; 16];
-        block[..data.len()].copy_from_slice(data);
+        let padding_byte = (Self::BLOCK_LENGTH - data.len()) as u8;
+        let mut block = <Self::Group as InvertibleEncoding>::Block::zeroed();
+        block.as_mut().fill(padding_byte);
+        block.as_mut()[..data.len()].copy_from_slice(data);
 
         Ok(Self::from_lizard(&block))
     }
@@ -140,37 +154,44 @@ pub trait Padded: ElGamalEncryptable {
             ErrorKind::InvalidData,
             "Value is not a valid padded value",
         ))?;
-
-        let padding_byte = block[15];
-
-        if padding_byte == 0 || padding_byte > 16 {
-            return Err(Error::new(ErrorKind::InvalidData, "Invalid padding"));
-        }
-
-        if block[16 - padding_byte as usize..]
-            .iter()
-            .any(|&b| b != padding_byte)
-        {
-            return Err(Error::new(ErrorKind::InvalidData, "Inconsistent padding"));
-        }
-
-        let data_bytes = 16 - padding_byte as usize;
-        Ok(block[..data_bytes].to_vec())
+        unpad_block(block.as_ref())
     }
 }
 
-impl Padded for Pseudonym {}
-impl Padded for Attribute {}
+/// Remove the PKCS#7 padding of one block.
+pub(crate) fn unpad_block(block: &[u8]) -> Result<Vec<u8>, Error> {
+    let length = block.len();
+    let padding_byte = block[length - 1];
+
+    if padding_byte == 0 || padding_byte as usize > length {
+        return Err(Error::new(ErrorKind::InvalidData, "Invalid padding"));
+    }
+
+    if block[length - padding_byte as usize..]
+        .iter()
+        .any(|&b| b != padding_byte)
+    {
+        return Err(Error::new(ErrorKind::InvalidData, "Inconsistent padding"));
+    }
+
+    let data_bytes = length - padding_byte as usize;
+    Ok(block[..data_bytes].to_vec())
+}
+
+impl<G: InvertibleEncoding> Padded for Pseudonym<G> {}
+impl<G: InvertibleEncoding> Padded for Attribute<G> {}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::data::simple::{Attribute, Pseudonym};
+    use crate::elgamal::arithmetic::Ristretto255;
     use std::io::ErrorKind;
 
     // Generic test helper functions
 
-    fn test_from_bytes_padded_roundtrip<T: Padded>() {
+    fn test_from_bytes_padded_roundtrip<T: Padded<Group = Ristretto255>>() {
         let test_cases = [
             b"" as &[u8],
             b"a",
@@ -186,7 +207,7 @@ mod tests {
         }
     }
 
-    fn test_from_string_padded_roundtrip<T: Padded>() {
+    fn test_from_string_padded_roundtrip<T: Padded<Group = Ristretto255>>() {
         let test_cases = ["", "a", "hello", "Hello, world!", "123456789012345"];
 
         for text in test_cases {
@@ -196,7 +217,7 @@ mod tests {
         }
     }
 
-    fn test_too_long<T: Padded + std::fmt::Debug>() {
+    fn test_too_long<T: Padded<Group = Ristretto255> + std::fmt::Debug>() {
         let data = b"This is 16 bytes"; // Exactly 16 bytes
         let result = T::from_bytes_padded(data);
         assert!(result.is_err());
@@ -213,7 +234,7 @@ mod tests {
         assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
     }
 
-    fn test_padding_correctness<T: Padded + ElGamalEncryptable>() {
+    fn test_padding_correctness<T: Padded<Group = Ristretto255>>() {
         // Test empty data (should pad with 16 bytes of value 16)
         let value = T::from_bytes_padded(b"").unwrap();
         let bytes = value.to_lizard().unwrap();
@@ -235,7 +256,7 @@ mod tests {
         assert_eq!(1, bytes[15]);
     }
 
-    fn test_invalid_padding_decode<T: Padded + ElGamalEncryptable>() {
+    fn test_invalid_padding_decode<T: Padded<Group = Ristretto255>>() {
         // Create a value with invalid padding (padding byte = 0)
         let invalid_block = [0u8; 16];
         let value = T::from_lizard(&invalid_block);
@@ -260,7 +281,7 @@ mod tests {
         assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
     }
 
-    fn test_roundtrip_all_sizes<T: Padded>() {
+    fn test_roundtrip_all_sizes<T: Padded<Group = Ristretto255>>() {
         // Test roundtrip for all possible data sizes (0-15 bytes)
         for size in 0..=15 {
             let data = vec![b'X'; size];

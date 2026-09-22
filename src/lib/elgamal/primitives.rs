@@ -1,19 +1,18 @@
 //! PEP primitives for [rekey]ing, [reshuffle]ing, [rerandomize]ation of [ElGamal] ciphertexts, their
 //! transitive and reversible n-PEP extensions, and combined versions.
-#[cfg(not(feature = "elgamal3"))]
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::group_elements::G;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::*;
+//!
+//! All primitives are generic over the [`Group`]; the group is inferred from the ciphertext.
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
 
 /// Change the representation of a ciphertext without changing the contents.
 /// Used to make multiple unlinkable copies of the same ciphertext (when disclosing a single
 /// stored message multiple times).
 #[cfg(feature = "elgamal3")]
-pub fn rerandomize(encrypted: &ElGamal, r: &ScalarNonZero) -> ElGamal {
+pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, r: &G::Scalar) -> ElGamal<G> {
     ElGamal {
-        gb: r * G + encrypted.gb,
-        gc: r * encrypted.gy + encrypted.gc,
+        gb: G::scalar_mult_gen(r) + encrypted.gb,
+        gc: *r * encrypted.gy + encrypted.gc,
         gy: encrypted.gy,
     }
 }
@@ -22,10 +21,10 @@ pub fn rerandomize(encrypted: &ElGamal, r: &ScalarNonZero) -> ElGamal {
 /// stored message multiple times).
 /// Requires the public key `gy` that was used to encrypt the message to be provided.
 #[cfg(not(feature = "elgamal3"))]
-pub fn rerandomize(encrypted: &ElGamal, gy: &GroupElement, r: &ScalarNonZero) -> ElGamal {
+pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, gy: &G::Element, r: &G::Scalar) -> ElGamal<G> {
     ElGamal {
-        gb: r * G + encrypted.gb,
-        gc: r * gy + encrypted.gc,
+        gb: G::scalar_mult_gen(r) + encrypted.gb,
+        gc: *r * *gy + encrypted.gc,
     }
 }
 
@@ -36,10 +35,10 @@ pub fn rerandomize(encrypted: &ElGamal, gy: &GroupElement, r: &ScalarNonZero) ->
 /// `F_s(M) = s * M`, which is pseudorandom under the DDH assumption while `s` stays secret:
 /// the performing party evaluates the PRF homomorphically without learning `M` or `s * M`,
 /// which is what makes the resulting pseudonyms unlinkable across domains.
-pub fn reshuffle(encrypted: &ElGamal, s: &ScalarNonZero) -> ElGamal {
+pub fn reshuffle<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar) -> ElGamal<G> {
     ElGamal {
-        gb: s * encrypted.gb,
-        gc: s * encrypted.gc,
+        gb: *s * encrypted.gb,
+        gc: *s * encrypted.gc,
         #[cfg(feature = "elgamal3")]
         gy: encrypted.gy,
     }
@@ -48,8 +47,8 @@ pub fn reshuffle(encrypted: &ElGamal, s: &ScalarNonZero) -> ElGamal {
 /// Make a message encrypted under one key decryptable under another key.
 /// If the original message was encrypted under key `Y`, the new message will be encrypted under key
 /// `k * Y` such that users with secret key `k * y` can decrypt it.
-pub fn rekey(encrypted: &ElGamal, k: &ScalarNonZero) -> ElGamal {
-    let k_inv = k.invert();
+pub fn rekey<G: Group>(encrypted: &ElGamal<G>, k: &G::Scalar) -> ElGamal<G> {
+    let k_inv = G::scalar_inverse(k);
     #[cfg(feature = "elgamal3")]
     return rekey_precomputed(encrypted, k, &k_inv);
     #[cfg(not(feature = "elgamal3"))]
@@ -62,11 +61,15 @@ pub fn rekey(encrypted: &ElGamal, k: &ScalarNonZero) -> ElGamal {
 /// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
 /// once and use this function per ciphertext.
 #[cfg(feature = "elgamal3")]
-pub fn rekey_precomputed(encrypted: &ElGamal, k: &ScalarNonZero, k_inv: &ScalarNonZero) -> ElGamal {
+pub fn rekey_precomputed<G: Group>(
+    encrypted: &ElGamal<G>,
+    k: &G::Scalar,
+    k_inv: &G::Scalar,
+) -> ElGamal<G> {
     ElGamal {
-        gb: k_inv * encrypted.gb,
+        gb: *k_inv * encrypted.gb,
         gc: encrypted.gc,
-        gy: k * encrypted.gy,
+        gy: *k * encrypted.gy,
     }
 }
 
@@ -76,17 +79,17 @@ pub fn rekey_precomputed(encrypted: &ElGamal, k: &ScalarNonZero, k_inv: &ScalarN
 /// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
 /// once and use this function per ciphertext.
 #[cfg(not(feature = "elgamal3"))]
-pub fn rekey_precomputed(encrypted: &ElGamal, k_inv: &ScalarNonZero) -> ElGamal {
+pub fn rekey_precomputed<G: Group>(encrypted: &ElGamal<G>, k_inv: &G::Scalar) -> ElGamal<G> {
     ElGamal {
-        gb: k_inv * encrypted.gb,
+        gb: *k_inv * encrypted.gb,
         gc: encrypted.gc,
     }
 }
 
 /// Combination of  [`reshuffle`] and [`rekey`] (more efficient and secure than applying them
 /// separately).
-pub fn rsk(encrypted: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
-    let ski = s * k.invert();
+pub fn rsk<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar, k: &G::Scalar) -> ElGamal<G> {
+    let ski = *s * G::scalar_inverse(k);
     #[cfg(feature = "elgamal3")]
     return rsk_precomputed(encrypted, s, k, &ski);
     #[cfg(not(feature = "elgamal3"))]
@@ -99,16 +102,16 @@ pub fn rsk(encrypted: &ElGamal, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal
 /// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
 /// value), compute `ski` once and use this function per ciphertext.
 #[cfg(feature = "elgamal3")]
-pub fn rsk_precomputed(
-    encrypted: &ElGamal,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-    ski: &ScalarNonZero,
-) -> ElGamal {
+pub fn rsk_precomputed<G: Group>(
+    encrypted: &ElGamal<G>,
+    s: &G::Scalar,
+    k: &G::Scalar,
+    ski: &G::Scalar,
+) -> ElGamal<G> {
     ElGamal {
-        gb: ski * encrypted.gb,
-        gc: s * encrypted.gc,
-        gy: k * encrypted.gy,
+        gb: *ski * encrypted.gb,
+        gc: *s * encrypted.gc,
+        gy: *k * encrypted.gy,
     }
 }
 
@@ -118,95 +121,99 @@ pub fn rsk_precomputed(
 /// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
 /// value), compute `ski` once and use this function per ciphertext.
 #[cfg(not(feature = "elgamal3"))]
-pub fn rsk_precomputed(encrypted: &ElGamal, s: &ScalarNonZero, ski: &ScalarNonZero) -> ElGamal {
+pub fn rsk_precomputed<G: Group>(
+    encrypted: &ElGamal<G>,
+    s: &G::Scalar,
+    ski: &G::Scalar,
+) -> ElGamal<G> {
     ElGamal {
-        gb: ski * encrypted.gb,
-        gc: s * encrypted.gc,
+        gb: *ski * encrypted.gb,
+        gc: *s * encrypted.gc,
     }
 }
 
 /// Combination of [`rerandomize`], [`reshuffle`] and [`rekey`] (more efficient and secure than
 /// applying them separately).
 #[cfg(feature = "elgamal3")]
-pub fn rrsk(m: &ElGamal, r: &ScalarNonZero, s: &ScalarNonZero, k: &ScalarNonZero) -> ElGamal {
-    let ski = s * k.invert();
+pub fn rrsk<G: Group>(m: &ElGamal<G>, r: &G::Scalar, s: &G::Scalar, k: &G::Scalar) -> ElGamal<G> {
+    let ski = *s * G::scalar_inverse(k);
     ElGamal {
-        gb: ski * m.gb + ski * r * G,
-        gc: (s * r) * m.gy + s * m.gc,
-        gy: k * m.gy,
+        gb: ski * m.gb + G::scalar_mult_gen(&(ski * *r)),
+        gc: (*s * *r) * m.gy + *s * m.gc,
+        gy: *k * m.gy,
     }
 }
 
 /// Combination of [`rerandomize`], [`reshuffle`] and [`rekey`] (more efficient and secure than
 /// applying them separately).
 #[cfg(not(feature = "elgamal3"))]
-pub fn rrsk(
-    m: &ElGamal,
-    gy: &GroupElement,
-    r: &ScalarNonZero,
-    s: &ScalarNonZero,
-    k: &ScalarNonZero,
-) -> ElGamal {
-    let ski = s * k.invert();
+pub fn rrsk<G: Group>(
+    m: &ElGamal<G>,
+    gy: &G::Element,
+    r: &G::Scalar,
+    s: &G::Scalar,
+    k: &G::Scalar,
+) -> ElGamal<G> {
+    let ski = *s * G::scalar_inverse(k);
     ElGamal {
-        gb: ski * m.gb + ski * r * G,
-        gc: (s * r) * gy + s * m.gc,
+        gb: ski * m.gb + G::scalar_mult_gen(&(ski * *r)),
+        gc: (*s * *r) * *gy + *s * m.gc,
     }
 }
 
 /// A transitive and reversible n-PEP extension of [`reshuffle`], reshuffling from one pseudonym to
 /// another.
-pub fn reshuffle2(m: &ElGamal, s_from: &ScalarNonZero, s_to: &ScalarNonZero) -> ElGamal {
-    let s = s_from.invert() * s_to;
+pub fn reshuffle2<G: Group>(m: &ElGamal<G>, s_from: &G::Scalar, s_to: &G::Scalar) -> ElGamal<G> {
+    let s = G::scalar_inverse(s_from) * *s_to;
     reshuffle(m, &s)
 }
 /// A transitive and reversible n-PEP extension of [`rekey`], rekeying from one key to
 /// another.
-pub fn rekey2(m: &ElGamal, k_from: &ScalarNonZero, k_to: &ScalarNonZero) -> ElGamal {
-    let k = k_from.invert() * k_to;
+pub fn rekey2<G: Group>(m: &ElGamal<G>, k_from: &G::Scalar, k_to: &G::Scalar) -> ElGamal<G> {
+    let k = G::scalar_inverse(k_from) * *k_to;
     rekey(m, &k)
 }
 
 /// A transitive and reversible n-PEP extension of [`rsk`].
-pub fn rsk2(
-    m: &ElGamal,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-) -> ElGamal {
-    let s = s_from.invert() * s_to;
-    let k = k_from.invert() * k_to;
+pub fn rsk2<G: Group>(
+    m: &ElGamal<G>,
+    s_from: &G::Scalar,
+    s_to: &G::Scalar,
+    k_from: &G::Scalar,
+    k_to: &G::Scalar,
+) -> ElGamal<G> {
+    let s = G::scalar_inverse(s_from) * *s_to;
+    let k = G::scalar_inverse(k_from) * *k_to;
     rsk(m, &s, &k)
 }
 
 /// A transitive and reversible n-PEP extension of [`rrsk`].
 #[cfg(feature = "elgamal3")]
-pub fn rrsk2(
-    m: &ElGamal,
-    r: &ScalarNonZero,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-) -> ElGamal {
-    let s = s_from.invert() * s_to;
-    let k = k_from.invert() * k_to;
+pub fn rrsk2<G: Group>(
+    m: &ElGamal<G>,
+    r: &G::Scalar,
+    s_from: &G::Scalar,
+    s_to: &G::Scalar,
+    k_from: &G::Scalar,
+    k_to: &G::Scalar,
+) -> ElGamal<G> {
+    let s = G::scalar_inverse(s_from) * *s_to;
+    let k = G::scalar_inverse(k_from) * *k_to;
     rrsk(m, r, &s, &k)
 }
 /// A transitive and reversible n-PEP extension of [`rrsk`].
 #[cfg(not(feature = "elgamal3"))]
-pub fn rrsk2(
-    m: &ElGamal,
-    gy: &GroupElement,
-    r: &ScalarNonZero,
-    s_from: &ScalarNonZero,
-    s_to: &ScalarNonZero,
-    k_from: &ScalarNonZero,
-    k_to: &ScalarNonZero,
-) -> ElGamal {
-    let s = s_from.invert() * s_to;
-    let k = k_from.invert() * k_to;
+pub fn rrsk2<G: Group>(
+    m: &ElGamal<G>,
+    gy: &G::Element,
+    r: &G::Scalar,
+    s_from: &G::Scalar,
+    s_to: &G::Scalar,
+    k_from: &G::Scalar,
+    k_to: &G::Scalar,
+) -> ElGamal<G> {
+    let s = G::scalar_inverse(s_from) * *s_to;
+    let k = G::scalar_inverse(k_from) * *k_to;
     rrsk(m, gy, r, &s, &k)
 }
 
@@ -214,7 +221,8 @@ pub fn rrsk2(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::group_elements::GroupElement;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::{decrypt, encrypt};
 
     #[test]

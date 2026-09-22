@@ -16,6 +16,7 @@ use libpep::data::simple::{
 };
 use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
     PseudonymizationInfo, ReshuffleFactor, TranscryptionInfo,
@@ -193,6 +194,7 @@ pub struct TranscryptArgs {
 pub trait Kind {
     type Plain: ElGamalEncryptable
         + Encryptable<
+            Group = Ristretto255,
             EncryptedType = Self::Enc,
             PublicKeyType = Self::SessionPk,
             GlobalPublicKeyType = Self::GlobalPk,
@@ -209,11 +211,11 @@ pub trait Kind {
     type LongEnc: Encrypted<UnencryptedType = Self::Long, SecretKeyType = Self::SessionSk>
         + Rekeyable<RekeyInfo = Self::RekeyInfo>
         + Transcryptable;
-    type SessionPk: PublicKey;
-    type SessionSk: SecretKey;
-    type GlobalPk: PublicKey;
+    type SessionPk: PublicKey<Group = Ristretto255>;
+    type SessionSk: SecretKey<Group = Ristretto255>;
+    type GlobalPk: PublicKey<Group = Ristretto255>;
     #[cfg(feature = "insecure")]
-    type GlobalSk: SecretKey;
+    type GlobalSk: SecretKey<Group = Ristretto255>;
     type RekeyInfo: Copy;
 
     fn rekey_info(k: ScalarNonZero) -> Self::RekeyInfo;
