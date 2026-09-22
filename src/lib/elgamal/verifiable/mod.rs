@@ -8,6 +8,7 @@ mod rerandomize_batch;
 mod reshuffle;
 #[cfg(feature = "batch")]
 mod reshuffle_batch;
+pub mod rfc;
 mod rrsk;
 #[cfg(feature = "batch")]
 mod rrsk_batch;
