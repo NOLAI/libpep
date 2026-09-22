@@ -34,6 +34,14 @@ def decrypt_batch(encrypted, secret_key):
     """Polymorphic batch decryption."""
     ...
 
+def decrypt_global(encrypted, secret_key):
+    """Polymorphic decrypt_global function for offline decryption."""
+    ...
+
+def decrypt_global_batch(encrypted, secret_key):
+    """Polymorphic batch decryption with global secret key."""
+    ...
+
 def encrypt(data, key):
     """Polymorphic encrypt function - works with any encryptable type."""
     ...
