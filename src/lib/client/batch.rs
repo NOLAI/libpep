@@ -1,33 +1,41 @@
 //! Batch operations for encryption and decryption.
 
-#[cfg(any(feature = "insecure", feature = "offline"))]
-use crate::data::traits::Encryptable;
-use crate::data::traits::{BatchEncryptable, Encrypted};
+use crate::data::batch::EncryptedBatch;
+use crate::data::traits::{Encryptable, Encrypted, HasStructure};
 use crate::errors::BatchError;
 use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic batch encryption.
 ///
-/// Encrypts a slice of unencrypted messages with a session public key.
-///
-/// # Examples
-/// ```rust,ignore
-/// let encrypted = encrypt_batch(&messages, &public_key, &mut rng)?;
-/// ```
+/// Encrypts a slice of unencrypted messages with a session public key and
+/// returns an [`EncryptedBatch`] that carries the public key alongside the
+/// items (under `elgamal2`) so downstream batch operations need no extra
+/// arguments.
 pub fn encrypt_batch<M, R>(
     messages: &[M],
     public_key: &M::PublicKeyType,
     rng: &mut R,
-) -> Result<Vec<M::EncryptedType>, BatchError>
+) -> Result<EncryptedBatch<M::EncryptedType>, BatchError>
 where
-    M: BatchEncryptable,
+    M: Encryptable + Clone,
+    M::PublicKeyType: Clone,
+    M::EncryptedType: HasStructure,
     R: Rng + CryptoRng,
 {
-    let preprocessed = M::preprocess_batch(messages)?;
-    Ok(preprocessed
+    let preprocessed = M::preprocess_for_batch(messages)?;
+    let items: Vec<M::EncryptedType> = preprocessed
         .iter()
         .map(|x| x.encrypt(public_key, rng))
-        .collect())
+        .collect();
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    {
+        EncryptedBatch::new(items, public_key.clone())
+    }
+    #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
+    {
+        let _ = public_key;
+        EncryptedBatch::new(items)
+    }
 }
 
 #[cfg(feature = "insecure")]
@@ -89,10 +97,13 @@ where
 {
     encrypted
         .iter()
-        .enumerate()
-        .map(|(index, x)| {
+        .map(|x| {
             x.decrypt(secret_key)
-                .ok_or(BatchError::DecryptionFailed { index })
+                .ok_or_else(|| BatchError::InconsistentStructure {
+                    index: 0,
+                    expected_structure: "valid decryption".to_string(),
+                    actual_structure: "decryption failed".to_string(),
+                })
         })
         .collect()
 }
@@ -135,10 +146,13 @@ where
 {
     encrypted
         .iter()
-        .enumerate()
-        .map(|(index, x)| {
+        .map(|x| {
             x.decrypt_global(secret_key)
-                .ok_or(BatchError::DecryptionFailed { index })
+                .ok_or_else(|| BatchError::InconsistentStructure {
+                    index: 0,
+                    expected_structure: "valid decryption".to_string(),
+                    actual_structure: "decryption failed".to_string(),
+                })
         })
         .collect()
 }

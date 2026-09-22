@@ -1,54 +1,743 @@
-//! Batch operations for pseudonymization, rekeying, and transcryption with shuffling.
-
+//! Batch operations for pseudonymization, rekeying, and transcryption.
+//!
+//! The operation methods live on [`EncryptedBatch`] itself, as concrete impls
+//! per encrypted type. Each impl shuffles the items, transforms them, and (in
+//! `elgamal2` mode) converts the stored recipient public key with the
+//! corresponding rekey factor so the batch stays self-describing as it flows
+//! downstream.
+//!
+//! No trait abstraction is used here — the impls are short and the set of
+//! encrypted types that participate in batches is fixed (simple/long
+//! pseudonyms and attributes, records, JSON).
+use crate::data::batch::{shuffle, validate_structure, BatchError, EncryptedBatch};
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::factors::TranscryptionInfo;
+use crate::factors::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
+};
 use rand_core::{CryptoRng, Rng};
 
-use crate::errors::BatchError;
+#[cfg(feature = "json")]
+use crate::data::json::EncryptedPEPJSONValue;
+#[cfg(feature = "long")]
+use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+use crate::data::records::EncryptedRecord;
+#[cfg(feature = "long")]
+use crate::data::records::LongEncryptedRecord;
+use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
+// `elgamal3` and `(not batch-pk, not elgamal3)` variants both need pk per
+// call (in elgamal3 it's carried by each item; in (not batch-pk) it's a
+// parameter). The `(batch-pk, not elgamal3)` variant reads it from the batch.
 
-/// Uniformly random index in `0..n` (n > 0), by rejection sampling on the random 64-bit output so
-/// that the result is unbiased (a plain `% n` is biased for n not dividing 2^64).
-fn random_index<R: Rng + CryptoRng>(n: usize, rng: &mut R) -> usize {
-    let n = n as u64;
-    let zone = u64::MAX - (u64::MAX % n);
-    loop {
-        let v = rng.next_u64();
-        if v < zone {
-            return (v % n) as usize;
-        }
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<EncryptedPseudonym> {
+    /// Pseudonymize every item in the batch, shuffling their order to prevent
+    /// linking. The batch's recipient public key is converted with the same
+    /// rekey factor so the batch stays self-describing.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
+    }
+
+    /// Rekey every item in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch and shuffle. For a pseudonym
+    /// batch this is equivalent to [`pseudonymize`](Self::pseudonymize)
+    /// using the pseudonymization half of `info`.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.pseudonym.k);
+        Ok(())
     }
 }
 
-/// Fisher-Yates shuffle with unbiased index sampling.
-fn shuffle<T, R: Rng + CryptoRng>(slice: &mut [T], rng: &mut R) {
-    for i in (1..slice.len()).rev() {
-        let j = random_index(i + 1, rng);
-        slice.swap(i, j);
+#[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<EncryptedPseudonym> {
+    /// Pseudonymize every item in the batch using a caller-supplied recipient
+    /// public key, shuffling their order to prevent linking.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Rekey every item in the batch and shuffle. No pk is needed for the
+    /// rekey itself.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch using a caller-supplied recipient
+    /// public key, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+#[cfg(feature = "elgamal3")]
+impl EncryptedBatch<EncryptedPseudonym> {
+    /// Pseudonymize every item in the batch, shuffling their order to prevent
+    /// linking. Each ciphertext already carries `gy`, so no pk is needed.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Rekey every item in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
     }
 }
 
-/// Validates that all items in a slice have the same structure.
-///
-/// # Errors
-///
-/// Returns an error if items have different structures.
-fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(), BatchError> {
-    if let Some(first) = encrypted.first() {
-        let expected_structure = first.structure();
-        for (index, item) in encrypted.iter().enumerate().skip(1) {
-            let item_structure = item.structure();
-            if item_structure != expected_structure {
-                return Err(BatchError::InconsistentStructure {
-                    index,
-                    expected_structure: format!("{:?}", expected_structure),
-                    actual_structure: format!("{:?}", item_structure),
-                });
-            }
-        }
+#[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<LongEncryptedPseudonym> {
+    /// Pseudonymize every long pseudonym in the batch and shuffle. Each block
+    /// is pseudonymized independently with a fresh rerandomize factor.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
     }
-    Ok(())
+
+    /// Rekey every long pseudonym in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
+    }
+
+    /// Transcrypt every long pseudonym in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.pseudonym.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<LongEncryptedPseudonym> {
+    /// Pseudonymize every long pseudonym in the batch using a caller-supplied
+    /// recipient public key, shuffling their order.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Rekey every long pseudonym in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every long pseudonym in the batch using a caller-supplied
+    /// recipient public key, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", feature = "elgamal3"))]
+impl EncryptedBatch<LongEncryptedPseudonym> {
+    /// Pseudonymize every long pseudonym in the batch and shuffle.
+    pub fn pseudonymize<R>(
+        &mut self,
+        info: &PseudonymizationInfo,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.pseudonymize(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Rekey every long pseudonym in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every long pseudonym in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<EncryptedAttribute> {
+    /// Rekey every item in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch and shuffle. For an attribute
+    /// batch this is equivalent to [`rekey`](Self::rekey) using the
+    /// attribute half of `info`.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.attribute.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<EncryptedAttribute> {
+    /// Rekey every item in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch using a caller-supplied recipient
+    /// public key, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::AttributeSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(feature = "elgamal3")]
+impl EncryptedBatch<EncryptedAttribute> {
+    /// Rekey every item in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every item in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<LongEncryptedAttribute> {
+    /// Rekey every long attribute in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.k);
+        Ok(())
+    }
+
+    /// Transcrypt every long attribute in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self.public_key.convert(&info.attribute.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<LongEncryptedAttribute> {
+    /// Rekey every long attribute in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every long attribute in the batch using a caller-supplied
+    /// recipient public key, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::AttributeSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", feature = "elgamal3"))]
+impl EncryptedBatch<LongEncryptedAttribute> {
+    /// Rekey every long attribute in the batch and shuffle.
+    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.rekey(info, rng))
+            .collect();
+        Ok(())
+    }
+
+    /// Transcrypt every long attribute in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<EncryptedRecord> {
+    /// Transcrypt every record in the batch and shuffle. The batch's recipient
+    /// key bundle is converted with both rekey factors so the batch stays
+    /// self-describing.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self
+            .public_key
+            .convert(&info.pseudonym.k, &info.attribute.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<EncryptedRecord> {
+    /// Transcrypt every record in the batch using a caller-supplied recipient
+    /// key bundle, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::SessionKeys,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(feature = "elgamal3")]
+impl EncryptedBatch<EncryptedRecord> {
+    /// Transcrypt every record in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<LongEncryptedRecord> {
+    /// Transcrypt every long record in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self
+            .public_key
+            .convert(&info.pseudonym.k, &info.attribute.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<LongEncryptedRecord> {
+    /// Transcrypt every long record in the batch using a caller-supplied
+    /// recipient key bundle, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::SessionKeys,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "long", feature = "elgamal3"))]
+impl EncryptedBatch<LongEncryptedRecord> {
+    /// Transcrypt every long record in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "json", not(feature = "elgamal3"), feature = "batch-pk"))]
+impl EncryptedBatch<EncryptedPEPJSONValue> {
+    /// Transcrypt every JSON value in the batch and shuffle. The batch's
+    /// recipient key bundle is converted with both rekey factors so the batch
+    /// stays self-describing.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, &self.public_key, rng))
+            .collect();
+        self.public_key = self
+            .public_key
+            .convert(&info.pseudonym.k, &info.attribute.k);
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "json", not(feature = "elgamal3"), not(feature = "batch-pk")))]
+impl EncryptedBatch<EncryptedPEPJSONValue> {
+    /// Transcrypt every JSON value in the batch using a caller-supplied
+    /// recipient key bundle, shuffling their order.
+    pub fn transcrypt<R>(
+        &mut self,
+        info: &TranscryptionInfo,
+        public_key: &crate::keys::SessionKeys,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, public_key, rng))
+            .collect();
+        Ok(())
+    }
+}
+
+#[cfg(all(feature = "json", feature = "elgamal3"))]
+impl EncryptedBatch<EncryptedPEPJSONValue> {
+    /// Transcrypt every JSON value in the batch and shuffle.
+    pub fn transcrypt<R>(&mut self, info: &TranscryptionInfo, rng: &mut R) -> Result<(), BatchError>
+    where
+        R: Rng + CryptoRng,
+    {
+        shuffle(&mut self.items, rng);
+        self.items = self
+            .items
+            .iter()
+            .map(|item| item.transcrypt(info, rng))
+            .collect();
+        Ok(())
+    }
 }
 
 /// Polymorphic batch pseudonymization with structure validation and shuffling.
@@ -198,31 +887,4 @@ where
         .iter()
         .map(|x| x.transcrypt(info, public_key, rng))
         .collect())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn random_index_stays_in_range() {
-        let rng = &mut rand::rng();
-        for n in [1usize, 2, 3, 7, 100, 1000] {
-            for _ in 0..1000 {
-                assert!(random_index(n, rng) < n);
-            }
-        }
-    }
-
-    #[test]
-    fn shuffle_is_a_permutation() {
-        let rng = &mut rand::rng();
-        let original: Vec<u32> = (0..50).collect();
-        let mut shuffled = original.clone();
-        shuffle(&mut shuffled, rng);
-        let mut sorted = shuffled.clone();
-        sorted.sort_unstable();
-        assert_eq!(sorted, original);
-        assert_ne!(shuffled, original);
-    }
 }

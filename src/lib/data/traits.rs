@@ -48,6 +48,17 @@ pub trait Encryptable: Sized {
     ) -> Self::EncryptedType
     where
         R: Rng + CryptoRng;
+
+    /// Hook for batch-level preprocessing before encryption. Default is a
+    /// pass-through; override when the encrypted batch needs items to share
+    /// a uniform shape (e.g. JSON values padded to a unified structure).
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, crate::errors::BatchError>
+    where
+        Self: Clone,
+    {
+        Ok(items.to_vec())
+    }
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
