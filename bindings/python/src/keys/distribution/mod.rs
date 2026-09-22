@@ -1,6 +1,9 @@
 //! Python bindings for distributed transcryptor key management.
 
 pub mod blinding;
+
+#[cfg(feature = "verifiable-derivation")]
+pub mod proofs;
 pub mod setup;
 pub mod shares;
 
@@ -18,11 +21,16 @@ pub use shares::{
     PySessionKeyShares, PySessionKeys, PySessionPublicKeys, PySessionSecretKeys,
 };
 
+#[cfg(feature = "verifiable-derivation")]
+pub use proofs::{PyBlindingCommitment, PyBlindingCommitments, PySessionKeyShareProof};
+
 use pyo3::prelude::*;
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     blinding::register(m)?;
     setup::register(m)?;
     shares::register(m)?;
+    #[cfg(feature = "verifiable-derivation")]
+    proofs::register(m)?;
     Ok(())
 }

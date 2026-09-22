@@ -16,6 +16,9 @@ pub mod blinding;
 pub mod setup;
 pub mod shares;
 
+#[cfg(feature = "verifiable")]
+pub mod proofs;
+
 pub use blinding::{
     make_blinded_attribute_global_secret_key, make_blinded_global_key, make_blinded_global_keys,
     make_blinded_pseudonym_global_secret_key, BlindableGlobalSecretKey,
@@ -31,3 +34,6 @@ pub use shares::{
     make_session_key_shares, AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShare,
     SessionKeyShares,
 };
+
+#[cfg(feature = "verifiable")]
+pub use proofs::*;

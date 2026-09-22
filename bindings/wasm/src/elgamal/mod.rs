@@ -1,6 +1,11 @@
 pub mod arithmetic;
 pub mod primitives;
 
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
+#[cfg(feature = "verifiable")]
+pub mod zkps;
+
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};

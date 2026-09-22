@@ -6,20 +6,22 @@ use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
-#[cfg(all(feature = "offline", feature = "long"))]
-use crate::data::records::{WASMLongRecord, WASMLongRecordEncrypted};
 #[cfg(feature = "offline")]
-use crate::data::records::{WASMRecord, WASMRecordEncrypted};
+use crate::data::records::{WASMEncryptedRecord, WASMRecord};
+#[cfg(all(feature = "offline", feature = "long"))]
+use crate::data::records::{WASMLongEncryptedRecord, WASMLongRecord};
 #[cfg(feature = "offline")]
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
+use crate::errors::batch_err_to_js;
 #[cfg(feature = "offline")]
 use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "offline")]
 use libpep::client::OfflineClient;
+use libpep::data::traits::Encryptable;
 #[cfg(feature = "offline")]
 use libpep::keys::*;
 #[cfg(feature = "offline")]
@@ -87,7 +89,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedAttribute::from)
@@ -106,7 +108,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
 
@@ -122,7 +124,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedAttribute::from)
@@ -141,7 +143,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
@@ -150,9 +152,8 @@ impl WASMOfflinePEPClient {
 
     /// Encrypt a Record using global public keys (offline mode).
     #[wasm_bindgen(js_name = encryptRecord)]
-    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMRecordEncrypted {
+    pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMEncryptedRecord {
         use libpep::data::records::Record;
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let rust_record: Record = record.into();
         let encrypted = rust_record.encrypt_global(&self.0.global_public_keys, &mut rng);
@@ -162,9 +163,8 @@ impl WASMOfflinePEPClient {
     /// Encrypt a LongRecord using global public keys (offline mode).
     #[cfg(feature = "long")]
     #[wasm_bindgen(js_name = encryptLongRecord)]
-    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongRecordEncrypted {
+    pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongEncryptedRecord {
         use libpep::data::records::LongRecord;
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let rust_record: LongRecord = record.into();
         let encrypted = rust_record.encrypt_global(&self.0.global_public_keys, &mut rng);
@@ -175,7 +175,6 @@ impl WASMOfflinePEPClient {
     #[cfg(feature = "json")]
     #[wasm_bindgen(js_name = encryptJSON)]
     pub fn wasm_encrypt_json(&self, value: WASMPEPJSONValue) -> WASMEncryptedPEPJSONValue {
-        use libpep::data::traits::Encryptable;
         let mut rng = rand::rng();
         let encrypted = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
         WASMEncryptedPEPJSONValue(encrypted)
@@ -193,7 +192,7 @@ impl WASMOfflinePEPClient {
         let encrypted = self
             .0
             .encrypt_batch(&rust_values, &mut rng)
-            .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
+            .map_err(batch_err_to_js)?;
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedPEPJSONValue)

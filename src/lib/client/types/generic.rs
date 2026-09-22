@@ -73,9 +73,10 @@ impl<G: Group> Client<G> {
         &self,
         messages: &[M],
         rng: &mut R,
-    ) -> Result<Vec<M::EncryptedType>, crate::errors::BatchError>
+    ) -> Result<crate::data::batch::EncryptedBatch<M::EncryptedType>, crate::errors::BatchError>
     where
         M: BatchEncryptable<Group = G>,
+        M::EncryptedType: crate::data::traits::HasStructure,
         SessionKeys<G>: KeyProvider<M::PublicKeyType>,
         R: Rng + CryptoRng,
     {

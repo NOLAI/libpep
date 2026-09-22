@@ -35,6 +35,9 @@
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars together with the
 //!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built
 //!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
+//! - With the `verifiable` feature, [`elgamal::verifiable`] holds the primitives that emit
+//!   zero-knowledge proofs, [`verifier`] checks such proofs against factor commitments, and the
+//!   high-level layers gain verifiable counterparts of their operations.
 //!
 //! ## Groups
 //!
@@ -84,3 +87,5 @@ pub mod transcryptor;
 #[cfg(all(doctest, not(feature = "elgamal3")))]
 #[doc = include_str!("../../README.md")]
 pub struct ReadmeDoctests;
+#[cfg(feature = "verifiable")]
+pub mod verifier;

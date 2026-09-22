@@ -300,7 +300,7 @@ py_dispatch!(
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyEncryptedPseudonym> =
-                result.into_iter().map(PyEncryptedPseudonym).collect();
+                result.into_items().into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
         (attrs in messages: Vec<PyAttribute>, pk in public_key: PyAttributeSessionPublicKey) => {
@@ -312,7 +312,7 @@ py_dispatch!(
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyEncryptedAttribute> =
-                result.into_iter().map(PyEncryptedAttribute).collect();
+                result.into_items().into_iter().map(PyEncryptedAttribute).collect();
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "long")]
@@ -325,7 +325,7 @@ py_dispatch!(
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyLongEncryptedPseudonym> =
-                result.into_iter().map(PyLongEncryptedPseudonym).collect();
+                result.into_items().into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "long")]
@@ -338,7 +338,7 @@ py_dispatch!(
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyLongEncryptedAttribute> =
-                result.into_iter().map(PyLongEncryptedAttribute).collect();
+                result.into_items().into_iter().map(PyLongEncryptedAttribute).collect();
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "json")]
@@ -352,7 +352,7 @@ py_dispatch!(
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyEncryptedPEPJSONValue> =
-                result.into_iter().map(PyEncryptedPEPJSONValue).collect();
+                result.into_items().into_iter().map(PyEncryptedPEPJSONValue).collect();
             return py_result.into_py_any(py);
         }
     }
