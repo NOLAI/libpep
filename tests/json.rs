@@ -8,6 +8,7 @@ use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::factors::TranscryptionInfo;
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
+use libpep::protocol::Context;
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
@@ -54,7 +55,8 @@ fn test_json_transcryption_with_macro() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+    let session_keys =
+        make_session_keys(&global_secret, &session, &enc_secret, &Context::default());
 
     // Create patient record with pseudonym using macro
     let patient_record = pep_json!({
@@ -86,6 +88,7 @@ fn test_json_transcryption_with_macro() {
         &session,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     let transcrypted = tx!(
@@ -118,7 +121,8 @@ fn test_json_transcryption_with_builder() {
     let domain_b = PseudonymizationDomain::from("clinic-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+    let session_keys =
+        make_session_keys(&global_secret, &session, &enc_secret, &Context::default());
 
     // Create JSON with existing data, marking "user_id" as a pseudonym field
     let patient_data = json!({
@@ -158,6 +162,7 @@ fn test_json_transcryption_with_builder() {
         &session,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     let transcrypted = tx!(
@@ -201,7 +206,8 @@ fn test_json_batch_transcryption_same_structure() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+    let session_keys =
+        make_session_keys(&global_secret, &session, &enc_secret, &Context::default());
 
     // Create two JSON values with the SAME structure using standard JSON
 
@@ -242,6 +248,7 @@ fn test_json_batch_transcryption_same_structure() {
         &session,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     let mut batch = vec![encrypted1.clone(), encrypted2.clone()];
@@ -316,7 +323,8 @@ fn test_json_batch_transcryption_different_structures() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+    let session_keys =
+        make_session_keys(&global_secret, &session, &enc_secret, &Context::default());
 
     // Create two JSON values with DIFFERENT structures using standard JSON
 
@@ -361,6 +369,7 @@ fn test_json_batch_transcryption_different_structures() {
         &session,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     // Attempt batch transcryption (this should fail because structures don't match)
@@ -396,12 +405,16 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
+    let session_keys =
+        make_session_keys(&global_secret, &session, &enc_secret, &Context::default());
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
-    let transcryptor =
-        libpep::transcryptor::Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+    let transcryptor = libpep::transcryptor::Transcryptor::new(
+        pseudo_secret.clone(),
+        enc_secret.clone(),
+        Context::default(),
+    );
 
     // Create patient record JSON data
     let patient_data = json!({
@@ -486,13 +499,19 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(
+        &global_secret,
+        &session,
+        &encryption_secret,
+        &Context::default(),
+    );
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
     let transcryptor = libpep::transcryptor::Transcryptor::new(
         pseudonymization_secret.clone(),
         encryption_secret.clone(),
+        Context::default(),
     );
 
     // Create PEPJSON with both short and long pseudonyms using pep_json! macro
@@ -600,13 +619,19 @@ fn test_pseudonym_roundtrip_with_builder() {
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(
+        &global_secret,
+        &session,
+        &encryption_secret,
+        &Context::default(),
+    );
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
     let transcryptor = libpep::transcryptor::Transcryptor::new(
         pseudonymization_secret.clone(),
         encryption_secret.clone(),
+        Context::default(),
     );
 
     // 1. Create PEPJSON with both short and long pseudonyms using the builder
@@ -732,13 +757,19 @@ fn test_unicode_pseudonyms_and_attributes() {
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(
+        &global_secret,
+        &session,
+        &encryption_secret,
+        &Context::default(),
+    );
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
     let transcryptor = libpep::transcryptor::Transcryptor::new(
         pseudonymization_secret.clone(),
         encryption_secret.clone(),
+        Context::default(),
     );
 
     // Create PEPJSON with unicode characters

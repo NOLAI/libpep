@@ -48,22 +48,26 @@ use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{make_global_keys, make_session_keys};
+use libpep::protocol::Context;
 use libpep::transcryptor::Transcryptor;
 
 let rng = &mut rand::rng();
 
-// System setup: global keys, and the secrets of the transcryptor.
+// System setup: global keys, the secrets of the transcryptor, and the protocol context every
+// hash is domain-separated with (the ciphersuite; the default is ristretto255-SHA512).
 let (_global_public, global_secret) = make_global_keys(rng);
+let context = Context::default();
 let transcryptor = Transcryptor::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
     EncryptionSecret::from(b"encryption secret".to_vec()),
+    context.clone(),
 );
 
 // Party A and party B each have a pseudonymization domain, an encryption context and session keys.
 let (domain_a, session_a) = (PseudonymizationDomain::from("hospital"), EncryptionContext::from("session-a"));
 let (domain_b, session_b) = (PseudonymizationDomain::from("research"), EncryptionContext::from("session-b"));
-let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret());
-let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret());
+let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret(), &context);
+let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret(), &context);
 
 // A encrypts one of its pseudonyms for its own session.
 let pseudonym_a = Pseudonym::random(rng);

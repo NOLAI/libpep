@@ -1,5 +1,6 @@
 //! The distributed transcryptor generic over the [`Group`].
 
+use crate::protocol::Context;
 use crate::contexts::EncryptionContext;
 use crate::elgamal::arithmetic::group::Group;
 use crate::factors::derivation::generic::{
@@ -37,9 +38,10 @@ impl<G: Group> DistributedTranscryptor<G> {
         pseudonymisation_secret: PseudonymizationSecret,
         rekeying_secret: EncryptionSecret,
         blinding_factor: BlindingFactor<G>,
+        context: Context,
     ) -> Self {
         Self {
-            system: Transcryptor::new(pseudonymisation_secret, rekeying_secret),
+            system: Transcryptor::new(pseudonymisation_secret, rekeying_secret, context),
             blinding_factor,
         }
     }
@@ -64,7 +66,11 @@ impl<G: Group> DistributedTranscryptor<G> {
         &self,
         session: &EncryptionContext,
     ) -> PseudonymSessionKeyShare<G> {
-        let k = make_pseudonym_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        let k = make_pseudonym_rekey_factor::<G>(
+            self.system.rekeying_secret(),
+            session,
+            self.system.context(),
+        );
         make_pseudonym_session_key_share(&k, &self.blinding_factor)
     }
 
@@ -73,17 +79,27 @@ impl<G: Group> DistributedTranscryptor<G> {
         &self,
         session: &EncryptionContext,
     ) -> AttributeSessionKeyShare<G> {
-        let k = make_attribute_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        let k = make_attribute_rekey_factor::<G>(
+            self.system.rekeying_secret(),
+            session,
+            self.system.context(),
+        );
         make_attribute_session_key_share(&k, &self.blinding_factor)
     }
 
     /// Generate both pseudonym and attribute session key shares for the given session.
     /// This is a convenience method that returns both shares together.
     pub fn session_key_shares(&self, session: &EncryptionContext) -> SessionKeyShares<G> {
-        let pseudonym_rekey_factor =
-            make_pseudonym_rekey_factor::<G>(self.system.rekeying_secret(), session);
-        let attribute_rekey_factor =
-            make_attribute_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        let pseudonym_rekey_factor = make_pseudonym_rekey_factor::<G>(
+            self.system.rekeying_secret(),
+            session,
+            self.system.context(),
+        );
+        let attribute_rekey_factor = make_attribute_rekey_factor::<G>(
+            self.system.rekeying_secret(),
+            session,
+            self.system.context(),
+        );
         make_session_key_shares(
             &pseudonym_rekey_factor,
             &attribute_rekey_factor,

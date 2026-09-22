@@ -8,6 +8,7 @@ mod legacy_pep_repo_tests {
     use libpep::keys::distribution::blinding::BlindingFactor;
     use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
     use libpep::keys::distribution::SessionKeyShare;
+    use libpep::protocol::Context;
 
     #[test]
     fn test_key_factor_component() {
@@ -32,7 +33,8 @@ mod legacy_pep_repo_tests {
             let secret = hex::decode(secret_hex).unwrap();
             let pseudo_secret = PseudonymizationSecret::from(secret);
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
-            let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
+            let pseudo_factor =
+                make_pseudonymisation_factor(&pseudo_secret, &context, &Context::default());
             assert_eq!(
                 pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor
