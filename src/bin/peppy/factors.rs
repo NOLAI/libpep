@@ -8,6 +8,7 @@ use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
     RekeyFactor, TranscryptionInfo,
 };
+use libpep::protocol::Context;
 
 #[derive(Subcommand)]
 pub enum Factors {
@@ -56,12 +57,13 @@ pub enum Factors {
     },
 }
 
-pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
+pub fn run(cmd: Factors, protocol: &Context, out: &mut Output) -> Result<()> {
     match cmd {
         Factors::Reshuffle { secret, domain } => {
             let factor = make_pseudonymisation_factor(
                 &io::pseudonymization_secret(&secret)?,
                 &io::domain(&domain)?,
+                protocol,
             );
             out.value("reshuffle_factor", factor.scalar().to_hex());
         }
@@ -73,9 +75,9 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
             let secret = io::encryption_secret(&secret)?;
             let context = io::context(context.as_deref())?;
             let factor = if attribute {
-                make_attribute_rekey_factor(&secret, &context).scalar()
+                make_attribute_rekey_factor(&secret, &context, protocol).scalar()
             } else {
-                make_pseudonym_rekey_factor(&secret, &context).scalar()
+                make_pseudonym_rekey_factor(&secret, &context, protocol).scalar()
             };
             out.value("rekey_factor", factor.to_hex());
         }
@@ -94,6 +96,7 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
                 &io::context(to_context.as_deref())?,
                 &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::encryption_secret(&encryption_secret)?,
+                protocol,
             );
             out.value("reshuffle_factor", info.pseudonym.s.scalar().to_hex());
             out.value("pseudonym_rekey_factor", info.pseudonym.k.scalar().to_hex());

@@ -11,6 +11,7 @@ use libpep::contexts::*;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;
+use libpep::protocol::Context;
 use libpep::transcryptor::Transcryptor;
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
@@ -23,9 +24,15 @@ fn setup() -> (Transcryptor, SessionKeys, EncryptionContext) {
     let transcryptor = Transcryptor::new(
         PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
         EncryptionSecret::from(b"encryption secret".to_vec()),
+        Context::default(),
     );
     let session = EncryptionContext::from("session-a");
-    let keys = make_session_keys(&global_secret, &session, transcryptor.rekeying_secret());
+    let keys = make_session_keys(
+        &global_secret,
+        &session,
+        transcryptor.rekeying_secret(),
+        transcryptor.context(),
+    );
     (transcryptor, keys, session)
 }
 
