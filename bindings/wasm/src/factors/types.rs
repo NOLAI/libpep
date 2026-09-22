@@ -7,7 +7,6 @@ use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
-use crate::protocol::context_or_default;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
@@ -105,7 +104,6 @@ impl WASMPseudonymizationInfo {
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
-        context: Option<js_sys::Object>,
     ) -> Self {
         Self(PseudonymizationInfo::new(
             &domain_from.0,
@@ -114,7 +112,6 @@ impl WASMPseudonymizationInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
-            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -170,13 +167,11 @@ impl WASMPseudonymRekeyInfo {
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
-        context: Option<js_sys::Object>,
     ) -> Self {
         Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
-            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -220,13 +215,11 @@ impl WASMAttributeRekeyInfo {
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
-        context: Option<js_sys::Object>,
     ) -> Self {
         Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
-            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -276,7 +269,6 @@ impl WASMTranscryptionInfo {
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
-        context: Option<js_sys::Object>,
     ) -> Self {
         Self(TranscryptionInfo::new(
             &domain_from.0,
@@ -285,7 +277,6 @@ impl WASMTranscryptionInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
-            &context_or_default(context.as_ref()),
         ))
     }
 

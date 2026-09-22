@@ -12,7 +12,6 @@ use crate::keys::types::WASMGlobalSecretKeys;
 use crate::keys::types::WASMSessionKeys;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::WASMSessionPublicKeys;
-use crate::protocol::context_or_default;
 use libpep::client::{decrypt, encrypt};
 #[cfg(feature = "batch")]
 use libpep::client::{decrypt_batch, encrypt_batch};
@@ -200,7 +199,6 @@ impl WASMEncryptedPEPJSONValue {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
         public_key: &WASMSessionPublicKeys,
-        context: Option<js_sys::Object>,
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
         let mut rng = rand::rng();
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
@@ -211,7 +209,6 @@ impl WASMEncryptedPEPJSONValue {
             &to_session.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
-            &context_or_default(context.as_ref()),
         );
 
         let transcrypted = self.0.transcrypt(&transcryption_info, &pk, &mut rng);
