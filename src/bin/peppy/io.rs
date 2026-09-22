@@ -8,6 +8,7 @@
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::ElGamal;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{PublicKey, SecretKey};
@@ -116,7 +117,7 @@ pub fn public_key<K: PublicKey>(raw: &str, what: &str) -> Result<K> {
         .ok_or_else(|| Error::input(format!("{what}: expected a public key as 64 hex digits")))
 }
 
-pub fn secret_key<K: SecretKey>(raw: &str, what: &str) -> Result<K> {
+pub fn secret_key<K: SecretKey<Group = Ristretto255>>(raw: &str, what: &str) -> Result<K> {
     Ok(K::from_scalar(scalar(raw, what)?))
 }
 

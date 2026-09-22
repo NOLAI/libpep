@@ -33,6 +33,16 @@
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
 //!   [primitives](elgamal::primitives) and the group [arithmetic](elgamal::arithmetic).
 //!
+//! ## Groups
+//!
+//! The library is generic over a prime-order group, abstracted as the
+//! [`Group`](elgamal::arithmetic::Group) trait (the group API of RFC 9497). Every type that holds
+//! group material has a generic version with a `G: Group` parameter in a `generic` submodule
+//! next to it ([`data::simple::generic::Pseudonym`], [`keys::types::generic::SessionKeys`],
+//! [`transcryptor::types::generic::Transcryptor`], ...), and the name at the module level is an
+//! alias pinning [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented
+//! so far. Code that uses ristretto255 never needs the generic names.
+//!
 //! ## Feature flags
 //!
 //! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
