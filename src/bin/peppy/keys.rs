@@ -2,11 +2,11 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::client::distributed::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
 };
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
     make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
@@ -22,7 +22,6 @@ use libpep::keys::{
     PseudonymGlobalSecretKey, PseudonymSessionKeys, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
-use libpep::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -116,12 +115,7 @@ pub enum Distributed {
     },
 }
 
-pub fn run<R: Rng + CryptoRng>(
-    cmd: Keys,
-    _protocol: &Context,
-    rng: &mut R,
-    out: &mut Output,
-) -> Result<()> {
+pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Keys::Global(Global::Generate) => {
             let (public, secret) = make_global_keys(rng);
@@ -154,8 +148,7 @@ pub fn run<R: Rng + CryptoRng>(
             if let Some(global) = pseudonym_global_secret {
                 let global: PseudonymGlobalSecretKey =
                     io::secret_key(&global, "pseudonym global secret key")?;
-                let (public, secret) =
-                    make_pseudonym_session_keys(&global, &context, &secret);
+                let (public, secret) = make_pseudonym_session_keys(&global, &context, &secret);
                 out.value("pseudonym_public_key", public.to_hex());
                 out.value("pseudonym_secret_key", secret.value().to_hex());
                 pseudonym = Some(PseudonymSessionKeys { public, secret });
@@ -164,8 +157,7 @@ pub fn run<R: Rng + CryptoRng>(
             if let Some(global) = attribute_global_secret {
                 let global: AttributeGlobalSecretKey =
                     io::secret_key(&global, "attribute global secret key")?;
-                let (public, secret) =
-                    make_attribute_session_keys(&global, &context, &secret);
+                let (public, secret) = make_attribute_session_keys(&global, &context, &secret);
                 out.value("attribute_public_key", public.to_hex());
                 out.value("attribute_secret_key", secret.value().to_hex());
                 attribute = Some(AttributeSessionKeys { public, secret });

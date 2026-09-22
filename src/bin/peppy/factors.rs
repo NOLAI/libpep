@@ -8,7 +8,6 @@ use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
     RekeyFactor, TranscryptionInfo,
 };
-use libpep::protocol::Context;
 
 #[derive(Subcommand)]
 pub enum Factors {
@@ -57,7 +56,7 @@ pub enum Factors {
     },
 }
 
-pub fn run(cmd: Factors, _protocol: &Context, out: &mut Output) -> Result<()> {
+pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
     match cmd {
         Factors::Reshuffle { secret, domain } => {
             let factor = make_pseudonymisation_factor(

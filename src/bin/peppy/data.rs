@@ -28,7 +28,6 @@ use libpep::keys::{
 };
 #[cfg(feature = "insecure")]
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use libpep::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 
 /// The largest identifier that fits one block through the lizard encoding.
@@ -580,7 +579,6 @@ fn pseudonymize<R: Rng + CryptoRng>(
 
 fn transcrypt_pseudonym<R: Rng + CryptoRng>(
     args: TranscryptArgs,
-    _protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -622,7 +620,6 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
 
 fn transcrypt_attribute<R: Rng + CryptoRng>(
     args: TranscryptArgs,
-    _protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -655,7 +652,6 @@ fn transcrypt_attribute<R: Rng + CryptoRng>(
 
 pub fn run_pseudonym<R: Rng + CryptoRng>(
     cmd: PseudonymCommand,
-    protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -671,13 +667,12 @@ pub fn run_pseudonym<R: Rng + CryptoRng>(
         PseudonymCommand::Rerandomize(args) => rerandomize::<PseudonymKind, R>(args, rng, out),
         PseudonymCommand::Rekey(args) => rekey::<PseudonymKind, R>(args, rng, out),
         PseudonymCommand::Pseudonymize(args) => pseudonymize(args, rng, out),
-        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, protocol, rng, out),
+        PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, rng, out),
     }
 }
 
 pub fn run_attribute<R: Rng + CryptoRng>(
     cmd: AttributeCommand,
-    protocol: &Context,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
@@ -692,6 +687,6 @@ pub fn run_attribute<R: Rng + CryptoRng>(
         AttributeCommand::Decrypt(args) => decrypt::<AttributeKind>(args, out),
         AttributeCommand::Rerandomize(args) => rerandomize::<AttributeKind, R>(args, rng, out),
         AttributeCommand::Rekey(args) => rekey::<AttributeKind, R>(args, rng, out),
-        AttributeCommand::Transcrypt(args) => transcrypt_attribute(args, protocol, rng, out),
+        AttributeCommand::Transcrypt(args) => transcrypt_attribute(args, rng, out),
     }
 }
