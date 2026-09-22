@@ -273,8 +273,14 @@ impl EncryptedBatch<LongEncryptedPseudonym> {
         Ok(())
     }
 
-    /// Rekey every long pseudonym in the batch and shuffle.
-    pub fn rekey<R>(&mut self, info: &PseudonymRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    /// Rekey every long pseudonym in the batch using a caller-supplied
+    /// recipient public key, shuffling their order.
+    pub fn rekey<R>(
+        &mut self,
+        info: &PseudonymRekeyInfo,
+        public_key: &crate::keys::PseudonymSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
     where
         R: Rng + CryptoRng,
     {
@@ -501,8 +507,14 @@ impl EncryptedBatch<LongEncryptedAttribute> {
 
 #[cfg(all(feature = "long", not(feature = "elgamal3"), not(feature = "batch-pk")))]
 impl EncryptedBatch<LongEncryptedAttribute> {
-    /// Rekey every long attribute in the batch and shuffle.
-    pub fn rekey<R>(&mut self, info: &AttributeRekeyInfo, rng: &mut R) -> Result<(), BatchError>
+    /// Rekey every long attribute in the batch using a caller-supplied
+    /// recipient public key, shuffling their order.
+    pub fn rekey<R>(
+        &mut self,
+        info: &AttributeRekeyInfo,
+        public_key: &crate::keys::AttributeSessionPublicKey,
+        rng: &mut R,
+    ) -> Result<(), BatchError>
     where
         R: Rng + CryptoRng,
     {
