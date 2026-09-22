@@ -12,6 +12,7 @@ use libpep::factors::{
     PseudonymizationSecret, TranscryptionInfo,
 };
 use libpep::keys::*;
+use libpep::protocol::Context;
 #[cfg(feature = "elgamal3")]
 use libpep::transcryptor::rerandomize;
 #[cfg(all(feature = "batch", feature = "long"))]
@@ -62,14 +63,30 @@ fn test_core_flow() {
     let domain2 = PseudonymizationDomain::from("context2");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, pseudonym_session1_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (pseudonym_session2_public, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
-    let (attribute_session1_public, attribute_session1_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
-    let (_attribute_session2_public, attribute_session2_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
+    let (pseudonym_session1_public, pseudonym_session1_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (pseudonym_session2_public, pseudonym_session2_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (attribute_session1_public, attribute_session1_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (_attribute_session2_public, attribute_session2_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
@@ -115,6 +132,7 @@ fn test_core_flow() {
         &session2,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
     let attribute_rekey_info = transcryption_info.attribute;
 
@@ -177,14 +195,30 @@ fn test_batch() {
     let domain2 = PseudonymizationDomain::from("domain2");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, _pseudonym_session1_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_pseudonym_session2_public, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
-    let (attribute_session1_public, _attribute_session1_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
-    let (_attribute_session2_public, attribute_session2_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
+    let (pseudonym_session1_public, _pseudonym_session1_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (_pseudonym_session2_public, pseudonym_session2_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (attribute_session1_public, _attribute_session1_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (_attribute_session2_public, attribute_session2_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
 
     let mut attributes = vec![];
     let mut attribute_values = vec![];
@@ -206,6 +240,7 @@ fn test_batch() {
         &session2,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     let attribute_rekey_info = transcryption_info.attribute;
@@ -279,14 +314,30 @@ fn test_batch_long() {
     let domain2 = PseudonymizationDomain::from("domain2");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, _pseudonym_session1_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_pseudonym_session2_public, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
-    let (attribute_session1_public, _attribute_session1_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
-    let (_attribute_session2_public, attribute_session2_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
+    let (pseudonym_session1_public, _pseudonym_session1_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (_pseudonym_session2_public, pseudonym_session2_secret) = make_pseudonym_session_keys(
+        &pseudonym_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (attribute_session1_public, _attribute_session1_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session1,
+        &enc_secret,
+        &Context::default(),
+    );
+    let (_attribute_session2_public, attribute_session2_secret) = make_attribute_session_keys(
+        &attribute_global_secret,
+        &session2,
+        &enc_secret,
+        &Context::default(),
+    );
 
     // Create long pseudonyms and attributes with padding
     let test_strings = [
@@ -318,6 +369,7 @@ fn test_batch_long() {
         &session2,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     // Test batch rekeying of long pseudonyms
@@ -440,8 +492,8 @@ fn test_pseudonymize_changes_encryption_context() {
     let from_domain = PseudonymizationDomain::from("domain-from");
     let to_domain = PseudonymizationDomain::from("domain-to");
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
@@ -453,6 +505,7 @@ fn test_pseudonymize_changes_encryption_context() {
         &to_ctx,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
     let pseudonymized = tx!(
         pseudonymize,
@@ -477,13 +530,13 @@ fn test_rekey_pseudonym_preserves_plaintext() {
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
-    let rekey_info = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_info = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret, &Context::default());
     let rekeyed = tx!(
         rekey,
         &encrypted,
@@ -507,13 +560,13 @@ fn test_rekey_attribute_preserves_plaintext() {
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     let attribute = Attribute::random(&mut rng);
     let encrypted = encrypt(&attribute, &from_session.attribute.public, &mut rng);
 
-    let rekey_info = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_info = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret, &Context::default());
     let rekeyed = tx!(
         rekey,
         &encrypted,
@@ -540,8 +593,8 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
     let from_domain = PseudonymizationDomain::from("domain-from");
     let to_domain = PseudonymizationDomain::from("domain-to");
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
@@ -553,6 +606,7 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
         &to_ctx,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
     let transcrypted = tx!(
         transcrypt,
@@ -580,8 +634,8 @@ fn test_transcrypt_attribute_rekeys_only() {
     let from_domain = PseudonymizationDomain::from("domain-from");
     let to_domain = PseudonymizationDomain::from("domain-to");
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     let attribute = Attribute::random(&mut rng);
     let encrypted = encrypt(&attribute, &from_session.attribute.public, &mut rng);
@@ -593,6 +647,7 @@ fn test_transcrypt_attribute_rekeys_only() {
         &to_ctx,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
     let transcrypted = tx!(
         transcrypt,
@@ -617,13 +672,13 @@ fn test_polymorphic_rekey_works_for_both_types() {
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
 
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
+    let to_session = make_session_keys(&global_sk, &to_ctx, &enc_secret, &Context::default());
 
     // Test with pseudonym
     let pseudonym = Pseudonym::random(&mut rng);
     let enc_p = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
-    let rekey_p = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_p = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret, &Context::default());
     let rekeyed_p = tx!(
         rekey,
         &enc_p,
@@ -640,7 +695,7 @@ fn test_polymorphic_rekey_works_for_both_types() {
     // Test with attribute
     let attribute = Attribute::random(&mut rng);
     let enc_a = encrypt(&attribute, &from_session.attribute.public, &mut rng);
-    let rekey_a = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_a = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret, &Context::default());
     let rekeyed_a = tx!(
         rekey,
         &enc_a,
@@ -669,7 +724,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
-    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
+    let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret, &Context::default());
     let info = PseudonymizationInfo::new(
         &PseudonymizationDomain::from("domain-from"),
         &PseudonymizationDomain::from("domain-to"),
@@ -677,6 +732,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
         &to_ctx,
         &pseudo_secret,
         &enc_secret,
+        &Context::default(),
     );
 
     let pseudonym = Pseudonym::random(&mut rng);
@@ -697,4 +753,93 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     #[cfg(not(feature = "elgamal3"))]
     let protected = malformed.pseudonymize(&info, &from_session.pseudonym.public, &mut rng);
     assert_ne!(protected.value().gc, leaked);
+}
+
+/// The protocol context separates deployments: the same secrets and identifiers give unrelated
+/// session keys, transcryption factors and hashed origin pseudonyms under a different context.
+/// Under `hmac-derivation` the factors ignore the context by design; only hashing separates.
+#[test]
+fn protocol_context_separates_deployments() {
+    use libpep::encodings::hash_to_group;
+    use libpep::protocol::Mode;
+
+    let rng = &mut rand::rng();
+    let (_global_public, global_secret) = make_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from(b"pseudonymization secret".to_vec());
+    let enc_secret = EncryptionSecret::from(b"encryption secret".to_vec());
+    let (domain_a, domain_b) = (
+        PseudonymizationDomain::from("hospital"),
+        PseudonymizationDomain::from("research"),
+    );
+    let (session_a, session_b) = (
+        EncryptionContext::from("session-a"),
+        EncryptionContext::from("session-b"),
+    );
+
+    let contexts = [
+        Context::default(),
+        Context::from_identifier("another-deployment"),
+        Context::new(Mode::VcoPRF, "ristretto255-SHA512"),
+    ];
+    let infos: Vec<_> = contexts
+        .iter()
+        .map(|ctx| {
+            TranscryptionInfo::new(
+                &domain_a,
+                &domain_b,
+                &session_a,
+                &session_b,
+                &pseudo_secret,
+                &enc_secret,
+                ctx,
+            )
+        })
+        .collect();
+    let keys: Vec<_> = contexts
+        .iter()
+        .map(|ctx| make_session_keys(&global_secret, &session_a, &enc_secret, ctx))
+        .collect();
+    let origins: Vec<_> = contexts
+        .iter()
+        .map(|ctx| Pseudonym::from_point(hash_to_group(b"patient-1", ctx)))
+        .collect();
+
+    // Determinism within one context.
+    assert_eq!(
+        infos[0],
+        TranscryptionInfo::new(
+            &domain_a,
+            &domain_b,
+            &session_a,
+            &session_b,
+            &pseudo_secret,
+            &enc_secret,
+            &contexts[0],
+        )
+    );
+    assert_eq!(
+        keys[0],
+        make_session_keys(&global_secret, &session_a, &enc_secret, &contexts[0])
+    );
+    assert_eq!(
+        origins[0],
+        Pseudonym::from_point(hash_to_group(b"patient-1", &contexts[0]))
+    );
+
+    // Separation between contexts.
+    for i in 0..contexts.len() {
+        for j in 0..i {
+            assert_ne!(origins[i], origins[j]);
+            #[cfg(not(feature = "hmac-derivation"))]
+            {
+                assert_ne!(infos[i], infos[j]);
+                assert_ne!(keys[i], keys[j]);
+            }
+            #[cfg(feature = "hmac-derivation")]
+            {
+                assert_eq!(infos[i], infos[j]);
+                assert_eq!(keys[i], keys[j]);
+            }
+        }
+    }
 }

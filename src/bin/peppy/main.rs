@@ -19,6 +19,7 @@ mod keys;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use io::Output;
+use libpep::protocol::{Context, RISTRETTO255_SHA512};
 
 #[derive(Parser)]
 #[command(
@@ -30,12 +31,18 @@ use io::Output;
                   primitives.\n\nAny value argument may be `-` to read it from standard input \
                   or `@path` to read it from a file. Scalars and group elements are hex, \
                   ciphertexts base64; long values are space-separated (plain) or `|`-separated \
-                  (encrypted) blocks."
+                  (encrypted) blocks.\n\nAll parties of a deployment must use the same protocol \
+                  context (`--protocol`): it domain-separates every derived factor and hashed \
+                  pseudonym."
 )]
 struct Cli {
     /// Print all output values as one JSON object instead of labelled lines.
     #[arg(long, global = true)]
     json: bool,
+    /// The protocol context identifier (ciphersuite) that factors and hashed pseudonyms are
+    /// domain-separated with.
+    #[arg(long, global = true, value_name = "IDENTIFIER", default_value = RISTRETTO255_SHA512)]
+    protocol: String,
     #[command(subcommand)]
     command: Command,
 }
@@ -73,18 +80,18 @@ enum Command {
     Man,
 }
 
-fn run(command: Command, out: &mut Output) -> io::Result<()> {
+fn run(command: Command, protocol: &Context, out: &mut Output) -> io::Result<()> {
     let mut rng = rand::rng();
     match command {
-        Command::Keys(cmd) => keys::run(cmd, &mut rng, out),
-        Command::Factors(cmd) => factors::run(cmd, out),
-        Command::Pseudonym(cmd) => data::run_pseudonym(cmd, &mut rng, out),
-        Command::Attribute(cmd) => data::run_attribute(cmd, &mut rng, out),
+        Command::Keys(cmd) => keys::run(cmd, protocol, &mut rng, out),
+        Command::Factors(cmd) => factors::run(cmd, protocol, out),
+        Command::Pseudonym(cmd) => data::run_pseudonym(cmd, protocol, &mut rng, out),
+        Command::Attribute(cmd) => data::run_attribute(cmd, protocol, &mut rng, out),
         #[cfg(feature = "json")]
-        Command::Json(cmd) => json::run(cmd, &mut rng, out),
+        Command::Json(cmd) => json::run(cmd, protocol, &mut rng, out),
         Command::Elgamal(cmd) => elgamal::run(cmd, &mut rng, out),
         Command::Scalar(cmd) => arith::run_scalar(cmd, &mut rng, out),
-        Command::Point(cmd) => arith::run_point(cmd, &mut rng, out),
+        Command::Point(cmd) => arith::run_point(cmd, protocol, &mut rng, out),
         Command::Completions { shell } => {
             clap_complete::generate(shell, &mut Cli::command(), "peppy", &mut std::io::stdout());
             Ok(())
@@ -101,7 +108,8 @@ fn run(command: Command, out: &mut Output) -> io::Result<()> {
 fn main() {
     let cli = Cli::parse();
     let mut out = Output::new(cli.json);
-    match run(cli.command, &mut out) {
+    let protocol = Context::from_identifier(cli.protocol);
+    match run(cli.command, &protocol, &mut out) {
         Ok(()) => out.finish(),
         Err(e) => {
             eprintln!("peppy: {e}");

@@ -7,6 +7,7 @@ use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::protocol::Context;
 mod common;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
@@ -48,6 +49,7 @@ fn setup_system() -> (
                 pseudonymization_secret,
                 encryption_secret,
                 blinding_factors[i],
+                Context::default(),
             )
         })
         .collect();
