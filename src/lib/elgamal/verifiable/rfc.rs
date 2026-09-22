@@ -238,15 +238,24 @@ impl SessionKeyShareMaterial {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::ciphersuite::Ciphersuite;
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::dleq::generate_proof;
-    use crate::protocol::Context;
 
     fn a_proof() -> Proof {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        generate_proof(&k, &G, &(k * G), &[c], &[k * c], &Context::default(), rng).unwrap()
+        generate_proof(
+            &k,
+            &G,
+            &(k * G),
+            &[c],
+            &[k * c],
+            &Ciphersuite::current(),
+            rng,
+        )
+        .unwrap()
     }
 
     fn an_element() -> GroupElement {
