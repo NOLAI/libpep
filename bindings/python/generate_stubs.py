@@ -83,8 +83,23 @@ def stub_class(name: str, cls: type) -> list[str]:
     if doc:
         lines.append(f'    """{doc}"""')
     members = []
+    # Members inherited from a built-in base (BaseException for the error types,
+    # object for everything else) are not part of this library's API, and their
+    # signatures differ between Python versions, which would make the generated
+    # stubs depend on the interpreter that ran this script. Only emit what the
+    # extension module itself defines.
+    inherited = set()
+    for base in cls.__mro__[1:]:
+        if base.__module__ in ("builtins", "__builtin__"):
+            inherited.update(vars(base))
     for mname in sorted(dir(cls)):
         if mname.startswith("_") and mname not in ("__init__", "__eq__", "__len__"):
+            continue
+        if (
+            mname in inherited
+            and mname not in vars(cls)
+            and mname not in ("__init__", "__eq__", "__len__")
+        ):
             continue
         member = inspect.getattr_static(cls, mname)
         obj = getattr(cls, mname)
