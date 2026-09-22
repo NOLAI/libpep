@@ -13,6 +13,11 @@ pub mod arithmetic;
 pub mod generic;
 pub mod primitives;
 
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
+#[cfg(feature = "verifiable")]
+pub mod zkps;
+
 use crate::elgamal::arithmetic::group_elements::GroupElement;
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::elgamal::arithmetic::Ristretto255;

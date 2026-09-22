@@ -1,32 +1,39 @@
 //! Batch operations for encryption and decryption.
 
-#[cfg(any(feature = "insecure", feature = "offline"))]
-use crate::data::traits::Encryptable;
-use crate::data::traits::{BatchEncryptable, Encrypted};
+use crate::data::batch::EncryptedBatch;
+use crate::data::traits::{Encryptable, Encrypted, HasStructure};
 use crate::errors::BatchError;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
 /// Polymorphic batch encryption.
 ///
-/// Encrypts a slice of unencrypted messages with a session public key.
-///
-/// # Examples
-/// ```rust,ignore
-/// let encrypted = encrypt_batch(&messages, &public_key, &mut rng)?;
-/// ```
+/// Encrypts a slice of unencrypted messages with a session public key and
+/// returns an [`EncryptedBatch`] that carries the public key alongside the
+/// items (under `elgamal2`) so downstream batch operations need no extra
+/// arguments.
 pub fn encrypt_batch<M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::PublicKeyType>,
     rng: &mut R,
-) -> Result<Vec<M::EncryptedType>, BatchError>
+) -> Result<EncryptedBatch<M::EncryptedType>, BatchError>
 where
-    M: BatchEncryptable,
+    M: Encryptable + Clone,
+    M::PublicKeyType: Clone,
+    M::EncryptedType: HasStructure,
     R: Rng + CryptoRng,
 {
-    let preprocessed = M::preprocess_batch(messages)?;
+    let preprocessed = M::preprocess_for_batch(messages)?;
     let key = key.get_key();
-    Ok(preprocessed.iter().map(|x| x.encrypt(&key, rng)).collect())
+    let items: Vec<M::EncryptedType> = preprocessed.iter().map(|x| x.encrypt(&key, rng)).collect();
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    {
+        EncryptedBatch::new(items, key)
+    }
+    #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
+    {
+        EncryptedBatch::new(items)
+    }
 }
 
 #[cfg(feature = "insecure")]
