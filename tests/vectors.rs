@@ -81,7 +81,7 @@ fn put(out: &mut String, name: &str, value: &str) {
 }
 
 /// The three `DeriveFactor` labels, each with its own secret and identifier.
-fn vectors_derive_factor(out: &mut String, context: &Context) {
+fn vectors_derive_factor(out: &mut String) {
     let pseudo_secret =
         PseudonymizationSecret::from(b"transcryptor-1-pseudonymization-secret".to_vec());
     let enc_secret = EncryptionSecret::from(b"transcryptor-1-encryption-secret".to_vec());
@@ -105,7 +105,7 @@ fn vectors_derive_factor(out: &mut String, context: &Context) {
     put(out, "SessionIdentifier", &hex::encode(b"session-a"));
     out.push('\n');
 
-    let k = make_pseudonym_rekey_factor(&enc_secret, &session, context);
+    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
     put(
         out,
         "labelRekeyPseudonym",
@@ -115,7 +115,7 @@ fn vectors_derive_factor(out: &mut String, context: &Context) {
     put(out, "K_c", &(k.scalar() * G).to_hex());
     out.push('\n');
 
-    let ka = make_attribute_rekey_factor(&enc_secret, &session, context);
+    let ka = make_attribute_rekey_factor(&enc_secret, &session);
     put(
         out,
         "labelRekeyAttribute",
@@ -125,7 +125,7 @@ fn vectors_derive_factor(out: &mut String, context: &Context) {
     put(out, "K'_c", &(ka.scalar() * G).to_hex());
     out.push('\n');
 
-    let s = make_pseudonymisation_factor(&pseudo_secret, &domain, context);
+    let s = make_pseudonymisation_factor(&pseudo_secret, &domain);
     put(out, "labelReshuffle", &format!("{LABEL_RESHUFFLE:02x}"));
     put(out, "s_d", &s.scalar().to_hex());
     put(out, "S_d", &(s.scalar() * G).to_hex());
@@ -149,9 +149,9 @@ fn vectors_single_pseudonym(out: &mut String, context: &Context) {
     let global_secret = PseudonymGlobalSecretKey::from_scalar(y);
 
     let (pk_from, _sk_from) =
-        make_pseudonym_session_keys(&global_secret, &session_from, &enc_secret, context);
+        make_pseudonym_session_keys(&global_secret, &session_from, &enc_secret);
     let (_pk_to, sk_to) =
-        make_pseudonym_session_keys(&global_secret, &session_to, &enc_secret, context);
+        make_pseudonym_session_keys(&global_secret, &session_to, &enc_secret);
 
     // The identifier is encoded with hash_to_group, the encoding of the draft's enc-hash.
     let identifier = b"patient-42";
@@ -190,7 +190,6 @@ fn vectors_single_pseudonym(out: &mut String, context: &Context) {
         &session_to,
         &pseudo_secret,
         &enc_secret,
-        context,
     );
     put(out, "s", &info.s.scalar().to_hex());
     put(out, "k", &info.k.scalar().to_hex());
@@ -240,13 +239,13 @@ fn vectors_batch(out: &mut String, context: &Context) {
     let attribute_global = AttributeGlobalSecretKey::from_scalar(y_attr);
 
     let (pk_from, _) =
-        make_pseudonym_session_keys(&pseudonym_global, &session_from, &enc_secret, context);
+        make_pseudonym_session_keys(&pseudonym_global, &session_from, &enc_secret);
     let (_, sk_to) =
-        make_pseudonym_session_keys(&pseudonym_global, &session_to, &enc_secret, context);
+        make_pseudonym_session_keys(&pseudonym_global, &session_to, &enc_secret);
     let (apk_from, _) =
-        make_attribute_session_keys(&attribute_global, &session_from, &enc_secret, context);
+        make_attribute_session_keys(&attribute_global, &session_from, &enc_secret);
     let (_, ask_to) =
-        make_attribute_session_keys(&attribute_global, &session_to, &enc_secret, context);
+        make_attribute_session_keys(&attribute_global, &session_to, &enc_secret);
 
     out.push_str("// A batch of three pseudonyms (typePseudonym, 0x01) and three attributes\n");
     out.push_str("// (typeAttribute, 0x02). The permutation and every r are drawn from the\n");
@@ -282,7 +281,6 @@ fn vectors_batch(out: &mut String, context: &Context) {
         &session_to,
         &pseudo_secret,
         &enc_secret,
-        context,
     );
 
     let transcrypted = pseudonymize_batch(&mut pseudonyms.clone(), &info, &pk_from, &mut rng)
@@ -331,7 +329,7 @@ fn vectors_batch(out: &mut String, context: &Context) {
     }
     out.push('\n');
 
-    let rekey_info = AttributeRekeyInfo::new(&session_from, &session_to, &enc_secret, context);
+    let rekey_info = AttributeRekeyInfo::new(&session_from, &session_to, &enc_secret);
     put(out, "k_attribute", &rekey_info.k.scalar().to_hex());
 
     let rekeyed = rekey_batch(&mut attributes.clone(), &rekey_info, &apk_from, &mut rng)
@@ -366,7 +364,7 @@ fn vectors_session_key_share(out: &mut String) {
     let enc_secret = EncryptionSecret::from(b"transcryptor-1-encryption-secret".to_vec());
     let session = EncryptionContext::from("session-a");
 
-    let k = make_pseudonym_rekey_factor(&enc_secret, &session, &context);
+    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
     let k_commitment = k.scalar() * G;
 
     let b = ScalarNonZero::random(&mut rng);
@@ -422,7 +420,7 @@ fn generate() -> String {
     out.push('\n');
 
     out.push_str("## DeriveFactor\n\n");
-    vectors_derive_factor(&mut out, &context);
+    vectors_derive_factor(&mut out);
     out.push_str("\n## Single pseudonym\n\n");
     vectors_single_pseudonym(&mut out, &context);
     out.push_str("\n## Batch of three\n\n");
