@@ -48,6 +48,10 @@ def bytes_to_number(bytes):
     """Convert bytes to a JSON number (9 bytes: 1 byte type tag + 8 bytes data)."""
     ...
 
+def decrypt_global(encrypted, global_secret_keys):
+    """Decrypt an EncryptedPEPJSONValue using global secret keys."""
+    ...
+
 def encrypt_global(value, global_keys):
     """Encrypt a PEPJSONValue using global public keys."""
     ...
