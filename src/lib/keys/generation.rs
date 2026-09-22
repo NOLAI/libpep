@@ -87,7 +87,6 @@ pub fn make_session_key_pair_with_proof<GSK, SK, RF, F, R>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    _context: &Ciphersuite,
     rekey_fn: F,
     rng: &mut R,
 ) -> Result<
@@ -133,7 +132,6 @@ pub fn make_pseudonym_session_keys_with_proof<R: Rng + CryptoRng>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    context: &Ciphersuite,
     rng: &mut R,
 ) -> Result<
     (
@@ -149,7 +147,6 @@ pub fn make_pseudonym_session_keys_with_proof<R: Rng + CryptoRng>(
         session,
         secret,
         blinding,
-        context,
         make_pseudonym_rekey_factor,
         rng,
     )
@@ -165,7 +162,6 @@ pub fn make_attribute_session_keys_with_proof<R: Rng + CryptoRng>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    context: &Ciphersuite,
     rng: &mut R,
 ) -> Result<
     (
@@ -181,7 +177,6 @@ pub fn make_attribute_session_keys_with_proof<R: Rng + CryptoRng>(
         session,
         secret,
         blinding,
-        context,
         make_attribute_rekey_factor,
         rng,
     )
@@ -290,6 +285,60 @@ mod tests {
         let decoded =
             AttributeGlobalPublicKey::from_hex(&hex).expect("hex decoding should succeed");
         assert_eq!(public, decoded);
+    }
+
+    #[test]
+    #[cfg(feature = "verifiable")]
+    fn session_keys_with_proof_verify() {
+        let mut rng = rand::rng();
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
+        let session = EncryptionContext::from("test-context");
+        let secret = EncryptionSecret::from(b"test-secret".to_vec());
+        let blinding = BlindingFactor::random(&mut rng);
+
+        let (_pk, _sk, proof, commitment) = make_pseudonym_session_keys_with_proof(
+            &global_sk.pseudonym,
+            &session,
+            &secret,
+            &blinding,
+            &mut rng,
+        )
+        .unwrap();
+        let k = make_pseudonym_rekey_factor(&secret, &session);
+        assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
+        assert_eq!(*commitment.value(), *blinding.value() * G);
+
+        let (_pk, _sk, proof, commitment) = make_attribute_session_keys_with_proof(
+            &global_sk.attribute,
+            &session,
+            &secret,
+            &blinding,
+            &mut rng,
+        )
+        .unwrap();
+        let k = make_attribute_rekey_factor(&secret, &session);
+        assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
+    }
+
+    #[test]
+    #[cfg(feature = "verifiable")]
+    fn session_keys_with_proof_reject_unit_blinding() {
+        let mut rng = rand::rng();
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
+        let session = EncryptionContext::from("test-context");
+        let secret = EncryptionSecret::from(b"test-secret".to_vec());
+        let blinding = BlindingFactor::from_scalar(ScalarNonZero::one());
+        assert_eq!(
+            make_pseudonym_session_keys_with_proof(
+                &global_sk.pseudonym,
+                &session,
+                &secret,
+                &blinding,
+                &mut rng
+            )
+            .err(),
+            Some(SessionKeyShareError::WeakBlinding)
+        );
     }
 
     #[test]
