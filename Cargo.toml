@@ -76,7 +76,9 @@ clap_mangen = { version = "^0.3", optional = true }
 
 [dev-dependencies]
 serde_json = "^1.0"
-rand = "^0.10"
+# "chacha" gives the tests a seedable, release-stable RNG for the draft's test vectors; StdRng
+# is explicitly not reproducible across rand releases.
+rand = { version = "^0.10", features = ["chacha"] }
 criterion = { version = "^0.8", features = ["html_reports"] }
 energy-bench = "^0.3.0"
 
