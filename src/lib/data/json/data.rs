@@ -547,6 +547,19 @@ impl Encryptable for PEPJSONValue {
             ),
         }
     }
+
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, crate::errors::BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
+    }
 }
 
 impl Encrypted for EncryptedPEPJSONValue {

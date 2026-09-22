@@ -12,3 +12,8 @@ pub mod factors;
 pub mod keys;
 pub mod protocol;
 pub mod transcryptor;
+
+#[cfg(feature = "verifiable")]
+pub mod verifier;
+
+pub mod errors;

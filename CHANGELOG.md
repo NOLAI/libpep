@@ -19,6 +19,13 @@ a major change against the published 0.13.0.
 
 ### Breaking changes
 
+- Verifiable operations and the verifiable batch types take `SessionPublicKeys` where they
+  previously took `SessionKeys`: verification and batch transport need only the public halves.
+  This affects `verified_reconstruct_batch`, `verified_reconstruct_transcryption`,
+  `verifiable_transcrypt` and the batch constructors, in Rust and in both bindings. In
+  JavaScript the `EncryptedBatch` constructors, their `publicKey()` getter and `transcrypt()`
+  now use `SessionPublicKeys`; call `SessionKeys.publicKeys()` to obtain one.
+
 - Factor derivation follows `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar`
   (RFC 9497, ristretto255-SHA512: `expand_message_xmd` with SHA-512, RFC 9380) over the
   length-prefixed secret, the label and the length-prefixed identifier, with domain separation tag
@@ -61,6 +68,17 @@ a major change against the published 0.13.0.
 
 ### Added
 
+- `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
+  A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
+  proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
+  against the ristretto255-SHA512 VOPRF test vectors of RFC 9497 Appendix A.1.2, for a single
+  pair and for a batch of two. The paper's four-element encoding in `elgamal::zkps` is unchanged
+  and remains the default; proofs in the two encodings are not interchangeable.
+- `elgamal::verifiable::rfc`: the wire layouts of the draft's "Wire Encodings" section for
+  modeVcoPRF: `RerandomizeMaterial` (128 bytes), `PseudonymBatchHeader` (448),
+  `AttributeBatchHeader` (192) and `SessionKeyShareMaterial` (128). Every `from_slice` rejects a
+  wrong length, trailing bytes, a non-canonical scalar and the identity element.
+- `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.
 - `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
   SHA-512 test vectors), `hash_to_group` (`hash_to_ristretto255` with SHA-512) and
   `hash_to_scalar` (RFC 9497 `HashToScalar`), cross-checked against the RFC 9497
