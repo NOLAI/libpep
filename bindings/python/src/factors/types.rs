@@ -6,6 +6,7 @@ use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
+use crate::protocol::{context_or_default, PyContext};
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
@@ -92,7 +93,11 @@ pub struct PyPseudonymizationInfo(pub(crate) PseudonymizationInfo);
 
 #[pymethods]
 impl PyPseudonymizationInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret, context = None))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
@@ -100,6 +105,7 @@ impl PyPseudonymizationInfo {
         session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
+        context: Option<&PyContext>,
     ) -> Self {
         Self(PseudonymizationInfo::new(
             &domain_from.0,
@@ -108,6 +114,7 @@ impl PyPseudonymizationInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
+            &context_or_default(context),
         ))
     }
 
@@ -154,16 +161,21 @@ pub struct PyPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[pymethods]
 impl PyPseudonymRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (session_from, session_to, encryption_secret, context = None))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
+        context: Option<&PyContext>,
     ) -> Self {
         Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
+            &context_or_default(context),
         ))
     }
 
@@ -198,16 +210,21 @@ pub struct PyAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[pymethods]
 impl PyAttributeRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (session_from, session_to, encryption_secret, context = None))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
+        context: Option<&PyContext>,
     ) -> Self {
         Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
+            &context_or_default(context),
         ))
     }
 
@@ -244,7 +261,11 @@ pub struct PyTranscryptionInfo(pub(crate) TranscryptionInfo);
 
 #[pymethods]
 impl PyTranscryptionInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret, context = None))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
@@ -252,6 +273,7 @@ impl PyTranscryptionInfo {
         session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
+        context: Option<&PyContext>,
     ) -> Self {
         Self(TranscryptionInfo::new(
             &domain_from.0,
@@ -260,6 +282,7 @@ impl PyTranscryptionInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
+            &context_or_default(context),
         ))
     }
 

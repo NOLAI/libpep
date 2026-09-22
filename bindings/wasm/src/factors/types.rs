@@ -7,6 +7,7 @@ use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
+use crate::protocol::context_or_default;
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
@@ -93,7 +94,10 @@ pub struct WASMPseudonymizationInfo(pub(crate) PseudonymizationInfo);
 
 #[wasm_bindgen(js_class = "PseudonymizationInfo")]
 impl WASMPseudonymizationInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
@@ -101,6 +105,7 @@ impl WASMPseudonymizationInfo {
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
+        context: Option<js_sys::Object>,
     ) -> Self {
         Self(PseudonymizationInfo::new(
             &domain_from.0,
@@ -109,6 +114,7 @@ impl WASMPseudonymizationInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
+            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -157,16 +163,20 @@ pub struct WASMPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[wasm_bindgen(js_class = "PseudonymRekeyInfo")]
 impl WASMPseudonymRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
+        context: Option<js_sys::Object>,
     ) -> Self {
         Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
+            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -203,16 +213,20 @@ pub struct WASMAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[wasm_bindgen(js_class = "AttributeRekeyInfo")]
 impl WASMAttributeRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
+        context: Option<js_sys::Object>,
     ) -> Self {
         Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
+            &context_or_default(context.as_ref()),
         ))
     }
 
@@ -251,7 +265,10 @@ pub struct WASMTranscryptionInfo(pub(crate) TranscryptionInfo);
 
 #[wasm_bindgen(js_class = "TranscryptionInfo")]
 impl WASMTranscryptionInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
@@ -259,6 +276,7 @@ impl WASMTranscryptionInfo {
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
+        context: Option<js_sys::Object>,
     ) -> Self {
         Self(TranscryptionInfo::new(
             &domain_from.0,
@@ -267,6 +285,7 @@ impl WASMTranscryptionInfo {
             &session_to.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
+            &context_or_default(context.as_ref()),
         ))
     }
 

@@ -9,6 +9,7 @@ use crate::factors::types::PyTranscryptionInfo;
 use crate::keys::types::PyGlobalPublicKeys;
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use crate::keys::types::PyGlobalSecretKeys;
+use crate::protocol::{context_or_default, PyContext};
 #[cfg(all(feature = "insecure", feature = "offline"))]
 use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
@@ -128,10 +129,11 @@ impl PyEncryptedPEPJSONValue {
     ///     encryption_secret: Encryption secret
     ///     public_key: The session public keys the document is encrypted under (required
     ///         without the elgamal3 feature; SessionPublicKeys or SessionKeys)
+    ///     context: The protocol context to derive the factors in (the default if omitted)
     ///
     /// Returns:
     ///     A transcrypted EncryptedPEPJSONValue
-    #[pyo3(name = "transcrypt", signature = (from_domain, to_domain, from_session, to_session, pseudonymization_secret, encryption_secret, public_key=None))]
+    #[pyo3(name = "transcrypt", signature = (from_domain, to_domain, from_session, to_session, pseudonymization_secret, encryption_secret, public_key=None, context=None))]
     #[allow(clippy::too_many_arguments)]
     fn transcrypt(
         &self,
@@ -142,6 +144,7 @@ impl PyEncryptedPEPJSONValue {
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
         public_key: Option<&Bound<PyAny>>,
+        context: Option<&PyContext>,
     ) -> PyResult<Self> {
         let mut rng = rand::rng();
         let transcryption_info = TranscryptionInfo::new(
@@ -151,6 +154,7 @@ impl PyEncryptedPEPJSONValue {
             &to_session.0,
             &pseudonymization_secret.0,
             &encryption_secret.0,
+            &context_or_default(context),
         );
 
         let transcrypted = crate::transcrypt_with!(@on self.0, .transcrypt, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);
