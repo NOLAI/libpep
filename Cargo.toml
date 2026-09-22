@@ -108,6 +108,11 @@ name = "verifiable"
 harness = false
 required-features = ["verifiable"]
 
+[[bench]]
+name = "dleq"
+harness = false
+required-features = ["verifiable"]
+
 [package.metadata.deb]
 name = "peppy"
 depends = ""
