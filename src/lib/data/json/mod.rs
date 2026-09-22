@@ -11,7 +11,6 @@ pub mod macros;
 pub mod structure;
 pub(crate) mod utils;
 
-// Re-export public types
-pub use builder::*;
-pub use data::*;
+pub use builder::PEPJSONBuilder;
+pub use data::{EncryptedPEPJSONValue, JsonError, PEPJSONValue};
 pub use structure::*;

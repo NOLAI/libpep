@@ -1,118 +1,46 @@
 //! Key generation functions for global and session keys.
+//!
+//! The generation is generic over the [`Group`](crate::elgamal::arithmetic::Group) in
+//! [`generic`]. The functions that take key material infer the group from it and are the
+//! generic ones; the functions that generate global keys from randomness alone are ristretto255
+//! instances, as there is nothing to infer the group from.
 
-use super::traits::SecretKey;
-use super::types::*;
-use crate::contexts::EncryptionContext;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret, RekeyFactor,
+pub mod generic;
+
+pub use generic::{
+    make_attribute_session_keys, make_global_key_pair, make_pseudonym_session_keys,
+    make_session_keys,
 };
-use rand_core::{CryptoRng, Rng};
 
-/// Generate a global key pair of the given secret key type.
-///
-/// The secret key is a random scalar; the public key is derived from it with
-/// [`SecretKey::public_key`].
-pub fn make_global_key_pair<R, SK>(rng: &mut R) -> (SK::PublicKeyType, SK)
-where
-    R: Rng + CryptoRng,
-    SK: SecretKey,
-{
-    let scalar = loop {
-        let scalar = ScalarNonZero::random(rng);
-        if scalar != ScalarNonZero::one() {
-            break scalar;
-        }
-    };
-    let sk = SK::from_scalar(scalar);
-    (sk.public_key(), sk)
-}
+use super::types::*;
+use rand_core::{CryptoRng, Rng};
 
 /// Generate new global key pairs for both pseudonyms and attributes.
 pub fn make_global_keys<R: Rng + CryptoRng>(rng: &mut R) -> (GlobalPublicKeys, GlobalSecretKeys) {
-    let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys(rng);
-    let (attribute_pk, attribute_sk) = make_attribute_global_keys(rng);
-    (
-        GlobalPublicKeys {
-            pseudonym: pseudonym_pk,
-            attribute: attribute_pk,
-        },
-        GlobalSecretKeys {
-            pseudonym: pseudonym_sk,
-            attribute: attribute_sk,
-        },
-    )
+    generic::make_global_keys(rng)
 }
 
 /// Generate a new global key pair for pseudonyms.
 pub fn make_pseudonym_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
-    make_global_key_pair(rng)
+    generic::make_pseudonym_global_keys(rng)
 }
 
 /// Generate a new global key pair for attributes.
 pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (AttributeGlobalPublicKey, AttributeGlobalSecretKey) {
-    make_global_key_pair(rng)
-}
-
-/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
-pub fn make_session_keys(
-    global: &GlobalSecretKeys,
-    context: &EncryptionContext,
-    secret: &EncryptionSecret,
-) -> SessionKeys {
-    let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys(&global.pseudonym, context, secret);
-    let (attribute_public, attribute_secret) =
-        make_attribute_session_keys(&global.attribute, context, secret);
-    SessionKeys {
-        pseudonym: PseudonymSessionKeys {
-            public: pseudonym_public,
-            secret: pseudonym_secret,
-        },
-        attribute: AttributeSessionKeys {
-            public: attribute_public,
-            secret: attribute_secret,
-        },
-    }
-}
-
-/// Generate session keys for pseudonyms from a [`PseudonymGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
-///
-/// The session secret key is the global secret key multiplied by the pseudonym rekey factor of
-/// the context.
-pub fn make_pseudonym_session_keys(
-    global: &PseudonymGlobalSecretKey,
-    context: &EncryptionContext,
-    secret: &EncryptionSecret,
-) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
-    let k = make_pseudonym_rekey_factor(secret, context);
-    let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
-    (sk.public_key(), sk)
-}
-
-/// Generate session keys for attributes from an [`AttributeGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
-///
-/// The session secret key is the global secret key multiplied by the attribute rekey factor of
-/// the context.
-pub fn make_attribute_session_keys(
-    global: &AttributeGlobalSecretKey,
-    context: &EncryptionContext,
-    secret: &EncryptionSecret,
-) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
-    let k = make_attribute_rekey_factor(secret, context);
-    let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
-    (sk.public_key(), sk)
+    generic::make_attribute_global_keys(rng)
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    // The basepoint is imported so the assertions verify the derivation independently of
+    use crate::contexts::EncryptionContext;
+    use crate::factors::EncryptionSecret;
+    use crate::keys::traits::SecretKey;
     // `public_key()`.
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::keys::traits::PublicKey;

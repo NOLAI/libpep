@@ -3,7 +3,7 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::factors::TranscryptionInfo;
+use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
 use rand_core::{CryptoRng, Rng};
 
 use crate::errors::BatchError;
@@ -68,7 +68,7 @@ fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(), BatchError
 #[cfg(feature = "elgamal3")]
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
-    info: &crate::factors::PseudonymizationInfo,
+    info: &PseudonymizationInfo<E::Group>,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where
@@ -86,7 +86,7 @@ where
 #[cfg(not(feature = "elgamal3"))]
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
-    info: &crate::factors::PseudonymizationInfo,
+    info: &PseudonymizationInfo<E::Group>,
     public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
@@ -169,7 +169,7 @@ where
 #[cfg(feature = "elgamal3")]
 pub fn transcrypt_batch<E, R>(
     encrypted: &mut [E],
-    info: &TranscryptionInfo,
+    info: &TranscryptionInfo<E::Group>,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where
@@ -184,7 +184,7 @@ where
 #[cfg(not(feature = "elgamal3"))]
 pub fn transcrypt_batch<E, R>(
     encrypted: &mut [E],
-    info: &TranscryptionInfo,
+    info: &TranscryptionInfo<E::Group>,
     public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
