@@ -403,9 +403,8 @@ impl WASMDistributedTranscryptor {
         ))
     }
 
-    #[cfg(feature = "elgamal3")]
     /// Pseudonymize a long encrypted pseudonym from one domain/session to another.
-    #[cfg(feature = "long")]
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = pseudonymizeLong)]
     pub fn wasm_pseudonymize_long(
         &self,
@@ -420,9 +419,8 @@ impl WASMDistributedTranscryptor {
         ))
     }
 
-    #[cfg(not(feature = "elgamal3"))]
     /// Pseudonymize a long encrypted pseudonym from one domain/session to another.
-    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = pseudonymizeLong)]
     pub fn wasm_pseudonymize_long(
         &self,
@@ -486,9 +484,8 @@ impl WASMDistributedTranscryptor {
             .collect())
     }
 
-    #[cfg(feature = "elgamal3")]
     /// Pseudonymize a batch of long encrypted pseudonyms from one domain/session to another.
-    #[cfg(all(feature = "long", feature = "batch"))]
+    #[cfg(all(feature = "long", feature = "batch", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = pseudonymizeLongBatch)]
     pub fn wasm_pseudonymize_long_batch(
         &self,
@@ -512,9 +509,8 @@ impl WASMDistributedTranscryptor {
             .collect())
     }
 
-    #[cfg(not(feature = "elgamal3"))]
     /// Pseudonymize a batch of long encrypted pseudonyms from one domain/session to another.
-    #[cfg(all(feature = "long", feature = "batch", feature = "elgamal3"))]
+    #[cfg(all(feature = "long", feature = "batch", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = pseudonymizeLongBatch)]
     pub fn wasm_pseudonymize_long_batch(
         &self,
@@ -664,26 +660,7 @@ impl WASMDistributedTranscryptor {
         transcrypted.into()
     }
 
-    #[cfg(not(feature = "elgamal3"))]
     /// Transcrypt an EncryptedRecord from one context to another.
-    #[cfg(feature = "elgamal3")]
-    #[wasm_bindgen(js_name = transcryptRecord)]
-    pub fn transcrypt_record(
-        &self,
-        encrypted: WASMEncryptedRecord,
-        transcryption_info: &WASMTranscryptionInfo,
-        public_key: &WASMSessionPublicKeys,
-    ) -> WASMEncryptedRecord {
-        let mut rng = rand::rng();
-        let pk = libpep::keys::SessionPublicKeys::from(public_key);
-        use libpep::data::records::EncryptedRecord;
-        use libpep::data::traits::Transcryptable;
-        let mut rng = rand::rng();
-        let rust_encrypted: EncryptedRecord = encrypted.into();
-        let transcrypted = rust_encrypted.transcrypt(&transcryption_info.0, &mut rng);
-        transcrypted.into()
-    }
-
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
