@@ -206,8 +206,10 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and the Ristretto scalar and group element arithmetic in `elgamal::arithmetic` |
+| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and in `elgamal::arithmetic` the `Group` trait (the prime-order group API of RFC 9497) with its ristretto255 instance and the Ristretto scalar and group element arithmetic |
 
+The library is generic over the group: every type that holds group material has a generic version with a `G: Group` parameter in a `generic` submodule next to it (`data::simple::generic::Pseudonym<G>`, `keys::types::generic::SessionKeys<G>`, ...), and the names at the module level are aliases pinning `Ristretto255`.
+Code that uses ristretto255 never needs the generic names.
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
@@ -239,7 +241,7 @@ Optional features:
 
 ## Security
 
-The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security.
+The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be added by implementing the `Group` trait.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 The library has been designed for production use but has not undergone a formal security audit.
