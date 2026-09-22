@@ -30,8 +30,12 @@
 //!   and JSON documents, and the traits the high-level API is generic over.
 //! - [`keys`], [`contexts`] and [`factors`] are the key, identifier and factor material that the
 //!   two roles exchange.
+//! - [`protocol`] is the protocol [`Context`](protocol::Context) (mode and ciphersuite
+//!   identifier), the domain separation tag of the protocol's hashes, and [`encodings`] are the
+//!   encodings of identifiers and payloads as group elements.
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
-//!   [primitives](elgamal::primitives) and the group [arithmetic](elgamal::arithmetic).
+//!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic) and
+//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars.
 //!
 //! ## Feature flags
 //!
@@ -46,6 +50,9 @@
 //!   operations. **This feature changes API signatures**: decryption functions return an
 //!   [`Option`] (or an error for batches) instead of a plain value. The two modes are not
 //!   wire-compatible; choose one for your deployment.
+//! - `hmac-derivation`: the HMAC-SHA512 factor derivation of libpep 0.13 instead of the
+//!   `DeriveFactor` of draft-doesburg-cfrg-coprf; only for continuity with factors derived by
+//!   0.13. Mutually exclusive with `legacy`.
 //! - `legacy`: compatibility with the legacy PEP repository implementation (different scalar
 //!   derivation). Implies `elgamal3`, `offline` and `global-pseudonyms`; only for
 //!   interoperability with legacy deployments.
@@ -61,10 +68,12 @@ pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
+pub mod encodings;
 pub mod errors;
 pub mod factors;
 pub mod keys;
 pub mod prelude;
+pub mod protocol;
 pub mod transcryptor;
 
 /// Runs the README's quick start as a doctest, in the default ciphertext mode it is written for.

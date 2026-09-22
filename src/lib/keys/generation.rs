@@ -58,16 +58,17 @@ pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     make_global_key_pair(rng)
 }
 
-/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
+/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`].
 pub fn make_session_keys(
     global: &GlobalSecretKeys,
-    context: &EncryptionContext,
+    session: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> SessionKeys {
     let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys(&global.pseudonym, context, secret);
+        make_pseudonym_session_keys(&global.pseudonym, session, secret);
     let (attribute_public, attribute_secret) =
-        make_attribute_session_keys(&global.attribute, context, secret);
+        make_attribute_session_keys(&global.attribute, session, secret);
     SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
@@ -86,10 +87,10 @@ pub fn make_session_keys(
 /// the context.
 pub fn make_pseudonym_session_keys(
     global: &PseudonymGlobalSecretKey,
-    context: &EncryptionContext,
+    session: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
-    let k = make_pseudonym_rekey_factor(secret, context);
+    let k = make_pseudonym_rekey_factor(secret, session);
     let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -100,10 +101,10 @@ pub fn make_pseudonym_session_keys(
 /// the context.
 pub fn make_attribute_session_keys(
     global: &AttributeGlobalSecretKey,
-    context: &EncryptionContext,
+    session: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
-    let k = make_attribute_rekey_factor(secret, context);
+    let k = make_attribute_rekey_factor(secret, session);
     let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }

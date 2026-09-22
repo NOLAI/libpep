@@ -183,6 +183,7 @@ impl WASMEncryptedPEPJSONValue {
     /// * `to_session` - Target encryption session (optional)
     /// * `pseudonymization_secret` - Pseudonymization secret
     /// * `encryption_secret` - Encryption secret
+    /// * `context` - The protocol context to derive the factors in (the default if omitted)
     ///
     /// # Returns
     ///

@@ -698,3 +698,107 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     let protected = malformed.pseudonymize(&info, &from_session.pseudonym.public, &mut rng);
     assert_ne!(protected.value().gc, leaked);
 }
+
+/// The protocol context separates *protocols*, not deployments: it is the domain separation tag
+/// of hashes that take no secret, so [`hash_to_group`] takes one explicitly. Factor derivation
+/// does not, because the transcryptor secret is already part of its hash input. What separates
+/// deployments is the secrets; what separates within a deployment is the domain and the session.
+#[test]
+fn protocol_context_separates_hashing_and_secrets_separate_deployments() {
+    use libpep::encodings::hash_to_group;
+    use libpep::protocol::{Context, Mode};
+
+    let rng = &mut rand::rng();
+    let (_global_public, global_secret) = make_global_keys(rng);
+    let pseudo_secret = PseudonymizationSecret::from(b"pseudonymization secret".to_vec());
+    let enc_secret = EncryptionSecret::from(b"encryption secret".to_vec());
+    let (domain_a, domain_b) = (
+        PseudonymizationDomain::from("hospital"),
+        PseudonymizationDomain::from("research"),
+    );
+    let (session_a, session_b) = (
+        EncryptionContext::from("session-a"),
+        EncryptionContext::from("session-b"),
+    );
+
+    // Hashing an identifier to the group involves no secret, so the context is the only thing
+    // separating this pseudonym from another protocol's hash of the same identifier.
+    let ciphersuite = Context::default();
+    let origin = Pseudonym::from_point(hash_to_group(b"patient-1", &ciphersuite));
+    assert_eq!(
+        origin,
+        Pseudonym::from_point(hash_to_group(b"patient-1", &ciphersuite))
+    );
+    for other in [
+        Context::from_identifier("another-ciphersuite"),
+        Context::new(Mode::VcoPRF, "ristretto255-SHA512"),
+    ] {
+        assert_ne!(
+            origin,
+            Pseudonym::from_point(hash_to_group(b"patient-1", &other))
+        );
+    }
+
+    // Factor derivation takes no context: it is deterministic in the secrets, the domains and
+    // the sessions.
+    let info = TranscryptionInfo::new(
+        &domain_a,
+        &domain_b,
+        &session_a,
+        &session_b,
+        &pseudo_secret,
+        &enc_secret,
+    );
+    assert_eq!(
+        info,
+        TranscryptionInfo::new(
+            &domain_a,
+            &domain_b,
+            &session_a,
+            &session_b,
+            &pseudo_secret,
+            &enc_secret,
+        )
+    );
+    let keys = make_session_keys(&global_secret, &session_a, &enc_secret);
+    assert_eq!(
+        keys,
+        make_session_keys(&global_secret, &session_a, &enc_secret)
+    );
+
+    // A different deployment is a different secret, and that already separates the factors.
+    let other_pseudo = PseudonymizationSecret::from(b"other pseudonymization secret".to_vec());
+    let other_enc = EncryptionSecret::from(b"other encryption secret".to_vec());
+    assert_ne!(
+        info,
+        TranscryptionInfo::new(
+            &domain_a,
+            &domain_b,
+            &session_a,
+            &session_b,
+            &other_pseudo,
+            &other_enc,
+        )
+    );
+    assert_ne!(
+        keys,
+        make_session_keys(&global_secret, &session_a, &other_enc)
+    );
+
+    // Within a deployment, the domain and the session separate.
+    assert_ne!(
+        info,
+        TranscryptionInfo::new(
+            &domain_a,
+            &PseudonymizationDomain::from("other-domain"),
+            &session_a,
+            &session_b,
+            &pseudo_secret,
+            &enc_secret,
+        )
+    );
+    assert_ne!(
+        keys,
+        make_session_keys(&global_secret, &session_b, &enc_secret)
+    );
+}

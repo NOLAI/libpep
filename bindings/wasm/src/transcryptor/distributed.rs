@@ -40,6 +40,8 @@ pub struct WASMDistributedTranscryptor(pub(crate) DistributedTranscryptor);
 
 #[wasm_bindgen(js_class = DistributedTranscryptor)]
 impl WASMDistributedTranscryptor {
+    /// A distributed transcryptor with the given secrets and blinding factor, deriving factors
+    ///.
     #[wasm_bindgen(constructor)]
     pub fn new(
         pseudonymisation_secret: &str,

@@ -103,7 +103,9 @@ The `peppy` tool exposes the library on the command line. The first word names w
 | `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, and `pseudonymize` for pseudonyms |
 | `json` | `encrypt`, `decrypt`, `transcrypt` |
 | `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
-| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `from-hash` |
+| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `from-hash`, `hash-to-group` |
+
+`point hash-to-group` takes a `--protocol <IDENTIFIER>` option (default `ristretto255-SHA512`), the ciphersuite context the hash is domain-separated with; every party hashing the same identifier must use the same value. Factor derivation takes no such option: it is separated by the transcryptor secrets, the domain and the session.
 
 Values print one per line on standard output with a label on standard error, so they pipe; `--json` prints all values of a command as one object.
 Any value argument may be `-` to read standard input or `@path` to read a file.
@@ -205,8 +207,10 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `data` | `Pseudonym` and `Attribute`, their long (multi-block) variants, records, and JSON documents with nested pseudonyms and attributes |
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
-| `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and the Ristretto scalar and group element arithmetic in `elgamal::arithmetic` |
+| `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts (`DeriveFactor` of draft-doesburg-cfrg-coprf) |
+| `protocol` | The protocol `Context` (mode and ciphersuite identifier), the domain separation tag of `hash_to_group` and of the protocol's internal hashes |
+| `encodings` | Encodings of identifiers and payloads as group elements: `hash_to_group` (RFC 9380 `hash_to_ristretto255`), `encode_lizard`/`decode_lizard`, and the `oaep` stubs for Weierstrass curves |
+| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, the Ristretto scalar and group element arithmetic in `elgamal::arithmetic`, and `expand_message_xmd`, `hash_to_group` and `hash_to_scalar` in `elgamal::arithmetic::hashing` |
 
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
@@ -227,8 +231,12 @@ Optional features:
   This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations.
   Decryption functions return an `Option` (or an error for batches) instead of a plain value.
   The two modes are not wire-compatible; choose one per deployment.
+- `hmac-derivation`: the HMAC-SHA512 factor derivation of libpep 0.13 instead of the `DeriveFactor` of draft-doesburg-cfrg-coprf (`HashToScalar` domain-separated with the ciphersuite context).
+  Only for continuity with factors and session keys derived by 0.13. Mutually exclusive with `legacy`.
 - `legacy`: compatibility with the legacy PEP repository implementation, which derives scalars from domains, contexts and secrets differently.
-  Implies `elgamal3`, `offline` and `global-pseudonyms`.
+  Implies `elgamal3`, `offline` and `global-pseudonyms`. Mutually exclusive with `hmac-derivation`.
+
+The three derivations (default, `hmac-derivation`, `legacy`) produce different factors and session keys from the same secrets; a deployment picks one.
 - `insecure`: methods that use global *secret* keys directly, such as `decrypt_global`.
 - `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
 

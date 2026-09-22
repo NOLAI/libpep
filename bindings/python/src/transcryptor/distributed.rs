@@ -34,7 +34,10 @@ pub struct PyDistributedTranscryptor(pub(crate) DistributedTranscryptor);
 
 #[pymethods]
 impl PyDistributedTranscryptor {
+    /// A distributed transcryptor with the given secrets and blinding factor, deriving factors
+    ///.
     #[new]
+    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret, blinding_factor))]
     fn new(
         pseudonymisation_secret: &str,
         rekeying_secret: &str,
