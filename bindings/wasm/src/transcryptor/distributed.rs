@@ -2,7 +2,7 @@
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 #[cfg(feature = "long")]
-use crate::data::long::WASMLongEncryptedAttribute;
+use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::records::WASMLongEncryptedRecord;
@@ -23,7 +23,7 @@ use crate::keys::{
 };
 use derive_more::{Deref, From, Into};
 #[cfg(all(feature = "long", feature = "batch"))]
-use libpep::data::long::LongEncryptedAttribute;
+use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "batch")]
 use libpep::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 use libpep::factors::{
@@ -711,7 +711,6 @@ impl WASMDistributedTranscryptor {
         encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
     ) -> WASMLongEncryptedRecord {
-        let mut rng = rand::rng();
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Transcryptable;
         let mut rng = rand::rng();
