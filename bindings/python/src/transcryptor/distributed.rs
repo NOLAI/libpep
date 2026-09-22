@@ -416,6 +416,22 @@ impl PyDistributedTranscryptor {
             "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
         ))
     }
+
+    /// Transcrypt a wire-format batch request: pseudonymize or rekey its items with fresh
+    /// rerandomization and a random shuffle, and report the key they are now encrypted under.
+    /// Raises `ValueError` if an identifier is not valid UTF-8.
+    #[cfg(all(feature = "batch", feature = "wire"))]
+    #[pyo3(name = "transcrypt_wire")]
+    fn py_transcrypt_wire(
+        &self,
+        request: &crate::wire::PyBatchRequest,
+    ) -> PyResult<crate::wire::PyBatchResponse> {
+        let mut rng = rand::rng();
+        self.0
+            .transcrypt_wire(&request.0, &mut rng)
+            .map(crate::wire::PyBatchResponse)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+    }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

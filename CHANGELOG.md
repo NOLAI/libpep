@@ -42,3 +42,12 @@ a major change against the published 0.13.0.
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
   CLI prints it as `key` / `keys`.
+- The `wire` module (feature `wire`, default on) with the byte-level wire formats of
+  draft-doesburg-cfrg-coprf for the plain mode: `BatchRequest` and `BatchResponse` with strict
+  `to_bytes` / `from_bytes` (unknown types, truncated input, trailing bytes, empty batches and
+  invalid or identity elements are rejected), and `SessionKeyShares::to_bytes` / `from_bytes`.
+  `Transcryptor::transcrypt_wire` (also on `DistributedTranscryptor`) derives the factors from a
+  request's identifiers, pseudonymizes or rekeys the batch with rerandomization and shuffling, and
+  reports the key the items are now encrypted under. Exposed as `libpep.wire` in Python and as
+  `BatchRequest` / `BatchResponse` / `transcryptWire` in JavaScript; `peppy batch transcrypt` reads a
+  request from a file or standard input and writes the response.

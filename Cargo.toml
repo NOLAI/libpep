@@ -30,13 +30,14 @@ readme = "README.md"
 exclude = ["bindings", "pkg", "pkg-web", "node_modules"]
 
 [features]
-default = ["build-binary", "long", "offline", "batch", "serde", "json"]
+default = ["build-binary", "long", "offline", "batch", "serde", "json", "wire"]
 serde = ["dep:serde"] # For (de)serialization support via Serde
 elgamal3 = [] # For ElGamal triple encryption, including the recipient's public key in message encoding
 offline = [] # For encryption towards global keys (instead of encryption with session keys)
 batch = [] # For batch transcryption with reordering to prevent linkability
 long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption support
+wire = [] # The byte-level wire formats of draft-doesburg-cfrg-coprf (batch requests and responses, session key shares)
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
@@ -114,7 +115,7 @@ assets = [
 ]
 
 [package.metadata.docs.rs]
-features = ["offline", "batch", "long", "serde", "elgamal3", "insecure"]
+features = ["offline", "batch", "long", "serde", "wire", "elgamal3", "insecure"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [workspace.lints.rust]

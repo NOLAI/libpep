@@ -32,12 +32,15 @@
 //!   two roles exchange.
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
 //!   [primitives](elgamal::primitives) and the group [arithmetic](elgamal::arithmetic).
+//! - [`wire`] is the interoperable byte encoding of ciphertext batches and session key shares
+//!   from draft-doesburg-cfrg-coprf.
 //!
 //! ## Feature flags
 //!
 //! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
 //! towards global keys), `batch` (batch transcryption with shuffling), `serde`, `json`
-//! (structured data with nested pseudonyms), and `build-binary` (the `peppy` CLI).
+//! (structured data with nested pseudonyms), `wire` (the byte-level wire formats of
+//! draft-doesburg-cfrg-coprf), and `build-binary` (the `peppy` CLI).
 //!
 //! Optional features and their security implications:
 //!
@@ -66,6 +69,8 @@ pub mod factors;
 pub mod keys;
 pub mod prelude;
 pub mod transcryptor;
+#[cfg(feature = "wire")]
+pub mod wire;
 
 /// Runs the README's quick start as a doctest, in the default ciphertext mode it is written for.
 #[cfg(all(doctest, not(feature = "elgamal3")))]

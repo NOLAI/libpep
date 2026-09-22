@@ -749,4 +749,20 @@ impl WASMDistributedTranscryptor {
             .map(WASMLongRecordEncrypted::from)
             .collect())
     }
+
+    /// Transcrypt a wire-format batch request: pseudonymize or rekey its items with fresh
+    /// rerandomization and a random shuffle, and report the key they are now encrypted under.
+    /// Throws if an identifier is not valid UTF-8.
+    #[cfg(all(feature = "batch", feature = "wire"))]
+    #[wasm_bindgen(js_name = transcryptWire)]
+    pub fn wasm_transcrypt_wire(
+        &self,
+        request: &crate::wire::WASMBatchRequest,
+    ) -> Result<crate::wire::WASMBatchResponse, JsValue> {
+        let mut rng = rand::rng();
+        self.0
+            .transcrypt_wire(&request.0, &mut rng)
+            .map(crate::wire::WASMBatchResponse)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
 }

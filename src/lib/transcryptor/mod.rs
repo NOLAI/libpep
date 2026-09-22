@@ -7,6 +7,8 @@ pub mod distributed;
 pub mod functions;
 pub mod prelude;
 pub mod types;
+#[cfg(all(feature = "batch", feature = "wire"))]
+pub mod wire;
 
 // Re-export types
 pub use types::Transcryptor;

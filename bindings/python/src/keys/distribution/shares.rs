@@ -43,6 +43,24 @@ pub struct PySessionKeyShares {
     pub attribute: PyAttributeSessionKeyShare,
 }
 
+impl From<SessionKeyShares> for PySessionKeyShares {
+    fn from(shares: SessionKeyShares) -> Self {
+        Self {
+            pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
+            attribute: PyAttributeSessionKeyShare(shares.attribute),
+        }
+    }
+}
+
+impl From<PySessionKeyShares> for SessionKeyShares {
+    fn from(shares: PySessionKeyShares) -> Self {
+        Self {
+            pseudonym: shares.pseudonym.0,
+            attribute: shares.attribute.0,
+        }
+    }
+}
+
 #[pymethods]
 impl PySessionKeyShares {
     #[new]
@@ -51,6 +69,24 @@ impl PySessionKeyShares {
             pseudonym,
             attribute,
         }
+    }
+
+    /// Encode as the pseudonym share followed by the attribute share (32 bytes each), the
+    /// session key share encoding of draft-doesburg-cfrg-coprf.
+    #[cfg(feature = "wire")]
+    #[pyo3(name = "to_bytes")]
+    fn encode(&self, py: Python) -> Py<PyAny> {
+        PyBytes::new(py, &SessionKeyShares::from(*self).to_bytes()).into()
+    }
+
+    /// Decode from `to_bytes`. Raises `ValueError` for a wrong length or a zero share.
+    #[cfg(feature = "wire")]
+    #[staticmethod]
+    #[pyo3(name = "from_bytes")]
+    fn decode(bytes: &[u8]) -> PyResult<Self> {
+        SessionKeyShares::from_slice(bytes)
+            .map(Self::from)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
     }
 
     fn __repr__(&self) -> String {

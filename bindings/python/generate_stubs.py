@@ -31,6 +31,7 @@ import libpep.elgamal.primitives
 import libpep.factors
 import libpep.keys
 import libpep.transcryptor
+import libpep.wire
 
 MODULES = {
     "__init__": libpep,
@@ -46,6 +47,7 @@ MODULES = {
     "factors": libpep.factors,
     "keys": libpep.keys,
     "transcryptor": libpep.transcryptor,
+    "wire": libpep.wire,
 }
 
 OUT = Path(__file__).resolve().parent / "libpep-stubs"

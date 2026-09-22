@@ -565,3 +565,147 @@ fn json_output_holds_every_value() {
         assert!(keys.contains(expected), "{expected} missing from {global}");
     }
 }
+
+#[cfg(feature = "wire")]
+#[test]
+fn batch_transcrypt_over_the_wire() {
+    use libpep::contexts::EncryptionContext;
+    use libpep::data::simple::{
+        ElGamalEncryptable, ElGamalEncrypted, EncryptedPseudonym, Pseudonym,
+    };
+    use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable};
+    use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+    use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys, PublicKey};
+    use libpep::transcryptor::Transcryptor;
+    use libpep::wire::{BatchKind, BatchRequest, BatchResponse};
+
+    let rng = &mut rand::rng();
+    let (_, global_secret) = make_pseudonym_global_keys(rng);
+    let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+    let (pk_a, _) = make_pseudonym_session_keys(
+        &global_secret,
+        &EncryptionContext::from("session-a"),
+        &secret,
+    );
+    let (pk_b, sk_b) = make_pseudonym_session_keys(
+        &global_secret,
+        &EncryptionContext::from("session-b"),
+        &secret,
+    );
+    let pseudonyms: Vec<Pseudonym> = (0..3).map(|_| Pseudonym::random(rng)).collect();
+    let encrypted: Vec<EncryptedPseudonym> =
+        pseudonyms.iter().map(|p| p.encrypt(&pk_a, rng)).collect();
+    let request = BatchRequest::new(
+        BatchKind::Pseudonym,
+        "domain-a",
+        "domain-b",
+        "session-a",
+        "session-b",
+        *pk_a.value(),
+        encrypted.iter().map(|e| *e.value()).collect(),
+    )
+    .unwrap();
+
+    let dir = std::env::temp_dir().join(format!("peppy-wire-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let input = dir.join("request.bin");
+    let output = dir.join("response.bin");
+    std::fs::write(&input, request.to_bytes()).unwrap();
+
+    // Raw bytes in, raw bytes out.
+    let run = peppy_with_stdin(
+        &[
+            "batch",
+            "transcrypt",
+            "--pseudonymization-secret",
+            "pseudonymization secret",
+            "--encryption-secret",
+            "encryption secret",
+            "--input",
+            input.to_str().unwrap(),
+            "--output",
+            output.to_str().unwrap(),
+        ],
+        None,
+    );
+    assert_eq!(run.status, 0, "{}", run.stderr);
+    let response = BatchResponse::from_bytes(&std::fs::read(&output).unwrap()).unwrap();
+    assert_eq!(response.y_to(), pk_b.value());
+    assert!(run.stderr.contains(&pk_b.to_hex()));
+
+    // The receiver gets the pseudonyms the library computes.
+    let transcryptor = Transcryptor::new(
+        PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
+        secret,
+    );
+    let info = transcryptor.pseudonymization_info(
+        &libpep::contexts::PseudonymizationDomain::from("domain-a"),
+        &libpep::contexts::PseudonymizationDomain::from("domain-b"),
+        &EncryptionContext::from("session-a"),
+        &EncryptionContext::from("session-b"),
+    );
+    let decrypt = |e: &EncryptedPseudonym| -> Pseudonym {
+        #[cfg(feature = "elgamal3")]
+        return e.decrypt(&sk_b).unwrap();
+        #[cfg(not(feature = "elgamal3"))]
+        e.decrypt(&sk_b)
+    };
+    let expected: HashSet<String> = encrypted
+        .iter()
+        .map(|e| {
+            #[cfg(feature = "elgamal3")]
+            let out = e.pseudonymize(&info, rng);
+            #[cfg(not(feature = "elgamal3"))]
+            let out = e.pseudonymize(&info, &pk_a, rng);
+            decrypt(&out).to_hex()
+        })
+        .collect();
+    let got: HashSet<String> = response
+        .items()
+        .iter()
+        .map(|c| decrypt(&EncryptedPseudonym::from_value(*c)).to_hex())
+        .collect();
+    assert_eq!(got, expected);
+
+    // With --json the response is base64 and the key a field; the file is still written.
+    std::fs::remove_file(&output).unwrap();
+    let json = peppy_json(&[
+        "batch",
+        "transcrypt",
+        "--pseudonymization-secret",
+        "pseudonymization secret",
+        "--encryption-secret",
+        "encryption secret",
+        "--input",
+        input.to_str().unwrap(),
+        "--output",
+        output.to_str().unwrap(),
+    ]);
+    assert_eq!(field(&json, "key"), pk_b.to_hex());
+    let from_json = BatchResponse::from_bytes(
+        &base64::Engine::decode(
+            &base64::engine::general_purpose::URL_SAFE,
+            field(&json, "response"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(from_json.y_to(), pk_b.value());
+    assert_eq!(std::fs::read(&output).unwrap(), from_json.to_bytes());
+
+    // A malformed request is an input error.
+    let run = peppy_with_stdin(
+        &[
+            "batch",
+            "transcrypt",
+            "--pseudonymization-secret",
+            "s",
+            "--encryption-secret",
+            "s",
+        ],
+        Some("not a request"),
+    );
+    assert_eq!(run.status, 1);
+    assert!(run.stderr.contains("request:"), "{}", run.stderr);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
