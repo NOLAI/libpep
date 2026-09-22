@@ -116,14 +116,17 @@ AttributeP_1 = 0661e45fa47c8446fa51a6b074a433c547a255cf130b8578745894af83a2815c
 AttributeP_2 = a4c401ae43d61a491007a32899166cd147520ae39551af6988eb95c5e174520f
 AttributePermutation = 0,1,2
 
-## Session key share (modeVcoPRF)
+## Session key share
 
-// A session key share with proof, modeVcoPRF (contextString mode byte 01).
+// A session key share with its proof. K_c_1 is the ordinary rekey factor
+// commitment of the session, the same value as K_c above: the share is derived
+// under the ciphersuite context, so a verifiable and a non-verifiable
+// transcryptor on the same session agree on the key material. Only the proof
+// transcript is separated by modeVcoPRF.
 // u_i is secret and is shown only so the vector can be reproduced.
 
-ContextString = 636f50524656312d012d72697374726574746f3235352d534841353132
 b_1 = 30a9fb7ca1ca0aac2f193b33250108839df76aa1d314db102f895e093507c509
 B_1 = faa3404eb3032fd6651e5d0ad77560ccb9e7d0a31bcdd23dfa1203c89693cf56
-K_c_1 = 84804a330d8c499f203ceddf4f8393d834a2094aace36a428685dbf6c1b39d2e
-u_1 = 84b0c57388b49fda4d0ceb51bc53e0c1ea385c535ca6cecb3271da194a583c02
-U_1 = 78387d3923a0813f585fa5552ecc633c69bf7152806023b542758eb5b75b1928
+K_c_1 = 9e92112d34f23f902200338afbd4cbee639d2a2ecae3325e75603e8d5feebc5c
+u_1 = 6764bd318a3d3988e8f42d1e172a1ebd29542b5c5e2f5e5c5ed648071f32b20b
+U_1 = 20260158e42434cd5b39261599097034545cca13684893850881ea9399042e7a
