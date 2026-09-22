@@ -5,15 +5,20 @@
 //!
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
 //!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
-//!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the protocol
-//!   [`Context`]. A factor that is 0 or 1 is rejected and the derivation retried with the next
-//!   counter.
+//!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
+//!   [ciphersuite context](crate::protocol::ciphersuite). A factor that is 0 or 1 is rejected and
+//!   the derivation retried with the next counter.
 //! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier,
-//!   the derivation of libpep 0.13. It ignores the protocol context.
+//!   the derivation of libpep 0.13.
 //! - `legacy`: the derivation of the legacy PEP repository.
 //!
 //! The labels are the same in every derivation: `0x01` pseudonym rekey, `0x02` attribute rekey,
 //! `0x03` reshuffle.
+//!
+//! None of these take a protocol [`Context`](crate::protocol::Context): the secret is part of the
+//! hash input, so deployments with different secrets already derive unrelated factors, and the
+//! domain or session identifier separates within a deployment. See the
+//! [`protocol`](crate::protocol) module docs.
 
 use super::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use super::types::*;
@@ -21,7 +26,6 @@ use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 #[cfg(not(feature = "legacy"))]
 use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarTraits};
-use crate::protocol::Context;
 #[cfg(any(feature = "legacy", feature = "hmac-derivation"))]
 use hmac::{Hmac, KeyInit, Mac};
 #[cfg(any(feature = "legacy", feature = "hmac-derivation"))]
@@ -44,14 +48,12 @@ pub const LABEL_RESHUFFLE: u8 = 0x03;
 pub fn make_pseudonym_rekey_factor(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-    context: &Context,
 ) -> PseudonymRekeyFactor {
     match session {
         EncryptionContext::Specific(payload) => PseudonymRekeyFactor(make_factor(
             LABEL_REKEY_PSEUDONYM,
             &secret.0,
             payload.as_bytes(),
-            context,
         )),
         #[cfg(feature = "offline")]
         EncryptionContext::Global => {
@@ -66,14 +68,12 @@ pub fn make_pseudonym_rekey_factor(
 pub fn make_attribute_rekey_factor(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-    context: &Context,
 ) -> AttributeRekeyFactor {
     match session {
         EncryptionContext::Specific(payload) => AttributeRekeyFactor(make_factor(
             LABEL_REKEY_ATTRIBUTE,
             &secret.0,
             payload.as_bytes(),
-            context,
         )),
         #[cfg(feature = "offline")]
         EncryptionContext::Global => {
@@ -88,15 +88,11 @@ pub fn make_attribute_rekey_factor(
 pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
-    context: &Context,
 ) -> ReshuffleFactor {
     match domain {
-        PseudonymizationDomain::Specific(payload) => ReshuffleFactor(make_factor(
-            LABEL_RESHUFFLE,
-            &secret.0,
-            payload.as_bytes(),
-            context,
-        )),
+        PseudonymizationDomain::Specific(payload) => {
+            ReshuffleFactor(make_factor(LABEL_RESHUFFLE, &secret.0, payload.as_bytes()))
+        }
         #[cfg(feature = "global-pseudonyms")]
         PseudonymizationDomain::Global => {
             // Global domain - return identity factor
@@ -112,7 +108,7 @@ pub fn make_pseudonymisation_factor(
 /// Panics if `secret` or `id` is 2^16 bytes or longer; the derivation input length-prefixes
 /// both with two bytes.
 #[cfg(not(any(feature = "legacy", feature = "hmac-derivation")))]
-fn make_factor(label: u8, secret: &Secret, id: &[u8], context: &Context) -> ScalarNonZero {
+fn make_factor(label: u8, secret: &Secret, id: &[u8]) -> ScalarNonZero {
     use crate::elgamal::arithmetic::hashing::hash_to_scalar;
 
     let secret_len = u16::try_from(secret.len()).ok();
@@ -120,7 +116,7 @@ fn make_factor(label: u8, secret: &Secret, id: &[u8], context: &Context) -> Scal
     let (Some(secret_len), Some(id_len)) = (secret_len, id_len) else {
         panic!("DeriveFactor: secrets and identifiers must be shorter than 2^16 bytes");
     };
-    let dst = context.dst(b"DeriveFactor-");
+    let dst = crate::protocol::ciphersuite().dst(b"DeriveFactor-");
     let mut input = Vec::with_capacity(secret.len() + id.len() + 6);
     input.extend_from_slice(&secret_len.to_be_bytes());
     input.extend_from_slice(secret);
@@ -141,10 +137,9 @@ fn make_factor(label: u8, secret: &Secret, id: &[u8], context: &Context) -> Scal
     unreachable!("256 consecutive degenerate factor derivations")
 }
 
-/// Derive a factor with HMAC-SHA512 keyed with the secret, the derivation of libpep 0.13. The
-/// protocol context is not part of the input.
+/// Derive a factor with HMAC-SHA512 keyed with the secret, the derivation of libpep 0.13.
 #[cfg(feature = "hmac-derivation")]
-fn make_factor(label: u8, secret: &Secret, id: &[u8], _context: &Context) -> ScalarNonZero {
+fn make_factor(label: u8, secret: &Secret, id: &[u8]) -> ScalarNonZero {
     // Retried with a counter appended only on a degenerate result, so factors are unchanged in
     // the overwhelmingly common case.
     for counter in 0u8..=255 {
@@ -176,12 +171,10 @@ fn non_degenerate(scalar: ScalarCanBeZero) -> Option<ScalarNonZero> {
 }
 
 /// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).
-/// The protocol context is not part of the legacy derivation.
 #[cfg(feature = "legacy")]
 pub fn make_pseudonym_rekey_factor(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-    _context: &Context,
 ) -> PseudonymRekeyFactor {
     match session {
         EncryptionContext::Specific {
@@ -196,12 +189,10 @@ pub fn make_pseudonym_rekey_factor(
 }
 
 /// Derive an attribute rekey factor from a secret and a context (using the legacy PEP repo method).
-/// The protocol context is not part of the legacy derivation.
 #[cfg(feature = "legacy")]
 pub fn make_attribute_rekey_factor(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-    _context: &Context,
 ) -> AttributeRekeyFactor {
     match session {
         EncryptionContext::Specific {
@@ -216,12 +207,10 @@ pub fn make_attribute_rekey_factor(
 }
 
 /// Derive a pseudonymisation factor from a secret and a context (using the legacy PEP repo method).
-/// The protocol context is not part of the legacy derivation.
 #[cfg(feature = "legacy")]
 pub fn make_pseudonymisation_factor(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
-    _context: &Context,
 ) -> ReshuffleFactor {
     match domain {
         PseudonymizationDomain::Specific {
@@ -264,13 +253,12 @@ impl PseudonymizationInfo {
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
-        context: &Context,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from, context);
-        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to, context);
+        let s_from = make_pseudonymisation_factor(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymisation_factor(pseudonymization_secret, domain_to);
         Self {
             s: ReshuffleFactor(s_from.0.invert() * s_to.0),
-            k: PseudonymRekeyInfo::new(session_from, session_to, encryption_secret, context).k,
+            k: PseudonymRekeyInfo::new(session_from, session_to, encryption_secret).k,
         }
     }
 }
@@ -281,10 +269,9 @@ impl PseudonymRekeyInfo {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
-        context: &Context,
     ) -> Self {
-        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from, context);
-        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to, context);
+        let k_from = make_pseudonym_rekey_factor(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor(encryption_secret, session_to);
         Self {
             k: PseudonymRekeyFactor(k_from.0.invert() * k_to.0),
         }
@@ -297,10 +284,9 @@ impl AttributeRekeyInfo {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
-        context: &Context,
     ) -> Self {
-        let k_from = make_attribute_rekey_factor(encryption_secret, session_from, context);
-        let k_to = make_attribute_rekey_factor(encryption_secret, session_to, context);
+        let k_from = make_attribute_rekey_factor(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor(encryption_secret, session_to);
         Self {
             k: AttributeRekeyFactor(k_from.0.invert() * k_to.0),
         }
@@ -316,7 +302,6 @@ impl TranscryptionInfo {
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
-        context: &Context,
     ) -> Self {
         Self {
             pseudonym: PseudonymizationInfo::new(
@@ -326,14 +311,8 @@ impl TranscryptionInfo {
                 session_to,
                 pseudonymization_secret,
                 encryption_secret,
-                context,
             ),
-            attribute: AttributeRekeyInfo::new(
-                session_from,
-                session_to,
-                encryption_secret,
-                context,
-            ),
+            attribute: AttributeRekeyInfo::new(session_from, session_to, encryption_secret),
         }
     }
 }
@@ -341,8 +320,6 @@ impl TranscryptionInfo {
 #[cfg(all(test, not(feature = "legacy")))]
 mod tests {
     use super::*;
-    #[cfg(not(feature = "hmac-derivation"))]
-    use crate::protocol::Mode;
 
     #[test]
     fn degenerate_scalars_are_rejected() {
@@ -356,36 +333,29 @@ mod tests {
     #[test]
     fn factors_are_deterministic_and_input_specific() {
         let secret = Secret::from(b"secret".to_vec());
-        let ctx = Context::default();
-        let a = make_factor(1, &secret, b"a", &ctx);
-        assert_eq!(a, make_factor(1, &secret, b"a", &ctx));
-        assert_ne!(a, make_factor(1, &secret, b"b", &ctx));
-        assert_ne!(a, make_factor(2, &secret, b"a", &ctx));
-        assert_ne!(
-            a,
-            make_factor(1, &Secret::from(b"other".to_vec()), b"a", &ctx)
-        );
+        let a = make_factor(1, &secret, b"a");
+        assert_eq!(a, make_factor(1, &secret, b"a"));
+        assert_ne!(a, make_factor(1, &secret, b"b"));
+        assert_ne!(a, make_factor(2, &secret, b"a"));
+        assert_ne!(a, make_factor(1, &Secret::from(b"other".to_vec()), b"a"));
     }
 
-    /// The protocol context separates deployments: the same secret and identifier give
-    /// unrelated factors under different contexts.
+    /// The derivation is domain-separated with the ciphersuite context, so a factor equals
+    /// `HashToScalar` under `"DeriveFactor-" || contextString` over the length-prefixed input.
+    /// This pins both the DST and the input encoding.
     #[test]
     #[cfg(not(feature = "hmac-derivation"))]
-    fn factors_are_context_specific() {
+    fn factors_use_the_ciphersuite_dst() {
+        use crate::elgamal::arithmetic::hashing::hash_to_scalar;
+
         let secret = Secret::from(b"secret".to_vec());
-        let a = make_factor(1, &secret, b"a", &Context::default());
-        assert_ne!(
-            a,
-            make_factor(1, &secret, b"a", &Context::from_identifier("other"))
+        let expected = hash_to_scalar(
+            b"\x00\x06secret\x01\x00\x02id\x00",
+            b"DeriveFactor-coPRFV1-\x00-ristretto255-SHA512",
         );
-        assert_ne!(
-            a,
-            make_factor(
-                1,
-                &secret,
-                b"a",
-                &Context::new(Mode::VcoPRF, "ristretto255-SHA512")
-            )
+        assert_eq!(
+            make_factor(1, &secret, b"id").to_bytes(),
+            expected.to_bytes()
         );
     }
 
@@ -394,35 +364,22 @@ mod tests {
     #[test]
     #[cfg(not(feature = "hmac-derivation"))]
     fn secret_and_identifier_are_length_prefixed() {
-        let ctx = Context::default();
-        let a = make_factor(1, &Secret::from(b"secretx".to_vec()), b"id", &ctx);
-        let b = make_factor(1, &Secret::from(b"secret".to_vec()), b"xid", &ctx);
+        let a = make_factor(1, &Secret::from(b"secretx".to_vec()), b"id");
+        let b = make_factor(1, &Secret::from(b"secret".to_vec()), b"xid");
         assert_ne!(a, b);
-    }
-
-    /// The HMAC derivation is the libpep 0.13 derivation and ignores the context.
-    #[test]
-    #[cfg(feature = "hmac-derivation")]
-    fn hmac_derivation_ignores_context() {
-        let secret = Secret::from(b"secret".to_vec());
-        assert_eq!(
-            make_factor(1, &secret, b"a", &Context::default()),
-            make_factor(1, &secret, b"a", &Context::from_identifier("other"))
-        );
     }
 
     #[test]
     fn global_contexts_give_identity_factors() {
-        let ctx = Context::default();
         #[cfg(feature = "offline")]
         {
             let secret = EncryptionSecret::from(b"secret".to_vec());
             assert_eq!(
-                make_pseudonym_rekey_factor(&secret, &EncryptionContext::global(), &ctx).0,
+                make_pseudonym_rekey_factor(&secret, &EncryptionContext::global()).0,
                 ScalarNonZero::one()
             );
             assert_eq!(
-                make_attribute_rekey_factor(&secret, &EncryptionContext::global(), &ctx).0,
+                make_attribute_rekey_factor(&secret, &EncryptionContext::global()).0,
                 ScalarNonZero::one()
             );
         }
@@ -430,10 +387,9 @@ mod tests {
         {
             let secret = PseudonymizationSecret::from(b"secret".to_vec());
             assert_eq!(
-                make_pseudonymisation_factor(&secret, &PseudonymizationDomain::global(), &ctx).0,
+                make_pseudonymisation_factor(&secret, &PseudonymizationDomain::global()).0,
                 ScalarNonZero::one()
             );
         }
-        let _ = ctx;
     }
 }

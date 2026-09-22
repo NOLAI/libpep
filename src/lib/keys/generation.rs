@@ -7,7 +7,6 @@ use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret, RekeyFactor,
 };
-use crate::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 
 /// Generate a global key pair of the given secret key type.
@@ -60,18 +59,16 @@ pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
 }
 
 /// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an
-/// [`EncryptionContext`] and an [`EncryptionSecret`], deriving the rekey factors within the
-/// protocol [`Context`].
+/// [`EncryptionContext`] and an [`EncryptionSecret`].
 pub fn make_session_keys(
     global: &GlobalSecretKeys,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> SessionKeys {
     let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys(&global.pseudonym, session, secret, context);
+        make_pseudonym_session_keys(&global.pseudonym, session, secret);
     let (attribute_public, attribute_secret) =
-        make_attribute_session_keys(&global.attribute, session, secret, context);
+        make_attribute_session_keys(&global.attribute, session, secret);
     SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
@@ -92,9 +89,8 @@ pub fn make_pseudonym_session_keys(
     global: &PseudonymGlobalSecretKey,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
-    let k = make_pseudonym_rekey_factor(secret, session, context);
+    let k = make_pseudonym_rekey_factor(secret, session);
     let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -107,9 +103,8 @@ pub fn make_attribute_session_keys(
     global: &AttributeGlobalSecretKey,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-    context: &Context,
 ) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
-    let k = make_attribute_rekey_factor(secret, session, context);
+    let k = make_attribute_rekey_factor(secret, session);
     let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -160,7 +155,7 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(
             *session.pseudonym.public,
@@ -179,8 +174,8 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys(&global_sk, &context, &secret, &Context::default());
-        let session2 = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session1 = make_session_keys(&global_sk, &context, &secret);
+        let session2 = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(session1, session2);
     }
@@ -191,19 +186,8 @@ mod tests {
         let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let ctx = Context::default();
-        let session1 = make_session_keys(
-            &global_sk,
-            &EncryptionContext::from("context1"),
-            &secret,
-            &ctx,
-        );
-        let session2 = make_session_keys(
-            &global_sk,
-            &EncryptionContext::from("context2"),
-            &secret,
-            &ctx,
-        );
+        let session1 = make_session_keys(&global_sk, &EncryptionContext::from("context1"), &secret);
+        let session2 = make_session_keys(&global_sk, &EncryptionContext::from("context2"), &secret);
 
         assert_ne!(session1, session2);
     }
@@ -236,7 +220,7 @@ mod tests {
         let context = EncryptionContext::from("test");
         let secret = EncryptionSecret::from(b"secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret, &Context::default());
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         let json =
             serde_json::to_string(&session.pseudonym.secret).expect("serialization should succeed");

@@ -1,16 +1,30 @@
-//! The protocol [`Context`]: the mode and ciphersuite identifier that every hash in the protocol
-//! is domain-separated with, as in [RFC 9497], Section 3.1, and
-//! [draft-doesburg-cfrg-coprf], Section "Context and Ciphersuite".
+//! The protocol [`Context`]: the mode and ciphersuite identifier that the protocol's hashes are
+//! domain-separated with, as in [RFC 9497], Section 3.1, and [draft-doesburg-cfrg-coprf],
+//! Section "Context and Ciphersuite".
 //!
-//! Parties that exchange data agree on one context. Everything that hashes, i.e. factor
-//! [derivation](crate::factors::derivation) and the
-//! [`hash_to_group` encoding](crate::encodings::hash_to_group), takes a `&Context`, so two
-//! deployments with different identifiers derive unrelated factors and pseudonyms from the same
-//! secrets and inputs.
+//! The context is a property of the ciphersuite, not a per-call parameter. It is fixed for a
+//! build: [`ciphersuite()`] is the context of the ciphersuite this crate implements, and the
+//! protocol's hashes use it internally.
+//!
+//! # Where the context does and does not separate
+//!
+//! Domain separation by context matters where a hash takes **no secret**, so that the hash input
+//! alone determines the output and another protocol hashing the same input on the same group
+//! would get the same element. That is the case for [`hash_to_group`](crate::encodings::hash_to_group),
+//! which is why it takes an explicit `&Context`: the `"coPRFV1-"` prefix is what separates a
+//! pseudonym from an RFC 9497 OPRF evaluation of the same identifier on ristretto255.
+//!
+//! Factor [derivation](crate::factors::derivation) is the opposite case. It hashes the
+//! length-prefixed transcryptor secret together with the label and the length-prefixed domain or
+//! session identifier, so two deployments already derive unrelated factors because their secrets
+//! differ. The context adds only the domain separation tag, so factor derivation does not take a
+//! context: it uses [`ciphersuite()`].
 //!
 //! This is unrelated to the [`contexts`](crate::contexts) module, whose
-//! [`EncryptionContext`](crate::contexts::EncryptionContext) names a session *within* a
-//! deployment.
+//! [`EncryptionContext`](crate::contexts::EncryptionContext) and
+//! [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain) name a session and a domain
+//! *within* a deployment. Those, not the protocol context, are how a deployment separates its own
+//! sessions and domains.
 //!
 //! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 //! [draft-doesburg-cfrg-coprf]: https://datatracker.ietf.org/doc/draft-doesburg-cfrg-coprf/
@@ -83,6 +97,19 @@ impl Default for Context {
     }
 }
 
+/// The context of the ciphersuite this crate implements: [`Mode::CoPRF`] with identifier
+/// [`RISTRETTO255_SHA512`].
+///
+/// This is what the protocol's internal hashes, in particular factor
+/// [derivation](crate::factors::derivation), are domain-separated with. It is fixed for a build
+/// because the ciphersuite is: a deployment separates its own sessions and domains with an
+/// [`EncryptionContext`](crate::contexts::EncryptionContext) and a
+/// [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain), not by varying this.
+#[must_use]
+pub fn ciphersuite() -> Context {
+    Context::from_identifier(RISTRETTO255_SHA512)
+}
+
 impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -108,6 +135,13 @@ mod tests {
             Context::new(Mode::VcoPRF, "x").context_string(),
             b"coPRFV1-\x01-x"
         );
+    }
+
+    #[test]
+    fn ciphersuite_is_the_default_context() {
+        assert_eq!(ciphersuite(), Context::default());
+        assert_eq!(ciphersuite().mode, Mode::CoPRF);
+        assert_eq!(ciphersuite().identifier, RISTRETTO255_SHA512.as_bytes());
     }
 
     #[test]

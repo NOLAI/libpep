@@ -220,18 +220,10 @@ mod tests {
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
 
-        let (attr_public, attr_secret) = make_attribute_session_keys(
-            &attr_global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
-        let (pseudo_public, pseudo_secret) = make_pseudonym_session_keys(
-            &pseudo_global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (attr_public, attr_secret) =
+            make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+        let (pseudo_public, pseudo_secret) =
+            make_pseudonym_session_keys(&pseudo_global_secret, &session, &enc_secret);
 
         SessionKeys {
             attribute: AttributeSessionKeys {

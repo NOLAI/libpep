@@ -603,12 +603,8 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_pseudonym_session_keys(
-            &global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -626,12 +622,8 @@ mod tests {
         let (_, global_secret) = make_attribute_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_attribute_session_keys(
-            &global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (session_public, session_secret) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Attribute::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -649,12 +641,8 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) = make_pseudonym_session_keys(
-            &global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (session_public, _) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let pseudonym = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
@@ -672,12 +660,8 @@ mod tests {
         let (_, global_secret) = make_attribute_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) = make_attribute_session_keys(
-            &global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (session_public, _) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
 
         let attribute = Attribute::random(&mut rng);
         let encrypted = encrypt(&attribute, &session_public, &mut rng);
@@ -694,12 +678,8 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_pseudonym_session_keys(
-            &global_secret,
-            &session,
-            &enc_secret,
-            &crate::protocol::Context::default(),
-        );
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);

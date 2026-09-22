@@ -5,7 +5,6 @@ use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::SessionPublicKeys;
-use libpep::protocol::Context;
 use libpep::transcryptor::DistributedTranscryptor;
 
 #[path = "common/mod.rs"]
@@ -48,7 +47,6 @@ pub fn setup_distributed_system(
                 pseudonymization_secret,
                 encryption_secret,
                 blinding_factor,
-                Context::default(),
             )
         })
         .collect();
