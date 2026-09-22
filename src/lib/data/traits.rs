@@ -1,7 +1,7 @@
 //! Core traits for encryption and decryption operations.
 
-use crate::factors::TranscryptionInfo;
-use crate::factors::{PseudonymizationInfo, RerandomizeFactor};
+use crate::elgamal::arithmetic::group::Group;
+use crate::factors::types::generic::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
 use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
@@ -24,8 +24,11 @@ use rand_core::{CryptoRng, Rng};
 /// encrypt(&json_value, &session_keys, rng);
 /// ```
 pub trait Encryptable: Sized {
+    /// The group the value is encrypted in.
+    type Group: Group;
+
     /// The encrypted version of this type.
-    type EncryptedType: Encrypted<UnencryptedType = Self>;
+    type EncryptedType: Encrypted<UnencryptedType = Self, Group = Self::Group>;
 
     /// The session public key type required for encryption.
     type PublicKeyType;
@@ -52,8 +55,11 @@ pub trait Encryptable: Sized {
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
 pub trait Encrypted: Sized {
+    /// The group the value is encrypted in.
+    type Group: Group;
+
     /// The unencrypted version of this type.
-    type UnencryptedType: Encryptable<EncryptedType = Self>;
+    type UnencryptedType: Encryptable<EncryptedType = Self, Group = Self::Group>;
 
     /// The session secret key type required for decryption.
     type SecretKeyType;
@@ -101,14 +107,14 @@ pub trait Encrypted: Sized {
 
     /// Rerandomize this encrypted value using a known rerandomization factor.
     #[cfg(feature = "elgamal3")]
-    fn rerandomize_known(&self, factor: &RerandomizeFactor) -> Self;
+    fn rerandomize_known(&self, factor: &RerandomizeFactor<Self::Group>) -> Self;
 
     /// Rerandomize this encrypted value using a known rerandomization factor.
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize_known(
         &self,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
-        factor: &RerandomizeFactor,
+        factor: &RerandomizeFactor<Self::Group>,
     ) -> Self;
 }
 
@@ -135,15 +141,15 @@ pub trait Encrypted: Sized {
 /// Pseudonymization applies both a reshuffle operation (to change the pseudonymization domain)
 /// and a rekey operation (to change the encryption context), after rerandomizing the input.
 ///
-/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and [`LongEncryptedPseudonym`](super::long::LongEncryptedPseudonym),
+/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and [`LongEncryptedPseudonym`](type@super::long::LongEncryptedPseudonym),
 /// as attributes cannot be reshuffled (they have no pseudonymization domain).
 pub trait Pseudonymizable: Encrypted {
     /// Reshuffle and rekey without rerandomization (RSK). Not for untrusted input.
-    fn pseudonymize_raw(&self, info: &PseudonymizationInfo) -> Self;
+    fn pseudonymize_raw(&self, info: &PseudonymizationInfo<Self::Group>) -> Self;
 
     /// Rerandomize, reshuffle and rekey (RRSK) from one domain and context to another.
     #[cfg(feature = "elgamal3")]
-    fn pseudonymize<R>(&self, info: &PseudonymizationInfo, rng: &mut R) -> Self
+    fn pseudonymize<R>(&self, info: &PseudonymizationInfo<Self::Group>, rng: &mut R) -> Self
     where
         R: Rng + CryptoRng,
     {
@@ -155,7 +161,7 @@ pub trait Pseudonymizable: Encrypted {
     #[cfg(not(feature = "elgamal3"))]
     fn pseudonymize<R>(
         &self,
-        info: &PseudonymizationInfo,
+        info: &PseudonymizationInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self
@@ -211,11 +217,11 @@ pub trait Rekeyable: Encrypted {
 /// - For JSON values: recursively transcrypts all nested values
 pub trait Transcryptable: Encrypted {
     /// Transcrypt without rerandomization. Not for untrusted input.
-    fn transcrypt_raw(&self, info: &TranscryptionInfo) -> Self;
+    fn transcrypt_raw(&self, info: &TranscryptionInfo<Self::Group>) -> Self;
 
     /// Rerandomize and transcrypt (RRSK for pseudonyms, RRK for attributes).
     #[cfg(feature = "elgamal3")]
-    fn transcrypt<R>(&self, info: &TranscryptionInfo, rng: &mut R) -> Self
+    fn transcrypt<R>(&self, info: &TranscryptionInfo<Self::Group>, rng: &mut R) -> Self
     where
         R: Rng + CryptoRng,
     {
@@ -227,7 +233,7 @@ pub trait Transcryptable: Encrypted {
     #[cfg(not(feature = "elgamal3"))]
     fn transcrypt<R>(
         &self,
-        info: &TranscryptionInfo,
+        info: &TranscryptionInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self
