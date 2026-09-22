@@ -816,7 +816,6 @@ impl<G: InvertibleEncoding> crate::data::traits::HasStructure for EncryptedPEPJS
 }
 
 #[cfg(feature = "batch")]
-#[cfg(feature = "batch")]
 impl<G: InvertibleEncoding> BatchEncryptable for PEPJSONValue<G> {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         if items.is_empty() {
