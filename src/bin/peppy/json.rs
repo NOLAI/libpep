@@ -11,7 +11,6 @@ use libpep::factors::TranscryptionInfo;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::SessionPublicKeys;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
-use libpep::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -103,12 +102,7 @@ fn document(raw: &str) -> Result<serde_json::Value> {
     serde_json::from_str(&text).map_err(|e| io::Error::input(format!("value: not valid JSON: {e}")))
 }
 
-pub fn run<R: Rng + CryptoRng>(
-    cmd: Json,
-    protocol: &Context,
-    rng: &mut R,
-    out: &mut Output,
-) -> Result<()> {
+pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Json::Encrypt {
             keys,
@@ -165,7 +159,6 @@ pub fn run<R: Rng + CryptoRng>(
                 &io::context(to_context.as_deref())?,
                 &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::encryption_secret(&encryption_secret)?,
-                protocol,
             );
             let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;

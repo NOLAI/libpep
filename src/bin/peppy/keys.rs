@@ -21,7 +21,6 @@ use libpep::keys::{
     PseudonymGlobalSecretKey, PseudonymSessionKeys, PseudonymSessionSecretKey, PublicKey,
     SecretKey,
 };
-use libpep::protocol::Context;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -115,12 +114,7 @@ pub enum Distributed {
     },
 }
 
-pub fn run<R: Rng + CryptoRng>(
-    cmd: Keys,
-    protocol: &Context,
-    rng: &mut R,
-    out: &mut Output,
-) -> Result<()> {
+pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Keys::Global(Global::Generate) => {
             let (public, secret) = make_global_keys(rng);
@@ -153,8 +147,7 @@ pub fn run<R: Rng + CryptoRng>(
             if let Some(global) = pseudonym_global_secret {
                 let global: PseudonymGlobalSecretKey =
                     io::secret_key(&global, "pseudonym global secret key")?;
-                let (public, secret) =
-                    make_pseudonym_session_keys(&global, &context, &secret, protocol);
+                let (public, secret) = make_pseudonym_session_keys(&global, &context, &secret);
                 out.value("pseudonym_public_key", public.to_hex());
                 out.value("pseudonym_secret_key", secret.value().to_hex());
                 pseudonym = Some(PseudonymSessionKeys { public, secret });
@@ -163,8 +156,7 @@ pub fn run<R: Rng + CryptoRng>(
             if let Some(global) = attribute_global_secret {
                 let global: AttributeGlobalSecretKey =
                     io::secret_key(&global, "attribute global secret key")?;
-                let (public, secret) =
-                    make_attribute_session_keys(&global, &context, &secret, protocol);
+                let (public, secret) = make_attribute_session_keys(&global, &context, &secret);
                 out.value("attribute_public_key", public.to_hex());
                 out.value("attribute_secret_key", secret.value().to_hex());
                 attribute = Some(AttributeSessionKeys { public, secret });
@@ -209,8 +201,8 @@ pub fn run<R: Rng + CryptoRng>(
             let secret = io::encryption_secret(&secret)?;
             let context = io::context(Some(&context))?;
             let shares = make_session_key_shares(
-                &make_pseudonym_rekey_factor(&secret, &context, protocol),
-                &make_attribute_rekey_factor(&secret, &context, protocol),
+                &make_pseudonym_rekey_factor(&secret, &context),
+                &make_attribute_rekey_factor(&secret, &context),
                 &blinding,
             );
             out.value("pseudonym_share", shares.pseudonym.to_hex());

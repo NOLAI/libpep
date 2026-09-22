@@ -5,7 +5,7 @@ use clap::Subcommand;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::encodings::hash_to_group;
-use libpep::protocol::Context;
+use libpep::protocol::{Context, RISTRETTO255_SHA512};
 use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 
@@ -35,7 +35,13 @@ pub enum Point {
     FromHash { text: String },
     /// The hash_to_group encoding of an identifier: hash_to_ristretto255 domain-separated with
     /// the protocol context. This is how an identifier becomes an origin pseudonym.
-    HashToGroup { identifier: String },
+    HashToGroup {
+        identifier: String,
+        /// The protocol context identifier (ciphersuite) to domain-separate the hash with.
+        /// Every party hashing the same identifier must use the same value.
+        #[arg(long, value_name = "IDENTIFIER", default_value = RISTRETTO255_SHA512)]
+        protocol: String,
+    },
 }
 
 pub fn run_scalar<R: Rng + CryptoRng>(cmd: Scalar, rng: &mut R, out: &mut Output) -> Result<()> {
@@ -59,12 +65,7 @@ pub fn run_scalar<R: Rng + CryptoRng>(cmd: Scalar, rng: &mut R, out: &mut Output
     Ok(())
 }
 
-pub fn run_point<R: Rng + CryptoRng>(
-    cmd: Point,
-    protocol: &Context,
-    rng: &mut R,
-    out: &mut Output,
-) -> Result<()> {
+pub fn run_point<R: Rng + CryptoRng>(cmd: Point, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Point::Random => out.value("point", GroupElement::random(rng).to_hex()),
         Point::Base { scalar } => out.value("point", (io::scalar(&scalar, "scalar")? * G).to_hex()),
@@ -72,11 +73,15 @@ pub fn run_point<R: Rng + CryptoRng>(
             let digest: [u8; 64] = Sha512::digest(io::read_arg(&text)?.as_bytes()).into();
             out.value("point", GroupElement::from_hash(&digest).to_hex());
         }
-        Point::HashToGroup { identifier } => {
+        Point::HashToGroup {
+            identifier,
+            protocol,
+        } => {
             let identifier = io::read_arg(&identifier)?;
+            let context = Context::from_identifier(protocol);
             out.value(
                 "point",
-                hash_to_group(identifier.as_bytes(), protocol).to_hex(),
+                hash_to_group(identifier.as_bytes(), &context).to_hex(),
             );
         }
     }
