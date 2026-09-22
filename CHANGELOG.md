@@ -30,10 +30,12 @@ a major change against the published 0.13.0.
   `"coPRFV1-" || I2OSP(mode, 1) || "-" || identifier`) is a parameter of `Transcryptor::new`,
   `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
   `make_*session_keys`. `Context::default()` is `ristretto255-SHA512` in `Mode::CoPRF`. Python
-  and JavaScript take it as an optional trailing `context` argument.
+  and JavaScript take it as an optional trailing `context` argument (JavaScript accepts a
+  `Context` instance or a plain `{mode, identifier}` object).
 - `hmac` is an optional dependency, pulled in by `legacy` and `hmac-derivation` only.
 - `peppy`: the global `--protocol <IDENTIFIER>` option sets the protocol context (default
-  `ristretto255-SHA512`).
+  `ristretto255-SHA512`); `--context` remains the encryption context (session) of `keys session`
+  and the transcryption commands.
 - `pseudonymize`, `rekey` and `transcrypt` (functions, `Transcryptor` and `DistributedTranscryptor`
   methods, traits, and the batch variants) take a random number generator and, without the
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
