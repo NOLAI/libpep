@@ -35,13 +35,14 @@ test('Context string', () => {
     expect(custom.toString()).toBe("coPRFV1-01-my-deployment");
 });
 
-test('Transcryptor context', () => {
-    const ctx = new Context("my-deployment");
-    expect(new Transcryptor("p", "e").context.equals(Context.default())).toBe(true);
-    expect(new Transcryptor("p", "e", ctx).context.equals(ctx)).toBe(true);
-    // A plain object with the same properties is accepted as a context too.
-    expect(new Transcryptor("p", "e", {mode: 0, identifier: "my-deployment"}).context.equals(ctx)).toBe(true);
-    expect(() => new Transcryptor("p", "e", {mode: 7, identifier: "x"})).toThrow();
+test('Transcryptor takes no context', () => {
+    // The protocol context is a property of the ciphersuite, so a transcryptor is constructed
+    // from its secrets alone and derives the same factors as the free functions.
+    const t = new Transcryptor("p", "e");
+    const sessionA = new EncryptionContext("session-a");
+    const sessionB = new EncryptionContext("session-b");
+    expect(t.pseudonymRekeyInfo(sessionA, sessionB).k.scalar().toHex())
+        .toBe(new Transcryptor("p", "e").pseudonymRekeyInfo(sessionA, sessionB).k.scalar().toHex());
 });
 
 test('expand_message_xmd RFC 9380 vector', () => {
@@ -74,31 +75,38 @@ test('lizard round trip', () => {
     expect(() => encodeLizard(new Uint8Array(3))).toThrow();
 });
 
-test('Contexts separate factors and session keys', () => {
+test('Secrets, domains and sessions separate factors and session keys', () => {
+    // Factor derivation takes no protocol context: the secret is part of its hash input, so
+    // different secrets already give unrelated factors, and the domain and session separate
+    // within a deployment.
     const globalKeys = makeGlobalKeys();
     const encSecret = new EncryptionSecret(utf8("encryption secret"));
     const pseudoSecret = new PseudonymizationSecret(utf8("pseudonymization secret"));
+    const otherEnc = new EncryptionSecret(utf8("other encryption secret"));
+    const otherPseudo = new PseudonymizationSecret(utf8("other pseudonymization secret"));
     const sessionA = new EncryptionContext("session-a");
     const sessionB = new EncryptionContext("session-b");
     const domainA = new PseudonymizationDomain("hospital");
     const domainB = new PseudonymizationDomain("research");
 
-    const contexts = [Context.default(), new Context("another-deployment"), Context.withMode(Mode.VcoPRF, "ristretto255-SHA512")];
-    const keys = contexts.map((ctx) => makeSessionKeys(globalKeys.secret, sessionA, encSecret, ctx));
-    const infos = contexts.map((ctx) => new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, encSecret, ctx));
+    const keys = makeSessionKeys(globalKeys.secret, sessionA, encSecret);
+    const info = new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, encSecret);
 
-    expect(keys[0].pseudonym.secret[0].toHex())
+    // Deterministic in the secrets, the domains and the sessions.
+    expect(keys.pseudonym.secret[0].toHex())
         .toBe(makeSessionKeys(globalKeys.secret, sessionA, encSecret).pseudonym.secret[0].toHex());
-    expect(infos[0].pseudonym.s.scalar().toHex())
+    expect(info.pseudonym.s.scalar().toHex())
         .toBe(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, encSecret).pseudonym.s.scalar().toHex());
 
-    for (let i = 0; i < contexts.length; i++) {
-        for (let j = 0; j < i; j++) {
-            expect(keys[i].pseudonym.secret[0].toHex()).not.toBe(keys[j].pseudonym.secret[0].toHex());
-            expect(keys[i].attribute.secret[0].toHex()).not.toBe(keys[j].attribute.secret[0].toHex());
-            expect(infos[i].pseudonym.s.scalar().toHex()).not.toBe(infos[j].pseudonym.s.scalar().toHex());
-            expect(infos[i].pseudonym.k.scalar().toHex()).not.toBe(infos[j].pseudonym.k.scalar().toHex());
-            expect(infos[i].attribute.k.scalar().toHex()).not.toBe(infos[j].attribute.k.scalar().toHex());
-        }
-    }
+    // A different secret separates.
+    expect(makeSessionKeys(globalKeys.secret, sessionA, otherEnc).pseudonym.secret[0].toHex())
+        .not.toBe(keys.pseudonym.secret[0].toHex());
+    expect(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, otherPseudo, otherEnc).pseudonym.s.scalar().toHex())
+        .not.toBe(info.pseudonym.s.scalar().toHex());
+
+    // A different session or domain separates.
+    expect(makeSessionKeys(globalKeys.secret, sessionB, encSecret).pseudonym.secret[0].toHex())
+        .not.toBe(keys.pseudonym.secret[0].toHex());
+    expect(new TranscryptionInfo(domainA, new PseudonymizationDomain("other"), sessionA, sessionB, pseudoSecret, encSecret).pseudonym.s.scalar().toHex())
+        .not.toBe(info.pseudonym.s.scalar().toHex());
 });
