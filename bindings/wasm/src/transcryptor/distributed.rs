@@ -19,7 +19,6 @@ use crate::keys::types::{
 use crate::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
-use crate::protocol::{context_or_default, WASMContext};
 use derive_more::{Deref, From, Into};
 #[cfg(all(feature = "long", feature = "batch"))]
 use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
@@ -42,26 +41,18 @@ pub struct WASMDistributedTranscryptor(pub(crate) DistributedTranscryptor);
 #[wasm_bindgen(js_class = DistributedTranscryptor)]
 impl WASMDistributedTranscryptor {
     /// A distributed transcryptor with the given secrets and blinding factor, deriving factors
-    /// within the protocol `context` (the default context if omitted).
+    ///.
     #[wasm_bindgen(constructor)]
     pub fn new(
         pseudonymisation_secret: &str,
         rekeying_secret: &str,
         blinding_factor: &WASMBlindingFactor,
-        context: Option<js_sys::Object>,
     ) -> Self {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
             EncryptionSecret::from(rekeying_secret.as_bytes().into()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
-            context_or_default(context.as_ref()),
         ))
-    }
-
-    /// The protocol context this transcryptor derives its factors in.
-    #[wasm_bindgen(getter)]
-    pub fn context(&self) -> WASMContext {
-        WASMContext(self.0.context().clone())
     }
 
     #[wasm_bindgen(js_name = pseudonymSessionKeyShare)]

@@ -14,7 +14,6 @@ use crate::factors::types::{
 };
 use crate::keys::distribution::PyBlindingFactor;
 use crate::keys::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
-use crate::protocol::{context_or_default, PyContext};
 use derive_more::{Deref, From, Into};
 use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
@@ -36,27 +35,19 @@ pub struct PyDistributedTranscryptor(pub(crate) DistributedTranscryptor);
 #[pymethods]
 impl PyDistributedTranscryptor {
     /// A distributed transcryptor with the given secrets and blinding factor, deriving factors
-    /// within the protocol `context` (the default context if omitted).
+    ///.
     #[new]
-    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret, blinding_factor, context = None))]
+    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret, blinding_factor))]
     fn new(
         pseudonymisation_secret: &str,
         rekeying_secret: &str,
         blinding_factor: &PyBlindingFactor,
-        context: Option<&PyContext>,
     ) -> Self {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
             EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
-            context_or_default(context),
         ))
-    }
-
-    /// The protocol context this transcryptor derives its factors in.
-    #[getter]
-    fn context(&self) -> PyContext {
-        PyContext(self.0.context().clone())
     }
 
     #[pyo3(name = "pseudonym_session_key_share")]

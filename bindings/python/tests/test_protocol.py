@@ -34,10 +34,14 @@ class TestContext(unittest.TestCase):
         self.assertNotEqual(Context("my-deployment"), ctx)
         self.assertEqual(len({ctx, Context("my-deployment", Mode.VcoPRF)}), 1)
 
-    def test_transcryptor_context(self):
-        ctx = Context("my-deployment")
-        self.assertEqual(Transcryptor("p", "e").context, Context())
-        self.assertEqual(Transcryptor("p", "e", ctx).context, ctx)
+    def test_transcryptor_takes_no_context(self):
+        # The protocol context is a property of the ciphersuite, so a transcryptor is built
+        # from its secrets alone.
+        session_a, session_b = EncryptionContext("session-a"), EncryptionContext("session-b")
+        self.assertEqual(
+            Transcryptor("p", "e").pseudonym_rekey_info(session_a, session_b).k.scalar().to_hex(),
+            Transcryptor("p", "e").pseudonym_rekey_info(session_a, session_b).k.scalar().to_hex(),
+        )
 
 
 class TestHashing(unittest.TestCase):
@@ -80,40 +84,53 @@ class TestEncodings(unittest.TestCase):
             encode_lizard(b"too short")
 
 
-class TestContextSeparation(unittest.TestCase):
-    def test_factors_and_session_keys_differ_per_context(self):
+class TestSeparation(unittest.TestCase):
+    def test_secrets_domains_and_sessions_separate_factors_and_keys(self):
+        # Factor derivation takes no protocol context: the secret is part of its hash input,
+        # so different secrets already give unrelated factors, and the domain and the session
+        # separate within a deployment.
         _, global_secret = make_global_keys()
         enc_secret = EncryptionSecret(b"encryption secret")
         pseudo_secret = PseudonymizationSecret(b"pseudonymization secret")
+        other_enc = EncryptionSecret(b"other encryption secret")
+        other_pseudo = PseudonymizationSecret(b"other pseudonymization secret")
         session_a = EncryptionContext("session-a")
         session_b = EncryptionContext("session-b")
         domain_a = PseudonymizationDomain("hospital")
         domain_b = PseudonymizationDomain("research")
 
-        contexts = [Context(), Context("another-deployment"), Context("ristretto255-SHA512", Mode.VcoPRF)]
-        keys = [make_session_keys(global_secret, session_a, enc_secret, ctx) for ctx in contexts]
-        infos = [
-            TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, enc_secret, ctx)
-            for ctx in contexts
-        ]
+        keys = make_session_keys(global_secret, session_a, enc_secret)
+        info = TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, enc_secret)
 
-        # Determinism, and the default context is the omitted argument.
+        # Deterministic in the secrets, the domains and the sessions.
         self.assertEqual(
-            keys[0].pseudonym.public.to_hex(),
+            keys.pseudonym.public.to_hex(),
             make_session_keys(global_secret, session_a, enc_secret).pseudonym.public.to_hex(),
         )
         self.assertEqual(
-            infos[0].pseudonym.s.scalar().to_hex(),
+            info.pseudonym.s.scalar().to_hex(),
             TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, enc_secret).pseudonym.s.scalar().to_hex(),
         )
 
-        for i in range(len(contexts)):
-            for j in range(i):
-                self.assertNotEqual(keys[i].pseudonym.public.to_hex(), keys[j].pseudonym.public.to_hex())
-                self.assertNotEqual(keys[i].attribute.public.to_hex(), keys[j].attribute.public.to_hex())
-                self.assertNotEqual(infos[i].pseudonym.s.scalar().to_hex(), infos[j].pseudonym.s.scalar().to_hex())
-                self.assertNotEqual(infos[i].pseudonym.k.scalar().to_hex(), infos[j].pseudonym.k.scalar().to_hex())
-                self.assertNotEqual(infos[i].attribute.k.scalar().to_hex(), infos[j].attribute.k.scalar().to_hex())
+        # A different secret separates.
+        self.assertNotEqual(
+            keys.pseudonym.public.to_hex(),
+            make_session_keys(global_secret, session_a, other_enc).pseudonym.public.to_hex(),
+        )
+        self.assertNotEqual(
+            info.pseudonym.s.scalar().to_hex(),
+            TranscryptionInfo(domain_a, domain_b, session_a, session_b, other_pseudo, other_enc).pseudonym.s.scalar().to_hex(),
+        )
+
+        # A different session or domain separates.
+        self.assertNotEqual(
+            keys.pseudonym.public.to_hex(),
+            make_session_keys(global_secret, session_b, enc_secret).pseudonym.public.to_hex(),
+        )
+        self.assertNotEqual(
+            info.pseudonym.s.scalar().to_hex(),
+            TranscryptionInfo(domain_a, PseudonymizationDomain("other"), session_a, session_b, pseudo_secret, enc_secret).pseudonym.s.scalar().to_hex(),
+        )
 
 
 if __name__ == "__main__":

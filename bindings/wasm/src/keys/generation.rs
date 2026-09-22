@@ -5,7 +5,6 @@ use crate::contexts::WASMEncryptionContext;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::WASMEncryptionSecret;
-use crate::protocol::context_or_default;
 use libpep::keys::generation::*;
 use libpep::keys::types::*;
 use libpep::keys::SecretKey;
@@ -56,13 +55,11 @@ pub fn wasm_make_pseudonym_session_keys(
     global: &WASMPseudonymGlobalSecretKey,
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
-    context: Option<js_sys::Object>,
 ) -> WASMPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
-        &context_or_default(context.as_ref()),
     );
     WASMPseudonymSessionKeyPair::new(
         WASMPseudonymSessionPublicKey(WASMGroupElement::from(*public)),
@@ -76,13 +73,11 @@ pub fn wasm_make_attribute_session_keys(
     global: &WASMAttributeGlobalSecretKey,
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
-    context: Option<js_sys::Object>,
 ) -> WASMAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
-        &context_or_default(context.as_ref()),
     );
     WASMAttributeSessionKeyPair::new(
         WASMAttributeSessionPublicKey(WASMGroupElement::from(*public)),
@@ -96,7 +91,6 @@ pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKeys,
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
-    context: Option<js_sys::Object>,
 ) -> WASMSessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {
@@ -105,7 +99,6 @@ pub fn wasm_make_session_keys(
         },
         &session.0,
         &secret.0,
-        &context_or_default(context.as_ref()),
     );
     keys.into()
 }
