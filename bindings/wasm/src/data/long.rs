@@ -103,36 +103,7 @@ pub fn wasm_rekey_long_pseudonym_batch(
         .collect())
 }
 
-/// A pair of long encrypted pseudonyms and attributes for batch transcryption.
-#[wasm_bindgen(js_name = LongEncryptedRecord)]
-pub struct WASMLongEncryptedRecord {
-    pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-    attributes: Vec<WASMLongEncryptedAttribute>,
-}
-
-#[wasm_bindgen(js_class = "LongEncryptedRecord")]
-impl WASMLongEncryptedRecord {
-    #[wasm_bindgen(constructor)]
-    pub fn new(
-        pseudonyms: Vec<WASMLongEncryptedPseudonym>,
-        attributes: Vec<WASMLongEncryptedAttribute>,
-    ) -> Self {
-        Self {
-            pseudonyms,
-            attributes,
-        }
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn pseudonyms(&self) -> Vec<WASMLongEncryptedPseudonym> {
-        self.pseudonyms.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn attributes(&self) -> Vec<WASMLongEncryptedAttribute> {
-        self.attributes.clone()
-    }
-}
+use crate::data::records::WASMLongEncryptedRecord;
 
 #[cfg(feature = "elgamal3")]
 /// Batch transcryption of long encrypted data.
@@ -151,10 +122,7 @@ pub fn wasm_transcrypt_long_batch(
     let mut rng = rand::rng();
     let mut enc: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
-        .map(|pair| LongEncryptedRecord {
-            pseudonyms: pair.pseudonyms.into_iter().map(|p| p.0).collect(),
-            attributes: pair.attributes.into_iter().map(|a| a.0).collect(),
-        })
+        .map(LongEncryptedRecord::from)
         .collect();
     let info = TranscryptionInfo {
         pseudonym: transcryption_info.0.pseudonym,
@@ -165,18 +133,7 @@ pub fn wasm_transcrypt_long_batch(
     Ok(result
         .into_vec()
         .into_iter()
-        .map(|rec| WASMLongEncryptedRecord {
-            pseudonyms: rec
-                .pseudonyms
-                .into_iter()
-                .map(WASMLongEncryptedPseudonym)
-                .collect(),
-            attributes: rec
-                .attributes
-                .into_iter()
-                .map(WASMLongEncryptedAttribute)
-                .collect(),
-        })
+        .map(WASMLongEncryptedRecord::from)
         .collect())
 }
 
@@ -199,10 +156,7 @@ pub fn wasm_transcrypt_long_batch(
     let mut rng = rand::rng();
     let mut enc: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
-        .map(|pair| LongEncryptedRecord {
-            pseudonyms: pair.pseudonyms.into_iter().map(|p| p.0).collect(),
-            attributes: pair.attributes.into_iter().map(|a| a.0).collect(),
-        })
+        .map(LongEncryptedRecord::from)
         .collect();
     let info = TranscryptionInfo {
         pseudonym: transcryption_info.0.pseudonym,
@@ -213,17 +167,6 @@ pub fn wasm_transcrypt_long_batch(
     Ok(result
         .into_vec()
         .into_iter()
-        .map(|rec| WASMLongEncryptedRecord {
-            pseudonyms: rec
-                .pseudonyms
-                .into_iter()
-                .map(WASMLongEncryptedPseudonym)
-                .collect(),
-            attributes: rec
-                .attributes
-                .into_iter()
-                .map(WASMLongEncryptedAttribute)
-                .collect(),
-        })
+        .map(WASMLongEncryptedRecord::from)
         .collect())
 }
