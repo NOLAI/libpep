@@ -12,6 +12,7 @@ use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
+use crate::protocol::{context_or_default, PyContext};
 use derive_more::{Deref, From, Into};
 use libpep::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret,
@@ -31,12 +32,26 @@ pub struct PyTranscryptor(pub(crate) Transcryptor);
 
 #[pymethods]
 impl PyTranscryptor {
+    /// A transcryptor with the given secrets, deriving factors within the protocol `context`
+    /// (the default context if omitted).
     #[new]
-    fn new(pseudonymisation_secret: &str, rekeying_secret: &str) -> Self {
+    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret, context = None))]
+    fn new(
+        pseudonymisation_secret: &str,
+        rekeying_secret: &str,
+        context: Option<&PyContext>,
+    ) -> Self {
         Self(Transcryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
             EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
+            context_or_default(context),
         ))
+    }
+
+    /// The protocol context this transcryptor derives its factors in.
+    #[getter]
+    fn context(&self) -> PyContext {
+        PyContext(self.0.context().clone())
     }
 
     #[pyo3(name = "attribute_rekey_info")]

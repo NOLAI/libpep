@@ -15,6 +15,7 @@ use crate::factors::types::{
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
+use crate::protocol::{context_or_default, WASMContext};
 use derive_more::{Deref, From, Into};
 #[cfg(all(feature = "long", feature = "batch"))]
 use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
@@ -35,12 +36,25 @@ pub struct WASMTranscryptor(pub(crate) Transcryptor);
 
 #[wasm_bindgen(js_class = Transcryptor)]
 impl WASMTranscryptor {
+    /// A transcryptor with the given secrets, deriving factors within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
-    pub fn new(pseudonymisation_secret: &str, rekeying_secret: &str) -> Self {
+    pub fn new(
+        pseudonymisation_secret: &str,
+        rekeying_secret: &str,
+        context: Option<js_sys::Object>,
+    ) -> Self {
         Self(Transcryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
             EncryptionSecret::from(rekeying_secret.as_bytes().into()),
+            context_or_default(context.as_ref()),
         ))
+    }
+
+    /// The protocol context this transcryptor derives its factors in.
+    #[wasm_bindgen(getter)]
+    pub fn context(&self) -> WASMContext {
+        WASMContext(self.0.context().clone())
     }
 
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
