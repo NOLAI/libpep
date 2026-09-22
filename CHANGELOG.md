@@ -27,15 +27,21 @@ a major change against the published 0.13.0.
   `hmac-derivation` feature (mutually exclusive with `legacy`). The `legacy` derivation is
   unchanged.
 - A protocol `Context` (`protocol::Context`: mode and ciphersuite identifier, context string
-  `"coPRFV1-" || I2OSP(mode, 1) || "-" || identifier`) is a parameter of `Transcryptor::new`,
-  `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
-  `make_*session_keys`. `Context::default()` is `ristretto255-SHA512` in `Mode::CoPRF`. Python
-  and JavaScript take it as an optional trailing `context` argument (JavaScript accepts a
-  `Context` instance or a plain `{mode, identifier}` object).
+  `"coPRFV1-" || I2OSP(mode, 1) || "-" || identifier`) domain-separates the protocol's hashes. It
+  is a property of the ciphersuite, not a parameter: `protocol::ciphersuite()` is the context of
+  the ciphersuite this crate implements, and factor derivation uses it internally. It is passed
+  explicitly only to `encodings::hash_to_group`, the one hash that takes no secret and where the
+  `"coPRFV1-"` prefix is what separates a pseudonym from an RFC 9497 OPRF evaluation of the same
+  identifier on the same group. `Transcryptor::new`, `DistributedTranscryptor::new`, the
+  `*Info::new` constructors, `make_*_factor` and `make_*session_keys` take no context, in Rust or
+  in the bindings: the transcryptor secret is already part of the derivation's hash input, so
+  deployments with different secrets derive unrelated factors, and the domain and session separate
+  within a deployment.
 - `hmac` is an optional dependency, pulled in by `legacy` and `hmac-derivation` only.
-- `peppy`: the global `--protocol <IDENTIFIER>` option sets the protocol context (default
-  `ristretto255-SHA512`); `--context` remains the encryption context (session) of `keys session`
-  and the transcryption commands.
+- `peppy`: `point hash-to-group` takes a `--protocol <IDENTIFIER>` option (default
+  `ristretto255-SHA512`), the ciphersuite context its hash is domain-separated with; no other
+  command takes one. `--context` remains the encryption context (session) of `keys session` and
+  the transcryption commands.
 - `pseudonymize`, `rekey` and `transcrypt` (functions, `Transcryptor` and `DistributedTranscryptor`
   methods, traits, and the batch variants) take a random number generator and, without the
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
@@ -64,8 +70,8 @@ a major change against the published 0.13.0.
   `decode_lizard` (`GroupElement::from_lizard`/`to_lizard` wrap them), and `encode_oaep` and
   `decode_oaep` as stubs until a Weierstrass curve ciphersuite exists. The module documents the
   property every encoding must have (no known discrete-log relations; `x * G` is forbidden).
-- `protocol::Context` and `protocol::Mode`, with `Context::context_string()` and `Context::dst()`.
-- `Transcryptor::context()`.
+- `protocol::Context` and `protocol::Mode`, with `Context::context_string()` and `Context::dst()`,
+  and `protocol::ciphersuite()`, the context of the ciphersuite this crate implements.
 - Python: `libpep.protocol` (`Context`, `Mode`), `libpep.encodings` (`hash_to_group`,
   `encode_lizard`, `decode_lizard`) and `libpep.elgamal.arithmetic.hashing`
   (`expand_message_xmd_sha512`, `hash_to_group`, `hash_to_scalar`). JavaScript: `Context`,
