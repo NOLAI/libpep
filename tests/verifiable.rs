@@ -1224,6 +1224,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
         &gsk2,
         &EncryptionContext::from("other-session"),
         &enc_secret2,
+        &Context::default(),
     );
     let foreign_item = encrypt(&Pseudonym::random(rng), &other_session_pk, rng);
 
