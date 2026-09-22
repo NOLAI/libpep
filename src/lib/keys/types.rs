@@ -117,3 +117,44 @@ pub struct AttributeSessionPublicKey(pub(crate) GroupElement);
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct AttributeSessionSecretKey(pub(crate) ScalarNonZero);
+
+// Session public keys travel with a batch so downstream operations know the
+// recipient public key. Converting a key mirrors the math behind ciphertext
+// rekeying, but acts on the *key* itself; the methods are named `convert` to
+// distinguish them from message-level rekeying.
+#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
+impl PseudonymSessionPublicKey {
+    /// Convert this session public key to its rekeyed counterpart by applying
+    /// a pseudonym rekey factor. The new key is `factor*self`.
+    pub fn convert(&self, factor: &crate::factors::PseudonymRekeyFactor) -> Self {
+        use crate::factors::types::RekeyFactor;
+        Self(factor.scalar() * self.0)
+    }
+}
+
+#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
+impl AttributeSessionPublicKey {
+    /// Convert this session public key to its rekeyed counterpart by applying
+    /// an attribute rekey factor. The new key is `factor*self`.
+    pub fn convert(&self, factor: &crate::factors::AttributeRekeyFactor) -> Self {
+        use crate::factors::types::RekeyFactor;
+        Self(factor.scalar() * self.0)
+    }
+}
+
+#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
+impl SessionPublicKeys {
+    /// Convert this session public key bundle to its rekeyed counterpart, applying the
+    /// pseudonym rekey factor to the pseudonym half and the attribute rekey
+    /// factor to the attribute half.
+    pub fn convert(
+        &self,
+        pseudonym: &crate::factors::PseudonymRekeyFactor,
+        attribute: &crate::factors::AttributeRekeyFactor,
+    ) -> Self {
+        Self {
+            pseudonym: self.pseudonym.convert(pseudonym),
+            attribute: self.attribute.convert(attribute),
+        }
+    }
+}

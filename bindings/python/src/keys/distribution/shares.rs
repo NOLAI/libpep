@@ -13,6 +13,7 @@ use libpep::client::distributed::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
+use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use libpep::keys::distribution::*;
 use libpep::keys::*;
 use pyo3::prelude::*;
@@ -350,8 +351,6 @@ pub fn py_make_attribute_session_key_share(
     rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PyAttributeSessionKeyShare {
-    use libpep::factors::types::AttributeRekeyFactor;
-    use libpep::keys::distribution::make_attribute_session_key_share;
     PyAttributeSessionKeyShare(make_attribute_session_key_share(
         &AttributeRekeyFactor::from(rekey_factor.0),
         &blinding_factor.0,
@@ -366,8 +365,6 @@ pub fn py_make_session_key_shares(
     attribute_rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PySessionKeyShares {
-    use libpep::factors::types::{AttributeRekeyFactor, PseudonymRekeyFactor};
-    use libpep::keys::distribution::make_session_key_shares;
     let shares = make_session_key_shares(
         &PseudonymRekeyFactor::from(pseudonym_rekey_factor.0),
         &AttributeRekeyFactor::from(attribute_rekey_factor.0),

@@ -402,6 +402,7 @@ pub fn wasm_encrypt_json_batch(
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(encrypted
+        .into_items()
         .into_iter()
         .map(WASMEncryptedPEPJSONValue)
         .collect())
