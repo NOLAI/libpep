@@ -53,7 +53,7 @@ use libpep::keys::{
     make_attribute_session_keys, make_pseudonym_session_keys, AttributeGlobalSecretKey,
     PseudonymGlobalSecretKey,
 };
-use libpep::protocol::{Context, Mode};
+use libpep::protocol::Context;
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
@@ -150,8 +150,7 @@ fn vectors_single_pseudonym(out: &mut String, context: &Context) {
 
     let (pk_from, _sk_from) =
         make_pseudonym_session_keys(&global_secret, &session_from, &enc_secret);
-    let (_pk_to, sk_to) =
-        make_pseudonym_session_keys(&global_secret, &session_to, &enc_secret);
+    let (_pk_to, sk_to) = make_pseudonym_session_keys(&global_secret, &session_to, &enc_secret);
 
     // The identifier is encoded with hash_to_group, the encoding of the draft's enc-hash.
     let identifier = b"patient-42";
@@ -238,14 +237,10 @@ fn vectors_batch(out: &mut String, context: &Context) {
     let y_attr = ScalarNonZero::random(&mut rng);
     let attribute_global = AttributeGlobalSecretKey::from_scalar(y_attr);
 
-    let (pk_from, _) =
-        make_pseudonym_session_keys(&pseudonym_global, &session_from, &enc_secret);
-    let (_, sk_to) =
-        make_pseudonym_session_keys(&pseudonym_global, &session_to, &enc_secret);
-    let (apk_from, _) =
-        make_attribute_session_keys(&attribute_global, &session_from, &enc_secret);
-    let (_, ask_to) =
-        make_attribute_session_keys(&attribute_global, &session_to, &enc_secret);
+    let (pk_from, _) = make_pseudonym_session_keys(&pseudonym_global, &session_from, &enc_secret);
+    let (_, sk_to) = make_pseudonym_session_keys(&pseudonym_global, &session_to, &enc_secret);
+    let (apk_from, _) = make_attribute_session_keys(&attribute_global, &session_from, &enc_secret);
+    let (_, ask_to) = make_attribute_session_keys(&attribute_global, &session_to, &enc_secret);
 
     out.push_str("// A batch of three pseudonyms (typePseudonym, 0x01) and three attributes\n");
     out.push_str("// (typeAttribute, 0x02). The permutation and every r are drawn from the\n");
@@ -356,10 +351,15 @@ fn vectors_batch(out: &mut String, context: &Context) {
     put(out, "AttributePermutation", &permutation.join(","));
 }
 
-/// A session key share with its proof, in modeVcoPRF.
+/// A session key share with its proof.
+///
+/// The share carries the ordinary rekey factor of the session: it is derived under the
+/// ciphersuite context like every other factor, so that a verifiable and a non-verifiable
+/// transcryptor operating on the same session produce the same key material. What makes the
+/// mode verifiable is the proof wrapped around the share, not the factor underneath, and only
+/// the proof transcript is separated by `modeVcoPRF`.
 fn vectors_session_key_share(out: &mut String) {
     let mut rng = rng_for(0x03);
-    let context = Context::new(Mode::VcoPRF, libpep::protocol::RISTRETTO255_SHA512);
 
     let enc_secret = EncryptionSecret::from(b"transcryptor-1-encryption-secret".to_vec());
     let session = EncryptionContext::from("session-a");
@@ -373,10 +373,15 @@ fn vectors_session_key_share(out: &mut String) {
 
     let proof = SessionKeyShareProof::new(&b, &k_commitment, &mut rng);
 
-    out.push_str("// A session key share with proof, modeVcoPRF (contextString mode byte 01).\n");
+    out.push_str("// A session key share with its proof. K_c_1 is the ordinary rekey factor\n");
+    out.push_str(
+        "// commitment of the session, the same value as K_c above: the share is derived\n",
+    );
+    out.push_str("// under the ciphersuite context, so a verifiable and a non-verifiable\n");
+    out.push_str("// transcryptor on the same session agree on the key material. Only the proof\n");
+    out.push_str("// transcript is separated by modeVcoPRF.\n");
     out.push_str("// u_i is secret and is shown only so the vector can be reproduced.\n\n");
 
-    put(out, "ContextString", &hex::encode(context.context_string()));
     put(out, "b_1", &b.to_hex());
     put(out, "B_1", &blinding_commitment.value().to_hex());
     put(out, "K_c_1", &k_commitment.to_hex());
@@ -425,7 +430,7 @@ fn generate() -> String {
     vectors_single_pseudonym(&mut out, &context);
     out.push_str("\n## Batch of three\n\n");
     vectors_batch(&mut out, &context);
-    out.push_str("\n## Session key share (modeVcoPRF)\n\n");
+    out.push_str("\n## Session key share\n\n");
     vectors_session_key_share(&mut out);
 
     out
