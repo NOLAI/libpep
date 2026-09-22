@@ -149,7 +149,6 @@ pub fn make_session_key_pair_with_proof<GSK, SK, RF, F, R>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    context: &Context,
     rekey_fn: F,
     rng: &mut R,
 ) -> Result<
@@ -165,7 +164,7 @@ where
     GSK: SecretKey,
     SK: SecretKey,
     RF: RekeyFactor,
-    F: Fn(&EncryptionSecret, &EncryptionContext, &Context) -> RF,
+    F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
     R: Rng + CryptoRng,
 {
     // Refuse a degenerate blinding factor: `b_i = 1` yields `B_i = G` and
@@ -174,7 +173,7 @@ where
         return Err(SessionKeyShareError::WeakBlinding);
     }
 
-    let k = rekey_fn(secret, session, context);
+    let k = rekey_fn(secret, session);
     let share = *blinding.value() * k.scalar();
     let sk = SK::from_scalar(share * *global.value());
 
@@ -195,7 +194,6 @@ pub fn make_pseudonym_session_keys_with_proof<R: Rng + CryptoRng>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    context: &Context,
     rng: &mut R,
 ) -> Result<
     (
@@ -211,7 +209,6 @@ pub fn make_pseudonym_session_keys_with_proof<R: Rng + CryptoRng>(
         session,
         secret,
         blinding,
-        context,
         make_pseudonym_rekey_factor,
         rng,
     )
@@ -227,7 +224,6 @@ pub fn make_attribute_session_keys_with_proof<R: Rng + CryptoRng>(
     session: &EncryptionContext,
     secret: &EncryptionSecret,
     blinding: &BlindingFactor,
-    context: &Context,
     rng: &mut R,
 ) -> Result<
     (
@@ -243,7 +239,6 @@ pub fn make_attribute_session_keys_with_proof<R: Rng + CryptoRng>(
         session,
         secret,
         blinding,
-        context,
         make_attribute_rekey_factor,
         rng,
     )
@@ -366,11 +361,10 @@ mod tests {
             &session,
             &secret,
             &blinding,
-            &Context::default(),
             &mut rng,
         )
         .unwrap();
-        let k = make_pseudonym_rekey_factor(&secret, &session, &Context::default());
+        let k = make_pseudonym_rekey_factor(&secret, &session);
         assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
         assert_eq!(*commitment.value(), *blinding.value() * G);
 
@@ -379,11 +373,10 @@ mod tests {
             &session,
             &secret,
             &blinding,
-            &Context::default(),
             &mut rng,
         )
         .unwrap();
-        let k = make_attribute_rekey_factor(&secret, &session, &Context::default());
+        let k = make_attribute_rekey_factor(&secret, &session);
         assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
     }
 
@@ -401,7 +394,6 @@ mod tests {
                 &session,
                 &secret,
                 &blinding,
-                &Context::default(),
                 &mut rng
             )
             .err(),
