@@ -1,6 +1,6 @@
 //! Record types generic over the [`Group`].
 
-#[cfg(all(feature = "batch", feature = "long"))]
+#[cfg(feature = "long")]
 use crate::data::records::LongRecordStructure;
 #[cfg(feature = "batch")]
 use crate::data::records::RecordStructure;
@@ -825,7 +825,6 @@ impl<G: Group> HasStructure for LongEncryptedRecord<G> {
     }
 }
 
-#[cfg(feature = "batch")]
 #[cfg(feature = "batch")]
 impl<G: Group> BatchEncryptable for Record<G> {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
