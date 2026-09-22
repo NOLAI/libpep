@@ -48,22 +48,25 @@ use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{make_global_keys, make_session_keys};
+use libpep::protocol::Context;
 use libpep::transcryptor::Transcryptor;
 
 let rng = &mut rand::rng();
 
-// System setup: global keys, and the secrets of the transcryptor.
+// System setup: global keys, and the secrets of the transcryptor. The protocol context (mode and
+// ciphersuite identifier) domain-separates every derived factor; all parties use the same one.
 let (_global_public, global_secret) = make_global_keys(rng);
 let transcryptor = Transcryptor::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
     EncryptionSecret::from(b"encryption secret".to_vec()),
+    Context::default(),
 );
 
 // Party A and party B each have a pseudonymization domain, an encryption context and session keys.
 let (domain_a, session_a) = (PseudonymizationDomain::from("hospital"), EncryptionContext::from("session-a"));
 let (domain_b, session_b) = (PseudonymizationDomain::from("research"), EncryptionContext::from("session-b"));
-let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret());
-let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret());
+let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret(), transcryptor.context());
+let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret(), transcryptor.context());
 
 // A encrypts one of its pseudonyms for its own session.
 let pseudonym_a = Pseudonym::random(rng);
@@ -103,7 +106,9 @@ The `peppy` tool exposes the library on the command line. The first word names w
 | `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, and `pseudonymize` for pseudonyms |
 | `json` | `encrypt`, `decrypt`, `transcrypt` |
 | `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
-| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `from-hash` |
+| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `from-hash`, `hash-to-group` |
+
+The global `--protocol <IDENTIFIER>` option (default `ristretto255-SHA512`) sets the protocol context that factors and hashed pseudonyms are domain-separated with; all parties of a deployment must use the same.
 
 Values print one per line on standard output with a label on standard error, so they pipe; `--json` prints all values of a command as one object.
 Any value argument may be `-` to read standard input or `@path` to read a file.
@@ -205,8 +210,10 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `data` | `Pseudonym` and `Attribute`, their long (multi-block) variants, records, and JSON documents with nested pseudonyms and attributes |
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
-| `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and the Ristretto scalar and group element arithmetic in `elgamal::arithmetic` |
+| `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts (`DeriveFactor` of draft-doesburg-cfrg-coprf) |
+| `protocol` | The protocol `Context` (mode and ciphersuite identifier) whose context string domain-separates every derived factor and hashed pseudonym |
+| `encodings` | Encodings of identifiers and payloads as group elements: `hash_to_group` (RFC 9380 `hash_to_ristretto255`), `encode_lizard`/`decode_lizard`, and the `oaep` stubs for Weierstrass curves |
+| `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, the Ristretto scalar and group element arithmetic in `elgamal::arithmetic`, and `expand_message_xmd`, `hash_to_group` and `hash_to_scalar` in `elgamal::arithmetic::hashing` |
 
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
@@ -227,8 +234,12 @@ Optional features:
   This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations.
   Decryption functions return an `Option` (or an error for batches) instead of a plain value.
   The two modes are not wire-compatible; choose one per deployment.
+- `hmac-derivation`: the HMAC-SHA512 factor derivation of libpep 0.13 instead of the `DeriveFactor` of draft-doesburg-cfrg-coprf (`HashToScalar` domain-separated with the protocol context).
+  It ignores the protocol context; only for continuity with factors and session keys derived by 0.13. Mutually exclusive with `legacy`.
 - `legacy`: compatibility with the legacy PEP repository implementation, which derives scalars from domains, contexts and secrets differently.
-  Implies `elgamal3`, `offline` and `global-pseudonyms`.
+  Implies `elgamal3`, `offline` and `global-pseudonyms`. Mutually exclusive with `hmac-derivation`.
+
+The three derivations (default, `hmac-derivation`, `legacy`) produce different factors and session keys from the same secrets; a deployment picks one.
 - `insecure`: methods that use global *secret* keys directly, such as `decrypt_global`.
 - `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
 
