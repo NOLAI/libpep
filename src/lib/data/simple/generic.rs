@@ -394,14 +394,12 @@ impl<G: Group> crate::data::traits::HasStructure for EncryptedAttribute<G> {
 }
 
 #[cfg(feature = "batch")]
-#[cfg(feature = "batch")]
 impl<G: Group> BatchEncryptable for Pseudonym<G> {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
         Ok(items.to_vec())
     }
 }
 
-#[cfg(feature = "batch")]
 #[cfg(feature = "batch")]
 impl<G: Group> BatchEncryptable for Attribute<G> {
     fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
