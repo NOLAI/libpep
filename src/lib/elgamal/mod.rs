@@ -14,6 +14,8 @@ pub mod generic;
 pub mod primitives;
 
 #[cfg(feature = "verifiable")]
+pub mod dleq;
+#[cfg(feature = "verifiable")]
 pub mod verifiable;
 #[cfg(feature = "verifiable")]
 pub mod zkps;
