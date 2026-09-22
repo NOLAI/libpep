@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## Unreleased (0.14.0)
+
+The crate version is bumped to 0.14.0: the security fixes below change the
+signatures of the transcryption operations, which `cargo semver-checks` flags as
+a major change against the published 0.13.0.
 
 ### Security
 
