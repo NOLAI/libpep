@@ -348,7 +348,7 @@ py_dispatch!(
             let rust_msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
 
             // True Batch: Calculates unified padding for JSON structures
-            let result = encrypt_batch(&rust_msgs, &keys.public_keys(), &mut rng)
+            let result = encrypt_batch(&rust_msgs, &keys.public(), &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
             let py_result: Vec<PyEncryptedPEPJSONValue> =

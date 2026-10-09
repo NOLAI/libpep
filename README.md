@@ -67,22 +67,24 @@ let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying
 
 // A encrypts one of its pseudonyms for its own session.
 let pseudonym_a = Pseudonym::random(rng);
-let encrypted = encrypt(&pseudonym_a, &keys_a.pseudonym.public, rng);
+let encrypted = encrypt(&pseudonym_a, &keys_a.public(), rng);
 
 // The transcryptor converts it to B's domain and session, without decrypting it.
 // Every transcryption rerandomizes the ciphertext first, which needs the key it is currently
 // encrypted under (A's session public key here; with the `elgamal3` feature the ciphertext carries it).
 let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
-let transcrypted = transcryptor.transcrypt(&encrypted, &info, &keys_a.pseudonym.public, rng);
+let transcrypted = transcryptor.transcrypt(&encrypted, &info, &keys_a.public(), rng);
 
 // B decrypts its own pseudonym for the same subject, which is unlinkable to A's.
-let pseudonym_b = decrypt(&transcrypted, &keys_b.pseudonym.secret);
+let pseudonym_b = decrypt(&transcrypted, &keys_b);
 assert_ne!(pseudonym_a, pseudonym_b);
 
 // Transcryption is reversible: converting back yields A's pseudonym again.
-let back = transcryptor.transcrypt(&transcrypted, &info.reverse(), &keys_b.pseudonym.public, rng);
-assert_eq!(pseudonym_a, decrypt(&back, &keys_a.pseudonym.secret));
+let back = transcryptor.transcrypt(&transcrypted, &info.reverse(), &keys_b.public(), rng);
+assert_eq!(pseudonym_a, decrypt(&back, &keys_a));
 ```
+
+Every key operation takes either the one key it needs or a bundle to take it from: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The *data's* type selects the half, so a pseudonym is always encrypted and decrypted under the pseudonym key and never the attribute one; `&keys_a.pseudonym.public` remains available where naming the exact key is clearer.
 
 Attributes (`Attribute`, `LongAttribute`) are encrypted and transcrypted the same way, but only rekeyed, never converted between domains.
 With the `json` feature, whole JSON documents with nested pseudonyms and attributes are encrypted and transcrypted as one value.

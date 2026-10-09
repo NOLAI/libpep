@@ -92,7 +92,7 @@ fn public_keys_json(raw: &str) -> Result<SessionPublicKeys> {
         value = inner.take();
     }
     if let Ok(keys) = serde_json::from_value::<SessionKeys>(value.clone()) {
-        return Ok(keys.public_keys());
+        return Ok(keys.public());
     }
     serde_json::from_value(value).map_err(|e| io::Error::input(format!("keys: {e}")))
 }
@@ -119,7 +119,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
                 document.encrypt_global(&keys, rng)
             } else {
                 let keys: SessionKeys = keys_json(&keys, "session_keys", "keys")?;
-                document.encrypt(&keys.public_keys(), rng)
+                document.encrypt(&keys.public(), rng)
             };
             out.value(
                 "encrypted",

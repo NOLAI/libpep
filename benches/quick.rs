@@ -344,7 +344,7 @@ fn bench_json_roundtrip(c: &mut Criterion) {
                 let transcrypted = common::transcrypt_chain(
                     &systems,
                     enc.clone(),
-                    client_a.dump().public_keys(),
+                    client_a.dump().public(),
                     |system| {
                         system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
                     },
@@ -384,7 +384,7 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
             let working = common::transcrypt_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().public_keys(),
+                client_a.dump().public(),
                 |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
                 |info, keys| info.rekey_public_keys(keys),
                 rng,

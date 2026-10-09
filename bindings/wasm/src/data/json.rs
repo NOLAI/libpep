@@ -375,7 +375,7 @@ pub fn wasm_encrypt_json(
 ) -> WASMEncryptedPEPJSONValue {
     let mut rng = rand::rng();
     let keys: SessionKeys = (*session_keys).into();
-    let encrypted = encrypt(&value.0, &keys.public_keys(), &mut rng);
+    let encrypted = encrypt(&value.0, &keys.public(), &mut rng);
     WASMEncryptedPEPJSONValue(encrypted)
 }
 
@@ -397,7 +397,7 @@ pub fn wasm_encrypt_json_batch(
     let mut rng = rand::rng();
     let keys: SessionKeys = (*session_keys).into();
     let rust_values: Vec<PEPJSONValue> = values.into_iter().map(|v| v.0).collect();
-    let encrypted = encrypt_batch(&rust_values, &keys.public_keys(), &mut rng)
+    let encrypted = encrypt_batch(&rust_values, &keys.public(), &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(encrypted

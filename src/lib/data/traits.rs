@@ -6,10 +6,16 @@ use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
 ///
-/// Each type declares its required key types via associated types:
+/// Each type declares the key it needs via associated types:
 /// - Simple types (Pseudonym, Attribute) use their specific session/global keys
 /// - Long types (LongPseudonym, LongAttribute) use the same keys as their block type
-/// - Complex types (PEPJSONValue) use key bundles (SessionKeys, GlobalPublicKeys)
+/// - Complex types (PEPJSONValue, EncryptedRecord) use key bundles (SessionPublicKeys,
+///   GlobalPublicKeys), as they contain both pseudonyms and attributes
+///
+/// A caller may pass that key, or a bundle to project it from; see
+/// [`KeyProvider`](crate::keys::KeyProvider). Since the key type comes from the data, a bundle
+/// only ever yields the matching half, so the separation of pseudonym and attribute keys cannot
+/// be crossed by passing a different argument.
 ///
 /// # Examples
 ///
@@ -20,19 +26,26 @@ use rand_core::{CryptoRng, Rng};
 /// // LongPseudonym also uses PseudonymSessionPublicKey (encrypts each block)
 /// encrypt(&long_pseudonym, &pseudonym_session_key, rng);
 ///
-/// // PEPJSONValue needs SessionKeys (contains both pseudonyms and attributes)
-/// encrypt(&json_value, &session_keys, rng);
+/// // PEPJSONValue needs SessionPublicKeys (contains both pseudonyms and attributes)
+/// encrypt(&json_value, &session_public_keys, rng);
+///
+/// // Or let the session's public keys select the right half:
+/// encrypt(&pseudonym, &session_keys.public(), rng);
 /// ```
 pub trait Encryptable: Sized {
     /// The encrypted version of this type.
     type EncryptedType: Encrypted<UnencryptedType = Self>;
 
     /// The session public key type required for encryption.
-    type PublicKeyType;
+    ///
+    /// `Copy` so that a key can be projected out of a bundle by value; see
+    /// [`KeyProvider`](crate::keys::KeyProvider). Every key type is a wrapper around a group
+    /// element, so this is no restriction.
+    type PublicKeyType: Copy;
 
     /// The global public key type required for offline encryption.
     #[cfg(feature = "offline")]
-    type GlobalPublicKeyType;
+    type GlobalPublicKeyType: Copy;
 
     /// Encrypt this value using a session key.
     fn encrypt<R>(&self, public_key: &Self::PublicKeyType, rng: &mut R) -> Self::EncryptedType
@@ -56,11 +69,14 @@ pub trait Encrypted: Sized {
     type UnencryptedType: Encryptable<EncryptedType = Self>;
 
     /// The session secret key type required for decryption.
-    type SecretKeyType;
+    ///
+    /// `Copy` for the same reason as [`Encryptable::PublicKeyType`]: so that the key can be
+    /// projected out of a bundle by value.
+    type SecretKeyType: Copy;
 
     /// The global secret key type required for offline decryption.
     #[cfg(all(feature = "offline", feature = "insecure"))]
-    type GlobalSecretKeyType;
+    type GlobalSecretKeyType: Copy;
 
     /// Decrypt this value using a session key.
     /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.

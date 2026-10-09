@@ -45,7 +45,7 @@ pub fn session(obj: Option<&Bound<PyAny>>) -> PyResult<SessionPublicKeys> {
         return Ok(keys.into());
     }
     if let Ok(keys) = obj.extract::<crate::keys::PySessionKeys>() {
-        return Ok(libpep::keys::SessionKeys::from(keys).public_keys());
+        return Ok(libpep::keys::SessionKeys::from(keys).public());
     }
     Err(PyTypeError::new_err(
         "public_key must be SessionPublicKeys or SessionKeys",

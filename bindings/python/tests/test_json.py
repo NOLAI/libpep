@@ -72,7 +72,7 @@ class TestJSONTranscryption(unittest.TestCase):
             session,
             pseudo_secret,
             enc_secret,
-            session_keys.public_keys(),
+            session_keys.public(),
         )
 
         # Verify that the encrypted structures are different after transcryption
@@ -140,7 +140,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         )
 
         transcrypted_batch = transcrypt_json_batch(
-            [encrypted1, encrypted2], transcryption_info, session_keys.public_keys()
+            [encrypted1, encrypted2], transcryption_info, session_keys.public()
         )
 
         # Verify we got 2 records back
@@ -225,7 +225,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         # Verify we get an error about structure mismatch
         with self.assertRaises(Exception) as context:
             transcrypt_json_batch(
-                [encrypted1, encrypted2], transcryption_info, session_keys.public_keys()
+                [encrypted1, encrypted2], transcryption_info, session_keys.public()
             )
 
         # Error message may vary, just check that it mentions structure or inconsistency
@@ -284,7 +284,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             # 2. Attempt batch transcryption (should fail because structures are not identical)
             with self.assertRaises(Exception) as cm:
                 transcrypt_json_batch(
-                [encrypted1, encrypted2], transcryption_info, session_keys.public_keys()
+                [encrypted1, encrypted2], transcryption_info, session_keys.public()
             )
 
             self.assertIn("structure", str(cm.exception).lower())
@@ -302,7 +302,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
 
             # 4. Batch transcrypt the normalized records (should succeed)
             transcrypted_batch = transcrypt_json_batch(
-                encrypted_batch, transcryption_info, session_keys.public_keys()
+                encrypted_batch, transcryption_info, session_keys.public()
             )
 
             # Verify output

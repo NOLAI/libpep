@@ -227,7 +227,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
                             process_entities_individually(
                                 black_box(&entities),
                                 black_box(&systems),
-                                black_box(&client_a.dump().public_keys()),
+                                black_box(&client_a.dump().public()),
                                 black_box(&domain_a),
                                 black_box(&domain_b),
                                 black_box(&session_a),
@@ -292,7 +292,7 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                                 process_entities_batch(
                                     data,
                                     &systems,
-                                    &client_a.dump().public_keys(),
+                                    &client_a.dump().public(),
                                     &domain_a,
                                     &domain_b,
                                     &session_a,

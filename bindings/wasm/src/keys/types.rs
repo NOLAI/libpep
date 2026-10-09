@@ -187,8 +187,8 @@ wasm_pair_impl!(WASMSessionPublicKeys as "SessionPublicKeys" {
 #[wasm_bindgen(js_class = "SessionKeys")]
 impl WASMSessionKeys {
     /// The public keys of this session.
-    #[wasm_bindgen(js_name = publicKeys)]
-    pub fn public_keys(&self) -> WASMSessionPublicKeys {
+    #[wasm_bindgen(js_name = public)]
+    pub fn public(&self) -> WASMSessionPublicKeys {
         WASMSessionPublicKeys {
             pseudonym: self.pseudonym.public,
             attribute: self.attribute.public,

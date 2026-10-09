@@ -99,10 +99,44 @@ impl_key_pair!(
     AttributeSessionPublicKey / AttributeSessionSecretKey,
 );
 
-/// Trait to provide the correct key from SessionKeys or GlobalPublicKeys based on the key type.
-/// This enables polymorphic key access in the Client.
+/// Provides the key of type `K` that an operation needs.
+///
+/// The *data* decides which key an operation requires: every [`Encryptable`] names it as
+/// [`PublicKeyType`], so a [`Pseudonym`] needs a [`PseudonymSessionPublicKey`] and an
+/// [`Attribute`] an [`AttributeSessionPublicKey`]. This trait is what a caller may hand over to
+/// satisfy that requirement: the specific key itself, or a bundle to take it from.
+///
+/// Because `K` comes from the data type, a bundle can only ever yield the matching half. Passing
+/// [`SessionPublicKeys`] where a pseudonym is encrypted selects `pseudonym`, and there is no
+/// impl that would hand an attribute key to a pseudonym operation, so the key separation of the
+/// two kinds of data cannot be crossed by choosing a different argument.
+///
+/// [`Encryptable`]: crate::data::traits::Encryptable
+/// [`PublicKeyType`]: crate::data::traits::Encryptable::PublicKeyType
+/// [`Pseudonym`]: crate::data::simple::Pseudonym
+/// [`Attribute`]: crate::data::simple::Attribute
 pub trait KeyProvider<K> {
     fn get_key(&self) -> K;
+}
+
+/// Every key provides itself, so an operation that takes a [`KeyProvider`] still accepts the one
+/// specific key it needs.
+impl<K: Copy> KeyProvider<K> for K {
+    fn get_key(&self) -> K {
+        *self
+    }
+}
+
+impl KeyProvider<PseudonymSessionPublicKey> for SessionPublicKeys {
+    fn get_key(&self) -> PseudonymSessionPublicKey {
+        self.pseudonym
+    }
+}
+
+impl KeyProvider<AttributeSessionPublicKey> for SessionPublicKeys {
+    fn get_key(&self) -> AttributeSessionPublicKey {
+        self.attribute
+    }
 }
 
 impl KeyProvider<PseudonymSessionPublicKey> for SessionKeys {
@@ -129,15 +163,9 @@ impl KeyProvider<AttributeSessionSecretKey> for SessionKeys {
     }
 }
 
-impl KeyProvider<SessionKeys> for SessionKeys {
-    fn get_key(&self) -> SessionKeys {
-        *self
-    }
-}
-
 impl KeyProvider<SessionPublicKeys> for SessionKeys {
     fn get_key(&self) -> SessionPublicKeys {
-        self.public_keys()
+        self.public()
     }
 }
 
@@ -153,8 +181,14 @@ impl KeyProvider<AttributeGlobalPublicKey> for GlobalPublicKeys {
     }
 }
 
-impl KeyProvider<GlobalPublicKeys> for GlobalPublicKeys {
-    fn get_key(&self) -> GlobalPublicKeys {
-        *self
+impl KeyProvider<PseudonymGlobalSecretKey> for GlobalSecretKeys {
+    fn get_key(&self) -> PseudonymGlobalSecretKey {
+        self.pseudonym
+    }
+}
+
+impl KeyProvider<AttributeGlobalSecretKey> for GlobalSecretKeys {
+    fn get_key(&self) -> AttributeGlobalSecretKey {
+        self.attribute
     }
 }
