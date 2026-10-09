@@ -91,10 +91,10 @@ mod tests {
         let secret = Secret::from(b"secret".to_vec());
         let id = b"session-a";
         let mut input = Vec::new();
-        input.extend_from_slice(&u16::try_from(secret.len()).unwrap().to_be_bytes());
+        input.extend_from_slice(&(secret.len() as u16).to_be_bytes());
         input.extend_from_slice(&secret);
         input.push(LABEL_REKEY_PSEUDONYM);
-        input.extend_from_slice(&u16::try_from(id.len()).unwrap().to_be_bytes());
+        input.extend_from_slice(&(id.len() as u16).to_be_bytes());
         input.extend_from_slice(id);
         input.push(0u8);
         let dst = Ciphersuite::current().dst(b"DeriveFactor-");

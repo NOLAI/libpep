@@ -2,11 +2,11 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::client::distributed::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
 };
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
     make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
