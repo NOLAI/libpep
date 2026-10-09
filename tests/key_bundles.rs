@@ -81,6 +81,17 @@ fn encrypting_an_attribute_from_the_bundle_selects_the_attribute_key() {
     assert_eq!(specific.to_bytes(), bundled.to_bytes());
 }
 
+/// `decrypt` returns an `Option` with the `elgamal3` feature and the value itself without it.
+#[cfg(feature = "elgamal3")]
+fn unwrap_decrypted<T>(value: Option<T>) -> T {
+    value.expect("decryption must succeed")
+}
+
+#[cfg(not(feature = "elgamal3"))]
+fn unwrap_decrypted<T>(value: T) -> T {
+    value
+}
+
 #[test]
 fn decrypting_from_the_bundle_selects_the_matching_secret_key() {
     let (_, keys, _) = setup();
@@ -89,15 +100,24 @@ fn decrypting_from_the_bundle_selects_the_matching_secret_key() {
     let pseudonym = Pseudonym::random(rng);
     let encrypted = encrypt(&pseudonym, &keys.public(), rng);
     // Both forms decrypt, and to the original value.
-    assert_eq!(decrypt(&encrypted, &keys.pseudonym.secret), pseudonym);
-    assert_eq!(decrypt(&encrypted, &keys), pseudonym);
+    assert_eq!(
+        unwrap_decrypted(decrypt(&encrypted, &keys.pseudonym.secret)),
+        pseudonym
+    );
+    assert_eq!(unwrap_decrypted(decrypt(&encrypted, &keys)), pseudonym);
 
     let attribute = Attribute::random(rng);
     let encrypted = encrypt(&attribute, &keys.public(), rng);
-    assert_eq!(decrypt(&encrypted, &keys.attribute.secret), attribute);
-    assert_eq!(decrypt(&encrypted, &keys), attribute);
+    assert_eq!(
+        unwrap_decrypted(decrypt(&encrypted, &keys.attribute.secret)),
+        attribute
+    );
+    assert_eq!(unwrap_decrypted(decrypt(&encrypted, &keys)), attribute);
 }
 
+/// With `elgamal3` the ciphertext carries its own key, so transcryption takes no key argument and
+/// there is nothing to project.
+#[cfg(not(feature = "elgamal3"))]
 #[test]
 fn transcrypting_from_the_bundle_selects_the_pseudonym_key() {
     let (transcryptor, keys, session) = setup();
