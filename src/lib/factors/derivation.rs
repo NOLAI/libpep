@@ -6,8 +6,8 @@
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
 //!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
 //!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
-//!   [ciphersuite context](crate::protocol::ciphersuite). A factor that is 0 or 1 is rejected and
-//!   the derivation retried with the next counter.
+//!   [ciphersuite](crate::ciphersuite::Ciphersuite::current). A factor that is 0 or 1 is rejected
+//!   and the derivation retried with the next counter.
 //! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier,
 //!   the derivation of libpep 0.13.
 //! - `legacy`: the derivation of the legacy PEP repository.
@@ -15,10 +15,10 @@
 //! The labels are the same in every derivation: `0x01` pseudonym rekey, `0x02` attribute rekey,
 //! `0x03` reshuffle.
 //!
-//! None of these take a protocol [`Context`](crate::protocol::Context): the secret is part of the
-//! hash input, so deployments with different secrets already derive unrelated factors, and the
+//! None of these take a [`Ciphersuite`](crate::ciphersuite::Ciphersuite): the secret is part of
+//! the hash input, so deployments with different secrets already derive unrelated factors, and the
 //! domain or session identifier separates within a deployment. See the
-//! [`protocol`](crate::protocol) module docs.
+//! [`ciphersuite`](crate::ciphersuite) module docs.
 
 use super::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use super::types::*;
@@ -116,7 +116,7 @@ fn make_factor(label: u8, secret: &Secret, id: &[u8]) -> ScalarNonZero {
     let (Some(secret_len), Some(id_len)) = (secret_len, id_len) else {
         panic!("DeriveFactor: secrets and identifiers must be shorter than 2^16 bytes");
     };
-    let dst = crate::protocol::ciphersuite().dst(b"DeriveFactor-");
+    let dst = crate::ciphersuite::Ciphersuite::current().dst(b"DeriveFactor-");
     let mut input = Vec::with_capacity(secret.len() + id.len() + 6);
     input.extend_from_slice(&secret_len.to_be_bytes());
     input.extend_from_slice(secret);
@@ -340,9 +340,9 @@ mod tests {
         assert_ne!(a, make_factor(1, &Secret::from(b"other".to_vec()), b"a"));
     }
 
-    /// The derivation is domain-separated with the ciphersuite context, so a factor equals
-    /// `HashToScalar` under `"DeriveFactor-" || contextString` over the length-prefixed input.
-    /// This pins both the DST and the input encoding.
+    /// The derivation is domain-separated with the ciphersuite, so a factor equals `HashToScalar`
+    /// under `"DeriveFactor-" || contextString` over the length-prefixed input. This pins both the
+    /// DST and the input encoding.
     #[test]
     #[cfg(not(feature = "hmac-derivation"))]
     fn factors_use_the_ciphersuite_dst() {
@@ -351,7 +351,7 @@ mod tests {
         let secret = Secret::from(b"secret".to_vec());
         let expected = hash_to_scalar(
             b"\x00\x06secret\x01\x00\x02id\x00",
-            b"DeriveFactor-coPRFV1-\x00-ristretto255-SHA512",
+            b"DeriveFactor-coPRFV1-ristretto255-SHA512",
         );
         assert_eq!(
             make_factor(1, &secret, b"id").to_bytes(),

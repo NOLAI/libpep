@@ -33,9 +33,9 @@
 //! A reshuffled element is never decodable, which is why reshuffling is never applied to
 //! attributes.
 
+use crate::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
 use crate::elgamal::arithmetic::hashing;
-use crate::protocol::Context;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use sha2::{Digest, Sha256, Sha512};
 
@@ -47,8 +47,8 @@ const MAX_HASH_INPUT: usize = u16::MAX as usize;
 ///
 /// An input longer than 2^16 - 1 bytes is hashed with SHA-512 first, as the draft prescribes.
 #[must_use]
-pub fn hash_to_group(x: &[u8], context: &Context) -> GroupElement {
-    let dst = context.dst(b"HashToGroup-");
+pub fn hash_to_group(x: &[u8], ciphersuite: &Ciphersuite) -> GroupElement {
+    let dst = ciphersuite.dst(b"HashToGroup-");
     if x.len() > MAX_HASH_INPUT {
         hashing::hash_to_group(&Sha512::digest(x), &dst)
     } else {
@@ -106,36 +106,31 @@ pub fn decode_oaep(element: &GroupElement) -> Option<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::protocol::Mode;
     use rand_core::Rng;
 
     #[test]
-    fn hash_to_group_is_deterministic_and_context_specific() {
-        let ctx = Context::default();
+    fn hash_to_group_is_deterministic_and_ciphersuite_specific() {
+        let ctx = Ciphersuite::default();
         assert_eq!(hash_to_group(b"alice", &ctx), hash_to_group(b"alice", &ctx));
         assert_ne!(hash_to_group(b"alice", &ctx), hash_to_group(b"bob", &ctx));
         assert_ne!(
             hash_to_group(b"alice", &ctx),
-            hash_to_group(b"alice", &Context::from_identifier("other"))
-        );
-        assert_ne!(
-            hash_to_group(b"alice", &ctx),
-            hash_to_group(b"alice", &Context::new(Mode::VcoPRF, "ristretto255-SHA512"))
+            hash_to_group(b"alice", &Ciphersuite::new("other"))
         );
     }
 
     #[test]
-    fn hash_to_group_uses_the_context_dst() {
-        let ctx = Context::default();
+    fn hash_to_group_uses_the_ciphersuite_dst() {
+        let ctx = Ciphersuite::default();
         assert_eq!(
             hash_to_group(b"alice", &ctx),
-            hashing::hash_to_group(b"alice", b"HashToGroup-coPRFV1-\x00-ristretto255-SHA512")
+            hashing::hash_to_group(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
         );
     }
 
     #[test]
     fn long_inputs_are_prehashed() {
-        let ctx = Context::default();
+        let ctx = Ciphersuite::default();
         let long = vec![7u8; MAX_HASH_INPUT + 1];
         assert_eq!(
             hash_to_group(&long, &ctx),
@@ -191,7 +186,7 @@ mod tests {
 
     #[test]
     fn hashed_elements_are_not_lizard_encodings() {
-        assert!(decode_lizard(&hash_to_group(b"alice", &Context::default())).is_none());
+        assert!(decode_lizard(&hash_to_group(b"alice", &Ciphersuite::default())).is_none());
     }
 
     #[test]

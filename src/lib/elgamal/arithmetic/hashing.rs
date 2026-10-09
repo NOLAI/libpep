@@ -7,7 +7,7 @@
 //! into the group or the scalar field. [`hash_to_group`] is
 //! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar`] is the
 //! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag; the
-//! protocol-level tags are assembled from a [`Context`](crate::protocol::Context).
+//! protocol-level tags are assembled from a [`Ciphersuite`](crate::ciphersuite::Ciphersuite).
 //!
 //! [`GroupElement::from_hash`] and [`ScalarCanBeZero::from_hash`] remain the low-level
 //! primitives that map 64 uniform bytes to the group and to the scalar field.
