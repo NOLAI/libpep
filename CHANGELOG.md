@@ -26,22 +26,23 @@ a major change against the published 0.13.0.
   session keys change**; the previous HMAC-SHA512 derivation is available behind the new
   `hmac-derivation` feature (mutually exclusive with `legacy`). The `legacy` derivation is
   unchanged.
-- A protocol `Context` (`protocol::Context`: mode and ciphersuite identifier, context string
-  `"coPRFV1-" || I2OSP(mode, 1) || "-" || identifier`) domain-separates the protocol's hashes. It
-  is a property of the ciphersuite, not a parameter: `protocol::ciphersuite()` is the context of
-  the ciphersuite this crate implements, and factor derivation uses it internally. It is passed
-  explicitly only to `encodings::hash_to_group`, the one hash that takes no secret and where the
-  `"coPRFV1-"` prefix is what separates a pseudonym from an RFC 9497 OPRF evaluation of the same
-  identifier on the same group. `Transcryptor::new`, `DistributedTranscryptor::new`, the
-  `*Info::new` constructors, `make_*_factor` and `make_*session_keys` take no context, in Rust or
-  in the bindings: the transcryptor secret is already part of the derivation's hash input, so
-  deployments with different secrets derive unrelated factors, and the domain and session separate
-  within a deployment.
+- A `Ciphersuite` (`ciphersuite::Ciphersuite`: the ciphersuite identifier, context string
+  `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. It is fixed for a build, not
+  a parameter: `Ciphersuite::current()` is the one this crate implements, and factor derivation
+  uses it internally. It is passed explicitly only to `encodings::hash_to_group`, the one hash
+  that takes no secret and where the `"coPRFV1-"` prefix is what separates a pseudonym from an
+  RFC 9497 OPRF evaluation of the same identifier on the same group. `Transcryptor::new`,
+  `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
+  `make_*session_keys` take no ciphersuite, in Rust or in the bindings: the transcryptor secret is
+  already part of the derivation's hash input, so deployments with different secrets derive
+  unrelated factors, and the domain and session separate within a deployment.
+
+  There is no mode byte. RFC 9497 separates its OPRF, VOPRF and POPRF variants that way, but
+  verifiable transcryption here derives the *same* factors as plain transcryption and adds
+  commitments and proofs on top, so a mode would stop a verifiable and a plain transcryptor from
+  interoperating on one session. The hashes are separated by the label of each tag
+  (`"DeriveFactor-"`, `"HashToGroup-"`, `"HashToScalar-"`, and the proof transcript's own labels).
 - `hmac` is an optional dependency, pulled in by `legacy` and `hmac-derivation` only.
-- `peppy`: `point hash-to-group` takes a `--protocol <IDENTIFIER>` option (default
-  `ristretto255-SHA512`), the ciphersuite context its hash is domain-separated with; no other
-  command takes one. `--context` remains the encryption context (session) of `keys session` and
-  the transcryption commands.
 - `pseudonymize`, `rekey` and `transcrypt` (functions, `Transcryptor` and `DistributedTranscryptor`
   methods, traits, and the batch variants) take a random number generator and, without the
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
@@ -66,19 +67,19 @@ a major change against the published 0.13.0.
   `hash_to_scalar` (RFC 9497 `HashToScalar`), cross-checked against the RFC 9497
   ristretto255-SHA512 test vectors.
 - `encodings`: the element encodings of draft-doesburg-cfrg-coprf as plain functions:
-  `hash_to_group(x, &Context)` with DST `"HashToGroup-" || contextString`, `encode_lizard` and
+  `hash_to_group(x, &Ciphersuite)` with DST `"HashToGroup-" || contextString`, `encode_lizard` and
   `decode_lizard` (`GroupElement::from_lizard`/`to_lizard` wrap them), and `encode_oaep` and
   `decode_oaep` as stubs until a Weierstrass curve ciphersuite exists. The module documents the
   property every encoding must have (no known discrete-log relations; `x * G` is forbidden).
-- `protocol::Context` and `protocol::Mode`, with `Context::context_string()` and `Context::dst()`,
-  and `protocol::ciphersuite()`, the context of the ciphersuite this crate implements.
-- Python: `libpep.protocol` (`Context`, `Mode`), `libpep.encodings` (`hash_to_group`,
+- `ciphersuite::Ciphersuite`, with `context_string()` (the spec's name for the value) and `dst()`,
+  and `Ciphersuite::current()`, the ciphersuite this crate implements.
+- Python: `libpep.ciphersuite` (`Ciphersuite`), `libpep.encodings` (`hash_to_group`,
   `encode_lizard`, `decode_lizard`) and `libpep.elgamal.arithmetic.hashing`
-  (`expand_message_xmd_sha512`, `hash_to_group`, `hash_to_scalar`). JavaScript: `Context`,
-  `Mode`, `encodeLizard`, `decodeLizard`, `hashToGroup`, `hashToGroupWithDst`,
+  (`expand_message_xmd_sha512`, `hash_to_group`, `hash_to_scalar`). JavaScript: `Ciphersuite`,
+  `encodeLizard`, `decodeLizard`, `hashToGroup`, `hashToGroupWithDst`,
   `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
-  protocol context.
+  ciphersuite.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
