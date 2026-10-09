@@ -1,7 +1,10 @@
 //! Hashing to the group and to scalars, following [RFC 9380] and the ristretto255-SHA512
 //! ciphersuite of [RFC 9497].
 //!
-//! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1. [`hash_to_group`] is
+//! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1: it hashes a message to
+//! any requested number of bytes under a label (`xmd` names the variant for block-based hashes
+//! such as SHA-512). Both functions below use it to produce the 64 uniform bytes they then map
+//! into the group or the scalar field. [`hash_to_group`] is
 //! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar`] is the
 //! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag; the
 //! protocol-level tags are assembled from a [`Context`](crate::protocol::Context).
@@ -21,10 +24,21 @@ use sha2::{Digest, Sha512};
 /// (RFC 9380, Section 5.3.3).
 const MAX_DST_LENGTH: usize = 255;
 
-/// `expand_message_xmd` from RFC 9380, Section 5.3.1, for a Merkle-Damgård hash `H`.
+/// `expand_message_xmd` from RFC 9380, Section 5.3.1: hash `msg` to any requested number of
+/// bytes, under a label.
 ///
-/// Expands `msg` under the domain separation tag `dst` to `len_in_bytes` uniformly
-/// pseudorandom bytes. A tag longer than 255 bytes is replaced by
+/// Where `H` returns a fixed number of bytes, this returns `len_in_bytes` of them, uniformly
+/// pseudorandom, by chaining `H` over a counter. The domain separation tag `dst` is mixed into
+/// every block, so the same message under two different tags gives two unrelated outputs; this
+/// is what keeps a pseudonym derived from an identifier unrelated to a factor derived from it.
+/// The tag's own length is appended to it, so a message can never be mistaken for a tag.
+///
+/// `xmd` is the RFC's name for the variant built on a Merkle-Damgård hash, i.e. one with an
+/// internal block size, such as SHA-512. Its counterpart `expand_message_xof` is built on an
+/// extendable-output function such as SHAKE and is *not* interchangeable with this one, so the
+/// suffix is part of the name rather than decoration.
+///
+/// A tag longer than 255 bytes cannot carry a one-byte length, so it is replaced by
 /// `H("H2C-OVERSIZE-DST-" || dst)` as prescribed by Section 5.3.3.
 ///
 /// # Panics

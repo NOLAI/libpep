@@ -8,8 +8,10 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use sha2::Sha512;
 
-/// `expand_message_xmd` of RFC 9380 with SHA-512: expand `msg` under the domain separation tag
-/// `dst` to `len_in_bytes` (at most 65535) uniformly pseudorandom bytes.
+/// `expand_message_xmd` of RFC 9380 with SHA-512: hash `msg` to `len_in_bytes` (at most 65535)
+/// uniformly pseudorandom bytes under the domain separation tag `dst`, which is mixed in so that
+/// the same message under two tags gives two unrelated outputs. `xmd` names the RFC's variant
+/// for block-based hashes such as SHA-512.
 #[pyfunction]
 #[pyo3(name = "expand_message_xmd_sha512")]
 pub fn py_expand_message_xmd_sha512(
