@@ -35,6 +35,7 @@ pub struct WASMTranscryptor(pub(crate) Transcryptor);
 
 #[wasm_bindgen(js_class = Transcryptor)]
 impl WASMTranscryptor {
+    /// A transcryptor with the given secrets.
     #[wasm_bindgen(constructor)]
     pub fn new(pseudonymisation_secret: &str, rekeying_secret: &str) -> Self {
         Self(Transcryptor::new(

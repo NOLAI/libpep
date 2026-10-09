@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 import libpep
+import libpep.ciphersuite
 import libpep.client
 import libpep.contexts
 import libpep.data
@@ -26,14 +27,17 @@ import libpep.data.json
 import libpep.elgamal
 import libpep.elgamal.arithmetic
 import libpep.elgamal.arithmetic.group_elements
+import libpep.elgamal.arithmetic.hashing
 import libpep.elgamal.arithmetic.scalars
 import libpep.elgamal.primitives
+import libpep.encodings
 import libpep.factors
 import libpep.keys
 import libpep.transcryptor
 
 MODULES = {
     "__init__": libpep,
+    "ciphersuite": libpep.ciphersuite,
     "client": libpep.client,
     "contexts": libpep.contexts,
     "data/__init__": libpep.data,
@@ -41,8 +45,10 @@ MODULES = {
     "elgamal/__init__": libpep.elgamal,
     "elgamal/arithmetic/__init__": libpep.elgamal.arithmetic,
     "elgamal/arithmetic/group_elements": libpep.elgamal.arithmetic.group_elements,
+    "elgamal/arithmetic/hashing": libpep.elgamal.arithmetic.hashing,
     "elgamal/arithmetic/scalars": libpep.elgamal.arithmetic.scalars,
     "elgamal/primitives": libpep.elgamal.primitives,
+    "encodings": libpep.encodings,
     "factors": libpep.factors,
     "keys": libpep.keys,
     "transcryptor": libpep.transcryptor,

@@ -92,7 +92,11 @@ pub struct PyPseudonymizationInfo(pub(crate) PseudonymizationInfo);
 
 #[pymethods]
 impl PyPseudonymizationInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
@@ -154,7 +158,10 @@ pub struct PyPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[pymethods]
 impl PyPseudonymRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (session_from, session_to, encryption_secret))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
@@ -198,7 +205,10 @@ pub struct PyAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[pymethods]
 impl PyAttributeRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (session_from, session_to, encryption_secret))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
@@ -244,7 +254,11 @@ pub struct PyTranscryptionInfo(pub(crate) TranscryptionInfo);
 
 #[pymethods]
 impl PyTranscryptionInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[new]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,

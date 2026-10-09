@@ -31,7 +31,9 @@ pub struct PyTranscryptor(pub(crate) Transcryptor);
 
 #[pymethods]
 impl PyTranscryptor {
+    /// A transcryptor with the given secrets.
     #[new]
+    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret))]
     fn new(pseudonymisation_secret: &str, rekeying_secret: &str) -> Self {
         Self(Transcryptor::new(
             PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),

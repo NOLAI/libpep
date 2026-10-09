@@ -3,10 +3,12 @@
 
 pub(crate) mod macros;
 
+pub mod ciphersuite;
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
+pub mod encodings;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
@@ -66,6 +68,8 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     drop(data_module);
     add_submodule(m, "libpep.contexts", |sm| contexts::register(sm))?;
     add_submodule(m, "libpep.factors", |sm| factors::register(sm))?;
+    add_submodule(m, "libpep.ciphersuite", |sm| ciphersuite::register(sm))?;
+    add_submodule(m, "libpep.encodings", |sm| encodings::register(sm))?;
     Ok(())
 }
 

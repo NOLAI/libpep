@@ -2,8 +2,10 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
+use libpep::ciphersuite::Ciphersuite;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::encodings::hash_to_group;
 use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 
@@ -28,8 +30,12 @@ pub enum Point {
     Random,
     /// The group element `s * G` for a scalar `s`.
     Base { scalar: String },
-    /// A group element derived from text with SHA-512.
+    /// A group element derived from text with SHA-512 (the raw one-way map, no domain
+    /// separation).
     FromHash { text: String },
+    /// The hash_to_group encoding of an identifier: hash_to_ristretto255 domain-separated with
+    /// the ciphersuite. This is how an identifier becomes an origin pseudonym.
+    HashToGroup { identifier: String },
 }
 
 pub fn run_scalar<R: Rng + CryptoRng>(cmd: Scalar, rng: &mut R, out: &mut Output) -> Result<()> {
@@ -60,6 +66,13 @@ pub fn run_point<R: Rng + CryptoRng>(cmd: Point, rng: &mut R, out: &mut Output) 
         Point::FromHash { text } => {
             let digest: [u8; 64] = Sha512::digest(io::read_arg(&text)?.as_bytes()).into();
             out.value("point", GroupElement::from_hash(&digest).to_hex());
+        }
+        Point::HashToGroup { identifier } => {
+            let identifier = io::read_arg(&identifier)?;
+            out.value(
+                "point",
+                hash_to_group(identifier.as_bytes(), &Ciphersuite::current()).to_hex(),
+            );
         }
     }
     Ok(())

@@ -93,7 +93,10 @@ pub struct WASMPseudonymizationInfo(pub(crate) PseudonymizationInfo);
 
 #[wasm_bindgen(js_class = "PseudonymizationInfo")]
 impl WASMPseudonymizationInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
@@ -157,6 +160,8 @@ pub struct WASMPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[wasm_bindgen(js_class = "PseudonymRekeyInfo")]
 impl WASMPseudonymRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
@@ -203,6 +208,8 @@ pub struct WASMAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[wasm_bindgen(js_class = "AttributeRekeyInfo")]
 impl WASMAttributeRekeyInfo {
+    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
@@ -251,7 +258,10 @@ pub struct WASMTranscryptionInfo(pub(crate) TranscryptionInfo);
 
 #[wasm_bindgen(js_class = "TranscryptionInfo")]
 impl WASMTranscryptionInfo {
+    /// Derive the info from domains, sessions and secrets within the protocol `context`
+    /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,

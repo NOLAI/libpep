@@ -80,14 +80,14 @@ class TranscryptionInfo:
     def rekey_public_keys(self, before): ...
     def reverse(self): ...
 
-def make_attribute_rekey_factor(secret, context):
-    """Derive an attribute rekey factor from a secret and a context."""
+def make_attribute_rekey_factor(secret, session):
+    """Derive the attribute rekey factor of a session from an encryption secret."""
     ...
 
-def make_pseudonym_rekey_factor(secret, context):
-    """Derive a pseudonym rekey factor from a secret and a context."""
+def make_pseudonym_rekey_factor(secret, session):
+    """Derive the pseudonym rekey factor of a session from an encryption secret."""
     ...
 
 def make_pseudonymisation_factor(secret, domain):
-    """Derive a pseudonymisation factor from a secret and a domain."""
+    """Derive the reshuffle factor of a domain from a pseudonymization secret."""
     ...

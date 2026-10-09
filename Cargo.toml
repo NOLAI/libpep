@@ -38,7 +38,8 @@ batch = [] # For batch transcryption with reordering to prevent linkability
 long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption support
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
-legacy = ["elgamal3", "offline", "global-pseudonyms"] # For compatibility with the legacy PEP repository implementation
+legacy = ["elgamal3", "offline", "global-pseudonyms", "dep:hmac"] # For compatibility with the legacy PEP repository implementation
+hmac-derivation = ["dep:hmac"] # The HMAC-SHA512 factor derivation of libpep 0.13, which ignores the protocol context (mutually exclusive with "legacy")
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
 build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline"] # Build the peppy command line utility (requires long and offline)
 
@@ -59,7 +60,7 @@ curve25519-dalek = { version = "=5.0.0", features = ["rand_core", "lizard"] }
 rand_core = "^0.10"
 rand = { version = "^0.10", optional = true }
 sha2 = "^0.11.0"
-hmac = "^0.13.0"
+hmac = { version = "^0.13.0", optional = true }
 derive_more = { version = "^2.0", features = ["deref", "from", "into"] }
 hex = "^0.4"
 base64 = "^0.23.0"

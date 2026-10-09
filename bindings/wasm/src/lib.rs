@@ -3,10 +3,12 @@
 
 pub(crate) mod macros;
 
+pub mod ciphersuite;
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
+pub mod encodings;
 pub mod factors;
 pub mod keys;
 pub mod transcryptor;
