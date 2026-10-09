@@ -113,16 +113,8 @@ mod tests {
         let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys(
-            &global_sk,
-            &EncryptionContext::from("context1"),
-            &secret,
-        );
-        let session2 = make_session_keys(
-            &global_sk,
-            &EncryptionContext::from("context2"),
-            &secret,
-        );
+        let session1 = make_session_keys(&global_sk, &EncryptionContext::from("context1"), &secret);
+        let session2 = make_session_keys(&global_sk, &EncryptionContext::from("context2"), &secret);
 
         assert_ne!(session1, session2);
     }
