@@ -63,46 +63,43 @@ py_dispatch!(
     #[pyfunction]
     #[pyo3(name = "encrypt")]
     fn py_encrypt(data, key) with py err "encrypt() requires (Pseudonym|Attribute|LongPseudonym|LongAttribute|Record|LongRecord|PEPJSONValue) and matching key type" {
-        (p in data: PyPseudonym, k in key: PyPseudonymSessionPublicKey) => {
+        (p in data: PyPseudonym, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let encrypted = encrypt(&p.0, &PseudonymSessionPublicKey::from_point(*k.0), &mut rng);
+            let encrypted = encrypt(&p.0, &crate::keys::pk::pseudonym(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyEncryptedPseudonym(encrypted))?.into_any());
         }
-        (a in data: PyAttribute, k in key: PyAttributeSessionPublicKey) => {
+        (a in data: PyAttribute, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let encrypted = encrypt(&a.0, &AttributeSessionPublicKey::from_point(*k.0), &mut rng);
+            let encrypted = encrypt(&a.0, &crate::keys::pk::attribute(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyEncryptedAttribute(encrypted))?.into_any());
         }
         #[cfg(feature = "long")]
-        (lp in data: PyLongPseudonym, k in key: PyPseudonymSessionPublicKey) => {
+        (lp in data: PyLongPseudonym, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let encrypted = encrypt(&lp.0, &PseudonymSessionPublicKey::from_point(*k.0), &mut rng);
+            let encrypted = encrypt(&lp.0, &crate::keys::pk::pseudonym(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedPseudonym(encrypted))?.into_any());
         }
         #[cfg(feature = "long")]
-        (la in data: PyLongAttribute, k in key: PyAttributeSessionPublicKey) => {
+        (la in data: PyLongAttribute, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let encrypted = encrypt(&la.0, &AttributeSessionPublicKey::from_point(*k.0), &mut rng);
+            let encrypted = encrypt(&la.0, &crate::keys::pk::attribute(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedAttribute(encrypted))?.into_any());
         }
-        (rec in data: PyRecord, k in key: PySessionKeys) => {
+        (rec in data: PyRecord, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&rec.0, &keys.public_keys(), &mut rng);
+            let encrypted = encrypt(&rec.0, &crate::keys::pk::session(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(encrypted))?.into_any());
         }
         #[cfg(feature = "long")]
-        (lrec in data: PyLongRecord, k in key: PySessionKeys) => {
+        (lrec in data: PyLongRecord, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&lrec.0, &keys.public_keys(), &mut rng);
+            let encrypted = encrypt(&lrec.0, &crate::keys::pk::session(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyLongEncryptedRecord(encrypted))?.into_any());
         }
         #[cfg(feature = "json")]
-        (json in data: PyPEPJSONValue, k in key: PySessionKeys) => {
+        (json in data: PyPEPJSONValue, k in key: Bound<PyAny>) => {
             let mut rng = rand::rng();
-            let keys: SessionKeys = k.clone().into();
-            let encrypted = encrypt(&json.0, &keys.public_keys(), &mut rng);
+            let encrypted = encrypt(&json.0, &crate::keys::pk::session(Some(&k))?, &mut rng);
             return Ok(Py::new(py, PyEncryptedPEPJSONValue(encrypted))?.into_any());
         }
     }
@@ -115,8 +112,8 @@ py_dispatch!(
     #[pyo3(name = "decrypt")]
     #[allow(clippy::expect_used)]
     fn py_decrypt(encrypted, key) with py err "decrypt() requires encrypted type and matching key type" {
-        (ep in encrypted: PyEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
-            return decrypt(&ep.0, &PseudonymSessionSecretKey::from_scalar(*k.0))
+        (ep in encrypted: PyEncryptedPseudonym, k in key: Bound<PyAny>) => {
+            return decrypt(&ep.0, &crate::keys::sk::pseudonym(&k)?)
                 .map(|p| {
                     Py::new(py, PyPseudonym(p))
                         .expect("PyO3 allocation failed")
@@ -124,8 +121,8 @@ py_dispatch!(
                 })
                 .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
         }
-        (ea in encrypted: PyEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
-            return decrypt(&ea.0, &AttributeSessionSecretKey::from_scalar(*k.0))
+        (ea in encrypted: PyEncryptedAttribute, k in key: Bound<PyAny>) => {
+            return decrypt(&ea.0, &crate::keys::sk::attribute(&k)?)
                 .map(|a| {
                     Py::new(py, PyAttribute(a))
                         .expect("PyO3 allocation failed")
@@ -134,14 +131,14 @@ py_dispatch!(
                 .ok_or_else(|| PyTypeError::new_err("Decryption failed"));
         }
         #[cfg(feature = "long")]
-        (lep in encrypted: PyLongEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
-            return decrypt(&lep.0, &PseudonymSessionSecretKey::from_scalar(*k.0))
+        (lep in encrypted: PyLongEncryptedPseudonym, k in key: Bound<PyAny>) => {
+            return decrypt(&lep.0, &crate::keys::sk::pseudonym(&k)?)
                 .map(|p| Py::new(py, PyLongPseudonym(p)).map(|p| p.into_any()))
                 .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
         }
         #[cfg(feature = "long")]
-        (lea in encrypted: PyLongEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
-            return decrypt(&lea.0, &AttributeSessionSecretKey::from_scalar(*k.0))
+        (lea in encrypted: PyLongEncryptedAttribute, k in key: Bound<PyAny>) => {
+            return decrypt(&lea.0, &crate::keys::sk::attribute(&k)?)
                 .map(|a| Py::new(py, PyLongAttribute(a)).map(|a| a.into_any()))
                 .ok_or_else(|| PyTypeError::new_err("Decryption failed"))?;
         }
@@ -174,22 +171,22 @@ py_dispatch!(
     #[pyfunction]
     #[pyo3(name = "decrypt")]
     fn py_decrypt(encrypted, key) with py err "decrypt() requires encrypted type and matching key type" {
-        (ep in encrypted: PyEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
-            let decrypted = decrypt(&ep.0, &PseudonymSessionSecretKey::from_scalar(*k.0));
+        (ep in encrypted: PyEncryptedPseudonym, k in key: Bound<PyAny>) => {
+            let decrypted = decrypt(&ep.0, &crate::keys::sk::pseudonym(&k)?);
             return Ok(Py::new(py, PyPseudonym(decrypted))?.into_any());
         }
-        (ea in encrypted: PyEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
-            let decrypted = decrypt(&ea.0, &AttributeSessionSecretKey::from_scalar(*k.0));
+        (ea in encrypted: PyEncryptedAttribute, k in key: Bound<PyAny>) => {
+            let decrypted = decrypt(&ea.0, &crate::keys::sk::attribute(&k)?);
             return Ok(Py::new(py, PyAttribute(decrypted))?.into_any());
         }
         #[cfg(feature = "long")]
-        (lep in encrypted: PyLongEncryptedPseudonym, k in key: PyPseudonymSessionSecretKey) => {
-            let decrypted = decrypt(&lep.0, &PseudonymSessionSecretKey::from_scalar(*k.0));
+        (lep in encrypted: PyLongEncryptedPseudonym, k in key: Bound<PyAny>) => {
+            let decrypted = decrypt(&lep.0, &crate::keys::sk::pseudonym(&k)?);
             return Ok(Py::new(py, PyLongPseudonym(decrypted))?.into_any());
         }
         #[cfg(feature = "long")]
-        (lea in encrypted: PyLongEncryptedAttribute, k in key: PyAttributeSessionSecretKey) => {
-            let decrypted = decrypt(&lea.0, &AttributeSessionSecretKey::from_scalar(*k.0));
+        (lea in encrypted: PyLongEncryptedAttribute, k in key: Bound<PyAny>) => {
+            let decrypted = decrypt(&lea.0, &crate::keys::sk::attribute(&k)?);
             return Ok(Py::new(py, PyLongAttribute(decrypted))?.into_any());
         }
         (er in encrypted: PyEncryptedRecord, k in key: PySessionKeys) => {
@@ -504,7 +501,7 @@ pub fn py_encrypt_batch(
                 })
                 .collect();
             let keys: SessionKeys = sk.clone().into();
-            let encrypted = encrypt_batch(&rust_msgs, &keys.public_keys(), &mut rng)
+            let encrypted = encrypt_batch(&rust_msgs, &keys.public(), &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(encrypted
                 .into_iter()

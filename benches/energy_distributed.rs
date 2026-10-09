@@ -64,7 +64,7 @@ fn main() {
                     process_entities_individually(
                         &entities,
                         &systems,
-                        &client_a.dump().public_keys(),
+                        &client_a.dump().public(),
                         &domain_a,
                         &domain_b,
                         &session_a,
@@ -103,7 +103,7 @@ fn main() {
                     process_entities_batch(
                         encrypted_data.clone(),
                         &systems,
-                        &client_a.dump().public_keys(),
+                        &client_a.dump().public(),
                         &domain_a,
                         &domain_b,
                         &session_a,

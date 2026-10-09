@@ -8,6 +8,8 @@ use crate::factors::{
     AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
@@ -125,7 +127,7 @@ impl Transcryptor {
         &self,
         encrypted: &E,
         rekey_info: &E::RekeyInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> E
     where
@@ -159,7 +161,7 @@ impl Transcryptor {
         &self,
         encrypted: &E,
         pseudonymization_info: &PseudonymizationInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> E
     where
@@ -193,7 +195,7 @@ impl Transcryptor {
         &self,
         encrypted: &E,
         transcryption_info: &TranscryptionInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> E
     where
@@ -238,7 +240,7 @@ impl Transcryptor {
         &self,
         encrypted: &mut [E],
         rekey_info: &E::RekeyInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Box<[E]>, crate::errors::BatchError>
     where
@@ -283,7 +285,7 @@ impl Transcryptor {
         &self,
         encrypted: &mut [E],
         pseudonymization_info: &PseudonymizationInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Box<[E]>, crate::errors::BatchError>
     where
@@ -327,7 +329,7 @@ impl Transcryptor {
         &self,
         encrypted: &mut [E],
         transcryption_info: &TranscryptionInfo,
-        public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+        public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Box<[E]>, crate::errors::BatchError>
     where

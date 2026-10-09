@@ -246,7 +246,7 @@ pub struct PySessionKeys {
 impl PySessionKeys {
     /// The public keys of this session: what a sender needs to encrypt towards it, and what a
     /// transcryptor needs to rerandomize ciphertexts encrypted for it.
-    fn public_keys(&self) -> PySessionPublicKeys {
+    fn public(&self) -> PySessionPublicKeys {
         PySessionPublicKeys {
             pseudonym: self.pseudonym.public,
             attribute: self.attribute.public,
