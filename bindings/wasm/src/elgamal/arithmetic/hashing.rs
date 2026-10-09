@@ -6,8 +6,10 @@ use libpep::elgamal::arithmetic::hashing;
 use sha2::Sha512;
 use wasm_bindgen::prelude::*;
 
-/// `expand_message_xmd` of RFC 9380 with SHA-512: expand `msg` under the domain separation tag
-/// `dst` to `len_in_bytes` (at most 65535) uniformly pseudorandom bytes.
+/// `expand_message_xmd` of RFC 9380 with SHA-512: hash `msg` to `len_in_bytes` (at most 65535)
+/// uniformly pseudorandom bytes under the domain separation tag `dst`, which is mixed in so that
+/// the same message under two tags gives two unrelated outputs. `xmd` names the RFC's variant
+/// for block-based hashes such as SHA-512.
 #[wasm_bindgen(js_name = expandMessageXmdSha512)]
 pub fn wasm_expand_message_xmd_sha512(
     msg: &[u8],
