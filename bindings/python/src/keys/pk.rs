@@ -21,26 +21,28 @@ fn required<'a>(obj: Option<&'a Bound<'a, PyAny>>, what: &str) -> PyResult<&'a B
     })
 }
 
-/// The pseudonym session public key a pseudonym ciphertext is encrypted under.
+/// The pseudonym session public key a pseudonym ciphertext is encrypted under. Accepts the key
+/// itself, or `SessionPublicKeys` / `SessionKeys` to take the pseudonym half from.
 pub fn pseudonym(obj: Option<&Bound<PyAny>>) -> PyResult<PseudonymSessionPublicKey> {
-    let pk: PyPseudonymSessionPublicKey = required(obj, "PseudonymSessionPublicKey")?
-        .extract()
-        .map_err(|_| PyTypeError::new_err("public_key must be a PseudonymSessionPublicKey"))?;
-    Ok(PseudonymSessionPublicKey::from_point(pk.0 .0))
+    let obj = required(obj, "PseudonymSessionPublicKey")?;
+    if let Ok(pk) = obj.extract::<PyPseudonymSessionPublicKey>() {
+        return Ok(PseudonymSessionPublicKey::from_point(pk.0 .0));
+    }
+    Ok(session_keys(obj)?.pseudonym)
 }
 
-/// The attribute session public key an attribute ciphertext is encrypted under.
+/// The attribute session public key an attribute ciphertext is encrypted under. Accepts the key
+/// itself, or `SessionPublicKeys` / `SessionKeys` to take the attribute half from.
 pub fn attribute(obj: Option<&Bound<PyAny>>) -> PyResult<AttributeSessionPublicKey> {
-    let pk: PyAttributeSessionPublicKey = required(obj, "AttributeSessionPublicKey")?
-        .extract()
-        .map_err(|_| PyTypeError::new_err("public_key must be an AttributeSessionPublicKey"))?;
-    Ok(AttributeSessionPublicKey::from_point(pk.0 .0))
+    let obj = required(obj, "AttributeSessionPublicKey")?;
+    if let Ok(pk) = obj.extract::<PyAttributeSessionPublicKey>() {
+        return Ok(AttributeSessionPublicKey::from_point(pk.0 .0));
+    }
+    Ok(session_keys(obj)?.attribute)
 }
 
-/// The session public keys a record or JSON document is encrypted under. Accepts
-/// `SessionPublicKeys` or `SessionKeys` (whose secret keys are ignored).
-pub fn session(obj: Option<&Bound<PyAny>>) -> PyResult<SessionPublicKeys> {
-    let obj = required(obj, "SessionPublicKeys")?;
+/// The session public keys from either bundle, for the projections above.
+fn session_keys(obj: &Bound<PyAny>) -> PyResult<SessionPublicKeys> {
     if let Ok(keys) = obj.extract::<PySessionPublicKeys>() {
         return Ok(keys.into());
     }
@@ -48,6 +50,12 @@ pub fn session(obj: Option<&Bound<PyAny>>) -> PyResult<SessionPublicKeys> {
         return Ok(libpep::keys::SessionKeys::from(keys).public());
     }
     Err(PyTypeError::new_err(
-        "public_key must be SessionPublicKeys or SessionKeys",
+        "public_key must be the session public key for this data type, SessionPublicKeys or SessionKeys",
     ))
+}
+
+/// The session public keys a record or JSON document is encrypted under. Accepts
+/// `SessionPublicKeys` or `SessionKeys` (whose secret keys are ignored).
+pub fn session(obj: Option<&Bound<PyAny>>) -> PyResult<SessionPublicKeys> {
+    session_keys(required(obj, "SessionPublicKeys")?)
 }
