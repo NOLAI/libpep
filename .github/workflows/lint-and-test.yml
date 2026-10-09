@@ -74,10 +74,10 @@ jobs:
 
   msrv:
     runs-on: ubuntu-latest
-    name: cargo check (MSRV 1.85)
+    name: cargo check (MSRV 1.87)
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: dtolnay/rust-toolchain@1.87.0
         with:
           targets: wasm32-unknown-unknown
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
