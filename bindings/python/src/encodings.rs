@@ -3,19 +3,19 @@
 //! Every encoding must be such that no party can produce two encoded inputs with a known
 //! discrete-log relation; encoding an identifier `x` as `x * G` is forbidden.
 
+use crate::ciphersuite::{ciphersuite_or_current, PyCiphersuite};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::protocol::{context_or_default, PyContext};
 use libpep::encodings;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
 /// The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated
-/// with the protocol context (`"HashToGroup-" || contextString`). Not invertible.
+/// with the ciphersuite (`"HashToGroup-" || contextString`). Not invertible.
 #[pyfunction]
-#[pyo3(name = "hash_to_group", signature = (x, context = None))]
-pub fn py_hash_to_group(x: &[u8], context: Option<&PyContext>) -> PyGroupElement {
-    encodings::hash_to_group(x, &context_or_default(context)).into()
+#[pyo3(name = "hash_to_group", signature = (x, ciphersuite = None))]
+pub fn py_hash_to_group(x: &[u8], ciphersuite: Option<&PyCiphersuite>) -> PyGroupElement {
+    encodings::hash_to_group(x, &ciphersuite_or_current(ciphersuite)).into()
 }
 
 /// The lizard encoding of a 16-byte string as a group element. Invertible with `decode_lizard`.
