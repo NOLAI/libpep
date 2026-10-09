@@ -1,8 +1,8 @@
 //! Wire layouts for the verifiable mode of draft-doesburg-cfrg-coprf, in the RFC 9497
 //! proof encoding of [`crate::elgamal::dleq`].
 //!
-//! These are the byte layouts of the draft's "Wire Encodings" section, for modeVcoPRF on
-//! ristretto255 (`Ne = Ns = 32`):
+//! These are the byte layouts of the draft's "Wire Encodings" section, for the verifiable
+//! operations on ristretto255 (`Ne = Ns = 32`):
 //!
 //! | Structure | Layout | Size |
 //! |:----------|:-------|-----:|
@@ -238,15 +238,24 @@ impl SessionKeyShareMaterial {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::ciphersuite::Ciphersuite;
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::dleq::generate_proof;
-    use crate::protocol::Context;
 
     fn a_proof() -> Proof {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        generate_proof(&k, &G, &(k * G), &[c], &[k * c], &Context::default(), rng).unwrap()
+        generate_proof(
+            &k,
+            &G,
+            &(k * G),
+            &[c],
+            &[k * c],
+            &Ciphersuite::current(),
+            rng,
+        )
+        .unwrap()
     }
 
     fn an_element() -> GroupElement {

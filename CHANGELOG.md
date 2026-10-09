@@ -76,7 +76,7 @@ a major change against the published 0.13.0.
   pair and for a batch of two. The paper's four-element encoding in `elgamal::zkps` is unchanged
   and remains the default; proofs in the two encodings are not interchangeable.
 - `elgamal::verifiable::rfc`: the wire layouts of the draft's "Wire Encodings" section for
-  modeVcoPRF: `RerandomizeMaterial` (128 bytes), `PseudonymBatchHeader` (448),
+  the verifiable operations: `RerandomizeMaterial` (128 bytes), `PseudonymBatchHeader` (448),
   `AttributeBatchHeader` (192) and `SessionKeyShareMaterial` (128). Every `from_slice` rejects a
   wrong length, trailing bytes, a non-canonical scalar and the identity element.
 - `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.

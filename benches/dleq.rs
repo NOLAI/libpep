@@ -13,6 +13,8 @@
 #[cfg(feature = "verifiable")]
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 #[cfg(feature = "verifiable")]
+use libpep::ciphersuite::Ciphersuite;
+#[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 #[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
@@ -20,8 +22,6 @@ use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::dleq;
 #[cfg(feature = "verifiable")]
 use libpep::elgamal::zkps;
-#[cfg(feature = "verifiable")]
-use libpep::protocol::Context;
 
 #[cfg(feature = "verifiable")]
 const SIZES: [usize; 3] = [1, 10, 100];
@@ -38,7 +38,7 @@ fn setup(m: usize) -> (ScalarNonZero, Vec<GroupElement>, Vec<GroupElement>) {
 
 #[cfg(feature = "verifiable")]
 fn bench_generate(c: &mut Criterion) {
-    let ctx = Context::default();
+    let ctx = Ciphersuite::current();
     let mut group = c.benchmark_group("proof_generate");
 
     for m in SIZES {
@@ -67,7 +67,7 @@ fn bench_generate(c: &mut Criterion) {
 
 #[cfg(feature = "verifiable")]
 fn bench_verify(c: &mut Criterion) {
-    let ctx = Context::default();
+    let ctx = Ciphersuite::current();
     let mut group = c.benchmark_group("proof_verify");
 
     for m in SIZES {

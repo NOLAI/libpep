@@ -18,7 +18,7 @@
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
 //! the seed (`"Seed-" || contextString`), exactly as in the RFC. The context string comes from
-//! the protocol [`Context`], so two deployments with different context strings produce proofs
+//! the [`Ciphersuite`], so two deployments with different context strings produce proofs
 //! that never verify against one another.
 //!
 //! The implementation is cross-checked against the ristretto255-SHA512 VOPRF test vectors of
@@ -30,9 +30,9 @@
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
-//! # use libpep::protocol::Context;
+//! # use libpep::ciphersuite::Ciphersuite;
 //! let mut rng = rand::rng();
-//! let ctx = Context::default();
+//! let ctx = Ciphersuite::current();
 //!
 //! let k = ScalarNonZero::random(&mut rng);
 //! let a = G;
@@ -48,10 +48,10 @@
 
 use rand_core::{CryptoRng, Rng};
 
+use crate::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
 use crate::elgamal::arithmetic::hashing::hash_to_scalar;
 use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
-use crate::protocol::Context;
 
 /// Byte length of a serialized proof: two scalars.
 pub const PROOF_SIZE: usize = 64;
@@ -114,7 +114,7 @@ pub enum ProofError {
 /// with the context string entering only through `HashToScalar`'s own DST
 /// (`"HashToScalar-" || contextString`).
 ///
-/// Normally built from the protocol [`Context`], whose context string is prefixed `"coPRFV1-"`.
+/// Normally built from the [`Ciphersuite`], whose context string is prefixed `"coPRFV1-"`.
 /// RFC 9497's own test vectors use its `"OPRFV1-"` prefix, so the test module builds these
 /// directly in order to cross-check the transcript against Appendix A.1.2.
 #[derive(Clone)]
@@ -126,10 +126,10 @@ struct Dsts {
 }
 
 impl Dsts {
-    fn from_context(context: &Context) -> Self {
+    fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
         Self {
-            seed: context.dst(b"Seed-"),
-            hash_to_scalar: context.dst(b"HashToScalar-"),
+            seed: ciphersuite.dst(b"Seed-"),
+            hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
         }
     }
 }
@@ -223,7 +223,7 @@ pub fn generate_proof<R: Rng + CryptoRng>(
     b: &GroupElement,
     cs: &[GroupElement],
     ds: &[GroupElement],
-    context: &Context,
+    ciphersuite: &Ciphersuite,
     rng: &mut R,
 ) -> Result<Proof, ProofError> {
     if cs.is_empty() || cs.len() != ds.len() {
@@ -233,7 +233,7 @@ pub fn generate_proof<R: Rng + CryptoRng>(
         });
     }
 
-    let dsts = Dsts::from_context(context);
+    let dsts = Dsts::from_ciphersuite(ciphersuite);
     Ok(generate_proof_with(
         k,
         a,
@@ -284,9 +284,9 @@ pub fn verify_proof(
     cs: &[GroupElement],
     ds: &[GroupElement],
     proof: &Proof,
-    context: &Context,
+    ciphersuite: &Ciphersuite,
 ) -> bool {
-    verify_proof_with(a, b, cs, ds, proof, &Dsts::from_context(context))
+    verify_proof_with(a, b, cs, ds, proof, &Dsts::from_ciphersuite(ciphersuite))
 }
 
 /// The DST-parameterised core of [`verify_proof`].
@@ -318,8 +318,8 @@ mod tests {
     use super::*;
     use crate::elgamal::arithmetic::group_elements::G;
 
-    fn ctx() -> Context {
-        Context::default()
+    fn ctx() -> Ciphersuite {
+        Ciphersuite::current()
     }
 
     #[test]
@@ -379,13 +379,12 @@ mod tests {
 
     /// The context string is part of the challenge, so proofs do not cross deployments.
     #[test]
-    fn proofs_are_context_separated() {
-        use crate::protocol::Mode;
+    fn proofs_are_ciphersuite_separated() {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let a = Context::default();
-        let b = Context::new(Mode::VcoPRF, "other-deployment");
+        let a = Ciphersuite::current();
+        let b = Ciphersuite::new("other-deployment");
         let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &a, rng).unwrap();
         assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &a));
         assert!(!verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &b));
@@ -409,7 +408,7 @@ mod tests {
     /// The DSTs of RFC 9497's own VOPRF ciphersuite, whose context string is
     /// `"OPRFV1-" || I2OSP(modeVOPRF, 1) || "-" || "ristretto255-SHA512"` with modeVOPRF = 0x01.
     ///
-    /// This is deliberately NOT our [`Context`]: the draft uses the prefix `"coPRFV1-"` so that
+    /// This is deliberately NOT our [`Ciphersuite`]: the draft uses the prefix `"coPRFV1-"` so that
     /// pseudonyms of the two protocols are domain separated on the same group. Reproducing the
     /// RFC's vectors therefore requires the RFC's own context string.
     fn rfc9497_voprf_dsts() -> Dsts {
