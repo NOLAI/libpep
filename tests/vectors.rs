@@ -34,6 +34,7 @@
 ))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use libpep::ciphersuite::Ciphersuite;
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
@@ -53,7 +54,6 @@ use libpep::keys::{
     make_attribute_session_keys, make_pseudonym_session_keys, AttributeGlobalSecretKey,
     PseudonymGlobalSecretKey,
 };
-use libpep::protocol::Context;
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
@@ -132,7 +132,7 @@ fn vectors_derive_factor(out: &mut String) {
 }
 
 /// EncryptPseudonym, TranscryptPseudonym and Decrypt with fixed `b` and `r`.
-fn vectors_single_pseudonym(out: &mut String, context: &Context) {
+fn vectors_single_pseudonym(out: &mut String, ciphersuite: &Ciphersuite) {
     let mut rng = rng_for(0x01);
 
     let pseudo_secret =
@@ -154,7 +154,7 @@ fn vectors_single_pseudonym(out: &mut String, context: &Context) {
 
     // The identifier is encoded with hash_to_group, the encoding of the draft's enc-hash.
     let identifier = b"patient-42";
-    let m = hash_to_group(identifier, context);
+    let m = hash_to_group(identifier, ciphersuite);
 
     // Enc(M, pk_from) with an explicit blinding scalar b.
     let b = ScalarNonZero::random(&mut rng);
@@ -220,7 +220,7 @@ fn vectors_single_pseudonym(out: &mut String, context: &Context) {
 }
 
 /// A three-element batch in both modes, with the permutation drawn from the recorded seed.
-fn vectors_batch(out: &mut String, context: &Context) {
+fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
     let mut rng = rng_for(0x02);
 
     let pseudo_secret =
@@ -255,7 +255,7 @@ fn vectors_batch(out: &mut String, context: &Context) {
     let identifiers: [&[u8]; 3] = [b"patient-1", b"patient-2", b"patient-3"];
     let mut pseudonyms = Vec::new();
     for (i, id) in identifiers.iter().enumerate() {
-        let m = hash_to_group(id, context);
+        let m = hash_to_group(id, ciphersuite);
         let b = ScalarNonZero::random(&mut rng);
         let c = ElGamal {
             gb: b * G,
@@ -298,7 +298,7 @@ fn vectors_batch(out: &mut String, context: &Context) {
         let p = c.value().gc - sk_to.value() * c.value().gb;
         put(out, &format!("PseudonymP_{i}"), &p.to_hex());
         let source = (0..3)
-            .find(|&j| s * hash_to_group(identifiers[j], context) == p)
+            .find(|&j| s * hash_to_group(identifiers[j], ciphersuite) == p)
             .expect("every output pseudonym comes from one of the inputs");
         permutation.push(source.to_string());
     }
@@ -354,10 +354,10 @@ fn vectors_batch(out: &mut String, context: &Context) {
 /// A session key share with its proof.
 ///
 /// The share carries the ordinary rekey factor of the session: it is derived under the
-/// ciphersuite context like every other factor, so that a verifiable and a non-verifiable
-/// transcryptor operating on the same session produce the same key material. What makes the
-/// mode verifiable is the proof wrapped around the share, not the factor underneath, and only
-/// the proof transcript is separated by `modeVcoPRF`.
+/// ciphersuite like every other factor, so that a verifiable and a non-verifiable
+/// transcryptor operating on the same session produce the same key material. What makes an
+/// operation verifiable is the proof wrapped around the share, not the factor underneath; the
+/// proof transcript is separated by its own labels, not by a protocol mode.
 fn vectors_session_key_share(out: &mut String) {
     let mut rng = rng_for(0x03);
 
@@ -377,9 +377,9 @@ fn vectors_session_key_share(out: &mut String) {
     out.push_str(
         "// commitment of the session, the same value as K_c above: the share is derived\n",
     );
-    out.push_str("// under the ciphersuite context, so a verifiable and a non-verifiable\n");
-    out.push_str("// transcryptor on the same session agree on the key material. Only the proof\n");
-    out.push_str("// transcript is separated by modeVcoPRF.\n");
+    out.push_str("// under the ciphersuite, so a verifiable and a non-verifiable\n");
+    out.push_str("// transcryptor on the same session agree on the key material. The proof\n");
+    out.push_str("// transcript is separated by its own labels, not by a protocol mode.\n");
     out.push_str("// u_i is secret and is shown only so the vector can be reproduced.\n\n");
 
     put(out, "b_1", &b.to_hex());
@@ -397,7 +397,7 @@ fn vectors_session_key_share(out: &mut String) {
 
 /// Build the whole vectors file.
 fn generate() -> String {
-    let context = Context::default();
+    let ciphersuite = Ciphersuite::current();
 
     let mut out = String::new();
     out.push_str("# Test vectors for draft-doesburg-cfrg-coprf-00, ristretto255-SHA512.\n");
@@ -415,11 +415,10 @@ fn generate() -> String {
     out.push_str("# third-party implementation can reproduce the values exactly.\n\n");
 
     put(&mut out, "Ciphersuite", "ristretto255-SHA512");
-    put(&mut out, "Mode", "modeCoPRF (0x00) unless stated otherwise");
     put(
         &mut out,
         "ContextString",
-        &hex::encode(context.context_string()),
+        &hex::encode(ciphersuite.context_string()),
     );
     put(&mut out, "Seed", &hex::encode(SEED));
     out.push('\n');
@@ -427,9 +426,9 @@ fn generate() -> String {
     out.push_str("## DeriveFactor\n\n");
     vectors_derive_factor(&mut out);
     out.push_str("\n## Single pseudonym\n\n");
-    vectors_single_pseudonym(&mut out, &context);
+    vectors_single_pseudonym(&mut out, &ciphersuite);
     out.push_str("\n## Batch of three\n\n");
-    vectors_batch(&mut out, &context);
+    vectors_batch(&mut out, &ciphersuite);
     out.push_str("\n## Session key share\n\n");
     vectors_session_key_share(&mut out);
 
