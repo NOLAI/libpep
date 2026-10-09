@@ -84,7 +84,10 @@ fn encrypting_an_attribute_from_the_bundle_selects_the_attribute_key() {
 /// `decrypt` returns an `Option` with the `elgamal3` feature and the value itself without it.
 #[cfg(feature = "elgamal3")]
 fn unwrap_decrypted<T>(value: Option<T>) -> T {
-    value.expect("decryption must succeed")
+    match value {
+        Some(value) => value,
+        None => panic!("decryption must succeed"),
+    }
 }
 
 #[cfg(not(feature = "elgamal3"))]
