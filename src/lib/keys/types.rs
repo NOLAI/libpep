@@ -64,7 +64,7 @@ pub struct SessionPublicKeys {
 
 impl SessionKeys {
     /// The public keys of this session.
-    pub fn public_keys(&self) -> SessionPublicKeys {
+    pub fn public(&self) -> SessionPublicKeys {
         SessionPublicKeys {
             pseudonym: self.pseudonym.public,
             attribute: self.attribute.public,
@@ -74,7 +74,7 @@ impl SessionKeys {
 
 impl From<&SessionKeys> for SessionPublicKeys {
     fn from(keys: &SessionKeys) -> Self {
-        keys.public_keys()
+        keys.public()
     }
 }
 

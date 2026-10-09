@@ -54,7 +54,7 @@ test('n_pep', async () => {
     // Transcrypt pseudonym and rekey data. Every transcryptor rerandomizes, which needs the key the
     // ciphertext is currently encrypted under: the sender's session key for the first transcryptor
     // and the key output by the previous transcryptor for the others, so the key travels along.
-    const keysA1 = clientA.dump().publicKeys();
+    const keysA1 = clientA.dump().public();
     const [transcryptedPseudo, keyB1Pseudonym] = systems.reduce(([acc, key], system) => {
         const info = system.pseudonymizationInfo(domainA, domainB, sessionA1, sessionB1);
         return [system.pseudonymize(acc, info, key), info.rekeyPublicKey(key)];

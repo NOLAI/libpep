@@ -64,7 +64,7 @@ fn test_json_transcryption_with_macro() {
     });
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys.public(), &mut rng);
 
     // Decrypt to verify original
     #[cfg(feature = "elgamal3")]
@@ -92,7 +92,7 @@ fn test_json_transcryption_with_macro() {
         Transcryptable::transcrypt,
         &encrypted,
         &transcryption_info,
-        &session_keys.public_keys(),
+        &session_keys.public(),
         &mut rng
     );
 
@@ -134,7 +134,7 @@ fn test_json_transcryption_with_builder() {
         .build();
 
     // Encrypt
-    let encrypted = patient_record.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted = patient_record.encrypt(&session_keys.public(), &mut rng);
 
     // Decrypt to verify original
     #[cfg(feature = "elgamal3")]
@@ -164,7 +164,7 @@ fn test_json_transcryption_with_builder() {
         Transcryptable::transcrypt,
         &encrypted,
         &transcryption_info,
-        &session_keys.public_keys(),
+        &session_keys.public(),
         &mut rng
     );
 
@@ -226,8 +226,8 @@ fn test_json_batch_transcryption_same_structure() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys.public_keys(), &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys.public(), &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys.public(), &mut rng);
 
     // Verify they have the same structure
     let structure1 = encrypted1.structure();
@@ -249,7 +249,7 @@ fn test_json_batch_transcryption_same_structure() {
         transcrypt_batch,
         &mut batch,
         &transcryption_info,
-        &session_keys.public_keys(),
+        &session_keys.public(),
         &mut rng
     )
     .unwrap()
@@ -342,8 +342,8 @@ fn test_json_batch_transcryption_different_structures() {
         .build();
 
     // Encrypt both records
-    let encrypted1 = record1.encrypt(&session_keys.public_keys(), &mut rng);
-    let encrypted2 = record2.encrypt(&session_keys.public_keys(), &mut rng);
+    let encrypted1 = record1.encrypt(&session_keys.public(), &mut rng);
+    let encrypted2 = record2.encrypt(&session_keys.public(), &mut rng);
 
     // Verify they have different structures
     let structure1 = encrypted1.structure();
@@ -369,7 +369,7 @@ fn test_json_batch_transcryption_different_structures() {
         transcrypt_batch,
         &mut batch,
         &transcryption_info,
-        &session_keys.public_keys(),
+        &session_keys.public(),
         &mut rng
     );
 
@@ -441,7 +441,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -517,7 +517,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -565,7 +565,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -642,7 +642,7 @@ fn test_pseudonym_roundtrip_with_builder() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -702,7 +702,7 @@ fn test_pseudonym_roundtrip_with_builder() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -765,7 +765,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 
@@ -826,7 +826,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public_keys(),
+        &client.dump().public(),
         &mut rng
     );
 

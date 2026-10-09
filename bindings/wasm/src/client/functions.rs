@@ -71,9 +71,7 @@ pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMRe
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: Record = record.into();
-    rust_record
-        .encrypt(&session_keys.public_keys(), &mut rng)
-        .into()
+    rust_record.encrypt(&session_keys.public(), &mut rng).into()
 }
 
 /// Decrypt an encrypted Record using session keys.
@@ -152,9 +150,7 @@ pub fn wasm_encrypt_long_record(
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: LongRecord = record.into();
-    rust_record
-        .encrypt(&session_keys.public_keys(), &mut rng)
-        .into()
+    rust_record.encrypt(&session_keys.public(), &mut rng).into()
 }
 
 /// Decrypt an encrypted LongRecord using session keys.
@@ -240,7 +236,7 @@ pub fn wasm_encrypt_json(
     let mut rng = rand::rng();
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
-    WASMEncryptedPEPJSONValue(json.0.encrypt(&session_keys.public_keys(), &mut rng))
+    WASMEncryptedPEPJSONValue(json.0.encrypt(&session_keys.public(), &mut rng))
 }
 
 /// Decrypt an encrypted PEPJSONValue using session keys.

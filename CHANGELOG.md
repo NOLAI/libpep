@@ -24,7 +24,7 @@ a major change against the published 0.13.0.
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
   `rerandomize`. The factor-only operations are available as `pseudonymize_raw`, `rekey_raw` and
   `transcrypt_raw`; they must not be applied to untrusted input.
-- `SessionPublicKeys` is the public half of `SessionKeys` (`SessionKeys::public_keys()`); records
+- `SessionPublicKeys` is the public half of `SessionKeys` (`SessionKeys::public()`); records
   and JSON values are encrypted with and rerandomized under `SessionPublicKeys` instead of
   `SessionKeys`.
 - `KeyProvider::get_key` returns the key by value.
@@ -32,7 +32,7 @@ a major change against the published 0.13.0.
   (required without `elgamal3`; `SessionPublicKeys` or `SessionKeys` for records and JSON).
 - JavaScript: the transcryption functions and methods take a trailing public key argument without
   `elgamal3` (`PseudonymSessionPublicKey`, `AttributeSessionPublicKey`, or the new
-  `SessionPublicKeys`; `SessionKeys.publicKeys()`).
+  `SessionPublicKeys`; `SessionKeys.public()`).
 - `peppy`: `pseudonym|attribute rekey|pseudonymize|transcrypt` take `--key`, `json transcrypt`
   takes `--keys` (without `elgamal3`).
 

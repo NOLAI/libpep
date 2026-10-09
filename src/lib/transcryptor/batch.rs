@@ -4,6 +4,8 @@
 use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::factors::TranscryptionInfo;
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
 use crate::errors::BatchError;
@@ -87,7 +89,7 @@ where
 pub fn pseudonymize_batch<E, R>(
     encrypted: &mut [E],
     info: &crate::factors::PseudonymizationInfo,
-    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where
@@ -96,9 +98,10 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
+    let key = public_key.get_key();
     Ok(encrypted
         .iter()
-        .map(|x| x.pseudonymize(info, public_key, rng))
+        .map(|x| x.pseudonymize(info, &key, rng))
         .collect())
 }
 
@@ -136,7 +139,7 @@ where
 pub fn rekey_batch<E, R>(
     encrypted: &mut [E],
     info: &E::RekeyInfo,
-    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where
@@ -146,10 +149,8 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
-    Ok(encrypted
-        .iter()
-        .map(|x| x.rekey(info, public_key, rng))
-        .collect())
+    let key = public_key.get_key();
+    Ok(encrypted.iter().map(|x| x.rekey(info, &key, rng)).collect())
 }
 
 /// Polymorphic batch transcryption with structure validation and shuffling.
@@ -185,7 +186,7 @@ where
 pub fn transcrypt_batch<E, R>(
     encrypted: &mut [E],
     info: &TranscryptionInfo,
-    public_key: &<E::UnencryptedType as Encryptable>::PublicKeyType,
+    public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
     rng: &mut R,
 ) -> Result<Box<[E]>, BatchError>
 where
@@ -194,9 +195,10 @@ where
 {
     validate_structure(encrypted)?;
     shuffle(encrypted, rng);
+    let key = public_key.get_key();
     Ok(encrypted
         .iter()
-        .map(|x| x.transcrypt(info, public_key, rng))
+        .map(|x| x.transcrypt(info, &key, rng))
         .collect())
 }
 

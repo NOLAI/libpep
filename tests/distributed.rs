@@ -63,7 +63,7 @@ fn n_pep() {
     // currently encrypted under: the sender's session key for the first transcryptor, and the key
     // output by the previous transcryptor for the others. The key travels with the ciphertext.
     #[cfg(not(feature = "elgamal3"))]
-    let keys_a1 = client_a.dump().public_keys();
+    let keys_a1 = client_a.dump().public();
 
     #[cfg(feature = "elgamal3")]
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
