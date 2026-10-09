@@ -260,7 +260,7 @@ The bindings live in [`bindings/python`](bindings/python) and [`bindings/wasm`](
 
 This library implements the *n-PEP* scheme, described in:
 
-> Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*. In **Security and Trust Management. 22nd International Workshop, STM 2026, Proceedings**, Lecture Notes in Computer Science, Springer. [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
+> Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*. In **Security and Trust Management. STM 2026**, Lecture Notes in Computer Science, vol. 17172, Springer, Cham, 2027. [doi:10.1007/978-3-032-41330-7_5](https://doi.org/10.1007/978-3-032-41330-7_5) · [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
 
 n-PEP extends the PEP framework with *reversible* and *transitive* pseudonymization between domains (the `reshuffle2`, `rekey2` and `rsk2` operations), eliminating the polymorphic pseudonyms that act as a linking oracle in basic PEP, and distributes transcryption and session key establishment over `n` semi-trusted transcryptors, so that confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
 

@@ -20,7 +20,8 @@ keywords:
 preferred-citation:
   type: conference-paper
   title: "n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization"
-  url: "https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf"
+  doi: "10.1007/978-3-032-41330-7_5"
+  url: "https://doi.org/10.1007/978-3-032-41330-7_5"
   authors:
     - given-names: Job
       family-names: Doesburg
@@ -32,9 +33,11 @@ preferred-citation:
   conference:
     name: "22nd International Workshop on Security and Trust Management (STM 2026)"
   collection-title: "Security and Trust Management (STM 2026), Lecture Notes in Computer Science"
+  volume: 17172
   publisher:
     name: "Springer"
-  year: 2026
+    city: "Cham"
+  year: 2027
 references:
   - type: article
     title: "Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research"
