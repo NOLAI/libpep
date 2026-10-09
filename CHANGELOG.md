@@ -19,6 +19,8 @@ a major change against the published 0.13.0.
 
 ### Breaking changes
 
+- The minimum supported Rust version is 1.87, up from 1.85. `ctutils`, a transitive dependency
+  of `curve25519-dalek`, `sha2` and `hmac`, requires 1.87 from its 0.4.3 release on.
 - `pseudonymize`, `rekey` and `transcrypt` (functions, `Transcryptor` and `DistributedTranscryptor`
   methods, traits, and the batch variants) take a random number generator and, without the
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
