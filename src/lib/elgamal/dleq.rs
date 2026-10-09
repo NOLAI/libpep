@@ -18,7 +18,7 @@
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
 //! the seed (`"Seed-" || contextString`), exactly as in the RFC. The context string comes from
-//! the protocol [`Ciphersuite`], so two deployments with different context strings produce proofs
+//! the [`Ciphersuite`], so two deployments with different context strings produce proofs
 //! that never verify against one another.
 //!
 //! The implementation is cross-checked against the ristretto255-SHA512 VOPRF test vectors of
@@ -114,7 +114,7 @@ pub enum ProofError {
 /// with the context string entering only through `HashToScalar`'s own DST
 /// (`"HashToScalar-" || contextString`).
 ///
-/// Normally built from the protocol [`Ciphersuite`], whose context string is prefixed `"coPRFV1-"`.
+/// Normally built from the [`Ciphersuite`], whose context string is prefixed `"coPRFV1-"`.
 /// RFC 9497's own test vectors use its `"OPRFV1-"` prefix, so the test module builds these
 /// directly in order to cross-check the transcript against Appendix A.1.2.
 #[derive(Clone)]
@@ -126,10 +126,10 @@ struct Dsts {
 }
 
 impl Dsts {
-    fn from_context(context: &Ciphersuite) -> Self {
+    fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
         Self {
-            seed: context.dst(b"Seed-"),
-            hash_to_scalar: context.dst(b"HashToScalar-"),
+            seed: ciphersuite.dst(b"Seed-"),
+            hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
         }
     }
 }
@@ -223,7 +223,7 @@ pub fn generate_proof<R: Rng + CryptoRng>(
     b: &GroupElement,
     cs: &[GroupElement],
     ds: &[GroupElement],
-    context: &Ciphersuite,
+    ciphersuite: &Ciphersuite,
     rng: &mut R,
 ) -> Result<Proof, ProofError> {
     if cs.is_empty() || cs.len() != ds.len() {
@@ -233,7 +233,7 @@ pub fn generate_proof<R: Rng + CryptoRng>(
         });
     }
 
-    let dsts = Dsts::from_context(context);
+    let dsts = Dsts::from_ciphersuite(ciphersuite);
     Ok(generate_proof_with(
         k,
         a,
@@ -284,9 +284,9 @@ pub fn verify_proof(
     cs: &[GroupElement],
     ds: &[GroupElement],
     proof: &Proof,
-    context: &Ciphersuite,
+    ciphersuite: &Ciphersuite,
 ) -> bool {
-    verify_proof_with(a, b, cs, ds, proof, &Dsts::from_context(context))
+    verify_proof_with(a, b, cs, ds, proof, &Dsts::from_ciphersuite(ciphersuite))
 }
 
 /// The DST-parameterised core of [`verify_proof`].
