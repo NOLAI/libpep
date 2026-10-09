@@ -244,7 +244,7 @@ Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinka
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 The library has been designed for production use but has not undergone a formal security audit.
 
-The minimum supported Rust version is 1.85; raising it is considered a semver-relevant change.
+The minimum supported Rust version is 1.87; raising it is considered a semver-relevant change.
 
 ## Development
 

@@ -5,7 +5,7 @@ resolver = "2"
 [workspace.package]
 version = "0.14.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.87"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 license = "Apache-2.0"
 repository = "https://github.com/NOLAI/libpep"
