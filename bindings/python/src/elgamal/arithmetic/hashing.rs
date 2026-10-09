@@ -28,7 +28,7 @@ pub fn py_expand_message_xmd_sha512(
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag
-/// `dst`. Use `libpep.encodings.hash_to_group` to hash under a protocol context.
+/// `dst`. Use `libpep.encodings.hash_to_group` to hash under the ciphersuite.
 #[pyfunction]
 #[pyo3(name = "hash_to_group")]
 pub fn py_hash_to_group(msg: &[u8], dst: &[u8]) -> PyGroupElement {

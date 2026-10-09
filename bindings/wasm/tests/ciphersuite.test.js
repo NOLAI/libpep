@@ -1,6 +1,5 @@
 const {
-    Context,
-    Mode,
+    Ciphersuite,
     Transcryptor,
     GroupElement,
     EncryptionContext,
@@ -23,21 +22,20 @@ const hex = (bytes) => Buffer.from(bytes).toString("hex");
 const concat = (a, b) => new Uint8Array([...a, ...b]);
 
 test('Context string', () => {
-    const ctx = Context.default();
-    expect(ctx.mode).toBe(Mode.CoPRF);
+    const ctx = Ciphersuite.current();
     expect(Buffer.from(ctx.identifier).toString()).toBe("ristretto255-SHA512");
-    expect(Buffer.from(ctx.contextString())).toEqual(Buffer.from("coPRFV1-\x00-ristretto255-SHA512", "latin1"));
-    expect(ctx.equals(new Context("ristretto255-SHA512"))).toBe(true);
+    expect(Buffer.from(ctx.contextString())).toEqual(Buffer.from("coPRFV1-ristretto255-SHA512", "latin1"));
+    expect(ctx.equals(new Ciphersuite("ristretto255-SHA512"))).toBe(true);
 
-    const custom = Context.withMode(Mode.VcoPRF, "my-deployment");
-    expect(Buffer.from(custom.contextString())).toEqual(Buffer.from("coPRFV1-\x01-my-deployment", "latin1"));
-    expect(custom.equals(new Context("my-deployment"))).toBe(false);
-    expect(custom.toString()).toBe("coPRFV1-01-my-deployment");
+    const custom = new Ciphersuite("my-deployment");
+    expect(Buffer.from(custom.contextString())).toEqual(Buffer.from("coPRFV1-my-deployment", "latin1"));
+    expect(custom.equals(Ciphersuite.current())).toBe(false);
+    expect(custom.toString()).toBe("coPRFV1-my-deployment");
 });
 
-test('Transcryptor takes no context', () => {
-    // The protocol context is a property of the ciphersuite, so a transcryptor is constructed
-    // from its secrets alone and derives the same factors as the free functions.
+test('Transcryptor takes no ciphersuite', () => {
+    // The ciphersuite is fixed for a build, so a transcryptor is constructed from its secrets
+    // alone and derives the same factors as the free functions.
     const t = new Transcryptor("p", "e");
     const sessionA = new EncryptionContext("session-a");
     const sessionB = new EncryptionContext("session-b");
@@ -54,11 +52,11 @@ test('expand_message_xmd RFC 9380 vector', () => {
     expect(() => expandMessageXmdSha512(utf8(""), dst, 65536)).toThrow();
 });
 
-test('hashToGroup uses the context DST', () => {
-    const ctx = new Context("my-deployment");
+test('hashToGroup uses the ciphersuite DST', () => {
+    const ctx = new Ciphersuite("my-deployment");
     const dst = concat(utf8("HashToGroup-"), ctx.contextString());
     expect(hashToGroup(utf8("patient-1"), ctx).toHex()).toBe(hashToGroupWithDst(utf8("patient-1"), dst).toHex());
-    expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroup(utf8("patient-1"), Context.default()).toHex());
+    expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroup(utf8("patient-1"), Ciphersuite.current()).toHex());
     expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroup(utf8("patient-1"), ctx).toHex());
     expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroup(utf8("patient-2")).toHex());
 
@@ -76,7 +74,7 @@ test('lizard round trip', () => {
 });
 
 test('Secrets, domains and sessions separate factors and session keys', () => {
-    // Factor derivation takes no protocol context: the secret is part of its hash input, so
+    // Factor derivation takes no ciphersuite: the secret is part of its hash input, so
     // different secrets already give unrelated factors, and the domain and session separate
     // within a deployment.
     const globalKeys = makeGlobalKeys();

@@ -3,17 +3,17 @@
 //! Every encoding must be such that no party can produce two encoded inputs with a known
 //! discrete-log relation; encoding an identifier `x` as `x * G` is forbidden.
 
+use crate::ciphersuite::ciphersuite_or_current;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::protocol::context_or_default;
 use libpep::encodings;
 use wasm_bindgen::prelude::*;
 
 /// The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated
-/// with the protocol context (`"HashToGroup-" || contextString`; the default context if
-/// omitted). Not invertible.
+/// with the ciphersuite (`"HashToGroup-" || contextString`; the ciphersuite this build
+/// implements if omitted). Not invertible.
 #[wasm_bindgen(js_name = hashToGroup)]
-pub fn wasm_hash_to_group(x: &[u8], context: Option<js_sys::Object>) -> WASMGroupElement {
-    encodings::hash_to_group(x, &context_or_default(context.as_ref())).into()
+pub fn wasm_hash_to_group(x: &[u8], ciphersuite: Option<js_sys::Object>) -> WASMGroupElement {
+    encodings::hash_to_group(x, &ciphersuite_or_current(ciphersuite.as_ref())).into()
 }
 
 /// The lizard encoding of a 16-byte string as a group element. Invertible with `decodeLizard`.

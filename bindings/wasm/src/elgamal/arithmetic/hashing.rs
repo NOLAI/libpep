@@ -27,7 +27,7 @@ pub fn wasm_expand_message_xmd_sha512(
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag
-/// `dst`. Use `hashToGroup` to hash under a protocol context.
+/// `dst`. Use `hashToGroup` to hash under the ciphersuite.
 #[wasm_bindgen(js_name = hashToGroupWithDst)]
 pub fn wasm_hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> WASMGroupElement {
     hashing::hash_to_group(msg, dst).into()

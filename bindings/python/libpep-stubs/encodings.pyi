@@ -8,6 +8,6 @@ def encode_lizard(data):
     """The lizard encoding of a 16-byte string as a group element. Invertible with `decode_lizard`."""
     ...
 
-def hash_to_group(x, context=None):
+def hash_to_group(x, ciphersuite=None):
     """The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated"""
     ...
