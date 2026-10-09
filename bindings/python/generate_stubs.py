@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 import libpep
+import libpep.ciphersuite
 import libpep.client
 import libpep.contexts
 import libpep.data
@@ -32,11 +33,11 @@ import libpep.elgamal.primitives
 import libpep.encodings
 import libpep.factors
 import libpep.keys
-import libpep.protocol
 import libpep.transcryptor
 
 MODULES = {
     "__init__": libpep,
+    "ciphersuite": libpep.ciphersuite,
     "client": libpep.client,
     "contexts": libpep.contexts,
     "data/__init__": libpep.data,
@@ -50,7 +51,6 @@ MODULES = {
     "encodings": libpep.encodings,
     "factors": libpep.factors,
     "keys": libpep.keys,
-    "protocol": libpep.protocol,
     "transcryptor": libpep.transcryptor,
 }
 
