@@ -1,6 +1,11 @@
 pub mod arithmetic;
 pub mod primitives;
 
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
+#[cfg(feature = "verifiable")]
+pub mod zkps;
+
 use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::{decrypt, encrypt, ElGamal};
@@ -88,5 +93,9 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     crate::add_submodule(m, "libpep.elgamal.primitives", |sm| {
         primitives::register(sm)
     })?;
+    #[cfg(feature = "verifiable")]
+    crate::add_submodule(m, "libpep.elgamal.zkps", |sm| zkps::register(sm))?;
+    #[cfg(feature = "verifiable")]
+    verifiable::register_module(m)?;
     Ok(())
 }

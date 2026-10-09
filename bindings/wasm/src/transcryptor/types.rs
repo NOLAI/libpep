@@ -3,9 +3,9 @@
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
+use crate::data::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
-use crate::data::records::WASMLongRecordEncrypted;
-use crate::data::records::WASMRecordEncrypted;
+use crate::data::records::WASMLongEncryptedRecord;
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
@@ -527,9 +527,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         let mut rng = rand::rng();
         use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Transcryptable;
@@ -543,10 +543,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecord)]
     pub fn transcrypt_record(
         &self,
-        encrypted: WASMRecordEncrypted,
+        encrypted: WASMEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         public_key: &WASMSessionPublicKeys,
-    ) -> WASMRecordEncrypted {
+    ) -> WASMEncryptedRecord {
         let mut rng = rand::rng();
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
         use libpep::data::records::EncryptedRecord;
@@ -562,9 +562,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         let mut rng = rand::rng();
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Transcryptable;
@@ -579,10 +579,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecord)]
     pub fn transcrypt_long_record(
         &self,
-        encrypted: WASMLongRecordEncrypted,
+        encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
         public_key: &WASMSessionPublicKeys,
-    ) -> WASMLongRecordEncrypted {
+    ) -> WASMLongEncryptedRecord {
         let mut rng = rand::rng();
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
         use libpep::data::records::LongEncryptedRecord;
@@ -598,9 +598,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecordBatch)]
     pub fn transcrypt_record_batch(
         &self,
-        records: Vec<WASMRecordEncrypted>,
+        records: Vec<WASMEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> Result<Vec<WASMRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let mut rust_records: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
@@ -610,7 +610,7 @@ impl WASMTranscryptor {
         Ok(transcrypted
             .into_vec()
             .into_iter()
-            .map(WASMRecordEncrypted::from)
+            .map(WASMEncryptedRecord::from)
             .collect())
     }
 
@@ -620,10 +620,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptRecordBatch)]
     pub fn transcrypt_record_batch(
         &self,
-        records: Vec<WASMRecordEncrypted>,
+        records: Vec<WASMEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
         public_key: &WASMSessionPublicKeys,
-    ) -> Result<Vec<WASMRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
         let mut rng = rand::rng();
         let mut rust_records: Vec<libpep::data::records::EncryptedRecord> =
@@ -634,7 +634,7 @@ impl WASMTranscryptor {
         Ok(transcrypted
             .into_vec()
             .into_iter()
-            .map(WASMRecordEncrypted::from)
+            .map(WASMEncryptedRecord::from)
             .collect())
     }
 
@@ -644,9 +644,9 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
     pub fn transcrypt_long_record_batch(
         &self,
-        records: Vec<WASMLongRecordEncrypted>,
+        records: Vec<WASMLongEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
-    ) -> Result<Vec<WASMLongRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let mut rust_records: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
@@ -656,7 +656,7 @@ impl WASMTranscryptor {
         Ok(transcrypted
             .into_vec()
             .into_iter()
-            .map(WASMLongRecordEncrypted::from)
+            .map(WASMLongEncryptedRecord::from)
             .collect())
     }
 
@@ -666,10 +666,10 @@ impl WASMTranscryptor {
     #[wasm_bindgen(js_name = transcryptLongRecordBatch)]
     pub fn transcrypt_long_record_batch(
         &self,
-        records: Vec<WASMLongRecordEncrypted>,
+        records: Vec<WASMLongEncryptedRecord>,
         transcryption_info: &WASMTranscryptionInfo,
         public_key: &WASMSessionPublicKeys,
-    ) -> Result<Vec<WASMLongRecordEncrypted>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
         let mut rng = rand::rng();
         let mut rust_records: Vec<libpep::data::records::LongEncryptedRecord> =
@@ -680,7 +680,7 @@ impl WASMTranscryptor {
         Ok(transcrypted
             .into_vec()
             .into_iter()
-            .map(WASMLongRecordEncrypted::from)
+            .map(WASMLongEncryptedRecord::from)
             .collect())
     }
 }

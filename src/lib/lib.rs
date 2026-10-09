@@ -36,6 +36,9 @@
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
 //!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic) and
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars.
+//! - With the `verifiable` feature, [`elgamal::verifiable`] holds the primitives that emit
+//!   zero-knowledge proofs, [`verifier`] checks such proofs against factor commitments, and the
+//!   high-level layers gain verifiable counterparts of their operations.
 //!
 //! ## Feature flags
 //!
@@ -80,3 +83,5 @@ pub mod transcryptor;
 #[cfg(all(doctest, not(feature = "elgamal3")))]
 #[doc = include_str!("../../README.md")]
 pub struct ReadmeDoctests;
+#[cfg(feature = "verifiable")]
+pub mod verifier;

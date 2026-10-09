@@ -1,6 +1,5 @@
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-use libpep::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero};
+use libpep::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use wasm_bindgen::prelude::*;
 
 /// Non-zero scalar. Supports addition, subtraction, multiplication, and inversion. Can be converted to a scalar that can be zero.

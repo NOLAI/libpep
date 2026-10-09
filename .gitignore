@@ -200,3 +200,4 @@ env/
 
 # OS specific
 .DS_Store
+api_comparison_report.json
