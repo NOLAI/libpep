@@ -1,8 +1,8 @@
 //! Wire layouts for the verifiable mode of draft-doesburg-cfrg-coprf, in the RFC 9497
 //! proof encoding of [`crate::elgamal::dleq`].
 //!
-//! These are the byte layouts of the draft's "Wire Encodings" section, for modeVcoPRF on
-//! ristretto255 (`Ne = Ns = 32`):
+//! These are the byte layouts of the draft's "Wire Encodings" section, for the verifiable
+//! operations on ristretto255 (`Ne = Ns = 32`):
 //!
 //! | Structure | Layout | Size |
 //! |:----------|:-------|-----:|

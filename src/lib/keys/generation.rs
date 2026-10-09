@@ -16,8 +16,6 @@ pub use generic::{
 use super::traits::SecretKey;
 use super::types::*;
 #[cfg(feature = "verifiable")]
-use crate::ciphersuite::Ciphersuite;
-#[cfg(feature = "verifiable")]
 use crate::contexts::EncryptionContext;
 #[cfg(feature = "verifiable")]
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
