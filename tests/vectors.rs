@@ -34,13 +34,13 @@
 ))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::ciphersuite::Ciphersuite;
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym};
+use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
+use libpep::elgamal::arithmetic::hashing::hash_to_group_in;
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::elgamal::ElGamal;
-use libpep::encodings::hash_to_group;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
@@ -154,7 +154,7 @@ fn vectors_single_pseudonym(out: &mut String, ciphersuite: &Ciphersuite) {
 
     // The identifier is encoded with hash_to_group, the encoding of the draft's enc-hash.
     let identifier = b"patient-42";
-    let m = hash_to_group(identifier, ciphersuite);
+    let m = hash_to_group_in(identifier, ciphersuite);
 
     // Enc(M, pk_from) with an explicit blinding scalar b.
     let b = ScalarNonZero::random(&mut rng);
@@ -255,7 +255,7 @@ fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
     let identifiers: [&[u8]; 3] = [b"patient-1", b"patient-2", b"patient-3"];
     let mut pseudonyms = Vec::new();
     for (i, id) in identifiers.iter().enumerate() {
-        let m = hash_to_group(id, ciphersuite);
+        let m = hash_to_group_in(id, ciphersuite);
         let b = ScalarNonZero::random(&mut rng);
         let c = ElGamal {
             gb: b * G,
@@ -298,7 +298,7 @@ fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
         let p = c.value().gc - sk_to.value() * c.value().gb;
         put(out, &format!("PseudonymP_{i}"), &p.to_hex());
         let source = (0..3)
-            .find(|&j| s * hash_to_group(identifiers[j], ciphersuite) == p)
+            .find(|&j| s * hash_to_group_in(identifiers[j], ciphersuite) == p)
             .expect("every output pseudonym comes from one of the inputs");
         permutation.push(source.to_string());
     }
