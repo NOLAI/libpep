@@ -13,7 +13,7 @@
 #[cfg(feature = "verifiable")]
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 #[cfg(feature = "verifiable")]
-use libpep::ciphersuite::Ciphersuite;
+use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 #[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 #[cfg(feature = "verifiable")]

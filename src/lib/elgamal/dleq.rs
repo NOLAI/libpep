@@ -30,7 +30,7 @@
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
-//! # use libpep::ciphersuite::Ciphersuite;
+//! # use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 //! let mut rng = rand::rng();
 //! let ctx = Ciphersuite::current();
 //!
@@ -48,7 +48,7 @@
 
 use rand_core::{CryptoRng, Rng};
 
-use crate::ciphersuite::Ciphersuite;
+use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
 use crate::elgamal::arithmetic::hashing::hash_to_scalar;
 use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
