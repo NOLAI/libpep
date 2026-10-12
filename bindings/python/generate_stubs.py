@@ -30,7 +30,6 @@ import libpep.elgamal.arithmetic.group_elements
 import libpep.elgamal.arithmetic.hashing
 import libpep.elgamal.arithmetic.scalars
 import libpep.elgamal.primitives
-import libpep.encodings
 import libpep.factors
 import libpep.keys
 import libpep.transcryptor
@@ -48,7 +47,6 @@ MODULES = {
     "elgamal/arithmetic/hashing": libpep.elgamal.arithmetic.hashing,
     "elgamal/arithmetic/scalars": libpep.elgamal.arithmetic.scalars,
     "elgamal/primitives": libpep.elgamal.primitives,
-    "encodings": libpep.encodings,
     "factors": libpep.factors,
     "keys": libpep.keys,
     "transcryptor": libpep.transcryptor,

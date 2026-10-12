@@ -8,6 +8,10 @@ def hash_to_group(msg, dst):
     """`hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag"""
     ...
 
+def hash_to_group_in(x, ciphersuite=None):
+    """The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated"""
+    ...
+
 def hash_to_scalar(msg, dst):
     """`HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain"""
     ...

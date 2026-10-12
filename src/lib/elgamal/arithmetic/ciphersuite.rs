@@ -11,7 +11,7 @@
 //! Domain separation by ciphersuite matters where a hash takes **no secret**, so that the hash
 //! input alone determines the output and another protocol hashing the same input on the same
 //! group would get the same element. That is the case for
-//! [`hash_to_group`](crate::encodings::hash_to_group), which is why it takes an explicit
+//! [`hash_to_group_in`](super::hashing::hash_to_group_in), which is why it takes an explicit
 //! `&Ciphersuite`: the `"coPRFV1-"` prefix is what separates a pseudonym from an RFC 9497 OPRF
 //! evaluation of the same identifier on ristretto255.
 //!
