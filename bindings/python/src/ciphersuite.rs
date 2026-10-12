@@ -1,6 +1,6 @@
 //! Python bindings for the ciphersuite.
 
-use libpep::ciphersuite::{Ciphersuite, RISTRETTO255_SHA512};
+use libpep::elgamal::arithmetic::ciphersuite::{Ciphersuite, RISTRETTO255_SHA512};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
 

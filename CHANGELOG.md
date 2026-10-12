@@ -28,10 +28,10 @@ a major change against the published 0.13.0.
   session keys change**; the previous HMAC-SHA512 derivation is available behind the new
   `hmac-derivation` feature (mutually exclusive with `legacy`). The `legacy` derivation is
   unchanged.
-- A `Ciphersuite` (`ciphersuite::Ciphersuite`: the ciphersuite identifier, context string
+- A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
   `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. It is fixed for a build, not
   a parameter: `Ciphersuite::current()` is the one this crate implements, and factor derivation
-  uses it internally. It is passed explicitly only to `encodings::hash_to_group`, the one hash
+  uses it internally. It is passed explicitly only to `hashing::hash_to_group_in`, the one hash
   that takes no secret and where the `"coPRFV1-"` prefix is what separates a pseudonym from an
   RFC 9497 OPRF evaluation of the same identifier on the same group. `Transcryptor::new`,
   `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
@@ -106,18 +106,18 @@ a major change against the published 0.13.0.
   SHA-512 test vectors), `hash_to_group` (`hash_to_ristretto255` with SHA-512) and
   `hash_to_scalar` (RFC 9497 `HashToScalar`), cross-checked against the RFC 9497
   ristretto255-SHA512 test vectors.
-- `encodings`: the element encodings of draft-doesburg-cfrg-coprf as plain functions:
-  `hash_to_group(x, &Ciphersuite)` with DST `"HashToGroup-" || contextString`, `encode_lizard` and
-  `decode_lizard` (`GroupElement::from_lizard`/`to_lizard` wrap them), and `encode_oaep` and
-  `decode_oaep` as stubs until a Weierstrass curve ciphersuite exists. The module documents the
-  property every encoding must have (no known discrete-log relations; `x * G` is forbidden).
-- `ciphersuite::Ciphersuite`, with `context_string()` (the spec's name for the value) and `dst()`,
-  and `Ciphersuite::current()`, the ciphersuite this crate implements.
-- Python: `libpep.ciphersuite` (`Ciphersuite`), `libpep.encodings` (`hash_to_group`,
-  `encode_lizard`, `decode_lizard`) and `libpep.elgamal.arithmetic.hashing`
-  (`expand_message_xmd_sha512`, `hash_to_group`, `hash_to_scalar`). JavaScript: `Ciphersuite`,
-  `encodeLizard`, `decodeLizard`, `hashToGroup`, `hashToGroupWithDst`,
-  `hashToScalarWithDst`, `expandMessageXmdSha512`.
+- `elgamal::arithmetic::hashing::hash_to_group_in(x, &Ciphersuite)`: the `hash_to_group` encoding
+  of draft-doesburg-cfrg-coprf, with DST `"HashToGroup-" || contextString`, alongside the raw-tag
+  `hash_to_group`. Its docs state the property every encoding must have (no known discrete-log
+  relations; encoding `x` as `x * G` is forbidden) and why this is the one hash that takes a
+  ciphersuite explicitly: no secret enters it. The invertible lizard encoding stays on
+  `GroupElement::from_lizard`/`to_lizard`, reachable generically through `InvertibleEncoding`.
+- `elgamal::arithmetic::Ciphersuite`, with `context_string()` (the spec's name for the value) and
+  `dst()`, and `Ciphersuite::current()`, the ciphersuite this crate implements.
+- Python: `libpep.elgamal.arithmetic.ciphersuite` (`Ciphersuite`) and
+  `libpep.elgamal.arithmetic.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
+  `hash_to_group_in`, `hash_to_scalar`). JavaScript: `Ciphersuite`, `hashToGroup`,
+  `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and

@@ -1,5 +1,6 @@
 //! WASM bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
 
+use crate::ciphersuite::ciphersuite_or_current;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
@@ -24,6 +25,15 @@ pub fn wasm_expand_message_xmd_sha512(
         dst,
         len_in_bytes,
     ))
+}
+
+/// The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated
+/// with the ciphersuite (`"HashToGroup-" || contextString`; the ciphersuite this build
+/// implements if omitted). Not invertible; use `GroupElement.fromLizard` for an invertible
+/// encoding.
+#[wasm_bindgen(js_name = hashToGroup)]
+pub fn wasm_hash_to_group(x: &[u8], ciphersuite: Option<js_sys::Object>) -> WASMGroupElement {
+    hashing::hash_to_group_in(x, &ciphersuite_or_current(ciphersuite.as_ref())).into()
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag

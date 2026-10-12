@@ -7,7 +7,7 @@
 //! into the group or the scalar field. [`hash_to_group`] is
 //! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar`] is the
 //! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag; the
-//! protocol-level tags are assembled from a [`Ciphersuite`](crate::ciphersuite::Ciphersuite).
+//! protocol-level tags are assembled from a [`Ciphersuite`](crate::elgamal::arithmetic::ciphersuite::Ciphersuite).
 //!
 //! [`GroupElement::from_hash`] and [`ScalarCanBeZero::from_hash`] remain the low-level
 //! primitives that map 64 uniform bytes to the group and to the scalar field.
@@ -15,6 +15,7 @@
 //! [RFC 9380]: https://www.rfc-editor.org/rfc/rfc9380
 //! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 
+use super::ciphersuite::Ciphersuite;
 use super::group_elements::GroupElement;
 use super::scalars::ScalarCanBeZero;
 use sha2::digest::common::BlockSizeUser;
@@ -118,6 +119,47 @@ pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
 #[must_use]
 pub fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
     GroupElement::from_hash(&expand_64(msg, dst))
+}
+
+/// Encode an input as a group element: `HashToGroup(x)` under the domain separation tag
+/// `"HashToGroup-" || contextString` of `ciphersuite`.
+///
+/// This is the `hash_to_group` encoding of draft-doesburg-cfrg-coprf, the one encoding available
+/// on every ciphersuite. It is not invertible: the origin party recognizes a pseudonym as
+/// belonging to `x` only by recomputing it. For an invertible encoding on ristretto255, see
+/// [`GroupElement::from_lizard`].
+///
+/// Unlike factor derivation, **no secret enters this hash**, so the input alone determines the
+/// output and another protocol hashing the same input on the same group would get the same
+/// element. The ciphersuite's `"coPRFV1-"` prefix is therefore what separates a pseudonym here
+/// from an RFC 9497 OPRF evaluation of the same identifier on ristretto255, which is why this
+/// function takes an explicit [`Ciphersuite`] where the rest of the protocol uses
+/// [`Ciphersuite::current`] internally.
+///
+/// An input longer than 2^16 - 1 bytes is hashed with SHA-512 first, as the draft prescribes.
+///
+/// # Encoding requirement
+///
+/// Reshuffling is linear: the pseudonym of `M` in domain `d` is `s_d * M`, so for any `M_1` and
+/// `M_2 = a * M_1` the pseudonyms satisfy the same relation in every domain. Cross-domain
+/// unlinkability holds under DDH only for elements whose mutual discrete-log relations are
+/// unknown to every party, so an encoding MUST make it infeasible to produce two encoded inputs
+/// with a known discrete-log relation. **Encoding an identifier `x` as `x * G`, or as any scalar
+/// multiple of a fixed element, violates this and is forbidden.** This function satisfies the
+/// requirement by the random oracle property of hashing to the group;
+/// [`GroupElement::from_lizard`] does because inverting it would need a discrete logarithm; and
+/// [`GroupElement::random`] does trivially.
+#[must_use]
+pub fn hash_to_group_in(x: &[u8], ciphersuite: &Ciphersuite) -> GroupElement {
+    /// Inputs longer than this are hashed with SHA-512 before hashing to the group.
+    const MAX_HASH_INPUT: usize = u16::MAX as usize;
+
+    let dst = ciphersuite.dst(b"HashToGroup-");
+    if x.len() > MAX_HASH_INPUT {
+        hash_to_group(&Sha512::digest(x), &dst)
+    } else {
+        hash_to_group(x, &dst)
+    }
 }
 
 /// `HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497: expand `msg` under `dst`
@@ -306,5 +348,53 @@ mod tests {
         assert_ne!(hash_to_group(b"x", b"a"), hash_to_group(b"x", b"b"));
         assert_ne!(hash_to_scalar(b"x", b"a"), hash_to_scalar(b"x", b"b"));
         assert_eq!(hash_to_group(b"x", b"a"), hash_to_group(b"x", b"a"));
+    }
+
+    #[test]
+    fn hash_to_group_in_is_deterministic_and_ciphersuite_specific() {
+        let cs = Ciphersuite::default();
+        assert_eq!(
+            hash_to_group_in(b"alice", &cs),
+            hash_to_group_in(b"alice", &cs)
+        );
+        assert_ne!(
+            hash_to_group_in(b"alice", &cs),
+            hash_to_group_in(b"bob", &cs)
+        );
+        assert_ne!(
+            hash_to_group_in(b"alice", &cs),
+            hash_to_group_in(b"alice", &Ciphersuite::new("other"))
+        );
+    }
+
+    #[test]
+    fn hash_to_group_in_uses_the_ciphersuite_dst() {
+        assert_eq!(
+            hash_to_group_in(b"alice", &Ciphersuite::default()),
+            hash_to_group(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
+        );
+    }
+
+    #[test]
+    fn hash_to_group_in_prehashes_long_inputs() {
+        let cs = Ciphersuite::default();
+        let max_input = u16::MAX as usize;
+        let long = vec![7u8; max_input + 1];
+        assert_eq!(
+            hash_to_group_in(&long, &cs),
+            hash_to_group(&Sha512::digest(&long), &cs.dst(b"HashToGroup-"))
+        );
+        let max = vec![7u8; max_input];
+        assert_eq!(
+            hash_to_group_in(&max, &cs),
+            hash_to_group(&max, &cs.dst(b"HashToGroup-"))
+        );
+    }
+
+    #[test]
+    fn hashed_elements_are_not_lizard_encodings() {
+        assert!(hash_to_group_in(b"alice", &Ciphersuite::default())
+            .to_lizard()
+            .is_none());
     }
 }

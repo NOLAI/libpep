@@ -9,7 +9,7 @@
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
 //!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
 //!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
-//!   [ciphersuite](crate::ciphersuite::Ciphersuite::current). A factor that is 0 or 1 is rejected
+//!   [ciphersuite](crate::elgamal::arithmetic::ciphersuite::Ciphersuite::current). A factor that is 0 or 1 is rejected
 //!   and the derivation retried with the next counter.
 //! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier,
 //!   the derivation of libpep 0.13.
@@ -18,10 +18,10 @@
 //! The labels are the same in every derivation: `0x01` pseudonym rekey, `0x02` attribute rekey,
 //! `0x03` reshuffle.
 //!
-//! None of these take a [`Ciphersuite`](crate::ciphersuite::Ciphersuite): the secret is part of
+//! None of these take a [`Ciphersuite`](crate::elgamal::arithmetic::ciphersuite::Ciphersuite): the secret is part of
 //! the hash input, so deployments with different secrets already derive unrelated factors, and the
 //! domain or session identifier separates within a deployment. See the
-//! [`ciphersuite`](crate::ciphersuite) module docs.
+//! [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite) module docs.
 
 pub mod generic;
 
@@ -61,7 +61,7 @@ pub fn make_pseudonymisation_factor(
 mod tests {
     use super::generic::make_factor;
     use super::*;
-    use crate::ciphersuite::Ciphersuite;
+    use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
     use crate::elgamal::arithmetic::hashing::hash_to_scalar;
     use crate::elgamal::arithmetic::scalars::ScalarTraits;
     use crate::factors::secrets::Secret;

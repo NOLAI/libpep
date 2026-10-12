@@ -30,12 +30,10 @@
 //!   and JSON documents, and the traits the high-level API is generic over.
 //! - [`keys`], [`contexts`] and [`factors`] are the key, identifier and factor material that the
 //!   two roles exchange.
-//! - [`ciphersuite`] is the [`Ciphersuite`](ciphersuite::Ciphersuite) identifier that the
-//!   protocol's hashes are domain-separated with, and [`encodings`] are the encodings of
-//!   identifiers and payloads as group elements.
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
-//!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic) and
-//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars.
+//!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic), and
+//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars together with the
+//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built from.
 //!
 //! ## Groups
 //!
@@ -74,12 +72,10 @@
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
 
-pub mod ciphersuite;
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
-pub mod encodings;
 pub mod errors;
 pub mod factors;
 pub mod keys;

@@ -1,6 +1,6 @@
 //! WASM bindings for the ciphersuite.
 
-use libpep::ciphersuite::Ciphersuite;
+use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use wasm_bindgen::prelude::*;
 
 /// The ciphersuite identifier, from which the context string `"coPRFV1-" || identifier` is built.
