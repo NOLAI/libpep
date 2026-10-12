@@ -126,8 +126,8 @@ a major change against the published 0.13.0.
   draft-doesburg-cfrg-coprf, for the draft's "Test Vectors" appendix and for third-party
   implementations. They cover `DeriveFactor` for the three labels, `EncryptPseudonym` /
   `TranscryptPseudonym` / `Decrypt` with a fixed `b` and `r`, a three-element batch of pseudonyms
-  and of attributes with the applied permutation recorded, and a session key share with its proof
-  in modeVcoPRF. Every sampled scalar comes from a ChaCha20 RNG with a seed recorded in the file,
+  and of attributes with the applied permutation recorded, and a session key share with its proof.
+  Every sampled scalar comes from a ChaCha20 RNG with a seed recorded in the file,
   so the vectors are reproducible. `tests/vectors.rs` regenerates and asserts them; regenerate
   deliberately with `LIBPEP_WRITE_VECTORS=1 cargo test --test vectors`.
 - `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
