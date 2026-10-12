@@ -517,6 +517,22 @@ impl<G: InvertibleEncoding> Encryptable for PEPJSONValue<G> {
             ),
         }
     }
+
+    /// JSON values must share one structure inside a batch, so they are padded to the unified
+    /// structure before encryption; otherwise the batch would be rejected for an inconsistent
+    /// shape, and the differing shapes would leak through the batch anyway.
+    #[cfg(feature = "batch")]
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
+    }
 }
 
 impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
