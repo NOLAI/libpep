@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Python integration tests for the ciphersuite, hashing and encodings.
+Python integration tests for the ciphersuite, hashing and the element encodings.
 """
 
 import unittest
@@ -10,9 +10,9 @@ from libpep.elgamal.arithmetic.group_elements import GroupElement
 from libpep.elgamal.arithmetic.hashing import (
     expand_message_xmd_sha512,
     hash_to_group as hash_to_group_with_dst,
+    hash_to_group_in,
     hash_to_scalar,
 )
-from libpep.encodings import decode_lizard, encode_lizard, hash_to_group
 from libpep.factors import EncryptionSecret, PseudonymizationSecret, TranscryptionInfo
 from libpep.keys import make_global_keys, make_session_keys
 from libpep.ciphersuite import Ciphersuite
@@ -60,11 +60,15 @@ class TestHashing(unittest.TestCase):
     def test_hash_to_group_uses_ciphersuite_dst(self):
         ctx = Ciphersuite("my-deployment")
         dst = b"HashToGroup-" + ctx.context_string()
-        self.assertEqual(hash_to_group(b"patient-1", ctx), hash_to_group_with_dst(b"patient-1", dst))
-        self.assertEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-1", Ciphersuite()))
-        self.assertNotEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-1", ctx))
-        self.assertNotEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-2"))
-        self.assertIsInstance(hash_to_group(b"patient-1"), GroupElement)
+        self.assertEqual(
+            hash_to_group_in(b"patient-1", ctx), hash_to_group_with_dst(b"patient-1", dst)
+        )
+        self.assertEqual(
+            hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-1", Ciphersuite())
+        )
+        self.assertNotEqual(hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-1", ctx))
+        self.assertNotEqual(hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-2"))
+        self.assertIsInstance(hash_to_group_in(b"patient-1"), GroupElement)
 
     def test_hash_to_scalar_is_deterministic_and_separated(self):
         a = hash_to_scalar(b"msg", b"dst-a")
@@ -75,12 +79,14 @@ class TestHashing(unittest.TestCase):
 class TestEncodings(unittest.TestCase):
     def test_lizard_round_trip(self):
         data = bytes(range(16))
-        element = encode_lizard(data)
-        self.assertEqual(decode_lizard(element), data)
-        self.assertEqual(element, GroupElement.from_lizard(data))
-        self.assertIsNone(decode_lizard(GroupElement.random()))
+        element = GroupElement.from_lizard(data)
+        self.assertEqual(element.to_lizard(), data)
+        self.assertIsNone(GroupElement.random().to_lizard())
         with self.assertRaises(ValueError):
-            encode_lizard(b"too short")
+            GroupElement.from_lizard(b"too short")
+
+    def test_hashed_elements_are_not_lizard_encodings(self):
+        self.assertIsNone(hash_to_group_in(b"patient-1").to_lizard())
 
 
 class TestSeparation(unittest.TestCase):

@@ -2,6 +2,7 @@ const {
     Ciphersuite,
     Transcryptor,
     GroupElement,
+    Pseudonym,
     EncryptionContext,
     PseudonymizationDomain,
     EncryptionSecret,
@@ -13,8 +14,6 @@ const {
     hashToGroupWithDst,
     hashToScalarWithDst,
     expandMessageXmdSha512,
-    encodeLizard,
-    decodeLizard,
 } = require("../pkg/libpep.js");
 
 const utf8 = (s) => new TextEncoder().encode(s);
@@ -67,10 +66,15 @@ test('hashToGroup uses the ciphersuite DST', () => {
 
 test('lizard round trip', () => {
     const data = new Uint8Array(16).map((_, i) => i);
-    const element = encodeLizard(data);
-    expect(Buffer.from(decodeLizard(element))).toEqual(Buffer.from(data));
-    expect(decodeLizard(GroupElement.random())).toBeUndefined();
-    expect(() => encodeLizard(new Uint8Array(3))).toThrow();
+    const pseudonym = Pseudonym.fromLizard(data);
+    expect(Buffer.from(pseudonym.toLizard())).toEqual(Buffer.from(data));
+    expect(Pseudonym.random().toLizard()).toBeUndefined();
+    expect(Pseudonym.fromLizard(new Uint8Array(3))).toBeUndefined();
+});
+
+test('hashed elements are not lizard encodings', () => {
+    const hashed = new Pseudonym(hashToGroup(utf8("patient-1")));
+    expect(hashed.toLizard()).toBeUndefined();
 });
 
 test('Secrets, domains and sessions separate factors and session keys', () => {
