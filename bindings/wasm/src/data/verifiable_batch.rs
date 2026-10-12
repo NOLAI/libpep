@@ -536,8 +536,8 @@ impl WASMRecordTranscryptionBatchProof {
         self.0
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.0,
             )
             .map(|inner| WASMEncryptedRecordBatch { inner })
@@ -627,8 +627,8 @@ impl WASMLongRecordTranscryptionBatchProof {
         self.0
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.0,
             )
             .map(|inner| WASMLongEncryptedRecordBatch { inner })

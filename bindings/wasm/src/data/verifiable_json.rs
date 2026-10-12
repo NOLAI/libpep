@@ -81,8 +81,7 @@ impl WASMJSONTranscryptionProof {
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
-        self.0
-            .verify(&original.0, &keys.public_keys(), &commitments.0)
+        self.0.verify(&original.0, &keys.public(), &commitments.0)
     }
 
     /// Verify and reconstruct the transcrypted JSON value.
@@ -109,7 +108,7 @@ impl WASMJSONTranscryptionProof {
     ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
-            .verified_reconstruct(&original.0, &keys.public_keys(), &commitments.0)
+            .verified_reconstruct(&original.0, &keys.public(), &commitments.0)
             .map(WASMEncryptedPEPJSONValue)
             .ok_or_else(verify_err)
     }
@@ -186,11 +185,10 @@ impl WASMEncryptedPEPJSONValue {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
-        WASMJSONTranscryptionProof(self.0.verifiable_transcrypt(
-            &info.0,
-            &keys.public_keys(),
-            &mut rng,
-        ))
+        WASMJSONTranscryptionProof(
+            self.0
+                .verifiable_transcrypt(&info.0, &keys.public(), &mut rng),
+        )
     }
 }
 
@@ -230,7 +228,7 @@ impl WASMVerifier {
             .verified_reconstruct_transcryption(
                 &original.0,
                 &proof.0,
-                &keys.public_keys(),
+                &keys.public(),
                 &commitments.0,
             )
             .map(WASMEncryptedPEPJSONValue)

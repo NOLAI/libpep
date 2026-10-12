@@ -76,7 +76,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            public_key: self.public_key.clone(),
+            public_key: self.public_key,
             items: self.items.clone(),
         }
     }
