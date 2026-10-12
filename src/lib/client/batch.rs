@@ -133,11 +133,12 @@ pub fn decrypt_global_batch<E>(
 where
     E: Encrypted,
 {
+    let key = key.get_key();
     encrypted
         .iter()
         .enumerate()
         .map(|(index, x)| {
-            x.decrypt_global(secret_key)
+            x.decrypt_global(&key)
                 .ok_or(BatchError::DecryptionFailed { index })
         })
         .collect()
