@@ -14,11 +14,13 @@
 //! a zero scalar is not allowed. The arithmetic operators for addition, subtraction and
 //! multiplication are overloaded, so that the code matches the notation in the papers.
 
+pub mod ciphersuite;
 pub mod group;
 pub mod group_elements;
 pub mod hashing;
 pub mod ristretto255;
 pub mod scalars;
 
+pub use ciphersuite::Ciphersuite;
 pub use group::{Bytes, Group, InvertibleEncoding, OaepEncoding};
 pub use ristretto255::Ristretto255;

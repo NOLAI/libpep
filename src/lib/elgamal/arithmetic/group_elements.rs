@@ -6,6 +6,7 @@ use rand_core::{CryptoRng, Rng};
 use serde::de::{Error, Visitor};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use sha2::Sha256;
 #[cfg(feature = "serde")]
 use std::fmt::Formatter;
 use std::hash::Hash;
@@ -78,27 +79,31 @@ impl GroupElement {
         Self(RistrettoPoint::from_uniform_bytes(v))
     }
 
-    /// Create from any 16-byte string bijectively, using the lizard encoding
-    /// ([`encodings::encode_lizard`](crate::encodings::encode_lizard)).
+    /// Create from any 16-byte string bijectively, using the lizard encoding.
     ///
-    /// Every 16-byte string encodes, so this is how arbitrary data becomes a group element. The
-    /// Elligator-based map also serves a security purpose: it makes it infeasible to choose
+    /// `SHA-256(v)` with bytes 8 to 23 replaced by `v` is masked to a field element and mapped
+    /// with the ristretto255 Elligator map. Every 16-byte string encodes, so this is how
+    /// arbitrary data becomes a group element, and the hash bytes let
+    /// [`to_lizard`](Self::to_lizard) recognize an encoded element among the up to eight
+    /// Elligator preimages.
+    ///
+    /// The Elligator-based map also serves a security purpose: it makes it infeasible to choose
     /// inputs whose encodings have a known discrete-log relation, which pseudonym unlinkability
-    /// relies on (see [`encodings`](crate::encodings)).
+    /// relies on. Encoding an identifier `x` as `x * G` would violate that and is forbidden.
     #[must_use]
     pub fn from_lizard(v: &[u8; 16]) -> Self {
-        crate::encodings::encode_lizard(v)
+        Self(RistrettoPoint::lizard_encode::<Sha256>(v))
     }
 
-    /// Convert to a 16-byte string using the lizard encoding
-    /// ([`encodings::decode_lizard`](crate::encodings::decode_lizard)).
+    /// Convert to a 16-byte string using the lizard encoding.
     ///
     /// Only elements created with [`from_lizard`](Self::from_lizard) decode; any other element
     /// (a reshuffled one, or one of the other ~2^252 points) returns `None` with overwhelming
-    /// probability.
+    /// probability. The `Sha256` parameter of the underlying map is the same as in
+    /// [`from_lizard`](Self::from_lizard).
     #[must_use]
     pub fn to_lizard(&self) -> Option<[u8; 16]> {
-        crate::encodings::decode_lizard(self)
+        self.0.lizard_decode::<Sha256>()
     }
 
     /// Create from a hexadecimal string (32 bytes or 64 characters).
@@ -379,5 +384,47 @@ mod tests {
         let g = GroupElement::random(&mut rng);
         let one = ScalarNonZero::one();
         assert_eq!(one * g, g);
+    }
+
+    #[test]
+    fn lizard_edge_cases() {
+        let edge_cases = [
+            "00000000000000000000000000000000",
+            "00ffffffffffffffffffffffffffffff",
+            "f3ffffffffffffffffffffffffffff7f",
+            "ffffffffffffffffffffffffffffffff",
+            "01ffffffffffffffffffffffffffffff",
+            "edffffffffffffffffffffffffffff7f",
+            "01000000000000000000000000000000",
+            "ecffffffffffffffffffffffffffff7f",
+        ];
+        for encoding in edge_cases {
+            let case = hex::decode(encoding).expect("hex decoding should succeed");
+            let bytes = <&[u8; 16]>::try_from(case.as_slice()).expect("should be 16 bytes");
+            let element = GroupElement::from_lizard(bytes);
+            let decoded = element.to_lizard().expect("lizard decoding should succeed");
+            assert_eq!(decoded, *bytes);
+        }
+    }
+
+    #[test]
+    fn lizard_random_roundtrip() {
+        let mut rng = rand::rng();
+        let mut random_bytes = [0u8; 16];
+        rng.fill_bytes(&mut random_bytes);
+        let element = GroupElement::from_lizard(&random_bytes);
+        assert_eq!(element.to_lizard(), Some(random_bytes));
+    }
+
+    #[test]
+    fn lizard_fails_after_scalar_multiplication() {
+        use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+        let mut rng = rand::rng();
+        let mut random_bytes = [0u8; 16];
+        rng.fill_bytes(&mut random_bytes);
+        let element = GroupElement::from_lizard(&random_bytes);
+        let s = ScalarNonZero::random(&mut rng);
+        // After scalar multiplication the element is no longer in lizard form (extremely likely).
+        assert!((s * element).to_lizard().is_none());
     }
 }

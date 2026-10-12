@@ -700,13 +700,13 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
 }
 
 /// The ciphersuite separates *protocols*, not deployments: it is the domain separation tag of
-/// hashes that take no secret, so [`hash_to_group`] takes one explicitly. Factor derivation does
+/// hashes that take no secret, so [`hash_to_group_in`] takes one explicitly. Factor derivation does
 /// not, because the transcryptor secret is already part of its hash input. What separates
 /// deployments is the secrets; what separates within a deployment is the domain and the session.
 #[test]
 fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
-    use libpep::ciphersuite::Ciphersuite;
-    use libpep::encodings::hash_to_group;
+    use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
+    use libpep::elgamal::arithmetic::hashing::hash_to_group_in;
 
     let rng = &mut rand::rng();
     let (_global_public, global_secret) = make_global_keys(rng);
@@ -724,14 +724,14 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
     // Hashing an identifier to the group involves no secret, so the ciphersuite is the only
     // thing separating this pseudonym from another protocol's hash of the same identifier.
     let ciphersuite = Ciphersuite::current();
-    let origin = Pseudonym::from_point(hash_to_group(b"patient-1", &ciphersuite));
+    let origin = Pseudonym::from_point(hash_to_group_in(b"patient-1", &ciphersuite));
     assert_eq!(
         origin,
-        Pseudonym::from_point(hash_to_group(b"patient-1", &ciphersuite))
+        Pseudonym::from_point(hash_to_group_in(b"patient-1", &ciphersuite))
     );
     assert_ne!(
         origin,
-        Pseudonym::from_point(hash_to_group(
+        Pseudonym::from_point(hash_to_group_in(
             b"patient-1",
             &Ciphersuite::new("another-ciphersuite")
         ))
