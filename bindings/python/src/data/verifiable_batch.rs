@@ -545,8 +545,8 @@ impl PyRecordTranscryptionBatchProof {
         self.inner
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.inner,
             )
             .map(PyRecordBatch::from)
@@ -634,8 +634,8 @@ impl PyLongRecordTranscryptionBatchProof {
         self.inner
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.inner,
             )
             .map(PyLongRecordBatch::from)

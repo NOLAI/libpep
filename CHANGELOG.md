@@ -27,7 +27,7 @@ a major change against the published 0.13.0.
   This affects `verified_reconstruct_batch`, `verified_reconstruct_transcryption`,
   `verifiable_transcrypt` and the batch constructors, in Rust and in both bindings. In
   JavaScript the `EncryptedBatch` constructors, their `publicKey()` getter and `transcrypt()`
-  now use `SessionPublicKeys`; call `SessionKeys.publicKeys()` to obtain one.
+  now use `SessionPublicKeys`; call `SessionKeys.public()` to obtain one.
 
 - Factor derivation follows `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar`
   (RFC 9497, ristretto255-SHA512: `expand_message_xmd` with SHA-512, RFC 9380) over the

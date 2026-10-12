@@ -244,7 +244,7 @@ impl PyVerifier {
             .verified_reconstruct_transcryption(
                 &original.0,
                 &proof.inner,
-                &sk.public_keys(),
+                &sk.public(),
                 &commitments.inner,
             )
             .map(crate::data::records::PyEncryptedRecord)
@@ -279,7 +279,7 @@ impl PyVerifier {
             .verified_reconstruct_transcryption(
                 &original.0,
                 &proof.inner,
-                &sk.public_keys(),
+                &sk.public(),
                 &commitments.inner,
             )
             .map(crate::data::records::PyLongEncryptedRecord)
@@ -827,8 +827,8 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.inner,
             )
             .map(crate::data::batch::PyRecordBatch::from)
@@ -886,8 +886,8 @@ impl PyVerifier {
             .inner
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.inner,
             )
             .map(crate::data::batch::PyLongRecordBatch::from)

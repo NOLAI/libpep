@@ -90,7 +90,7 @@ impl PyJSONTranscryptionProof {
     ) -> bool {
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
-            .verify(&original.0, &keys.public_keys(), &commitments.inner)
+            .verify(&original.0, &keys.public(), &commitments.inner)
     }
 
     /// Verify and reconstruct the transcrypted JSON value.
@@ -115,7 +115,7 @@ impl PyJSONTranscryptionProof {
     ) -> PyResult<PyEncryptedPEPJSONValue> {
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
-            .verified_reconstruct(&original.0, &keys.public_keys(), &commitments.inner)
+            .verified_reconstruct(&original.0, &keys.public(), &commitments.inner)
             .map(PyEncryptedPEPJSONValue)
             .ok_or_else(map_verify_err)
     }
@@ -198,7 +198,7 @@ impl PyEncryptedPEPJSONValue {
         PyJSONTranscryptionProof {
             inner: self
                 .0
-                .verifiable_transcrypt(&info, &keys.public_keys(), &mut rng),
+                .verifiable_transcrypt(&info, &keys.public(), &mut rng),
         }
     }
 }
@@ -235,7 +235,7 @@ impl crate::verifier::PyVerifier {
         self.verified_reconstruct_transcryption(
             &original.0,
             &proof.inner,
-            &keys.public_keys(),
+            &keys.public(),
             &commitments.inner,
         )
         .map(PyEncryptedPEPJSONValue)

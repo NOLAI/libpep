@@ -563,7 +563,7 @@ impl PyTranscryptor {
         let sk = libpep::keys::SessionKeys::from(session_keys.clone());
         let proof = self
             .0
-            .verifiable_transcrypt(&encrypted.0, &info, &sk.public_keys(), &mut rng);
+            .verifiable_transcrypt(&encrypted.0, &info, &sk.public(), &mut rng);
         crate::data::records::PyRecordTranscryptionProof { inner: proof }
     }
 
@@ -592,7 +592,7 @@ impl PyTranscryptor {
         let sk = libpep::keys::SessionKeys::from(session_keys.clone());
         let proof = self
             .0
-            .verifiable_transcrypt(&encrypted.0, &info, &sk.public_keys(), &mut rng);
+            .verifiable_transcrypt(&encrypted.0, &info, &sk.public(), &mut rng);
         crate::data::records::PyLongRecordTranscryptionProof { inner: proof }
     }
 }

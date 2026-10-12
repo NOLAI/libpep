@@ -632,7 +632,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
-        let keys = keys.public_keys();
+        let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
@@ -675,7 +675,7 @@ impl WASMDistributedTranscryptor {
         let rust_encrypted: EncryptedRecord = encrypted.into();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let transcrypted =
-            rust_encrypted.transcrypt(&transcryption_info.0, &keys.public_keys(), &mut rng);
+            rust_encrypted.transcrypt(&transcryption_info.0, &keys.public(), &mut rng);
         transcrypted.into()
     }
 
@@ -752,7 +752,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
-        let keys = keys.public_keys();
+        let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)
@@ -801,7 +801,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
-        let keys = keys.public_keys();
+        let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch
             .transcrypt(&transcryption_info.0, &mut rng)

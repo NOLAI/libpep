@@ -185,7 +185,7 @@ impl WASMTranscryptor {
         let mut rng = rand::rng();
         let proof =
             self.0
-                .verifiable_transcrypt(&enc, &transcryption_info.0, &sk.public_keys(), &mut rng);
+                .verifiable_transcrypt(&enc, &transcryption_info.0, &sk.public(), &mut rng);
         crate::data::records::WASMRecordTranscryptionProof::from(proof)
     }
 
@@ -225,7 +225,7 @@ impl WASMTranscryptor {
         let mut rng = rand::rng();
         let proof =
             self.0
-                .verifiable_transcrypt(&enc, &transcryption_info.0, &sk.public_keys(), &mut rng);
+                .verifiable_transcrypt(&enc, &transcryption_info.0, &sk.public(), &mut rng);
         crate::data::records::WASMLongRecordTranscryptionProof::from(proof)
     }
 }

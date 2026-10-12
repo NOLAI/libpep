@@ -270,7 +270,7 @@ impl WASMVerifier {
         let orig: libpep::data::records::EncryptedRecord = original.clone().into();
         let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
-            .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public_keys(), &commitments.0)
+            .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public(), &commitments.0)
             .map(crate::data::records::WASMEncryptedRecord::from)
             .map_err(crate::errors::verify_err_to_js)
     }
@@ -304,7 +304,7 @@ impl WASMVerifier {
         let orig: libpep::data::records::LongEncryptedRecord = original.clone().into();
         let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
-            .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public_keys(), &commitments.0)
+            .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public(), &commitments.0)
             .map(crate::data::records::WASMLongEncryptedRecord::from)
             .map_err(crate::errors::verify_err_to_js)
     }
@@ -883,8 +883,8 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.0,
             )
             .map(|inner| crate::data::batch::WASMEncryptedRecordBatch { inner })
@@ -945,8 +945,8 @@ impl WASMVerifier {
             .0
             .verified_reconstruct_batch(
                 &original.inner,
-                &sk.public_keys(),
-                &new_sk.public_keys(),
+                &sk.public(),
+                &new_sk.public(),
                 &commitments.0,
             )
             .map(|inner| crate::data::batch::WASMLongEncryptedRecordBatch { inner })

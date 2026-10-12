@@ -736,7 +736,7 @@ impl PyRecordBatch {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
-        let keys = keys.public_keys();
+        let keys = keys.public();
         self.inner
             .transcrypt(&info, &keys, &mut rng)
             .map_err(map_batch_err)
@@ -846,7 +846,7 @@ impl PyLongRecordBatch {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
-        let keys = keys.public_keys();
+        let keys = keys.public();
         self.inner
             .transcrypt(&info, &keys, &mut rng)
             .map_err(map_batch_err)
