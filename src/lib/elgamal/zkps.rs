@@ -396,6 +396,11 @@ pub(crate) fn verify_proof_split(
     bytes.copy_from_slice(hasher.finalize().as_slice());
     let e = ScalarNonZero::from_hash(&bytes);
 
+    // Both checks are linear combinations of points, so they could be evaluated as multiscalar
+    // multiplications (`VartimeMultiscalarMul`), which the WPES '26 paper notes would roughly
+    // halve verification cost. Multiplications by the fixed generator `G` could likewise use a
+    // precomputed basepoint table. Neither optimisation is applied, so the measured cost of
+    // verification is conservative.
     // FIXME speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
     // FIXME check if a faster non-constant time equality can be used
     s * G == e * ga + gc1 && s * gm == e * gn + gc2

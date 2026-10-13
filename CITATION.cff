@@ -39,6 +39,27 @@ preferred-citation:
     city: "Cham"
   year: 2027
 references:
+  - type: conference-paper
+    title: "Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs"
+    doi: "10.1145/3847192.3847358"
+    url: "https://doi.org/10.1145/3847192.3847358"
+    authors:
+      - given-names: Job
+        family-names: Doesburg
+      - given-names: Bernard
+        name-particle: van
+        family-names: Gastel
+      - given-names: Erik
+        family-names: Poll
+    conference:
+      name: "25th Workshop on Privacy in the Electronic Society (WPES '26)"
+      city: "The Hague"
+      country: NL
+    collection-title: "Proceedings of the 25th Workshop on Privacy in the Electronic Society (WPES '26)"
+    publisher:
+      name: "ACM"
+      city: "New York, NY, USA"
+    year: 2026
   - type: article
     title: "Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research"
     authors:
