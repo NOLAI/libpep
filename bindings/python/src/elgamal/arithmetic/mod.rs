@@ -1,3 +1,4 @@
+pub mod ciphersuite;
 pub mod group_elements;
 pub mod hashing;
 #[allow(clippy::wrong_self_convention)]
@@ -18,6 +19,9 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     })?;
     crate::add_submodule(m, "libpep.elgamal.arithmetic.hashing", |sm| {
         hashing::register(sm)
+    })?;
+    crate::add_submodule(m, "libpep.elgamal.arithmetic.ciphersuite", |sm| {
+        ciphersuite::register(sm)
     })?;
     Ok(())
 }

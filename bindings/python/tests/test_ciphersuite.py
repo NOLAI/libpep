@@ -6,6 +6,7 @@ Python integration tests for the ciphersuite, hashing and the element encodings.
 import unittest
 
 from libpep.contexts import EncryptionContext, PseudonymizationDomain
+from libpep.elgamal.arithmetic.ciphersuite import Ciphersuite
 from libpep.elgamal.arithmetic.group_elements import GroupElement
 from libpep.elgamal.arithmetic.hashing import (
     expand_message_xmd_sha512,
@@ -15,7 +16,6 @@ from libpep.elgamal.arithmetic.hashing import (
 )
 from libpep.factors import EncryptionSecret, PseudonymizationSecret, TranscryptionInfo
 from libpep.keys import make_global_keys, make_session_keys
-from libpep.ciphersuite import Ciphersuite
 from libpep.transcryptor import Transcryptor
 
 

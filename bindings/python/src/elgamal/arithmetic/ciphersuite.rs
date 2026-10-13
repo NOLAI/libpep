@@ -6,7 +6,7 @@ use pyo3::types::{PyBytes, PyString};
 
 /// The ciphersuite identifier, from which the context string `"coPRFV1-" || identifier` is built.
 ///
-/// Hashes that take no secret, in particular `encodings.hash_to_group`, are domain-separated with
+/// Hashes that take no secret, in particular `hashing.hash_to_group_in`, are domain-separated with
 /// it, so all parties of a deployment must use the same one. The default, and the only suite this
 /// build implements, is `ristretto255-SHA512`.
 ///

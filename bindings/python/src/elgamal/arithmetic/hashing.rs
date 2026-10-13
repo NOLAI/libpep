@@ -1,6 +1,6 @@
 //! Python bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
 
-use crate::ciphersuite::{ciphersuite_or_current, PyCiphersuite};
+use crate::elgamal::arithmetic::ciphersuite::{ciphersuite_or_current, PyCiphersuite};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
