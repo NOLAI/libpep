@@ -284,6 +284,12 @@ This library implements the *n-PEP* scheme, described in:
 
 n-PEP extends the PEP framework with *reversible* and *transitive* pseudonymization between domains (the `reshuffle2`, `rekey2` and `rsk2` operations), eliminating the polymorphic pseudonyms that act as a linking oracle in basic PEP, and distributes transcryption and session key establishment over `n` semi-trusted transcryptors, so that confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
 
+The verifiable operations (the `verifiable` feature: the DLEQ proofs, the factor commitments and the verifier) are specified in:
+
+> Job Doesburg, Bernard van Gastel and Erik Poll, *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs*. In **25th Workshop on Privacy in the Electronic Society (WPES '26)**, November 15-19, 2026, The Hague, Netherlands, ACM, New York, NY, USA, 13 pages. [doi:10.1145/3847192.3847358](https://doi.org/10.1145/3847192.3847358)
+
+That paper guarantees integrity without breaking the unlinkability of PEP: each transcryptor proves in zero knowledge that it transformed a ciphertext with the factors it committed to, so no single transcryptor is a point of failure for integrity. Table 1 of the paper is the reference for the cost of each verifiable operation.
+
 The original PEP framework was introduced in:
 
 > Eric Verheul and Bart Jacobs, *Polymorphic Encryption and Pseudonymisation in Identity Management and Medical Research*. In **Nieuw Archief voor Wiskunde (NAW)**, 5/18, nr. 3, 2017, p. 168-172. [PDF](https://repository.ubn.ru.nl/bitstream/handle/2066/178461/178461.pdf?sequence=1)

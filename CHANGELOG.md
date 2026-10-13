@@ -84,6 +84,10 @@ a major change against the published 0.13.0.
 
 ### Added
 
+- The verifiable operations cite their specification: Doesburg, van Gastel and Poll, *Verifiable
+  Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs*, WPES '26
+  (doi 10.1145/3847192.3847358), is recorded in `CITATION.cff` and the README.
+
 - `encrypt`, `decrypt`, the transcryption operations and their batch variants accept either the
   one key the data needs or a bundle to take it from, so a caller no longer reaches into the
   session for it: `encrypt(&pseudonym, &keys.public(), rng)` and `decrypt(&encrypted, &keys)`
@@ -155,3 +159,10 @@ a major change against the published 0.13.0.
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
   CLI prints it as `key` / `keys`.
+
+### Removed
+
+- `docs/scalar-mult-counts.md` and `docs/scalar-mult-counts-elgamal3.md`. They analysed scalar
+  multiplication counts against a module layout several refactors old, and counted the whole flow
+  where the paper separates per-message from per-batch cost, so their totals disagreed with it
+  from RSK onwards. Table 1 of the WPES '26 paper is the reference for the cost of each operation.
