@@ -122,14 +122,17 @@ a major change against the published 0.13.0.
   brainpoolP320r1 ciphersuites of the coPRF draft; the bindings and the CLI expose ristretto255
   only.
 
-- `tests/vectors/coprf-ristretto255.txt`: test vectors for the ristretto255-SHA512 ciphersuite of
-  draft-doesburg-cfrg-coprf, for the draft's "Test Vectors" appendix and for third-party
-  implementations. They cover `DeriveFactor` for the three labels, `EncryptPseudonym` /
+- `tests/vectors/expected.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
+  constants with one value per line. They pin the protocol's derived values byte for byte, so that
+  an unintended change to the hashing or the factor derivation fails the suite instead of passing
+  silently. They cover `DeriveFactor` for the three labels, `EncryptPseudonym` /
   `TranscryptPseudonym` / `Decrypt` with a fixed `b` and `r`, a three-element batch of pseudonyms
   and of attributes with the applied permutation recorded, and a session key share with its proof.
-  Every sampled scalar comes from a ChaCha20 RNG with a seed recorded in the file,
-  so the vectors are reproducible. `tests/vectors.rs` regenerates and asserts them; regenerate
-  deliberately with `LIBPEP_WRITE_VECTORS=1 cargo test --test vectors`.
+  Every sampled scalar comes from a ChaCha20 RNG with an explicit seed, so the vectors are
+  reproducible. `tests/vectors.rs` recomputes each value and asserts it against its constant,
+  naming the label that changed; update them deliberately with
+  `cargo test --features batch,verifiable --test vectors -- --ignored --nocapture`, which prints
+  the current values in the layout of `expected.rs`.
 - `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
   A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
