@@ -10,7 +10,7 @@ pub mod commitments;
 pub mod verifiable;
 
 pub use derivation::{
-    py_make_attribute_rekey_factor, py_make_pseudonym_rekey_factor, py_make_pseudonymisation_factor,
+    py_make_attribute_rekey_factor, py_make_pseudonym_rekey_factor, py_make_pseudonymization_factor,
 };
 pub use secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 pub use types::{

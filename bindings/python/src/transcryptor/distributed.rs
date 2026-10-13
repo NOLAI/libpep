@@ -2,7 +2,7 @@
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "json")]
-use crate::data::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPepJsonValue;
 #[cfg(feature = "long")]
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
@@ -37,14 +37,14 @@ impl PyDistributedTranscryptor {
     /// A distributed transcryptor with the given secrets and blinding factor, deriving factors
     ///.
     #[new]
-    #[pyo3(signature = (pseudonymisation_secret, rekeying_secret, blinding_factor))]
+    #[pyo3(signature = (pseudonymization_secret, rekeying_secret, blinding_factor))]
     fn new(
-        pseudonymisation_secret: &str,
+        pseudonymization_secret: &str,
         rekeying_secret: &str,
         blinding_factor: &PyBlindingFactor,
     ) -> Self {
         Self(DistributedTranscryptor::new(
-            PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().to_vec()),
+            PseudonymizationSecret::from(pseudonymization_secret.as_bytes().to_vec()),
             EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
@@ -256,15 +256,15 @@ impl PyDistributedTranscryptor {
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
 
-        // Try EncryptedPEPJSONValue
+        // Try EncryptedPepJsonValue
         #[cfg(feature = "json")]
-        if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
+        if let Ok(ej) = encrypted.extract::<PyEncryptedPepJsonValue>() {
             let result = crate::transcrypt_with!(self.0, .transcrypt, &ej.0, &info, public_key => crate::keys::pk::session, &mut rng);
-            return Ok(Py::new(py, PyEncryptedPEPJSONValue(result))?.into_any());
+            return Ok(Py::new(py, PyEncryptedPepJsonValue(result))?.into_any());
         }
 
         Err(PyTypeError::new_err(
-            "transcrypt() requires EncryptedPseudonym, EncryptedAttribute, EncryptedRecord, LongEncryptedPseudonym, LongEncryptedAttribute, LongEncryptedRecord, or EncryptedPEPJSONValue",
+            "transcrypt() requires EncryptedPseudonym, EncryptedAttribute, EncryptedRecord, LongEncryptedPseudonym, LongEncryptedAttribute, LongEncryptedRecord, or EncryptedPepJsonValue",
         ))
     }
 
@@ -286,11 +286,8 @@ impl PyDistributedTranscryptor {
                 let mut enc: Vec<_> = eas.into_iter().map(|e| e.0).collect();
                 let result = crate::transcrypt_with!(self.0, .rekey_batch, &mut enc, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng)
                     .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-                let py_result: Vec<PyEncryptedAttribute> = result
-                    .into_vec()
-                    .into_iter()
-                    .map(PyEncryptedAttribute)
-                    .collect();
+                let py_result: Vec<PyEncryptedAttribute> =
+                    result.into_iter().map(PyEncryptedAttribute).collect();
                 return py_result.into_py_any(py);
             }
         }
@@ -302,11 +299,8 @@ impl PyDistributedTranscryptor {
                 let mut enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
                 let result = crate::transcrypt_with!(self.0, .rekey_batch, &mut enc, &AttributeRekeyInfo::from(&info), public_key => crate::keys::pk::attribute, &mut rng)
                     .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-                let py_result: Vec<PyLongEncryptedAttribute> = result
-                    .into_vec()
-                    .into_iter()
-                    .map(PyLongEncryptedAttribute)
-                    .collect();
+                let py_result: Vec<PyLongEncryptedAttribute> =
+                    result.into_iter().map(PyLongEncryptedAttribute).collect();
                 return py_result.into_py_any(py);
             }
         }
@@ -334,11 +328,8 @@ impl PyDistributedTranscryptor {
             let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(self.0, .pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPseudonym)
-                .collect();
+            let py_result: Vec<PyEncryptedPseudonym> =
+                result.into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
 
@@ -348,11 +339,8 @@ impl PyDistributedTranscryptor {
             let mut enc: Vec<_> = leps.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(self.0, .pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedPseudonym> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedPseudonym)
-                .collect();
+            let py_result: Vec<PyLongEncryptedPseudonym> =
+                result.into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
         }
 
@@ -379,11 +367,8 @@ impl PyDistributedTranscryptor {
             let mut enc: Vec<_> = ers.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedRecord)
-                .collect();
+            let py_result: Vec<PyEncryptedRecord> =
+                result.into_iter().map(PyEncryptedRecord).collect();
             return py_result.into_py_any(py);
         }
 
@@ -393,30 +378,24 @@ impl PyDistributedTranscryptor {
             let mut enc: Vec<_> = lers.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyLongEncryptedRecord> = result
-                .into_vec()
-                .into_iter()
-                .map(PyLongEncryptedRecord)
-                .collect();
+            let py_result: Vec<PyLongEncryptedRecord> =
+                result.into_iter().map(PyLongEncryptedRecord).collect();
             return py_result.into_py_any(py);
         }
 
-        // Try Vec<EncryptedPEPJSONValue>
+        // Try Vec<EncryptedPepJsonValue>
         #[cfg(feature = "json")]
-        if let Ok(ejs) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+        if let Ok(ejs) = encrypted.extract::<Vec<PyEncryptedPepJsonValue>>() {
             let mut enc: Vec<_> = ejs.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(self.0, .transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPEPJSONValue> = result
-                .into_vec()
-                .into_iter()
-                .map(PyEncryptedPEPJSONValue)
-                .collect();
+            let py_result: Vec<PyEncryptedPepJsonValue> =
+                result.into_iter().map(PyEncryptedPepJsonValue).collect();
             return py_result.into_py_any(py);
         }
 
         Err(PyTypeError::new_err(
-            "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPEPJSONValue]",
+            "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], or Vec[EncryptedPepJsonValue]",
         ))
     }
 

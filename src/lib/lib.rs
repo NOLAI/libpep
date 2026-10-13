@@ -73,6 +73,8 @@
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
 
+#![warn(missing_docs)]
+
 pub mod client;
 pub mod contexts;
 pub mod data;

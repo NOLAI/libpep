@@ -28,6 +28,7 @@ impl VerifiableRekeyBatch {
 }
 
 impl VerifiableRekeyBatch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         k: &ScalarNonZero,
@@ -43,7 +44,6 @@ impl VerifiableRekeyBatch {
 
     /// Apply each entry's rekey to the corresponding ciphertext,
     /// **without verifying** any proofs. Internal prover-side use only.
-    #[allow(dead_code)]
     pub(crate) fn result(&self, originals: &[ElGamal]) -> Vec<ElGamal> {
         self.inners
             .iter()
@@ -121,6 +121,7 @@ impl VerifiableRekey2Batch {
 }
 
 impl VerifiableRekey2Batch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         k_from: &ScalarNonZero,
@@ -143,7 +144,7 @@ impl VerifiableRekey2Batch {
 
     /// Apply each entry's rekey to the corresponding ciphertext,
     /// **without verifying** any proofs. Internal prover-side use only.
-    #[allow(dead_code)]
+    #[cfg(feature = "insecure")]
     pub(crate) fn result(&self, originals: &[ElGamal]) -> Vec<ElGamal> {
         self.inners
             .iter()
@@ -166,12 +167,13 @@ impl VerifiableRekey2Batch {
         from_commitments: &RekeyFactorCommitment,
         to_commitments: &RekeyFactorCommitment,
     ) -> bool {
-        let gk_from = from_commitments.0 .0;
-        let gk_to = to_commitments.0 .0;
+        let gk_from = from_commitments.point();
+        let gk_to = to_commitments.point();
         *self.p_gk_to == gk_to && verify_proof(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],

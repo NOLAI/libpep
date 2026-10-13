@@ -13,6 +13,8 @@ use crate::data::simple::{ElGamalEncrypted, EncryptedAttribute, EncryptedPseudon
 use crate::data::verifiable::long::{LongAttributeRekeyProof, LongPseudonymPseudonymizationProof};
 use crate::data::verifiable::simple::{AttributeRekeyProof, PseudonymPseudonymizationProof};
 use crate::data::verifiable::traits::{VerifiableTranscryptable, VerifiableTranscryptionProof};
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::factors::RekeyPublicKey;
 use crate::factors::TranscryptionInfo;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::SessionPublicKeys;
@@ -21,7 +23,6 @@ use rand_core::{CryptoRng, Rng};
 /// Proof bundle for verifiable transcryption of a simple record.
 ///
 /// Contains proofs for both pseudonymization and attribute rekeying.
-#[cfg(feature = "verifiable")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RecordTranscryptionProof {
@@ -33,9 +34,9 @@ pub struct RecordTranscryptionProof {
     pub attribute_operation_proofs: Vec<AttributeRekeyProof>,
 }
 
-#[cfg(feature = "verifiable")]
 impl RecordTranscryptionProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &EncryptedRecord,
@@ -58,6 +59,8 @@ impl RecordTranscryptionProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &EncryptedRecord,
@@ -81,6 +84,8 @@ impl RecordTranscryptionProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &EncryptedRecord,
@@ -107,6 +112,8 @@ impl RecordTranscryptionProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &EncryptedRecord,
@@ -134,6 +141,8 @@ impl RecordTranscryptionProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &EncryptedRecord) -> EncryptedRecord {
         let pseudonyms: Vec<_> = self
             .pseudonym_operation_proofs
@@ -150,7 +159,6 @@ impl RecordTranscryptionProof {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableTranscryptionProof for RecordTranscryptionProof {
     type DataType = EncryptedRecord;
     type Output = EncryptedRecord;
@@ -203,7 +211,7 @@ impl VerifiableTranscryptionProof for RecordTranscryptionProof {
 ///
 /// Contains proofs for both pseudonymization and attribute rekeying,
 /// with multiple proofs per long pseudonym/attribute (one per block).
-#[cfg(all(feature = "verifiable", feature = "long"))]
+#[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LongRecordTranscryptionProof {
@@ -213,9 +221,10 @@ pub struct LongRecordTranscryptionProof {
     pub attribute_operation_proofs: Vec<LongAttributeRekeyProof>,
 }
 
-#[cfg(all(feature = "verifiable", feature = "long"))]
+#[cfg(feature = "long")]
 impl LongRecordTranscryptionProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &LongEncryptedRecord,
@@ -238,6 +247,8 @@ impl LongRecordTranscryptionProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &LongEncryptedRecord,
@@ -261,6 +272,8 @@ impl LongRecordTranscryptionProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedRecord,
@@ -290,6 +303,8 @@ impl LongRecordTranscryptionProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedRecord,
@@ -320,6 +335,8 @@ impl LongRecordTranscryptionProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &LongEncryptedRecord) -> LongEncryptedRecord {
         let pseudonyms: Vec<_> = self
             .pseudonym_operation_proofs
@@ -339,7 +356,7 @@ impl LongRecordTranscryptionProof {
     }
 }
 
-#[cfg(all(feature = "verifiable", feature = "long"))]
+#[cfg(feature = "long")]
 impl VerifiableTranscryptionProof for LongRecordTranscryptionProof {
     type DataType = LongEncryptedRecord;
     type Output = LongEncryptedRecord;
@@ -388,7 +405,6 @@ impl VerifiableTranscryptionProof for LongRecordTranscryptionProof {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableTranscryptable for EncryptedRecord {
     type TranscryptionProof = RecordTranscryptionProof;
 
@@ -452,7 +468,7 @@ impl VerifiableTranscryptable for EncryptedRecord {
     }
 }
 
-#[cfg(all(feature = "verifiable", feature = "long"))]
+#[cfg(feature = "long")]
 impl VerifiableTranscryptable for LongEncryptedRecord {
     type TranscryptionProof = LongRecordTranscryptionProof;
 
@@ -526,7 +542,7 @@ impl VerifiableTranscryptable for LongEncryptedRecord {
 /// The original per-record structure (how many pseudonyms / attributes per
 /// record) is stored alongside so the verifier can align proof entries with
 /// the original records.
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RecordTranscryptionBatchProof {
@@ -540,9 +556,10 @@ pub struct RecordTranscryptionBatchProof {
     pub attributes: crate::elgamal::verifiable::VerifiableRekeyBatch,
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl RecordTranscryptionBatchProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
@@ -581,6 +598,8 @@ impl RecordTranscryptionBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
@@ -660,6 +679,8 @@ impl RecordTranscryptionBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
@@ -716,6 +737,7 @@ impl RecordTranscryptionBatchProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
@@ -726,6 +748,7 @@ impl RecordTranscryptionBatchProof {
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedRecord>,
@@ -754,7 +777,7 @@ impl RecordTranscryptionBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl VerifiableTranscryptionProof for RecordTranscryptionBatchProof {
     type DataType = crate::data::batch::EncryptedBatch<EncryptedRecord>;
     type Output = Vec<EncryptedRecord>;
@@ -803,7 +826,7 @@ impl VerifiableTranscryptionProof for RecordTranscryptionBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 fn rebuild_records(
     structure: &[(usize, usize)],
     pseudo_news: &[crate::elgamal::ElGamal],
@@ -826,7 +849,7 @@ fn rebuild_records(
     new_items
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
     /// Internal helper: build the transcription proof and reassemble items
     /// from the given `gy`. Does not touch `self.public_key`.
@@ -894,12 +917,7 @@ impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
     }
 }
 
-#[cfg(all(
-    feature = "batch",
-    feature = "verifiable",
-    not(feature = "elgamal3"),
-    feature = "batch-pk"
-))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
 impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
     /// Verifiably transcrypt the batch.
     pub fn verifiable_transcrypt<R>(
@@ -913,16 +931,13 @@ impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
         use crate::keys::PublicKey as _;
         let gy = *self.public_key.pseudonym.value();
         let proof = self.build_verifiable_transcrypt(info, gy, rng);
-        self.public_key = self
-            .public_key
-            .convert(&info.pseudonym.k, &info.attribute.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         proof
     }
 }
 
 #[cfg(all(
     feature = "batch",
-    feature = "verifiable",
     not(feature = "elgamal3"),
     not(feature = "batch-pk")
 ))]
@@ -944,7 +959,7 @@ impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "elgamal3"))]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
     /// Verifiably transcrypt the batch.
     pub fn verifiable_transcrypt<R>(
@@ -974,19 +989,22 @@ impl crate::data::batch::EncryptedBatch<EncryptedRecord> {
 ///
 /// Like [`RecordTranscryptionBatchProof`] but pseudonyms and attributes
 /// have a second-level structure (block counts per long value).
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LongRecordTranscryptionBatchProof {
     /// Per-record block counts: `(pseudonym_block_counts, attribute_block_counts)`.
     pub structure: Vec<(Vec<usize>, Vec<usize>)>,
+    /// The batch proof over the pseudonyms of every record.
     pub pseudonyms: crate::elgamal::verifiable::VerifiableRRSKBatch,
+    /// The batch proof over the attributes of every record.
     pub attributes: crate::elgamal::verifiable::VerifiableRekeyBatch,
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 impl LongRecordTranscryptionBatchProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
@@ -1029,6 +1047,8 @@ impl LongRecordTranscryptionBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
@@ -1113,6 +1133,8 @@ impl LongRecordTranscryptionBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
@@ -1173,6 +1195,7 @@ impl LongRecordTranscryptionBatchProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
@@ -1183,6 +1206,7 @@ impl LongRecordTranscryptionBatchProof {
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedRecord>,
@@ -1215,7 +1239,7 @@ impl LongRecordTranscryptionBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 impl VerifiableTranscryptionProof for LongRecordTranscryptionBatchProof {
     type DataType = crate::data::batch::EncryptedBatch<LongEncryptedRecord>;
     type Output = Vec<LongEncryptedRecord>;
@@ -1264,7 +1288,7 @@ impl VerifiableTranscryptionProof for LongRecordTranscryptionBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 fn long_record_structure(items: &[LongEncryptedRecord]) -> Vec<(Vec<usize>, Vec<usize>)> {
     items
         .iter()
@@ -1277,7 +1301,7 @@ fn long_record_structure(items: &[LongEncryptedRecord]) -> Vec<(Vec<usize>, Vec<
         .collect()
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 fn rebuild_long_records(
     structure: &[(Vec<usize>, Vec<usize>)],
     pseudo_news: &[crate::elgamal::ElGamal],
@@ -1308,7 +1332,7 @@ fn rebuild_long_records(
     new_items
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "long"))]
+#[cfg(all(feature = "batch", feature = "long"))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedRecord> {
     /// Internal helper: build the long-record transcription proof and
     /// reassemble items from the given `gy`. Does not touch
@@ -1402,7 +1426,6 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedRecord> {
 
 #[cfg(all(
     feature = "batch",
-    feature = "verifiable",
     feature = "long",
     not(feature = "elgamal3"),
     feature = "batch-pk"
@@ -1420,16 +1443,13 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedRecord> {
         use crate::keys::PublicKey as _;
         let gy = *self.public_key.pseudonym.value();
         let proof = self.build_verifiable_transcrypt(info, gy, rng);
-        self.public_key = self
-            .public_key
-            .convert(&info.pseudonym.k, &info.attribute.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         proof
     }
 }
 
 #[cfg(all(
     feature = "batch",
-    feature = "verifiable",
     feature = "long",
     not(feature = "elgamal3"),
     not(feature = "batch-pk")
@@ -1452,12 +1472,7 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedRecord> {
     }
 }
 
-#[cfg(all(
-    feature = "batch",
-    feature = "verifiable",
-    feature = "long",
-    feature = "elgamal3"
-))]
+#[cfg(all(feature = "batch", feature = "long", feature = "elgamal3"))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedRecord> {
     /// Verifiably transcrypt the batch.
     pub fn verifiable_transcrypt<R>(

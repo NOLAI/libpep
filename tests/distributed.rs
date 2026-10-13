@@ -3,6 +3,8 @@
 use libpep::client::{Client, Distributed};
 use libpep::contexts::*;
 use libpep::data::simple::*;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::transcryptor::DistributedTranscryptor;
 
@@ -19,9 +21,8 @@ fn n_pep() {
     let systems = (0..n)
         .map(|i| {
             let pseudonymization_secret =
-                PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes().into());
-            let encryption_secret =
-                EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
+                PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes());
+            let encryption_secret = EncryptionSecret::from(format!("es-secret-{i}").as_bytes());
             let blinding_factor = blinding_factors[i];
             DistributedTranscryptor::new(
                 pseudonymization_secret,
@@ -63,7 +64,7 @@ fn n_pep() {
     // currently encrypted under: the sender's session key for the first transcryptor, and the key
     // output by the previous transcryptor for the others. The key travels with the ciphertext.
     #[cfg(not(feature = "elgamal3"))]
-    let keys_a1 = client_a.dump().public();
+    let keys_a1 = client_a.keys().public();
 
     #[cfg(feature = "elgamal3")]
     let transcrypted_pseudo = systems.iter().fold(enc_pseudo, |acc, system| {
@@ -86,7 +87,7 @@ fn n_pep() {
     #[cfg(not(feature = "elgamal3"))]
     assert_eq!(
         keys_b1_pseudonym,
-        client_b.dump().pseudonym.public,
+        client_b.keys().pseudonym.public,
         "the key output by the last transcryptor is the receiver's session key"
     );
 
@@ -107,7 +108,7 @@ fn n_pep() {
                 )
             });
     #[cfg(not(feature = "elgamal3"))]
-    assert_eq!(keys_b1_attribute, client_b.dump().attribute.public);
+    assert_eq!(keys_b1_attribute, client_b.keys().attribute.public);
 
     #[cfg(feature = "elgamal3")]
     let dec_pseudo = client_b

@@ -1,9 +1,9 @@
-//! Utility functions for JSON value conversion.
+//! The byte encodings of JSON booleans and numbers in attributes.
 
 use super::data::JsonError;
 
 /// Convert a boolean to a single byte (0x00 for false, 0x01 for true)
-pub(crate) fn bool_to_byte(b: bool) -> u8 {
+pub fn bool_to_byte(b: bool) -> u8 {
     if b {
         0x01
     } else {
@@ -12,7 +12,7 @@ pub(crate) fn bool_to_byte(b: bool) -> u8 {
 }
 
 /// Convert a byte to a boolean. Returns an error if the byte is neither 0x00 nor 0x01
-pub(crate) fn byte_to_bool(byte: u8) -> Result<bool, JsonError> {
+pub fn byte_to_bool(byte: u8) -> Result<bool, JsonError> {
     match byte {
         0x00 => Ok(false),
         0x01 => Ok(true),
@@ -29,7 +29,7 @@ pub(crate) fn byte_to_bool(byte: u8) -> Result<bool, JsonError> {
 ///
 /// This method never fails for numbers created by serde_json since they are always
 /// one of u64, i64, or f64.
-pub(crate) fn number_to_bytes(n: &serde_json::Number) -> [u8; 9] {
+pub fn number_to_bytes(n: &serde_json::Number) -> [u8; 9] {
     if let Some(u) = n.as_u64() {
         let mut bytes = [0u8; 9];
         bytes[0] = 0x00; // u64 tag
@@ -52,7 +52,7 @@ pub(crate) fn number_to_bytes(n: &serde_json::Number) -> [u8; 9] {
 }
 
 /// Convert bytes to a JSON number (9 bytes: 1 byte type tag + 8 bytes data).
-pub(crate) fn bytes_to_number(bytes: &[u8; 9]) -> Result<serde_json::Number, JsonError> {
+pub fn bytes_to_number(bytes: &[u8; 9]) -> Result<serde_json::Number, JsonError> {
     let type_tag = bytes[0];
     let data_bytes: [u8; 8] = match bytes[1..].try_into() {
         Ok(bytes) => bytes,

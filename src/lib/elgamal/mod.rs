@@ -16,6 +16,8 @@ pub mod primitives;
 #[cfg(feature = "verifiable")]
 pub mod dleq;
 #[cfg(feature = "verifiable")]
+/// The verifiable primitives: every operation with a zero-knowledge proof of its correct
+/// application (`verifiable` feature).
 pub mod verifiable;
 #[cfg(feature = "verifiable")]
 pub mod zkps;

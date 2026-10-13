@@ -107,8 +107,7 @@ fn test_encrypt_decrypt_global_batch() {
     let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys(rng);
 
     let pseudonyms: Vec<Pseudonym> = (0..5).map(|_| Pseudonym::random(rng)).collect();
-    let encrypted = encrypt_global_batch(&pseudonyms, &pseudonym_public, rng)
-        .expect("batch encryption should succeed");
+    let encrypted = encrypt_global_batch(&pseudonyms, &pseudonym_public, rng);
     let decrypted = decrypt_global_batch(&encrypted, &pseudonym_secret)
         .expect("batch decryption should succeed");
     assert_eq!(pseudonyms, decrypted);
@@ -129,8 +128,7 @@ fn test_encrypt_decrypt_global_batch_json() {
         })
         .collect();
 
-    let encrypted = encrypt_global_batch(&records, &global_public, rng)
-        .expect("batch encryption should succeed");
+    let encrypted = encrypt_global_batch(&records, &global_public, rng);
     let decrypted =
         decrypt_global_batch(&encrypted, &global_secret).expect("batch decryption should succeed");
 

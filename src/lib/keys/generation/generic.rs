@@ -5,7 +5,7 @@ use crate::elgamal::arithmetic::group::Group;
 use crate::factors::derivation::generic::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor,
 };
-use crate::factors::types::generic::RekeyFactor;
+use crate::factors::types::generic::Factor;
 use crate::factors::EncryptionSecret;
 use crate::keys::traits::SecretKey;
 use crate::keys::types::generic::*;

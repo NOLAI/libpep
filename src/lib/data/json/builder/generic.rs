@@ -1,19 +1,19 @@
-//! Builder for [`PEPJSONValue`]s generic over the [`Group`](crate::elgamal::arithmetic::Group).
+//! Builder for [`PepJsonValue`]s generic over the [`Group`](crate::elgamal::arithmetic::Group).
 
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::data::json::data::generic::PEPJSONValue;
+use crate::data::json::data::generic::PepJsonValue;
 #[cfg(feature = "long")]
 use crate::data::long::generic::LongPseudonym;
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
-/// Builder for constructing PEPJSONValue objects with mixed attribute and pseudonym fields.
+/// Builder for constructing PepJsonValue objects with mixed attribute and pseudonym fields.
 ///
 /// # Example
 ///
 /// ```ignore
-/// let pep_value = PEPJSONBuilder::new()
+/// let pep_value = PepJsonBuilder::new()
 ///     .pseudonym("id", "user1@example.com")
 ///     .attribute("age", json!(16))
 ///     .attribute("verified", json!(true))
@@ -23,11 +23,11 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 /// // Then encrypt it
 /// let encrypted = encrypt(&pep_value, &keys, &mut rng);
 /// ```
-pub struct PEPJSONBuilder<G: InvertibleEncoding> {
-    fields: HashMap<String, PEPJSONValue<G>>,
+pub struct PepJsonBuilder<G: InvertibleEncoding> {
+    fields: HashMap<String, PepJsonValue<G>>,
 }
 
-impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
+impl<G: InvertibleEncoding> PepJsonBuilder<G> {
     /// Create a new builder.
     pub fn new() -> Self {
         Self {
@@ -47,7 +47,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
     ///
     /// # Returns
     ///
-    /// A `PEPJSONBuilder` with fields populated from the JSON object.
+    /// A `PepJsonBuilder` with fields populated from the JSON object.
     /// Returns `None` if the JSON value is not an object or if a pseudonym field is not a string.
     ///
     /// # Example
@@ -61,7 +61,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
     ///     "age": 30
     /// });
     ///
-    /// let builder = PEPJSONBuilder::from_json(&data, &["id"]).unwrap();
+    /// let builder = PepJsonBuilder::from_json(&data, &["id"]).unwrap();
     /// let pep_value = builder.build();
     /// ```
     pub fn from_json(json: &Value, pseudonyms: &[&str]) -> Option<Self> {
@@ -84,7 +84,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
 
     /// Add a field as a regular attribute (from a JSON value).
     pub fn attribute(mut self, key: &str, value: Value) -> Self {
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         self.fields.insert(key.to_string(), pep_value);
         self
     }
@@ -98,7 +98,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
         // Try to decode as a direct 32-byte pseudonym value (hex string)
         if let Some(pseudo) = Pseudonym::from_hex(value) {
             self.fields
-                .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+                .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
             return self;
         }
 
@@ -123,7 +123,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
             if all_decoded {
                 self.fields.insert(
                     key.to_string(),
-                    PEPJSONValue::LongPseudonym(LongPseudonym(blocks)),
+                    PepJsonValue::LongPseudonym(LongPseudonym(blocks)),
                 );
                 return self;
             }
@@ -133,7 +133,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
         if value.len() == 32 {
             if let Some(pseudo) = Pseudonym::from_slice(value.as_bytes()) {
                 self.fields
-                    .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+                    .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
                 return self;
             }
         }
@@ -159,7 +159,7 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
             if all_decoded {
                 self.fields.insert(
                     key.to_string(),
-                    PEPJSONValue::LongPseudonym(LongPseudonym(blocks)),
+                    PepJsonValue::LongPseudonym(LongPseudonym(blocks)),
                 );
                 return self;
             }
@@ -171,32 +171,32 @@ impl<G: InvertibleEncoding> PEPJSONBuilder<G> {
             match Pseudonym::from_string_padded(value) {
                 Ok(pseudo) => {
                     self.fields
-                        .insert(key.to_string(), PEPJSONValue::Pseudonym(pseudo));
+                        .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
                 }
                 Err(_) => {
                     // Fallback to long pseudonym if padding fails
                     let pseudo = LongPseudonym::from_string_padded(value);
                     self.fields
-                        .insert(key.to_string(), PEPJSONValue::LongPseudonym(pseudo));
+                        .insert(key.to_string(), PepJsonValue::LongPseudonym(pseudo));
                 }
             }
         } else {
             // Use long pseudonym for strings > 15 bytes
             let pseudo = LongPseudonym::from_string_padded(value);
             self.fields
-                .insert(key.to_string(), PEPJSONValue::LongPseudonym(pseudo));
+                .insert(key.to_string(), PepJsonValue::LongPseudonym(pseudo));
         }
 
         self
     }
 
-    /// Build the final PEPJSONValue object.
-    pub fn build(self) -> PEPJSONValue<G> {
-        PEPJSONValue::Object(self.fields)
+    /// Build the final PepJsonValue object.
+    pub fn build(self) -> PepJsonValue<G> {
+        PepJsonValue::Object(self.fields)
     }
 }
 
-impl<G: InvertibleEncoding> Default for PEPJSONBuilder<G> {
+impl<G: InvertibleEncoding> Default for PepJsonBuilder<G> {
     fn default() -> Self {
         Self::new()
     }

@@ -8,7 +8,7 @@ use libpep::data::long::{LongAttribute, LongPseudonym};
 use libpep::data::records::LongEncryptedRecord;
 use libpep::data::simple::*;
 use libpep::factors::{
-    AttributeRekeyInfo, EncryptionSecret, PseudonymRekeyInfo, PseudonymizationInfo,
+    AttributeRekeyInfo, EncryptionSecret, Factor, PseudonymRekeyInfo, PseudonymizationInfo,
     PseudonymizationSecret, TranscryptionInfo,
 };
 use libpep::keys::*;
@@ -54,8 +54,8 @@ fn test_core_flow() {
     let rng = &mut rand::rng();
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let session1 = EncryptionContext::from("session1");
@@ -169,8 +169,8 @@ fn test_batch() {
     let rng = &mut rand::rng();
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let session1 = EncryptionContext::from("session1");
@@ -271,8 +271,8 @@ fn test_batch_long() {
     let rng = &mut rand::rng();
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let session1 = EncryptionContext::from("session1");

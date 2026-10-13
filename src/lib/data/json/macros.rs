@@ -1,9 +1,9 @@
-//! Macros for creating PEPJSONValue objects with a JSON-like syntax.
+//! Macros for creating PepJsonValue objects with a JSON-like syntax.
 
-/// Macro for creating PEPJSONValue objects with a JSON-like syntax.
+/// Macro for creating PepJsonValue objects with a JSON-like syntax.
 ///
 /// Supports marking fields as pseudonyms using `pseudonym("value")` syntax.
-/// Creates an unencrypted `PEPJSONValue` which can then be encrypted.
+/// Creates an unencrypted `PepJsonValue` which can then be encrypted.
 ///
 /// # Example
 ///
@@ -37,8 +37,8 @@ macro_rules! pep_json {
         let s_str: &str = value.as_ref();
         // Always try short first, then fall back to long if needed
         match $crate::data::simple::Pseudonym::from_string_padded(s_str) {
-            Ok(pseudo) => $crate::data::json::data::PEPJSONValue::Pseudonym(pseudo),
-            Err(_) => $crate::data::json::data::PEPJSONValue::LongPseudonym(
+            Ok(pseudo) => $crate::data::json::data::PepJsonValue::Pseudonym(pseudo),
+            Err(_) => $crate::data::json::data::PepJsonValue::LongPseudonym(
                 $crate::data::long::LongPseudonym::from_string_padded(s_str)
             )
         }
@@ -46,7 +46,7 @@ macro_rules! pep_json {
 
     // Entry point for object
     ({ $($tt:tt)* }) => {{
-        let builder = $crate::data::json::builder::PEPJSONBuilder::new();
+        let builder = $crate::data::json::builder::PepJsonBuilder::new();
         pep_json!(@object builder, $($tt)*)
     }};
 
@@ -295,10 +295,10 @@ mod tests {
 
         // Verify it creates the correct variant
         match pep_value {
-            crate::data::json::data::PEPJSONValue::Pseudonym(_) => {
+            crate::data::json::data::PepJsonValue::Pseudonym(_) => {
                 // Expected for short pseudonyms
             }
-            crate::data::json::data::PEPJSONValue::LongPseudonym(_) => {
+            crate::data::json::data::PepJsonValue::LongPseudonym(_) => {
                 // Also acceptable if string is long
             }
             _ => panic!("Expected Pseudonym or LongPseudonym variant"),

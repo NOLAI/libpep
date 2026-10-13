@@ -47,10 +47,9 @@ macro_rules! wasm_plaintext_impl {
             }
 
             #[wasm_bindgen(js_name = fromHash)]
-            pub fn from_hash(v: Vec<u8>) -> $w {
-                let mut arr = [0u8; 64];
-                arr.copy_from_slice(&v);
-                <$core>::from_hash(&arr).into()
+            pub fn from_hash(v: Vec<u8>) -> Option<$w> {
+                let arr: [u8; 64] = v.try_into().ok()?;
+                Some(<$core>::from_hash(&arr).into())
             }
 
             #[wasm_bindgen(js_name = fromLizard)]

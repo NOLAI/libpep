@@ -12,8 +12,6 @@ use crate::data::long::generic::{
 use crate::data::padding::Padded;
 use crate::data::simple::generic::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::data::simple::ElGamalEncryptable;
-#[cfg(feature = "batch")]
-use crate::data::traits::BatchEncryptable;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 #[cfg(feature = "batch")]
@@ -37,13 +35,16 @@ use std::collections::HashMap;
 /// - `Number` is stored as a single `Attribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
 /// - `String` is stored as a `LongAttribute` (variable length)
 /// - `Pseudonym` is stored as a `LongPseudonym` (can be pseudonymized/reshuffled)
-/// - `Array` and `Object` contain nested `PEPJSONValue`s
+/// - `Array` and `Object` contain nested `PepJsonValue`s
 ///
-/// Call `.encrypt()` to convert this into an `EncryptedPEPJSONValue`.
+/// Call `.encrypt()` to convert this into an `EncryptedPepJsonValue`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PEPJSONValue<G: InvertibleEncoding> {
+pub enum PepJsonValue<G: InvertibleEncoding> {
+    /// JSON `null`, kept in the clear.
     Null,
+    /// A boolean, as one attribute.
     Bool(Attribute<G>),
+    /// A number, as one attribute.
     Number(Attribute<G>),
     /// Short string that fits in a single block (≤15 bytes)
     String(Attribute<G>),
@@ -53,8 +54,10 @@ pub enum PEPJSONValue<G: InvertibleEncoding> {
     Pseudonym(Pseudonym<G>),
     /// Long pseudonym (multiple 32-byte values or lizard-encoded)
     LongPseudonym(LongPseudonym<G>),
-    Array(Vec<PEPJSONValue<G>>),
-    Object(HashMap<String, PEPJSONValue<G>>),
+    /// An array of values.
+    Array(Vec<PepJsonValue<G>>),
+    /// An object of named values.
+    Object(HashMap<String, PepJsonValue<G>>),
 }
 
 /// An encrypted JSON value where primitive types are encrypted as PEP types.
@@ -64,15 +67,18 @@ pub enum PEPJSONValue<G: InvertibleEncoding> {
 /// - `Number` is encrypted as a single `EncryptedAttribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
 /// - `String` is encrypted as a `LongEncryptedAttribute` (variable length)
 /// - `Pseudonym` is encrypted as a `LongEncryptedPseudonym` (can be pseudonymized/reshuffled)
-/// - `Array` and `Object` contain nested `EncryptedPEPJSONValue`s
+/// - `Array` and `Object` contain nested `EncryptedPepJsonValue`s
 ///
 /// Call `.decrypt()` to convert this back into a regular `serde_json::Value`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 #[cfg_attr(feature = "serde", serde(tag = "type", content = "data"))]
-pub enum EncryptedPEPJSONValue<G: InvertibleEncoding> {
+pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
+    /// JSON `null`, kept in the clear.
     Null,
+    /// A boolean, as one encrypted attribute.
     Bool(EncryptedAttribute<G>),
+    /// A number, as one encrypted attribute.
     Number(EncryptedAttribute<G>),
     /// Short string that fits in a single block (≤15 bytes)
     String(EncryptedAttribute<G>),
@@ -82,34 +88,32 @@ pub enum EncryptedPEPJSONValue<G: InvertibleEncoding> {
     Pseudonym(EncryptedPseudonym<G>),
     /// Long pseudonym (multiple 32-byte values or lizard-encoded)
     LongPseudonym(LongEncryptedPseudonym<G>),
-    Array(Vec<EncryptedPEPJSONValue<G>>),
-    Object(HashMap<String, EncryptedPEPJSONValue<G>>),
+    /// An array of encrypted values.
+    Array(Vec<EncryptedPepJsonValue<G>>),
+    /// An object of named encrypted values.
+    Object(HashMap<String, EncryptedPepJsonValue<G>>),
 }
 
-impl<G: InvertibleEncoding> PEPJSONValue<G> {
-    /// Convert this PEPJSONValue back to a regular JSON Value.
+impl<G: InvertibleEncoding> PepJsonValue<G> {
+    /// Convert this PepJsonValue back to a regular JSON Value.
     ///
     /// This extracts the underlying data from unencrypted PEP types.
     pub fn to_value(&self) -> Result<Value, JsonError> {
         match self {
             Self::Null => Ok(Value::Null),
             Self::Bool(attr) => {
-                let bytes = attr
-                    .to_bytes_padded()
-                    .map_err(|e| JsonError::BoolPadding(format!("{e:?}")))?;
+                let bytes = attr.to_bytes_padded()?;
                 let b = *bytes
                     .first()
                     .ok_or(JsonError::BoolBytesWrongLen { got: 0 })?;
                 if bytes.len() != 1 {
                     return Err(JsonError::BoolBytesWrongLen { got: bytes.len() });
                 }
-                let bool_val = byte_to_bool(b).map_err(|e| JsonError::BoolDecode(e.to_string()))?;
+                let bool_val = byte_to_bool(b)?;
                 Ok(Value::Bool(bool_val))
             }
             Self::Number(attr) => {
-                let bytes = attr
-                    .to_bytes_padded()
-                    .map_err(|e| JsonError::NumberPadding(format!("{e:?}")))?;
+                let bytes = attr.to_bytes_padded()?;
                 let arr: [u8; 9] = bytes
                     .as_slice()
                     .try_into()
@@ -118,15 +122,11 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
                 Ok(Value::Number(num_val))
             }
             Self::String(attr) => {
-                let string_val = attr
-                    .to_string_padded()
-                    .map_err(|e| JsonError::StringPadding(format!("{e:?}")))?;
+                let string_val = attr.to_string_padded()?;
                 Ok(Value::String(string_val))
             }
             Self::LongString(attr) => {
-                let string_val = attr
-                    .to_string_padded()
-                    .map_err(|e| JsonError::StringPadding(format!("{e:?}")))?;
+                let string_val = attr.to_string_padded()?;
                 Ok(Value::String(string_val))
             }
             Self::Pseudonym(pseudo) => {
@@ -158,7 +158,7 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
         }
     }
 
-    /// Create a PEPJSONValue from a regular JSON Value.
+    /// Create a PepJsonValue from a regular JSON Value.
     ///
     /// This converts JSON primitives into unencrypted PEP types.
     /// This method never fails for valid serde_json Values.
@@ -207,7 +207,7 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
         }
     }
 
-    /// Pads this PEPJSONValue to match a target structure by adding external padding blocks.
+    /// Pads this PepJsonValue to match a target structure by adding external padding blocks.
     ///
     /// This method adds external padding blocks (separate from any internal PKCS#7-style
     /// padding used inside individual ciphertext blocks) to `LongString` and
@@ -225,7 +225,7 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
     ///
     /// # Returns
     ///
-    /// Returns a padded `PEPJSONValue` with padding blocks added where necessary.
+    /// Returns a padded `PepJsonValue` with padding blocks added where necessary.
     ///
     /// # Errors
     ///
@@ -236,107 +236,71 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
     /// # Example
     ///
     /// ```no_run
-    /// use libpep::data::json::data::PEPJSONValue;
-    /// use libpep::data::json::structure::JSONStructure;
+    /// use libpep::data::json::data::PepJsonValue;
+    /// use libpep::data::json::structure::JsonStructure;
     /// use serde_json::json;
     ///
-    /// let value1 = PEPJSONValue::from_value(&json!("hi"));
-    /// let value2 = PEPJSONValue::from_value(&json!("hello world"));
+    /// let value1 = PepJsonValue::from_value(&json!("hi"));
+    /// let value2 = PepJsonValue::from_value(&json!("hello world"));
     ///
     /// // value2 has more blocks than value1
     /// // Pad value1 to match value2's structure
-    /// let target = JSONStructure::String(2);
+    /// let target = JsonStructure::String(2);
     /// let padded = value1.pad_to(&target).unwrap();
     /// ```
     pub fn pad_to(
         &self,
-        structure: &crate::data::json::structure::JSONStructure,
+        structure: &crate::data::json::structure::JsonStructure,
     ) -> Result<Self, JsonError> {
-        use crate::data::json::structure::JSONStructure;
+        use crate::data::json::structure::JsonStructure;
 
         match (self, structure) {
-            (Self::Null, JSONStructure::Null) => Ok(Self::Null),
-            (Self::Bool(attr), JSONStructure::Bool) => Ok(Self::Bool(*attr)),
-            (Self::Number(attr), JSONStructure::Number) => Ok(Self::Number(*attr)),
+            (Self::Null, JsonStructure::Null) => Ok(Self::Null),
+            (Self::Bool(attr), JsonStructure::Bool) => Ok(Self::Bool(*attr)),
+            (Self::Number(attr), JsonStructure::Number) => Ok(Self::Number(*attr)),
 
             // Short string (1 block)
-            (Self::String(attr), JSONStructure::String(1)) => Ok(Self::String(*attr)),
+            (Self::String(attr), JsonStructure::String(1)) => Ok(Self::String(*attr)),
 
             // Short string needs to be expanded to long string
             #[cfg(feature = "long")]
-            (Self::String(attr), JSONStructure::String(target_blocks)) if *target_blocks > 1 => {
+            (Self::String(attr), JsonStructure::String(target_blocks)) if *target_blocks > 1 => {
                 // Convert to LongAttribute with 1 block, then pad
                 let long_attr = LongAttribute::from(vec![*attr]);
-                let padded = long_attr.pad_to(*target_blocks).map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::InvalidInput {
-                        JsonError::SizeExceedsTarget {
-                            current: long_attr.len(),
-                            target: *target_blocks,
-                        }
-                    } else {
-                        JsonError::StringPadding(format!("{e:?}"))
-                    }
-                })?;
+                let padded = long_attr.pad_to(*target_blocks)?;
                 Ok(Self::LongString(padded))
             }
 
             // Long string normalization
             #[cfg(feature = "long")]
-            (Self::LongString(long_attr), JSONStructure::String(target_blocks)) => {
-                let padded = long_attr.pad_to(*target_blocks).map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::InvalidInput {
-                        JsonError::SizeExceedsTarget {
-                            current: long_attr.len(),
-                            target: *target_blocks,
-                        }
-                    } else {
-                        JsonError::StringPadding(format!("{e:?}"))
-                    }
-                })?;
+            (Self::LongString(long_attr), JsonStructure::String(target_blocks)) => {
+                let padded = long_attr.pad_to(*target_blocks)?;
                 Ok(Self::LongString(padded))
             }
 
             // Short pseudonym (1 block)
-            (Self::Pseudonym(pseudo), JSONStructure::Pseudonym(1)) => Ok(Self::Pseudonym(*pseudo)),
+            (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(1)) => Ok(Self::Pseudonym(*pseudo)),
 
             // Short pseudonym needs to be expanded to long pseudonym
             #[cfg(feature = "long")]
-            (Self::Pseudonym(pseudo), JSONStructure::Pseudonym(target_blocks))
+            (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(target_blocks))
                 if *target_blocks > 1 =>
             {
                 // Convert to LongPseudonym with 1 block, then pad
                 let long_pseudo = LongPseudonym::from(vec![*pseudo]);
-                let padded = long_pseudo.pad_to(*target_blocks).map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::InvalidInput {
-                        JsonError::SizeExceedsTarget {
-                            current: long_pseudo.len(),
-                            target: *target_blocks,
-                        }
-                    } else {
-                        JsonError::StringPadding(format!("{e:?}"))
-                    }
-                })?;
+                let padded = long_pseudo.pad_to(*target_blocks)?;
                 Ok(Self::LongPseudonym(padded))
             }
 
             // Long pseudonym normalization
             #[cfg(feature = "long")]
-            (Self::LongPseudonym(long_pseudo), JSONStructure::Pseudonym(target_blocks)) => {
-                let padded = long_pseudo.pad_to(*target_blocks).map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::InvalidInput {
-                        JsonError::SizeExceedsTarget {
-                            current: long_pseudo.len(),
-                            target: *target_blocks,
-                        }
-                    } else {
-                        JsonError::StringPadding(format!("{e:?}"))
-                    }
-                })?;
+            (Self::LongPseudonym(long_pseudo), JsonStructure::Pseudonym(target_blocks)) => {
+                let padded = long_pseudo.pad_to(*target_blocks)?;
                 Ok(Self::LongPseudonym(padded))
             }
 
             // Array padding - recursively pad each element
-            (Self::Array(arr), JSONStructure::Array(target_structures)) => {
+            (Self::Array(arr), JsonStructure::Array(target_structures)) => {
                 if arr.len() != target_structures.len() {
                     return Err(JsonError::StructureMismatch {
                         expected: structure.clone(),
@@ -354,7 +318,7 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
             }
 
             // Object padding - recursively pad each field
-            (Self::Object(obj), JSONStructure::Object(target_fields)) => {
+            (Self::Object(obj), JsonStructure::Object(target_fields)) => {
                 let mut padded = HashMap::new();
 
                 for (key, target_struct) in target_fields {
@@ -390,7 +354,7 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
         }
     }
 
-    /// Get the structure/shape of this PEPJSONValue.
+    /// Get the structure/shape of this PepJsonValue.
     ///
     /// This returns a structure descriptor that captures the type and block count
     /// of each field, without including the actual data values.
@@ -398,11 +362,11 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
     /// # Example
     ///
     /// ```no_run
-    /// use libpep::data::json::data::PEPJSONValue;
-    /// use libpep::data::json::structure::JSONStructure;
+    /// use libpep::data::json::data::PepJsonValue;
+    /// use libpep::data::json::structure::JsonStructure;
     /// use serde_json::json;
     ///
-    /// let value = PEPJSONValue::from_value(&json!({
+    /// let value = PepJsonValue::from_value(&json!({
     ///     "name": "Alice",
     ///     "age": 30
     /// }));
@@ -410,35 +374,35 @@ impl<G: InvertibleEncoding> PEPJSONValue<G> {
     /// let structure = value.structure();
     /// // structure describes the shape: Object with String(1) and Number fields
     /// ```
-    pub fn structure(&self) -> crate::data::json::structure::JSONStructure {
-        use crate::data::json::structure::JSONStructure;
+    pub fn structure(&self) -> crate::data::json::structure::JsonStructure {
+        use crate::data::json::structure::JsonStructure;
 
         match self {
-            Self::Null => JSONStructure::Null,
-            Self::Bool(_) => JSONStructure::Bool,
-            Self::Number(_) => JSONStructure::Number,
-            Self::String(_) => JSONStructure::String(1),
+            Self::Null => JsonStructure::Null,
+            Self::Bool(_) => JsonStructure::Bool,
+            Self::Number(_) => JsonStructure::Number,
+            Self::String(_) => JsonStructure::String(1),
             #[cfg(feature = "long")]
-            Self::LongString(long_attr) => JSONStructure::String(long_attr.len()),
-            Self::Pseudonym(_) => JSONStructure::Pseudonym(1),
+            Self::LongString(long_attr) => JsonStructure::String(long_attr.len()),
+            Self::Pseudonym(_) => JsonStructure::Pseudonym(1),
             #[cfg(feature = "long")]
-            Self::LongPseudonym(long_pseudo) => JSONStructure::Pseudonym(long_pseudo.len()),
-            Self::Array(arr) => JSONStructure::Array(arr.iter().map(|v| v.structure()).collect()),
+            Self::LongPseudonym(long_pseudo) => JsonStructure::Pseudonym(long_pseudo.len()),
+            Self::Array(arr) => JsonStructure::Array(arr.iter().map(|v| v.structure()).collect()),
             Self::Object(obj) => {
                 let mut fields: Vec<_> = obj
                     .iter()
                     .map(|(k, v)| (k.clone(), v.structure()))
                     .collect();
                 fields.sort_by(|a, b| a.0.cmp(&b.0));
-                JSONStructure::Object(fields)
+                JsonStructure::Object(fields)
             }
         }
     }
 }
 
-impl<G: InvertibleEncoding> Encryptable for PEPJSONValue<G> {
+impl<G: InvertibleEncoding> Encryptable for PepJsonValue<G> {
     type Group = G;
-    type EncryptedType = EncryptedPEPJSONValue<G>;
+    type EncryptedType = EncryptedPepJsonValue<G>;
     type PublicKeyType = SessionPublicKeys<G>;
 
     #[cfg(feature = "offline")]
@@ -450,29 +414,29 @@ impl<G: InvertibleEncoding> Encryptable for PEPJSONValue<G> {
         rng: &mut R,
     ) -> Self::EncryptedType {
         match self {
-            PEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            PEPJSONValue::Bool(attr) => {
-                EncryptedPEPJSONValue::Bool(attr.encrypt(&keys.attribute, rng))
+            PepJsonValue::Null => EncryptedPepJsonValue::Null,
+            PepJsonValue::Bool(attr) => {
+                EncryptedPepJsonValue::Bool(attr.encrypt(&keys.attribute, rng))
             }
-            PEPJSONValue::Number(attr) => {
-                EncryptedPEPJSONValue::Number(attr.encrypt(&keys.attribute, rng))
+            PepJsonValue::Number(attr) => {
+                EncryptedPepJsonValue::Number(attr.encrypt(&keys.attribute, rng))
             }
-            PEPJSONValue::String(attr) => {
-                EncryptedPEPJSONValue::String(attr.encrypt(&keys.attribute, rng))
+            PepJsonValue::String(attr) => {
+                EncryptedPepJsonValue::String(attr.encrypt(&keys.attribute, rng))
             }
-            PEPJSONValue::LongString(long_attr) => {
-                EncryptedPEPJSONValue::LongString(long_attr.encrypt(&keys.attribute, rng))
+            PepJsonValue::LongString(long_attr) => {
+                EncryptedPepJsonValue::LongString(long_attr.encrypt(&keys.attribute, rng))
             }
-            PEPJSONValue::Pseudonym(pseudo) => {
-                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt(&keys.pseudonym, rng))
+            PepJsonValue::Pseudonym(pseudo) => {
+                EncryptedPepJsonValue::Pseudonym(pseudo.encrypt(&keys.pseudonym, rng))
             }
-            PEPJSONValue::LongPseudonym(long_pseudo) => {
-                EncryptedPEPJSONValue::LongPseudonym(long_pseudo.encrypt(&keys.pseudonym, rng))
+            PepJsonValue::LongPseudonym(long_pseudo) => {
+                EncryptedPepJsonValue::LongPseudonym(long_pseudo.encrypt(&keys.pseudonym, rng))
             }
-            PEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+            PepJsonValue::Array(arr) => EncryptedPepJsonValue::Array(
                 arr.iter().map(|item| item.encrypt(keys, rng)).collect(),
             ),
-            PEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+            PepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.encrypt(keys, rng)))
                     .collect(),
@@ -486,31 +450,31 @@ impl<G: InvertibleEncoding> Encryptable for PEPJSONValue<G> {
         rng: &mut R,
     ) -> Self::EncryptedType {
         match self {
-            PEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            PEPJSONValue::Bool(attr) => {
-                EncryptedPEPJSONValue::Bool(attr.encrypt_global(&public_key.attribute, rng))
+            PepJsonValue::Null => EncryptedPepJsonValue::Null,
+            PepJsonValue::Bool(attr) => {
+                EncryptedPepJsonValue::Bool(attr.encrypt_global(&public_key.attribute, rng))
             }
-            PEPJSONValue::Number(attr) => {
-                EncryptedPEPJSONValue::Number(attr.encrypt_global(&public_key.attribute, rng))
+            PepJsonValue::Number(attr) => {
+                EncryptedPepJsonValue::Number(attr.encrypt_global(&public_key.attribute, rng))
             }
-            PEPJSONValue::String(attr) => {
-                EncryptedPEPJSONValue::String(attr.encrypt_global(&public_key.attribute, rng))
+            PepJsonValue::String(attr) => {
+                EncryptedPepJsonValue::String(attr.encrypt_global(&public_key.attribute, rng))
             }
-            PEPJSONValue::LongString(long_attr) => EncryptedPEPJSONValue::LongString(
+            PepJsonValue::LongString(long_attr) => EncryptedPepJsonValue::LongString(
                 long_attr.encrypt_global(&public_key.attribute, rng),
             ),
-            PEPJSONValue::Pseudonym(pseudo) => {
-                EncryptedPEPJSONValue::Pseudonym(pseudo.encrypt_global(&public_key.pseudonym, rng))
+            PepJsonValue::Pseudonym(pseudo) => {
+                EncryptedPepJsonValue::Pseudonym(pseudo.encrypt_global(&public_key.pseudonym, rng))
             }
-            PEPJSONValue::LongPseudonym(long_pseudo) => EncryptedPEPJSONValue::LongPseudonym(
+            PepJsonValue::LongPseudonym(long_pseudo) => EncryptedPepJsonValue::LongPseudonym(
                 long_pseudo.encrypt_global(&public_key.pseudonym, rng),
             ),
-            PEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+            PepJsonValue::Array(arr) => EncryptedPepJsonValue::Array(
                 arr.iter()
                     .map(|item| item.encrypt_global(public_key, rng))
                     .collect(),
             ),
-            PEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+            PepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.encrypt_global(public_key, rng)))
                     .collect(),
@@ -535,9 +499,9 @@ impl<G: InvertibleEncoding> Encryptable for PEPJSONValue<G> {
     }
 }
 
-impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
+impl<G: InvertibleEncoding> Encrypted for EncryptedPepJsonValue<G> {
     type Group = G;
-    type UnencryptedType = PEPJSONValue<G>;
+    type UnencryptedType = PepJsonValue<G>;
     type SecretKeyType = SessionKeys<G>;
 
     #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -546,67 +510,67 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
     #[cfg(feature = "elgamal3")]
     fn decrypt(&self, keys: &Self::SecretKeyType) -> Option<Self::UnencryptedType> {
         match self {
-            EncryptedPEPJSONValue::Null => Some(PEPJSONValue::Null),
-            EncryptedPEPJSONValue::Bool(enc) => {
-                Some(PEPJSONValue::Bool(enc.decrypt(&keys.attribute.secret)?))
+            EncryptedPepJsonValue::Null => Some(PepJsonValue::Null),
+            EncryptedPepJsonValue::Bool(enc) => {
+                Some(PepJsonValue::Bool(enc.decrypt(&keys.attribute.secret)?))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                Some(PEPJSONValue::Number(enc.decrypt(&keys.attribute.secret)?))
+            EncryptedPepJsonValue::Number(enc) => {
+                Some(PepJsonValue::Number(enc.decrypt(&keys.attribute.secret)?))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                Some(PEPJSONValue::String(enc.decrypt(&keys.attribute.secret)?))
+            EncryptedPepJsonValue::String(enc) => {
+                Some(PepJsonValue::String(enc.decrypt(&keys.attribute.secret)?))
             }
-            EncryptedPEPJSONValue::LongString(enc) => Some(PEPJSONValue::LongString(
+            EncryptedPepJsonValue::LongString(enc) => Some(PepJsonValue::LongString(
                 enc.decrypt(&keys.attribute.secret)?,
             )),
-            EncryptedPEPJSONValue::Pseudonym(enc) => Some(PEPJSONValue::Pseudonym(
+            EncryptedPepJsonValue::Pseudonym(enc) => Some(PepJsonValue::Pseudonym(
                 enc.decrypt(&keys.pseudonym.secret)?,
             )),
-            EncryptedPEPJSONValue::LongPseudonym(enc) => Some(PEPJSONValue::LongPseudonym(
+            EncryptedPepJsonValue::LongPseudonym(enc) => Some(PepJsonValue::LongPseudonym(
                 enc.decrypt(&keys.pseudonym.secret)?,
             )),
-            EncryptedPEPJSONValue::Array(arr) => {
+            EncryptedPepJsonValue::Array(arr) => {
                 let mut out = Vec::with_capacity(arr.len());
                 for item in arr {
                     out.push(item.decrypt(keys)?);
                 }
-                Some(PEPJSONValue::Array(out))
+                Some(PepJsonValue::Array(out))
             }
-            EncryptedPEPJSONValue::Object(obj) => {
+            EncryptedPepJsonValue::Object(obj) => {
                 let mut out = HashMap::with_capacity(obj.len());
                 for (k, v) in obj {
                     out.insert(k.clone(), v.decrypt(keys)?);
                 }
-                Some(PEPJSONValue::Object(out))
+                Some(PepJsonValue::Object(out))
             }
         }
     }
     #[cfg(not(feature = "elgamal3"))]
     fn decrypt(&self, keys: &Self::SecretKeyType) -> Self::UnencryptedType {
         match self {
-            EncryptedPEPJSONValue::Null => PEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                PEPJSONValue::Bool(enc.decrypt(&keys.attribute.secret))
+            EncryptedPepJsonValue::Null => PepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                PepJsonValue::Bool(enc.decrypt(&keys.attribute.secret))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                PEPJSONValue::Number(enc.decrypt(&keys.attribute.secret))
+            EncryptedPepJsonValue::Number(enc) => {
+                PepJsonValue::Number(enc.decrypt(&keys.attribute.secret))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                PEPJSONValue::String(enc.decrypt(&keys.attribute.secret))
+            EncryptedPepJsonValue::String(enc) => {
+                PepJsonValue::String(enc.decrypt(&keys.attribute.secret))
             }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                PEPJSONValue::LongString(enc.decrypt(&keys.attribute.secret))
+            EncryptedPepJsonValue::LongString(enc) => {
+                PepJsonValue::LongString(enc.decrypt(&keys.attribute.secret))
             }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                PEPJSONValue::Pseudonym(enc.decrypt(&keys.pseudonym.secret))
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                PepJsonValue::Pseudonym(enc.decrypt(&keys.pseudonym.secret))
             }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                PEPJSONValue::LongPseudonym(enc.decrypt(&keys.pseudonym.secret))
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                PepJsonValue::LongPseudonym(enc.decrypt(&keys.pseudonym.secret))
             }
-            EncryptedPEPJSONValue::Array(arr) => {
-                PEPJSONValue::Array(arr.iter().map(|x| x.decrypt(keys)).collect())
+            EncryptedPepJsonValue::Array(arr) => {
+                PepJsonValue::Array(arr.iter().map(|x| x.decrypt(keys)).collect())
             }
-            EncryptedPEPJSONValue::Object(obj) => PEPJSONValue::Object(
+            EncryptedPepJsonValue::Object(obj) => PepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.decrypt(keys)))
                     .collect(),
@@ -621,38 +585,38 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
         secret_key: &Self::GlobalSecretKeyType,
     ) -> Option<Self::UnencryptedType> {
         match self {
-            EncryptedPEPJSONValue::Null => Some(PEPJSONValue::Null),
-            EncryptedPEPJSONValue::Bool(enc) => Some(PEPJSONValue::Bool(
+            EncryptedPepJsonValue::Null => Some(PepJsonValue::Null),
+            EncryptedPepJsonValue::Bool(enc) => Some(PepJsonValue::Bool(
                 enc.decrypt_global(&secret_key.attribute)?,
             )),
-            EncryptedPEPJSONValue::Number(enc) => Some(PEPJSONValue::Number(
+            EncryptedPepJsonValue::Number(enc) => Some(PepJsonValue::Number(
                 enc.decrypt_global(&secret_key.attribute)?,
             )),
-            EncryptedPEPJSONValue::String(enc) => Some(PEPJSONValue::String(
+            EncryptedPepJsonValue::String(enc) => Some(PepJsonValue::String(
                 enc.decrypt_global(&secret_key.attribute)?,
             )),
-            EncryptedPEPJSONValue::LongString(enc) => Some(PEPJSONValue::LongString(
+            EncryptedPepJsonValue::LongString(enc) => Some(PepJsonValue::LongString(
                 enc.decrypt_global(&secret_key.attribute)?,
             )),
-            EncryptedPEPJSONValue::Pseudonym(enc) => Some(PEPJSONValue::Pseudonym(
+            EncryptedPepJsonValue::Pseudonym(enc) => Some(PepJsonValue::Pseudonym(
                 enc.decrypt_global(&secret_key.pseudonym)?,
             )),
-            EncryptedPEPJSONValue::LongPseudonym(enc) => Some(PEPJSONValue::LongPseudonym(
+            EncryptedPepJsonValue::LongPseudonym(enc) => Some(PepJsonValue::LongPseudonym(
                 enc.decrypt_global(&secret_key.pseudonym)?,
             )),
-            EncryptedPEPJSONValue::Array(arr) => {
+            EncryptedPepJsonValue::Array(arr) => {
                 let mut out = Vec::with_capacity(arr.len());
                 for item in arr {
                     out.push(item.decrypt_global(secret_key)?);
                 }
-                Some(PEPJSONValue::Array(out))
+                Some(PepJsonValue::Array(out))
             }
-            EncryptedPEPJSONValue::Object(obj) => {
+            EncryptedPepJsonValue::Object(obj) => {
                 let mut out = HashMap::with_capacity(obj.len());
                 for (k, v) in obj {
                     out.insert(k.clone(), v.decrypt_global(secret_key)?);
                 }
-                Some(PEPJSONValue::Object(out))
+                Some(PepJsonValue::Object(out))
             }
         }
     }
@@ -661,29 +625,29 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
     #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
     fn decrypt_global(&self, secret_key: &Self::GlobalSecretKeyType) -> Self::UnencryptedType {
         match self {
-            EncryptedPEPJSONValue::Null => PEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                PEPJSONValue::Bool(enc.decrypt_global(&secret_key.attribute))
+            EncryptedPepJsonValue::Null => PepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                PepJsonValue::Bool(enc.decrypt_global(&secret_key.attribute))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                PEPJSONValue::Number(enc.decrypt_global(&secret_key.attribute))
+            EncryptedPepJsonValue::Number(enc) => {
+                PepJsonValue::Number(enc.decrypt_global(&secret_key.attribute))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                PEPJSONValue::String(enc.decrypt_global(&secret_key.attribute))
+            EncryptedPepJsonValue::String(enc) => {
+                PepJsonValue::String(enc.decrypt_global(&secret_key.attribute))
             }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                PEPJSONValue::LongString(enc.decrypt_global(&secret_key.attribute))
+            EncryptedPepJsonValue::LongString(enc) => {
+                PepJsonValue::LongString(enc.decrypt_global(&secret_key.attribute))
             }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                PEPJSONValue::Pseudonym(enc.decrypt_global(&secret_key.pseudonym))
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                PepJsonValue::Pseudonym(enc.decrypt_global(&secret_key.pseudonym))
             }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                PEPJSONValue::LongPseudonym(enc.decrypt_global(&secret_key.pseudonym))
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                PepJsonValue::LongPseudonym(enc.decrypt_global(&secret_key.pseudonym))
             }
-            EncryptedPEPJSONValue::Array(arr) => {
-                PEPJSONValue::Array(arr.iter().map(|x| x.decrypt_global(secret_key)).collect())
+            EncryptedPepJsonValue::Array(arr) => {
+                PepJsonValue::Array(arr.iter().map(|x| x.decrypt_global(secret_key)).collect())
             }
-            EncryptedPEPJSONValue::Object(obj) => PEPJSONValue::Object(
+            EncryptedPepJsonValue::Object(obj) => PepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.decrypt_global(secret_key)))
                     .collect(),
@@ -716,29 +680,29 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
     #[cfg(feature = "elgamal3")]
     fn rerandomize_known(&self, factor: &RerandomizeFactor<G>) -> Self {
         match self {
-            EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                EncryptedPEPJSONValue::Bool(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::Null => EncryptedPepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                EncryptedPepJsonValue::Bool(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::Number(enc) => {
+                EncryptedPepJsonValue::Number(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::String(enc) => {
+                EncryptedPepJsonValue::String(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                EncryptedPEPJSONValue::LongString(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::LongString(enc) => {
+                EncryptedPepJsonValue::LongString(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                EncryptedPEPJSONValue::Pseudonym(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                EncryptedPepJsonValue::Pseudonym(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                EncryptedPEPJSONValue::LongPseudonym(enc.rerandomize_known(factor))
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                EncryptedPepJsonValue::LongPseudonym(enc.rerandomize_known(factor))
             }
-            EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+            EncryptedPepJsonValue::Array(arr) => EncryptedPepJsonValue::Array(
                 arr.iter().map(|x| x.rerandomize_known(factor)).collect(),
             ),
-            EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+            EncryptedPepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.rerandomize_known(factor)))
                     .collect(),
@@ -753,31 +717,31 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
         factor: &RerandomizeFactor<G>,
     ) -> Self {
         match self {
-            EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                EncryptedPEPJSONValue::Bool(enc.rerandomize_known(&public_key.attribute, factor))
+            EncryptedPepJsonValue::Null => EncryptedPepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                EncryptedPepJsonValue::Bool(enc.rerandomize_known(&public_key.attribute, factor))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.rerandomize_known(&public_key.attribute, factor))
+            EncryptedPepJsonValue::Number(enc) => {
+                EncryptedPepJsonValue::Number(enc.rerandomize_known(&public_key.attribute, factor))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.rerandomize_known(&public_key.attribute, factor))
+            EncryptedPepJsonValue::String(enc) => {
+                EncryptedPepJsonValue::String(enc.rerandomize_known(&public_key.attribute, factor))
             }
-            EncryptedPEPJSONValue::LongString(enc) => EncryptedPEPJSONValue::LongString(
+            EncryptedPepJsonValue::LongString(enc) => EncryptedPepJsonValue::LongString(
                 enc.rerandomize_known(&public_key.attribute, factor),
             ),
-            EncryptedPEPJSONValue::Pseudonym(enc) => EncryptedPEPJSONValue::Pseudonym(
+            EncryptedPepJsonValue::Pseudonym(enc) => EncryptedPepJsonValue::Pseudonym(
                 enc.rerandomize_known(&public_key.pseudonym, factor),
             ),
-            EncryptedPEPJSONValue::LongPseudonym(enc) => EncryptedPEPJSONValue::LongPseudonym(
+            EncryptedPepJsonValue::LongPseudonym(enc) => EncryptedPepJsonValue::LongPseudonym(
                 enc.rerandomize_known(&public_key.pseudonym, factor),
             ),
-            EncryptedPEPJSONValue::Array(arr) => EncryptedPEPJSONValue::Array(
+            EncryptedPepJsonValue::Array(arr) => EncryptedPepJsonValue::Array(
                 arr.iter()
                     .map(|x| x.rerandomize_known(public_key, factor))
                     .collect(),
             ),
-            EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+            EncryptedPepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.rerandomize_known(public_key, factor)))
                     .collect(),
@@ -788,32 +752,32 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPEPJSONValue<G> {
 
 // Transcryption trait implementation for JSON
 
-impl<G: InvertibleEncoding> Transcryptable for EncryptedPEPJSONValue<G> {
+impl<G: InvertibleEncoding> Transcryptable for EncryptedPepJsonValue<G> {
     fn transcrypt_raw(&self, info: &TranscryptionInfo<G>) -> Self {
         match self {
-            EncryptedPEPJSONValue::Null => EncryptedPEPJSONValue::Null,
-            EncryptedPEPJSONValue::Bool(enc) => {
-                EncryptedPEPJSONValue::Bool(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::Null => EncryptedPepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                EncryptedPepJsonValue::Bool(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::Number(enc) => {
-                EncryptedPEPJSONValue::Number(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::Number(enc) => {
+                EncryptedPepJsonValue::Number(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::String(enc) => {
-                EncryptedPEPJSONValue::String(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::String(enc) => {
+                EncryptedPepJsonValue::String(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::LongString(enc) => {
-                EncryptedPEPJSONValue::LongString(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::LongString(enc) => {
+                EncryptedPepJsonValue::LongString(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::Pseudonym(enc) => {
-                EncryptedPEPJSONValue::Pseudonym(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                EncryptedPepJsonValue::Pseudonym(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::LongPseudonym(enc) => {
-                EncryptedPEPJSONValue::LongPseudonym(enc.transcrypt_raw(info))
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                EncryptedPepJsonValue::LongPseudonym(enc.transcrypt_raw(info))
             }
-            EncryptedPEPJSONValue::Array(arr) => {
-                EncryptedPEPJSONValue::Array(arr.iter().map(|x| x.transcrypt_raw(info)).collect())
+            EncryptedPepJsonValue::Array(arr) => {
+                EncryptedPepJsonValue::Array(arr.iter().map(|x| x.transcrypt_raw(info)).collect())
             }
-            EncryptedPEPJSONValue::Object(obj) => EncryptedPEPJSONValue::Object(
+            EncryptedPepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
                 obj.iter()
                     .map(|(k, v)| (k.clone(), v.transcrypt_raw(info)))
                     .collect(),
@@ -823,29 +787,10 @@ impl<G: InvertibleEncoding> Transcryptable for EncryptedPEPJSONValue<G> {
 }
 
 #[cfg(feature = "batch")]
-impl<G: InvertibleEncoding> crate::data::traits::HasStructure for EncryptedPEPJSONValue<G> {
-    type Structure = crate::data::json::structure::JSONStructure;
+impl<G: InvertibleEncoding> crate::data::traits::HasStructure for EncryptedPepJsonValue<G> {
+    type Structure = crate::data::json::structure::JsonStructure;
 
     fn structure(&self) -> Self::Structure {
         self.structure()
-    }
-}
-
-#[cfg(feature = "batch")]
-impl<G: InvertibleEncoding> BatchEncryptable for PEPJSONValue<G> {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
-        if items.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Collect and unify structures
-        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
-        let unified = unify_structures(&structures)?;
-
-        // Pad each item to unified structure
-        Ok(items
-            .iter()
-            .map(|item| item.pad_to(&unified))
-            .collect::<Result<Vec<_>, _>>()?)
     }
 }

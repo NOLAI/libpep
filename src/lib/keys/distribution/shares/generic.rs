@@ -4,9 +4,10 @@ use super::super::blinding::generic::{
     BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedPseudonymGlobalSecretKey,
     BlindingFactor,
 };
+use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
-use crate::factors::types::generic::{AttributeRekeyFactor, PseudonymRekeyFactor, RekeyFactor};
-use crate::keys::traits::{decode_hex, SecretKey};
+use crate::factors::types::generic::{AttributeRekeyFactor, Factor, PseudonymRekeyFactor};
+use crate::keys::traits::SecretKey;
 use crate::keys::types::generic::{AttributeSessionSecretKey, PseudonymSessionSecretKey};
 
 /// One transcryptor's contribution to a session key.
@@ -17,7 +18,7 @@ pub trait SessionKeyShare: Sized {
     /// The group the share is a scalar of.
     type Group: Group;
     /// The rekey factor this share is made from.
-    type RekeyFactor: RekeyFactor<Group = Self::Group>;
+    type Factor: Factor<Group = Self::Group>;
     /// The blinded global secret key this share is combined with.
     type BlindedGlobalSecretKey: BlindedGlobalSecretKey<Group = Self::Group>;
     /// The session secret key that combining the shares yields.
@@ -34,7 +35,7 @@ pub trait SessionKeyShare: Sized {
     /// The share is the product of the two, so that the blinding factors cancel out against the
     /// blinded global secret key when the shares are combined.
     fn from_rekey_factor(
-        rekey_factor: &Self::RekeyFactor,
+        rekey_factor: &Self::Factor,
         blinding_factor: &BlindingFactor<Self::Group>,
     ) -> Self {
         Self::from_scalar(rekey_factor.scalar() * *blinding_factor.value())
@@ -85,7 +86,7 @@ macro_rules! impl_session_key_share {
     ($($t:ident { rekey: $rf:ident, blinded: $b:ident, session: $sk:ident }),+ $(,)?) => {$(
         impl<G: Group> SessionKeyShare for $t<G> {
             type Group = G;
-            type RekeyFactor = $rf<G>;
+            type Factor = $rf<G>;
             type BlindedGlobalSecretKey = $b<G>;
             type SessionSecretKey = $sk<G>;
 
@@ -117,14 +118,16 @@ impl_session_key_share!(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct SessionKeyShares<G: Group> {
+    /// The share of the pseudonym session key.
     pub pseudonym: PseudonymSessionKeyShare<G>,
+    /// The share of the attribute session key.
     pub attribute: AttributeSessionKeyShare<G>,
 }
 
 /// Create a session key share from a rekey factor and blinding factor.
 /// Automatically works for both pseudonym and attribute key shares based on the types.
 pub fn make_session_key_share<S: SessionKeyShare>(
-    rekey_factor: &S::RekeyFactor,
+    rekey_factor: &S::Factor,
     blinding_factor: &BlindingFactor<S::Group>,
 ) -> S {
     S::from_rekey_factor(rekey_factor, blinding_factor)

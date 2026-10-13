@@ -110,11 +110,9 @@ impl WASMEncryptedPseudonymBatch {
     /// Pseudonymize every item in the batch and shuffle.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = pseudonymize)]
-    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) -> Result<(), JsValue> {
+    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .pseudonymize(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &mut rng)
     }
 
     /// Pseudonymize every item in the batch and shuffle.
@@ -124,48 +122,42 @@ impl WASMEncryptedPseudonymBatch {
         &mut self,
         info: &WASMPseudonymizationInfo,
         public_key: &WASMPseudonymSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .pseudonymize(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &pk, &mut rng)
     }
 
     /// Pseudonymize every item in the batch and shuffle.
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = pseudonymize)]
-    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) -> Result<(), JsValue> {
+    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .pseudonymize(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &mut rng)
     }
 
     /// Rekey every item in the batch and shuffle.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     /// Rekey every item in the batch and shuffle.
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     /// Transcrypt every item in the batch and shuffle.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     /// Transcrypt every item in the batch and shuffle.
@@ -175,22 +167,18 @@ impl WASMEncryptedPseudonymBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         public_key: &WASMPseudonymSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &pk, &mut rng)
     }
 
     /// Transcrypt every item in the batch and shuffle.
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }
 
@@ -257,26 +245,24 @@ impl WASMEncryptedAttributeBatch {
     /// Rekey every item in the batch and shuffle.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     /// Transcrypt every item in the batch and shuffle.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -285,21 +271,17 @@ impl WASMEncryptedAttributeBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         public_key: &WASMAttributeSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }
 
@@ -369,11 +351,9 @@ impl WASMLongEncryptedPseudonymBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = pseudonymize)]
-    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) -> Result<(), JsValue> {
+    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .pseudonymize(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -382,44 +362,38 @@ impl WASMLongEncryptedPseudonymBatch {
         &mut self,
         info: &WASMPseudonymizationInfo,
         public_key: &WASMPseudonymSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .pseudonymize(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = pseudonymize)]
-    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) -> Result<(), JsValue> {
+    pub fn pseudonymize(&mut self, info: &WASMPseudonymizationInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .pseudonymize(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.pseudonymize(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -428,21 +402,17 @@ impl WASMLongEncryptedPseudonymBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         public_key: &WASMPseudonymSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }
 
@@ -512,25 +482,23 @@ impl WASMLongEncryptedAttributeBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
     #[wasm_bindgen(js_name = rekey)]
-    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) -> Result<(), JsValue> {
+    pub fn rekey(&mut self, info: &WASMAttributeRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(batch_err_to_js)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -539,21 +507,17 @@ impl WASMLongEncryptedAttributeBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         public_key: &WASMAttributeSessionPublicKey,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info.0, &pk, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }
 
@@ -618,11 +582,9 @@ impl WASMEncryptedRecordBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -631,21 +593,17 @@ impl WASMEncryptedRecordBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         session_keys: &WASMSessionPublicKeys,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
-        self.inner
-            .transcrypt(&info.0, &keys, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &keys, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }
 
@@ -716,11 +674,9 @@ impl WASMLongEncryptedRecordBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -729,20 +685,16 @@ impl WASMLongEncryptedRecordBatch {
         &mut self,
         info: &WASMTranscryptionInfo,
         session_keys: &WASMSessionPublicKeys,
-    ) -> Result<(), JsValue> {
+    ) {
         let mut rng = rand::rng();
         let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
-        self.inner
-            .transcrypt(&info.0, &keys, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &keys, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = transcrypt)]
-    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) -> Result<(), JsValue> {
+    pub fn transcrypt(&mut self, info: &WASMTranscryptionInfo) {
         let mut rng = rand::rng();
-        self.inner
-            .transcrypt(&info.0, &mut rng)
-            .map_err(batch_err_to_js)
+        self.inner.transcrypt(&info.0, &mut rng)
     }
 }

@@ -71,7 +71,9 @@ impl std::fmt::Debug for MasterPseudonymizationSecret {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MasterPseudonymizationPublicKey {
+    /// `X₁ = x₁·G`.
     pub x1: GroupElement,
+    /// `X₂ = x₂·G`.
     pub x2: GroupElement,
 }
 
@@ -93,7 +95,9 @@ impl std::fmt::Debug for MasterRekeyingSecret {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MasterRekeyingPublicKey {
+    /// `Y₁ = y₁·G`.
     pub y1: GroupElement,
+    /// `Y₂ = y₂·G`.
     pub y2: GroupElement,
 }
 

@@ -41,6 +41,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+/// Proof of a verifiable RSK: the reshuffle and rekey of one ciphertext with a factor pair `(s,
+/// k)`.
 pub struct VerifiableRSK {
     /// `T = (s·k⁻¹)·G`.
     pub(crate) gt: GroupElement,
@@ -66,6 +68,7 @@ impl VerifiableRSK {
 }
 
 impl VerifiableRSK {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s: &ScalarNonZero,
@@ -93,6 +96,8 @@ impl VerifiableRSK {
         self.inner.result()
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -107,19 +112,22 @@ impl VerifiableRSK {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.result()
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,
         reshuffle_commitment: &PseudonymizationFactorCommitment,
         rekey_commitment: &RekeyFactorCommitment,
     ) -> bool {
-        let gs = reshuffle_commitment.0 .0;
-        let gk = rekey_commitment.0 .0;
+        let gs = reshuffle_commitment.point();
+        let gk = rekey_commitment.point();
         if *self.p_gs != gs {
             return false;
         }
@@ -208,7 +216,7 @@ impl VerifiableRSKInner {
         #[cfg_attr(not(feature = "elgamal3"), allow(unused_variables))]
         rekey_commitment: &RekeyFactorCommitment,
     ) -> bool {
-        let gs = reshuffle_commitment.0 .0;
+        let gs = reshuffle_commitment.point();
         if !verify_proof(gt, &original.gb, &self.p_gb_prime) {
             return false;
         }
@@ -216,7 +224,7 @@ impl VerifiableRSKInner {
             return false;
         }
         #[cfg(feature = "elgamal3")]
-        if !verify_proof(&rekey_commitment.0 .0, &original.gy, &self.p_gy_prime) {
+        if !verify_proof(&rekey_commitment.point(), &original.gy, &self.p_gy_prime) {
             return false;
         }
         true
@@ -284,6 +292,7 @@ impl VerifiableRSK2 {
 }
 
 impl VerifiableRSK2 {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s_from: &ScalarNonZero,
@@ -314,6 +323,8 @@ impl VerifiableRSK2 {
         self.inner.result()
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -336,6 +347,8 @@ impl VerifiableRSK2 {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.result()
     }
@@ -352,10 +365,10 @@ impl VerifiableRSK2 {
         k_from_commitments: &RekeyFactorCommitment,
         k_to_commitments: &RekeyFactorCommitment,
     ) -> bool {
-        let gs_from = s_from_commitments.0 .0;
-        let gs_to = s_to_commitments.0 .0;
-        let gk_from = k_from_commitments.0 .0;
-        let gk_to = k_to_commitments.0 .0;
+        let gs_from = s_from_commitments.point();
+        let gs_to = s_to_commitments.point();
+        let gk_from = k_from_commitments.point();
+        let gk_to = k_to_commitments.point();
         *self.p_gs_to == gs_to
             && verify_proof(&gs_from, &self.gs, &self.p_gs_to)
             && *self.p_gk_to == gk_to
@@ -373,6 +386,7 @@ impl VerifiableRSK2 {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,

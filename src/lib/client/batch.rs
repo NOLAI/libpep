@@ -6,12 +6,15 @@ use crate::errors::BatchError;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
-/// Polymorphic batch encryption.
+/// Encrypt a slice of values into an [`EncryptedBatch`].
 ///
-/// Encrypts a slice of unencrypted messages with a session public key and
-/// returns an [`EncryptedBatch`] that carries the public key alongside the
-/// items (under `elgamal2`) so downstream batch operations need no extra
-/// arguments.
+/// The values are first brought to one structure where their type requires it (JSON values
+/// are padded to a unified structure), so that the batch can be shuffled without linking
+/// items through their shape. With the `batch-pk` feature the batch carries the public key.
+///
+/// # Errors
+///
+/// Returns an error if the values cannot be brought to one structure.
 pub fn encrypt_batch<M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::PublicKeyType>,
@@ -36,54 +39,50 @@ where
     }
 }
 
+/// Encrypt a slice of values one by one, without bringing them to one structure.
+///
+/// The result is not an [`EncryptedBatch`]: values of different structure must not be
+/// shuffled together, as their shapes would link them.
 #[cfg(feature = "insecure")]
 pub fn encrypt_batch_raw<M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::PublicKeyType>,
     rng: &mut R,
-) -> Result<Vec<M::EncryptedType>, BatchError>
+) -> Vec<M::EncryptedType>
 where
     M: Encryptable,
     R: Rng + CryptoRng,
 {
     let key = key.get_key();
-    Ok(messages.iter().map(|x| x.encrypt(&key, rng)).collect())
+    messages.iter().map(|x| x.encrypt(&key, rng)).collect()
 }
 
-/// Polymorphic batch encryption with global public key.
+/// Encrypt a slice of values one by one towards a global public key.
 ///
-/// Encrypts a slice of unencrypted messages with a global public key.
-///
-/// # Examples
-/// ```rust,ignore
-/// let encrypted = encrypt_global_batch(&messages, &global_public_key, &mut rng)?;
-/// ```
+/// The result is not an [`EncryptedBatch`]: values encrypted towards the global keys are not
+/// in a session yet, and become a batch once rekeyed into one.
 #[cfg(feature = "offline")]
 pub fn encrypt_global_batch<M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::GlobalPublicKeyType>,
     rng: &mut R,
-) -> Result<Vec<M::EncryptedType>, BatchError>
+) -> Vec<M::EncryptedType>
 where
     M: Encryptable,
     R: Rng + CryptoRng,
 {
     let key = key.get_key();
-    Ok(messages
+    messages
         .iter()
         .map(|x| x.encrypt_global(&key, rng))
-        .collect())
+        .collect()
 }
 
-/// Polymorphic batch decryption.
+/// Decrypt a slice of values with a session secret key.
 ///
-/// Decrypts a slice of encrypted messages with a session secret key.
-/// With the `elgamal3` feature, returns an error if any decryption fails.
+/// # Errors
 ///
-/// # Examples
-/// ```rust,ignore
-/// let decrypted = decrypt_batch(&encrypted, &secret_key)?;
-/// ```
+/// Returns an error if any decryption fails; only possible with the `elgamal3` feature.
 #[cfg(feature = "elgamal3")]
 pub fn decrypt_batch<E>(
     encrypted: &[E],
@@ -103,14 +102,11 @@ where
         .collect()
 }
 
-/// Polymorphic batch decryption.
+/// Decrypt a slice of values with a session secret key.
 ///
-/// Decrypts a slice of encrypted messages with a session secret key.
+/// # Errors
 ///
-/// # Examples
-/// ```rust,ignore
-/// let decrypted = decrypt_batch(&encrypted, &secret_key)?;
-/// ```
+/// Never fails without the `elgamal3` feature; the result type is the same in both modes.
 #[cfg(not(feature = "elgamal3"))]
 pub fn decrypt_batch<E>(
     encrypted: &[E],
@@ -123,15 +119,11 @@ where
     Ok(encrypted.iter().map(|x| x.decrypt(&key)).collect())
 }
 
-/// Polymorphic batch decryption with global secret key.
+/// Decrypt a slice of values with a global secret key.
 ///
-/// Decrypts a slice of encrypted messages with a global secret key.
-/// With the `elgamal3` feature, returns an error if any decryption fails.
+/// # Errors
 ///
-/// # Examples
-/// ```rust,ignore
-/// let decrypted = decrypt_global_batch(&encrypted, &global_secret_key)?;
-/// ```
+/// Returns an error if any decryption fails; only possible with the `elgamal3` feature.
 #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
 pub fn decrypt_global_batch<E>(
     encrypted: &[E],
@@ -151,14 +143,11 @@ where
         .collect()
 }
 
-/// Polymorphic batch decryption with global secret key.
+/// Decrypt a slice of values with a global secret key.
 ///
-/// Decrypts a slice of encrypted messages with a global secret key.
+/// # Errors
 ///
-/// # Examples
-/// ```rust,ignore
-/// let decrypted = decrypt_global_batch(&encrypted, &global_secret_key)?;
-/// ```
+/// Never fails without the `elgamal3` feature; the result type is the same in both modes.
 #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
 pub fn decrypt_global_batch<E>(
     encrypted: &[E],

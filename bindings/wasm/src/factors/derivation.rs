@@ -7,7 +7,7 @@ use crate::factors::types::{
 };
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
 use wasm_bindgen::prelude::*;
 
@@ -30,10 +30,10 @@ pub fn wasm_make_attribute_rekey_factor(
 }
 
 /// Derive the reshuffle factor of a domain from a pseudonymization secret.
-#[wasm_bindgen(js_name = makePseudonymisationFactor)]
-pub fn wasm_make_pseudonymisation_factor(
+#[wasm_bindgen(js_name = makePseudonymizationFactor)]
+pub fn wasm_make_pseudonymization_factor(
     secret: &WASMPseudonymizationSecret,
     domain: &str,
 ) -> WASMReshuffleFactor {
-    make_pseudonymisation_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
+    make_pseudonymization_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
 }

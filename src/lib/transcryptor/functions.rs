@@ -93,6 +93,8 @@ where
 }
 
 #[cfg(feature = "elgamal3")]
+/// Rerandomize an encrypted value with a fresh factor; with `elgamal3` the ciphertext carries its
+/// public key.
 pub fn rerandomize<R, E>(encrypted: &E, rng: &mut R) -> E
 where
     E: Encrypted,

@@ -1,7 +1,7 @@
 //! WASM bindings for client types.
 
 #[cfg(all(feature = "offline", feature = "json"))]
-use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
+use crate::data::json::{WASMEncryptedPepJsonValue, WASMPepJsonValue};
 #[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -14,7 +14,6 @@ use crate::data::records::{WASMLongEncryptedRecord, WASMLongRecord};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
-use crate::errors::batch_err_to_js;
 #[cfg(feature = "offline")]
 use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(feature = "offline")]
@@ -86,10 +85,11 @@ impl WASMOfflinePEPClient {
     ) -> Result<Vec<WASMEncryptedAttribute>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_messages: Vec<_> = messages.into_iter().map(|m| m.0).collect();
-        let encrypted = self
-            .0
-            .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(batch_err_to_js)?;
+        let encrypted = libpep::client::encrypt_global_batch(
+            &rust_messages,
+            &self.0.global_public_keys,
+            &mut rng,
+        );
         Ok(encrypted
             .into_iter()
             .map(WASMEncryptedAttribute::from)
@@ -105,10 +105,11 @@ impl WASMOfflinePEPClient {
     ) -> Result<Vec<WASMEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_messages: Vec<_> = messages.into_iter().map(|m| m.0).collect();
-        let encrypted = self
-            .0
-            .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(batch_err_to_js)?;
+        let encrypted = libpep::client::encrypt_global_batch(
+            &rust_messages,
+            &self.0.global_public_keys,
+            &mut rng,
+        );
         Ok(encrypted.into_iter().map(WASMEncryptedPseudonym).collect())
     }
 
@@ -121,10 +122,11 @@ impl WASMOfflinePEPClient {
     ) -> Result<Vec<WASMLongEncryptedAttribute>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_messages: Vec<_> = messages.into_iter().map(|m| m.0).collect();
-        let encrypted = self
-            .0
-            .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(batch_err_to_js)?;
+        let encrypted = libpep::client::encrypt_global_batch(
+            &rust_messages,
+            &self.0.global_public_keys,
+            &mut rng,
+        );
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedAttribute::from)
@@ -140,10 +142,11 @@ impl WASMOfflinePEPClient {
     ) -> Result<Vec<WASMLongEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_messages: Vec<_> = messages.into_iter().map(|m| m.0).collect();
-        let encrypted = self
-            .0
-            .encrypt_batch(&rust_messages, &mut rng)
-            .map_err(batch_err_to_js)?;
+        let encrypted = libpep::client::encrypt_global_batch(
+            &rust_messages,
+            &self.0.global_public_keys,
+            &mut rng,
+        );
         Ok(encrypted
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
@@ -171,31 +174,32 @@ impl WASMOfflinePEPClient {
         encrypted.into()
     }
 
-    /// Encrypt a PEPJSONValue using global public keys (offline mode).
+    /// Encrypt a PepJsonValue using global public keys (offline mode).
     #[cfg(feature = "json")]
     #[wasm_bindgen(js_name = encryptJSON)]
-    pub fn wasm_encrypt_json(&self, value: WASMPEPJSONValue) -> WASMEncryptedPEPJSONValue {
+    pub fn wasm_encrypt_json(&self, value: WASMPepJsonValue) -> WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let encrypted = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
-        WASMEncryptedPEPJSONValue(encrypted)
+        WASMEncryptedPepJsonValue(encrypted)
     }
 
-    /// Encrypt a batch of PEPJSONValues with global keys.
+    /// Encrypt a batch of PepJsonValues with global keys.
     #[cfg(all(feature = "json", feature = "batch"))]
     #[wasm_bindgen(js_name = encryptJSONBatch)]
     pub fn wasm_encrypt_json_batch(
         &self,
-        values: Vec<WASMPEPJSONValue>,
-    ) -> Result<Vec<WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
+        values: Vec<WASMPepJsonValue>,
+    ) -> Result<Vec<WASMEncryptedPepJsonValue>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_values: Vec<_> = values.into_iter().map(|m| m.0).collect();
-        let encrypted = self
-            .0
-            .encrypt_batch(&rust_values, &mut rng)
-            .map_err(batch_err_to_js)?;
+        let encrypted = libpep::client::encrypt_global_batch(
+            &rust_values,
+            &self.0.global_public_keys,
+            &mut rng,
+        );
         Ok(encrypted
             .into_iter()
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .collect())
     }
 }

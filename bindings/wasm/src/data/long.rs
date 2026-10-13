@@ -74,11 +74,7 @@ pub fn wasm_rekey_long_pseudonym_batch(
     let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
     let result = rekey_batch(&mut enc, &rekey_info.0, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
-        .into_iter()
-        .map(WASMLongEncryptedPseudonym)
-        .collect())
+    Ok(result.into_iter().map(WASMLongEncryptedPseudonym).collect())
 }
 
 #[cfg(not(feature = "elgamal3"))]
@@ -96,11 +92,7 @@ pub fn wasm_rekey_long_pseudonym_batch(
     let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
     let result = rekey_batch(&mut enc, &rekey_info.0, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
-    Ok(result
-        .into_vec()
-        .into_iter()
-        .map(WASMLongEncryptedPseudonym)
-        .collect())
+    Ok(result.into_iter().map(WASMLongEncryptedPseudonym).collect())
 }
 
 use crate::data::records::WASMLongEncryptedRecord;
@@ -131,7 +123,6 @@ pub fn wasm_transcrypt_long_batch(
     let result = transcrypt_batch(&mut enc, &info, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result
-        .into_vec()
         .into_iter()
         .map(WASMLongEncryptedRecord::from)
         .collect())
@@ -165,7 +156,6 @@ pub fn wasm_transcrypt_long_batch(
     let result = transcrypt_batch(&mut enc, &info, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result
-        .into_vec()
         .into_iter()
         .map(WASMLongEncryptedRecord::from)
         .collect())

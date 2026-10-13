@@ -10,8 +10,8 @@
 //! The main components are:
 //! - [`Proof`]: A zero-knowledge proof that demonstrates `N = a*M` without revealing `a`
 //! - [`create_proof`]/[`verify_proof`]: Create and verify proofs
-//! - [`sign`]/[`verify`]: Create and verify signatures (proofs used as signatures)
-//! - [`sign_unlinkable`]: Create deterministic signatures that prevent linkability
+//! - [`create_proofs_same_scalar`]: Two proofs of the same scalar on two bases, for the
+//!   verifiable reshuffle
 //!
 //! # Security Properties
 //!
@@ -401,8 +401,6 @@ pub(crate) fn verify_proof_split(
     // halve verification cost. Multiplications by the fixed generator `G` could likewise use a
     // precomputed basepoint table. Neither optimisation is applied, so the measured cost of
     // verification is conservative.
-    // FIXME speed up with https://docs.rs/curve25519-dalek/latest/curve25519_dalek/traits/trait.VartimeMultiscalarMul.html
-    // FIXME check if a faster non-constant time equality can be used
     s * G == e * ga + gc1 && s * gm == e * gn + gc2
 }
 
@@ -438,185 +436,14 @@ pub fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
     verify_proof_split(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
 }
 
-/// Type alias for signatures, which are structurally identical to proofs.
-type Signature = Proof;
-
-/// Creates a digital signature for a message using a secret key.
-///
-/// This function uses the zero-knowledge proof system to create a signature.
-/// Each signature uses a fresh random nonce, making signatures unlinkable.
-///
-/// # Arguments
-///
-/// * `message` - The message to sign (a group element)
-/// * `secret_key` - The secret signing key
-/// * `rng` - A cryptographically secure random number generator
-///
-/// # Returns
-///
-/// A signature that can be verified with the corresponding public key.
-///
-/// # Example
-///
-/// ```
-/// # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-/// # use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::elgamal::zkps::{sign, verify};
-/// # let mut rng = rand::rng();
-/// let secret_key = ScalarNonZero::random(&mut rng);
-/// let public_key = &secret_key * G;
-/// let message = GroupElement::random(&mut rng);
-///
-/// let signature = sign(&message, &secret_key, &mut rng);
-/// assert!(verify(&message, &signature, &public_key));
-/// ```
-pub fn sign<R: Rng + CryptoRng>(
-    message: &GroupElement,
-    secret_key: &ScalarNonZero,
-    rng: &mut R,
-) -> Signature {
-    create_proof(secret_key, message, rng).1
-}
-
-/// Verifies a digital signature.
-///
-/// # Arguments
-///
-/// * `message` - The message that was signed
-/// * `p` - The signature to verify
-/// * `public_key` - The public key corresponding to the secret key used for signing
-///
-/// # Returns
-///
-/// `true` if the signature is valid, `false` otherwise.
-#[must_use]
-pub fn verify(message: &GroupElement, p: &Signature, public_key: &GroupElement) -> bool {
-    verify_proof(public_key, message, p)
-}
-
-/// Creates a deterministic unlinkable proof.
-///
-/// Unlike [`create_proof`], this function uses a deterministic nonce derived from the
-/// (secret, message) pair rather than a random one. This means:
-/// - The same inputs always produce the same proof (deterministic)
-/// - Multiple signatures of the same message under the same key are identical
-/// - The nonce cannot be used to link different proofs (unlinkable)
-///
-/// This is useful when you want consistent proofs but don't want random values that could
-/// potentially be used for linking.
-///
-/// # Arguments
-///
-/// * `a` - The secret scalar
-/// * `gm` - The message/base group element `M`
-///
-/// # Returns
-///
-/// A tuple `(A, Proof)` where:
-/// - `A = a*G` is the public key
-/// - `Proof` is the deterministic zero-knowledge proof
-///
-/// # Security Note
-///
-/// The deterministic nonce is derived (EdDSA-style) by hashing the secret scalar together
-/// with the message, so distinct (secret, message) pairs produce distinct nonces.
-pub fn create_proof_unlinkable(a: &ScalarNonZero, gm: &GroupElement) -> (GroupElement, Proof) {
-    let mut hasher = Sha512::new();
-    hasher.update(a.to_bytes());
-    hasher.update(gm.to_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let r = ScalarNonZero::from_hash(&bytes);
-
-    let ga = a * G;
-    let gn = a * gm;
-    let gc1 = r * G;
-    let gc2 = r * gm;
-
-    let mut hasher = Sha512::new();
-    hasher.update(ga.to_bytes());
-    hasher.update(gm.to_bytes());
-    hasher.update(gn.to_bytes());
-    hasher.update(gc1.to_bytes());
-    hasher.update(gc2.to_bytes());
-    let mut bytes = [0u8; 64];
-    bytes.copy_from_slice(hasher.finalize().as_slice());
-    let e = ScalarNonZero::from_hash(&bytes);
-    let s = ScalarCanBeZero((a * e).0) + ScalarCanBeZero(r.0);
-    (
-        ga,
-        Proof {
-            n: gn,
-            c1: gc1,
-            c2: gc2,
-            s,
-        },
-    )
-}
-
-/// Creates a deterministic unlinkable signature.
-///
-/// This function creates a signature using a deterministic nonce derived from the message.
-/// Unlike [`sign`], which uses random nonces:
-/// - The same message and key always produce the same signature
-/// - Signatures cannot be used to link different signings
-/// - No random number generator is required
-///
-/// # Arguments
-///
-/// * `message` - The message to sign
-/// * `secret_key` - The secret signing key
-///
-/// # Returns
-///
-/// A deterministic signature that can be verified with the corresponding public key.
-///
-/// # Example
-///
-/// ```
-/// # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-/// # use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-/// # use libpep::elgamal::zkps::{sign_unlinkable, verify};
-/// # let mut rng = rand::rng();
-/// let secret_key = ScalarNonZero::random(&mut rng);
-/// let public_key = &secret_key * G;
-/// let message = GroupElement::random(&mut rng);
-///
-/// let sig1 = sign_unlinkable(&message, &secret_key);
-/// let sig2 = sign_unlinkable(&message, &secret_key);
-/// assert_eq!(sig1, sig2); // Same inputs produce same signature
-/// assert!(verify(&message, &sig1, &public_key));
-/// ```
-pub fn sign_unlinkable(message: &GroupElement, secret_key: &ScalarNonZero) -> Signature {
-    create_proof_unlinkable(secret_key, message).1
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::group_elements::GroupElement;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::zkps::{
-        create_proof, create_proof_unlinkable, create_proofs_same_scalar, sign, sign_unlinkable,
-        verify, verify_proof, verify_proof_split, Proof,
+        create_proof, create_proofs_same_scalar, verify_proof, verify_proof_split, Proof,
     };
-
-    #[test]
-    fn elgamal_signature() {
-        let mut rng = rand::rng();
-        // secret key
-        let s = ScalarNonZero::random(&mut rng);
-        let s2 = ScalarNonZero::random(&mut rng);
-        // public key
-        let gp = s * G;
-
-        let v = GroupElement::random(&mut rng);
-        let mut signature = sign(&v, &s, &mut rng);
-        assert!(verify(&v, &signature, &gp));
-
-        signature = sign(&v, &s2, &mut rng);
-        assert!(!verify(&v, &signature, &gp));
-    }
 
     #[test]
     fn pep_schnorr_basic_offline() {
@@ -652,43 +479,6 @@ mod tests {
         assert!(verify_proof(&ga, &gm2, &p2));
         // Nonces must be independent: r1*G != r2*G with overwhelming probability.
         assert_ne!(p1.c1, p2.c1);
-    }
-
-    #[test]
-    fn elgamal_signature_unlinkable() {
-        let mut rng = rand::rng();
-        // secret key
-        let s = ScalarNonZero::random(&mut rng);
-        // public key
-        let gp = s * G;
-
-        let v = GroupElement::random(&mut rng);
-        let sig1 = sign_unlinkable(&v, &s);
-        assert!(verify(&v, &sig1, &gp));
-
-        let sig2 = sign_unlinkable(&v, &s);
-        assert!(verify(&v, &sig2, &gp));
-        assert_eq!(sig1, sig2);
-    }
-
-    #[test]
-    fn create_proof_unlinkable_nonce_binds_to_secret() {
-        // Regression test: the deterministic nonce must depend on the secret
-        // scalar, not just the message. Two distinct keys signing the same
-        // message must produce distinct r*G commitments.
-        let mut rng = rand::rng();
-        let a1 = ScalarNonZero::random(&mut rng);
-        let a2 = ScalarNonZero::random(&mut rng);
-        let gm = GroupElement::random(&mut rng);
-
-        let (_, p1) = create_proof_unlinkable(&a1, &gm);
-        let (_, p2) = create_proof_unlinkable(&a2, &gm);
-
-        assert_ne!(p1.c1, p2.c1);
-
-        // Determinism: same (a, gm) still produces the same proof.
-        let (_, p1_again) = create_proof_unlinkable(&a1, &gm);
-        assert_eq!(p1, p1_again);
     }
 
     #[test]

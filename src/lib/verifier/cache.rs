@@ -1,12 +1,8 @@
-//! Commitment cache for storing and retrieving factor commitments.
+//! Caches of registered factor commitments, keyed by transcryptor and transition.
 //!
-//! Transcryptors must use consistent factors for each user (domain) and session (context).
-//! This cache enforces integrity by storing verified commitments indexed by:
-//! - **Reshuffle factors**: Per pseudonymization domain (user-specific)
-//! - **Rekey factors**: Per encryption context (session-specific)
-//!
-//! The cache follows the pattern from the distributed verifier, storing both `val` and `inv`
-//! for each factor after verification.
+//! A transcryptor must use the same factors for every transcryption between two domains and
+//! contexts. The cache holds the commitments a verifier has accepted for a transition, and
+//! rejects a different commitment for a transition it already holds.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::factors::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
@@ -17,30 +13,16 @@ use std::hash::Hash;
 use serde::{Deserialize, Serialize};
 
 /// Error returned when registering a commitment fails.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CacheRegistrationError {
     /// A different commitment was already registered under this key.
     /// Re-registering the *same* value is idempotent and never returns this.
+    #[error("a different commitment is already registered for this key")]
     ConflictingValue,
     /// The cache has reached its configured maximum size.
+    #[error("commitment cache is full")]
     CacheFull,
 }
-
-impl std::fmt::Display for CacheRegistrationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ConflictingValue => {
-                write!(
-                    f,
-                    "a different commitment is already registered for this key"
-                )
-            }
-            Self::CacheFull => write!(f, "commitment cache is full"),
-        }
-    }
-}
-
-impl std::error::Error for CacheRegistrationError {}
 
 /// Trait for commitment caches.
 ///
@@ -51,11 +33,6 @@ pub trait CommitmentsCache {
     type Key;
     /// The commitment type stored in the cache.
     type Commitments;
-
-    /// Create a new empty cache.
-    fn new() -> Self
-    where
-        Self: Sized;
 
     /// Store commitments for a specific key.
     ///
@@ -151,13 +128,6 @@ where
 {
     type Key = Key;
     type Commitments = Commitments;
-
-    fn new() -> Self {
-        Self {
-            cache: HashMap::new(),
-            max_entries: None,
-        }
-    }
 
     fn store(
         &mut self,

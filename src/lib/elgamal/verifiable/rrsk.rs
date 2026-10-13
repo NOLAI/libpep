@@ -78,6 +78,8 @@ impl VerifiableRRSK {
         self.rsk.result()
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -93,6 +95,8 @@ impl VerifiableRRSK {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.result()
     }
@@ -137,6 +141,7 @@ impl VerifiableRRSK2 {
 
 impl VerifiableRRSK2 {
     #[allow(clippy::too_many_arguments)]
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         gy: &GroupElement,
@@ -160,6 +165,8 @@ impl VerifiableRRSK2 {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -184,12 +191,15 @@ impl VerifiableRRSK2 {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self) -> ElGamal {
         self.result()
     }
 
     #[must_use]
     #[allow(clippy::too_many_arguments)]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,

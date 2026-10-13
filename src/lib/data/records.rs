@@ -10,14 +10,16 @@ pub mod generic;
 
 use crate::elgamal::arithmetic::Ristretto255;
 
-/// Structure descriptor for Records - describes the shape without the data.
+/// The shape of a [`Record`]: how many pseudonyms and attributes it has.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecordStructure {
+    /// The number of pseudonyms.
     pub num_pseudonyms: usize,
+    /// The number of attributes.
     pub num_attributes: usize,
 }
 
-/// Structure descriptor for LongRecords - describes the shape including block counts.
+/// The shape of a [`LongRecord`]: the number of blocks of every pseudonym and attribute.
 #[cfg(feature = "long")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LongRecordStructure {

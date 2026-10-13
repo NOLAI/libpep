@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::json::builder::PEPJSONBuilder;
+use libpep::data::json::builder::PepJsonBuilder;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
 use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
 use libpep::factors::TranscryptionInfo;
@@ -129,7 +129,7 @@ fn test_json_transcryption_with_builder() {
     });
 
     // Convert to PEP JSON, specifying which fields are pseudonyms
-    let patient_record = PEPJSONBuilder::from_json(&patient_data, &["user_id"])
+    let patient_record = PepJsonBuilder::from_json(&patient_data, &["user_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
 
@@ -218,10 +218,10 @@ fn test_json_batch_transcryption_same_structure() {
     });
 
     // Convert to PEP JSON, specifying "patient_id" as pseudonym field
-    let record1 = PEPJSONBuilder::from_json(&data1, &["patient_id"])
+    let record1 = PepJsonBuilder::from_json(&data1, &["patient_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
-    let record2 = PEPJSONBuilder::from_json(&data2, &["patient_id"])
+    let record2 = PepJsonBuilder::from_json(&data2, &["patient_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
 
@@ -252,8 +252,7 @@ fn test_json_batch_transcryption_same_structure() {
         &session_keys.public(),
         &mut rng
     )
-    .unwrap()
-    .into_vec();
+    .unwrap();
 
     // Verify we got 2 records back
     assert_eq!(transcrypted_batch.len(), 2);
@@ -334,10 +333,10 @@ fn test_json_batch_transcryption_different_structures() {
     });
 
     // Convert to PEP JSON with different pseudonym fields
-    let record1 = PEPJSONBuilder::from_json(&data1, &["patient_id"])
+    let record1 = PepJsonBuilder::from_json(&data1, &["patient_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
-    let record2 = PEPJSONBuilder::from_json(&data2, &["user_id"])
+    let record2 = PepJsonBuilder::from_json(&data2, &["user_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
 
@@ -412,7 +411,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     });
 
     // Convert to PEP JSON, marking "patient_id" as a pseudonym field
-    let patient_record = PEPJSONBuilder::from_json(&patient_data, &["patient_id"])
+    let patient_record = PepJsonBuilder::from_json(&patient_data, &["patient_id"])
         .expect("Should create PEP JSON from existing JSON")
         .build();
 
@@ -441,7 +440,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
@@ -472,7 +471,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     );
 }
 
-/// Test full round-trip: PEPJSON → Encrypt → Transcrypt → Decrypt → JSON → PEPJSON → Repeat
+/// Test full round-trip: PepJson → Encrypt → Transcrypt → Decrypt → JSON → PepJson → Repeat
 ///
 /// This test demonstrates that pseudonyms maintain their correct type (short vs long)
 /// after transcryption and JSON serialization round-trips.
@@ -495,7 +494,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         encryption_secret.clone(),
     );
 
-    // Create PEPJSON with both short and long pseudonyms using pep_json! macro
+    // Create PepJson with both short and long pseudonyms using pep_json! macro
     let original_pep = pep_json!({
         "short_id": pseudonym("john"),  // 4 bytes → single Pseudonym
         "long_id": pseudonym("user@example.com"),  // 17 bytes → LongPseudonym (2 blocks)
@@ -503,7 +502,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         "age": 30
     });
 
-    // 1. Encrypt the PEPJSON using the client
+    // 1. Encrypt the PepJson using the client
     let encrypted = client.encrypt(&original_pep, &mut rng);
 
     // 2. Transcrypt (pseudonymize + rekey) the pseudonyms
@@ -517,11 +516,11 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
-    // 3. Decrypt back to PEPJSONValue using the client
+    // 3. Decrypt back to PepJsonValue using the client
     #[cfg(feature = "elgamal3")]
     let decrypted = client.decrypt(&transcrypted).unwrap();
     #[cfg(not(feature = "elgamal3"))]
@@ -546,7 +545,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         "Long pseudonym should be 128 hex chars"
     );
 
-    // 4. Create PEPJSON from the hex values using pep_json! macro
+    // 4. Create PepJson from the hex values using pep_json! macro
     let transcrypted_pep = pep_json!({
         "short_id": pseudonym(short_id_hex),  // Reconstructs as Pseudonym (1 block)
         "long_id": pseudonym(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
@@ -554,7 +553,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         "age": 30
     });
 
-    // 5. Encrypt the transcrypted PEPJSON
+    // 5. Encrypt the transcrypted PepJson
     let encrypted_b = client.encrypt(&transcrypted_pep, &mut rng);
 
     // 6. Transcrypt back (domain-b → domain-a)
@@ -565,7 +564,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
@@ -584,13 +583,13 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     assert_eq!(json_back["age"], 30);
 }
 
-/// Test full round-trip using PEPJSONBuilder: Build → Encrypt → Transcrypt → Decrypt → Build → Repeat
+/// Test full round-trip using PepJsonBuilder: Build → Encrypt → Transcrypt → Decrypt → Build → Repeat
 ///
 /// This test demonstrates the same flow as test_pseudonym_roundtrip_with_json_serialization
 /// but uses the builder API instead of the pep_json! macro.
 #[test]
 fn test_pseudonym_roundtrip_with_builder() {
-    use libpep::data::json::data::PEPJSONValue;
+    use libpep::data::json::data::PepJsonValue;
 
     let mut rng = rand::rng();
 
@@ -609,8 +608,8 @@ fn test_pseudonym_roundtrip_with_builder() {
         encryption_secret.clone(),
     );
 
-    // 1. Create PEPJSON with both short and long pseudonyms using the builder
-    let original_pep = PEPJSONBuilder::new()
+    // 1. Create PepJson with both short and long pseudonyms using the builder
+    let original_pep = PepJsonBuilder::new()
         .pseudonym("short_id", "john") // 4 bytes → Pseudonym (1 block)
         .pseudonym("long_id", "user@example.com") // 17 bytes → LongPseudonym (2 blocks)
         .attribute("name", json!("Alice"))
@@ -618,17 +617,17 @@ fn test_pseudonym_roundtrip_with_builder() {
         .build();
 
     // Verify the types are correct after initial construction
-    if let PEPJSONValue::Object(fields) = &original_pep {
+    if let PepJsonValue::Object(fields) = &original_pep {
         assert!(matches!(
             fields.get("short_id"),
-            Some(PEPJSONValue::Pseudonym(_))
+            Some(PepJsonValue::Pseudonym(_))
         ));
         assert!(
-            matches!(fields.get("long_id"), Some(PEPJSONValue::LongPseudonym(lp)) if lp.len() == 2)
+            matches!(fields.get("long_id"), Some(PepJsonValue::LongPseudonym(lp)) if lp.len() == 2)
         );
     }
 
-    // 2. Encrypt the PEPJSON using the client
+    // 2. Encrypt the PepJson using the client
     let encrypted = client.encrypt(&original_pep, &mut rng);
 
     // 3. Transcrypt (pseudonymize + rekey) the pseudonyms
@@ -642,11 +641,11 @@ fn test_pseudonym_roundtrip_with_builder() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
-    // 4. Decrypt back to PEPJSONValue using the client
+    // 4. Decrypt back to PepJsonValue using the client
     #[cfg(feature = "elgamal3")]
     let decrypted = client.decrypt(&transcrypted).unwrap();
     #[cfg(not(feature = "elgamal3"))]
@@ -671,8 +670,8 @@ fn test_pseudonym_roundtrip_with_builder() {
         "Long pseudonym should be 128 hex chars"
     );
 
-    // 5. Rebuild PEPJSON from the hex values using the builder
-    let transcrypted_pep = PEPJSONBuilder::new()
+    // 5. Rebuild PepJson from the hex values using the builder
+    let transcrypted_pep = PepJsonBuilder::new()
         .pseudonym("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
         .pseudonym("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
         .attribute("name", json!("Alice"))
@@ -680,18 +679,18 @@ fn test_pseudonym_roundtrip_with_builder() {
         .build();
 
     // Verify the types are correct after reconstruction
-    if let PEPJSONValue::Object(fields) = &transcrypted_pep {
+    if let PepJsonValue::Object(fields) = &transcrypted_pep {
         assert!(matches!(
             fields.get("short_id"),
-            Some(PEPJSONValue::Pseudonym(_))
+            Some(PepJsonValue::Pseudonym(_))
         ));
         assert!(matches!(
             fields.get("long_id"),
-            Some(PEPJSONValue::LongPseudonym(lp)) if lp.len() == 2
+            Some(PepJsonValue::LongPseudonym(lp)) if lp.len() == 2
         ));
     }
 
-    // 6. Encrypt the transcrypted PEPJSON
+    // 6. Encrypt the transcrypted PepJson
     let encrypted_b = client.encrypt(&transcrypted_pep, &mut rng);
 
     // 7. Transcrypt back (domain-b → domain-a)
@@ -702,7 +701,7 @@ fn test_pseudonym_roundtrip_with_builder() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
@@ -741,7 +740,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         encryption_secret.clone(),
     );
 
-    // Create PEPJSON with unicode characters
+    // Create PepJson with unicode characters
     let original_pep = pep_json!({
         "emoji_id": pseudonym("🔒👤"),  // Emoji (short, 8 bytes UTF-8)
         "chinese_id": pseudonym("用户@例子.中国"),  // Chinese email (long, ~21 bytes)
@@ -765,7 +764,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         transcryptor.transcrypt,
         &encrypted,
         &transcryption_info,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 
@@ -805,7 +804,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         "Should be multiple of 64 chars"
     );
 
-    // 4. Reconstruct PEPJSON from hex values
+    // 4. Reconstruct PepJson from hex values
     let transcrypted_pep = pep_json!({
         "emoji_id": pseudonym(emoji_id_hex),
         "chinese_id": pseudonym(chinese_id_hex),
@@ -826,7 +825,7 @@ fn test_unicode_pseudonyms_and_attributes() {
         transcryptor.transcrypt,
         &encrypted_b,
         &transcryption_info_back,
-        &client.dump().public(),
+        &client.keys().public(),
         &mut rng
     );
 

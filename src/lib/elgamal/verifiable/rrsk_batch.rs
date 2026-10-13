@@ -34,6 +34,7 @@ impl VerifiableRRSKBatch {
 }
 
 impl VerifiableRRSKBatch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         gy: &GroupElement,
@@ -56,6 +57,7 @@ impl VerifiableRRSKBatch {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],
@@ -146,6 +148,7 @@ impl VerifiableRRSK2Batch {
 
 impl VerifiableRRSK2Batch {
     #[allow(clippy::too_many_arguments)]
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         gy: &GroupElement,
@@ -163,13 +166,14 @@ impl VerifiableRRSK2Batch {
 
     /// Reconstruct the RRSK-2'd ciphertexts from this batch proof,
     /// **without verifying** it. Internal prover-side use only.
-    #[allow(dead_code)]
+    #[cfg(any(feature = "insecure", test))]
     pub(crate) fn result(&self) -> Vec<ElGamal> {
         self.rsk2.inner.result()
     }
 
     #[must_use]
     #[allow(clippy::too_many_arguments)]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],

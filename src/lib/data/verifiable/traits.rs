@@ -112,12 +112,15 @@ pub trait VerifiableRekeyProof {
     /// The data type the proof reconstructs to.
     type Output;
 
+    /// Verify the proof against the original ciphertext and the commitments.
     fn verify(
         &self,
         original: &Self::DataType,
         commitments: &crate::factors::VerifiableRekeyCommitment,
     ) -> bool;
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -125,22 +128,27 @@ pub trait VerifiableRekeyProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }
 
 /// Verifier-side trait for proofs of a pseudonymization (RRSK) operation.
 ///
-/// Pseudonymization involves a rerandomize step, so under `elgamal2` the
+/// Pseudonymization involves a rerandomize step, so without `elgamal3` the
 /// verifier needs the recipient `PseudonymSessionPublicKey` that the
 /// proof was generated against. Under `elgamal3` each ciphertext carries
 /// its own `gy` and the parameter is dropped.
 ///
 /// Mirrors [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK).
 pub trait VerifiablePseudonymizationProof {
+    /// The encrypted type the proof is about.
     type DataType;
+    /// The result of the operation the proof is about.
     type Output;
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     fn verify(
         &self,
         original: &Self::DataType,
@@ -148,6 +156,8 @@ pub trait VerifiablePseudonymizationProof {
     ) -> bool;
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     fn verify(
         &self,
         original: &Self::DataType,
@@ -156,6 +166,8 @@ pub trait VerifiablePseudonymizationProof {
     ) -> bool;
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -163,6 +175,8 @@ pub trait VerifiablePseudonymizationProof {
     ) -> Option<Self::Output>;
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -171,6 +185,8 @@ pub trait VerifiablePseudonymizationProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }
 
@@ -178,13 +194,16 @@ pub trait VerifiablePseudonymizationProof {
 /// rekey) operation on a record-like value.
 ///
 /// Like pseudonymization, transcryption involves a rerandomize step, so
-/// under `elgamal2` the verifier needs the recipient public-key bundle
+/// without `elgamal3` the verifier needs the recipient public-key bundle
 /// (`SessionPublicKeys`). Under `elgamal3` the parameter is dropped.
 pub trait VerifiableTranscryptionProof {
+    /// The encrypted type the proof is about.
     type DataType;
+    /// The result of the operation the proof is about.
     type Output;
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     fn verify(
         &self,
         original: &Self::DataType,
@@ -192,6 +211,8 @@ pub trait VerifiableTranscryptionProof {
     ) -> bool;
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     fn verify(
         &self,
         original: &Self::DataType,
@@ -200,6 +221,8 @@ pub trait VerifiableTranscryptionProof {
     ) -> bool;
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -207,6 +230,8 @@ pub trait VerifiableTranscryptionProof {
     ) -> Option<Self::Output>;
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -215,5 +240,7 @@ pub trait VerifiableTranscryptionProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }

@@ -10,7 +10,7 @@ import unittest
 
 import libpep.client
 from libpep.data import Pseudonym, Attribute
-from libpep.data.json import PEPJSONBuilder
+from libpep.data.json import PepJsonBuilder
 from libpep.keys import (
     make_global_keys,
     make_pseudonym_global_keys,
@@ -48,12 +48,12 @@ class TestOfflineDecryption(unittest.TestCase):
     def test_encrypt_decrypt_global_json(self):
         """Round-trip a JSON value through global-key encryption.
 
-        Regression test: decrypt_global on EncryptedPEPJSONValue used to
+        Regression test: decrypt_global on EncryptedPepJsonValue used to
         require the wrong key type (SessionKeys instead of GlobalSecretKeys).
         """
         global_public, global_secret = make_global_keys()
 
-        record = PEPJSONBuilder.from_json(
+        record = PepJsonBuilder.from_json(
             {"patient_id": "patient-12345", "diagnosis": "Flu"}, ["patient_id"]
         ).build()
 
@@ -79,13 +79,13 @@ class TestOfflineDecryption(unittest.TestCase):
     def test_encrypt_decrypt_global_batch_json(self):
         """Round-trip a batch of JSON values through global-key encryption.
 
-        Regression test: decrypt_global_batch on EncryptedPEPJSONValue used to
+        Regression test: decrypt_global_batch on EncryptedPepJsonValue used to
         require TranscryptionInfo instead of GlobalSecretKeys.
         """
         global_public, global_secret = make_global_keys()
 
         records = [
-            PEPJSONBuilder.from_json(
+            PepJsonBuilder.from_json(
                 {"patient_id": f"patient-{i}", "diagnosis": "Flu"}, ["patient_id"]
             ).build()
             for i in range(3)

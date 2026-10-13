@@ -24,16 +24,19 @@ impl FactorCommitment {
     pub fn new(a: &ScalarNonZero) -> Self {
         Self(a * G)
     }
+
+    /// The committed group element `A`.
+    pub fn point(&self) -> GroupElement {
+        self.0
+    }
 }
 
 /// Commitment to a rekey factor `k`: `K = k·G`.
 ///
-/// Structurally identical to [`PseudonymizationFactorCommitment`] — the two
-/// types exist as phantom-types to prevent mixing up rekey and reshuffle
-/// commitments at call sites. The wrappers intentionally do **not** implement
-/// `From`/`Deref` against each other or against [`FactorCommitment`]: crossing
-/// the type boundary requires an explicit field access (`.0`), which is meant
-/// to surface in code review.
+/// Structurally identical to [`PseudonymizationFactorCommitment`]; the two types exist to
+/// prevent mixing up rekey and reshuffle commitments at call sites. The wrappers deliberately
+/// do not convert into each other or into [`FactorCommitment`]: the group element is reached
+/// through the explicit [`point`](Self::point), which is meant to surface in code review.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RekeyFactorCommitment(pub FactorCommitment);
@@ -44,14 +47,21 @@ pub struct RekeyFactorCommitment(pub FactorCommitment);
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct PseudonymizationFactorCommitment(pub FactorCommitment);
 
-impl RekeyFactorCommitment {
-    pub fn new(a: &ScalarNonZero) -> Self {
-        Self(FactorCommitment::new(a))
-    }
+macro_rules! impl_commitment {
+    ($t:ident) => {
+        impl $t {
+            /// Build a commitment to scalar `a`: `A = a · G`.
+            pub fn new(a: &ScalarNonZero) -> Self {
+                Self(FactorCommitment::new(a))
+            }
+
+            /// The committed group element `A`.
+            pub fn point(&self) -> GroupElement {
+                self.0.point()
+            }
+        }
+    };
 }
 
-impl PseudonymizationFactorCommitment {
-    pub fn new(a: &ScalarNonZero) -> Self {
-        Self(FactorCommitment::new(a))
-    }
-}
+impl_commitment!(RekeyFactorCommitment);
+impl_commitment!(PseudonymizationFactorCommitment);

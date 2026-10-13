@@ -6,6 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 mod common;
 use libpep::transcryptor::DistributedTranscryptor;
@@ -16,7 +17,7 @@ use std::hint::black_box;
 use libpep::data::long::{LongAttribute, LongPseudonym};
 
 #[cfg(feature = "json")]
-use libpep::data::json::PEPJSONValue;
+use libpep::data::json::PepJsonValue;
 
 const NUM_ITEMS: usize = 100;
 const NUM_TRANSCRYPTORS: usize = 2;
@@ -42,8 +43,8 @@ fn setup_system() -> (
     let systems: Vec<DistributedTranscryptor> = (0..n)
         .map(|i| {
             let pseudonymization_secret =
-                PseudonymizationSecret::from(format!("ps-{i}").as_bytes().into());
-            let encryption_secret = EncryptionSecret::from(format!("es-{i}").as_bytes().into());
+                PseudonymizationSecret::from(format!("ps-{i}").as_bytes());
+            let encryption_secret = EncryptionSecret::from(format!("es-{i}").as_bytes());
             DistributedTranscryptor::new(
                 pseudonymization_secret,
                 encryption_secret,
@@ -92,7 +93,7 @@ fn bench_pseudonym_roundtrip(c: &mut Criterion) {
                 let transcrypted = common::transcrypt_chain(
                     &systems,
                     *enc,
-                    client_a.dump().pseudonym.public,
+                    client_a.keys().pseudonym.public,
                     |system| {
                         system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
                     },
@@ -125,7 +126,7 @@ fn bench_pseudonym_roundtrip_batch(c: &mut Criterion) {
             let working = common::transcrypt_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().pseudonym.public,
+                client_a.keys().pseudonym.public,
                 |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
                 |info, key| info.pseudonym.rekey_public_key(key),
                 rng,
@@ -152,7 +153,7 @@ fn bench_attribute_roundtrip(c: &mut Criterion) {
                 let rekeyed = common::rekey_chain(
                     &systems,
                     *enc,
-                    client_a.dump().attribute.public,
+                    client_a.keys().attribute.public,
                     |system| system.attribute_rekey_info(&session_a, &session_b),
                     |info, key| info.rekey_public_key(key),
                     rng,
@@ -183,7 +184,7 @@ fn bench_attribute_roundtrip_batch(c: &mut Criterion) {
             let working = common::rekey_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().attribute.public,
+                client_a.keys().attribute.public,
                 |system| system.attribute_rekey_info(&session_a, &session_b),
                 |info, key| info.rekey_public_key(key),
                 rng,
@@ -213,7 +214,7 @@ fn bench_long_pseudonym_roundtrip(c: &mut Criterion) {
                 let transcrypted = common::transcrypt_chain(
                     &systems,
                     enc.clone(),
-                    client_a.dump().pseudonym.public,
+                    client_a.keys().pseudonym.public,
                     |system| {
                         system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
                     },
@@ -246,7 +247,7 @@ fn bench_long_pseudonym_roundtrip_batch(c: &mut Criterion) {
             let working = common::transcrypt_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().pseudonym.public,
+                client_a.keys().pseudonym.public,
                 |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
                 |info, key| info.pseudonym.rekey_public_key(key),
                 rng,
@@ -276,7 +277,7 @@ fn bench_long_attribute_roundtrip(c: &mut Criterion) {
                 let rekeyed = common::rekey_chain(
                     &systems,
                     enc.clone(),
-                    client_a.dump().attribute.public,
+                    client_a.keys().attribute.public,
                     |system| system.attribute_rekey_info(&session_a, &session_b),
                     |info, key| info.rekey_public_key(key),
                     rng,
@@ -307,7 +308,7 @@ fn bench_long_attribute_roundtrip_batch(c: &mut Criterion) {
             let working = common::rekey_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().attribute.public,
+                client_a.keys().attribute.public,
                 |system| system.attribute_rekey_info(&session_a, &session_b),
                 |info, key| info.rekey_public_key(key),
                 rng,
@@ -330,7 +331,7 @@ fn bench_json_roundtrip(c: &mut Criterion) {
                 i, i
             );
             let value: serde_json::Value = serde_json::from_str(&json_str).expect("valid JSON");
-            PEPJSONValue::from_value(&value)
+            PepJsonValue::from_value(&value)
         })
         .collect();
     let encrypted: Vec<_> = json_values
@@ -344,11 +345,11 @@ fn bench_json_roundtrip(c: &mut Criterion) {
                 let transcrypted = common::transcrypt_chain(
                     &systems,
                     enc.clone(),
-                    client_a.dump().public(),
+                    client_a.keys().public(),
                     |system| {
                         system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b)
                     },
-                    |info, keys| info.rekey_public_keys(keys),
+                    |info, keys| info.rekey_public_key(keys),
                     rng,
                 );
                 black_box(transcrypted);
@@ -370,7 +371,7 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
                 i, i
             );
             let value: serde_json::Value = serde_json::from_str(&json_str).expect("valid JSON");
-            PEPJSONValue::from_value(&value)
+            PepJsonValue::from_value(&value)
         })
         .collect();
     let encrypted_base: Vec<_> = json_values
@@ -384,9 +385,9 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
             let working = common::transcrypt_batch_chain(
                 &systems,
                 encrypted_base.clone(),
-                client_a.dump().public(),
+                client_a.keys().public(),
                 |system| system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b),
-                |info, keys| info.rekey_public_keys(keys),
+                |info, keys| info.rekey_public_key(keys),
                 rng,
             );
             black_box(working);

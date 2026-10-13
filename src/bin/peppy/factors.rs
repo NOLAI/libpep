@@ -5,8 +5,8 @@ use crate::io::{self, Output, Result};
 use clap::Subcommand;
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
 use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
-    RekeyFactor, TranscryptionInfo,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor, Factor,
+    TranscryptionInfo,
 };
 
 #[derive(Subcommand)]
@@ -59,7 +59,7 @@ pub enum Factors {
 pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
     match cmd {
         Factors::Reshuffle { secret, domain } => {
-            let factor = make_pseudonymisation_factor(
+            let factor = make_pseudonymization_factor(
                 &io::pseudonymization_secret(&secret)?,
                 &io::domain(&domain)?,
             );

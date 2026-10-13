@@ -69,9 +69,9 @@ pub fn make_attribute_rekey_factor<G: Group>(
     }
 }
 
-/// Derive a pseudonymisation factor from a secret and a context.
+/// Derive a pseudonymization factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
-pub fn make_pseudonymisation_factor<G: Group>(
+pub fn make_pseudonymization_factor<G: Group>(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor<G> {
@@ -159,9 +159,9 @@ pub fn make_attribute_rekey_factor<G: Group>(
     }
 }
 
-/// Derive a pseudonymisation factor from a secret and a context (using the legacy PEP repo method).
+/// Derive a pseudonymization factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
-pub fn make_pseudonymisation_factor<G: Group>(
+pub fn make_pseudonymization_factor<G: Group>(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor<G> {
@@ -214,8 +214,8 @@ impl<G: Group> PseudonymizationInfo<G> {
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymisation_factor::<G>(pseudonymization_secret, domain_from);
-        let s_to = make_pseudonymisation_factor::<G>(pseudonymization_secret, domain_to);
+        let s_from = make_pseudonymization_factor::<G>(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymization_factor::<G>(pseudonymization_secret, domain_to);
         Self {
             s: ReshuffleFactor(G::scalar_inverse(&s_from.0) * s_to.0),
             k: PseudonymRekeyInfo::new(session_from, session_to, encryption_secret).k,

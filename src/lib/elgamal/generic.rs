@@ -16,9 +16,12 @@ use std::hash::Hash;
 /// also the public key `Y` it was encrypted under.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct ElGamal<G: Group> {
+    /// `B = r·G`, the blinding of the randomness `r`.
     pub gb: G::Element,
+    /// `C = M + r·Y`, the message blinded under the public key.
     pub gc: G::Element,
     #[cfg(feature = "elgamal3")]
+    /// `Y`, the public key the message is encrypted under.
     pub gy: G::Element,
 }
 

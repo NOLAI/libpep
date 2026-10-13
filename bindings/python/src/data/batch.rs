@@ -39,12 +39,6 @@ use pyo3::prelude::*;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Convert a `BatchError` into the matching typed Python exception.
-#[inline]
-fn map_batch_err(e: libpep::errors::BatchError) -> PyErr {
-    crate::errors::batch_err_to_py(e)
-}
-
 // ---------------------------------------------------------------------------
 // PyPseudonymBatch  --  EncryptedBatch<EncryptedPseudonym>
 // ---------------------------------------------------------------------------
@@ -80,7 +74,7 @@ impl PyPseudonymBatch {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -89,7 +83,7 @@ impl PyPseudonymBatch {
         let items: Vec<EncryptedPseudonym> = items.into_iter().map(|p| p.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     /// Number of items in the batch.
@@ -129,12 +123,10 @@ impl PyPseudonymBatch {
 
     /// Pseudonymize every item in the batch (shuffles).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) -> PyResult<()> {
+    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        self.inner
-            .pseudonymize(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -142,51 +134,45 @@ impl PyPseudonymBatch {
         &mut self,
         info: &PyPseudonymizationInfo,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .pseudonymize(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) -> PyResult<()> {
+    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        self.inner
-            .pseudonymize(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &mut rng)
     }
 
     /// Rekey every item in the batch (shuffles).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     /// Transcrypt every item in the batch (shuffles).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -194,22 +180,18 @@ impl PyPseudonymBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 
@@ -248,7 +230,7 @@ impl PyAttributeBatch {
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -257,7 +239,7 @@ impl PyAttributeBatch {
         let items: Vec<EncryptedAttribute> = items.into_iter().map(|a| a.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     fn __len__(&self) -> usize {
@@ -292,33 +274,31 @@ impl PyAttributeBatch {
     // No `pseudonymize` for attribute batches (mirroring the Rust impl).
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -326,22 +306,18 @@ impl PyAttributeBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         public_key: &crate::keys::PyAttributeSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 
@@ -384,7 +360,7 @@ impl PyLongPseudonymBatch {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -393,7 +369,7 @@ impl PyLongPseudonymBatch {
         let items: Vec<LongEncryptedPseudonym> = items.into_iter().map(|p| p.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     fn __len__(&self) -> usize {
@@ -426,12 +402,10 @@ impl PyLongPseudonymBatch {
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) -> PyResult<()> {
+    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        self.inner
-            .pseudonymize(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -439,49 +413,43 @@ impl PyLongPseudonymBatch {
         &mut self,
         info: &PyPseudonymizationInfo,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .pseudonymize(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) -> PyResult<()> {
+    fn pseudonymize(&mut self, info: &PyPseudonymizationInfo) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        self.inner
-            .pseudonymize(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.pseudonymize(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyPseudonymRekeyInfo) {
         let mut rng = rand::rng();
-        self.inner.rekey(&info.0, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info.0, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -489,22 +457,18 @@ impl PyLongPseudonymBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 
@@ -547,7 +511,7 @@ impl PyLongAttributeBatch {
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -556,7 +520,7 @@ impl PyLongAttributeBatch {
         let items: Vec<LongEncryptedAttribute> = items.into_iter().map(|a| a.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     fn __len__(&self) -> usize {
@@ -591,33 +555,31 @@ impl PyLongAttributeBatch {
     // No `pseudonymize` for long-attribute batches (mirroring the Rust impl).
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn rekey(&mut self, info: &PyAttributeRekeyInfo) -> PyResult<()> {
+    fn rekey(&mut self, info: &PyAttributeRekeyInfo) {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(info);
-        self.inner.rekey(&info, &mut rng).map_err(map_batch_err)
+        self.inner.rekey(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -625,22 +587,18 @@ impl PyLongAttributeBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         public_key: &crate::keys::PyAttributeSessionPublicKey,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
-        self.inner
-            .transcrypt(&info, &pk, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 
@@ -679,7 +637,7 @@ impl PyRecordBatch {
         let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
         EncryptedBatch::new(items, keys)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -688,7 +646,7 @@ impl PyRecordBatch {
         let items: Vec<EncryptedRecord> = items.into_iter().map(|r| r.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     fn __len__(&self) -> usize {
@@ -719,12 +677,10 @@ impl PyRecordBatch {
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -732,23 +688,19 @@ impl PyRecordBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         session_keys: &crate::keys::PySessionKeys,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         let keys = keys.public();
-        self.inner
-            .transcrypt(&info, &keys, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &keys, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 
@@ -791,7 +743,7 @@ impl PyLongRecordBatch {
         let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
         EncryptedBatch::new(items, keys)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
@@ -800,7 +752,7 @@ impl PyLongRecordBatch {
         let items: Vec<LongEncryptedRecord> = items.into_iter().map(|r| r.0).collect();
         EncryptedBatch::new(items)
             .map(|inner| Self { inner })
-            .map_err(map_batch_err)
+            .map_err(crate::errors::batch_err_to_py)
     }
 
     fn __len__(&self) -> usize {
@@ -829,12 +781,10 @@ impl PyLongRecordBatch {
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -842,23 +792,19 @@ impl PyLongRecordBatch {
         &mut self,
         info: &PyTranscryptionInfo,
         session_keys: &crate::keys::PySessionKeys,
-    ) -> PyResult<()> {
+    ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         let keys = keys.public();
-        self.inner
-            .transcrypt(&info, &keys, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &keys, &mut rng)
     }
 
     #[cfg(feature = "elgamal3")]
-    fn transcrypt(&mut self, info: &PyTranscryptionInfo) -> PyResult<()> {
+    fn transcrypt(&mut self, info: &PyTranscryptionInfo) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        self.inner
-            .transcrypt(&info, &mut rng)
-            .map_err(map_batch_err)
+        self.inner.transcrypt(&info, &mut rng)
     }
 }
 

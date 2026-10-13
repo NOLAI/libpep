@@ -15,10 +15,10 @@ use rand_core::{CryptoRng, Rng};
 use std::marker::PhantomData;
 
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
-/// a pseudonymisation secret and a rekeying secret.
+/// a pseudonymization secret and a rekeying secret.
 #[derive(Clone)]
 pub struct Transcryptor<G: Group> {
-    pub(crate) pseudonymisation_secret: PseudonymizationSecret,
+    pub(crate) pseudonymization_secret: PseudonymizationSecret,
     pub(crate) rekeying_secret: EncryptionSecret,
     pub(crate) group: PhantomData<G>,
 }
@@ -26,28 +26,24 @@ pub struct Transcryptor<G: Group> {
 impl<G: Group> Transcryptor<G> {
     /// Create a new PEP system with the given secrets.
     pub fn new(
-        pseudonymisation_secret: PseudonymizationSecret,
+        pseudonymization_secret: PseudonymizationSecret,
         rekeying_secret: EncryptionSecret,
     ) -> Self {
         Self {
-            pseudonymisation_secret,
+            pseudonymization_secret,
             rekeying_secret,
             group: PhantomData,
         }
     }
 
-    /// Get a reference to the pseudonymisation secret.
-    #[allow(dead_code)]
     /// The pseudonymization secret this transcryptor is configured with.
     ///
     /// Exposes secret material; intended for bindings and embedding code that
     /// manages the transcryptor's configuration.
-    pub fn pseudonymisation_secret(&self) -> &PseudonymizationSecret {
-        &self.pseudonymisation_secret
+    pub fn pseudonymization_secret(&self) -> &PseudonymizationSecret {
+        &self.pseudonymization_secret
     }
 
-    /// Get a reference to the rekeying secret.
-    #[allow(dead_code)]
     /// The rekeying (encryption) secret this transcryptor is configured with.
     ///
     /// Exposes secret material; intended for bindings and embedding code that
@@ -88,7 +84,7 @@ impl<G: Group> Transcryptor<G> {
             domain_to,
             session_from,
             session_to,
-            &self.pseudonymisation_secret,
+            &self.pseudonymization_secret,
             &self.rekeying_secret,
         )
     }
@@ -107,7 +103,7 @@ impl<G: Group> Transcryptor<G> {
             domain_to,
             session_from,
             session_to,
-            &self.pseudonymisation_secret,
+            &self.pseudonymization_secret,
             &self.rekeying_secret,
         )
     }
@@ -227,7 +223,7 @@ impl<G: Group> Transcryptor<G> {
         encrypted: &mut [E],
         rekey_info: &E::RekeyInfo,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Rekeyable<Group = G> + crate::data::traits::HasStructure + Clone,
         E::RekeyInfo: Copy,
@@ -251,7 +247,7 @@ impl<G: Group> Transcryptor<G> {
         rekey_info: &E::RekeyInfo,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Rekeyable<Group = G> + crate::data::traits::HasStructure + Clone,
         E::RekeyInfo: Copy,
@@ -273,7 +269,7 @@ impl<G: Group> Transcryptor<G> {
         encrypted: &mut [E],
         pseudonymization_info: &PseudonymizationInfo<G>,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,
@@ -296,7 +292,7 @@ impl<G: Group> Transcryptor<G> {
         pseudonymization_info: &PseudonymizationInfo<G>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,
@@ -322,7 +318,7 @@ impl<G: Group> Transcryptor<G> {
         encrypted: &mut [E],
         transcryption_info: &TranscryptionInfo<G>,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Transcryptable<Group = G> + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,
@@ -345,7 +341,7 @@ impl<G: Group> Transcryptor<G> {
         transcryption_info: &TranscryptionInfo<G>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
-    ) -> Result<Box<[E]>, crate::errors::BatchError>
+    ) -> Result<Vec<E>, crate::errors::BatchError>
     where
         E: Transcryptable<Group = G> + crate::data::traits::HasStructure + Clone,
         R: Rng + CryptoRng,

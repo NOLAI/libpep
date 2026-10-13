@@ -6,6 +6,43 @@ The crate version is bumped to 0.14.0: the security fixes below change the
 signatures of the transcryption operations, which `cargo semver-checks` flags as
 a major change against the published 0.13.0.
 
+### API changes
+
+- `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
+  implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
+  inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.
+- The four factor types implement one `factors::Factor` trait (`from_scalar`, `scalar`); the
+  `RekeyFactor` trait is gone. The public key a ciphertext is encrypted under after a
+  transcryption is given by the `factors::RekeyPublicKey` trait, implemented by every info for the
+  key of the data it transcrypts; `TranscryptionInfo::rekey_public_keys` is now `rekey_public_key`,
+  and the `convert` methods on session public keys are gone.
+- `ElGamalEncryptable::from_value` is gone; `from_point` is the constructor, as for public keys.
+- `Client::dump` is `Client::keys`; `Client::restore` and `DistributedTranscryptor::system` are gone
+  (`new` and `Deref` do the same). `OfflineClient::encrypt_batch` is gone: values encrypted
+  towards the global keys are not a session batch; `encrypt_global_batch` remains and returns a
+  `Vec`, as do `encrypt_batch_raw` and `decrypt_global_batch`.
+- The `EncryptedBatch` operations are generic over the encrypted type and infallible (the
+  structure is validated on construction); the slice functions `pseudonymize_batch`, `rekey_batch`
+  and `transcrypt_batch` return a `Vec`. The unused `BatchEncryptable` trait is gone; batch
+  preprocessing is `Encryptable::preprocess_for_batch`.
+- Padding and parsing errors are typed: `data::padding::PaddingError` replaces `std::io::Error`
+  in the padded encodings and `pad_to`, `errors::ParseError` in the string decoders of long
+  encrypted values and records, and `JsonError` wraps a `PaddingError` instead of a string.
+  `CacheRegistrationError` and `ZeroArgumentError` are `thiserror` errors.
+- Names: `make_pseudonymisation_factor` is `make_pseudonymization_factor`, and
+  `Transcryptor::pseudonymisation_secret` is `pseudonymization_secret`, in Rust and the bindings.
+  `PEPJSONValue`, `EncryptedPEPJSONValue`, `PEPJSONBuilder` and `JSONStructure` are
+  `PepJsonValue`, `EncryptedPepJsonValue`, `PepJsonBuilder` and `JsonStructure`; the Python and
+  JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
+  is public.
+- The verifiable commitments expose their group element through `point()`.
+- `elgamal::zkps` no longer carries the unused signature functions (`sign`, `verify`,
+  `sign_unlinkable`, `create_proof_unlinkable`).
+- The `verifier::verifier` module is merged into `verifier`.
+- Every public item is documented (`missing_docs` warns).
+- In the JavaScript bindings, `fromHash` returns `undefined` for input that is not 64 bytes
+  instead of aborting.
+
 ### Security
 
 - Session key share verification did not bind the received scalar to the proof.

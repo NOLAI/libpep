@@ -1,4 +1,4 @@
-use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
+use crate::data::json::{WASMEncryptedPepJsonValue, WASMPepJsonValue};
 #[cfg(feature = "long")]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -226,53 +226,53 @@ pub fn wasm_transcrypt_long_record(
 // JSON Functions
 // ============================================================================
 
-/// Encrypt a PEPJSONValue using session keys.
+/// Encrypt a PepJsonValue using session keys.
 #[cfg(feature = "json")]
 #[wasm_bindgen(js_name = encryptJSON)]
 pub fn wasm_encrypt_json(
-    json: &WASMPEPJSONValue,
+    json: &WASMPepJsonValue,
     keys: &WASMSessionKeys,
-) -> WASMEncryptedPEPJSONValue {
+) -> WASMEncryptedPepJsonValue {
     let mut rng = rand::rng();
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
-    WASMEncryptedPEPJSONValue(json.0.encrypt(&session_keys.public(), &mut rng))
+    WASMEncryptedPepJsonValue(json.0.encrypt(&session_keys.public(), &mut rng))
 }
 
-/// Decrypt an encrypted PEPJSONValue using session keys.
+/// Decrypt an encrypted PepJsonValue using session keys.
 #[cfg(all(feature = "json", feature = "elgamal3"))]
 #[wasm_bindgen(js_name = decryptJSON)]
 pub fn wasm_decrypt_json(
-    encrypted: &WASMEncryptedPEPJSONValue,
+    encrypted: &WASMEncryptedPepJsonValue,
     keys: &WASMSessionKeys,
-) -> Option<WASMPEPJSONValue> {
+) -> Option<WASMPepJsonValue> {
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
-    encrypted.0.decrypt(&session_keys).map(WASMPEPJSONValue)
+    encrypted.0.decrypt(&session_keys).map(WASMPepJsonValue)
 }
 
-/// Decrypt an encrypted PEPJSONValue using session keys.
+/// Decrypt an encrypted PepJsonValue using session keys.
 #[cfg(all(feature = "json", not(feature = "elgamal3")))]
 #[wasm_bindgen(js_name = decryptJSON)]
 pub fn wasm_decrypt_json(
-    encrypted: &WASMEncryptedPEPJSONValue,
+    encrypted: &WASMEncryptedPepJsonValue,
     keys: &WASMSessionKeys,
-) -> WASMPEPJSONValue {
+) -> WASMPepJsonValue {
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
-    WASMPEPJSONValue(encrypted.0.decrypt(&session_keys))
+    WASMPepJsonValue(encrypted.0.decrypt(&session_keys))
 }
 
 #[cfg(feature = "elgamal3")]
-/// Transcrypt an encrypted PEPJSONValue from one context to another.
+/// Transcrypt an encrypted PepJsonValue from one context to another.
 #[cfg(feature = "json")]
 #[wasm_bindgen(js_name = transcryptJSON)]
 pub fn wasm_transcrypt_json(
-    encrypted: &WASMEncryptedPEPJSONValue,
+    encrypted: &WASMEncryptedPepJsonValue,
     transcryption_info: &WASMTranscryptionInfo,
-) -> WASMEncryptedPEPJSONValue {
+) -> WASMEncryptedPepJsonValue {
     let mut rng = rand::rng();
-    WASMEncryptedPEPJSONValue(transcrypt(
+    WASMEncryptedPepJsonValue(transcrypt(
         &encrypted.0,
         &TranscryptionInfo::from(transcryption_info),
         &mut rng,
@@ -280,17 +280,17 @@ pub fn wasm_transcrypt_json(
 }
 
 #[cfg(not(feature = "elgamal3"))]
-/// Transcrypt an encrypted PEPJSONValue from one context to another.
+/// Transcrypt an encrypted PepJsonValue from one context to another.
 #[cfg(feature = "json")]
 #[wasm_bindgen(js_name = transcryptJSON)]
 pub fn wasm_transcrypt_json(
-    encrypted: &WASMEncryptedPEPJSONValue,
+    encrypted: &WASMEncryptedPepJsonValue,
     transcryption_info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
-) -> WASMEncryptedPEPJSONValue {
+) -> WASMEncryptedPepJsonValue {
     let mut rng = rand::rng();
     let pk = libpep::keys::SessionPublicKeys::from(public_key);
-    WASMEncryptedPEPJSONValue(transcrypt(
+    WASMEncryptedPepJsonValue(transcrypt(
         &encrypted.0,
         &TranscryptionInfo::from(transcryption_info),
         &pk,

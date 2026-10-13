@@ -1,7 +1,7 @@
 //! Python bindings for transcryption functions.
 
 #[cfg(feature = "json")]
-use crate::data::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPepJsonValue;
 #[cfg(feature = "long")]
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
@@ -136,11 +136,11 @@ pub fn py_transcrypt(
         return Ok(Py::new(py, PyEncryptedRecord(transcrypted))?.into_any());
     }
 
-    // Try EncryptedPEPJSONValue
+    // Try EncryptedPepJsonValue
     #[cfg(feature = "json")]
-    if let Ok(ej) = encrypted.extract::<PyEncryptedPEPJSONValue>() {
+    if let Ok(ej) = encrypted.extract::<PyEncryptedPepJsonValue>() {
         let transcrypted = crate::transcrypt_with!(transcrypt, &ej.0, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);
-        return Ok(Py::new(py, PyEncryptedPEPJSONValue(transcrypted))?.into_any());
+        return Ok(Py::new(py, PyEncryptedPepJsonValue(transcrypted))?.into_any());
     }
 
     Err(PyTypeError::new_err(

@@ -99,9 +99,10 @@ mod tests {
     use super::*;
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
+    use crate::data::padding::PaddingError;
+    use crate::errors::ParseError;
     use crate::factors::EncryptionSecret;
     use crate::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
-    use std::io::ErrorKind;
 
     #[test]
     fn long_attribute_from_bytes_padded_empty() {
@@ -185,8 +186,7 @@ mod tests {
         let attributes = LongAttribute::from(vec![]);
         let result = attributes.to_bytes_padded();
 
-        assert!(result.is_err());
-        assert_eq!(ErrorKind::InvalidInput, result.unwrap_err().kind());
+        assert_eq!(result.unwrap_err(), PaddingError::Empty);
     }
 
     #[test]
@@ -197,8 +197,7 @@ mod tests {
         let long_attr = LongAttribute::from(vec![attribute]);
 
         let result = long_attr.to_bytes_padded();
-        assert!(result.is_err());
-        assert_eq!(ErrorKind::InvalidData, result.unwrap_err().kind());
+        assert_eq!(result.unwrap_err(), PaddingError::InvalidPadding);
 
         // Try with inconsistent padding
         let mut inconsistent_block = [5u8; 16];
@@ -347,12 +346,16 @@ mod tests {
     #[test]
     fn long_encrypted_deserialize_invalid_base64() {
         let result = LongEncryptedPseudonym::deserialize("invalid!!!|also-invalid!!!");
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            result.unwrap_err(),
+            ParseError::InvalidCiphertext("invalid!!!".to_string())
+        );
 
         let result = LongEncryptedAttribute::deserialize("invalid!!!|also-invalid!!!");
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            result.unwrap_err(),
+            ParseError::InvalidCiphertext("invalid!!!".to_string())
+        );
     }
 
     #[test]

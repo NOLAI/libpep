@@ -8,14 +8,18 @@ use derive_more::{Deref, From};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct GlobalPublicKeys<G: Group> {
+    /// The global public key for pseudonyms.
     pub pseudonym: PseudonymGlobalPublicKey<G>,
+    /// The global public key for attributes.
     pub attribute: AttributeGlobalPublicKey<G>,
 }
 
 /// A pair of global secret keys containing both pseudonym and attribute keys.
 #[derive(Copy, Clone, Debug)]
 pub struct GlobalSecretKeys<G: Group> {
+    /// The global secret key for pseudonyms.
     pub pseudonym: PseudonymGlobalSecretKey<G>,
+    /// The global secret key for attributes.
     pub attribute: AttributeGlobalSecretKey<G>,
 }
 
@@ -47,7 +51,9 @@ pub struct AttributeGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct SessionKeys<G: Group> {
+    /// The session key pair for pseudonyms.
     pub pseudonym: PseudonymSessionKeys<G>,
+    /// The session key pair for attributes.
     pub attribute: AttributeSessionKeys<G>,
 }
 
@@ -57,7 +63,9 @@ pub struct SessionKeys<G: Group> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct SessionPublicKeys<G: Group> {
+    /// The session public key for pseudonyms.
     pub pseudonym: PseudonymSessionPublicKey<G>,
+    /// The session public key for attributes.
     pub attribute: AttributeSessionPublicKey<G>,
 }
 
@@ -82,7 +90,9 @@ impl<G: Group> From<&SessionKeys<G>> for SessionPublicKeys<G> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct PseudonymSessionKeys<G: Group> {
+    /// The public key.
     pub public: PseudonymSessionPublicKey<G>,
+    /// The secret key.
     pub secret: PseudonymSessionSecretKey<G>,
 }
 
@@ -91,7 +101,9 @@ pub struct PseudonymSessionKeys<G: Group> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct AttributeSessionKeys<G: Group> {
+    /// The public key.
     pub public: AttributeSessionPublicKey<G>,
+    /// The secret key.
     pub secret: AttributeSessionSecretKey<G>,
 }
 
@@ -118,51 +130,3 @@ pub struct AttributeSessionPublicKey<G: Group>(pub(crate) G::Element);
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct AttributeSessionSecretKey<G: Group>(pub(crate) G::Scalar);
-
-// Session public keys travel with a batch so downstream operations know the
-// recipient public key. Converting a key mirrors the math behind ciphertext
-// rekeying, but acts on the *key* itself; the methods are named `convert` to
-// distinguish them from message-level rekeying. They exist only on the public
-// halves: a secret key must never be routed through a public-key operation.
-#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
-impl<G: Group> PseudonymSessionPublicKey<G> {
-    /// Convert this session public key to its rekeyed counterpart by applying
-    /// a pseudonym rekey factor. The new key is `factor*self`.
-    pub fn convert(
-        &self,
-        factor: &crate::factors::types::generic::PseudonymRekeyFactor<G>,
-    ) -> Self {
-        use crate::factors::types::generic::RekeyFactor;
-        Self(factor.scalar() * self.0)
-    }
-}
-
-#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
-impl<G: Group> AttributeSessionPublicKey<G> {
-    /// Convert this session public key to its rekeyed counterpart by applying
-    /// an attribute rekey factor. The new key is `factor*self`.
-    pub fn convert(
-        &self,
-        factor: &crate::factors::types::generic::AttributeRekeyFactor<G>,
-    ) -> Self {
-        use crate::factors::types::generic::RekeyFactor;
-        Self(factor.scalar() * self.0)
-    }
-}
-
-#[cfg(all(feature = "batch-pk", not(feature = "elgamal3")))]
-impl<G: Group> SessionPublicKeys<G> {
-    /// Convert this session public key bundle to its rekeyed counterpart, applying the
-    /// pseudonym rekey factor to the pseudonym half and the attribute rekey
-    /// factor to the attribute half.
-    pub fn convert(
-        &self,
-        pseudonym: &crate::factors::types::generic::PseudonymRekeyFactor<G>,
-        attribute: &crate::factors::types::generic::AttributeRekeyFactor<G>,
-    ) -> Self {
-        Self {
-            pseudonym: self.pseudonym.convert(pseudonym),
-            attribute: self.attribute.convert(attribute),
-        }
-    }
-}

@@ -1,7 +1,7 @@
 //! WASM bindings for distributed client.
 
 #[cfg(feature = "json")]
-use crate::data::json::{WASMEncryptedPEPJSONValue, WASMPEPJSONValue};
+use crate::data::json::{WASMEncryptedPepJsonValue, WASMPepJsonValue};
 #[cfg(feature = "long")]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -56,19 +56,19 @@ impl WASMClient {
 
     #[wasm_bindgen(js_name = restore)]
     pub fn wasm_restore(keys: &WASMSessionKeys) -> Self {
-        Self(Client::restore((*keys).into()))
+        Self(Client::new((*keys).into()))
     }
 
     #[wasm_bindgen(js_name = dump)]
     pub fn wasm_dump(&self) -> WASMSessionKeys {
-        (*self.dump()).into()
+        (*self.keys()).into()
     }
 
     /// Session keys getter — equivalent to `dump()` but exposed as a JS
     /// property for parity with the Python `Client.session_keys` getter.
     #[wasm_bindgen(getter, js_name = sessionKeys)]
     pub fn wasm_session_keys(&self) -> WASMSessionKeys {
-        (*self.dump()).into()
+        (*self.keys()).into()
     }
 
     #[wasm_bindgen(js_name = updatePseudonymSessionSecretKey)]
@@ -340,7 +340,7 @@ impl WASMClient {
         use libpep::data::records::Record;
         use libpep::data::traits::Encryptable;
         let rust_record: Record = record.into();
-        let encrypted = rust_record.encrypt(&self.0.dump().public(), &mut rng);
+        let encrypted = rust_record.encrypt(&self.0.keys().public(), &mut rng);
         encrypted.into()
     }
 
@@ -351,7 +351,7 @@ impl WASMClient {
         use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
-        rust_encrypted.decrypt(self.0.dump()).map(|r| r.into())
+        rust_encrypted.decrypt(self.0.keys()).map(|r| r.into())
     }
 
     /// Decrypt an encrypted Record using session keys.
@@ -361,7 +361,7 @@ impl WASMClient {
         use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: EncryptedRecord = encrypted.into();
-        rust_encrypted.decrypt(self.0.dump()).into()
+        rust_encrypted.decrypt(self.0.keys()).into()
     }
 
     /// Encrypt a LongRecord using session keys.
@@ -372,7 +372,7 @@ impl WASMClient {
         use libpep::data::records::LongRecord;
         use libpep::data::traits::Encryptable;
         let rust_record: LongRecord = record.into();
-        let encrypted = rust_record.encrypt(&self.0.dump().public(), &mut rng);
+        let encrypted = rust_record.encrypt(&self.0.keys().public(), &mut rng);
         encrypted.into()
     }
 
@@ -386,7 +386,7 @@ impl WASMClient {
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
-        rust_encrypted.decrypt(self.0.dump()).map(|r| r.into())
+        rust_encrypted.decrypt(self.0.keys()).map(|r| r.into())
     }
 
     /// Decrypt an encrypted LongRecord using session keys.
@@ -396,27 +396,27 @@ impl WASMClient {
         use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Encrypted;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
-        rust_encrypted.decrypt(self.0.dump()).into()
+        rust_encrypted.decrypt(self.0.keys()).into()
     }
 
-    /// Encrypt a PEPJSONValue using session keys.
+    /// Encrypt a PepJsonValue using session keys.
     #[cfg(feature = "json")]
     #[wasm_bindgen(js_name = encryptJSON)]
-    pub fn wasm_encrypt_json(&self, value: WASMPEPJSONValue) -> WASMEncryptedPEPJSONValue {
+    pub fn wasm_encrypt_json(&self, value: WASMPepJsonValue) -> WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         use libpep::data::traits::Encryptable;
         let rust_value = value.0;
-        let encrypted = rust_value.encrypt(&self.0.dump().public(), &mut rng);
-        WASMEncryptedPEPJSONValue(encrypted)
+        let encrypted = rust_value.encrypt(&self.0.keys().public(), &mut rng);
+        WASMEncryptedPepJsonValue(encrypted)
     }
 
-    /// Encrypt a PEPJSONValue using session keys.
+    /// Encrypt a PepJsonValue using session keys.
     #[cfg(all(feature = "json", feature = "batch"))]
     #[wasm_bindgen(js_name = encryptJSONBatch)]
     pub fn wasm_encrypt_json_batch(
         &self,
-        values: Vec<WASMPEPJSONValue>,
-    ) -> Result<Vec<WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
+        values: Vec<WASMPepJsonValue>,
+    ) -> Result<Vec<WASMEncryptedPepJsonValue>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
         let rust_values: Vec<_> = values.into_iter().map(|m| m.0).collect();
         let encrypted = self
@@ -426,56 +426,56 @@ impl WASMClient {
             .into_items();
         Ok(encrypted
             .into_iter()
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .collect())
     }
 
-    /// Decrypt an encrypted PEPJSONValue using session keys.
+    /// Decrypt an encrypted PepJsonValue using session keys.
     #[cfg(all(feature = "json", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = decryptJSON)]
     pub fn wasm_decrypt_json(
         &self,
-        encrypted: WASMEncryptedPEPJSONValue,
-    ) -> Option<WASMPEPJSONValue> {
+        encrypted: WASMEncryptedPepJsonValue,
+    ) -> Option<WASMPepJsonValue> {
         use libpep::data::traits::Encrypted;
-        encrypted.0.decrypt(self.0.dump()).map(WASMPEPJSONValue)
+        encrypted.0.decrypt(self.0.keys()).map(WASMPepJsonValue)
     }
 
-    /// Decrypt an encrypted PEPJSONValue using session keys.
+    /// Decrypt an encrypted PepJsonValue using session keys.
     #[cfg(all(feature = "json", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = decryptJSON)]
-    pub fn wasm_decrypt_json(&self, encrypted: WASMEncryptedPEPJSONValue) -> WASMPEPJSONValue {
+    pub fn wasm_decrypt_json(&self, encrypted: WASMEncryptedPepJsonValue) -> WASMPepJsonValue {
         use libpep::data::traits::Encrypted;
-        WASMPEPJSONValue(encrypted.0.decrypt(self.0.dump()))
+        WASMPepJsonValue(encrypted.0.decrypt(self.0.keys()))
     }
 
-    /// Decrypt a batch of encrypted PEPJSONValues using session keys.
+    /// Decrypt a batch of encrypted PepJsonValues using session keys.
     #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = decryptJSONBatch)]
     pub fn wasm_decrypt_json_batch(
         &self,
-        encrypted: Vec<WASMEncryptedPEPJSONValue>,
-    ) -> Result<Vec<WASMPEPJSONValue>, wasm_bindgen::JsValue> {
+        encrypted: Vec<WASMEncryptedPepJsonValue>,
+    ) -> Result<Vec<WASMPepJsonValue>, wasm_bindgen::JsValue> {
         let rust_encrypted: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
             .map_err(batch_err_to_js)?;
-        Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
+        Ok(decrypted.into_iter().map(WASMPepJsonValue).collect())
     }
 
-    /// Decrypt a batch of encrypted PEPJSONValues using session keys.
+    /// Decrypt a batch of encrypted PepJsonValues using session keys.
     #[cfg(all(feature = "json", feature = "batch", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = decryptJSONBatch)]
     pub fn wasm_decrypt_json_batch(
         &self,
-        encrypted: Vec<WASMEncryptedPEPJSONValue>,
-    ) -> Result<Vec<WASMPEPJSONValue>, wasm_bindgen::JsValue> {
+        encrypted: Vec<WASMEncryptedPepJsonValue>,
+    ) -> Result<Vec<WASMPepJsonValue>, wasm_bindgen::JsValue> {
         let rust_encrypted: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
         let decrypted = self
             .0
             .decrypt_batch(&rust_encrypted)
             .map_err(batch_err_to_js)?;
-        Ok(decrypted.into_iter().map(WASMPEPJSONValue).collect())
+        Ok(decrypted.into_iter().map(WASMPepJsonValue).collect())
     }
 }

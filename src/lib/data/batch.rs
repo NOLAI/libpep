@@ -7,12 +7,11 @@
 //! records, and JSON — via the polymorphism already present in
 //! [`Encryptable::PublicKeyType`].
 //!
-//! Under `elgamal2` with the `batch-pk` feature, the batch carries the
-//! recipient public key at the batch level so that transcryptor operations
-//! need no extra arguments to drive the rerandomize step. Without `batch-pk`
-//! the field is dropped and the same operations require the caller to pass
-//! `pk` per call. In `elgamal3` mode the field is always dropped (each
-//! ciphertext already carries its own `gy`).
+//! With the `batch-pk` feature (and without `elgamal3`), the batch carries the
+//! public key its items are encrypted under, so that the transcryptor operations
+//! need no key argument for their rerandomize step. Without `batch-pk` the
+//! operations take the key per call, and with `elgamal3` every ciphertext
+//! carries its own key.
 //!
 //! Construction validates that all items share the same
 //! [`HasStructure::structure`] so
@@ -36,13 +35,12 @@ pub use crate::errors::BatchError;
 ///
 /// `E` may be any encrypted wrapper: simple (`EncryptedPseudonym`,
 /// `EncryptedAttribute`), long, composite (`EncryptedRecord`,
-/// `LongEncryptedRecord`, `EncryptedPEPJSONValue`).
+/// `LongEncryptedRecord`, `EncryptedPepJsonValue`).
 ///
-/// Under `elgamal2` with the `batch-pk` feature, the recipient public key
-/// (or key bundle for composite types) is stored once at the batch level;
-/// without `batch-pk` the field is omitted and ops require `pk` per call.
-/// In `elgamal3` mode every item already carries `gy` and the field is
-/// always omitted.
+/// With the `batch-pk` feature (and without `elgamal3`), the public key the
+/// items are encrypted under (a key bundle for composite types) is stored once
+/// in the batch; otherwise the operations take the key per call, or the
+/// ciphertexts carry it (`elgamal3`).
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

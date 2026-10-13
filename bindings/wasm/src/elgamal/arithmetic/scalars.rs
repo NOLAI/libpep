@@ -36,10 +36,9 @@ impl WASMScalarNonZero {
     }
     /// Decodes a scalar from a 64-byte hash.
     #[wasm_bindgen(js_name = fromHash)]
-    pub fn from_hash(v: Vec<u8>) -> WASMScalarNonZero {
-        let mut arr = [0u8; 64];
-        arr.copy_from_slice(&v);
-        ScalarNonZero::from_hash(&arr).into()
+    pub fn from_hash(v: Vec<u8>) -> Option<WASMScalarNonZero> {
+        let arr: [u8; 64] = v.try_into().ok()?;
+        Some(ScalarNonZero::from_hash(&arr).into())
     }
     /// Returns scalar one.
     #[wasm_bindgen]

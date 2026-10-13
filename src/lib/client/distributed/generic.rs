@@ -158,7 +158,9 @@ pub fn update_session_keys<G: Group>(
 
 /// Trait to update and extract session keys from SessionKeys based on the share type.
 pub trait SessionKeyUpdater<S: SessionKeyShare> {
+    /// The session secret key currently held.
     fn get_current_secret(&self) -> S::SessionSecretKey;
+    /// Replace the session key pair.
     fn set_keys(
         &mut self,
         public: <S::SessionSecretKey as SecretKey>::PublicKeyType,

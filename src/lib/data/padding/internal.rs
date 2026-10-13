@@ -40,10 +40,10 @@
 //!
 //! This means **ALL possible byte sequences can be encoded without ambiguity**.
 
+use super::PaddingError;
 use crate::data::simple::generic::{Attribute, Pseudonym};
 use crate::data::simple::ElGamalEncryptable;
 use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
-use std::io::{Error, ErrorKind};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
 ///
@@ -89,19 +89,15 @@ where
     /// # Errors
     ///
     /// Returns an error if the data does not leave room for at least one padding byte.
-    fn from_bytes_padded(data: &[u8]) -> Result<Self, Error>
+    fn from_bytes_padded(data: &[u8]) -> Result<Self, PaddingError>
     where
         Self: Sized,
     {
         if data.len() >= Self::BLOCK_LENGTH {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!(
-                    "Data too long: {} bytes (max {})",
-                    data.len(),
-                    Self::BLOCK_LENGTH - 1
-                ),
-            ));
+            return Err(PaddingError::TooLong {
+                len: data.len(),
+                block: Self::BLOCK_LENGTH,
+            });
         }
 
         // Create padded block using PKCS#7 padding
@@ -122,7 +118,7 @@ where
     /// # Errors
     ///
     /// Returns an error if the string exceeds 15 bytes.
-    fn from_string_padded(text: &str) -> Result<Self, Error>
+    fn from_string_padded(text: &str) -> Result<Self, PaddingError>
     where
         Self: Sized,
     {
@@ -137,9 +133,8 @@ where
     /// - The padding is invalid
     /// - The decoded bytes are not valid UTF-8
     /// - The value was not created using `from_bytes_padded` or `from_string_padded`
-    fn to_string_padded(&self) -> Result<String, Error> {
-        let bytes = self.to_bytes_padded()?;
-        String::from_utf8(bytes).map_err(|e| Error::new(ErrorKind::InvalidData, e.to_string()))
+    fn to_string_padded(&self) -> Result<String, PaddingError> {
+        Ok(String::from_utf8(self.to_bytes_padded()?)?)
     }
 
     /// Decodes back to the original byte array.
@@ -149,29 +144,24 @@ where
     /// Returns an error if:
     /// - The padding is invalid
     /// - The value was not created using `from_bytes_padded` or `from_string_padded`
-    fn to_bytes_padded(&self) -> Result<Vec<u8>, Error> {
-        let block = self.to_lizard().ok_or(Error::new(
-            ErrorKind::InvalidData,
-            "Value is not a valid padded value",
-        ))?;
+    fn to_bytes_padded(&self) -> Result<Vec<u8>, PaddingError> {
+        let block = self.to_lizard().ok_or(PaddingError::NotEncoded)?;
         unpad_block(block.as_ref())
     }
 }
 
 /// Remove the PKCS#7 padding of one block.
-pub(crate) fn unpad_block(block: &[u8]) -> Result<Vec<u8>, Error> {
+pub(crate) fn unpad_block(block: &[u8]) -> Result<Vec<u8>, PaddingError> {
     let length = block.len();
     let padding_byte = block[length - 1];
 
-    if padding_byte == 0 || padding_byte as usize > length {
-        return Err(Error::new(ErrorKind::InvalidData, "Invalid padding"));
-    }
-
-    if block[length - padding_byte as usize..]
-        .iter()
-        .any(|&b| b != padding_byte)
+    if padding_byte == 0
+        || padding_byte as usize > length
+        || block[length - padding_byte as usize..]
+            .iter()
+            .any(|&b| b != padding_byte)
     {
-        return Err(Error::new(ErrorKind::InvalidData, "Inconsistent padding"));
+        return Err(PaddingError::InvalidPadding);
     }
 
     let data_bytes = length - padding_byte as usize;
@@ -187,7 +177,6 @@ mod tests {
     use super::*;
     use crate::data::simple::{Attribute, Pseudonym};
     use crate::elgamal::arithmetic::Ristretto255;
-    use std::io::ErrorKind;
 
     // Generic test helper functions
 
@@ -219,19 +208,22 @@ mod tests {
 
     fn test_too_long<T: Padded<Group = Ristretto255> + std::fmt::Debug>() {
         let data = b"This is 16 bytes"; // Exactly 16 bytes
-        let result = T::from_bytes_padded(data);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+        assert_eq!(
+            T::from_bytes_padded(data).unwrap_err(),
+            PaddingError::TooLong { len: 16, block: 16 }
+        );
 
         let data = b"This is way more than 15 bytes!";
-        let result = T::from_bytes_padded(data);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+        assert!(matches!(
+            T::from_bytes_padded(data).unwrap_err(),
+            PaddingError::TooLong { .. }
+        ));
 
         let text = "This is way more than 15 bytes!";
-        let result = T::from_string_padded(text);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+        assert!(matches!(
+            T::from_string_padded(text).unwrap_err(),
+            PaddingError::TooLong { .. }
+        ));
     }
 
     fn test_padding_correctness<T: Padded<Group = Ristretto255>>() {
@@ -260,25 +252,28 @@ mod tests {
         // Create a value with invalid padding (padding byte = 0)
         let invalid_block = [0u8; 16];
         let value = T::from_lizard(&invalid_block);
-        let result = value.to_bytes_padded();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            value.to_bytes_padded().unwrap_err(),
+            PaddingError::InvalidPadding
+        );
 
         // Create a value with inconsistent padding
         let mut inconsistent_block = [5u8; 16];
         inconsistent_block[15] = 6; // Wrong padding byte
         let value = T::from_lizard(&inconsistent_block);
-        let result = value.to_bytes_padded();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            value.to_bytes_padded().unwrap_err(),
+            PaddingError::InvalidPadding
+        );
 
         // Create a value with padding byte > 16
         let mut invalid_block = [17u8; 16];
         invalid_block[0] = b'X'; // Some data
         let value = T::from_lizard(&invalid_block);
-        let result = value.to_bytes_padded();
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidData);
+        assert_eq!(
+            value.to_bytes_padded().unwrap_err(),
+            PaddingError::InvalidPadding
+        );
     }
 
     fn test_roundtrip_all_sizes<T: Padded<Group = Ristretto255>>() {
@@ -380,8 +375,9 @@ mod tests {
         assert!(result.is_ok()); // Should fit
 
         let text = "你好世界！！"; // 18 bytes (6 chars × 3 bytes each)
-        let result = Attribute::from_string_padded(text);
-        assert!(result.is_err()); // Should not fit
-        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
+        assert!(matches!(
+            Attribute::from_string_padded(text).unwrap_err(),
+            PaddingError::TooLong { .. }
+        )); // Should not fit
     }
 }

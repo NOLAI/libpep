@@ -50,7 +50,7 @@ use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use libpep::data::records::LongEncryptedRecord;
 
 #[cfg(feature = "json")]
-use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 use libpep::keys::PublicKey;
 use libpep::keys::SecretKey;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
@@ -74,11 +74,8 @@ pub fn py_pseudonymize_batch(
         let mut enc: Vec<_> = eps.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPseudonym)
-            .collect();
+        let py_result: Vec<PyEncryptedPseudonym> =
+            result.into_iter().map(PyEncryptedPseudonym).collect();
         return py_result.into_py_any(py);
     }
 
@@ -88,11 +85,8 @@ pub fn py_pseudonymize_batch(
         let mut enc: Vec<LongEncryptedPseudonym> = leps.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(pseudonymize_batch, &mut enc, &info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedPseudonym> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedPseudonym)
-            .collect();
+        let py_result: Vec<PyLongEncryptedPseudonym> =
+            result.into_iter().map(PyLongEncryptedPseudonym).collect();
         return py_result.into_py_any(py);
     }
 
@@ -120,11 +114,8 @@ pub fn py_rekey_batch(
         let mut enc: Vec<_> = eas.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(rekey_batch, &mut enc, &info, public_key => crate::keys::pk::attribute, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedAttribute> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedAttribute)
-            .collect();
+        let py_result: Vec<PyEncryptedAttribute> =
+            result.into_iter().map(PyEncryptedAttribute).collect();
         return py_result.into_py_any(py);
     }
 
@@ -134,11 +125,8 @@ pub fn py_rekey_batch(
         let mut enc: Vec<LongEncryptedAttribute> = leas.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(rekey_batch, &mut enc, &info, public_key => crate::keys::pk::attribute, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedAttribute> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedAttribute)
-            .collect();
+        let py_result: Vec<PyLongEncryptedAttribute> =
+            result.into_iter().map(PyLongEncryptedAttribute).collect();
         return py_result.into_py_any(py);
     }
 
@@ -148,7 +136,7 @@ pub fn py_rekey_batch(
 }
 
 /// Polymorphic batch transcryption of a list of encrypted data.
-/// Works with EncryptedRecord, LongEncryptedRecord, EncryptedPEPJSONValue, or tuples.
+/// Works with EncryptedRecord, LongEncryptedRecord, EncryptedPepJsonValue, or tuples.
 /// The order of items is randomly shuffled to avoid linking them.
 ///
 /// # Errors
@@ -170,11 +158,7 @@ pub fn py_transcrypt_batch(
         let mut enc: Vec<_> = recs.into_iter().map(|r| r.0).collect();
         let result = crate::transcrypt_with!(transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedRecord)
-            .collect();
+        let py_result: Vec<PyEncryptedRecord> = result.into_iter().map(PyEncryptedRecord).collect();
         return py_result.into_py_any(py);
     }
 
@@ -184,25 +168,19 @@ pub fn py_transcrypt_batch(
         let mut enc: Vec<LongEncryptedRecord> = lrecs.into_iter().map(|r| r.0).collect();
         let result = crate::transcrypt_with!(transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyLongEncryptedRecord> = result
-            .into_vec()
-            .into_iter()
-            .map(PyLongEncryptedRecord)
-            .collect();
+        let py_result: Vec<PyLongEncryptedRecord> =
+            result.into_iter().map(PyLongEncryptedRecord).collect();
         return py_result.into_py_any(py);
     }
 
-    // Try Vec<EncryptedPEPJSONValue>
+    // Try Vec<EncryptedPepJsonValue>
     #[cfg(feature = "json")]
-    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPEPJSONValue>>() {
+    if let Ok(jsons) = encrypted.extract::<Vec<PyEncryptedPepJsonValue>>() {
         let mut enc: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
         let result = crate::transcrypt_with!(transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
-        let py_result: Vec<PyEncryptedPEPJSONValue> = result
-            .into_vec()
-            .into_iter()
-            .map(PyEncryptedPEPJSONValue)
-            .collect();
+        let py_result: Vec<PyEncryptedPepJsonValue> =
+            result.into_iter().map(PyEncryptedPepJsonValue).collect();
         return py_result.into_py_any(py);
     }
 
@@ -222,7 +200,6 @@ pub fn py_transcrypt_batch(
         let result = crate::transcrypt_with!(transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         let py_result: Vec<(Vec<PyEncryptedPseudonym>, Vec<PyEncryptedAttribute>)> = result
-            .into_vec()
             .into_iter()
             .map(|record| {
                 (
@@ -259,7 +236,6 @@ pub fn py_transcrypt_batch(
         let result = crate::transcrypt_with!(transcrypt_batch, &mut enc, &info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         let py_result: Vec<(Vec<PyLongEncryptedPseudonym>, Vec<PyLongEncryptedAttribute>)> = result
-            .into_vec()
             .into_iter()
             .map(|record| {
                 (
@@ -280,7 +256,7 @@ pub fn py_transcrypt_batch(
     }
 
     Err(PyTypeError::new_err(
-        "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], Vec[EncryptedPEPJSONValue], or tuple-based variants"
+        "transcrypt_batch() requires Vec[EncryptedRecord], Vec[LongEncryptedRecord], Vec[EncryptedPepJsonValue], or tuple-based variants"
     ))
 }
 
@@ -342,7 +318,7 @@ py_dispatch!(
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (jsons in messages: Vec<PyPEPJSONValue>, session_keys in public_key: crate::keys::PySessionKeys) => {
+        (jsons in messages: Vec<PyPepJsonValue>, session_keys in public_key: crate::keys::PySessionKeys) => {
             let mut rng = rand::rng();
             let keys = SessionKeys::from(session_keys);
             let rust_msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
@@ -351,8 +327,8 @@ py_dispatch!(
             let result = encrypt_batch(&rust_msgs, &keys.public(), &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
-            let py_result: Vec<PyEncryptedPEPJSONValue> =
-                result.into_items().into_iter().map(PyEncryptedPEPJSONValue).collect();
+            let py_result: Vec<PyEncryptedPepJsonValue> =
+                result.into_items().into_iter().map(PyEncryptedPepJsonValue).collect();
             return py_result.into_py_any(py);
         }
     }
@@ -412,7 +388,7 @@ py_dispatch!(
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (jsons in encrypted: Vec<PyEncryptedPEPJSONValue>, k in secret_key: crate::keys::PySessionKeys) => {
+        (jsons in encrypted: Vec<PyEncryptedPepJsonValue>, k in secret_key: crate::keys::PySessionKeys) => {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -421,7 +397,7 @@ py_dispatch!(
                 pyo3::exceptions::PyValueError::new_err(format!("Decryption failed: {}", e))
             })?;
 
-            let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();
+            let py_result: Vec<PyPepJsonValue> = result.into_iter().map(PyPepJsonValue).collect();
             return py_result.into_py_any(py);
         }
     }
@@ -481,7 +457,7 @@ py_dispatch!(
             return py_result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (jsons in encrypted: Vec<PyEncryptedPEPJSONValue>, k in secret_key: crate::keys::PySessionKeys) => {
+        (jsons in encrypted: Vec<PyEncryptedPepJsonValue>, k in secret_key: crate::keys::PySessionKeys) => {
             let rust_encs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
             let keys = SessionKeys::from(k);
 
@@ -489,7 +465,7 @@ py_dispatch!(
                 pyo3::exceptions::PyValueError::new_err(format!("Decryption failed: {}", e))
             })?;
 
-            let py_result: Vec<PyPEPJSONValue> = result.into_iter().map(PyPEPJSONValue).collect();
+            let py_result: Vec<PyPepJsonValue> = result.into_iter().map(PyPepJsonValue).collect();
             return py_result.into_py_any(py);
         }
     }
@@ -541,13 +517,13 @@ py_dispatch!(
             return result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (jsons in messages: Vec<PyPEPJSONValue>, pk in public_key: PyGlobalPublicKeys) => {
+        (jsons in messages: Vec<PyPepJsonValue>, pk in public_key: PyGlobalPublicKeys) => {
             let mut rng = rand::rng();
             use libpep::data::traits::Encryptable;
             let keys = GlobalPublicKeys::from(pk);
-            let result: Vec<PyEncryptedPEPJSONValue> = jsons
+            let result: Vec<PyEncryptedPepJsonValue> = jsons
                 .into_iter()
-                .map(|j| PyEncryptedPEPJSONValue(j.0.encrypt_global(&keys, &mut rng)))
+                .map(|j| PyEncryptedPepJsonValue(j.0.encrypt_global(&keys, &mut rng)))
                 .collect();
             return result.into_py_any(py);
         }
@@ -612,13 +588,13 @@ py_dispatch!(
             return result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPEPJSONValue>) => {
+        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPepJsonValue>) => {
             let keys = GlobalSecretKeys::from(sk);
             let result: Vec<_> = jsons
                 .into_iter()
                 .map(|j| {
                     decrypt_global(&j.0, &keys)
-                        .map(PyPEPJSONValue)
+                        .map(PyPepJsonValue)
                         .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("Decryption failed"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -669,11 +645,11 @@ py_dispatch!(
             return result.into_py_any(py);
         }
         #[cfg(feature = "json")]
-        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPEPJSONValue>) => {
+        (sk in secret_key: PyGlobalSecretKeys, jsons in encrypted: Vec<PyEncryptedPepJsonValue>) => {
             let keys = GlobalSecretKeys::from(sk);
-            let result: Vec<PyPEPJSONValue> = jsons
+            let result: Vec<PyPepJsonValue> = jsons
                 .into_iter()
-                .map(|j| PyPEPJSONValue(decrypt_global(&j.0, &keys)))
+                .map(|j| PyPepJsonValue(decrypt_global(&j.0, &keys)))
                 .collect();
             return result.into_py_any(py);
         }

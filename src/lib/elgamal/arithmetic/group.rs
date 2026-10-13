@@ -52,6 +52,16 @@ impl<const N: usize> Bytes for [u8; N] {
     }
 }
 
+/// Decode a hexadecimal string of exactly the length of `B`.
+pub(crate) fn decode_hex<B: Bytes>(s: &str) -> Option<B> {
+    if s.len() != 2 * B::len() {
+        return None;
+    }
+    let mut out = B::zeroed();
+    hex::decode_to_slice(s, out.as_mut()).ok()?;
+    Some(out)
+}
+
 macro_rules! group_trait {
     ($($extra:tt)*) => {
         /// A prime-order group with its scalar field, serialization and hash-to-group functions.

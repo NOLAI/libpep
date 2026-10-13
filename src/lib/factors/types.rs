@@ -10,7 +10,7 @@
 
 pub mod generic;
 
-pub use generic::RekeyFactor;
+pub use generic::{Factor, RekeyPublicKey};
 
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::elgamal::arithmetic::Ristretto255;

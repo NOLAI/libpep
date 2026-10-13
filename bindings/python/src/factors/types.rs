@@ -8,6 +8,7 @@ use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
 use libpep::factors::types::*;
+use libpep::factors::{Factor, RekeyPublicKey};
 use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
 use pyo3::prelude::*;
 
@@ -296,8 +297,9 @@ impl PyTranscryptionInfo {
 
     /// The public keys that data transcrypted with this info is encrypted under, given the keys it
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
-    fn rekey_public_keys(&self, before: &PySessionPublicKeys) -> PySessionPublicKeys {
-        self.0.rekey_public_keys(&(*before).into()).into()
+    fn rekey_public_key(&self, before: &PySessionPublicKeys) -> PySessionPublicKeys {
+        let before: libpep::keys::SessionPublicKeys = (*before).into();
+        self.0.rekey_public_key(&before).into()
     }
 }
 

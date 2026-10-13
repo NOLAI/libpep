@@ -80,8 +80,8 @@ fn test_verifiable_pseudonymization_simple() {
     let rng = &mut rand::rng();
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let domain2 = PseudonymizationDomain::from("domain2");
@@ -133,8 +133,8 @@ fn test_verifiable_pseudonym_rekey() {
     let rng = &mut rand::rng();
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
@@ -176,8 +176,8 @@ fn test_verifiable_attribute_rekey() {
     let rng = &mut rand::rng();
 
     let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
@@ -219,8 +219,8 @@ fn test_verifier_cache_pseudonymization() {
     let rng = &mut rand::rng();
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let domain2 = PseudonymizationDomain::from("domain2");
@@ -333,8 +333,8 @@ fn n_pep_batch_distributed_verifiable() {
     let systems = (0..n)
         .map(|i| {
             DistributedTranscryptor::new(
-                PseudonymizationSecret::from(format!("ps-{i}").as_bytes().into()),
-                EncryptionSecret::from(format!("es-{i}").as_bytes().into()),
+                PseudonymizationSecret::from(format!("ps-{i}").as_bytes()),
+                EncryptionSecret::from(format!("es-{i}").as_bytes()),
                 blinding_factors[i],
             )
         })
@@ -435,8 +435,8 @@ fn test_verifiable_record_transcryption() {
     let rng = &mut rand::rng();
     let (_global_pseudonym_pk, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
     let (_global_attribute_pk, global_attribute_sk) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain_a = PseudonymizationDomain::from("a");
     let domain_b = PseudonymizationDomain::from("b");
@@ -522,8 +522,8 @@ fn tampered_proof_rejected_pseudonymization() {
 
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -572,8 +572,8 @@ fn wrong_original_rejected_pseudonymization() {
 
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -616,8 +616,8 @@ fn wrong_commitments_rejected_pseudonymization() {
 
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -660,8 +660,8 @@ fn tampered_proof_rejected_pseudonym_rekey() {
 
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
@@ -692,8 +692,8 @@ fn wrong_original_rejected_pseudonym_rekey() {
 
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
@@ -722,8 +722,8 @@ fn tampered_proof_rejected_attribute_rekey() {
 
     let rng = &mut rand::rng();
     let (_, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
@@ -754,8 +754,8 @@ fn wrong_original_rejected_attribute_rekey() {
 
     let rng = &mut rand::rng();
     let (_, attribute_global_secret) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
@@ -786,8 +786,8 @@ fn tampered_proof_rejected_record_transcryption() {
     let rng = &mut rand::rng();
     let (_, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
     let (_, global_attribute_sk) = make_attribute_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let domain_a = PseudonymizationDomain::from("a");
     let domain_b = PseudonymizationDomain::from("b");
@@ -892,8 +892,8 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
     PseudonymSessionPublicKey,
 ) {
     let (_, gsk) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
@@ -1021,8 +1021,8 @@ fn wrong_recipient_pk_rejected_pseudonymization_batch() {
 fn single_element_batch_verified_pseudonymization() {
     let rng = &mut rand::rng();
     let (_, gsk) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
@@ -1059,8 +1059,8 @@ fn single_element_batch_verified_pseudonymization() {
 fn empty_batch_proof_only_verifies_against_empty_batch() {
     let rng = &mut rand::rng();
     let (_, gsk) = make_pseudonym_global_keys(rng);
-    let pseudo_secret = PseudonymizationSecret::from("secret".into());
-    let enc_secret = EncryptionSecret::from("secret".into());
+    let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
+    let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
@@ -1129,7 +1129,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     // Build a foreign item under a *different* recipient session key so the
     // `gy` differs from the rest of the batch.
     let (_, gsk2) = make_pseudonym_global_keys(rng);
-    let enc_secret2 = EncryptionSecret::from("other-secret".into());
+    let enc_secret2 = EncryptionSecret::from("other-secret".as_bytes());
     let (other_session_pk, _) = make_pseudonym_session_keys(
         &gsk2,
         &EncryptionContext::from("other-session"),

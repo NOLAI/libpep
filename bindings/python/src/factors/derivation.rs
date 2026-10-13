@@ -5,7 +5,7 @@ use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::factors::types::{PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyReshuffleFactor};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
 use pyo3::prelude::*;
 
@@ -31,17 +31,17 @@ pub fn py_make_attribute_rekey_factor(
 
 /// Derive the reshuffle factor of a domain from a pseudonymization secret.
 #[pyfunction]
-#[pyo3(name = "make_pseudonymisation_factor", signature = (secret, domain))]
-pub fn py_make_pseudonymisation_factor(
+#[pyo3(name = "make_pseudonymization_factor", signature = (secret, domain))]
+pub fn py_make_pseudonymization_factor(
     secret: &PyPseudonymizationSecret,
     domain: &str,
 ) -> PyReshuffleFactor {
-    make_pseudonymisation_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
+    make_pseudonymization_factor(&secret.0, &PseudonymizationDomain::from(domain)).into()
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_make_pseudonym_rekey_factor, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_attribute_rekey_factor, m)?)?;
-    m.add_function(wrap_pyfunction!(py_make_pseudonymisation_factor, m)?)?;
+    m.add_function(wrap_pyfunction!(py_make_pseudonymization_factor, m)?)?;
     Ok(())
 }
