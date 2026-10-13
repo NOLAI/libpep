@@ -1,6 +1,6 @@
 //! WASM bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
 
-use crate::ciphersuite::ciphersuite_or_current;
+use crate::elgamal::arithmetic::ciphersuite::ciphersuite_or_current;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
