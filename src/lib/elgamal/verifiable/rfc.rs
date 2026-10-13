@@ -238,8 +238,8 @@ impl SessionKeyShareMaterial {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
     use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::{Group, Ristretto255};
     use crate::elgamal::dleq::generate_proof;
 
     fn a_proof() -> Proof {
@@ -252,7 +252,7 @@ mod tests {
             &(k * G),
             &[c],
             &[k * c],
-            &Ciphersuite::current(),
+            &Ristretto255::CIPHERSUITE,
             rng,
         )
         .unwrap()

@@ -30,9 +30,9 @@
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
-//! # use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
+//! # use libpep::elgamal::arithmetic::{Group, Ristretto255};
 //! let mut rng = rand::rng();
-//! let ctx = Ciphersuite::current();
+//! let ctx = Ristretto255::CIPHERSUITE;
 //!
 //! let k = ScalarNonZero::random(&mut rng);
 //! let a = G;
@@ -50,7 +50,7 @@ use rand_core::{CryptoRng, Rng};
 
 use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::hashing::hash_to_scalar;
+use crate::elgamal::arithmetic::hashing::hash_to_scalar_with_dst;
 use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 
 /// Byte length of a serialized proof: two scalars.
@@ -177,7 +177,7 @@ fn compute_composites(
         push_len_prefixed(&mut transcript, &d_i.to_bytes());
         transcript.extend_from_slice(b"Composite");
 
-        let d_i_scalar = hash_to_scalar(&transcript, &dsts.hash_to_scalar);
+        let d_i_scalar = hash_to_scalar_with_dst(&transcript, &dsts.hash_to_scalar);
         m = m + d_i_scalar * *c_i;
         if k.is_none() {
             z = z + d_i_scalar * *d_i;
@@ -207,7 +207,7 @@ fn challenge(
     push_len_prefixed(&mut transcript, &t2.to_bytes());
     push_len_prefixed(&mut transcript, &t3.to_bytes());
     transcript.extend_from_slice(b"Challenge");
-    hash_to_scalar(&transcript, &dsts.hash_to_scalar)
+    hash_to_scalar_with_dst(&transcript, &dsts.hash_to_scalar)
 }
 
 /// `GenerateProof` of RFC 9497, Section 2.2.
@@ -317,9 +317,10 @@ fn verify_proof_with(
 mod tests {
     use super::*;
     use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::{Group, Ristretto255};
 
     fn ctx() -> Ciphersuite {
-        Ciphersuite::current()
+        Ristretto255::CIPHERSUITE
     }
 
     #[test]
@@ -383,8 +384,10 @@ mod tests {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let a = Ciphersuite::current();
-        let b = Ciphersuite::new("other-deployment");
+        let a = Ristretto255::CIPHERSUITE;
+        // A different ciphersuite identifier gives a different context string, so the challenge
+        // differs and a proof made under one does not verify under the other.
+        let b = crate::ciphersuite!("other-suite");
         let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &a, rng).unwrap();
         assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &a));
         assert!(!verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &b));
