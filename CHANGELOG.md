@@ -8,6 +8,13 @@ a major change against the published 0.13.0.
 
 ### Security
 
+- Session key share verification did not bind the received scalar to the proof.
+  `SessionKeyShareProof::verify` checks the ZKP against the blinding and rekey commitments, but
+  it never sees the share scalar `u_i`, so a transcryptor could hand over a valid proof alongside
+  an unrelated share and nothing would catch it. `verify_share` (and `matches_share`) additionally
+  check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
+  only public values and now documents what it does not establish. Exposed in Python as
+  `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
 - Every transcryption now rerandomizes the ciphertext before applying the reshuffle and rekey
   factors (RRSK/RRK). Previously the high-level `pseudonymize`, `rekey` and `transcrypt` (and the
   batch variants) applied the factors only, so a malicious sender could place a pseudonym directly

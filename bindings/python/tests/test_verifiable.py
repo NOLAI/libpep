@@ -652,3 +652,62 @@ def _swap_first_string_value(target, donor):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSessionKeyShareBinding(unittest.TestCase):
+    """A share proof must be bound to the share scalar actually received.
+
+    Verifying the ZKP alone says nothing about which scalar it belongs to, so
+    a transcryptor could pair a valid proof with an unrelated share. These
+    tests cover `verify_share`, which checks both halves.
+
+    Skipped unless the extension was built with `verifiable-derivation`.
+    """
+
+    def setUp(self):
+        try:
+            from libpep.keys.distribution import (  # noqa: F401
+                BlindingCommitment,
+                SessionKeyShareProof,
+            )
+        except ImportError:
+            self.skipTest("built without verifiable-derivation")
+
+    def test_verify_share_accepts_the_matching_share(self):
+        from libpep.elgamal.arithmetic.group_elements import G
+        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.keys.distribution import (
+            BlindingCommitment,
+            PseudonymSessionKeyShare,
+            SessionKeyShareProof,
+        )
+
+        blinding = ScalarNonZero.random()
+        rekey_factor = ScalarNonZero.random()
+        rekey_commitment = rekey_factor * G
+        proof = SessionKeyShareProof(blinding, rekey_commitment)
+        commitment = BlindingCommitment(blinding)
+
+        share = PseudonymSessionKeyShare(blinding * rekey_factor)
+        self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
+
+    def test_verify_share_rejects_a_share_that_does_not_match(self):
+        from libpep.elgamal.arithmetic.group_elements import G
+        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.keys.distribution import (
+            BlindingCommitment,
+            PseudonymSessionKeyShare,
+            SessionKeyShareProof,
+        )
+
+        blinding = ScalarNonZero.random()
+        rekey_factor = ScalarNonZero.random()
+        rekey_commitment = rekey_factor * G
+        proof = SessionKeyShareProof(blinding, rekey_commitment)
+        commitment = BlindingCommitment(blinding)
+
+        # The proof is valid on its own...
+        self.assertTrue(proof.verify(commitment, rekey_commitment))
+        # ...but the share handed over does not correspond to it.
+        wrong = PseudonymSessionKeyShare(ScalarNonZero.random())
+        self.assertFalse(proof.verify_share(wrong, commitment, rekey_commitment))

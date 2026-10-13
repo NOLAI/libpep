@@ -8,6 +8,9 @@
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::errors::malformed_proof_err;
+use crate::keys::distribution::shares::{
+    WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
+};
 use crate::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
 use derive_more::{From, Into};
 use wasm_bindgen::prelude::*;
@@ -131,7 +134,43 @@ impl WASMSessionKeyShareProof {
         ))
     }
 
+    /// Verify the proof *and* bind it to the pseudonym share actually received.
+    ///
+    /// This is the check a user accepting a session-key share must perform: it
+    /// verifies the proof and additionally checks `U_i == u_i · G` for the
+    /// share handed over alongside it. Without the second half, a transcryptor
+    /// can pair a valid proof with an unrelated scalar.
+    #[wasm_bindgen(js_name = verifyPseudonymShare)]
+    pub fn verify_pseudonym_share(
+        &self,
+        share: &WASMPseudonymSessionKeyShare,
+        blinding_commitment: &WASMBlindingCommitment,
+        rekey_commitment: &WASMGroupElement,
+    ) -> bool {
+        self.0
+            .verify_share(&share.0, &blinding_commitment.0, &rekey_commitment.0)
+    }
+
+    /// Verify the proof *and* bind it to the attribute share actually received.
+    ///
+    /// See [`verifyPseudonymShare`](Self::verify_pseudonym_share); this is the
+    /// same check for an attribute share.
+    #[wasm_bindgen(js_name = verifyAttributeShare)]
+    pub fn verify_attribute_share(
+        &self,
+        share: &WASMAttributeSessionKeyShare,
+        blinding_commitment: &WASMBlindingCommitment,
+        rekey_commitment: &WASMGroupElement,
+    ) -> bool {
+        self.0
+            .verify_share(&share.0, &blinding_commitment.0, &rekey_commitment.0)
+    }
+
     /// Verify the proof against a blinding commitment and rekey commitment.
+    ///
+    /// This does NOT establish that any particular share is correct: it never
+    /// sees the share scalar. A user accepting a share must use
+    /// `verifyPseudonymShare` or `verifyAttributeShare` instead.
     #[wasm_bindgen]
     pub fn verify(
         &self,
