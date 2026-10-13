@@ -25,6 +25,8 @@ use super::ciphersuite::Ciphersuite;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
+use sha2::digest::common::BlockSizeUser;
+use sha2::Digest;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{Add, Mul, Sub};
@@ -86,6 +88,20 @@ macro_rules! group_trait {
             type ElementBytes: Bytes;
             /// The serialized form of a scalar: `NS` bytes.
             type ScalarBytes: Bytes;
+
+            /// The hash of this ciphersuite: `SHA-512` for `ristretto255-SHA512`.
+            ///
+            /// The second half of a ciphersuite identifier names a hash, so it is declared here
+            /// rather than left to each function to pick. Everything generic over a [`Group`]
+            /// that needs the ciphersuite's hash directly uses this, so an implementation whose
+            /// [`CIPHERSUITE`](Self::CIPHERSUITE) says `-SHA256` cannot quietly hash with
+            /// SHA-512: the two declarations sit side by side in the same impl.
+            ///
+            /// This is the hash the ciphersuite is named after. It is not necessarily the hash
+            /// inside [`hash_to_group`](Self::hash_to_group) and
+            /// [`hash_to_scalar`](Self::hash_to_scalar), which are free to reach it through
+            /// whatever expander RFC 9380 prescribes for the group.
+            type Hash: Digest + BlockSizeUser;
 
             /// The length of a serialized element in bytes (`Ne` in RFC 9497).
             const NE: usize;

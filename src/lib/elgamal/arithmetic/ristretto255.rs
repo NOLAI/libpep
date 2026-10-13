@@ -28,6 +28,7 @@ impl Group for Ristretto255 {
     type Element = GroupElement;
     type ElementBytes = [u8; 32];
     type ScalarBytes = [u8; 32];
+    type Hash = sha2::Sha512;
 
     const NE: usize = 32;
     const NS: usize = 32;

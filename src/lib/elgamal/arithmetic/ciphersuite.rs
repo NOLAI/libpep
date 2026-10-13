@@ -18,8 +18,10 @@
 //! Domain separation by ciphersuite matters where a hash takes **no secret**, so that the hash
 //! input alone determines the output and another protocol hashing the same input on the same
 //! group would get the same element. That is the case for
-//! [`hash_to_group`](super::hashing::hash_to_group): the `"coPRFV1-"` prefix is what separates a
-//! pseudonym from an RFC 9497 OPRF evaluation of the same identifier on ristretto255.
+//! [`hash_to_group`](super::hashing::hash_to_group): the [`PREFIX`] is what separates a
+//! pseudonym from an RFC 9497 OPRF evaluation of the same identifier on ristretto255. It reads
+//! `"coPRFV1-"`, for the convertible OPRF abstraction of Lehmann's ScrambleDB that this protocol
+//! builds on, versioned independently of the crate; see [`PREFIX`] for both halves of that name.
 //!
 //! Factor [derivation](crate::factors::derivation) is the opposite case. It hashes the
 //! length-prefixed transcryptor secret together with the label and the length-prefixed domain or
@@ -51,6 +53,20 @@
 use std::fmt;
 
 /// The prefix of every context string, distinguishing this protocol from RFC 9497's `"OPRFV1-"`
+/// on the same group.
+///
+/// `coPRF` is a *convertible* oblivious pseudorandom function. Convertibility is what separates
+/// it from the plain OPRF of RFC 9497: a transcryptor converts an output from one domain to
+/// another without learning either the input or the output. The abstraction is due to Lehmann's
+/// ScrambleDB work, which named it; this protocol builds on it rather than introducing it.
+///
+/// `V1` versions the domain separation scheme, **not the crate**. It is easy to misread next to
+/// a crate at 0.14: the two are independent, and a release that changes neither the hashing
+/// construction nor the tag layout leaves this at `V1`. Should that construction ever change
+/// incompatibly, the prefix becomes `coPRFV2-`, so deployments on either side of the change
+/// derive unrelated values instead of silently disagreeing about the same ones.
+///
+/// The shape deliberately parallels `"OPRFV1-"`: a sibling construction, with separated domains
 /// on the same group.
 pub const PREFIX: &str = "coPRFV1-";
 
