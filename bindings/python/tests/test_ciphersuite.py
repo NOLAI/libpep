@@ -10,9 +10,9 @@ from libpep.elgamal.arithmetic.ciphersuite import Ciphersuite
 from libpep.elgamal.arithmetic.group_elements import GroupElement
 from libpep.elgamal.arithmetic.hashing import (
     expand_message_xmd_sha512,
-    hash_to_group as hash_to_group_with_dst,
-    hash_to_group_in,
-    hash_to_scalar,
+    hash_to_group,
+    hash_to_group_with_dst,
+    hash_to_scalar_with_dst,
 )
 from libpep.factors import EncryptionSecret, PseudonymizationSecret, TranscryptionInfo
 from libpep.keys import make_global_keys, make_session_keys
@@ -26,12 +26,13 @@ class TestCiphersuite(unittest.TestCase):
         self.assertEqual(ctx.identifier, b"ristretto255-SHA512")
         self.assertEqual(ctx.context_string(), b"coPRFV1-ristretto255-SHA512")
 
-    def test_custom_ciphersuite(self):
-        ctx = Ciphersuite("my-deployment")
-        self.assertEqual(ctx.context_string(), b"coPRFV1-my-deployment")
-        self.assertEqual(Ciphersuite(b"my-deployment"), ctx)
-        self.assertNotEqual(Ciphersuite(), ctx)
-        self.assertEqual(len({ctx, Ciphersuite("my-deployment")}), 1)
+    def test_ciphersuite_is_not_constructible_from_an_identifier(self):
+        # An identifier names a group and a hash together, so it comes from the group rather
+        # than being chosen per call; there is nothing to pass.
+        self.assertEqual(Ciphersuite(), Ciphersuite.current())
+        self.assertEqual(len({Ciphersuite(), Ciphersuite.current()}), 1)
+        with self.assertRaises(TypeError):
+            Ciphersuite("my-deployment")
 
     def test_transcryptor_takes_no_ciphersuite(self):
         # The ciphersuite is fixed for a build, so a transcryptor is built from its secrets
@@ -58,22 +59,22 @@ class TestHashing(unittest.TestCase):
             expand_message_xmd_sha512(b"", dst, 65536)
 
     def test_hash_to_group_uses_ciphersuite_dst(self):
-        ctx = Ciphersuite("my-deployment")
-        dst = b"HashToGroup-" + ctx.context_string()
+        dst = b"HashToGroup-" + Ciphersuite.current().context_string()
         self.assertEqual(
-            hash_to_group_in(b"patient-1", ctx), hash_to_group_with_dst(b"patient-1", dst)
+            hash_to_group(b"patient-1"), hash_to_group_with_dst(b"patient-1", dst)
         )
-        self.assertEqual(
-            hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-1", Ciphersuite())
+        self.assertEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-1"))
+        self.assertNotEqual(
+            hash_to_group(b"patient-1"),
+            hash_to_group_with_dst(b"patient-1", b"HashToGroup-coPRFV1-another-suite"),
         )
-        self.assertNotEqual(hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-1", ctx))
-        self.assertNotEqual(hash_to_group_in(b"patient-1"), hash_to_group_in(b"patient-2"))
-        self.assertIsInstance(hash_to_group_in(b"patient-1"), GroupElement)
+        self.assertNotEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-2"))
+        self.assertIsInstance(hash_to_group(b"patient-1"), GroupElement)
 
     def test_hash_to_scalar_is_deterministic_and_separated(self):
-        a = hash_to_scalar(b"msg", b"dst-a")
-        self.assertEqual(a, hash_to_scalar(b"msg", b"dst-a"))
-        self.assertNotEqual(a, hash_to_scalar(b"msg", b"dst-b"))
+        a = hash_to_scalar_with_dst(b"msg", b"dst-a")
+        self.assertEqual(a, hash_to_scalar_with_dst(b"msg", b"dst-a"))
+        self.assertNotEqual(a, hash_to_scalar_with_dst(b"msg", b"dst-b"))
 
 
 class TestEncodings(unittest.TestCase):
@@ -86,7 +87,7 @@ class TestEncodings(unittest.TestCase):
             GroupElement.from_lizard(b"too short")
 
     def test_hashed_elements_are_not_lizard_encodings(self):
-        self.assertIsNone(hash_to_group_in(b"patient-1").to_lizard())
+        self.assertIsNone(hash_to_group(b"patient-1").to_lizard())
 
 
 class TestSeparation(unittest.TestCase):

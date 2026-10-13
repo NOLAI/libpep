@@ -2,6 +2,7 @@
 //! [`GroupElement`] and [`ScalarNonZero`], with the lizard encoding as its
 //! [`InvertibleEncoding`].
 
+use super::ciphersuite::Ciphersuite;
 use super::group::{Group, InvertibleEncoding};
 use super::group_elements::{GroupElement, G};
 use super::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
@@ -31,6 +32,8 @@ impl Group for Ristretto255 {
     const NE: usize = 32;
     const NS: usize = 32;
 
+    const CIPHERSUITE: Ciphersuite = crate::ciphersuite!("ristretto255-SHA512");
+
     fn order() -> &'static [u8] {
         &ORDER
     }
@@ -44,7 +47,7 @@ impl Group for Ristretto255 {
     }
 
     fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
-        super::hashing::hash_to_group(msg, dst)
+        super::hashing::hash_to_group_with_dst(msg, dst)
     }
 
     fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> Option<ScalarNonZero> {

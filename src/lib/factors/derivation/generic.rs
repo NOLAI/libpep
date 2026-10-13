@@ -4,7 +4,7 @@
 //!
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` over the
 //!   length-prefixed secret, the label and the length-prefixed identifier, domain-separated with
-//!   `"DeriveFactor-" || contextString` of the [ciphersuite](crate::elgamal::arithmetic::ciphersuite::Ciphersuite::current). A
+//!   `"DeriveFactor-" || contextString` of the group's [ciphersuite](crate::elgamal::arithmetic::Group::CIPHERSUITE). A
 //!   factor that is 0 or 1 is rejected and the derivation retried with the next counter.
 //! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier, the
 //!   derivation of libpep 0.13. It ignores the protocol context.
@@ -107,7 +107,7 @@ pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G:
     let (Some(secret_len), Some(id_len)) = (secret_len, id_len) else {
         panic!("DeriveFactor: secrets and identifiers must be shorter than 2^16 bytes");
     };
-    let dst = crate::elgamal::arithmetic::ciphersuite::Ciphersuite::current().dst(b"DeriveFactor-");
+    let dst = G::CIPHERSUITE.dst(b"DeriveFactor-");
     let mut input = Vec::with_capacity(secret.len() + id.len() + 6);
     input.extend_from_slice(&secret_len.to_be_bytes());
     input.extend_from_slice(secret);

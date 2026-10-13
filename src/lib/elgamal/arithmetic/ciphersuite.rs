@@ -1,25 +1,30 @@
-//! The [`Ciphersuite`]: the identifier that the protocol's hashes are domain-separated with, as
-//! in [RFC 9497], Section 3.1, and [draft-doesburg-cfrg-coprf], Section "Context and
+//! The [`Ciphersuite`]: the group-and-hash pair the protocol's hashes are domain-separated with,
+//! as in [RFC 9497], Section 3.1, and [draft-doesburg-cfrg-coprf], Section "Context and
 //! Ciphersuite".
 //!
-//! The ciphersuite is not a per-call parameter. It is fixed for a build:
-//! [`Ciphersuite::current`] is the one this crate implements, and the protocol's hashes use it
-//! internally.
+//! A ciphersuite identifier names a group *and* a hash: `ristretto255-SHA512` is ristretto255
+//! with SHA-512, `P256-SHA256` is P-256 with SHA-256. Each [`Group`](super::Group) implementation
+//! fixes both — its `hash_to_group` and `hash_to_scalar` are written against one hash — so the
+//! identifier belongs to the group and is reached through it as
+//! [`Group::CIPHERSUITE`](super::Group::CIPHERSUITE). There is no way to pair one group's
+//! identifier with another group's operations.
+//!
+//! The identifier is taken verbatim from the draft's ciphersuite table rather than composed from
+//! group and hash fragments: the table spells the P-256 suite `P256-SHA256` while the group
+//! itself is called P-256, so a composed string would be wrong.
 //!
 //! # Where the ciphersuite does and does not separate
 //!
 //! Domain separation by ciphersuite matters where a hash takes **no secret**, so that the hash
 //! input alone determines the output and another protocol hashing the same input on the same
 //! group would get the same element. That is the case for
-//! [`hash_to_group_in`](super::hashing::hash_to_group_in), which is why it takes an explicit
-//! `&Ciphersuite`: the `"coPRFV1-"` prefix is what separates a pseudonym from an RFC 9497 OPRF
-//! evaluation of the same identifier on ristretto255.
+//! [`hash_to_group`](super::hashing::hash_to_group): the `"coPRFV1-"` prefix is what separates a
+//! pseudonym from an RFC 9497 OPRF evaluation of the same identifier on ristretto255.
 //!
 //! Factor [derivation](crate::factors::derivation) is the opposite case. It hashes the
 //! length-prefixed transcryptor secret together with the label and the length-prefixed domain or
 //! session identifier, so two deployments already derive unrelated factors because their secrets
-//! differ. The ciphersuite adds only the domain separation tag, so factor derivation does not take
-//! one: it uses [`Ciphersuite::current`].
+//! differ. The ciphersuite adds only the domain separation tag.
 //!
 //! # Why there is no mode
 //!
@@ -45,38 +50,41 @@
 
 use std::fmt;
 
-/// The identifier of the ristretto255-SHA512 ciphersuite, the one this crate implements.
-pub const RISTRETTO255_SHA512: &str = "ristretto255-SHA512";
+/// The prefix of every context string, distinguishing this protocol from RFC 9497's `"OPRFV1-"`
+/// on the same group.
+pub const PREFIX: &str = "coPRFV1-";
 
-/// A ciphersuite identifier, from which the context string `"coPRFV1-" || identifier` is built.
+/// A ciphersuite: the group-and-hash pair whose identifier the protocol's domain separation tags
+/// are built from, as `"coPRFV1-" || identifier`.
 ///
-/// [`Ciphersuite::current`] is the ciphersuite this crate implements.
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+/// Reached through [`Group::CIPHERSUITE`](super::Group::CIPHERSUITE); see the
+/// [module documentation](self).
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Ciphersuite(pub Vec<u8>);
+pub struct Ciphersuite {
+    identifier: &'static str,
+    context_string: &'static str,
+}
 
 impl Ciphersuite {
-    /// A ciphersuite with the given identifier.
-    pub fn new(identifier: impl Into<Vec<u8>>) -> Self {
-        Self(identifier.into())
-    }
-
-    /// The ciphersuite this crate implements, identifier [`RISTRETTO255_SHA512`].
+    /// The ciphersuite with the given identifier and the context string it implies.
     ///
-    /// This is what the protocol's internal hashes, in particular factor
-    /// [derivation](crate::factors::derivation), are domain-separated with. It is fixed for a
-    /// build: a deployment separates its own sessions and domains with an
-    /// [`EncryptionContext`](crate::contexts::EncryptionContext) and a
-    /// [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain), not by varying this.
+    /// `context_string` must be `"coPRFV1-" || identifier`; pass it rather than building it so
+    /// that the whole value is a compile-time constant. Use the
+    /// [`ciphersuite!`](crate::ciphersuite) macro instead of calling this directly, so the two
+    /// cannot disagree.
     #[must_use]
-    pub fn current() -> Self {
-        Self::new(RISTRETTO255_SHA512)
+    pub const fn new(identifier: &'static str, context_string: &'static str) -> Self {
+        Self {
+            identifier,
+            context_string,
+        }
     }
 
-    /// The ciphersuite identifier.
+    /// The ciphersuite identifier, e.g. `ristretto255-SHA512`.
     #[must_use]
-    pub fn identifier(&self) -> &[u8] {
-        &self.0
+    pub const fn identifier(&self) -> &'static str {
+        self.identifier
     }
 
     /// The context string `"coPRFV1-" || identifier`.
@@ -85,69 +93,83 @@ impl Ciphersuite {
     /// stays recognisable to anyone reading either document next to this code. It is unrelated to
     /// the [`contexts`](crate::contexts) module.
     #[must_use]
-    pub fn context_string(&self) -> Vec<u8> {
-        let mut s = Vec::with_capacity(8 + self.0.len());
-        s.extend_from_slice(b"coPRFV1-");
-        s.extend_from_slice(&self.0);
-        s
+    pub const fn context_string(&self) -> &'static [u8] {
+        self.context_string.as_bytes()
     }
 
     /// A domain separation tag: `label || contextString`.
     #[must_use]
     pub fn dst(&self, label: &[u8]) -> Vec<u8> {
-        let mut dst = label.to_vec();
-        dst.extend_from_slice(&self.context_string());
+        let context_string = self.context_string();
+        let mut dst = Vec::with_capacity(label.len() + context_string.len());
+        dst.extend_from_slice(label);
+        dst.extend_from_slice(context_string);
         dst
-    }
-}
-
-impl Default for Ciphersuite {
-    fn default() -> Self {
-        Self::current()
     }
 }
 
 impl fmt::Display for Ciphersuite {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "coPRFV1-{}", String::from_utf8_lossy(&self.0))
+        f.write_str(self.context_string)
     }
+}
+
+/// Define a [`Ciphersuite`] constant from its identifier, concatenating the context string at
+/// compile time so that the identifier appears once.
+///
+/// ```
+/// # use libpep::ciphersuite;
+/// # use libpep::elgamal::arithmetic::Ciphersuite;
+/// const SUITE: Ciphersuite = ciphersuite!("ristretto255-SHA512");
+/// assert_eq!(SUITE.context_string(), b"coPRFV1-ristretto255-SHA512");
+/// ```
+#[macro_export]
+macro_rules! ciphersuite {
+    ($identifier:literal) => {
+        $crate::elgamal::arithmetic::Ciphersuite::new($identifier, concat!("coPRFV1-", $identifier))
+    };
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::Ristretto255;
     use super::*;
+    use crate::elgamal::arithmetic::Group;
 
     #[test]
-    fn default_context_string() {
+    fn ristretto255_context_string() {
+        // Pinned exactly: the context string is inside every DeriveFactor tag, so a change here
+        // changes every derived factor and every hashed pseudonym.
         assert_eq!(
-            Ciphersuite::default().context_string(),
+            Ristretto255::CIPHERSUITE.context_string(),
             b"coPRFV1-ristretto255-SHA512"
         );
-        assert_eq!(Ciphersuite::new("x").context_string(), b"coPRFV1-x");
+        assert_eq!(
+            Ristretto255::CIPHERSUITE.identifier(),
+            "ristretto255-SHA512"
+        );
     }
 
     #[test]
     fn context_string_is_prefixed_against_rfc9497() {
         // RFC 9497 builds "OPRFV1-" || mode || "-" || identifier, so an OPRF on the same group
         // never shares a domain separation tag with this protocol.
-        let s = Ciphersuite::default().context_string();
-        assert!(s.starts_with(b"coPRFV1-"));
+        let s = Ristretto255::CIPHERSUITE.context_string();
+        assert!(s.starts_with(PREFIX.as_bytes()));
         assert!(!s.starts_with(b"OPRFV1-"));
     }
 
     #[test]
-    fn current_is_the_default() {
-        assert_eq!(Ciphersuite::current(), Ciphersuite::default());
-        assert_eq!(
-            Ciphersuite::current().identifier(),
-            RISTRETTO255_SHA512.as_bytes()
-        );
+    fn macro_agrees_with_the_prefix() {
+        const SUITE: Ciphersuite = ciphersuite!("x-Y");
+        assert_eq!(SUITE.identifier(), "x-Y");
+        assert_eq!(SUITE.context_string(), b"coPRFV1-x-Y");
     }
 
     #[test]
     fn dst_prefixes_label() {
         assert_eq!(
-            Ciphersuite::default().dst(b"HashToGroup-"),
+            Ristretto255::CIPHERSUITE.dst(b"HashToGroup-"),
             b"HashToGroup-coPRFV1-ristretto255-SHA512"
         );
     }
@@ -155,8 +177,8 @@ mod tests {
     #[test]
     fn display_matches_the_context_string() {
         assert_eq!(
-            Ciphersuite::default().to_string().as_bytes(),
-            Ciphersuite::default().context_string()
+            Ristretto255::CIPHERSUITE.to_string().as_bytes(),
+            Ristretto255::CIPHERSUITE.context_string()
         );
     }
 }

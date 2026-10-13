@@ -700,13 +700,14 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
 }
 
 /// The ciphersuite separates *protocols*, not deployments: it is the domain separation tag of
-/// hashes that take no secret, so [`hash_to_group_in`] takes one explicitly. Factor derivation does
-/// not, because the transcryptor secret is already part of its hash input. What separates
-/// deployments is the secrets; what separates within a deployment is the domain and the session.
+/// hashes that take no secret, which is why `hash_to_group` derives its tag from the group's
+/// ciphersuite. Factor derivation needs no tag of its own, because the transcryptor secret is
+/// already part of its hash input. What separates deployments is the secrets; what separates
+/// within a deployment is the domain and the session.
 #[test]
 fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
-    use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
-    use libpep::elgamal::arithmetic::hashing::hash_to_group_in;
+    use libpep::elgamal::arithmetic::hashing::{hash_to_group, hash_to_group_with_dst};
+    use libpep::elgamal::arithmetic::{Group, Ristretto255};
 
     let rng = &mut rand::rng();
     let (_global_public, global_secret) = make_global_keys(rng);
@@ -723,17 +724,22 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
 
     // Hashing an identifier to the group involves no secret, so the ciphersuite is the only
     // thing separating this pseudonym from another protocol's hash of the same identifier.
-    let ciphersuite = Ciphersuite::current();
-    let origin = Pseudonym::from_point(hash_to_group_in(b"patient-1", &ciphersuite));
+    let origin = Pseudonym::from_point(hash_to_group::<Ristretto255>(b"patient-1"));
     assert_eq!(
         origin,
-        Pseudonym::from_point(hash_to_group_in(b"patient-1", &ciphersuite))
+        Pseudonym::from_point(hash_to_group::<Ristretto255>(b"patient-1"))
+    );
+    // A protocol hashing the same identifier on the same group under its own tag gets an
+    // unrelated element; the ciphersuite identifier is what puts the two in different domains.
+    assert_eq!(
+        Ristretto255::CIPHERSUITE.context_string(),
+        b"coPRFV1-ristretto255-SHA512"
     );
     assert_ne!(
         origin,
-        Pseudonym::from_point(hash_to_group_in(
+        Pseudonym::from_point(hash_to_group_with_dst(
             b"patient-1",
-            &Ciphersuite::new("another-ciphersuite")
+            b"HashToGroup-coPRFV1-another-ciphersuite"
         ))
     );
 
