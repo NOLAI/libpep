@@ -36,10 +36,10 @@
 
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym};
-use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::hashing::hash_to_group_in;
+use libpep::elgamal::arithmetic::hashing::hash_to_group;
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::elgamal::arithmetic::{Group, Ristretto255};
 use libpep::elgamal::ElGamal;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
 use libpep::factors::{
@@ -132,7 +132,7 @@ fn vectors_derive_factor(out: &mut String) {
 }
 
 /// EncryptPseudonym, TranscryptPseudonym and Decrypt with fixed `b` and `r`.
-fn vectors_single_pseudonym(out: &mut String, ciphersuite: &Ciphersuite) {
+fn vectors_single_pseudonym(out: &mut String) {
     let mut rng = rng_for(0x01);
 
     let pseudo_secret =
@@ -154,7 +154,7 @@ fn vectors_single_pseudonym(out: &mut String, ciphersuite: &Ciphersuite) {
 
     // The identifier is encoded with hash_to_group, the encoding of the draft's enc-hash.
     let identifier = b"patient-42";
-    let m = hash_to_group_in(identifier, ciphersuite);
+    let m = hash_to_group::<Ristretto255>(identifier);
 
     // Enc(M, pk_from) with an explicit blinding scalar b.
     let b = ScalarNonZero::random(&mut rng);
@@ -220,7 +220,7 @@ fn vectors_single_pseudonym(out: &mut String, ciphersuite: &Ciphersuite) {
 }
 
 /// A three-element batch in both modes, with the permutation drawn from the recorded seed.
-fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
+fn vectors_batch(out: &mut String) {
     let mut rng = rng_for(0x02);
 
     let pseudo_secret =
@@ -255,7 +255,7 @@ fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
     let identifiers: [&[u8]; 3] = [b"patient-1", b"patient-2", b"patient-3"];
     let mut pseudonyms = Vec::new();
     for (i, id) in identifiers.iter().enumerate() {
-        let m = hash_to_group_in(id, ciphersuite);
+        let m = hash_to_group::<Ristretto255>(id);
         let b = ScalarNonZero::random(&mut rng);
         let c = ElGamal {
             gb: b * G,
@@ -298,7 +298,7 @@ fn vectors_batch(out: &mut String, ciphersuite: &Ciphersuite) {
         let p = c.value().gc - sk_to.value() * c.value().gb;
         put(out, &format!("PseudonymP_{i}"), &p.to_hex());
         let source = (0..3)
-            .find(|&j| s * hash_to_group_in(identifiers[j], ciphersuite) == p)
+            .find(|&j| s * hash_to_group::<Ristretto255>(identifiers[j]) == p)
             .expect("every output pseudonym comes from one of the inputs");
         permutation.push(source.to_string());
     }
@@ -397,7 +397,7 @@ fn vectors_session_key_share(out: &mut String) {
 
 /// Build the whole vectors file.
 fn generate() -> String {
-    let ciphersuite = Ciphersuite::current();
+    let ciphersuite = Ristretto255::CIPHERSUITE;
 
     let mut out = String::new();
     out.push_str("# Test vectors for draft-doesburg-cfrg-coprf-00, ristretto255-SHA512.\n");
@@ -426,9 +426,9 @@ fn generate() -> String {
     out.push_str("## DeriveFactor\n\n");
     vectors_derive_factor(&mut out);
     out.push_str("\n## Single pseudonym\n\n");
-    vectors_single_pseudonym(&mut out, &ciphersuite);
+    vectors_single_pseudonym(&mut out);
     out.push_str("\n## Batch of three\n\n");
-    vectors_batch(&mut out, &ciphersuite);
+    vectors_batch(&mut out);
     out.push_str("\n## Session key share\n\n");
     vectors_session_key_share(&mut out);
 
