@@ -23,13 +23,12 @@
 //! and Element below is identical under both encodings; only the ciphertexts differ.
 //!
 //! The vectors also assume the draft's `DeriveFactor`, so the test is compiled out under the
-//! `legacy` and `hmac-derivation` features, which select other factor derivations.
+//! `legacy` feature, which selects the PEP repository's derivation instead.
 
 #![cfg(all(
     feature = "batch",
     feature = "verifiable",
     not(feature = "legacy"),
-    not(feature = "hmac-derivation"),
     not(feature = "elgamal3")
 ))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
