@@ -9,7 +9,7 @@
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
 //!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
 //!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
-//!   [ciphersuite](crate::elgamal::arithmetic::ciphersuite::Ciphersuite::current). A factor that is 0 or 1 is rejected
+//!   the group's [ciphersuite](crate::elgamal::arithmetic::Group::CIPHERSUITE). A factor that is 0 or 1 is rejected
 //!   and the derivation retried with the next counter.
 //! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier,
 //!   the derivation of libpep 0.13.
@@ -61,9 +61,9 @@ pub fn make_pseudonymisation_factor(
 mod tests {
     use super::generic::make_factor;
     use super::*;
-    use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
-    use crate::elgamal::arithmetic::hashing::hash_to_scalar;
+    use crate::elgamal::arithmetic::hashing::hash_to_scalar_with_dst;
     use crate::elgamal::arithmetic::scalars::ScalarTraits;
+    use crate::elgamal::arithmetic::Group;
     use crate::factors::secrets::Secret;
 
     #[test]
@@ -97,8 +97,9 @@ mod tests {
         input.extend_from_slice(&(id.len() as u16).to_be_bytes());
         input.extend_from_slice(id);
         input.push(0u8);
-        let dst = Ciphersuite::current().dst(b"DeriveFactor-");
-        let expected = hash_to_scalar(&input, &dst);
+        let dst = Ristretto255::CIPHERSUITE.dst(b"DeriveFactor-");
+        assert_eq!(dst, b"DeriveFactor-coPRFV1-ristretto255-SHA512");
+        let expected = hash_to_scalar_with_dst(&input, &dst);
         assert_eq!(
             make_factor::<Ristretto255>(LABEL_REKEY_PSEUDONYM, &secret, id).to_bytes(),
             expected.to_bytes()

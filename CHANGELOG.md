@@ -29,11 +29,12 @@ a major change against the published 0.13.0.
   `hmac-derivation` feature (mutually exclusive with `legacy`). The `legacy` derivation is
   unchanged.
 - A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
-  `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. It is fixed for a build, not
-  a parameter: `Ciphersuite::current()` is the one this crate implements, and factor derivation
-  uses it internally. It is passed explicitly only to `hashing::hash_to_group_in`, the one hash
-  that takes no secret and where the `"coPRFV1-"` prefix is what separates a pseudonym from an
-  RFC 9497 OPRF evaluation of the same identifier on the same group. `Transcryptor::new`,
+  `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
+  *and* a hash (`ristretto255-SHA512`), so it belongs to the group: it is the associated constant
+  `Group::CIPHERSUITE`, taken verbatim from the draft's ciphersuite table, and cannot be
+  constructed from an arbitrary string. One group's identifier therefore cannot be paired with
+  another group's operations. The type is `Copy` and const-constructible, and its context string
+  is a `&'static [u8]`, so neither factor derivation nor hashing allocates to build it. `Transcryptor::new`,
   `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
   `make_*session_keys` take no ciphersuite, in Rust or in the bindings: the transcryptor secret is
   already part of the derivation's hash input, so deployments with different secrets derive
@@ -103,20 +104,21 @@ a major change against the published 0.13.0.
   only.
 
 - `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
-  SHA-512 test vectors), `hash_to_group` (`hash_to_ristretto255` with SHA-512) and
-  `hash_to_scalar` (RFC 9497 `HashToScalar`), cross-checked against the RFC 9497
-  ristretto255-SHA512 test vectors.
-- `elgamal::arithmetic::hashing::hash_to_group_in(x, &Ciphersuite)`: the `hash_to_group` encoding
-  of draft-doesburg-cfrg-coprf, with DST `"HashToGroup-" || contextString`, alongside the raw-tag
-  `hash_to_group`. Its docs state the property every encoding must have (no known discrete-log
-  relations; encoding `x` as `x * G` is forbidden) and why this is the one hash that takes a
-  ciphersuite explicitly: no secret enters it. The invertible lizard encoding stays on
+  SHA-512 test vectors), and the raw-tag `hash_to_group_with_dst` (`hash_to_ristretto255` with
+  SHA-512) and `hash_to_scalar_with_dst` (RFC 9497 `HashToScalar`), cross-checked against the
+  RFC 9497 ristretto255-SHA512 test vectors.
+- `elgamal::arithmetic::hashing::hash_to_group::<G>(x)`: the `hash_to_group` encoding of
+  draft-doesburg-cfrg-coprf, with DST `"HashToGroup-" || contextString` derived from
+  `G::CIPHERSUITE`. Its docs state the property every encoding must have (no known discrete-log
+  relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret
+  enters this hash. The invertible lizard encoding stays on
   `GroupElement::from_lizard`/`to_lizard`, reachable generically through `InvertibleEncoding`.
-- `elgamal::arithmetic::Ciphersuite`, with `context_string()` (the spec's name for the value) and
-  `dst()`, and `Ciphersuite::current()`, the ciphersuite this crate implements.
+- `elgamal::arithmetic::Ciphersuite`, with `identifier()`, `context_string()` (the spec's name for
+  the value) and `dst()`, reached through `Group::CIPHERSUITE` and built with the `ciphersuite!`
+  macro so that the identifier appears once.
 - Python: `libpep.elgamal.arithmetic.ciphersuite` (`Ciphersuite`) and
   `libpep.elgamal.arithmetic.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
-  `hash_to_group_in`, `hash_to_scalar`). JavaScript: `Ciphersuite`, `hashToGroup`,
+  `hash_to_group_with_dst`, `hash_to_scalar_with_dst`). JavaScript: `Ciphersuite`, `hashToGroup`,
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.

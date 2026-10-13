@@ -24,12 +24,11 @@ test('Context string', () => {
     const ctx = Ciphersuite.current();
     expect(Buffer.from(ctx.identifier).toString()).toBe("ristretto255-SHA512");
     expect(Buffer.from(ctx.contextString())).toEqual(Buffer.from("coPRFV1-ristretto255-SHA512", "latin1"));
-    expect(ctx.equals(new Ciphersuite("ristretto255-SHA512"))).toBe(true);
+    expect(ctx.toString()).toBe("coPRFV1-ristretto255-SHA512");
 
-    const custom = new Ciphersuite("my-deployment");
-    expect(Buffer.from(custom.contextString())).toEqual(Buffer.from("coPRFV1-my-deployment", "latin1"));
-    expect(custom.equals(Ciphersuite.current())).toBe(false);
-    expect(custom.toString()).toBe("coPRFV1-my-deployment");
+    // An identifier names a group and a hash together, so it comes from the group: the
+    // constructor takes nothing and yields the suite this build implements.
+    expect(new Ciphersuite().equals(ctx)).toBe(true);
 });
 
 test('Transcryptor takes no ciphersuite', () => {
@@ -52,11 +51,11 @@ test('expand_message_xmd RFC 9380 vector', () => {
 });
 
 test('hashToGroup uses the ciphersuite DST', () => {
-    const ctx = new Ciphersuite("my-deployment");
-    const dst = concat(utf8("HashToGroup-"), ctx.contextString());
-    expect(hashToGroup(utf8("patient-1"), ctx).toHex()).toBe(hashToGroupWithDst(utf8("patient-1"), dst).toHex());
-    expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroup(utf8("patient-1"), Ciphersuite.current()).toHex());
-    expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroup(utf8("patient-1"), ctx).toHex());
+    const dst = concat(utf8("HashToGroup-"), Ciphersuite.current().contextString());
+    expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroupWithDst(utf8("patient-1"), dst).toHex());
+    expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroup(utf8("patient-1")).toHex());
+    const otherDst = utf8("HashToGroup-coPRFV1-another-suite");
+    expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroupWithDst(utf8("patient-1"), otherDst).toHex());
     expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroup(utf8("patient-2")).toHex());
 
     const a = hashToScalarWithDst(utf8("msg"), utf8("dst-a"));

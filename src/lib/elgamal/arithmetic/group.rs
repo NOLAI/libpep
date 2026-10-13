@@ -21,6 +21,7 @@
 //! `M2 = a * M1` between origin identifiers survives in every pseudonymization domain. Encoding
 //! an identifier `x` as `x * G` is therefore forbidden.
 
+use super::ciphersuite::Ciphersuite;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
@@ -90,6 +91,17 @@ macro_rules! group_trait {
             const NE: usize;
             /// The length of a serialized scalar in bytes (`Ns` in RFC 9497).
             const NS: usize;
+
+            /// The ciphersuite this group and its hash form, whose identifier the protocol's
+            /// domain separation tags are built from.
+            ///
+            /// A ciphersuite identifier names a group *and* a hash, and this trait's
+            /// [`hash_to_group`](Self::hash_to_group) and
+            /// [`hash_to_scalar`](Self::hash_to_scalar) are written against one hash, so the
+            /// pair is fixed here. Build it with the
+            /// [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the draft's
+            /// ciphersuite table, verbatim.
+            const CIPHERSUITE: Ciphersuite;
 
             /// The order of the group, as a big-endian integer.
             fn order() -> &'static [u8];

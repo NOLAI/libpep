@@ -1,9 +1,9 @@
 //! Python bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
 
-use crate::elgamal::arithmetic::ciphersuite::{ciphersuite_or_current, PyCiphersuite};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
+use libpep::elgamal::arithmetic::Ristretto255;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -29,34 +29,34 @@ pub fn py_expand_message_xmd_sha512(
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag
-/// `dst`. Use `hash_to_group_in` to hash under a ciphersuite instead of a raw tag.
+/// `dst`. Use `hash_to_group` to hash under the ciphersuite's tag instead of a raw one.
 #[pyfunction]
-#[pyo3(name = "hash_to_group")]
-pub fn py_hash_to_group(msg: &[u8], dst: &[u8]) -> PyGroupElement {
-    hashing::hash_to_group(msg, dst).into()
+#[pyo3(name = "hash_to_group_with_dst")]
+pub fn py_hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> PyGroupElement {
+    hashing::hash_to_group_with_dst(msg, dst).into()
 }
 
 /// `HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain
 /// separation tag `dst`. The result can be zero.
 #[pyfunction]
-#[pyo3(name = "hash_to_scalar")]
-pub fn py_hash_to_scalar(msg: &[u8], dst: &[u8]) -> PyScalarCanBeZero {
-    hashing::hash_to_scalar(msg, dst).into()
+#[pyo3(name = "hash_to_scalar_with_dst")]
+pub fn py_hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> PyScalarCanBeZero {
+    hashing::hash_to_scalar_with_dst(msg, dst).into()
 }
 
 /// The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated
 /// with the ciphersuite (`"HashToGroup-" || contextString`). Not invertible; use
 /// `GroupElement.from_lizard` for an invertible encoding.
 #[pyfunction]
-#[pyo3(name = "hash_to_group_in", signature = (x, ciphersuite = None))]
-pub fn py_hash_to_group_in(x: &[u8], ciphersuite: Option<&PyCiphersuite>) -> PyGroupElement {
-    hashing::hash_to_group_in(x, &ciphersuite_or_current(ciphersuite)).into()
+#[pyo3(name = "hash_to_group")]
+pub fn py_hash_to_group(x: &[u8]) -> PyGroupElement {
+    hashing::hash_to_group::<Ristretto255>(x).into()
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_expand_message_xmd_sha512, m)?)?;
     m.add_function(wrap_pyfunction!(py_hash_to_group, m)?)?;
-    m.add_function(wrap_pyfunction!(py_hash_to_group_in, m)?)?;
-    m.add_function(wrap_pyfunction!(py_hash_to_scalar, m)?)?;
+    m.add_function(wrap_pyfunction!(py_hash_to_group_with_dst, m)?)?;
+    m.add_function(wrap_pyfunction!(py_hash_to_scalar_with_dst, m)?)?;
     Ok(())
 }

@@ -33,7 +33,8 @@
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
 //!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic), and
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars together with the
-//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built from.
+//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built
+//!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
 //!
 //! ## Groups
 //!

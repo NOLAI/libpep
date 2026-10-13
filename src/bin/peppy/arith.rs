@@ -2,10 +2,10 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::hashing::hash_to_group_in;
+use libpep::elgamal::arithmetic::hashing::hash_to_group;
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::elgamal::arithmetic::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 
@@ -71,7 +71,7 @@ pub fn run_point<R: Rng + CryptoRng>(cmd: Point, rng: &mut R, out: &mut Output) 
             let identifier = io::read_arg(&identifier)?;
             out.value(
                 "point",
-                hash_to_group_in(identifier.as_bytes(), &Ciphersuite::current()).to_hex(),
+                hash_to_group::<Ristretto255>(identifier.as_bytes()).to_hex(),
             );
         }
     }

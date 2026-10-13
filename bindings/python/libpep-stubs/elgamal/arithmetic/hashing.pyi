@@ -4,14 +4,14 @@ def expand_message_xmd_sha512(msg, dst, len_in_bytes):
     """`expand_message_xmd` of RFC 9380 with SHA-512: hash `msg` to `len_in_bytes` (at most 65535)"""
     ...
 
-def hash_to_group(msg, dst):
-    """`hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag"""
-    ...
-
-def hash_to_group_in(x, ciphersuite=None):
+def hash_to_group(x):
     """The hash_to_group encoding of an identifier: hash_to_ristretto255 (RFC 9380) domain-separated"""
     ...
 
-def hash_to_scalar(msg, dst):
+def hash_to_group_with_dst(msg, dst):
+    """`hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag"""
+    ...
+
+def hash_to_scalar_with_dst(msg, dst):
     """`HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain"""
     ...

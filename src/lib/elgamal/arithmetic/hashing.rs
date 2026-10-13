@@ -3,11 +3,14 @@
 //!
 //! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1: it hashes a message to
 //! any requested number of bytes under a label (`xmd` names the variant for block-based hashes
-//! such as SHA-512). Both functions below use it to produce the 64 uniform bytes they then map
-//! into the group or the scalar field. [`hash_to_group`] is
-//! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar`] is the
-//! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag; the
-//! protocol-level tags are assembled from a [`Ciphersuite`].
+//! such as SHA-512). The functions below use it to produce the 64 uniform bytes they then map
+//! into the group or the scalar field. [`hash_to_group_with_dst`] is
+//! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar_with_dst`] is the
+//! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag, which
+//! is what the RFC test vectors exercise.
+//!
+//! [`hash_to_group`] is the protocol-level encoding: it derives the tag from a group's
+//! [`Ciphersuite`](super::Ciphersuite) instead of taking one.
 //!
 //! [`GroupElement::from_hash`] and [`ScalarCanBeZero::from_hash`] remain the low-level
 //! primitives that map 64 uniform bytes to the group and to the scalar field.
@@ -15,7 +18,7 @@
 //! [RFC 9380]: https://www.rfc-editor.org/rfc/rfc9380
 //! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 
-use super::ciphersuite::Ciphersuite;
+use super::group::Group;
 use super::group_elements::GroupElement;
 use super::scalars::ScalarCanBeZero;
 use sha2::digest::common::BlockSizeUser;
@@ -115,14 +118,15 @@ pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
 /// `HashToGroup` of the ristretto255-SHA512 ciphersuite of RFC 9497: expand `msg` under `dst`
 /// to 64 bytes and apply the ristretto255 one-way map.
 ///
-/// `dst` is the complete domain separation tag, e.g. `"HashToGroup-" || contextString`.
+/// `dst` is the complete domain separation tag, e.g. `"HashToGroup-" || contextString`. To hash
+/// under a ciphersuite's tag instead of a raw one, use [`hash_to_group`].
 #[must_use]
-pub fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
+pub fn hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> GroupElement {
     GroupElement::from_hash(&expand_64(msg, dst))
 }
 
 /// Encode an input as a group element: `HashToGroup(x)` under the domain separation tag
-/// `"HashToGroup-" || contextString` of `ciphersuite`.
+/// `"HashToGroup-" || contextString` of `G`'s ciphersuite.
 ///
 /// This is the `hash_to_group` encoding of draft-doesburg-cfrg-coprf, the one encoding available
 /// on every ciphersuite. It is not invertible: the origin party recognizes a pseudonym as
@@ -132,9 +136,9 @@ pub fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
 /// Unlike factor derivation, **no secret enters this hash**, so the input alone determines the
 /// output and another protocol hashing the same input on the same group would get the same
 /// element. The ciphersuite's `"coPRFV1-"` prefix is therefore what separates a pseudonym here
-/// from an RFC 9497 OPRF evaluation of the same identifier on ristretto255, which is why this
-/// function takes an explicit [`Ciphersuite`] where the rest of the protocol uses
-/// [`Ciphersuite::current`] internally.
+/// from an RFC 9497 OPRF evaluation of the same identifier on ristretto255. The tag comes from
+/// [`G::CIPHERSUITE`](Group::CIPHERSUITE), so a group's identifier can never be paired with
+/// another group's operations.
 ///
 /// An input longer than 2^16 - 1 bytes is hashed with SHA-512 first, as the draft prescribes.
 ///
@@ -150,15 +154,15 @@ pub fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
 /// [`GroupElement::from_lizard`] does because inverting it would need a discrete logarithm; and
 /// [`GroupElement::random`] does trivially.
 #[must_use]
-pub fn hash_to_group_in(x: &[u8], ciphersuite: &Ciphersuite) -> GroupElement {
+pub fn hash_to_group<G: Group>(x: &[u8]) -> G::Element {
     /// Inputs longer than this are hashed with SHA-512 before hashing to the group.
     const MAX_HASH_INPUT: usize = u16::MAX as usize;
 
-    let dst = ciphersuite.dst(b"HashToGroup-");
+    let dst = G::CIPHERSUITE.dst(b"HashToGroup-");
     if x.len() > MAX_HASH_INPUT {
-        hash_to_group(&Sha512::digest(x), &dst)
+        G::hash_to_group(&Sha512::digest(x), &dst)
     } else {
-        hash_to_group(x, &dst)
+        G::hash_to_group(x, &dst)
     }
 }
 
@@ -167,8 +171,10 @@ pub fn hash_to_group_in(x: &[u8], ciphersuite: &Ciphersuite) -> GroupElement {
 ///
 /// `dst` is the complete domain separation tag, e.g. `"HashToScalar-" || contextString`. The
 /// result can be zero (with negligible probability); callers that need a non-zero scalar check.
+///
+/// Named for symmetry with [`hash_to_group_with_dst`]: both take a raw tag.
 #[must_use]
-pub fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> ScalarCanBeZero {
+pub fn hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> ScalarCanBeZero {
     ScalarCanBeZero::from_hash(&expand_64(msg, dst))
 }
 
@@ -177,6 +183,7 @@ pub fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> ScalarCanBeZero {
 mod tests {
     use super::*;
     use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+    use crate::elgamal::arithmetic::Ristretto255;
     use sha2::Sha256;
 
     fn q128() -> Vec<u8> {
@@ -314,7 +321,10 @@ mod tests {
             ),
         ];
         for (input, blinded) in cases {
-            assert_eq!((blind * hash_to_group(&input, dst)).to_hex(), blinded);
+            assert_eq!(
+                (blind * hash_to_group_with_dst(&input, dst)).to_hex(),
+                blinded
+            );
         }
     }
 
@@ -339,61 +349,84 @@ mod tests {
             ),
         ];
         for (dst, expected) in cases {
-            assert_eq!(hash_to_scalar(&derive_input, dst).to_hex(), expected);
+            assert_eq!(
+                hash_to_scalar_with_dst(&derive_input, dst).to_hex(),
+                expected
+            );
         }
     }
 
     #[test]
     fn domain_separation() {
-        assert_ne!(hash_to_group(b"x", b"a"), hash_to_group(b"x", b"b"));
-        assert_ne!(hash_to_scalar(b"x", b"a"), hash_to_scalar(b"x", b"b"));
-        assert_eq!(hash_to_group(b"x", b"a"), hash_to_group(b"x", b"a"));
-    }
-
-    #[test]
-    fn hash_to_group_in_is_deterministic_and_ciphersuite_specific() {
-        let cs = Ciphersuite::default();
-        assert_eq!(
-            hash_to_group_in(b"alice", &cs),
-            hash_to_group_in(b"alice", &cs)
+        assert_ne!(
+            hash_to_group_with_dst(b"x", b"a"),
+            hash_to_group_with_dst(b"x", b"b")
         );
         assert_ne!(
-            hash_to_group_in(b"alice", &cs),
-            hash_to_group_in(b"bob", &cs)
+            hash_to_scalar_with_dst(b"x", b"a"),
+            hash_to_scalar_with_dst(b"x", b"b")
+        );
+        assert_eq!(
+            hash_to_group_with_dst(b"x", b"a"),
+            hash_to_group_with_dst(b"x", b"a")
+        );
+    }
+
+    #[test]
+    fn hash_to_group_is_deterministic_and_input_specific() {
+        assert_eq!(
+            hash_to_group::<Ristretto255>(b"alice"),
+            hash_to_group::<Ristretto255>(b"alice")
         );
         assert_ne!(
-            hash_to_group_in(b"alice", &cs),
-            hash_to_group_in(b"alice", &Ciphersuite::new("other"))
+            hash_to_group::<Ristretto255>(b"alice"),
+            hash_to_group::<Ristretto255>(b"bob")
         );
     }
 
+    /// The tag carries the ciphersuite identifier, so a group whose identifier differed would
+    /// hash the same input to a different element. There is only one ciphersuite to instantiate
+    /// here, so this pins the tag the identifier produces rather than comparing two groups.
     #[test]
-    fn hash_to_group_in_uses_the_ciphersuite_dst() {
+    fn hash_to_group_is_separated_by_the_ciphersuite_identifier() {
+        let suite = Ristretto255::CIPHERSUITE;
         assert_eq!(
-            hash_to_group_in(b"alice", &Ciphersuite::default()),
-            hash_to_group(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
+            hash_to_group::<Ristretto255>(b"alice"),
+            hash_to_group_with_dst(b"alice", &suite.dst(b"HashToGroup-"))
+        );
+        assert_ne!(
+            hash_to_group::<Ristretto255>(b"alice"),
+            hash_to_group_with_dst(b"alice", b"HashToGroup-coPRFV1-another-suite")
         );
     }
 
     #[test]
-    fn hash_to_group_in_prehashes_long_inputs() {
-        let cs = Ciphersuite::default();
+    fn hash_to_group_uses_the_ciphersuite_dst() {
+        assert_eq!(
+            hash_to_group::<Ristretto255>(b"alice"),
+            hash_to_group_with_dst(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
+        );
+    }
+
+    #[test]
+    fn hash_to_group_prehashes_long_inputs() {
+        let dst = Ristretto255::CIPHERSUITE.dst(b"HashToGroup-");
         let max_input = u16::MAX as usize;
         let long = vec![7u8; max_input + 1];
         assert_eq!(
-            hash_to_group_in(&long, &cs),
-            hash_to_group(&Sha512::digest(&long), &cs.dst(b"HashToGroup-"))
+            hash_to_group::<Ristretto255>(&long),
+            hash_to_group_with_dst(&Sha512::digest(&long), &dst)
         );
         let max = vec![7u8; max_input];
         assert_eq!(
-            hash_to_group_in(&max, &cs),
-            hash_to_group(&max, &cs.dst(b"HashToGroup-"))
+            hash_to_group::<Ristretto255>(&max),
+            hash_to_group_with_dst(&max, &dst)
         );
     }
 
     #[test]
     fn hashed_elements_are_not_lizard_encodings() {
-        assert!(hash_to_group_in(b"alice", &Ciphersuite::default())
+        assert!(hash_to_group::<Ristretto255>(b"alice")
             .to_lizard()
             .is_none());
     }
