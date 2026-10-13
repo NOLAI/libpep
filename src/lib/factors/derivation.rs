@@ -47,12 +47,12 @@ pub fn make_attribute_rekey_factor(
     generic::make_attribute_rekey_factor::<Ristretto255>(secret, session)
 }
 
-/// Derive a pseudonymisation factor from a secret and a domain.
-pub fn make_pseudonymisation_factor(
+/// Derive a pseudonymization factor from a secret and a domain.
+pub fn make_pseudonymization_factor(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor {
-    generic::make_pseudonymisation_factor::<Ristretto255>(secret, domain)
+    generic::make_pseudonymization_factor::<Ristretto255>(secret, domain)
 }
 
 #[cfg(all(test, not(feature = "legacy")))]
@@ -63,6 +63,7 @@ mod tests {
     use crate::elgamal::arithmetic::scalars::ScalarTraits;
     use crate::elgamal::arithmetic::Group;
     use crate::factors::secrets::Secret;
+    use crate::factors::Factor;
 
     #[test]
     fn factors_are_deterministic_and_identifier_specific() {

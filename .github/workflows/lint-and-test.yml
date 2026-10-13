@@ -6,6 +6,20 @@ on:
       - '**'
 
 jobs:
+  semver-checks:
+    runs-on: ubuntu-latest
+    name: cargo semver-checks
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          # Check the core crate with the default feature set, plus elgamal3 and legacy.
+          # The binding crates are not published to crates.io.
+          package: libpep
+          feature-group: default-features
+          features: elgamal3,legacy,insecure
+
   lint:
     runs-on: ubuntu-latest
     strategy:

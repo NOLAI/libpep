@@ -1,6 +1,6 @@
 //! JSON structure descriptors and related operations.
 
-use super::data::generic::EncryptedPEPJSONValue;
+use super::data::generic::EncryptedPepJsonValue;
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
 #[cfg(feature = "serde")]
@@ -12,34 +12,43 @@ use thiserror::Error;
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum UnifyError {
     #[error("Cannot unify empty list of structures")]
+    /// There are no structures to unify.
     EmptyList,
 
     #[error("Incompatible structure types: {0:?} and {1:?}")]
-    IncompatibleTypes(JSONStructure, JSONStructure),
+    /// Two values have different types at the same position.
+    IncompatibleTypes(JsonStructure, JsonStructure),
 
     #[error("Arrays have different lengths: {0} and {1}")]
+    /// Two arrays at the same position have different lengths.
     ArrayLengthMismatch(usize, usize),
 
     #[error("Objects have different fields")]
+    /// Two objects at the same position have different fields.
     ObjectFieldMismatch,
 }
 
-/// Structure descriptor that describes the shape of an EncryptedPEPJSONValue without its actual encrypted data.
+/// Structure descriptor that describes the shape of an EncryptedPepJsonValue without its actual encrypted data.
 ///
 /// For `String` and `Pseudonym` variants, the number of blocks is included to allow
 /// comparing structures of values with different string lengths.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub enum JSONStructure {
+pub enum JsonStructure {
+    /// JSON `null`.
     Null,
+    /// A boolean.
     Bool,
+    /// A number.
     Number,
     /// String attribute with number of blocks
     String(usize),
     /// Pseudonym with number of blocks
     Pseudonym(usize),
-    Array(Vec<JSONStructure>),
-    Object(Vec<(String, JSONStructure)>),
+    /// An array, with the structure of every element.
+    Array(Vec<JsonStructure>),
+    /// An object, with the structure of every field in key order.
+    Object(Vec<(String, JsonStructure)>),
 }
 
 /// Unifies multiple JSON structures by taking the maximum block count for each field.
@@ -55,7 +64,7 @@ pub enum JSONStructure {
 ///
 /// # Returns
 ///
-/// Returns a unified `JSONStructure` where:
+/// Returns a unified `JsonStructure` where:
 /// - For `String` and `Pseudonym`: the maximum block count across all inputs
 /// - For `Array`: recursively unified element structures (all arrays must have same length)
 /// - For `Object`: recursively unified field structures (all objects must have same fields)
@@ -72,35 +81,35 @@ pub enum JSONStructure {
 /// # Example
 ///
 /// ```no_run
-/// use libpep::data::json::structure::{JSONStructure, unify_structures};
+/// use libpep::data::json::structure::{JsonStructure, unify_structures};
 ///
-/// let struct1 = JSONStructure::String(1);  // "hi"
-/// let struct2 = JSONStructure::String(2);  // "hello"
-/// let struct3 = JSONStructure::String(3);  // "hello world"
+/// let struct1 = JsonStructure::String(1);  // "hi"
+/// let struct2 = JsonStructure::String(2);  // "hello"
+/// let struct3 = JsonStructure::String(3);  // "hello world"
 ///
 /// let unified = unify_structures(&[struct1, struct2, struct3]).unwrap();
-/// assert_eq!(unified, JSONStructure::String(3));  // Maximum block count
+/// assert_eq!(unified, JsonStructure::String(3));  // Maximum block count
 /// ```
 ///
 /// ## Object Example
 ///
 /// ```no_run
-/// use libpep::data::json::structure::{JSONStructure, unify_structures};
+/// use libpep::data::json::structure::{JsonStructure, unify_structures};
 ///
-/// let obj1 = JSONStructure::Object(vec![
-///     ("name".to_string(), JSONStructure::String(1)),
-///     ("email".to_string(), JSONStructure::String(1)),
+/// let obj1 = JsonStructure::Object(vec![
+///     ("name".to_string(), JsonStructure::String(1)),
+///     ("email".to_string(), JsonStructure::String(1)),
 /// ]);
 ///
-/// let obj2 = JSONStructure::Object(vec![
-///     ("name".to_string(), JSONStructure::String(1)),
-///     ("email".to_string(), JSONStructure::String(3)),
+/// let obj2 = JsonStructure::Object(vec![
+///     ("name".to_string(), JsonStructure::String(1)),
+///     ("email".to_string(), JsonStructure::String(3)),
 /// ]);
 ///
 /// let unified = unify_structures(&[obj1, obj2]).unwrap();
 /// // Result: email field has 3 blocks (max of 1 and 3)
 /// ```
-pub fn unify_structures(structures: &[JSONStructure]) -> Result<JSONStructure, UnifyError> {
+pub fn unify_structures(structures: &[JsonStructure]) -> Result<JsonStructure, UnifyError> {
     if structures.is_empty() {
         return Err(UnifyError::EmptyList);
     }
@@ -120,27 +129,27 @@ pub fn unify_structures(structures: &[JSONStructure]) -> Result<JSONStructure, U
 
 /// Helper function to unify two structures.
 fn unify_two_structures(
-    s1: &JSONStructure,
-    s2: &JSONStructure,
-) -> Result<JSONStructure, UnifyError> {
+    s1: &JsonStructure,
+    s2: &JsonStructure,
+) -> Result<JsonStructure, UnifyError> {
     match (s1, s2) {
         // Primitives must match exactly
-        (JSONStructure::Null, JSONStructure::Null) => Ok(JSONStructure::Null),
-        (JSONStructure::Bool, JSONStructure::Bool) => Ok(JSONStructure::Bool),
-        (JSONStructure::Number, JSONStructure::Number) => Ok(JSONStructure::Number),
+        (JsonStructure::Null, JsonStructure::Null) => Ok(JsonStructure::Null),
+        (JsonStructure::Bool, JsonStructure::Bool) => Ok(JsonStructure::Bool),
+        (JsonStructure::Number, JsonStructure::Number) => Ok(JsonStructure::Number),
 
         // Strings: take maximum block count
-        (JSONStructure::String(n1), JSONStructure::String(n2)) => {
-            Ok(JSONStructure::String(*n1.max(n2)))
+        (JsonStructure::String(n1), JsonStructure::String(n2)) => {
+            Ok(JsonStructure::String(*n1.max(n2)))
         }
 
         // Pseudonyms: take maximum block count
-        (JSONStructure::Pseudonym(n1), JSONStructure::Pseudonym(n2)) => {
-            Ok(JSONStructure::Pseudonym(*n1.max(n2)))
+        (JsonStructure::Pseudonym(n1), JsonStructure::Pseudonym(n2)) => {
+            Ok(JsonStructure::Pseudonym(*n1.max(n2)))
         }
 
         // Arrays: must have same length, unify element-wise
-        (JSONStructure::Array(arr1), JSONStructure::Array(arr2)) => {
+        (JsonStructure::Array(arr1), JsonStructure::Array(arr2)) => {
             if arr1.len() != arr2.len() {
                 return Err(UnifyError::ArrayLengthMismatch(arr1.len(), arr2.len()));
             }
@@ -151,15 +160,15 @@ fn unify_two_structures(
                 .map(|(e1, e2)| unify_two_structures(e1, e2))
                 .collect();
 
-            Ok(JSONStructure::Array(unified_elements?))
+            Ok(JsonStructure::Array(unified_elements?))
         }
 
         // Objects: must have same fields, unify field-wise
-        (JSONStructure::Object(fields1), JSONStructure::Object(fields2)) => {
+        (JsonStructure::Object(fields1), JsonStructure::Object(fields2)) => {
             // Convert to HashMaps for easier lookup (using owned String keys)
-            let map1: HashMap<String, &JSONStructure> =
+            let map1: HashMap<String, &JsonStructure> =
                 fields1.iter().map(|(k, v)| (k.clone(), v)).collect();
-            let map2: HashMap<String, &JSONStructure> =
+            let map2: HashMap<String, &JsonStructure> =
                 fields2.iter().map(|(k, v)| (k.clone(), v)).collect();
 
             // Check that both objects have the same set of keys
@@ -181,7 +190,7 @@ fn unify_two_structures(
             // Sort fields to ensure consistent ordering
             unified_fields.sort_by(|a, b| a.0.cmp(&b.0));
 
-            Ok(JSONStructure::Object(unified_fields))
+            Ok(JsonStructure::Object(unified_fields))
         }
 
         // Incompatible types
@@ -189,28 +198,28 @@ fn unify_two_structures(
     }
 }
 
-/// Methods for extracting structure from EncryptedPEPJSONValue
-impl<G: InvertibleEncoding> EncryptedPEPJSONValue<G> {
-    /// Get the structure/shape of this EncryptedPEPJSONValue
-    pub fn structure(&self) -> JSONStructure {
+/// Methods for extracting structure from EncryptedPepJsonValue
+impl<G: InvertibleEncoding> EncryptedPepJsonValue<G> {
+    /// Get the structure/shape of this EncryptedPepJsonValue
+    pub fn structure(&self) -> JsonStructure {
         match self {
-            EncryptedPEPJSONValue::Null => JSONStructure::Null,
-            EncryptedPEPJSONValue::Bool(_) => JSONStructure::Bool,
-            EncryptedPEPJSONValue::Number(_) => JSONStructure::Number,
-            EncryptedPEPJSONValue::String(_enc) => JSONStructure::String(1),
-            EncryptedPEPJSONValue::LongString(enc) => JSONStructure::String(enc.len()),
-            EncryptedPEPJSONValue::Pseudonym(_enc) => JSONStructure::Pseudonym(1),
-            EncryptedPEPJSONValue::LongPseudonym(enc) => JSONStructure::Pseudonym(enc.len()),
-            EncryptedPEPJSONValue::Array(arr) => {
-                JSONStructure::Array(arr.iter().map(|item| item.structure()).collect())
+            EncryptedPepJsonValue::Null => JsonStructure::Null,
+            EncryptedPepJsonValue::Bool(_) => JsonStructure::Bool,
+            EncryptedPepJsonValue::Number(_) => JsonStructure::Number,
+            EncryptedPepJsonValue::String(_enc) => JsonStructure::String(1),
+            EncryptedPepJsonValue::LongString(enc) => JsonStructure::String(enc.len()),
+            EncryptedPepJsonValue::Pseudonym(_enc) => JsonStructure::Pseudonym(1),
+            EncryptedPepJsonValue::LongPseudonym(enc) => JsonStructure::Pseudonym(enc.len()),
+            EncryptedPepJsonValue::Array(arr) => {
+                JsonStructure::Array(arr.iter().map(|item| item.structure()).collect())
             }
-            EncryptedPEPJSONValue::Object(obj) => {
+            EncryptedPepJsonValue::Object(obj) => {
                 let mut fields: Vec<_> = obj
                     .iter()
                     .map(|(key, val)| (key.clone(), val.structure()))
                     .collect();
                 fields.sort_by(|a, b| a.0.cmp(&b.0));
-                JSONStructure::Object(fields)
+                JsonStructure::Object(fields)
             }
         }
     }
@@ -222,7 +231,7 @@ mod tests {
     use super::*;
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
-    use crate::data::json::data::PEPJSONValue;
+    use crate::data::json::data::PepJsonValue;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -263,13 +272,13 @@ mod tests {
             "name": "test",
             "count": 42
         });
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         let structure = encrypted.structure();
 
-        let expected = JSONStructure::Object(vec![
-            ("count".to_string(), JSONStructure::Number),
-            ("name".to_string(), JSONStructure::String(1)),
+        let expected = JsonStructure::Object(vec![
+            ("count".to_string(), JsonStructure::Number),
+            ("name".to_string(), JsonStructure::String(1)),
         ]);
 
         assert_eq!(structure, expected);
@@ -281,33 +290,33 @@ mod tests {
         let keys = make_test_keys();
 
         // Short string (1 block)
-        let short_pep = PEPJSONValue::from_value(&json!("hi"));
+        let short_pep = PepJsonValue::from_value(&json!("hi"));
         let short = encrypt(&short_pep, &keys.public(), &mut rng);
-        assert_eq!(short.structure(), JSONStructure::String(1));
+        assert_eq!(short.structure(), JsonStructure::String(1));
 
         // Longer string (multiple blocks - each block is 16 bytes)
-        let long_pep = PEPJSONValue::from_value(&json!(
+        let long_pep = PepJsonValue::from_value(&json!(
             "This is a longer string that will need multiple blocks"
         ));
         let long = encrypt(&long_pep, &keys.public(), &mut rng);
-        if let JSONStructure::String(blocks) = long.structure() {
+        if let JsonStructure::String(blocks) = long.structure() {
             assert!(blocks > 1);
         } else {
             panic!("Expected String structure");
         }
 
         // Primitives
-        let null_pep = PEPJSONValue::from_value(&json!(null));
+        let null_pep = PepJsonValue::from_value(&json!(null));
         let null = encrypt(&null_pep, &keys.public(), &mut rng);
-        assert_eq!(null.structure(), JSONStructure::Null);
+        assert_eq!(null.structure(), JsonStructure::Null);
 
-        let bool_pep = PEPJSONValue::from_value(&json!(true));
+        let bool_pep = PepJsonValue::from_value(&json!(true));
         let bool_val = encrypt(&bool_pep, &keys.public(), &mut rng);
-        assert_eq!(bool_val.structure(), JSONStructure::Bool);
+        assert_eq!(bool_val.structure(), JsonStructure::Bool);
 
-        let num_pep = PEPJSONValue::from_value(&json!(42));
+        let num_pep = PepJsonValue::from_value(&json!(42));
         let num = encrypt(&num_pep, &keys.public(), &mut rng);
-        assert_eq!(num.structure(), JSONStructure::Number);
+        assert_eq!(num.structure(), JsonStructure::Number);
     }
 
     #[test]
@@ -323,10 +332,10 @@ mod tests {
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         let structure = encrypted.structure();
 
-        let expected = JSONStructure::Object(vec![
-            ("age".to_string(), JSONStructure::Number),
-            ("id".to_string(), JSONStructure::Pseudonym(2)),
-            ("name".to_string(), JSONStructure::String(1)),
+        let expected = JsonStructure::Object(vec![
+            ("age".to_string(), JsonStructure::Number),
+            ("id".to_string(), JsonStructure::Pseudonym(2)),
+            ("name".to_string(), JsonStructure::String(1)),
         ]);
 
         assert_eq!(structure, expected);
@@ -338,17 +347,17 @@ mod tests {
         let keys = make_test_keys();
 
         // Two values with the same structure
-        let pep_value1 = PEPJSONValue::from_value(&json!({"name": "Alice", "age": 30}));
+        let pep_value1 = PepJsonValue::from_value(&json!({"name": "Alice", "age": 30}));
         let value1 = encrypt(&pep_value1, &keys.public(), &mut rng);
 
-        let pep_value2 = PEPJSONValue::from_value(&json!({"name": "Bob", "age": 25}));
+        let pep_value2 = PepJsonValue::from_value(&json!({"name": "Bob", "age": 25}));
         let value2 = encrypt(&pep_value2, &keys.public(), &mut rng);
 
         // Same structure (same string lengths map to same block counts)
         assert_eq!(value1.structure(), value2.structure());
 
         // Different structure (different string length)
-        let pep_value3 = PEPJSONValue::from_value(
+        let pep_value3 = PepJsonValue::from_value(
             &json!({"name": "A very long name that needs more blocks", "age": 25}),
         );
         let value3 = encrypt(&pep_value3, &keys.public(), &mut rng);
@@ -361,7 +370,7 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        let pep_value = PEPJSONValue::from_value(&json!({
+        let pep_value = PepJsonValue::from_value(&json!({
             "user": {
                 "name": "Alice",
                 "active": true
@@ -371,20 +380,20 @@ mod tests {
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         let structure = encrypted.structure();
 
-        let expected = JSONStructure::Object(vec![
+        let expected = JsonStructure::Object(vec![
             (
                 "scores".to_string(),
-                JSONStructure::Array(vec![
-                    JSONStructure::Number,
-                    JSONStructure::Number,
-                    JSONStructure::Number,
+                JsonStructure::Array(vec![
+                    JsonStructure::Number,
+                    JsonStructure::Number,
+                    JsonStructure::Number,
                 ]),
             ),
             (
                 "user".to_string(),
-                JSONStructure::Object(vec![
-                    ("active".to_string(), JSONStructure::Bool),
-                    ("name".to_string(), JSONStructure::String(1)),
+                JsonStructure::Object(vec![
+                    ("active".to_string(), JsonStructure::Bool),
+                    ("name".to_string(), JsonStructure::String(1)),
                 ]),
             ),
         ]);
@@ -392,7 +401,7 @@ mod tests {
         assert_eq!(structure, expected);
     }
 
-    /// Example showing what JSONStructure looks like when serialized
+    /// Example showing what JsonStructure looks like when serialized
     #[cfg(feature = "serde")]
     #[test]
     fn structure_serialization() {
@@ -423,86 +432,86 @@ mod tests {
         // }
 
         // Verify it can be deserialized back
-        let deserialized: JSONStructure = serde_json::from_str(&json_str).unwrap();
+        let deserialized: JsonStructure = serde_json::from_str(&json_str).unwrap();
         assert_eq!(structure, deserialized);
     }
 
     #[test]
     fn unify_strings_different_sizes() {
-        let s1 = JSONStructure::String(1);
-        let s2 = JSONStructure::String(2);
-        let s3 = JSONStructure::String(3);
+        let s1 = JsonStructure::String(1);
+        let s2 = JsonStructure::String(2);
+        let s3 = JsonStructure::String(3);
 
         let unified = unify_structures(&[s1, s2, s3]).unwrap();
-        assert_eq!(unified, JSONStructure::String(3));
+        assert_eq!(unified, JsonStructure::String(3));
     }
 
     #[test]
     fn unify_pseudonyms_different_sizes() {
-        let p1 = JSONStructure::Pseudonym(1);
-        let p2 = JSONStructure::Pseudonym(4);
-        let p3 = JSONStructure::Pseudonym(2);
+        let p1 = JsonStructure::Pseudonym(1);
+        let p2 = JsonStructure::Pseudonym(4);
+        let p3 = JsonStructure::Pseudonym(2);
 
         let unified = unify_structures(&[p1, p2, p3]).unwrap();
-        assert_eq!(unified, JSONStructure::Pseudonym(4));
+        assert_eq!(unified, JsonStructure::Pseudonym(4));
     }
 
     #[test]
     fn unify_primitives() {
-        let null_structures = vec![JSONStructure::Null, JSONStructure::Null];
+        let null_structures = vec![JsonStructure::Null, JsonStructure::Null];
         assert_eq!(
             unify_structures(&null_structures).unwrap(),
-            JSONStructure::Null
+            JsonStructure::Null
         );
 
-        let bool_structures = vec![JSONStructure::Bool, JSONStructure::Bool];
+        let bool_structures = vec![JsonStructure::Bool, JsonStructure::Bool];
         assert_eq!(
             unify_structures(&bool_structures).unwrap(),
-            JSONStructure::Bool
+            JsonStructure::Bool
         );
 
         let num_structures = vec![
-            JSONStructure::Number,
-            JSONStructure::Number,
-            JSONStructure::Number,
+            JsonStructure::Number,
+            JsonStructure::Number,
+            JsonStructure::Number,
         ];
         assert_eq!(
             unify_structures(&num_structures).unwrap(),
-            JSONStructure::Number
+            JsonStructure::Number
         );
     }
 
     #[test]
     fn unify_arrays() {
-        let arr1 = JSONStructure::Array(vec![JSONStructure::String(1), JSONStructure::Number]);
+        let arr1 = JsonStructure::Array(vec![JsonStructure::String(1), JsonStructure::Number]);
 
-        let arr2 = JSONStructure::Array(vec![JSONStructure::String(3), JSONStructure::Number]);
+        let arr2 = JsonStructure::Array(vec![JsonStructure::String(3), JsonStructure::Number]);
 
         let unified = unify_structures(&[arr1, arr2]).unwrap();
         assert_eq!(
             unified,
-            JSONStructure::Array(vec![JSONStructure::String(3), JSONStructure::Number,])
+            JsonStructure::Array(vec![JsonStructure::String(3), JsonStructure::Number,])
         );
     }
 
     #[test]
     fn unify_objects() {
-        let obj1 = JSONStructure::Object(vec![
-            ("name".to_string(), JSONStructure::String(1)),
-            ("email".to_string(), JSONStructure::String(1)),
+        let obj1 = JsonStructure::Object(vec![
+            ("name".to_string(), JsonStructure::String(1)),
+            ("email".to_string(), JsonStructure::String(1)),
         ]);
 
-        let obj2 = JSONStructure::Object(vec![
-            ("name".to_string(), JSONStructure::String(2)),
-            ("email".to_string(), JSONStructure::String(3)),
+        let obj2 = JsonStructure::Object(vec![
+            ("name".to_string(), JsonStructure::String(2)),
+            ("email".to_string(), JsonStructure::String(3)),
         ]);
 
         let unified = unify_structures(&[obj1, obj2]).unwrap();
 
         // Check that the unified structure has max block counts
-        let expected = JSONStructure::Object(vec![
-            ("email".to_string(), JSONStructure::String(3)),
-            ("name".to_string(), JSONStructure::String(2)),
+        let expected = JsonStructure::Object(vec![
+            ("email".to_string(), JsonStructure::String(3)),
+            ("name".to_string(), JsonStructure::String(2)),
         ]);
 
         assert_eq!(unified, expected);
@@ -510,37 +519,37 @@ mod tests {
 
     #[test]
     fn unify_nested_objects() {
-        let obj1 = JSONStructure::Object(vec![
+        let obj1 = JsonStructure::Object(vec![
             (
                 "user".to_string(),
-                JSONStructure::Object(vec![
-                    ("name".to_string(), JSONStructure::String(1)),
-                    ("id".to_string(), JSONStructure::Pseudonym(1)),
+                JsonStructure::Object(vec![
+                    ("name".to_string(), JsonStructure::String(1)),
+                    ("id".to_string(), JsonStructure::Pseudonym(1)),
                 ]),
             ),
-            ("count".to_string(), JSONStructure::Number),
+            ("count".to_string(), JsonStructure::Number),
         ]);
 
-        let obj2 = JSONStructure::Object(vec![
+        let obj2 = JsonStructure::Object(vec![
             (
                 "user".to_string(),
-                JSONStructure::Object(vec![
-                    ("name".to_string(), JSONStructure::String(3)),
-                    ("id".to_string(), JSONStructure::Pseudonym(2)),
+                JsonStructure::Object(vec![
+                    ("name".to_string(), JsonStructure::String(3)),
+                    ("id".to_string(), JsonStructure::Pseudonym(2)),
                 ]),
             ),
-            ("count".to_string(), JSONStructure::Number),
+            ("count".to_string(), JsonStructure::Number),
         ]);
 
         let unified = unify_structures(&[obj1, obj2]).unwrap();
 
-        let expected = JSONStructure::Object(vec![
-            ("count".to_string(), JSONStructure::Number),
+        let expected = JsonStructure::Object(vec![
+            ("count".to_string(), JsonStructure::Number),
             (
                 "user".to_string(),
-                JSONStructure::Object(vec![
-                    ("id".to_string(), JSONStructure::Pseudonym(2)),
-                    ("name".to_string(), JSONStructure::String(3)),
+                JsonStructure::Object(vec![
+                    ("id".to_string(), JsonStructure::Pseudonym(2)),
+                    ("name".to_string(), JsonStructure::String(3)),
                 ]),
             ),
         ]);
@@ -550,7 +559,7 @@ mod tests {
 
     #[test]
     fn unify_single_structure() {
-        let s = JSONStructure::String(5);
+        let s = JsonStructure::String(5);
         let unified = unify_structures(std::slice::from_ref(&s)).unwrap();
         assert_eq!(unified, s);
     }
@@ -563,8 +572,8 @@ mod tests {
 
     #[test]
     fn unify_incompatible_types_fails() {
-        let s1 = JSONStructure::String(1);
-        let s2 = JSONStructure::Number;
+        let s1 = JsonStructure::String(1);
+        let s2 = JsonStructure::Number;
 
         let result = unify_structures(&[s1, s2]);
         assert!(matches!(result, Err(UnifyError::IncompatibleTypes(_, _))));
@@ -572,8 +581,8 @@ mod tests {
 
     #[test]
     fn unify_arrays_different_lengths_fails() {
-        let arr1 = JSONStructure::Array(vec![JSONStructure::Number, JSONStructure::Number]);
-        let arr2 = JSONStructure::Array(vec![JSONStructure::Number]);
+        let arr1 = JsonStructure::Array(vec![JsonStructure::Number, JsonStructure::Number]);
+        let arr2 = JsonStructure::Array(vec![JsonStructure::Number]);
 
         let result = unify_structures(&[arr1, arr2]);
         assert!(matches!(result, Err(UnifyError::ArrayLengthMismatch(2, 1))));
@@ -581,9 +590,9 @@ mod tests {
 
     #[test]
     fn unify_objects_different_fields_fails() {
-        let obj1 = JSONStructure::Object(vec![("name".to_string(), JSONStructure::String(1))]);
+        let obj1 = JsonStructure::Object(vec![("name".to_string(), JsonStructure::String(1))]);
 
-        let obj2 = JSONStructure::Object(vec![("email".to_string(), JSONStructure::String(1))]);
+        let obj2 = JsonStructure::Object(vec![("email".to_string(), JsonStructure::String(1))]);
 
         let result = unify_structures(&[obj1, obj2]);
         assert!(matches!(result, Err(UnifyError::ObjectFieldMismatch)));
@@ -595,17 +604,17 @@ mod tests {
         let keys = make_test_keys();
 
         // Create three different user objects with varying string lengths
-        let user1 = PEPJSONValue::from_value(&json!({
+        let user1 = PepJsonValue::from_value(&json!({
             "name": "Alice",
             "email": "a@b.c"
         }));
 
-        let user2 = PEPJSONValue::from_value(&json!({
+        let user2 = PepJsonValue::from_value(&json!({
             "name": "Bob",
             "email": "bob@example.com"
         }));
 
-        let user3 = PEPJSONValue::from_value(&json!({
+        let user3 = PepJsonValue::from_value(&json!({
             "name": "Charlie Johnson",
             "email": "charlie.johnson@verylongdomain.example.com"
         }));
@@ -625,13 +634,13 @@ mod tests {
 
         // The unified structure should have the maximum block count for each field
         match unified {
-            JSONStructure::Object(fields) => {
+            JsonStructure::Object(fields) => {
                 // Find email and name fields
                 let email_struct = fields.iter().find(|(k, _)| k == "email").unwrap().1.clone();
                 let name_struct = fields.iter().find(|(k, _)| k == "name").unwrap().1.clone();
 
                 // Email should have the max blocks from all three users
-                if let JSONStructure::String(email_blocks) = email_struct {
+                if let JsonStructure::String(email_blocks) = email_struct {
                     // user3's email is the longest
                     assert!(email_blocks >= 2);
                 } else {
@@ -639,7 +648,7 @@ mod tests {
                 }
 
                 // Name should have the max blocks from all three users
-                if let JSONStructure::String(name_blocks) = name_struct {
+                if let JsonStructure::String(name_blocks) = name_struct {
                     // user3's name is the longest
                     assert!(name_blocks >= 1);
                 } else {

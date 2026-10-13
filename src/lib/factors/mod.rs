@@ -20,12 +20,12 @@ pub mod commitments;
 pub mod verifiable;
 
 pub use derivation::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
 pub use secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 pub use types::{
-    AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, RekeyFactor, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
+    AttributeRekeyFactor, AttributeRekeyInfo, Factor, PseudonymRekeyFactor, PseudonymRekeyInfo,
+    PseudonymizationInfo, RekeyPublicKey, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
 };
 
 #[cfg(feature = "verifiable")]

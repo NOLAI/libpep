@@ -1,7 +1,7 @@
 //! Python bindings for client types.
 
 #[cfg(all(feature = "offline", feature = "json"))]
-use crate::data::json::{PyEncryptedPEPJSONValue, PyPEPJSONValue};
+use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 #[cfg(all(feature = "offline", feature = "long"))]
 use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
@@ -77,7 +77,7 @@ impl PyOfflineClient {
         }
 
         Err(PyTypeError::new_err(
-            "encrypt() requires Pseudonym, Attribute, LongPseudonym, or LongAttribute, or PEPJSONValue",
+            "encrypt() requires Pseudonym, Attribute, LongPseudonym, or LongAttribute, or PepJsonValue",
         ))
     }
 
@@ -91,10 +91,8 @@ impl PyOfflineClient {
         // Try Vec<Pseudonym>
         if let Ok(ps) = messages.extract::<Vec<PyPseudonym>>() {
             let msgs: Vec<_> = ps.into_iter().map(|p| p.0).collect();
-            let result = self
-                .0
-                .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let result =
+                libpep::client::encrypt_global_batch(&msgs, &self.0.global_public_keys, &mut rng);
             let py_result: Vec<PyEncryptedPseudonym> =
                 result.into_iter().map(PyEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -103,10 +101,8 @@ impl PyOfflineClient {
         // Try Vec<Attribute>
         if let Ok(attrs) = messages.extract::<Vec<PyAttribute>>() {
             let msgs: Vec<_> = attrs.into_iter().map(|a| a.0).collect();
-            let result = self
-                .0
-                .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let result =
+                libpep::client::encrypt_global_batch(&msgs, &self.0.global_public_keys, &mut rng);
             let py_result: Vec<PyEncryptedAttribute> =
                 result.into_iter().map(PyEncryptedAttribute).collect();
             return py_result.into_py_any(py);
@@ -116,10 +112,8 @@ impl PyOfflineClient {
         #[cfg(feature = "long")]
         if let Ok(lps) = messages.extract::<Vec<PyLongPseudonym>>() {
             let msgs: Vec<_> = lps.into_iter().map(|p| p.0).collect();
-            let result = self
-                .0
-                .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let result =
+                libpep::client::encrypt_global_batch(&msgs, &self.0.global_public_keys, &mut rng);
             let py_result: Vec<PyLongEncryptedPseudonym> =
                 result.into_iter().map(PyLongEncryptedPseudonym).collect();
             return py_result.into_py_any(py);
@@ -129,30 +123,26 @@ impl PyOfflineClient {
         #[cfg(feature = "long")]
         if let Ok(las) = messages.extract::<Vec<PyLongAttribute>>() {
             let msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
-            let result = self
-                .0
-                .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            let result =
+                libpep::client::encrypt_global_batch(&msgs, &self.0.global_public_keys, &mut rng);
             let py_result: Vec<PyLongEncryptedAttribute> =
                 result.into_iter().map(PyLongEncryptedAttribute).collect();
             return py_result.into_py_any(py);
         }
 
-        // Try Vec<PEPJSONValue>
+        // Try Vec<PepJsonValue>
         #[cfg(feature = "json")]
-        if let Ok(jsons) = messages.extract::<Vec<PyPEPJSONValue>>() {
+        if let Ok(jsons) = messages.extract::<Vec<PyPepJsonValue>>() {
             let msgs: Vec<_> = jsons.into_iter().map(|j| j.0).collect();
-            let result = self
-                .0
-                .encrypt_batch(&msgs, &mut rng)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            let py_result: Vec<PyEncryptedPEPJSONValue> =
-                result.into_iter().map(PyEncryptedPEPJSONValue).collect();
+            let result =
+                libpep::client::encrypt_global_batch(&msgs, &self.0.global_public_keys, &mut rng);
+            let py_result: Vec<PyEncryptedPepJsonValue> =
+                result.into_iter().map(PyEncryptedPepJsonValue).collect();
             return py_result.into_py_any(py);
         }
 
         Err(PyTypeError::new_err(
-            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute], or Vec[PEPJSONValue]",
+            "encrypt_batch() requires Vec[Pseudonym], Vec[Attribute], Vec[LongPseudonym], or Vec[LongAttribute], or Vec[PepJsonValue]",
         ))
     }
 
@@ -177,13 +167,13 @@ impl PyOfflineClient {
         Ok(PyLongEncryptedRecord(result))
     }
 
-    /// Encrypt a PEPJSONValue using global public keys (offline mode).
+    /// Encrypt a PepJsonValue using global public keys (offline mode).
     #[cfg(feature = "json")]
     #[pyo3(name = "encrypt_json")]
-    fn py_encrypt_json(&self, value: &PyPEPJSONValue) -> PyResult<PyEncryptedPEPJSONValue> {
+    fn py_encrypt_json(&self, value: &PyPepJsonValue) -> PyResult<PyEncryptedPepJsonValue> {
         let mut rng = rand::rng();
         let result = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
-        Ok(PyEncryptedPEPJSONValue(result))
+        Ok(PyEncryptedPepJsonValue(result))
     }
 }
 

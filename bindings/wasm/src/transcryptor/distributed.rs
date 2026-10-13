@@ -46,13 +46,13 @@ impl WASMDistributedTranscryptor {
     ///.
     #[wasm_bindgen(constructor)]
     pub fn new(
-        pseudonymisation_secret: &str,
+        pseudonymization_secret: &str,
         rekeying_secret: &str,
         blinding_factor: &WASMBlindingFactor,
     ) -> Self {
         Self(DistributedTranscryptor::new(
-            PseudonymizationSecret::from(pseudonymisation_secret.as_bytes().into()),
-            EncryptionSecret::from(rekeying_secret.as_bytes().into()),
+            PseudonymizationSecret::from(pseudonymization_secret.as_bytes()),
+            EncryptionSecret::from(rekeying_secret.as_bytes()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
     }
@@ -280,7 +280,6 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMEncryptedAttribute::from)
             .collect())
@@ -307,7 +306,6 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMEncryptedAttribute::from)
             .collect())
@@ -331,7 +329,6 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMEncryptedPseudonym::from)
             .collect())
@@ -358,7 +355,6 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMEncryptedPseudonym::from)
             .collect())
@@ -451,9 +447,7 @@ impl WASMDistributedTranscryptor {
         let mut rng = rand::rng();
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
-        batch
-            .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
@@ -474,9 +468,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<LongEncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         let mut batch = EncryptedBatch::new(items, pk).map_err(batch_err_to_js)?;
-        batch
-            .rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.rekey(&AttributeRekeyInfo::from(rekey_info), &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
@@ -503,7 +495,6 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
             .collect())
@@ -531,92 +522,89 @@ impl WASMDistributedTranscryptor {
             )
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
-            .into_vec()
             .into_iter()
             .map(WASMLongEncryptedPseudonym::from)
             .collect())
     }
 
     #[cfg(feature = "elgamal3")]
-    /// Transcrypt an EncryptedPEPJSONValue from one context to another.
+    /// Transcrypt an EncryptedPepJsonValue from one context to another.
     ///
     /// # Arguments
     ///
-    /// * `encrypted` - The EncryptedPEPJSONValue to transcrypt
+    /// * `encrypted` - The EncryptedPepJsonValue to transcrypt
     /// * `transcryption_info` - The transcryption information
     ///
     /// # Returns
     ///
-    /// A transcrypted EncryptedPEPJSONValue
+    /// A transcrypted EncryptedPepJsonValue
     #[cfg(feature = "json")]
     #[wasm_bindgen(js_name = transcryptJSON)]
     pub fn transcrypt_json(
         &self,
-        encrypted: &crate::data::json::WASMEncryptedPEPJSONValue,
+        encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
-    ) -> crate::data::json::WASMEncryptedPEPJSONValue {
+    ) -> crate::data::json::WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0, &mut rng);
-        crate::data::json::WASMEncryptedPEPJSONValue(transcrypted)
+        crate::data::json::WASMEncryptedPepJsonValue(transcrypted)
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    /// Transcrypt an EncryptedPEPJSONValue from one context to another.
+    /// Transcrypt an EncryptedPepJsonValue from one context to another.
     ///
     /// # Arguments
     ///
-    /// * `encrypted` - The EncryptedPEPJSONValue to transcrypt
+    /// * `encrypted` - The EncryptedPepJsonValue to transcrypt
     /// * `transcryption_info` - The transcryption information
     ///
     /// # Returns
     ///
-    /// A transcrypted EncryptedPEPJSONValue
+    /// A transcrypted EncryptedPepJsonValue
     #[cfg(all(feature = "json", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = transcryptJSON)]
     pub fn transcrypt_json(
         &self,
-        encrypted: &crate::data::json::WASMEncryptedPEPJSONValue,
+        encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
-    ) -> crate::data::json::WASMEncryptedPEPJSONValue {
+    ) -> crate::data::json::WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0, &mut rng);
-        crate::data::json::WASMEncryptedPEPJSONValue(transcrypted)
+        crate::data::json::WASMEncryptedPepJsonValue(transcrypted)
     }
 
     #[cfg(all(feature = "json", not(feature = "elgamal3")))]
     #[wasm_bindgen(js_name = transcryptJSON)]
     pub fn transcrypt_json(
         &self,
-        encrypted: &crate::data::json::WASMEncryptedPEPJSONValue,
+        encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
         public_key: &WASMSessionPublicKeys,
-    ) -> crate::data::json::WASMEncryptedPEPJSONValue {
+    ) -> crate::data::json::WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let pk = libpep::keys::SessionPublicKeys::from(public_key);
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0, &pk, &mut rng);
-        crate::data::json::WASMEncryptedPEPJSONValue(transcrypted)
+        crate::data::json::WASMEncryptedPepJsonValue(transcrypted)
     }
 
     #[cfg(feature = "elgamal3")]
-    /// Transcrypt a batch of EncryptedPEPJSONValues and shuffle their order.
+    /// Transcrypt a batch of EncryptedPepJsonValues and shuffle their order.
     #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
     #[wasm_bindgen(js_name = transcryptJSONBatch)]
     pub fn transcrypt_json_batch(
         &self,
-        values: Vec<crate::data::json::WASMEncryptedPEPJSONValue>,
+        values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
-    ) -> Result<Vec<crate::data::json::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<crate::data::json::WASMEncryptedPepJsonValue>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
-            .map(crate::data::json::WASMEncryptedPEPJSONValue)
+            .map(crate::data::json::WASMEncryptedPepJsonValue)
             .collect())
     }
 
@@ -624,23 +612,21 @@ impl WASMDistributedTranscryptor {
     #[wasm_bindgen(js_name = transcryptJSONBatch)]
     pub fn transcrypt_json_batch(
         &self,
-        values: Vec<crate::data::json::WASMEncryptedPEPJSONValue>,
+        values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
         session_keys: &crate::keys::types::WASMSessionKeys,
-    ) -> Result<Vec<crate::data::json::WASMEncryptedPEPJSONValue>, wasm_bindgen::JsValue> {
+    ) -> Result<Vec<crate::data::json::WASMEncryptedPepJsonValue>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
-            .map(crate::data::json::WASMEncryptedPEPJSONValue)
+            .map(crate::data::json::WASMEncryptedPepJsonValue)
             .collect())
     }
 
@@ -729,9 +715,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
@@ -754,9 +738,7 @@ impl WASMDistributedTranscryptor {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
@@ -778,9 +760,7 @@ impl WASMDistributedTranscryptor {
         let items: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()
@@ -803,9 +783,7 @@ impl WASMDistributedTranscryptor {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
-        batch
-            .transcrypt(&transcryption_info.0, &mut rng)
-            .map_err(batch_err_to_js)?;
+        batch.transcrypt(&transcryption_info.0, &mut rng);
         Ok(batch
             .into_items()
             .into_iter()

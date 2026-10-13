@@ -1,4 +1,4 @@
-//! Builder pattern for constructing PEPJSONValue objects.
+//! Builder pattern for constructing PepJsonValue objects.
 //!
 //! The builder is generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
 //! the name in this module is its ristretto255 instance.
@@ -7,8 +7,8 @@ pub mod generic;
 
 use crate::elgamal::arithmetic::Ristretto255;
 
-/// The [`PEPJSONBuilder`](generic::PEPJSONBuilder) over ristretto255.
-pub type PEPJSONBuilder = generic::PEPJSONBuilder<Ristretto255>;
+/// The [`PepJsonBuilder`](generic::PepJsonBuilder) over ristretto255.
+pub type PepJsonBuilder = generic::PepJsonBuilder<Ristretto255>;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
@@ -16,7 +16,7 @@ mod tests {
     use super::*;
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
-    use crate::data::json::data::PEPJSONValue;
+    use crate::data::json::data::PepJsonValue;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -53,7 +53,7 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        let pep_value = PEPJSONBuilder::new()
+        let pep_value = PepJsonBuilder::new()
             .pseudonym("id", "user1@example.com")
             .attribute("age", json!(16))
             .attribute("verified", json!(true))
@@ -82,7 +82,7 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        let pep_value = PEPJSONBuilder::new().build();
+        let pep_value = PepJsonBuilder::new().build();
 
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
@@ -99,7 +99,7 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        let pep_value = PEPJSONBuilder::new()
+        let pep_value = PepJsonBuilder::new()
             .attribute("name", json!("Alice"))
             .attribute("age", json!(30))
             .build();
@@ -124,7 +124,7 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        let pep_value = PEPJSONBuilder::new()
+        let pep_value = PepJsonBuilder::new()
             .pseudonym("id1", "user1@example.com")
             .pseudonym("id2", "user2@example.com")
             .build();
@@ -156,7 +156,7 @@ mod tests {
             "verified": true
         });
 
-        let pep_value = PEPJSONBuilder::from_json(&data, &["id"]).unwrap().build();
+        let pep_value = PepJsonBuilder::from_json(&data, &["id"]).unwrap().build();
 
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
@@ -180,7 +180,7 @@ mod tests {
             "age": 30
         });
 
-        let pep_value = PEPJSONBuilder::from_json(&data, &["user_id", "email"])
+        let pep_value = PepJsonBuilder::from_json(&data, &["user_id", "email"])
             .unwrap()
             .build();
 
@@ -205,7 +205,7 @@ mod tests {
             "scores": [88, 91, 85]
         });
 
-        let pep_value = PEPJSONBuilder::from_json(&data, &[]).unwrap().build();
+        let pep_value = PepJsonBuilder::from_json(&data, &[]).unwrap().build();
 
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
@@ -221,22 +221,22 @@ mod tests {
     fn from_json_empty_object() {
         let data = json!({});
 
-        let pep_value = PEPJSONBuilder::from_json(&data, &[]).unwrap().build();
+        let pep_value = PepJsonBuilder::from_json(&data, &[]).unwrap().build();
 
         // Just verify it can be built
-        assert!(matches!(pep_value, PEPJSONValue::Object(_)));
+        assert!(matches!(pep_value, PepJsonValue::Object(_)));
     }
 
     #[test]
     fn from_json_non_object_returns_none() {
         let data = json!([1, 2, 3]);
-        assert!(PEPJSONBuilder::from_json(&data, &[]).is_none());
+        assert!(PepJsonBuilder::from_json(&data, &[]).is_none());
 
         let data = json!("string");
-        assert!(PEPJSONBuilder::from_json(&data, &[]).is_none());
+        assert!(PepJsonBuilder::from_json(&data, &[]).is_none());
 
         let data = json!(42);
-        assert!(PEPJSONBuilder::from_json(&data, &[]).is_none());
+        assert!(PepJsonBuilder::from_json(&data, &[]).is_none());
     }
 
     #[test]
@@ -247,6 +247,6 @@ mod tests {
         });
 
         // "id" should be a pseudonym but it's not a string
-        assert!(PEPJSONBuilder::from_json(&data, &["id"]).is_none());
+        assert!(PepJsonBuilder::from_json(&data, &["id"]).is_none());
     }
 }

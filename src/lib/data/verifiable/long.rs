@@ -9,10 +9,11 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::factors::RekeyPublicKey;
 use rand_core::{CryptoRng, Rng};
 
 /// Proof of a verifiable pseudonymization of a [`LongEncryptedPseudonym`](type@LongEncryptedPseudonym).
-#[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
@@ -20,9 +21,9 @@ pub struct LongPseudonymPseudonymizationProof(
     pub Vec<crate::data::verifiable::simple::PseudonymPseudonymizationProof>,
 );
 
-#[cfg(feature = "verifiable")]
 impl LongPseudonymPseudonymizationProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &LongEncryptedPseudonym,
@@ -38,6 +39,8 @@ impl LongPseudonymPseudonymizationProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &LongEncryptedPseudonym,
@@ -54,6 +57,8 @@ impl LongPseudonymPseudonymizationProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedPseudonym,
@@ -72,6 +77,8 @@ impl LongPseudonymPseudonymizationProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedPseudonym,
@@ -91,12 +98,13 @@ impl LongPseudonymPseudonymizationProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self) -> LongEncryptedPseudonym {
         LongEncryptedPseudonym(self.0.iter().map(|p| p.unverified_reconstruct()).collect())
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiablePseudonymizationProof for LongPseudonymPseudonymizationProof {
     type DataType = LongEncryptedPseudonym;
     type Output = LongEncryptedPseudonym;
@@ -146,14 +154,13 @@ impl VerifiablePseudonymizationProof for LongPseudonymPseudonymizationProof {
 }
 
 /// Proof of a verifiable rekey of a [`LongEncryptedPseudonym`](type@LongEncryptedPseudonym).
-#[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct LongPseudonymRekeyProof(pub Vec<crate::data::verifiable::simple::PseudonymRekeyProof>);
 
-#[cfg(feature = "verifiable")]
 impl LongPseudonymRekeyProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &LongEncryptedPseudonym,
@@ -168,6 +175,8 @@ impl LongPseudonymRekeyProof {
             .all(|(p, block)| p.verify(block, commitments))
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedPseudonym,
@@ -186,6 +195,8 @@ impl LongPseudonymRekeyProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(
         &self,
         original: &LongEncryptedPseudonym,
@@ -200,7 +211,6 @@ impl LongPseudonymRekeyProof {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableRekeyProof for LongPseudonymRekeyProof {
     type DataType = LongEncryptedPseudonym;
     type Output = LongEncryptedPseudonym;
@@ -228,14 +238,13 @@ impl VerifiableRekeyProof for LongPseudonymRekeyProof {
 }
 
 /// Proof of a verifiable rekey of a [`LongEncryptedAttribute`](type@LongEncryptedAttribute).
-#[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct LongAttributeRekeyProof(pub Vec<crate::data::verifiable::simple::AttributeRekeyProof>);
 
-#[cfg(feature = "verifiable")]
 impl LongAttributeRekeyProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &LongEncryptedAttribute,
@@ -250,6 +259,8 @@ impl LongAttributeRekeyProof {
             .all(|(p, block)| p.verify(block, commitments))
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &LongEncryptedAttribute,
@@ -268,6 +279,8 @@ impl LongAttributeRekeyProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(
         &self,
         original: &LongEncryptedAttribute,
@@ -282,7 +295,6 @@ impl LongAttributeRekeyProof {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableRekeyProof for LongAttributeRekeyProof {
     type DataType = LongEncryptedAttribute;
     type Output = LongEncryptedAttribute;
@@ -309,7 +321,6 @@ impl VerifiableRekeyProof for LongAttributeRekeyProof {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiablePseudonymizable for LongEncryptedPseudonym {
     type PseudonymizationProof = LongPseudonymPseudonymizationProof;
 
@@ -349,7 +360,6 @@ impl VerifiablePseudonymizable for LongEncryptedPseudonym {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableRekeyable for LongEncryptedPseudonym {
     type RekeyProof = LongPseudonymRekeyProof;
 
@@ -367,7 +377,6 @@ impl VerifiableRekeyable for LongEncryptedPseudonym {
     }
 }
 
-#[cfg(feature = "verifiable")]
 impl VerifiableRekeyable for LongEncryptedAttribute {
     type RekeyProof = LongAttributeRekeyProof;
 
@@ -386,7 +395,7 @@ impl VerifiableRekeyable for LongEncryptedAttribute {
 }
 /// Proof of a verifiable batch pseudonymization of an
 /// `EncryptedBatch<LongEncryptedPseudonym>`.
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
@@ -394,9 +403,10 @@ pub struct LongPseudonymPseudonymizationBatchProof(
     pub crate::elgamal::verifiable::VerifiableRRSKBatch,
 );
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl LongPseudonymPseudonymizationBatchProof {
     #[cfg(feature = "elgamal3")]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -415,6 +425,8 @@ impl LongPseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -453,6 +465,8 @@ impl LongPseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -488,6 +502,7 @@ impl LongPseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(feature = "elgamal3")]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -498,6 +513,7 @@ impl LongPseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -519,7 +535,7 @@ impl LongPseudonymPseudonymizationBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl VerifiablePseudonymizationProof for LongPseudonymPseudonymizationBatchProof {
     type DataType = crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>;
     type Output = Vec<LongEncryptedPseudonym>;
@@ -570,14 +586,15 @@ impl VerifiablePseudonymizationProof for LongPseudonymPseudonymizationBatchProof
 
 /// Proof of a verifiable batch rekey of an
 /// `EncryptedBatch<LongEncryptedPseudonym>`.
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct LongPseudonymRekeyBatchProof(pub crate::elgamal::verifiable::VerifiableRekeyBatch);
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl LongPseudonymRekeyBatchProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -624,6 +641,7 @@ impl LongPseudonymRekeyBatchProof {
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>,
@@ -644,7 +662,7 @@ impl LongPseudonymRekeyBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl VerifiableRekeyProof for LongPseudonymRekeyBatchProof {
     type DataType = crate::data::batch::EncryptedBatch<LongEncryptedPseudonym>;
     type Output = Vec<LongEncryptedPseudonym>;
@@ -673,14 +691,15 @@ impl VerifiableRekeyProof for LongPseudonymRekeyBatchProof {
 
 /// Proof of a verifiable batch rekey of an
 /// `EncryptedBatch<LongEncryptedAttribute>`.
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct LongAttributeRekeyBatchProof(pub crate::elgamal::verifiable::VerifiableRekeyBatch);
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl LongAttributeRekeyBatchProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedAttribute>,
@@ -690,6 +709,8 @@ impl LongAttributeRekeyBatchProof {
         self.0.verify(&originals, &commitments.commitment)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedAttribute>,
@@ -723,6 +744,7 @@ impl LongAttributeRekeyBatchProof {
     }
 
     #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<LongEncryptedAttribute>,
@@ -743,7 +765,7 @@ impl LongAttributeRekeyBatchProof {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 impl VerifiableRekeyProof for LongAttributeRekeyBatchProof {
     type DataType = crate::data::batch::EncryptedBatch<LongEncryptedAttribute>;
     type Output = Vec<LongEncryptedAttribute>;
@@ -770,12 +792,7 @@ impl VerifiableRekeyProof for LongAttributeRekeyBatchProof {
     }
 }
 
-#[cfg(all(
-    feature = "batch",
-    feature = "verifiable",
-    not(feature = "elgamal3"),
-    feature = "batch-pk"
-))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
     /// Verifiably pseudonymize the batch and return a hoisted
     /// [`LongPseudonymPseudonymizationBatchProof`].
@@ -794,7 +811,7 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
             &originals, &gy, &info.s.0, &info.k.0, rng,
         );
         self.items = rebuild_long_pseudonyms_from_rrsk(&block_counts, &proof);
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         LongPseudonymPseudonymizationBatchProof(proof)
     }
 
@@ -811,14 +828,13 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
         let proof =
             crate::elgamal::verifiable::VerifiableRekeyBatch::new(&originals, &info.k.0, rng);
         self.items = rebuild_long_pseudonyms_from_rekey(&block_counts, &originals, &proof.inners);
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         LongPseudonymRekeyBatchProof(proof)
     }
 }
 
 #[cfg(all(
     feature = "batch",
-    feature = "verifiable",
     not(feature = "elgamal3"),
     not(feature = "batch-pk")
 ))]
@@ -861,7 +877,7 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
     }
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable", feature = "elgamal3"))]
+#[cfg(all(feature = "batch", feature = "elgamal3"))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
     /// Verifiably pseudonymize the batch and return a hoisted
     /// [`LongPseudonymPseudonymizationBatchProof`].
@@ -904,12 +920,7 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedPseudonym> {
     }
 }
 
-#[cfg(all(
-    feature = "batch",
-    feature = "verifiable",
-    not(feature = "elgamal3"),
-    feature = "batch-pk"
-))]
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedAttribute> {
     /// Verifiably rekey the batch.
     pub fn verifiable_rekey<R>(
@@ -924,14 +935,13 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedAttribute> {
         let proof =
             crate::elgamal::verifiable::VerifiableRekeyBatch::new(&originals, &info.k.0, rng);
         self.items = rebuild_long_attributes_from_rekey(&block_counts, &originals, &proof.inners);
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         LongAttributeRekeyBatchProof(proof)
     }
 }
 
 #[cfg(all(
     feature = "batch",
-    feature = "verifiable",
     any(feature = "elgamal3", not(feature = "batch-pk"))
 ))]
 impl crate::data::batch::EncryptedBatch<LongEncryptedAttribute> {
@@ -951,7 +961,7 @@ impl crate::data::batch::EncryptedBatch<LongEncryptedAttribute> {
         LongAttributeRekeyBatchProof(proof)
     }
 }
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 pub(crate) fn flatten_long_pseudonyms(
     items: &[LongEncryptedPseudonym],
 ) -> (Vec<usize>, Vec<crate::elgamal::ElGamal>) {
@@ -964,7 +974,7 @@ pub(crate) fn flatten_long_pseudonyms(
     (counts, flat)
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 pub(crate) fn flatten_long_attributes(
     items: &[LongEncryptedAttribute],
 ) -> (Vec<usize>, Vec<crate::elgamal::ElGamal>) {
@@ -977,7 +987,7 @@ pub(crate) fn flatten_long_attributes(
     (counts, flat)
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 fn rebuild_long_pseudonyms_from_rrsk(
     counts: &[usize],
     proof: &crate::elgamal::verifiable::VerifiableRRSKBatch,
@@ -997,7 +1007,7 @@ fn rebuild_long_pseudonyms_from_rrsk(
     out
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 fn rebuild_long_pseudonyms_from_rekey(
     counts: &[usize],
     originals: &[crate::elgamal::ElGamal],
@@ -1020,7 +1030,7 @@ fn rebuild_long_pseudonyms_from_rekey(
     out
 }
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
+#[cfg(feature = "batch")]
 fn rebuild_long_attributes_from_rekey(
     counts: &[usize],
     originals: &[crate::elgamal::ElGamal],

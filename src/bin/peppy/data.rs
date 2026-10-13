@@ -10,6 +10,7 @@ use clap::{Args, Subcommand};
 use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
+use libpep::data::padding::PaddingError;
 use libpep::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
@@ -17,9 +18,10 @@ use libpep::data::simple::{
 use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::errors::ParseError;
 use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, ReshuffleFactor, TranscryptionInfo,
+    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor, TranscryptionInfo,
 };
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
@@ -224,10 +226,10 @@ pub trait Kind {
     fn rekey_public_key(info: &Self::RekeyInfo, before: &Self::SessionPk) -> Self::SessionPk;
     fn long_from_blocks(blocks: Vec<Self::Plain>) -> Self::Long;
     fn long_from_text(text: &str) -> Self::Long;
-    fn long_to_text(long: &Self::Long) -> std::io::Result<String>;
+    fn long_to_text(long: &Self::Long) -> std::result::Result<String, PaddingError>;
     fn long_to_hex(long: &Self::Long) -> String;
     fn long_enc_serialize(long: &Self::LongEnc) -> String;
-    fn long_enc_deserialize(text: &str) -> std::io::Result<Self::LongEnc>;
+    fn long_enc_deserialize(text: &str) -> std::result::Result<Self::LongEnc, ParseError>;
     #[cfg(feature = "insecure")]
     fn decrypt_global(enc: &Self::Enc, key: &Self::GlobalSk) -> Result<Self::Plain>;
     #[cfg(feature = "insecure")]
@@ -270,7 +272,7 @@ macro_rules! impl_kind {
             fn long_from_text(text: &str) -> Self::Long {
                 $long::from_string_padded(text)
             }
-            fn long_to_text(long: &Self::Long) -> std::io::Result<String> {
+            fn long_to_text(long: &Self::Long) -> std::result::Result<String, PaddingError> {
                 long.to_string_padded()
             }
             fn long_to_hex(long: &Self::Long) -> String {
@@ -283,7 +285,7 @@ macro_rules! impl_kind {
             fn long_enc_serialize(long: &Self::LongEnc) -> String {
                 long.serialize()
             }
-            fn long_enc_deserialize(text: &str) -> std::io::Result<Self::LongEnc> {
+            fn long_enc_deserialize(text: &str) -> std::result::Result<Self::LongEnc, ParseError> {
                 $long_enc::deserialize(text)
             }
             #[cfg(feature = "insecure")]

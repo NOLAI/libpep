@@ -4,7 +4,6 @@ pub mod simple;
 
 #[cfg(feature = "batch")]
 pub mod batch;
-pub(crate) mod utils;
 #[cfg(all(feature = "batch", feature = "verifiable"))]
 pub mod verifiable_batch;
 #[cfg(all(feature = "json", feature = "verifiable"))]

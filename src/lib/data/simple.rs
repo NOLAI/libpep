@@ -23,33 +23,26 @@ pub type EncryptedPseudonym = generic::EncryptedPseudonym<Ristretto255>;
 /// The [`EncryptedAttribute`](generic::EncryptedAttribute) over ristretto255.
 pub type EncryptedAttribute = generic::EncryptedAttribute<Ristretto255>;
 
-impl From<GroupElement> for Pseudonym {
-    fn from(value: GroupElement) -> Self {
-        Self { value }
-    }
+macro_rules! impl_from_value {
+    ($($t:ident: $v:ty),+ $(,)?) => {$(
+        impl From<$v> for $t {
+            fn from(value: $v) -> Self {
+                Self { value }
+            }
+        }
+    )+};
 }
 
-impl From<GroupElement> for Attribute {
-    fn from(value: GroupElement) -> Self {
-        Self { value }
-    }
-}
+impl_from_value!(
+    Pseudonym: GroupElement,
+    Attribute: GroupElement,
+    EncryptedPseudonym: crate::elgamal::ElGamal,
+    EncryptedAttribute: crate::elgamal::ElGamal,
+);
 
-impl From<crate::elgamal::ElGamal> for EncryptedPseudonym {
-    fn from(value: crate::elgamal::ElGamal) -> Self {
-        Self { value }
-    }
-}
-
-impl From<crate::elgamal::ElGamal> for EncryptedAttribute {
-    fn from(value: crate::elgamal::ElGamal) -> Self {
-        Self { value }
-    }
-}
-
-/// A marker trait for encrypted types that use ElGamal encryption with a single ciphertext value.
-/// This enables access to ElGamal-specific operations like serialization.
+/// An encrypted type that is a single ElGamal ciphertext, with the encodings of the ciphertext.
 pub trait ElGamalEncrypted: Encrypted {
+    /// The plaintext type, a single group element.
     type UnencryptedType: ElGamalEncryptable<EncryptedType = Self, Group = Self::Group>;
 
     /// Get the [ElGamal] ciphertext value.
@@ -86,15 +79,14 @@ pub trait ElGamalEncrypted: Encrypted {
     }
 }
 
-/// A marker trait for encryptable types that use ElGamal encryption with a single plaintext value.
-/// This enables access to ElGamal-specific operations like serialization and special encodings.
+/// A plaintext type that is a single group element, with the encodings of the element.
 ///
 /// # Access idioms
 ///
-/// Plaintext value types expose their group element through the public `value` field and
-/// [`from_point`](Self::from_point)/[`to_point`-style](Self::value) conversions; *public* key
-/// types dereference to their group element; *secret* key material never dereferences and is
-/// read only through explicit `value()` calls.
+/// Plaintext value types expose their group element through the public `value` field,
+/// [`value`](Self::value) and [`from_point`](Self::from_point); *public* key types dereference
+/// to their group element; *secret* key material never dereferences and is read only through
+/// explicit `value()` calls.
 ///
 /// # Security
 ///
@@ -109,20 +101,12 @@ pub trait ElGamalEncrypted: Encrypted {
 /// the relations between origin identifiers: a party that does could recognize related pseudonyms
 /// by testing for the known relation.
 pub trait ElGamalEncryptable: Encryptable {
-    /// Get the group element plaintext value.
+    /// The group element.
     fn value(&self) -> &<Self::Group as Group>::Element;
-    /// Create from a group element.
-    fn from_value(value: <Self::Group as Group>::Element) -> Self
-    where
-        Self: Sized;
-
     /// Create from a group element.
     fn from_point(value: <Self::Group as Group>::Element) -> Self
     where
-        Self: Sized,
-    {
-        Self::from_value(value)
-    }
+        Self: Sized;
 
     /// Create with a random value.
     fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self
@@ -161,7 +145,7 @@ pub trait ElGamalEncryptable: Encryptable {
     where
         Self: Sized,
     {
-        crate::keys::traits::decode_hex::<<Self::Group as Group>::ElementBytes>(hex)
+        crate::elgamal::arithmetic::group::decode_hex::<<Self::Group as Group>::ElementBytes>(hex)
             .and_then(|b| Self::from_slice(b.as_ref()))
     }
     /// Create from a 64-byte hash value.

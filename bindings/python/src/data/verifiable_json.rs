@@ -2,13 +2,13 @@
 //!
 //! Wraps [`JSONTranscryptionProof`] and [`VerifiableJSONBatch`], and adds a
 //! `verifiable_transcrypt` producer on the existing
-//! [`PyEncryptedPEPJSONValue`].
+//! [`PyEncryptedPepJsonValue`].
 //!
 //! Verifier-side methods `verify_json_transcryption` / `verify_json_transcryption_batch`
 //! are added to `PyVerifier` from this module via an extra `#[pymethods]` block
 //! (PyO3's `multiple-pymethods` feature is enabled).
 
-use crate::data::json::PyEncryptedPEPJSONValue;
+use crate::data::json::PyEncryptedPepJsonValue;
 use crate::factors::commitments::PyVerifiableTranscryptionCommitment;
 use crate::factors::types::PyTranscryptionInfo;
 use libpep::data::verifiable::json::JSONTranscryptionProof;
@@ -36,7 +36,7 @@ fn map_verify_err() -> PyErr {
 // JSONTranscryptionProof
 // ---------------------------------------------------------------------------
 
-/// Proof for verifiable transcryption of an `EncryptedPEPJSONValue`.
+/// Proof for verifiable transcryption of an `EncryptedPepJsonValue`.
 #[pyclass(name = "JSONTranscryptionProof", from_py_object)]
 #[derive(Clone)]
 pub struct PyJSONTranscryptionProof {
@@ -75,7 +75,7 @@ impl PyJSONTranscryptionProof {
     #[cfg(feature = "elgamal3")]
     fn verify(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> bool {
         self.inner.verify(&original.0, &commitments.inner)
@@ -84,7 +84,7 @@ impl PyJSONTranscryptionProof {
     #[cfg(not(feature = "elgamal3"))]
     fn verify(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> bool {
@@ -97,26 +97,26 @@ impl PyJSONTranscryptionProof {
     #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         commitments: &PyVerifiableTranscryptionCommitment,
-    ) -> PyResult<PyEncryptedPEPJSONValue> {
+    ) -> PyResult<PyEncryptedPepJsonValue> {
         self.inner
             .verified_reconstruct(&original.0, &commitments.inner)
-            .map(PyEncryptedPEPJSONValue)
+            .map(PyEncryptedPepJsonValue)
             .ok_or_else(map_verify_err)
     }
 
     #[cfg(not(feature = "elgamal3"))]
     fn verified_reconstruct(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
-    ) -> PyResult<PyEncryptedPEPJSONValue> {
+    ) -> PyResult<PyEncryptedPepJsonValue> {
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verified_reconstruct(&original.0, &keys.public(), &commitments.inner)
-            .map(PyEncryptedPEPJSONValue)
+            .map(PyEncryptedPepJsonValue)
             .ok_or_else(map_verify_err)
     }
 }
@@ -164,11 +164,11 @@ impl PyVerifiableJSONBatch {
 }
 
 // ---------------------------------------------------------------------------
-// Producer: PyEncryptedPEPJSONValue.verifiable_transcrypt
+// Producer: PyEncryptedPepJsonValue.verifiable_transcrypt
 // ---------------------------------------------------------------------------
 
 #[pymethods]
-impl PyEncryptedPEPJSONValue {
+impl PyEncryptedPepJsonValue {
     /// Produce a verifiable transcryption proof for this encrypted JSON
     /// value. The transcryption itself is folded into the proof; pass the
     /// proof together with the original ciphertext to a verifier to obtain
@@ -214,23 +214,23 @@ impl crate::verifier::PyVerifier {
     #[cfg(feature = "elgamal3")]
     fn verify_json_transcryption(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         proof: &PyJSONTranscryptionProof,
         commitments: &PyVerifiableTranscryptionCommitment,
-    ) -> PyResult<PyEncryptedPEPJSONValue> {
+    ) -> PyResult<PyEncryptedPepJsonValue> {
         self.verified_reconstruct_transcryption(&original.0, &proof.inner, &commitments.inner)
-            .map(PyEncryptedPEPJSONValue)
+            .map(PyEncryptedPepJsonValue)
             .map_err(crate::errors::verify_err_to_py)
     }
 
     #[cfg(not(feature = "elgamal3"))]
     fn verify_json_transcryption(
         &self,
-        original: &PyEncryptedPEPJSONValue,
+        original: &PyEncryptedPepJsonValue,
         proof: &PyJSONTranscryptionProof,
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
-    ) -> PyResult<PyEncryptedPEPJSONValue> {
+    ) -> PyResult<PyEncryptedPepJsonValue> {
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.verified_reconstruct_transcryption(
             &original.0,
@@ -238,7 +238,7 @@ impl crate::verifier::PyVerifier {
             &keys.public(),
             &commitments.inner,
         )
-        .map(PyEncryptedPEPJSONValue)
+        .map(PyEncryptedPepJsonValue)
         .map_err(crate::errors::verify_err_to_py)
     }
 }

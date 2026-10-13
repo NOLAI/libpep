@@ -3,6 +3,7 @@ use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::SessionPublicKeys;
 use libpep::transcryptor::DistributedTranscryptor;
@@ -39,9 +40,8 @@ pub fn setup_distributed_system(
     let systems: Vec<DistributedTranscryptor> = (0..n)
         .map(|i| {
             let pseudonymization_secret =
-                PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes().into());
-            let encryption_secret =
-                EncryptionSecret::from(format!("es-secret-{i}").as_bytes().into());
+                PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes());
+            let encryption_secret = EncryptionSecret::from(format!("es-secret-{i}").as_bytes());
             let blinding_factor = blinding_factors[i];
             DistributedTranscryptor::new(
                 pseudonymization_secret,
@@ -174,7 +174,7 @@ pub fn process_entities_batch(
         batch,
         *keys,
         |system| system.transcryption_info(domain_a, domain_b, session_a, session_b),
-        |info, keys| info.rekey_public_keys(keys),
+        |info, keys| info.rekey_public_key(keys),
         &mut batch_rng,
     );
     black_box(batch);
@@ -227,7 +227,7 @@ fn bench_distributed_transcrypt(c: &mut Criterion) {
                             process_entities_individually(
                                 black_box(&entities),
                                 black_box(&systems),
-                                black_box(&client_a.dump().public()),
+                                black_box(&client_a.keys().public()),
                                 black_box(&domain_a),
                                 black_box(&domain_b),
                                 black_box(&session_a),
@@ -292,7 +292,7 @@ fn bench_distributed_transcrypt_batch(c: &mut Criterion) {
                                 process_entities_batch(
                                     data,
                                     &systems,
-                                    &client_a.dump().public(),
+                                    &client_a.keys().public(),
                                     &domain_a,
                                     &domain_b,
                                     &session_a,

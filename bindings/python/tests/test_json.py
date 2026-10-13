@@ -25,7 +25,7 @@ from libpep.client import (
     decrypt,
 )
 from libpep.data import json as pepjson
-from libpep.data.json import transcrypt_json_batch, PEPJSONBuilder
+from libpep.data.json import transcrypt_json_batch, PepJsonBuilder
 
 
 class TestJSONTranscryption(unittest.TestCase):
@@ -51,7 +51,7 @@ class TestJSONTranscryption(unittest.TestCase):
         }
 
         # Convert to PEP JSON, specifying which fields are pseudonyms
-        patient_record = PEPJSONBuilder.from_json(patient_data, ["user_id"]).build()
+        patient_record = PepJsonBuilder.from_json(patient_data, ["user_id"]).build()
 
         # Encrypt
         encrypted = encrypt(patient_record, session_keys)
@@ -117,8 +117,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         data2 = {"patient_id": "patient-002", "diagnosis": "Cold", "temperature": 37.2}
 
         # Convert to PEP JSON, specifying "patient_id" as pseudonym field
-        record1 = PEPJSONBuilder.from_json(data1, ["patient_id"]).build()
-        record2 = PEPJSONBuilder.from_json(data2, ["patient_id"]).build()
+        record1 = PepJsonBuilder.from_json(data1, ["patient_id"]).build()
+        record2 = PepJsonBuilder.from_json(data2, ["patient_id"]).build()
 
         # Encrypt both records
         encrypted1 = encrypt(record1, session_keys)
@@ -198,8 +198,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         data2 = {"user_id": "user-002", "name": "Bob", "age": 25, "active": True}
 
         # Convert to PEP JSON with different pseudonym fields
-        record1 = PEPJSONBuilder.from_json(data1, ["patient_id"]).build()
-        record2 = PEPJSONBuilder.from_json(data2, ["user_id"]).build()
+        record1 = PepJsonBuilder.from_json(data1, ["patient_id"]).build()
+        record2 = PepJsonBuilder.from_json(data2, ["user_id"]).build()
 
         # Encrypt both records
         encrypted1 = encrypt(record1, session_keys)
@@ -267,8 +267,8 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             }
 
             # Convert to PEP JSON
-            record1 = PEPJSONBuilder.from_json(data1, ["patient_id"]).build()
-            record2 = PEPJSONBuilder.from_json(data2, ["patient_id"]).build()
+            record1 = PepJsonBuilder.from_json(data1, ["patient_id"]).build()
+            record2 = PepJsonBuilder.from_json(data2, ["patient_id"]).build()
 
             # 1. Encrypt separately
             encrypted1 = encrypt(record1, session_keys)

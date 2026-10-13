@@ -2,13 +2,13 @@
 //!
 //! Wraps [`JSONTranscryptionProof`] and [`VerifiableJSONBatch`], and adds a
 //! `verifiableTranscrypt` producer on the existing
-//! [`WASMEncryptedPEPJSONValue`].
+//! [`WASMEncryptedPepJsonValue`].
 //!
 //! Verifier-side methods `verifyJSONTranscryption` /
 //! `verifyJSONTranscryptionBatch` are added to `WASMVerifier` from this module
 //! via an extra `#[wasm_bindgen(js_class = Verifier)]` impl block.
 
-use crate::data::json::WASMEncryptedPEPJSONValue;
+use crate::data::json::WASMEncryptedPepJsonValue;
 use crate::errors::{malformed_proof_err, verify_err_to_js};
 use crate::factors::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::types::WASMTranscryptionInfo;
@@ -27,7 +27,7 @@ fn verify_err() -> JsValue {
 // JSONTranscryptionProof
 // ---------------------------------------------------------------------------
 
-/// Proof for verifiable transcryption of an `EncryptedPEPJSONValue`.
+/// Proof for verifiable transcryption of an `EncryptedPepJsonValue`.
 #[wasm_bindgen(js_name = JSONTranscryptionProof)]
 #[derive(Clone)]
 pub struct WASMJSONTranscryptionProof(pub(crate) JSONTranscryptionProof);
@@ -66,7 +66,7 @@ impl WASMJSONTranscryptionProof {
     #[wasm_bindgen]
     pub fn verify(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
         self.0.verify(&original.0, &commitments.0)
@@ -76,7 +76,7 @@ impl WASMJSONTranscryptionProof {
     #[wasm_bindgen]
     pub fn verify(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
@@ -89,12 +89,12 @@ impl WASMJSONTranscryptionProof {
     #[wasm_bindgen(js_name = verifiedReconstruct)]
     pub fn verified_reconstruct(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         commitments: &WASMVerifiableTranscryptionCommitment,
-    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+    ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         self.0
             .verified_reconstruct(&original.0, &commitments.0)
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .ok_or_else(verify_err)
     }
 
@@ -102,14 +102,14 @@ impl WASMJSONTranscryptionProof {
     #[wasm_bindgen(js_name = verifiedReconstruct)]
     pub fn verified_reconstruct(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
-    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+    ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
             .verified_reconstruct(&original.0, &keys.public(), &commitments.0)
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .ok_or_else(verify_err)
     }
 }
@@ -156,11 +156,11 @@ impl WASMVerifiableJSONBatch {
 }
 
 // ---------------------------------------------------------------------------
-// Producer: WASMEncryptedPEPJSONValue.verifiableTranscrypt
+// Producer: WASMEncryptedPepJsonValue.verifiableTranscrypt
 // ---------------------------------------------------------------------------
 
-#[wasm_bindgen(js_class = EncryptedPEPJSONValue)]
-impl WASMEncryptedPEPJSONValue {
+#[wasm_bindgen(js_class = EncryptedPepJsonValue)]
+impl WASMEncryptedPepJsonValue {
     /// Produce a verifiable transcryption proof for this encrypted JSON
     /// value. Pass the proof together with the original ciphertext to a
     /// verifier to obtain the reconstructed value.
@@ -204,13 +204,13 @@ impl WASMVerifier {
     #[wasm_bindgen(js_name = verifyJSONTranscryption)]
     pub fn verify_json_transcryption(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         proof: &WASMJSONTranscryptionProof,
         commitments: &WASMVerifiableTranscryptionCommitment,
-    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+    ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         self.inner
             .verified_reconstruct_transcryption(&original.0, &proof.0, &commitments.0)
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .map_err(crate::errors::verify_err_to_js)
     }
 
@@ -218,11 +218,11 @@ impl WASMVerifier {
     #[wasm_bindgen(js_name = verifyJSONTranscryption)]
     pub fn verify_json_transcryption(
         &self,
-        original: &WASMEncryptedPEPJSONValue,
+        original: &WASMEncryptedPepJsonValue,
         proof: &WASMJSONTranscryptionProof,
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
-    ) -> Result<WASMEncryptedPEPJSONValue, JsValue> {
+    ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verified_reconstruct_transcryption(
@@ -231,7 +231,7 @@ impl WASMVerifier {
                 &keys.public(),
                 &commitments.0,
             )
-            .map(WASMEncryptedPEPJSONValue)
+            .map(WASMEncryptedPepJsonValue)
             .map_err(crate::errors::verify_err_to_js)
     }
 }

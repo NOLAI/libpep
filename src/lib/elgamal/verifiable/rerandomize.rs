@@ -21,6 +21,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+/// Proof of a verifiable rerandomization: the commitment `R = r·G` and the proof that `Y_r =
+/// r·Y`.
 pub struct VerifiableRerandomize {
     /// `R = r·G`.
     pub(crate) gr: GroupElement,
@@ -40,6 +42,7 @@ impl VerifiableRerandomize {
 }
 
 impl VerifiableRerandomize {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(gy: &GroupElement, r: &ScalarNonZero, rng: &mut R) -> Self {
         let (gr, p_gy_r) = create_proof(r, gy, rng);
         Self { gr, p_gy_r }
@@ -81,6 +84,8 @@ impl VerifiableRerandomize {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.result(original)
     }
@@ -92,6 +97,7 @@ impl VerifiableRerandomize {
 // rerandomized ciphertext via the `pub(crate)` `result` helper, which is
 // not otherwise accessible to external callers.
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
+/// Rerandomize `original` with a fresh factor and return the result with its proof.
 pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
     original: &ElGamal,
     r: &ScalarNonZero,
@@ -103,6 +109,8 @@ pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
 }
 
 #[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
+/// Rerandomize `original` with a fresh factor and return the result with its proof; `gy` is the
+/// key it is encrypted under.
 pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
     original: &ElGamal,
     gy: &GroupElement,

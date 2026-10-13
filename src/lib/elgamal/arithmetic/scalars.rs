@@ -1,3 +1,6 @@
+//! Scalars of ristretto255: [`ScalarNonZero`] for factors and keys, which can always be
+//! inverted, and [`ScalarCanBeZero`] for arithmetic that may produce zero.
+
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -7,8 +10,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "serde")]
 use std::fmt::Formatter;
 
-/// Returned if a zero scalar is inverted (which is similar to why a division by zero is not possible).
-#[derive(Debug)]
+/// Returned when a zero scalar is used where a non-zero one is required (such as inversion,
+/// which is a division).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("the scalar is zero")]
 pub struct ZeroArgumentError;
 
 /// Scalar, always non-zero.
@@ -181,6 +186,7 @@ pub trait ScalarTraits {
     fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }
+    /// The underlying `curve25519-dalek` scalar.
     fn raw(&self) -> &Scalar;
 }
 

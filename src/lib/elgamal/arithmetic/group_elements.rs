@@ -1,3 +1,5 @@
+//! Group elements of ristretto255 and the base point [`G`].
+
 use curve25519_dalek::ristretto::CompressedRistretto;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::traits::Identity;

@@ -9,7 +9,7 @@ use rand_core::{CryptoRng, Rng};
 /// Each type declares the key it needs via associated types:
 /// - Simple types (Pseudonym, Attribute) use their specific session/global keys
 /// - Long types (LongPseudonym, LongAttribute) use the same keys as their block type
-/// - Complex types (PEPJSONValue, EncryptedRecord) use key bundles (SessionPublicKeys,
+/// - Complex types (PepJsonValue, EncryptedRecord) use key bundles (SessionPublicKeys,
 ///   GlobalPublicKeys), as they contain both pseudonyms and attributes
 ///
 /// A caller may pass that key, or a bundle to project it from; see
@@ -26,7 +26,7 @@ use rand_core::{CryptoRng, Rng};
 /// // LongPseudonym also uses PseudonymSessionPublicKey (encrypts each block)
 /// encrypt(&long_pseudonym, &pseudonym_session_key, rng);
 ///
-/// // PEPJSONValue needs SessionPublicKeys (contains both pseudonyms and attributes)
+/// // PepJsonValue needs SessionPublicKeys (contains both pseudonyms and attributes)
 /// encrypt(&json_value, &session_public_keys, rng);
 ///
 /// // Or let the session's public keys select the right half:
@@ -282,9 +282,4 @@ pub trait HasStructure {
 
     /// Get the structure of this encrypted value.
     fn structure(&self) -> Self::Structure;
-}
-
-#[cfg(feature = "batch")]
-pub trait BatchEncryptable: Encryptable + Clone {
-    fn preprocess_batch(items: &[Self]) -> Result<Vec<Self>, crate::errors::BatchError>;
 }

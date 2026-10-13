@@ -25,6 +25,7 @@ impl VerifiableReshuffleBatch {
 }
 
 impl VerifiableReshuffleBatch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         s: &ScalarNonZero,
@@ -40,7 +41,7 @@ impl VerifiableReshuffleBatch {
 
     /// Apply each entry's reshuffle to the corresponding ciphertext,
     /// **without verifying** any proofs. Internal prover-side use only.
-    #[allow(dead_code)]
+    #[cfg(feature = "insecure")]
     pub(crate) fn result(&self, originals: &[ElGamal]) -> Vec<ElGamal> {
         self.inners
             .iter()
@@ -50,6 +51,7 @@ impl VerifiableReshuffleBatch {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],
@@ -116,6 +118,7 @@ impl VerifiableReshuffle2Batch {
 }
 
 impl VerifiableReshuffle2Batch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         s_from: &ScalarNonZero,
@@ -138,7 +141,7 @@ impl VerifiableReshuffle2Batch {
 
     /// Apply each entry's reshuffle to the corresponding ciphertext,
     /// **without verifying** any proofs. Internal prover-side use only.
-    #[allow(dead_code)]
+    #[cfg(feature = "insecure")]
     pub(crate) fn result(&self, originals: &[ElGamal]) -> Vec<ElGamal> {
         self.inners
             .iter()
@@ -147,22 +150,25 @@ impl VerifiableReshuffle2Batch {
             .collect()
     }
 
+    /// The commitment to the combined factor `s_from⁻¹·s_to`.
     pub fn combined_commitment(&self) -> PseudonymizationFactorCommitment {
         PseudonymizationFactorCommitment(FactorCommitment(self.gs))
     }
 
     #[must_use]
+    /// Verify the part of the proof that depends only on the factors, shared by every item.
     pub fn verify_factor(
         &self,
         from_commitments: &PseudonymizationFactorCommitment,
         to_commitments: &PseudonymizationFactorCommitment,
     ) -> bool {
-        let gs_from = from_commitments.0 .0;
-        let gs_to = to_commitments.0 .0;
+        let gs_from = from_commitments.point();
+        let gs_to = to_commitments.point();
         *self.p_gs_to == gs_to && verify_proof(&gs_from, &self.gs, &self.p_gs_to)
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],

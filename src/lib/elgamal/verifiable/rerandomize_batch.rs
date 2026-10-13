@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 // rerandomized ciphertexts via the `pub(crate)` `result` helper, which is
 // not otherwise accessible to external callers.
 #[cfg(feature = "insecure")]
+/// Rerandomize every ciphertext with its own fresh factor and return the results with their batch
+/// proof.
 pub fn verifiable_rerandomize_batch<R: Rng + CryptoRng>(
     originals: &[ElGamal],
     gy: &GroupElement,
@@ -44,6 +46,7 @@ impl VerifiableRerandomizeBatch {
 }
 
 impl VerifiableRerandomizeBatch {
+    /// Fresh rerandomization proofs for `n` ciphertexts encrypted under `gy`.
     pub fn new<R: Rng + CryptoRng>(n: usize, gy: &GroupElement, rng: &mut R) -> Self {
         let inners = (0..n)
             .map(|_| {

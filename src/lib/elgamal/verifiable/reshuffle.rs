@@ -48,6 +48,7 @@ impl VerifiableReshuffle {
 }
 
 impl VerifiableReshuffle {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
         let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar(s, &v.gb, &v.gc, rng);
         Self {
@@ -67,6 +68,8 @@ impl VerifiableReshuffle {
         }
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -80,17 +83,20 @@ impl VerifiableReshuffle {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.result(original)
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,
         commitment: &PseudonymizationFactorCommitment,
     ) -> bool {
-        let gs = commitment.0 .0;
+        let gs = commitment.point();
         verify_proof(&gs, &original.gb, &self.p_gb_prime)
             && verify_proof(&gs, &original.gc, &self.p_gc_prime)
     }
@@ -126,6 +132,7 @@ impl VerifiableReshuffle2 {
 }
 
 impl VerifiableReshuffle2 {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         s_from: &ScalarNonZero,
@@ -145,6 +152,8 @@ impl VerifiableReshuffle2 {
         self.inner.result(original)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -159,6 +168,8 @@ impl VerifiableReshuffle2 {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.result(original)
     }
@@ -173,8 +184,8 @@ impl VerifiableReshuffle2 {
         from_commitments: &PseudonymizationFactorCommitment,
         to_commitments: &PseudonymizationFactorCommitment,
     ) -> bool {
-        let gs_from = from_commitments.0 .0;
-        let gs_to = to_commitments.0 .0;
+        let gs_from = from_commitments.point();
+        let gs_to = to_commitments.point();
         *self.p_gs_to == gs_to && verify_proof(&gs_from, &self.gs, &self.p_gs_to)
     }
 
@@ -184,6 +195,7 @@ impl VerifiableReshuffle2 {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,

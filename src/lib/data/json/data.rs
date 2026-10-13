@@ -8,45 +8,47 @@ pub mod generic;
 use crate::elgamal::arithmetic::Ristretto255;
 use thiserror::Error;
 
-/// The [`PEPJSONValue`](generic::PEPJSONValue) over ristretto255.
-pub type PEPJSONValue = generic::PEPJSONValue<Ristretto255>;
-/// The [`EncryptedPEPJSONValue`](generic::EncryptedPEPJSONValue) over ristretto255.
-pub type EncryptedPEPJSONValue = generic::EncryptedPEPJSONValue<Ristretto255>;
+/// The [`PepJsonValue`](generic::PepJsonValue) over ristretto255.
+pub type PepJsonValue = generic::PepJsonValue<Ristretto255>;
+/// The [`EncryptedPepJsonValue`](generic::EncryptedPepJsonValue) over ristretto255.
+pub type EncryptedPepJsonValue = generic::EncryptedPepJsonValue<Ristretto255>;
 
-#[derive(Debug, Error)]
+/// An error in the conversion between JSON values and their PEP encoding.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum JsonError {
+    /// A boolean attribute holds a byte other than `0x00` or `0x01`.
     #[error("invalid boolean byte value: 0x{got:02x}. expected 0x00 or 0x01")]
-    InvalidBoolByte { got: u8 },
-
+    InvalidBoolByte {
+        /// The byte found.
+        got: u8,
+    },
+    /// A boolean attribute does not hold exactly one byte.
     #[error("expected 1 byte for bool, got {got}")]
-    BoolBytesWrongLen { got: usize },
-
+    BoolBytesWrongLen {
+        /// The number of bytes found.
+        got: usize,
+    },
+    /// A number attribute does not hold exactly nine bytes.
     #[error("expected 9 bytes for number, got {got}")]
-    NumberBytesWrongLen { got: usize },
-
-    #[error("failed to decode bool: {0}")]
-    BoolDecode(String),
-
-    #[error("failed to get bytes from bool: {0}")]
-    BoolPadding(String),
-
-    #[error("failed to get bytes from number: {0}")]
-    NumberPadding(String),
-
+    NumberBytesWrongLen {
+        /// The number of bytes found.
+        got: usize,
+    },
+    /// A number attribute holds an unknown type tag or a non-finite float.
     #[error("invalid number encoding: {0}")]
     InvalidNumberEncoding(String),
-
-    #[error("failed to parse string: {0}")]
-    StringPadding(String),
-
+    /// A value is not padded as its type requires.
+    #[error(transparent)]
+    Padding(#[from] crate::data::padding::PaddingError),
+    /// A value does not have the structure it is padded or compared to.
     #[error("structure mismatch: expected {expected:?}, got {got:?}")]
     StructureMismatch {
-        expected: super::structure::JSONStructure,
-        got: super::structure::JSONStructure,
+        /// The structure expected.
+        expected: super::structure::JsonStructure,
+        /// The structure found.
+        got: super::structure::JsonStructure,
     },
-
-    #[error("cannot normalize: current size {current} exceeds target size {target}")]
-    SizeExceedsTarget { current: usize, target: usize },
 }
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
@@ -91,7 +93,7 @@ mod tests {
         let keys = make_test_keys();
 
         let value = json!(null);
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -109,7 +111,7 @@ mod tests {
 
         for b in [true, false] {
             let value = json!(b);
-            let pep_value = PEPJSONValue::from_value(&value);
+            let pep_value = PepJsonValue::from_value(&value);
             let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -128,7 +130,7 @@ mod tests {
         let test_numbers = [0, 1, -1, 42, -42, i64::MAX, i64::MIN];
         for n in test_numbers {
             let value = json!(n);
-            let pep_value = PEPJSONValue::from_value(&value);
+            let pep_value = PepJsonValue::from_value(&value);
             let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -142,7 +144,7 @@ mod tests {
         let test_floats = [0.0, 1.5, -1.5, 37.2, 38.5, 42.42, f64::MAX, f64::MIN];
         for f in test_floats {
             let value = json!(f);
-            let pep_value = PEPJSONValue::from_value(&value);
+            let pep_value = PepJsonValue::from_value(&value);
             let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -166,7 +168,7 @@ mod tests {
         ];
         for s in test_strings {
             let value = json!(s);
-            let pep_value = PEPJSONValue::from_value(&value);
+            let pep_value = PepJsonValue::from_value(&value);
             let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -183,7 +185,7 @@ mod tests {
         let keys = make_test_keys();
 
         let value = json!([true, 42, "hello", null]);
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -205,7 +207,7 @@ mod tests {
             "active": true,
             "email": null
         });
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -237,7 +239,7 @@ mod tests {
                 "active": true
             }
         });
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
         #[cfg(feature = "elgamal3")]
         let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -256,7 +258,7 @@ mod tests {
         let test_strings = ["café", "你好世界", "🎉🎊🎁"];
         for s in test_strings {
             let value = json!(s);
-            let pep_value = PEPJSONValue::from_value(&value);
+            let pep_value = PepJsonValue::from_value(&value);
             let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
             #[cfg(feature = "elgamal3")]
             let decrypted = decrypt(&encrypted, &keys).unwrap();
@@ -277,11 +279,11 @@ mod tests {
             "test": "value",
             "number": 123
         });
-        let pep_value = PEPJSONValue::from_value(&value);
+        let pep_value = PepJsonValue::from_value(&value);
         let encrypted = encrypt(&pep_value, &keys.public(), &mut rng);
 
         let json_str = serde_json::to_string(&encrypted).expect("serialization should succeed");
-        let deserialized: EncryptedPEPJSONValue =
+        let deserialized: EncryptedPepJsonValue =
             serde_json::from_str(&json_str).expect("deserialization should succeed");
 
         #[cfg(feature = "elgamal3")]
@@ -368,18 +370,18 @@ mod tests {
         let mut rng = rand::rng();
         let keys = make_test_keys();
 
-        // Test PEPJSONValue equality
+        // Test PepJsonValue equality
         let value1 = json!({"name": "Alice", "age": 30});
-        let pep_value1 = PEPJSONValue::from_value(&value1);
-        let pep_value2 = PEPJSONValue::from_value(&value1);
+        let pep_value1 = PepJsonValue::from_value(&value1);
+        let pep_value2 = PepJsonValue::from_value(&value1);
         assert_eq!(pep_value1, pep_value2);
 
         // Test different values are not equal
         let value2 = json!({"name": "Bob", "age": 25});
-        let pep_value3 = PEPJSONValue::from_value(&value2);
+        let pep_value3 = PepJsonValue::from_value(&value2);
         assert_ne!(pep_value1, pep_value3);
 
-        // Test EncryptedPEPJSONValue equality (same plaintext encrypts to different ciphertexts)
+        // Test EncryptedPepJsonValue equality (same plaintext encrypts to different ciphertexts)
         let encrypted1 = encrypt(&pep_value1, &keys.public(), &mut rng);
         let encrypted2 = encrypt(&pep_value1, &keys.public(), &mut rng);
         // Different encryptions of same plaintext should NOT be equal due to randomness
@@ -402,19 +404,19 @@ mod tests {
     #[test]
     #[cfg(feature = "long")]
     fn normalize_short_string_to_long() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
 
         // Short string (1 block)
-        let short_value = PEPJSONValue::from_value(&json!("hi"));
-        assert_eq!(short_value.structure(), JSONStructure::String(1));
+        let short_value = PepJsonValue::from_value(&json!("hi"));
+        assert_eq!(short_value.structure(), JsonStructure::String(1));
 
         // Normalize to 3 blocks
-        let normalized = short_value.pad_to(&JSONStructure::String(3)).unwrap();
-        assert_eq!(normalized.structure(), JSONStructure::String(3));
+        let normalized = short_value.pad_to(&JsonStructure::String(3)).unwrap();
+        assert_eq!(normalized.structure(), JsonStructure::String(3));
 
         // Verify it's now a LongString
         match normalized {
-            PEPJSONValue::LongString(ref long_attr) => {
+            PepJsonValue::LongString(ref long_attr) => {
                 assert_eq!(long_attr.len(), 3);
             }
             _ => panic!("Expected LongString after normalization"),
@@ -424,28 +426,28 @@ mod tests {
     #[test]
     #[cfg(feature = "long")]
     fn normalize_long_string_adds_padding() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
 
         // Long string (2 blocks)
-        let long_value = PEPJSONValue::from_value(&json!("This is a longer string"));
+        let long_value = PepJsonValue::from_value(&json!("This is a longer string"));
         let initial_structure = long_value.structure();
 
         // Get current block count
         let current_blocks = match initial_structure {
-            JSONStructure::String(n) => n,
+            JsonStructure::String(n) => n,
             _ => panic!("Expected String structure"),
         };
 
         // Normalize to more blocks
         let target_blocks = current_blocks + 2;
         let normalized = long_value
-            .pad_to(&JSONStructure::String(target_blocks))
+            .pad_to(&JsonStructure::String(target_blocks))
             .unwrap();
-        assert_eq!(normalized.structure(), JSONStructure::String(target_blocks));
+        assert_eq!(normalized.structure(), JsonStructure::String(target_blocks));
 
         // Verify block count increased
         match normalized {
-            PEPJSONValue::LongString(ref long_attr) => {
+            PepJsonValue::LongString(ref long_attr) => {
                 assert_eq!(long_attr.len(), target_blocks);
             }
             _ => panic!("Expected LongString"),
@@ -459,23 +461,23 @@ mod tests {
         let keys = make_test_keys();
 
         // Create strings of different sizes
-        let short = PEPJSONValue::from_value(&json!("hi"));
-        let medium = PEPJSONValue::from_value(&json!("hello world"));
+        let short = PepJsonValue::from_value(&json!("hi"));
+        let medium = PepJsonValue::from_value(&json!("hello world"));
         let long =
-            PEPJSONValue::from_value(&json!("This is a much longer string with more content"));
+            PepJsonValue::from_value(&json!("This is a much longer string with more content"));
 
         // Find the maximum block count
         let max_blocks = [&short, &medium, &long]
             .iter()
             .map(|v| match v.structure() {
-                super::super::structure::JSONStructure::String(n) => n,
+                super::super::structure::JsonStructure::String(n) => n,
                 _ => 0,
             })
             .max()
             .unwrap();
 
         // Normalize all to the same structure
-        let target = super::super::structure::JSONStructure::String(max_blocks);
+        let target = super::super::structure::JsonStructure::String(max_blocks);
         let short_normalized = short.pad_to(&target).unwrap();
         let medium_normalized = medium.pad_to(&target).unwrap();
         let long_normalized = long.pad_to(&target).unwrap();
@@ -527,7 +529,7 @@ mod tests {
     #[test]
     #[cfg(feature = "long")]
     fn normalize_pseudonyms_different_sizes() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
         use crate::pep_json;
 
         let mut rng = rand::rng();
@@ -541,14 +543,14 @@ mod tests {
         let max_blocks = [&short_pseudo, &long_pseudo]
             .iter()
             .map(|v| match v.structure() {
-                JSONStructure::Pseudonym(n) => n,
+                JsonStructure::Pseudonym(n) => n,
                 _ => 0,
             })
             .max()
             .unwrap();
 
         // Normalize both to the same structure
-        let target = JSONStructure::Pseudonym(max_blocks);
+        let target = JsonStructure::Pseudonym(max_blocks);
         let short_normalized = short_pseudo.pad_to(&target).unwrap();
         let long_normalized = long_pseudo.pad_to(&target).unwrap();
 
@@ -595,12 +597,12 @@ mod tests {
         let keys = make_test_keys();
 
         // Create two objects with strings of different sizes
-        let obj1 = PEPJSONValue::from_value(&json!({
+        let obj1 = PepJsonValue::from_value(&json!({
             "name": "Alice",
             "email": "a@b.c"
         }));
 
-        let obj2 = PEPJSONValue::from_value(&json!({
+        let obj2 = PepJsonValue::from_value(&json!({
             "name": "Bob",
             "email": "bob.smith@example.com"
         }));
@@ -661,47 +663,47 @@ mod tests {
     #[test]
     #[cfg(feature = "long")]
     fn normalize_errors_when_size_exceeds_target() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
 
         // Create a long string (multiple blocks)
-        let long_value = PEPJSONValue::from_value(&json!(
+        let long_value = PepJsonValue::from_value(&json!(
             "This is a very long string that will take multiple blocks"
         ));
 
         let current_blocks = match long_value.structure() {
-            JSONStructure::String(n) => n,
+            JsonStructure::String(n) => n,
             _ => panic!("Expected String structure"),
         };
 
         // Try to normalize to fewer blocks - should fail
-        let result = long_value.pad_to(&JSONStructure::String(current_blocks - 1));
+        let result = long_value.pad_to(&JsonStructure::String(current_blocks - 1));
         assert!(result.is_err());
 
-        match result {
-            Err(JsonError::SizeExceedsTarget { current, target }) => {
-                assert_eq!(current, current_blocks);
-                assert_eq!(target, current_blocks - 1);
-            }
-            _ => panic!("Expected SizeExceedsTarget error"),
-        }
+        assert_eq!(
+            result.unwrap_err(),
+            JsonError::Padding(crate::data::padding::PaddingError::TooManyBlocks {
+                current: current_blocks,
+                target: current_blocks - 1,
+            })
+        );
     }
 
     #[test]
     #[cfg(feature = "long")]
     fn normalize_errors_on_structure_mismatch() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
 
         // Create a string value
-        let string_value = PEPJSONValue::from_value(&json!("hello"));
+        let string_value = PepJsonValue::from_value(&json!("hello"));
 
         // Try to normalize to a number structure - should fail
-        let result = string_value.pad_to(&JSONStructure::Number);
+        let result = string_value.pad_to(&JsonStructure::Number);
         assert!(result.is_err());
 
         match result {
             Err(JsonError::StructureMismatch { expected, got }) => {
-                assert_eq!(expected, JSONStructure::Number);
-                assert_eq!(got, JSONStructure::String(1));
+                assert_eq!(expected, JsonStructure::Number);
+                assert_eq!(got, JsonStructure::String(1));
             }
             _ => panic!("Expected StructureMismatch error"),
         }
@@ -709,16 +711,16 @@ mod tests {
 
     #[test]
     fn normalize_preserves_primitives() {
-        use super::super::structure::JSONStructure;
+        use super::super::structure::JsonStructure;
 
         // Test that null, bool, and number normalization works
-        let null_value = PEPJSONValue::from_value(&json!(null));
-        let bool_value = PEPJSONValue::from_value(&json!(true));
-        let number_value = PEPJSONValue::from_value(&json!(42));
+        let null_value = PepJsonValue::from_value(&json!(null));
+        let bool_value = PepJsonValue::from_value(&json!(true));
+        let number_value = PepJsonValue::from_value(&json!(42));
 
-        let null_normalized = null_value.pad_to(&JSONStructure::Null).unwrap();
-        let bool_normalized = bool_value.pad_to(&JSONStructure::Bool).unwrap();
-        let number_normalized = number_value.pad_to(&JSONStructure::Number).unwrap();
+        let null_normalized = null_value.pad_to(&JsonStructure::Null).unwrap();
+        let bool_normalized = bool_value.pad_to(&JsonStructure::Bool).unwrap();
+        let number_normalized = number_value.pad_to(&JsonStructure::Number).unwrap();
 
         assert_eq!(null_normalized, null_value);
         assert_eq!(bool_normalized, bool_value);

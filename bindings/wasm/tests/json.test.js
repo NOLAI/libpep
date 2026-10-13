@@ -1,7 +1,7 @@
 const {
     makeGlobalKeys,
     makeSessionKeys,
-    PEPJSONBuilder,
+    PepJsonBuilder,
     encryptJson,
     decryptJson,
     transcryptJsonBatch,
@@ -31,7 +31,7 @@ test('test json transcryption with builder', async () => {
     };
 
     // Convert to PEP JSON, specifying which fields are pseudonyms
-    const patientRecord = PEPJSONBuilder.fromJson(patientData, ["user_id"]).build();
+    const patientRecord = PepJsonBuilder.fromJson(patientData, ["user_id"]).build();
 
     // Encrypt
     const encrypted = encryptJson(patientRecord, sessionKeys);
@@ -99,8 +99,8 @@ test('test json batch transcryption same structure', async () => {
     };
 
     // Convert to PEP JSON, specifying "patient_id" as pseudonym field
-    const record1 = PEPJSONBuilder.fromJson(data1, ["patient_id"]).build();
-    const record2 = PEPJSONBuilder.fromJson(data2, ["patient_id"]).build();
+    const record1 = PepJsonBuilder.fromJson(data1, ["patient_id"]).build();
+    const record2 = PepJsonBuilder.fromJson(data2, ["patient_id"]).build();
 
     // Encrypt both records
     const encrypted1 = encryptJson(record1, sessionKeys);
@@ -178,8 +178,8 @@ test('test json batch transcryption different structures', async () => {
     };
 
     // Convert to PEP JSON with different pseudonym fields
-    const record1 = PEPJSONBuilder.fromJson(data1, ["patient_id"]).build();
-    const record2 = PEPJSONBuilder.fromJson(data2, ["user_id"]).build();
+    const record1 = PepJsonBuilder.fromJson(data1, ["patient_id"]).build();
+    const record2 = PepJsonBuilder.fromJson(data2, ["user_id"]).build();
 
     // Encrypt both records
     const encrypted1 = encryptJson(record1, sessionKeys);
@@ -233,8 +233,8 @@ test('test json batch transcryption same structure different lengths', async () 
     };
 
     // Convert to PEP JSON with different pseudonym fields
-    const record1 = PEPJSONBuilder.fromJson(data1, ["patient_id"]).build();
-    const record2 = PEPJSONBuilder.fromJson(data2, ["patient_id"]).build();
+    const record1 = PepJsonBuilder.fromJson(data1, ["patient_id"]).build();
+    const record2 = PepJsonBuilder.fromJson(data2, ["patient_id"]).build();
 
     // Encrypt both records
     const encrypted1 = encryptJson(record1, sessionKeys);

@@ -91,7 +91,7 @@ With the `json` feature, whole JSON documents with nested pseudonyms and attribu
 
 In the distributed setting, `keys::distribution::make_distributed_global_keys` produces a blinded global key and one blinding factor per transcryptor, each `transcryptor::DistributedTranscryptor` hands a client a *session key share*, and `client::Client::from_shares` reconstructs the session keys from the shares.
 No party ever holds the global secret key.
-The public key a ciphertext is encrypted under travels with it from transcryptor to transcryptor: each obtains the next key with `rekey_public_key` on its transcryption info (the CLI prints it as `key`).
+The public key a ciphertext is encrypted under travels with it from transcryptor to transcryptor: each obtains the next key with `rekey_public_key` (the `factors::RekeyPublicKey` trait) on its transcryption info (the CLI prints it as `key`).
 [`tests/distributed.rs`](tests/distributed.rs) walks through this flow; the Python and JavaScript test suites under [`bindings/`](bindings/) do the same in those languages.
 
 ## Command line
@@ -262,6 +262,7 @@ The two derivations (default and `legacy`) produce different factors and session
 The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be added by implementing the `Group` trait.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
+Secret keys, secrets and factors are plain values: they implement `Debug` and are not zeroized when dropped, so an application that logs or dumps them, or that needs secrets wiped from memory, has to take care of that itself.
 The library has been designed for production use but has not undergone a formal security audit.
 
 The minimum supported Rust version is 1.88; raising it is considered a semver-relevant change.

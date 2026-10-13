@@ -4,7 +4,7 @@ mod legacy_pep_repo_tests {
     use libpep::contexts::PseudonymizationDomain;
     use libpep::elgamal::arithmetic::scalars::ScalarTraits;
     use libpep::factors::PseudonymRekeyFactor;
-    use libpep::factors::{make_pseudonymisation_factor, PseudonymizationSecret};
+    use libpep::factors::{make_pseudonymization_factor, Factor, PseudonymizationSecret};
     use libpep::keys::distribution::blinding::BlindingFactor;
     use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
     use libpep::keys::distribution::SessionKeyShare;
@@ -32,7 +32,7 @@ mod legacy_pep_repo_tests {
             let secret = hex::decode(secret_hex).unwrap();
             let pseudo_secret = PseudonymizationSecret::from(secret);
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
-            let pseudo_factor = make_pseudonymisation_factor(&pseudo_secret, &context);
+            let pseudo_factor = make_pseudonymization_factor(&pseudo_secret, &context);
             assert_eq!(
                 pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor

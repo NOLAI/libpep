@@ -1,7 +1,8 @@
 //! Blinding factors and blinded global secret keys generic over the [`Group`].
 
+use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
-use crate::keys::traits::{decode_hex, SecretKey};
+use crate::keys::traits::SecretKey;
 use crate::keys::types::generic::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use rand_core::{CryptoRng, Rng};
 
@@ -139,7 +140,9 @@ impl_blinded_global_secret_key!(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 pub struct BlindedGlobalSecretKeys<G: Group> {
+    /// The blinded global secret key for pseudonyms.
     pub pseudonym: BlindedPseudonymGlobalSecretKey<G>,
+    /// The blinded global secret key for attributes.
     pub attribute: BlindedAttributeGlobalSecretKey<G>,
 }
 

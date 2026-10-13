@@ -26,7 +26,7 @@ use crate::elgamal::verifiable::RekeyFactorCommitment;
 #[cfg(feature = "verifiable")]
 use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 #[cfg(feature = "verifiable")]
-use crate::factors::{EncryptionSecret, RekeyFactor};
+use crate::factors::{EncryptionSecret, Factor};
 #[cfg(feature = "verifiable")]
 use crate::keys::distribution::{BlindingCommitment, BlindingFactor, SessionKeyShareProof};
 use rand_core::{CryptoRng, Rng};
@@ -99,7 +99,7 @@ pub fn make_session_key_pair_with_proof<GSK, SK, RF, F, R>(
 where
     GSK: SecretKey<Group = Ristretto255>,
     SK: SecretKey<Group = Ristretto255>,
-    RF: RekeyFactor<Group = Ristretto255>,
+    RF: Factor<Group = Ristretto255>,
     F: Fn(&EncryptionSecret, &EncryptionContext) -> RF,
     R: Rng + CryptoRng,
 {
@@ -115,7 +115,7 @@ where
 
     let blinding_commitment = BlindingCommitment::new(blinding.value());
     let rekey_commitment = RekeyFactorCommitment::new(&k.scalar());
-    let proof = SessionKeyShareProof::new(blinding.value(), &rekey_commitment.0 .0, rng);
+    let proof = SessionKeyShareProof::new(blinding.value(), &rekey_commitment.point(), rng);
 
     Ok((sk.public_key(), sk, proof, blinding_commitment))
 }
@@ -303,7 +303,10 @@ mod tests {
         )
         .unwrap();
         let k = make_pseudonym_rekey_factor(&secret, &session);
-        assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
+        assert!(proof.verify(
+            &commitment,
+            &RekeyFactorCommitment::new(&k.scalar()).point()
+        ));
         assert_eq!(*commitment.value(), *blinding.value() * G);
 
         let (_pk, _sk, proof, commitment) = make_attribute_session_keys_with_proof(
@@ -315,7 +318,10 @@ mod tests {
         )
         .unwrap();
         let k = make_attribute_rekey_factor(&secret, &session);
-        assert!(proof.verify(&commitment, &RekeyFactorCommitment::new(&k.scalar()).0 .0));
+        assert!(proof.verify(
+            &commitment,
+            &RekeyFactorCommitment::new(&k.scalar()).point()
+        ));
     }
 
     #[test]

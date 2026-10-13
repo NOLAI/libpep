@@ -64,6 +64,7 @@ impl VerifiableRekey {
 }
 
 impl VerifiableRekey {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> Self {
         let gb_prime = k.invert() * v.gb;
         let (_gk, p_gb) = create_proof(k, &gb_prime, rng);
@@ -89,6 +90,8 @@ impl VerifiableRekey {
         }
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -102,13 +105,16 @@ impl VerifiableRekey {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.result(original)
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(&self, original: &ElGamal, commitment: &RekeyFactorCommitment) -> bool {
-        let gk = commitment.0 .0;
+        let gk = commitment.point();
         if *self.p_gb != original.gb {
             return false;
         }
@@ -158,6 +164,7 @@ impl VerifiableRekey2 {
 }
 
 impl VerifiableRekey2 {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         v: &ElGamal,
         k_from: &ScalarNonZero,
@@ -177,6 +184,8 @@ impl VerifiableRekey2 {
         self.inner.result(original)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &ElGamal,
@@ -191,6 +200,8 @@ impl VerifiableRekey2 {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
         self.result(original)
     }
@@ -205,8 +216,8 @@ impl VerifiableRekey2 {
         from_commitments: &RekeyFactorCommitment,
         to_commitments: &RekeyFactorCommitment,
     ) -> bool {
-        let gk_from = from_commitments.0 .0;
-        let gk_to = to_commitments.0 .0;
+        let gk_from = from_commitments.point();
+        let gk_to = to_commitments.point();
         *self.p_gk_to == gk_to && verify_proof(&gk_from, &self.gk, &self.p_gk_to)
     }
 
@@ -218,6 +229,7 @@ impl VerifiableRekey2 {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &ElGamal,

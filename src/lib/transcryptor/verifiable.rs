@@ -103,6 +103,8 @@ impl Transcryptor {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Pseudonymize with a proof; `public_key` is the key the ciphertext is currently encrypted
+    /// under.
     pub fn verifiable_pseudonymize<E, R>(
         &self,
         encrypted: &E,

@@ -5,8 +5,10 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::data::json::{EncryptedPEPJSONValue, PEPJSONBuilder};
+use libpep::data::json::{EncryptedPepJsonValue, PepJsonBuilder};
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
+#[cfg(not(feature = "elgamal3"))]
+use libpep::factors::RekeyPublicKey;
 use libpep::factors::TranscryptionInfo;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::SessionPublicKeys;
@@ -111,7 +113,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             value,
         } => {
             let fields: Vec<&str> = pseudonym_fields.iter().map(String::as_str).collect();
-            let document = PEPJSONBuilder::from_json(&document(&value)?, &fields)
+            let document = PepJsonBuilder::from_json(&document(&value)?, &fields)
                 .ok_or_else(|| io::Error::input("value: a pseudonym field must hold a string"))?
                 .build();
             let encrypted = if global {
@@ -128,7 +130,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
         }
         Json::Decrypt { keys, value } => {
             let keys: SessionKeys = keys_json(&keys, "session_keys", "keys")?;
-            let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
+            let encrypted: EncryptedPepJsonValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;
             #[cfg(feature = "elgamal3")]
             let decrypted = encrypted
@@ -160,7 +162,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
                 &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::encryption_secret(&encryption_secret)?,
             );
-            let encrypted: EncryptedPEPJSONValue = serde_json::from_value(document(&value)?)
+            let encrypted: EncryptedPepJsonValue = serde_json::from_value(document(&value)?)
                 .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))?;
             #[cfg(feature = "elgamal3")]
             let transcrypted = encrypted.transcrypt(&info, rng);
@@ -169,7 +171,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
                 let keys: SessionPublicKeys = public_keys_json(&keys)?;
                 (
                     encrypted.transcrypt(&info, &keys, rng),
-                    info.rekey_public_keys(&keys),
+                    info.rekey_public_key(&keys),
                 )
             };
             out.value(

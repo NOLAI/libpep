@@ -19,6 +19,8 @@ use crate::data::verifiable::traits::{
 };
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 #[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::factors::RekeyPublicKey;
+#[cfg(all(feature = "batch", not(feature = "elgamal3"), feature = "batch-pk"))]
 use crate::keys::AttributeSessionPublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::PseudonymSessionPublicKey;
@@ -49,6 +51,8 @@ impl PseudonymPseudonymizationProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &EncryptedPseudonym,
@@ -83,6 +87,8 @@ impl PseudonymPseudonymizationProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &EncryptedPseudonym,
@@ -163,6 +169,7 @@ impl VerifiablePseudonymizationProof for PseudonymPseudonymizationProof {
 pub struct PseudonymRekeyProof(pub crate::elgamal::verifiable::VerifiableRekey);
 
 impl PseudonymRekeyProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &EncryptedPseudonym,
@@ -171,6 +178,8 @@ impl PseudonymRekeyProof {
         self.0.verify(original.value(), &commitments.commitment)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &EncryptedPseudonym,
@@ -182,6 +191,8 @@ impl PseudonymRekeyProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &EncryptedPseudonym) -> EncryptedPseudonym {
         EncryptedPseudonym::from_value(self.0.unverified_reconstruct(original.value()))
     }
@@ -220,6 +231,7 @@ impl VerifiableRekeyProof for PseudonymRekeyProof {
 pub struct AttributeRekeyProof(pub crate::elgamal::verifiable::VerifiableRekey);
 
 impl AttributeRekeyProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &EncryptedAttribute,
@@ -228,6 +240,8 @@ impl AttributeRekeyProof {
         self.0.verify(original.value(), &commitments.commitment)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &EncryptedAttribute,
@@ -239,6 +253,8 @@ impl AttributeRekeyProof {
     }
 
     #[cfg(feature = "insecure")]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn unverified_reconstruct(&self, original: &EncryptedAttribute) -> EncryptedAttribute {
         EncryptedAttribute::from_value(self.0.unverified_reconstruct(original.value()))
     }
@@ -378,6 +394,8 @@ impl PseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
+    /// `public_key` is the key the original was encrypted under.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedPseudonym>,
@@ -421,6 +439,8 @@ impl PseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(not(feature = "elgamal3"))]
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedPseudonym>,
@@ -473,6 +493,7 @@ impl PseudonymPseudonymizationBatchProof {
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
     pub fn verified_reconstruct_batch(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedPseudonym>,
@@ -663,6 +684,7 @@ pub struct AttributeRekeyBatchProof(pub crate::elgamal::verifiable::VerifiableRe
 
 #[cfg(feature = "batch")]
 impl AttributeRekeyBatchProof {
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedAttribute>,
@@ -672,6 +694,8 @@ impl AttributeRekeyBatchProof {
         self.0.verify(&originals, &commitments.commitment)
     }
 
+    /// Verify the proof and return the result of the operation, or `None` if the proof does not
+    /// verify.
     pub fn verified_reconstruct(
         &self,
         original: &crate::data::batch::EncryptedBatch<EncryptedAttribute>,
@@ -786,7 +810,7 @@ impl crate::data::batch::EncryptedBatch<EncryptedPseudonym> {
             .into_iter()
             .map(EncryptedPseudonym::from_value)
             .collect();
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         PseudonymPseudonymizationBatchProof(proof)
     }
 
@@ -808,7 +832,7 @@ impl crate::data::batch::EncryptedBatch<EncryptedPseudonym> {
             .into_iter()
             .map(EncryptedPseudonym::from_value)
             .collect();
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         PseudonymRekeyBatchProof(proof)
     }
 }
@@ -939,7 +963,7 @@ impl crate::data::batch::EncryptedBatch<EncryptedAttribute> {
             .into_iter()
             .map(EncryptedAttribute::from_value)
             .collect();
-        self.public_key = self.public_key.convert(&info.k);
+        self.public_key = info.rekey_public_key(&self.public_key);
         AttributeRekeyBatchProof(proof)
     }
 }

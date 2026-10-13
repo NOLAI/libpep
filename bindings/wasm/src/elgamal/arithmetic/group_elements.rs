@@ -28,10 +28,9 @@ impl WASMGroupElement {
     }
     /// Decodes a group element from a 64-byte hash.
     #[wasm_bindgen(js_name = fromHash)]
-    pub fn from_hash(v: Vec<u8>) -> WASMGroupElement {
-        let mut arr = [0u8; 64];
-        arr.copy_from_slice(&v);
-        GroupElement::from_hash(&arr).into()
+    pub fn from_hash(v: Vec<u8>) -> Option<WASMGroupElement> {
+        let arr: [u8; 64] = v.try_into().ok()?;
+        Some(GroupElement::from_hash(&arr).into())
     }
     /// Decodes a group element from a hexadecimal string of 64 characters.
     #[wasm_bindgen(js_name = fromHex)]

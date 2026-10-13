@@ -6,7 +6,7 @@
 //! [`distribution`](super::distribution).
 
 use super::types::generic::*;
-use crate::elgamal::arithmetic::group::{Bytes, Group};
+use crate::elgamal::arithmetic::group::{decode_hex, Group};
 
 /// A public key: a group element of the form `sk * G`, which can be encoded to and decoded
 /// from byte arrays and hex strings.
@@ -74,16 +74,6 @@ pub trait SecretKey: Sized {
     }
 }
 
-/// Decode a hexadecimal string of exactly the length of `B`.
-pub(crate) fn decode_hex<B: Bytes>(s: &str) -> Option<B> {
-    if s.len() != 2 * B::len() {
-        return None;
-    }
-    let mut out = B::zeroed();
-    hex::decode_to_slice(s, out.as_mut()).ok()?;
-    Some(out)
-}
-
 macro_rules! impl_key_pair {
     ($($pk:ident / $sk:ident),+ $(,)?) => {$(
         impl<G: Group> PublicKey for $pk<G> {
@@ -135,6 +125,7 @@ impl_key_pair!(
 /// [`Pseudonym`]: crate::data::simple::Pseudonym
 /// [`Attribute`]: crate::data::simple::Attribute
 pub trait KeyProvider<K> {
+    /// The key of type `K`.
     fn get_key(&self) -> K;
 }
 

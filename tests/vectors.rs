@@ -44,10 +44,10 @@ use libpep::elgamal::arithmetic::{Group, Ristretto255};
 use libpep::elgamal::ElGamal;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
 use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymisation_factor,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
 use libpep::factors::{
-    AttributeRekeyInfo, EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret, RekeyFactor,
+    AttributeRekeyInfo, EncryptionSecret, Factor, PseudonymizationInfo, PseudonymizationSecret,
 };
 use libpep::keys::distribution::proofs::{BlindingCommitment, SessionKeyShareProof};
 use libpep::keys::traits::{PublicKey, SecretKey};
@@ -459,7 +459,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "K'_c", &(ka.scalar() * G).to_hex());
     out.push('\n');
 
-    let s = make_pseudonymisation_factor(&pseudo_secret, &domain);
+    let s = make_pseudonymization_factor(&pseudo_secret, &domain);
     put(out, "labelReshuffle", &format!("{LABEL_RESHUFFLE:02x}"));
     put(out, "s_d", &s.scalar().to_hex());
     put(out, "S_d", &(s.scalar() * G).to_hex());

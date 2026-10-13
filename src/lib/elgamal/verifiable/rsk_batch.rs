@@ -46,6 +46,7 @@ impl VerifiableRSKBatch {
 }
 
 impl VerifiableRSKBatch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         s: &ScalarNonZero,
@@ -73,7 +74,6 @@ impl VerifiableRSKBatch {
 
     /// Reconstruct the RSK'd ciphertexts from this batch proof,
     /// **without verifying** it. Internal prover-side use only.
-    #[allow(dead_code)]
     pub(crate) fn result(&self) -> Vec<ElGamal> {
         self.inners.iter().map(|inner| inner.result()).collect()
     }
@@ -85,8 +85,8 @@ impl VerifiableRSKBatch {
         reshuffle_commitment: &PseudonymizationFactorCommitment,
         rekey_commitment: &RekeyFactorCommitment,
     ) -> bool {
-        let gs = reshuffle_commitment.0 .0;
-        let gk = rekey_commitment.0 .0;
+        let gs = reshuffle_commitment.point();
+        let gk = rekey_commitment.point();
         if *self.p_gs != gs {
             return false;
         }
@@ -97,6 +97,7 @@ impl VerifiableRSKBatch {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],
@@ -190,6 +191,7 @@ impl VerifiableRSK2Batch {
 }
 
 impl VerifiableRSK2Batch {
+    /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal],
         s_from: &ScalarNonZero,
@@ -214,17 +216,12 @@ impl VerifiableRSK2Batch {
         }
     }
 
-    /// Reconstruct the RSK-2'd ciphertexts from this batch proof,
-    /// **without verifying** it. Internal prover-side use only.
-    #[allow(dead_code)]
-    pub(crate) fn result(&self) -> Vec<ElGamal> {
-        self.inner.result()
-    }
-
+    /// The commitment to the combined reshuffle factor `s_from⁻¹·s_to`.
     pub fn combined_reshuffle_commitment(&self) -> PseudonymizationFactorCommitment {
         PseudonymizationFactorCommitment(FactorCommitment(self.gs))
     }
 
+    /// The commitment to the combined rekey factor `k_from⁻¹·k_to`.
     pub fn combined_rekey_commitment(&self) -> RekeyFactorCommitment {
         RekeyFactorCommitment(FactorCommitment(self.gk))
     }
@@ -240,10 +237,10 @@ impl VerifiableRSK2Batch {
         k_from_commitments: &RekeyFactorCommitment,
         k_to_commitments: &RekeyFactorCommitment,
     ) -> bool {
-        let gs_from = s_from_commitments.0 .0;
-        let gs_to = s_to_commitments.0 .0;
-        let gk_from = k_from_commitments.0 .0;
-        let gk_to = k_to_commitments.0 .0;
+        let gs_from = s_from_commitments.point();
+        let gs_to = s_to_commitments.point();
+        let gk_from = k_from_commitments.point();
+        let gk_to = k_to_commitments.point();
         if *self.p_gs_to != gs_to || !verify_proof(&gs_from, &self.gs, &self.p_gs_to) {
             return false;
         }
@@ -257,6 +254,7 @@ impl VerifiableRSK2Batch {
     }
 
     #[must_use]
+    /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
         originals: &[ElGamal],

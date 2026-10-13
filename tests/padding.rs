@@ -8,7 +8,7 @@ use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
 use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::pseudonymize;
-use std::io::Error;
+use std::error::Error;
 
 /// Call a transcryption function with the argument list of the active ciphertext encoding: with
 /// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
@@ -26,7 +26,7 @@ macro_rules! tx {
 }
 
 #[test]
-fn test_pseudonymize_string_roundtrip() -> Result<(), Error> {
+fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
     // Initialize test environment
     let mut rng = rand::rng();
     let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);

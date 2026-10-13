@@ -1,3 +1,6 @@
+//! The data types: pseudonyms, attributes, their long and encrypted forms, records, JSON
+//! documents, and the traits the operations are generic over.
+
 #[cfg(feature = "batch")]
 pub mod batch;
 #[cfg(feature = "json")]
