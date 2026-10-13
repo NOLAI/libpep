@@ -108,6 +108,11 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 
 /// Expand `msg` under `dst` to 64 bytes with SHA-512, the uniform input both the group and the
 /// scalar hash of the ristretto255-SHA512 ciphersuite are built from.
+///
+/// SHA-512 is pinned here because this is a ristretto255 primitive, not a generic one: it backs
+/// the raw-tag functions below and `Ristretto255`'s own trait methods, which the RFC 9380 and
+/// RFC 9497 test vectors exercise with SHA-512 by definition. Code that is generic over a
+/// [`Group`] must reach the ciphersuite's hash through [`Group::Hash`] instead.
 pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
     let mut out = [0u8; 64];
     out.copy_from_slice(&expand_message_xmd::<Sha512>(msg, dst, 64));
@@ -140,7 +145,24 @@ pub fn hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> GroupElement {
 /// [`G::CIPHERSUITE`](Group::CIPHERSUITE), so a group's identifier can never be paired with
 /// another group's operations.
 ///
-/// An input longer than 2^16 - 1 bytes is hashed with SHA-512 first, as the draft prescribes.
+/// # Why the input is not hashed first
+///
+/// `x` goes straight to `HashToGroup`. Reducing it with a plain hash beforehand is tempting and
+/// wrong on three counts:
+///
+/// - It buys no collision resistance. `HashToGroup` is already a secure hash onto the group, so
+///   a collision in `HashToGroup(H(x))` is either a collision in `H` or one in `HashToGroup`.
+///   The extra compression round cannot rule out either, so it adds a cost and no property.
+/// - It costs interoperability for nothing. Anyone implementing this encoding from the obvious
+///   primitive gets `HashToGroup(x)` and therefore different pseudonyms, and the mismatch shows
+///   up only as pseudonyms that fail to line up across implementations.
+/// - It makes the hash choice load-bearing twice instead of once, so each new ciphersuite gets
+///   two independent chances to pair the wrong hash with its identifier.
+///
+/// The one thing a pre-hash does legitimately is bound the input length, so it survives for that
+/// alone: an `x` of 2^16 bytes or more is reduced with [`G::Hash`](Group::Hash) first. The
+/// threshold is the draft's bound on a hashed identifier. Within the bound, which is every
+/// realistic identifier, `x` is passed through unchanged.
 ///
 /// # Encoding requirement
 ///
@@ -155,12 +177,12 @@ pub fn hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> GroupElement {
 /// [`GroupElement::random`] does trivially.
 #[must_use]
 pub fn hash_to_group<G: Group>(x: &[u8]) -> G::Element {
-    /// Inputs longer than this are hashed with SHA-512 before hashing to the group.
+    /// The draft's bound on a hashed identifier: at most `2^16 - 1` bytes.
     const MAX_HASH_INPUT: usize = u16::MAX as usize;
 
     let dst = G::CIPHERSUITE.dst(b"HashToGroup-");
     if x.len() > MAX_HASH_INPUT {
-        G::hash_to_group(&Sha512::digest(x), &dst)
+        G::hash_to_group(&G::Hash::digest(x), &dst)
     } else {
         G::hash_to_group(x, &dst)
     }
@@ -406,6 +428,26 @@ mod tests {
             hash_to_group::<Ristretto255>(b"alice"),
             hash_to_group_with_dst(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
         );
+    }
+
+    #[test]
+    fn hash_to_group_does_not_prehash_ordinary_inputs() {
+        // The encoding is HashToGroup(x), not HashToGroup(H(x)). Reducing the input first would
+        // add no collision resistance and would silently diverge from any implementation written
+        // against the primitive, so pin that it does not happen.
+        let dst = Ristretto255::CIPHERSUITE.dst(b"HashToGroup-");
+        for x in [b"".as_slice(), b"a", b"patient-42", &[0xffu8; 1000]] {
+            assert_eq!(
+                hash_to_group::<Ristretto255>(x),
+                hash_to_group_with_dst(x, &dst),
+                "hash_to_group must pass the input through unchanged"
+            );
+            assert_ne!(
+                hash_to_group::<Ristretto255>(x),
+                hash_to_group_with_dst(&Sha512::digest(x), &dst),
+                "hash_to_group must not pre-hash an input within the bound"
+            );
+        }
     }
 
     #[test]
