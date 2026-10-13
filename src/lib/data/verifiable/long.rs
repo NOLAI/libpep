@@ -11,7 +11,7 @@ use crate::data::verifiable::traits::{
 };
 use rand_core::{CryptoRng, Rng};
 
-/// Proof of a verifiable pseudonymization of a [`LongEncryptedPseudonym`].
+/// Proof of a verifiable pseudonymization of a [`LongEncryptedPseudonym`](type@LongEncryptedPseudonym).
 #[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -145,7 +145,7 @@ impl VerifiablePseudonymizationProof for LongPseudonymPseudonymizationProof {
     }
 }
 
-/// Proof of a verifiable rekey of a [`LongEncryptedPseudonym`].
+/// Proof of a verifiable rekey of a [`LongEncryptedPseudonym`](type@LongEncryptedPseudonym).
 #[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -227,7 +227,7 @@ impl VerifiableRekeyProof for LongPseudonymRekeyProof {
     }
 }
 
-/// Proof of a verifiable rekey of a [`LongEncryptedAttribute`].
+/// Proof of a verifiable rekey of a [`LongEncryptedAttribute`](type@LongEncryptedAttribute).
 #[cfg(feature = "verifiable")]
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
