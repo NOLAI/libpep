@@ -54,6 +54,9 @@ jobs:
           - package: "libpep-py"
             features: "insecure"
             name: "libpep-py default+insecure"
+          - package: "libpep-py"
+            features: "insecure,verifiable-derivation"
+            name: "libpep-py default+verifiable-derivation"
           # WASM binding crate
           - package: "libpep-wasm"
             features: ""
@@ -160,7 +163,7 @@ jobs:
           source .venv/bin/activate
           pip install maturin
           cd bindings/python
-          maturin develop --features insecure
+          maturin develop --features insecure,verifiable-derivation
       - name: Run Python tests
         run: |
           source .venv/bin/activate

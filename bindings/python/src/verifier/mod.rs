@@ -417,7 +417,7 @@ impl PyVerifier {
     ) -> PyResult<()> {
         self.0
             .register_blinding_commitments(transcryptor_id.to_string(), commitments.inner)
-            .map_err(crate::errors::verify_err_to_py)
+            .map_err(crate::errors::register_commitments_err_to_py)
     }
 
     /// Check if blinding commitments are registered for a transcryptor.
@@ -449,7 +449,7 @@ impl PyVerifier {
                 pseudonym_master_key.inner,
                 rekey_master_key.inner,
             )
-            .map_err(crate::errors::verify_err_to_py)
+            .map_err(crate::errors::register_commitments_err_to_py)
     }
 
     /// Check if master keys are registered for a transcryptor.
@@ -539,13 +539,15 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<crate::data::records::PyEncryptedRecord> {
-        let sk = libpep::keys::SessionKeys::from(session_keys.clone());
+        // Verification needs only the public halves; `public()` projects them
+        // out so a caller may still pass the full `SessionKeys` it holds.
+        let pk = libpep::keys::SessionKeys::from(session_keys.clone()).public();
         self.0
             .verified_reconstruct_transcryption_cached(
                 transcryptor_id,
                 &original.0,
                 &proof.inner,
-                &sk,
+                &pk,
                 &domain_from.0,
                 &domain_to.0,
                 &context_from.0,

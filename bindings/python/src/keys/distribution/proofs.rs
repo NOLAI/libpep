@@ -9,7 +9,7 @@
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
-use crate::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
+use libpep::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -24,6 +24,7 @@ pub struct PyBlindingCommitment {
 }
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyBlindingCommitment {
     /// Create a blinding commitment from a blinding scalar.
     #[new]
@@ -84,6 +85,7 @@ pub struct PyBlindingCommitments {
 }
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyBlindingCommitments {
     /// Create blinding commitments from pseudonym and attribute blinding scalars.
     #[new]
@@ -156,6 +158,7 @@ pub struct PySessionKeyShareProof {
 }
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PySessionKeyShareProof {
     /// Create a session-key-share proof.
     ///

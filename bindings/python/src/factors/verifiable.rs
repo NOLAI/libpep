@@ -83,6 +83,7 @@ pub struct PyMasterPseudonymizationPublicKey {
 }
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyMasterPseudonymizationPublicKey {
     /// Construct from two group elements `X₁` and `X₂`.
     #[new]
@@ -211,6 +212,7 @@ pub struct PyMasterRekeyingPublicKey {
 }
 
 #[pymethods]
+#[allow(clippy::wrong_self_convention)]
 impl PyMasterRekeyingPublicKey {
     /// Construct from two group elements `Y₁` and `Y₂`.
     #[new]

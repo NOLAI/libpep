@@ -169,16 +169,16 @@ pub fn py_make_pseudonym_session_keys_with_proof(
 ) -> PyResult<PyPseudonymSessionKeysWithProof> {
     let mut rng = rand::rng();
     let (public, secret_key, proof, blinding_commitment) = make_pseudonym_session_keys_with_proof(
-        &PseudonymGlobalSecretKey::from_scalar(global.0 .0),
+        &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
-        &blinding.0 .0,
+        &blinding.0,
         &mut rng,
     )
-    .map_err(PyErr::from)?;
+    .map_err(crate::errors::session_key_share_err_to_py)?;
     Ok(PyPseudonymSessionKeysWithProof {
-        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
+        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
         proof: proof.into(),
         blinding_commitment: blinding_commitment.into(),
     })
@@ -196,16 +196,16 @@ pub fn py_make_attribute_session_keys_with_proof(
 ) -> PyResult<PyAttributeSessionKeysWithProof> {
     let mut rng = rand::rng();
     let (public, secret_key, proof, blinding_commitment) = make_attribute_session_keys_with_proof(
-        &AttributeGlobalSecretKey::from_scalar(global.0 .0),
+        &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
-        &blinding.0 .0,
+        &blinding.0,
         &mut rng,
     )
-    .map_err(PyErr::from)?;
+    .map_err(crate::errors::session_key_share_err_to_py)?;
     Ok(PyAttributeSessionKeysWithProof {
-        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(public.0)),
-        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(secret_key.0)),
+        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*public)),
+        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
         proof: proof.into(),
         blinding_commitment: blinding_commitment.into(),
     })

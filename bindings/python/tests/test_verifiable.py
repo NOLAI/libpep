@@ -661,53 +661,43 @@ class TestSessionKeyShareBinding(unittest.TestCase):
     a transcryptor could pair a valid proof with an unrelated share. These
     tests cover `verify_share`, which checks both halves.
 
-    Skipped unless the extension was built with `verifiable-derivation`.
+    Requires the extension to be built with `verifiable-derivation`.
     """
 
-    def setUp(self):
-        try:
-            from libpep.keys.distribution import (  # noqa: F401
-                BlindingCommitment,
-                SessionKeyShareProof,
-            )
-        except ImportError:
-            self.skipTest("built without verifiable-derivation")
-
-    def test_verify_share_accepts_the_matching_share(self):
-        from libpep.elgamal.arithmetic.group_elements import G
+    @staticmethod
+    def _setup():
+        from libpep.elgamal.arithmetic.group_elements import GroupElement
         from libpep.elgamal.arithmetic.scalars import ScalarNonZero
-        from libpep.keys.distribution import (
-            BlindingCommitment,
-            PseudonymSessionKeyShare,
-            SessionKeyShareProof,
-        )
+        from libpep.keys import BlindingCommitment, SessionKeyShareProof
 
         blinding = ScalarNonZero.random()
         rekey_factor = ScalarNonZero.random()
-        rekey_commitment = rekey_factor * G
+        rekey_commitment = GroupElement.generator().mul(rekey_factor)
         proof = SessionKeyShareProof(blinding, rekey_commitment)
         commitment = BlindingCommitment(blinding)
+        return blinding, rekey_factor, rekey_commitment, proof, commitment
 
+    def test_verify_share_accepts_the_matching_share(self):
+        from libpep.keys import PseudonymSessionKeyShare
+
+        blinding, rekey_factor, rekey_commitment, proof, commitment = self._setup()
         share = PseudonymSessionKeyShare(blinding * rekey_factor)
         self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
 
     def test_verify_share_rejects_a_share_that_does_not_match(self):
-        from libpep.elgamal.arithmetic.group_elements import G
         from libpep.elgamal.arithmetic.scalars import ScalarNonZero
-        from libpep.keys.distribution import (
-            BlindingCommitment,
-            PseudonymSessionKeyShare,
-            SessionKeyShareProof,
-        )
+        from libpep.keys import PseudonymSessionKeyShare
 
-        blinding = ScalarNonZero.random()
-        rekey_factor = ScalarNonZero.random()
-        rekey_commitment = rekey_factor * G
-        proof = SessionKeyShareProof(blinding, rekey_commitment)
-        commitment = BlindingCommitment(blinding)
-
+        _, _, rekey_commitment, proof, commitment = self._setup()
         # The proof is valid on its own...
         self.assertTrue(proof.verify(commitment, rekey_commitment))
         # ...but the share handed over does not correspond to it.
         wrong = PseudonymSessionKeyShare(ScalarNonZero.random())
         self.assertFalse(proof.verify_share(wrong, commitment, rekey_commitment))
+
+    def test_verify_share_accepts_an_attribute_share(self):
+        from libpep.keys import AttributeSessionKeyShare
+
+        blinding, rekey_factor, rekey_commitment, proof, commitment = self._setup()
+        share = AttributeSessionKeyShare(blinding * rekey_factor)
+        self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
