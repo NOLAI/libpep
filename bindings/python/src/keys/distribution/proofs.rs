@@ -8,7 +8,9 @@
 
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
 use crate::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]
@@ -168,7 +170,48 @@ impl PySessionKeyShareProof {
         }
     }
 
+    /// Verify the proof *and* bind it to the share scalar actually received.
+    ///
+    /// This is the check a user accepting a session-key share must perform: it
+    /// verifies the proof and additionally checks `U_i == u_i · G` for the
+    /// share handed over alongside it. Without the second half, a transcryptor
+    /// can pair a valid proof with an unrelated scalar.
+    ///
+    /// Args:
+    ///     share: The received share, a `PseudonymSessionKeyShare` or
+    ///         `AttributeSessionKeyShare`.
+    ///     blinding_commitment: The preconfigured `B_i = b_i · G`.
+    ///     rekey_commitment: The public commitment `K_i = k_i · G`.
+    fn verify_share(
+        &self,
+        share: &Bound<'_, PyAny>,
+        blinding_commitment: &PyBlindingCommitment,
+        rekey_commitment: PyGroupElement,
+    ) -> PyResult<bool> {
+        if let Ok(s) = share.extract::<PyPseudonymSessionKeyShare>() {
+            return Ok(self.inner.verify_share(
+                &s.0,
+                &blinding_commitment.inner,
+                &rekey_commitment.0,
+            ));
+        }
+        if let Ok(s) = share.extract::<PyAttributeSessionKeyShare>() {
+            return Ok(self.inner.verify_share(
+                &s.0,
+                &blinding_commitment.inner,
+                &rekey_commitment.0,
+            ));
+        }
+        Err(PyTypeError::new_err(
+            "share must be a PseudonymSessionKeyShare or an AttributeSessionKeyShare",
+        ))
+    }
+
     /// Verify the proof against a blinding commitment and rekey commitment.
+    ///
+    /// This does NOT establish that any particular share is correct: it never
+    /// sees the share scalar. A user accepting a share must use
+    /// `verify_share` instead.
     fn verify(
         &self,
         blinding_commitment: &PyBlindingCommitment,
