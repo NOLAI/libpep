@@ -5,7 +5,7 @@ resolver = "2"
 [workspace.package]
 version = "0.14.0"
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.88"
 authors = ["Bernard van Gastel <bvgastel@bitpowder.com>", "Job Doesburg <job@jobdoesburg.nl>"]
 license = "Apache-2.0"
 repository = "https://github.com/NOLAI/libpep"
@@ -39,7 +39,6 @@ long = [] # For long pseudonyms and attributes over 15 bytes
 json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption support
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms", "dep:hmac"] # For compatibility with the legacy PEP repository implementation
-hmac-derivation = ["dep:hmac"] # The HMAC-SHA512 factor derivation of libpep 0.13, which ignores the protocol context (mutually exclusive with "legacy")
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
 build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline"] # Build the peppy command line utility (requires long and offline)
 

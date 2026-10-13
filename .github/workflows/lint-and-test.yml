@@ -23,9 +23,6 @@ jobs:
             features: "legacy"
             name: "libpep default+legacy"
           - package: "libpep"
-            features: "hmac-derivation"
-            name: "libpep default+hmac-derivation"
-          - package: "libpep"
             features: "insecure"
             name: "libpep default+insecure"
           # Without default features (feature gating)
@@ -77,10 +74,10 @@ jobs:
 
   msrv:
     runs-on: ubuntu-latest
-    name: cargo check (MSRV 1.87)
+    name: cargo check (MSRV 1.88)
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.87.0
+      - uses: dtolnay/rust-toolchain@1.88.0
         with:
           targets: wasm32-unknown-unknown
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
@@ -95,7 +92,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: taiki-e/install-action@cargo-hack
-      - run: cargo hack check -p libpep --feature-powerset --depth 2 --no-dev-deps --mutually-exclusive-features legacy,hmac-derivation
+      - run: cargo hack check -p libpep --feature-powerset --depth 2 --no-dev-deps
 
   test:
     runs-on: ubuntu-latest
@@ -112,9 +109,6 @@ jobs:
           - package: "libpep"
             features: "legacy"
             name: "libpep default+legacy"
-          - package: "libpep"
-            features: "hmac-derivation"
-            name: "libpep default+hmac-derivation"
           - package: "libpep"
             features: "insecure"
             name: "libpep default+insecure"

@@ -19,15 +19,16 @@ a major change against the published 0.13.0.
 
 ### Breaking changes
 
-- The minimum supported Rust version is 1.87, up from 1.85. `ctutils`, a transitive dependency
-  of `curve25519-dalek`, `sha2` and `hmac`, requires 1.87 from its 0.4.3 release on.
+- The minimum supported Rust version is 1.88, up from 1.85. Transitive dependencies of
+  `curve25519-dalek`, `sha2` and `hmac` raised their own floors during this cycle: `ctutils`
+  0.4.3 requires 1.87 and `sha2` 0.11.1 requires 1.88.
 - Factor derivation follows `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar`
   (RFC 9497, ristretto255-SHA512: `expand_message_xmd` with SHA-512, RFC 9380) over the
   length-prefixed secret, the label and the length-prefixed identifier, with domain separation tag
   `"DeriveFactor-" || contextString`, rejecting 0 and 1 with a counter. **Derived factors and
-  session keys change**; the previous HMAC-SHA512 derivation is available behind the new
-  `hmac-derivation` feature (mutually exclusive with `legacy`). The `legacy` derivation is
-  unchanged.
+  session keys change**, and the HMAC-SHA512 derivation of 0.13 is gone: `DeriveFactor` is the
+  only derivation outside `legacy`, which is unchanged and still reproduces the PEP repository
+  implementation bit for bit.
 - A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
   `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
   *and* a hash (`ristretto255-SHA512`), so it belongs to the group: it is the associated constant
@@ -45,7 +46,7 @@ a major change against the published 0.13.0.
   commitments and proofs on top, so a mode would stop a verifiable and a plain transcryptor from
   interoperating on one session. The hashes are separated by the label of each tag
   (`"DeriveFactor-"`, `"HashToGroup-"`, `"HashToScalar-"`, and the proof transcript's own labels).
-- `hmac` is an optional dependency, pulled in by `legacy` and `hmac-derivation` only.
+- `hmac` is an optional dependency, pulled in by `legacy` only.
 - `pseudonymize`, `rekey` and `transcrypt` (functions, `Transcryptor` and `DistributedTranscryptor`
   methods, traits, and the batch variants) take a random number generator and, without the
   `elgamal3` feature, the public key the ciphertext is currently encrypted under, exactly like
@@ -113,6 +114,16 @@ a major change against the published 0.13.0.
   relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret
   enters this hash. The invertible lizard encoding stays on
   `GroupElement::from_lizard`/`to_lizard`, reachable generically through `InvertibleEncoding`.
+
+  The input is passed to `HashToGroup` unchanged rather than hashed first. Pre-hashing adds no
+  collision resistance over a secure hash onto the group, diverges from anyone implementing the
+  encoding from the obvious primitive, and makes the hash choice load-bearing in two places
+  instead of one. An input of 2^16 bytes or more is still reduced with the ciphersuite's hash
+  first, which is the one thing a pre-hash does legitimately. **Hashed pseudonyms change.**
+- `Group::Hash`, the hash a ciphersuite identifier names, declared beside `Group::CIPHERSUITE` so
+  that a group whose identifier says `-SHA256` cannot hash with SHA-512. Code generic over a
+  `Group` reaches the ciphersuite's hash through it; the ristretto255 primitives that the RFC 9380
+  and RFC 9497 vectors pin keep hashing with SHA-512 by definition.
 - `elgamal::arithmetic::Ciphersuite`, with `identifier()`, `context_string()` (the spec's name for
   the value) and `dst()`, reached through `Group::CIPHERSUITE` and built with the `ciphersuite!`
   macro so that the identifier appears once.

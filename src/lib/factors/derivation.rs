@@ -4,18 +4,16 @@
 //! The derivation is generic over the [`Group`](crate::elgamal::arithmetic::Group) in
 //! [`generic`]; the functions in this module derive ristretto255 factors.
 //!
-//! Three derivations exist, selected by feature:
+//! Two derivations exist, selected by feature:
 //!
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
 //!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
 //!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
 //!   the group's [ciphersuite](crate::elgamal::arithmetic::Group::CIPHERSUITE). A factor that is 0 or 1 is rejected
 //!   and the derivation retried with the next counter.
-//! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier,
-//!   the derivation of libpep 0.13.
-//! - `legacy`: the derivation of the legacy PEP repository.
+//! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
-//! The labels are the same in every derivation: `0x01` pseudonym rekey, `0x02` attribute rekey,
+//! The labels are the same in both: `0x01` pseudonym rekey, `0x02` attribute rekey,
 //! `0x03` reshuffle.
 //!
 //! None of these take a [`Ciphersuite`](crate::elgamal::arithmetic::ciphersuite::Ciphersuite): the secret is part of
@@ -57,7 +55,7 @@ pub fn make_pseudonymisation_factor(
     generic::make_pseudonymisation_factor::<Ristretto255>(secret, domain)
 }
 
-#[cfg(all(test, not(any(feature = "legacy", feature = "hmac-derivation"))))]
+#[cfg(all(test, not(feature = "legacy")))]
 mod tests {
     use super::generic::make_factor;
     use super::*;

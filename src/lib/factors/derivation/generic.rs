@@ -1,31 +1,26 @@
 //! Factor derivation generic over the [`Group`].
 //!
-//! Three derivations exist, selected by feature:
+//! Two derivations exist, selected by feature:
 //!
 //! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` over the
 //!   length-prefixed secret, the label and the length-prefixed identifier, domain-separated with
 //!   `"DeriveFactor-" || contextString` of the group's [ciphersuite](crate::elgamal::arithmetic::Group::CIPHERSUITE). A
 //!   factor that is 0 or 1 is rejected and the derivation retried with the next counter.
-//! - `hmac-derivation`: HMAC-SHA512 keyed with the secret over the label and the identifier, the
-//!   derivation of libpep 0.13. It ignores the protocol context.
-//! - `legacy`: the derivation of the legacy PEP repository.
+//! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
-//! The labels are the same in every derivation: `0x01` pseudonym rekey, `0x02` attribute rekey,
+//! The labels are the same in both: `0x01` pseudonym rekey, `0x02` attribute rekey,
 //! `0x03` reshuffle.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::group::Group;
 use crate::factors::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use crate::factors::types::generic::*;
-#[cfg(any(feature = "legacy", feature = "hmac-derivation"))]
+#[cfg(feature = "legacy")]
 use hmac::{Hmac, KeyInit, Mac};
-#[cfg(any(feature = "legacy", feature = "hmac-derivation"))]
+#[cfg(feature = "legacy")]
 use sha2::Sha512;
 #[cfg(feature = "legacy")]
 use sha2::{Digest, Sha256};
-
-#[cfg(all(feature = "legacy", feature = "hmac-derivation"))]
-compile_error!("the `legacy` and `hmac-derivation` features select different factor derivations and cannot be combined");
 
 /// Label of the pseudonym rekey factor `k_c` (`labelRekeyPseudonym`).
 pub const LABEL_REKEY_PSEUDONYM: u8 = 0x01;
@@ -100,7 +95,7 @@ pub fn make_pseudonymisation_factor<G: Group>(
 ///
 /// Panics if `secret` or `id` is 2^16 bytes or longer; the derivation input length-prefixes
 /// both with two bytes.
-#[cfg(not(any(feature = "legacy", feature = "hmac-derivation")))]
+#[cfg(not(feature = "legacy"))]
 pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G::Scalar {
     let secret_len = u16::try_from(secret.len()).ok();
     let id_len = u16::try_from(id.len()).ok();
@@ -126,37 +121,6 @@ pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G:
         }
     }
     unreachable!("256 consecutive degenerate factor derivations")
-}
-
-/// Derive a factor with HMAC-SHA512 keyed with the secret, the derivation of libpep 0.13.
-#[cfg(feature = "hmac-derivation")]
-pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G::Scalar {
-    // Retried with a counter appended only on a degenerate result, so factors are unchanged in
-    // the overwhelmingly common case.
-    for counter in 0u8..=255 {
-        // Unwrap is safe: HMAC-SHA512 accepts keys of any length
-        #[allow(clippy::unwrap_used)]
-        let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
-        hmac.update(&u32::from(label).to_be_bytes());
-        hmac.update(id);
-        if counter > 0 {
-            hmac.update(&[counter]);
-        }
-        let mut bytes = [0u8; 64];
-        bytes.copy_from_slice(&hmac.finalize().into_bytes());
-        if let Some(factor) = scalar_from_hash_excluding_zero_and_one::<G>(&bytes) {
-            return factor;
-        }
-    }
-    unreachable!("256 consecutive degenerate factor derivations")
-}
-
-/// Reduce a 64-byte hash to a scalar, rejecting 0 and 1.
-#[cfg(feature = "hmac-derivation")]
-pub(crate) fn scalar_from_hash_excluding_zero_and_one<G: Group>(
-    bytes: &[u8; 64],
-) -> Option<G::Scalar> {
-    G::scalar_from_uniform_bytes(bytes).filter(|scalar| *scalar != G::scalar_one())
 }
 
 /// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).

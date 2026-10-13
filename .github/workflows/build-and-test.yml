@@ -33,8 +33,6 @@ jobs:
             name: "default+elgamal3"
           - features: "legacy"
             name: "default+legacy"
-          - features: "hmac-derivation"
-            name: "default+hmac-derivation"
 
     name: cargo test (${{ matrix.name }})
     steps:

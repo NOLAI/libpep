@@ -59,9 +59,6 @@
 //!   operations. **This feature changes API signatures**: decryption functions return an
 //!   [`Option`] (or an error for batches) instead of a plain value. The two modes are not
 //!   wire-compatible; choose one for your deployment.
-//! - `hmac-derivation`: the HMAC-SHA512 factor derivation of libpep 0.13 instead of the
-//!   `DeriveFactor` of draft-doesburg-cfrg-coprf; only for continuity with factors derived by
-//!   0.13. Mutually exclusive with `legacy`.
 //! - `legacy`: compatibility with the legacy PEP repository implementation (different scalar
 //!   derivation). Implies `elgamal3`, `offline` and `global-pseudonyms`; only for
 //!   interoperability with legacy deployments.

@@ -233,12 +233,10 @@ Optional features:
   This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations.
   Decryption functions return an `Option` (or an error for batches) instead of a plain value.
   The two modes are not wire-compatible; choose one per deployment.
-- `hmac-derivation`: the HMAC-SHA512 factor derivation of libpep 0.13 instead of the `DeriveFactor` of draft-doesburg-cfrg-coprf (`HashToScalar` domain-separated with the ciphersuite context).
-  Only for continuity with factors and session keys derived by 0.13. Mutually exclusive with `legacy`.
 - `legacy`: compatibility with the legacy PEP repository implementation, which derives scalars from domains, contexts and secrets differently.
-  Implies `elgamal3`, `offline` and `global-pseudonyms`. Mutually exclusive with `hmac-derivation`.
+  Implies `elgamal3`, `offline` and `global-pseudonyms`.
 
-The three derivations (default, `hmac-derivation`, `legacy`) produce different factors and session keys from the same secrets; a deployment picks one.
+The two derivations (default and `legacy`) produce different factors and session keys from the same secrets; a deployment picks one.
 - `insecure`: methods that use global *secret* keys directly, such as `decrypt_global`.
 - `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
 
@@ -254,7 +252,7 @@ Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinka
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 The library has been designed for production use but has not undergone a formal security audit.
 
-The minimum supported Rust version is 1.87; raising it is considered a semver-relevant change.
+The minimum supported Rust version is 1.88; raising it is considered a semver-relevant change.
 
 ## Development
 
