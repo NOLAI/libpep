@@ -1,6 +1,6 @@
 //! Test vectors for the ristretto255-SHA512 ciphersuite.
 //!
-//! The expected values live as Rust constants in `tests/vectors/expected.rs`, one per line, and
+//! The expected values live as Rust constants in `the `expected` module of `tests/vectors.rs``, one per line, and
 //! this file recomputes every one of them and asserts equality. Any change in derived factors,
 //! encodings, transcryption or proofs therefore fails the test instead of passing silently.
 //!
@@ -15,7 +15,7 @@
 //! cargo test --features batch,verifiable --test vectors -- --ignored --nocapture
 //! ```
 //!
-//! which prints the current values in the layout of `expected.rs`; copy the output there after
+//! which prints the current values in the layout of the `expected` module; copy the output there after
 //! checking the diff value by value.
 //!
 //! The vectors cover the batch operations and the verifiable session key share, so the test is
@@ -369,13 +369,13 @@ fn expected_for(name: &str) -> &'static str {
         .find(|(label, _)| *label == name)
         .map(|(_, value)| *value)
         .unwrap_or_else(|| {
-            panic!("no expected constant for {name}; add it to tests/vectors/expected.rs")
+            panic!("no expected constant for {name}; add it to the `expected` module of `tests/vectors.rs`")
         })
 }
 
 /// Record a computed value and check it against its constant.
 ///
-/// `out` collects the values in the layout of `expected.rs`, so that the ignored
+/// `out` collects the values in the layout of the `expected` module, so that the ignored
 /// `print_vectors_for_copying` test can emit them; the assertion is what makes this a test.
 fn put(out: &mut String, name: &str, value: &str) {
     writeln!(
@@ -388,7 +388,7 @@ fn put(out: &mut String, name: &str, value: &str) {
         assert_eq!(
             value,
             expected_for(name),
-            "{name} differs from tests/vectors/expected.rs. If this change is intended, \
+            "{name} differs from the `expected` module of `tests/vectors.rs`. If this change is intended, \
              regenerate the constants with: cargo test --features batch,verifiable --test \
              vectors -- --ignored --nocapture"
         );
@@ -755,7 +755,7 @@ fn generate() -> String {
     out
 }
 
-/// Recompute every vector and assert each against its constant in `expected.rs`.
+/// Recompute every vector and assert each against its constant in the `expected` module.
 ///
 /// [`put`] does the per-value assertion, so a mismatch names the exact label that changed
 /// instead of printing a whole-file diff.
@@ -768,7 +768,7 @@ fn test_vectors_match_the_expected_constants() {
     );
 }
 
-/// Print the current vectors in the layout of `expected.rs`, for copying after an intended
+/// Print the current vectors in the layout of the `expected` module, for copying after an intended
 /// change. Ignored by default, and asserts nothing:
 ///
 /// ```text

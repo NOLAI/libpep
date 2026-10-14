@@ -374,7 +374,7 @@ impl<G: Group> Verifier<G> {
         self.attribute_rekey_cache.has(&key)
     }
 
-    /// The sizes of the commitment caches.
+    /// The commitment caches, for their sizes.
     pub fn cache(&self) -> VerifierCache<'_, G> {
         VerifierCache {
             pseudonymization: &self.pseudonymization_cache,

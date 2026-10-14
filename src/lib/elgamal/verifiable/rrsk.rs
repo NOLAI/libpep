@@ -15,11 +15,11 @@
 //! components. The verifier reconstructs them from the rerandomize step and
 //! then verifies the VRSK / VRSK2 proof against them.
 //!
-//! Unlike the standalone [`VerifiableRerandomize`],
-//! which is only available with `insecure` because the rerandomization can be
-//! applied unbounded, VRRSK and VRRSK-2 *do* tie the rerandomization to a
-//! specific `(s, k)` (or `(s_from, s_to, k_from, k_to)`) tuple via the
-//! subsequent RSK proof and so are available in the default feature set.
+//! Unlike a standalone [`VerifiableRerandomize`] (whose free function
+//! `verifiable_rerandomize` is only available with `insecure`, because an
+//! unbounded rerandomization proves nothing about the factors), VRRSK and
+//! VRRSK-2 tie the rerandomization to a specific `(s, k)` (or
+//! `(s_from, s_to, k_from, k_to)`) tuple via the subsequent RSK proof.
 
 use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use super::rerandomize::VerifiableRerandomize;
@@ -94,8 +94,7 @@ impl<G: Group> VerifiableRRSK<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }
@@ -190,8 +189,7 @@ impl<G: Group> VerifiableRRSK2<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }

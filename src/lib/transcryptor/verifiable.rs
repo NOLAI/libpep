@@ -68,7 +68,7 @@ impl<G: Group> Transcryptor<G> {
     ///
     /// Uses RRSK with a freshly sampled rerandomize factor. The verifier
     /// recovers the result by calling
-    /// [`Verifier::verify_pseudonymization`](crate::verifier::Verifier::verify_pseudonymization)
+    /// [`Verifier::verified_reconstruct_pseudonymization`](crate::verifier::Verifier::verified_reconstruct_pseudonymization)
     /// (or its `_cached` variant) on the returned proof.
     #[cfg(feature = "elgamal3")]
     pub fn verifiable_pseudonymize<E, R>(

@@ -11,6 +11,6 @@ use crate::elgamal::arithmetic::Ristretto255;
 
 /// The [`JsonTranscryptionProof`](generic::JsonTranscryptionProof) over ristretto255.
 pub type JsonTranscryptionProof = generic::JsonTranscryptionProof<Ristretto255>;
-/// The [`VerifiableJsonBatch`](generic::VerifiableJsonBatch) over ristretto255.
+/// The [`JsonTranscryptionBatchProof`](generic::JsonTranscryptionBatchProof) over ristretto255.
 #[cfg(feature = "batch")]
-pub type VerifiableJsonBatch = generic::VerifiableJsonBatch<Ristretto255>;
+pub type JsonTranscryptionBatchProof = generic::JsonTranscryptionBatchProof<Ristretto255>;

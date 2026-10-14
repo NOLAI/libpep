@@ -229,3 +229,8 @@ mod tests {
         assert_eq!(session.pseudonym.secret, deserialized);
     }
 }
+
+/// The [`SessionKeysWithProof`](generic::SessionKeysWithProof) over ristretto255.
+#[cfg(feature = "verifiable")]
+pub type SessionKeysWithProof<PK, SK> =
+    generic::SessionKeysWithProof<PK, SK, crate::elgamal::arithmetic::Ristretto255>;

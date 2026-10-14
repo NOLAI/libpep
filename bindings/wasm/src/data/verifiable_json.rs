@@ -1,6 +1,6 @@
 //! WASM bindings for verifiable JSON transcryption.
 //!
-//! Wraps [`JsonTranscryptionProof`] and [`VerifiableJsonBatch`], and adds a
+//! Wraps [`JsonTranscryptionProof`] and [`JsonTranscryptionBatchProof`], and adds a
 //! `verifiableTranscrypt` producer on the existing
 //! [`WASMEncryptedPepJsonValue`].
 //!
@@ -13,9 +13,9 @@ use crate::errors::{malformed_proof_err, verify_err_to_js};
 use crate::factors::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::types::WASMTranscryptionInfo;
 use crate::verifier::WASMVerifier;
-use libpep::data::verifiable::json::JsonTranscryptionProof;
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-use libpep::data::verifiable::json::VerifiableJsonBatch;
+use libpep::data::verifiable::json::JsonTranscryptionBatchProof;
+use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
 use libpep::verifier::VerifyError;
 use wasm_bindgen::prelude::*;
@@ -116,31 +116,31 @@ impl WASMJsonTranscryptionProof {
 }
 
 // ---------------------------------------------------------------------------
-// VerifiableJsonBatch
+// JsonTranscryptionBatchProof
 // ---------------------------------------------------------------------------
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-#[wasm_bindgen(js_name = VerifiableJsonBatch)]
+#[wasm_bindgen(js_name = JsonTranscryptionBatchProof)]
 #[derive(Clone)]
-pub struct WASMVerifiableJsonBatch(pub(crate) VerifiableJsonBatch);
+pub struct WASMJsonTranscryptionBatchProof(pub(crate) JsonTranscryptionBatchProof);
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-impl From<VerifiableJsonBatch> for WASMVerifiableJsonBatch {
-    fn from(b: VerifiableJsonBatch) -> Self {
+impl From<JsonTranscryptionBatchProof> for WASMJsonTranscryptionBatchProof {
+    fn from(b: JsonTranscryptionBatchProof) -> Self {
         Self(b)
     }
 }
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-impl From<WASMVerifiableJsonBatch> for VerifiableJsonBatch {
-    fn from(b: WASMVerifiableJsonBatch) -> Self {
+impl From<WASMJsonTranscryptionBatchProof> for JsonTranscryptionBatchProof {
+    fn from(b: WASMJsonTranscryptionBatchProof) -> Self {
         b.0
     }
 }
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-#[wasm_bindgen(js_class = VerifiableJsonBatch)]
-impl WASMVerifiableJsonBatch {
+#[wasm_bindgen(js_class = JsonTranscryptionBatchProof)]
+impl WASMJsonTranscryptionBatchProof {
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {
@@ -149,9 +149,9 @@ impl WASMVerifiableJsonBatch {
 
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = fromJSON)]
-    pub fn from_json(json: &str) -> Result<WASMVerifiableJsonBatch, JsValue> {
+    pub fn from_json(json: &str) -> Result<WASMJsonTranscryptionBatchProof, JsValue> {
         serde_json::from_str(json)
-            .map(WASMVerifiableJsonBatch)
+            .map(WASMJsonTranscryptionBatchProof)
             .map_err(malformed_proof_err)
     }
 }

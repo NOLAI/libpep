@@ -450,41 +450,6 @@ pub struct PyVerifiableRSKInner {
     pub(crate) inner: VerifiableRSKInner,
 }
 
-#[pymethods]
-impl PyVerifiableRSKInner {
-    fn verify(
-        &self,
-        original: &PyElGamal,
-        gt: &crate::elgamal::arithmetic::PyGroupElement,
-        reshuffle_commitment: &PyPseudonymizationFactorCommitment,
-        rekey_commitment: &PyRekeyFactorCommitment,
-    ) -> bool {
-        self.inner.verify(
-            &original.0,
-            &gt.0,
-            &reshuffle_commitment.inner,
-            &rekey_commitment.inner,
-        )
-    }
-
-    fn verified_reconstruct(
-        &self,
-        original: &PyElGamal,
-        gt: &crate::elgamal::arithmetic::PyGroupElement,
-        reshuffle_commitment: &PyPseudonymizationFactorCommitment,
-        rekey_commitment: &PyRekeyFactorCommitment,
-    ) -> Option<PyElGamal> {
-        self.inner
-            .verified_reconstruct(
-                &original.0,
-                &gt.0,
-                &reshuffle_commitment.inner,
-                &rekey_commitment.inner,
-            )
-            .map(PyElGamal::from)
-    }
-}
-
 #[pyclass(name = "VerifiableRSK", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableRSK {

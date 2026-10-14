@@ -545,30 +545,6 @@ pub struct WASMVerifiableRSKInner(pub(crate) VerifiableRSKInner);
 
 #[wasm_bindgen(js_class = VerifiableRSKInner)]
 impl WASMVerifiableRSKInner {
-    pub fn verify(
-        &self,
-        original: &WASMElGamal,
-        gt: &crate::elgamal::arithmetic::group_elements::WASMGroupElement,
-        reshuffle_commitment: &WASMPseudonymizationFactorCommitment,
-        rekey_commitment: &WASMRekeyFactorCommitment,
-    ) -> bool {
-        self.0
-            .verify(original, gt, reshuffle_commitment, rekey_commitment)
-    }
-
-    #[wasm_bindgen(js_name = verifiedReconstruct)]
-    pub fn verified_reconstruct(
-        &self,
-        original: &WASMElGamal,
-        gt: &crate::elgamal::arithmetic::group_elements::WASMGroupElement,
-        reshuffle_commitment: &WASMPseudonymizationFactorCommitment,
-        rekey_commitment: &WASMRekeyFactorCommitment,
-    ) -> Option<WASMElGamal> {
-        self.0
-            .verified_reconstruct(original, gt, reshuffle_commitment, rekey_commitment)
-            .map(WASMElGamal::from)
-    }
-
     #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = toJSON)]
     pub fn to_json(&self) -> Result<String, JsValue> {

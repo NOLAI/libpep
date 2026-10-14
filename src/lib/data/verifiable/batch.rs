@@ -135,10 +135,12 @@ fn rebuild_own<E: VerifiableBatchItem>(
 /// Every verifiable batch proof folds one `gy` into its transcript. Picking the first item's
 /// key would let a prover mix ciphertexts under different keys into one batch and have only the
 /// first one checked, so the keys must all be equal. A batch without pseudonyms has no key to
-/// bind and does not verify.
+/// bind; its pseudonym proof is empty and the generator stands in.
 #[cfg(feature = "elgamal3")]
 fn batch_gy<G: Group>(pseudonyms: &[ElGamal<G>]) -> Option<G::Element> {
-    let first = pseudonyms.first()?;
+    let Some(first) = pseudonyms.first() else {
+        return Some(G::generator());
+    };
     pseudonyms
         .iter()
         .all(|c| c.gy == first.gy)
@@ -519,9 +521,7 @@ impl<E: VerifiableBatchItem + Pseudonymizable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchPseudonymizationProof<E> {
         let (pseudonyms, _) = flatten(&self.items);
-        let gy = pseudonyms
-            .first()
-            .map_or_else(E::Group::generator, |c| c.gy);
+        let gy = batch_gy(&pseudonyms).expect("the ciphertexts of a batch carry one key");
         self.pseudonymize_under(gy, info, rng)
     }
 }
@@ -654,9 +654,7 @@ impl<E: VerifiableBatchItem + Transcryptable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchTranscryptionProof<E> {
         let (pseudonyms, _) = flatten(&self.items);
-        let gy = pseudonyms
-            .first()
-            .map_or_else(E::Group::generator, |c| c.gy);
+        let gy = batch_gy(&pseudonyms).expect("the ciphertexts of a batch carry one key");
         self.transcrypt_under(gy, info, rng)
     }
 }

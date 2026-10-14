@@ -15,7 +15,7 @@ pub struct GlobalPublicKeys<G: Group> {
 }
 
 /// A pair of global secret keys containing both pseudonym and attribute keys.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct GlobalSecretKeys<G: Group> {
     /// The global secret key for pseudonyms.
     pub pseudonym: PseudonymGlobalSecretKey<G>,
@@ -31,7 +31,7 @@ pub struct GlobalSecretKeys<G: Group> {
 pub struct PseudonymGlobalPublicKey<G: Group>(pub(crate) G::Element);
 
 /// A global secret key for pseudonyms from which session keys are derived.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct PseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 
 /// A global public key for attributes, associated with the [`AttributeGlobalSecretKey`] from which session keys are derived.
@@ -42,7 +42,7 @@ pub struct PseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 pub struct AttributeGlobalPublicKey<G: Group>(pub(crate) G::Element);
 
 /// A global secret key for attributes from which session keys are derived.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct AttributeGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 
 /// Session keys for both pseudonyms and attributes.
@@ -114,7 +114,7 @@ pub struct AttributeSessionKeys<G: Group> {
 pub struct PseudonymSessionPublicKey<G: Group>(pub(crate) G::Element);
 
 /// A session secret key used to decrypt pseudonyms with.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct PseudonymSessionSecretKey<G: Group>(pub(crate) G::Scalar);
@@ -126,7 +126,15 @@ pub struct PseudonymSessionSecretKey<G: Group>(pub(crate) G::Scalar);
 pub struct AttributeSessionPublicKey<G: Group>(pub(crate) G::Element);
 
 /// A session secret key used to decrypt attributes with.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct AttributeSessionSecretKey<G: Group>(pub(crate) G::Scalar);
+
+redacted_debug!(
+    PseudonymGlobalSecretKey<G>,
+    AttributeGlobalSecretKey<G>,
+    PseudonymSessionSecretKey<G>,
+    AttributeSessionSecretKey<G>,
+    GlobalSecretKeys<G>,
+);

@@ -547,8 +547,8 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
 
     // 4. Create PepJson from the hex values using pep_json! macro
     let transcrypted_pep = pep_json!({
-        "short_id": pseudonym(short_id_hex),  // Reconstructs as Pseudonym (1 block)
-        "long_id": pseudonym(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
+        "short_id": pseudonym_hex(short_id_hex),  // Reconstructs as Pseudonym (1 block)
+        "long_id": pseudonym_hex(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
         "name": "Alice",
         "age": 30
     });
@@ -672,8 +672,10 @@ fn test_pseudonym_roundtrip_with_builder() {
 
     // 5. Rebuild PepJson from the hex values using the builder
     let transcrypted_pep = PepJsonBuilder::new()
-        .pseudonym("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
-        .pseudonym("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
+        .pseudonym_hex("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
+        .unwrap()
+        .pseudonym_hex("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
+        .unwrap()
         .attribute("name", json!("Alice"))
         .attribute("age", json!(30))
         .build();
@@ -806,8 +808,8 @@ fn test_unicode_pseudonyms_and_attributes() {
 
     // 4. Reconstruct PepJson from hex values
     let transcrypted_pep = pep_json!({
-        "emoji_id": pseudonym(emoji_id_hex),
-        "chinese_id": pseudonym(chinese_id_hex),
+        "emoji_id": pseudonym_hex(emoji_id_hex),
+        "chinese_id": pseudonym_hex(chinese_id_hex),
         "arabic_name": "مرحبا بك",
         "cyrillic_name": "Здравствуй",
         "mixed": "Café™ ñoño 你好 🏥",

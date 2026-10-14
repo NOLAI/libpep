@@ -20,7 +20,7 @@ use crate::factors::types::generic::TranscryptionInfo;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::generic::SessionPublicKeys;
 use rand_core::{CryptoRng, Rng};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Proof for verifiable transcryption of a PEP JSON value.
 ///
@@ -55,7 +55,7 @@ pub enum JsonTranscryptionProof<G: InvertibleEncoding> {
     /// The proofs of the elements of an array.
     Array(Vec<Box<JsonTranscryptionProof<G>>>),
     /// The proofs of the fields of an object.
-    Object(HashMap<String, Box<JsonTranscryptionProof<G>>>),
+    Object(BTreeMap<String, Box<JsonTranscryptionProof<G>>>),
 }
 
 impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionProof<G> {
@@ -205,7 +205,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 if obj.len() != proofs.len() {
                     return None;
                 }
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     let p = proofs.get(k)?;
                     let r = p.verified_reconstruct(v, commitments)?;
@@ -266,7 +266,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 if obj.len() != proofs.len() {
                     return None;
                 }
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     let p = proofs.get(k)?;
                     let r = p.verified_reconstruct(v, keys, commitments)?;
@@ -279,8 +279,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output {
         match (original, self) {
             (EncryptedPepJsonValue::Null, JsonTranscryptionProof::Null) => {
@@ -314,7 +313,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 )
             }
             (EncryptedPepJsonValue::Object(obj), JsonTranscryptionProof::Object(proofs)) => {
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     if let Some(p) = proofs.get(k) {
                         out.insert(k.clone(), p.unverified_reconstruct(v));
@@ -439,10 +438,8 @@ impl<G: InvertibleEncoding> VerifiableBatchItem for EncryptedPepJsonValue<G> {
                 }
             }
             Self::Object(fields) => {
-                let mut keys: Vec<&String> = fields.keys().collect();
-                keys.sort();
-                for key in keys {
-                    fields[key].flatten(pseudonyms, attributes);
+                for value in fields.values() {
+                    value.flatten(pseudonyms, attributes);
                 }
             }
         }
@@ -478,10 +475,8 @@ impl<G: InvertibleEncoding> VerifiableBatchItem for EncryptedPepJsonValue<G> {
                     .collect::<Option<_>>()?,
             ),
             Self::Object(fields) => {
-                let mut keys: Vec<&String> = fields.keys().collect();
-                keys.sort();
-                let mut out = HashMap::with_capacity(fields.len());
-                for key in keys {
+                let mut out = BTreeMap::new();
+                for key in fields.keys() {
                     out.insert(
                         key.clone(),
                         Self::rebuild(&fields[key], pseudonyms, attributes)?,
@@ -495,4 +490,4 @@ impl<G: InvertibleEncoding> VerifiableBatchItem for EncryptedPepJsonValue<G> {
 
 /// Proof of a verifiable transcryption of a batch of [`EncryptedPepJsonValue`]s.
 #[cfg(feature = "batch")]
-pub type VerifiableJsonBatch<G> = BatchTranscryptionProof<EncryptedPepJsonValue<G>>;
+pub type JsonTranscryptionBatchProof<G> = BatchTranscryptionProof<EncryptedPepJsonValue<G>>;

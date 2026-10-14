@@ -60,8 +60,8 @@ use std::fmt;
 /// another without learning either the input or the output. The abstraction is due to Lehmann's
 /// ScrambleDB work, which named it; this protocol builds on it rather than introducing it.
 ///
-/// `V1` versions the domain separation scheme, **not the crate**. It is easy to misread next to
-/// a crate at 0.14: the two are independent, and a release that changes neither the hashing
+/// `V1` versions the domain separation scheme, **not the crate**: the two are independent, and
+/// a release that changes neither the hashing
 /// construction nor the tag layout leaves this at `V1`. Should that construction ever change
 /// incompatibly, the prefix becomes `coPRFV2-`, so deployments on either side of the change
 /// derive unrelated values instead of silently disagreeing about the same ones.

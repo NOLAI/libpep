@@ -104,8 +104,7 @@ impl<G: Group> VerifiableRekey<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
@@ -199,16 +198,14 @@ impl<G: Group> VerifiableRekey2<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
 
-    /// Verify the per-factor sub-proof (`p_gk_to`) once. Returns the combined
-    /// commitment `K = gk` on success, suitable for verifying many per-message
-    /// inner proofs against via [`VerifiableRekey::verify`] with the
-    /// commitment from [`Self::combined_commitment`].
+    /// Verify the per-factor sub-proof (`p_gk_to`) once against the commitments; the
+    /// per-message inner proofs are then checked against
+    /// [`combined_commitment`](Self::combined_commitment).
     #[must_use]
     pub fn verify_factor(
         &self,

@@ -11,9 +11,6 @@ use crate::factors::commitments::generic::{
 use std::collections::HashMap;
 use std::hash::Hash;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 /// Error returned when registering a commitment fails.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CacheRegistrationError {
@@ -31,7 +28,7 @@ pub enum CacheRegistrationError {
 /// This trait defines the interface for storing and retrieving factor commitments.
 /// Implementations can use different storage backends (in-memory, persistent, etc.).
 pub trait CommitmentsCache {
-    /// The key type for cache lookups (domain or context).
+    /// The key type for cache lookups: the transcryptor and the transition.
     type Key;
     /// The commitment type stored in the cache.
     type Commitments;
@@ -79,7 +76,6 @@ pub trait CommitmentsCache {
 /// the same value is idempotent. An optional `max_entries` cap protects
 /// against memory-DoS when registration is reachable from untrusted code.
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct InMemoryCommitmentsCache<Key, Commitments>
 where
     Key: Eq + Hash,

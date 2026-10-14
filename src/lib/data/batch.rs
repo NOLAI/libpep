@@ -55,7 +55,7 @@ pub struct EncryptedBatch<E: Encrypted> {
     /// The associated-type indirection means this is
     /// `PseudonymSessionPublicKey` for `EncryptedBatch<EncryptedPseudonym>`,
     /// `AttributeSessionPublicKey` for `EncryptedBatch<EncryptedAttribute>`,
-    /// `SessionKeys` for composite types, etc.
+    /// `SessionPublicKeys` for composite types, etc.
     ///
     /// Present only under `(batch-pk, not elgamal3)`.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
