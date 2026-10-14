@@ -8,6 +8,9 @@
 
 const {
     Attribute,
+    LongAttribute,
+    LongPseudonym,
+    LongPseudonymPseudonymizationProof,
     Pseudonym,
     PseudonymizationDomain,
     EncryptionContext,
@@ -19,6 +22,10 @@ const {
     encryptAttribute,
     decryptPseudonym,
     decryptAttribute,
+    encryptLongPseudonym,
+    encryptLongAttribute,
+    decryptLongPseudonym,
+    decryptLongAttribute,
     makePseudonymGlobalKeys,
     makeAttributeGlobalKeys,
     makePseudonymSessionKeys,
@@ -66,6 +73,70 @@ test('test_verifiable_pseudonymization_simple', () => {
     // Decrypting under the target session must succeed.
     const decrypted = decryptPseudonym(result, pseudonymSession2Keys.secret);
     expect(decrypted).toBeDefined();
+});
+
+test('test_verifiable_long_values', () => {
+    // Long pseudonyms and attributes are proven block by block; the proofs round-trip
+    // through JSON and verify only against the commitments of their own transition.
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
+    const encSecret = new EncryptionSecret(SECRET);
+
+    const domain1 = new PseudonymizationDomain("domain1");
+    const domain2 = new PseudonymizationDomain("domain2");
+    const session1 = new EncryptionContext("session1");
+    const session2 = new EncryptionContext("session2");
+
+    const pseudonymSession1Keys =
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const pseudonymSession2Keys =
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+    const attributeSession1Keys =
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+    const attributeSession2Keys =
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+
+    const transcryptor = new Transcryptor("secret", "secret");
+    const verifier = new Verifier();
+    const text = "an identifier that is much longer than sixteen bytes";
+
+    const longPseudo = LongPseudonym.fromStringPadded(text);
+    const encPseudo = encryptLongPseudonym(longPseudo, pseudonymSession1Keys.public);
+    const info = transcryptor.pseudonymizationInfo(domain1, domain2, session1, session2);
+    const commitments =
+        transcryptor.pseudonymizationCommitment(domain1, domain2, session1, session2);
+    const proof = LongPseudonymPseudonymizationProof.fromJSON(
+        transcryptor.verifiableLongPseudonymize(encPseudo, info, pseudonymSession1Keys.public).toJSON(),
+    );
+    const result = verifier.verifyLongPseudonymization(
+        encPseudo, proof, pseudonymSession1Keys.public, commitments,
+    );
+    const decrypted = decryptLongPseudonym(result, pseudonymSession2Keys.secret);
+    expect(decrypted.pseudonyms.length).toBe(longPseudo.pseudonyms.length);
+    expect(decrypted.pseudonyms.map((p) => p.toHex()))
+        .not.toEqual(longPseudo.pseudonyms.map((p) => p.toHex()));
+    const other = transcryptor.pseudonymizationCommitment(domain2, domain1, session1, session2);
+    expect(() => verifier.verifyLongPseudonymization(
+        encPseudo, proof, pseudonymSession1Keys.public, other,
+    )).toThrow();
+
+    const rekeyProof = transcryptor.verifiableLongPseudonymRekey(encPseudo, session1, session2);
+    const rekeyed = verifier.verifyLongPseudonymRekey(
+        encPseudo, rekeyProof, transcryptor.pseudonymRekeyCommitment(session1, session2),
+    );
+    expect(decryptLongPseudonym(rekeyed, pseudonymSession2Keys.secret).toStringPadded()).toBe(text);
+
+    const longAttr = LongAttribute.fromStringPadded(text);
+    const encAttr = encryptLongAttribute(longAttr, attributeSession1Keys.public);
+    const rekeyInfo = transcryptor.attributeRekeyInfo(session1, session2);
+    const attrProof = transcryptor.verifiableLongAttributeRekey(encAttr, rekeyInfo);
+    const rekeyedAttr = verifier.verifyLongAttributeRekey(
+        encAttr, attrProof, transcryptor.attributeRekeyCommitment(session1, session2),
+    );
+    expect(decryptLongAttribute(rekeyedAttr, attributeSession2Keys.secret).toStringPadded()).toBe(text);
+    expect(() => verifier.verifyLongAttributeRekey(
+        encAttr, attrProof, transcryptor.pseudonymRekeyCommitment(session1, session2),
+    )).toThrow();
 });
 
 test('test_verifiable_pseudonym_rekey', () => {

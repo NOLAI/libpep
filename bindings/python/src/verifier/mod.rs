@@ -1,6 +1,11 @@
 //! Python bindings for the verifier.
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
+#[cfg(feature = "long")]
+use crate::data::long::{
+    PyLongAttributeRekeyProof, PyLongEncryptedAttribute, PyLongEncryptedPseudonym,
+    PyLongPseudonymPseudonymizationProof, PyLongPseudonymRekeyProof,
+};
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::elgamal::verifiable::PyVerifiableRRSK;
 use crate::elgamal::verifiable::PyVerifiableRekey;
@@ -214,6 +219,65 @@ impl PyVerifier {
         self.0
             .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
             .map(PyEncryptedAttribute)
+            .map_err(crate::errors::verify_err_to_py)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    #[cfg(all(feature = "verifiable", feature = "long", feature = "elgamal3"))]
+    fn verify_long_pseudonymization(
+        &self,
+        original: &PyLongEncryptedPseudonym,
+        proof: &PyLongPseudonymPseudonymizationProof,
+        commitments: &PyVerifiablePseudonymizationCommitment,
+    ) -> PyResult<PyLongEncryptedPseudonym> {
+        self.0
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &commitments.inner)
+            .map(PyLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_py)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    /// `public_key` is the key the original was encrypted under.
+    #[cfg(all(feature = "verifiable", feature = "long", not(feature = "elgamal3")))]
+    fn verify_long_pseudonymization(
+        &self,
+        original: &PyLongEncryptedPseudonym,
+        proof: &PyLongPseudonymPseudonymizationProof,
+        public_key: &crate::keys::PyPseudonymSessionPublicKey,
+        commitments: &PyVerifiablePseudonymizationCommitment,
+    ) -> PyResult<PyLongEncryptedPseudonym> {
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        self.0
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &pk, &commitments.inner)
+            .map(PyLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_py)
+    }
+
+    /// Verify the rekeying of a long pseudonym, returning the reconstructed value.
+    #[cfg(all(feature = "verifiable", feature = "long"))]
+    fn verify_long_pseudonym_rekey(
+        &self,
+        original: &PyLongEncryptedPseudonym,
+        proof: &PyLongPseudonymRekeyProof,
+        commitments: &PyVerifiableRekeyCommitment,
+    ) -> PyResult<PyLongEncryptedPseudonym> {
+        self.0
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.inner)
+            .map(PyLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_py)
+    }
+
+    /// Verify the rekeying of a long attribute, returning the reconstructed value.
+    #[cfg(all(feature = "verifiable", feature = "long"))]
+    fn verify_long_attribute_rekey(
+        &self,
+        original: &PyLongEncryptedAttribute,
+        proof: &PyLongAttributeRekeyProof,
+        commitments: &PyVerifiableRekeyCommitment,
+    ) -> PyResult<PyLongEncryptedAttribute> {
+        self.0
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.inner)
+            .map(PyLongEncryptedAttribute)
             .map_err(crate::errors::verify_err_to_py)
     }
 
