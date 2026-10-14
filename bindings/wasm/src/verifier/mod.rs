@@ -584,13 +584,15 @@ impl WASMVerifier {
         context_to: &WASMEncryptionContext,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
         let orig: libpep::data::records::EncryptedRecord = original.clone().into();
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
+        // Verification needs only the public halves; `public()` projects them out so a caller
+        // may still pass the full `SessionKeys` it holds.
+        let pk = libpep::keys::SessionKeys::from(*session_keys).public();
         self.inner
             .verified_reconstruct_transcryption_cached(
                 transcryptor_id,
                 &orig,
                 &proof.0,
-                &sk,
+                &pk,
                 &domain_from.0,
                 &domain_to.0,
                 &context_from.0,

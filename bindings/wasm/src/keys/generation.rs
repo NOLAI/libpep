@@ -187,13 +187,13 @@ pub fn wasm_make_pseudonym_session_keys_with_proof(
         &PseudonymGlobalSecretKey::from_scalar(global.0 .0),
         &session.0,
         &secret.0,
-        &blinding.0 .0,
+        &blinding.0,
         &mut rng,
     )
     .map_err(crate::errors::session_key_share_err_to_js)?;
     Ok(WASMPseudonymSessionKeysWithProof {
-        public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(public.0)),
-        secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(secret_key.0)),
+        public: WASMPseudonymSessionPublicKey(WASMGroupElement::from(*public)),
+        secret: WASMPseudonymSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
         proof: crate::keys::distribution::proofs::WASMSessionKeyShareProof(proof),
         blinding_commitment: crate::keys::distribution::proofs::WASMBlindingCommitment(
             blinding_commitment,
@@ -215,13 +215,13 @@ pub fn wasm_make_attribute_session_keys_with_proof(
         &AttributeGlobalSecretKey::from_scalar(global.0 .0),
         &session.0,
         &secret.0,
-        &blinding.0 .0,
+        &blinding.0,
         &mut rng,
     )
     .map_err(crate::errors::session_key_share_err_to_js)?;
     Ok(WASMAttributeSessionKeysWithProof {
-        public: WASMAttributeSessionPublicKey(WASMGroupElement::from(public.0)),
-        secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(secret_key.0)),
+        public: WASMAttributeSessionPublicKey(WASMGroupElement::from(*public)),
+        secret: WASMAttributeSessionSecretKey(WASMScalarNonZero::from(*secret_key.value())),
         proof: crate::keys::distribution::proofs::WASMSessionKeyShareProof(proof),
         blinding_commitment: crate::keys::distribution::proofs::WASMBlindingCommitment(
             blinding_commitment,
