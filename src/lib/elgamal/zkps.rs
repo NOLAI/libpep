@@ -8,8 +8,10 @@
 //!
 //! The proofs are generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
 //! the names in this module are their ristretto255 instances. The proof encoding is the
-//! four-element one of the published paper; [`dleq`](crate::elgamal::dleq) has the two-scalar
-//! encoding of RFC 9497.
+//! four-element one of the published paper (Definition 8); the challenge hash is domain
+//! separated by the ciphersuite's context string under the label `"ZKPChallenge-"`.
+//! [`dleq`](crate::elgamal::dleq) has the two-scalar encoding of RFC 9497, for interoperability
+//! with the two-party protocol; the verifiable operations use the encoding of this module.
 //!
 //! # Security Properties
 //!

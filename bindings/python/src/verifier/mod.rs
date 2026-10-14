@@ -474,37 +474,38 @@ impl Default for PyVerifier {
 // Verifiable-derivation methods (master keys, blinding commitments, session-
 // key-share verification, cached transcryption).
 // ---------------------------------------------------------------------------
-#[cfg(feature = "verifiable-derivation")]
+#[cfg(feature = "verifiable")]
 #[pymethods]
 impl PyVerifier {
-    /// Register blinding commitments for a transcryptor.
-    fn register_blinding_commitments(
+    /// Register the blinding commitment of a transcryptor.
+    fn register_blinding_commitment(
         &mut self,
         transcryptor_id: &str,
-        commitments: &crate::keys::distribution::proofs::PyBlindingCommitments,
+        commitment: &crate::keys::distribution::proofs::PyBlindingCommitment,
     ) -> PyResult<()> {
         self.0
-            .register_blinding_commitments(transcryptor_id.to_string(), commitments.inner)
+            .register_blinding_commitment(transcryptor_id.to_string(), commitment.inner)
             .map_err(crate::errors::register_commitments_err_to_py)
     }
 
-    /// Check if blinding commitments are registered for a transcryptor.
-    fn has_blinding_commitments(&self, transcryptor_id: &str) -> bool {
-        self.0.has_blinding_commitments(transcryptor_id)
+    /// Whether a blinding commitment is registered for a transcryptor.
+    fn has_blinding_commitment(&self, transcryptor_id: &str) -> bool {
+        self.0.has_blinding_commitment(transcryptor_id)
     }
 
-    /// Retrieve the blinding commitments for a transcryptor, if registered.
-    fn get_blinding_commitments(
+    /// The blinding commitment registered for a transcryptor, if any.
+    fn blinding_commitment(
         &self,
         transcryptor_id: &str,
-    ) -> Option<crate::keys::distribution::proofs::PyBlindingCommitments> {
+    ) -> Option<crate::keys::distribution::proofs::PyBlindingCommitment> {
         self.0
-            .get_blinding_commitments(transcryptor_id)
+            .blinding_commitment(transcryptor_id)
             .copied()
-            .map(|inner| crate::keys::distribution::proofs::PyBlindingCommitments { inner })
+            .map(|inner| crate::keys::distribution::proofs::PyBlindingCommitment { inner })
     }
 
     /// Register master pseudonymization and rekeying public keys for a transcryptor.
+    #[cfg(feature = "verifiable-derivation")]
     fn register_master_keys(
         &mut self,
         transcryptor_id: &str,
@@ -521,11 +522,13 @@ impl PyVerifier {
     }
 
     /// Check if master keys are registered for a transcryptor.
+    #[cfg(feature = "verifiable-derivation")]
     fn has_master_keys(&self, transcryptor_id: &str) -> bool {
         self.0.has_master_keys(transcryptor_id)
     }
 
     /// Retrieve the master pseudonymization public key for a transcryptor, if registered.
+    #[cfg(feature = "verifiable-derivation")]
     fn get_master_pseudonym_key(
         &self,
         transcryptor_id: &str,
@@ -537,6 +540,7 @@ impl PyVerifier {
     }
 
     /// Retrieve the master rekeying public key for a transcryptor, if registered.
+    #[cfg(feature = "verifiable-derivation")]
     fn get_master_rekey_key(
         &self,
         transcryptor_id: &str,
@@ -553,14 +557,12 @@ impl PyVerifier {
         &self,
         transcryptor_id: &str,
         rekey_commitment: &crate::elgamal::arithmetic::group_elements::PyGroupElement,
-        for_pseudonym: bool,
         proof: &crate::keys::distribution::proofs::PySessionKeyShareProof,
     ) -> PyResult<()> {
         self.0
             .verify_session_key_share_with_commitment(
                 transcryptor_id,
                 &rekey_commitment.0,
-                for_pseudonym,
                 &proof.inner,
             )
             .map_err(crate::errors::verify_err_to_py)

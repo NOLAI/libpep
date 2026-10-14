@@ -49,9 +49,7 @@
 //! [`transcryptor::types::generic::Transcryptor`], [`elgamal::zkps::generic::Proof`], ...), and
 //! the name at the module level is an alias pinning
 //! [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented so far. Code
-//! that uses ristretto255 never needs the generic names. The one exception is
-//! [`elgamal::verifiable::rfc`], the wire layouts of the draft's verifiable mode, which are
-//! specified for ristretto255.
+//! that uses ristretto255 never needs the generic names.
 //!
 //! ## Feature flags
 //!
@@ -78,9 +76,12 @@
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
 //! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman
-//!   hash, so that a verifier computes any commitment from the master public keys. The
-//!   derivation is linear in the hashes, which weakens the unlinkability and key isolation the
-//!   default derivation gives; see the README before enabling it.
+//!   hash (Section 3.3.1 of the paper), so that a verifier computes any commitment from the
+//!   master public keys instead of storing one per factor. The factors are then linear in two
+//!   public hashes: knowing one derived factor reveals nothing about another, but knowing two
+//!   (n + 1 with n transcryptors) reveals the master secret and so every factor. The same holds
+//!   for anything the factors multiply: two pseudonyms of one subject, or two session keys,
+//!   give all of them. The default derivation has no such structure.
 
 #![warn(missing_docs)]
 

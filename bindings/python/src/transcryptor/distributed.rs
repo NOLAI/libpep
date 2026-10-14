@@ -75,6 +75,64 @@ impl PyDistributedTranscryptor {
         }
     }
 
+    /// The pseudonym session key share for a session with the proof of its construction, for
+    /// the user to check with `SessionKeyShareProof.verify_share`.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "pseudonym_session_key_share_with_proof")]
+    fn py_pseudonym_session_key_share_with_proof(
+        &self,
+        session: &PyEncryptionContext,
+    ) -> PyResult<(
+        PyPseudonymSessionKeyShare,
+        crate::keys::distribution::proofs::PySessionKeyShareProof,
+    )> {
+        let (share, proof) = self
+            .pseudonym_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_py)?;
+        Ok((PyPseudonymSessionKeyShare(share), proof.into()))
+    }
+
+    /// The attribute session key share for a session with the proof of its construction.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "attribute_session_key_share_with_proof")]
+    fn py_attribute_session_key_share_with_proof(
+        &self,
+        session: &PyEncryptionContext,
+    ) -> PyResult<(
+        PyAttributeSessionKeyShare,
+        crate::keys::distribution::proofs::PySessionKeyShareProof,
+    )> {
+        let (share, proof) = self
+            .attribute_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_py)?;
+        Ok((PyAttributeSessionKeyShare(share), proof.into()))
+    }
+
+    /// Both session key shares for a session with the proofs of their construction, as
+    /// `(shares, pseudonym_proof, attribute_proof)`.
+    #[cfg(feature = "verifiable")]
+    #[pyo3(name = "session_key_shares_with_proof")]
+    fn py_session_key_shares_with_proof(
+        &self,
+        session: &PyEncryptionContext,
+    ) -> PyResult<(
+        PySessionKeyShares,
+        crate::keys::distribution::proofs::PySessionKeyShareProof,
+        crate::keys::distribution::proofs::PySessionKeyShareProof,
+    )> {
+        let (shares, proofs) = self
+            .session_key_shares_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_py)?;
+        Ok((
+            PySessionKeyShares {
+                pseudonym: PyPseudonymSessionKeyShare(shares.pseudonym),
+                attribute: PyAttributeSessionKeyShare(shares.attribute),
+            },
+            proofs.pseudonym.into(),
+            proofs.attribute.into(),
+        ))
+    }
+
     #[pyo3(name = "attribute_rekey_info")]
     fn py_attribute_rekey_info(
         &self,

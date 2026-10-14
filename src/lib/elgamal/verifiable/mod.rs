@@ -3,8 +3,7 @@
 //! the proofs are verified against.
 //!
 //! The proof types are generic over the [`Group`](crate::elgamal::arithmetic::Group) in
-//! [`generic`]; the names in this module are their ristretto255 instances. [`rfc`](crate::elgamal::verifiable::rfc) holds the
-//! wire layouts of the draft's verifiable mode on ristretto255.
+//! [`generic`]; the names in this module are their ristretto255 instances.
 
 mod commitments;
 mod rekey;
@@ -16,7 +15,6 @@ mod rerandomize_batch;
 mod reshuffle;
 #[cfg(feature = "batch")]
 mod reshuffle_batch;
-pub mod rfc;
 mod rrsk;
 #[cfg(feature = "batch")]
 mod rrsk_batch;

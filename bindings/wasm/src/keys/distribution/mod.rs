@@ -1,6 +1,6 @@
 pub mod blinding;
 
-#[cfg(feature = "verifiable-derivation")]
+#[cfg(feature = "verifiable")]
 pub mod proofs;
 pub mod setup;
 pub mod shares;
@@ -20,5 +20,5 @@ pub use shares::{
     WASMSessionKeyShares,
 };
 
-#[cfg(feature = "verifiable-derivation")]
-pub use proofs::{WASMBlindingCommitment, WASMBlindingCommitments, WASMSessionKeyShareProof};
+#[cfg(feature = "verifiable")]
+pub use proofs::{WASMBlindingCommitment, WASMSessionKeyShareProof};

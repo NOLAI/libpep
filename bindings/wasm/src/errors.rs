@@ -145,11 +145,12 @@ pub(crate) fn register_commitments_err_to_js(
 #[cfg(feature = "verifiable")]
 #[allow(dead_code)]
 pub(crate) fn session_key_share_err_to_js(
-    e: libpep::keys::generation::SessionKeyShareError,
+    e: libpep::keys::distribution::SessionKeyShareError,
 ) -> JsValue {
-    use libpep::keys::generation::SessionKeyShareError;
+    use libpep::keys::distribution::SessionKeyShareError;
     let prefix = match e {
         SessionKeyShareError::WeakBlinding => "WeakBlinding",
+        _ => "SessionKeyShare",
     };
     js_err(prefix, e)
 }

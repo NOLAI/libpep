@@ -17,6 +17,16 @@
 //! ```
 //! where `X₁ = x₁·G` and `X₂ = x₂·G` are the master public keys.
 //!
+//! # Security
+//!
+//! Section 3.3.1 of the paper: the factors are no longer independent. One derived factor reveals
+//! nothing about another, but `n + 1` of them (with `n` transcryptors) determine the master
+//! secret and so every factor. Because the derivation is linear in the public hashes, the same
+//! holds for the values the factors multiply: two pseudonyms of one subject in known domains
+//! give that subject's pseudonym in every domain, and two session keys give every session key.
+//! The commitment scheme of [`crate::factors::commitments`] with the default derivation has no
+//! such structure; choose this derivation only where that trade-off is acceptable.
+//!
 
 //! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
 //! the names in this module are their ristretto255 instances.

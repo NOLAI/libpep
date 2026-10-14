@@ -11,11 +11,6 @@ pub use generic::{
     make_attribute_session_keys, make_global_key_pair, make_pseudonym_session_keys,
     make_session_keys,
 };
-#[cfg(feature = "verifiable")]
-pub use generic::{
-    make_attribute_session_keys_with_proof, make_pseudonym_session_keys_with_proof,
-    make_session_key_pair_with_proof, SessionKeyShareError,
-};
 
 use super::types::*;
 use rand_core::{CryptoRng, Rng};
@@ -39,25 +34,12 @@ pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     generic::make_attribute_global_keys(rng)
 }
 
-/// The [`SessionKeysWithProof`](generic::SessionKeysWithProof) over ristretto255.
-#[cfg(feature = "verifiable")]
-pub type SessionKeysWithProof<PK, SK> =
-    generic::SessionKeysWithProof<PK, SK, crate::elgamal::arithmetic::Ristretto255>;
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::contexts::EncryptionContext;
-    #[cfg(feature = "verifiable")]
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    #[cfg(feature = "verifiable")]
-    use crate::elgamal::verifiable::RekeyFactorCommitment;
     use crate::factors::EncryptionSecret;
-    #[cfg(feature = "verifiable")]
-    use crate::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor, Factor};
-    #[cfg(feature = "verifiable")]
-    use crate::keys::distribution::BlindingFactor;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
     use crate::elgamal::arithmetic::group_elements::G;
@@ -155,66 +137,6 @@ mod tests {
         let decoded =
             AttributeGlobalPublicKey::from_hex(&hex).expect("hex decoding should succeed");
         assert_eq!(public, decoded);
-    }
-
-    #[test]
-    #[cfg(feature = "verifiable")]
-    fn session_keys_with_proof_verify() {
-        let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys(&mut rng);
-        let session = EncryptionContext::from("test-context");
-        let secret = EncryptionSecret::from(b"test-secret".to_vec());
-        let blinding = BlindingFactor::random(&mut rng);
-
-        let (_pk, _sk, proof, commitment) = make_pseudonym_session_keys_with_proof(
-            &global_sk.pseudonym,
-            &session,
-            &secret,
-            &blinding,
-            &mut rng,
-        )
-        .unwrap();
-        let k = make_pseudonym_rekey_factor(&secret, &session);
-        assert!(proof.verify(
-            &commitment,
-            &RekeyFactorCommitment::new(&k.scalar()).point()
-        ));
-        assert_eq!(*commitment.value(), *blinding.value() * G);
-
-        let (_pk, _sk, proof, commitment) = make_attribute_session_keys_with_proof(
-            &global_sk.attribute,
-            &session,
-            &secret,
-            &blinding,
-            &mut rng,
-        )
-        .unwrap();
-        let k = make_attribute_rekey_factor(&secret, &session);
-        assert!(proof.verify(
-            &commitment,
-            &RekeyFactorCommitment::new(&k.scalar()).point()
-        ));
-    }
-
-    #[test]
-    #[cfg(feature = "verifiable")]
-    fn session_keys_with_proof_reject_unit_blinding() {
-        let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys(&mut rng);
-        let session = EncryptionContext::from("test-context");
-        let secret = EncryptionSecret::from(b"test-secret".to_vec());
-        let blinding = BlindingFactor::from_scalar(ScalarNonZero::one());
-        assert_eq!(
-            make_pseudonym_session_keys_with_proof(
-                &global_sk.pseudonym,
-                &session,
-                &secret,
-                &blinding,
-                &mut rng
-            )
-            .err(),
-            Some(SessionKeyShareError::WeakBlinding)
-        );
     }
 
     #[test]

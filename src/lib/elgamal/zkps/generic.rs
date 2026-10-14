@@ -1,7 +1,6 @@
 //! Schnorr proofs of a discrete logarithm, generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::hashing::hash_to_nonzero_scalar;
 use base64::engine::general_purpose;
 use base64::Engine;
 use derive_more::Deref;
@@ -16,8 +15,10 @@ use std::fmt::Formatter;
 /// A zero-knowledge proof that `N = a * M` for a secret scalar `a`, verifiable against the
 /// public key `A = a * G` and the message `M`.
 ///
-/// The proof is non-interactive by the Fiat–Shamir transform: the challenge `e` is the hash of
-/// `(A, M, N, c1, c2)`. It dereferences to its result `N`.
+/// The proof is non-interactive by the Fiat–Shamir transform: the challenge `e` is
+/// `HashToScalar(A || M || N || c1 || c2)` of the ciphersuite under the domain separation tag
+/// `"ZKPChallenge-" || contextString`, so that a proof of one deployment or proof type never
+/// verifies as another. It dereferences to its result `N`.
 ///
 /// # Serialization
 ///
@@ -129,7 +130,9 @@ impl<'de, G: Group> Deserialize<'de> for Proof<G> {
     }
 }
 
-/// The Fiat–Shamir challenge `e = H(A, M, N, c1, c2)`.
+/// The Fiat–Shamir challenge `e = HashToScalar(A || M || N || c1 || c2)` under the DST
+/// `"ZKPChallenge-" || contextString`. The elements have a fixed size, so the transcript needs no
+/// length prefixes. A zero digest (negligible) is mapped to one.
 fn challenge<G: Group>(
     ga: &G::Element,
     gm: &G::Element,
@@ -137,13 +140,12 @@ fn challenge<G: Group>(
     gc1: &G::Element,
     gc2: &G::Element,
 ) -> G::Scalar {
-    hash_to_nonzero_scalar::<G>(&[
-        G::serialize_element(ga).as_ref(),
-        G::serialize_element(gm).as_ref(),
-        G::serialize_element(gn).as_ref(),
-        G::serialize_element(gc1).as_ref(),
-        G::serialize_element(gc2).as_ref(),
-    ])
+    let mut transcript = Vec::with_capacity(5 * G::NE);
+    for element in [ga, gm, gn, gc1, gc2] {
+        transcript.extend_from_slice(G::serialize_element(element).as_ref());
+    }
+    G::hash_to_scalar(&transcript, &G::CIPHERSUITE.dst(b"ZKPChallenge-"))
+        .unwrap_or_else(G::scalar_one)
 }
 
 /// One proof that `N = a * M` for the public key `ga = a * G`, with a fresh nonce from `rng`.

@@ -340,7 +340,7 @@ fn distributed_setup_shares_and_reconstruction() {
         .collect();
     assert_eq!(factors.len(), n);
 
-    // Each transcryptor produces its shares for the client's session.
+    // Each transcryptor produces its shares for the client's session, with a proof of each.
     let secrets: Vec<String> = (0..n).map(|i| format!("secret-{i}")).collect();
     let shares: Vec<serde_json::Value> = (0..n)
         .map(|i| {
@@ -348,6 +348,7 @@ fn distributed_setup_shares_and_reconstruction() {
                 "keys",
                 "distributed",
                 "share",
+                "--prove",
                 "--blinding",
                 factors[i],
                 "--encryption-secret",
@@ -357,6 +358,8 @@ fn distributed_setup_shares_and_reconstruction() {
             ])
         })
         .collect();
+    assert!(shares[0]["pseudonym_share_proof"].is_object());
+    assert!(shares[0]["attribute_share_proof"].is_object());
     let mut args = vec![
         "keys",
         "distributed",

@@ -35,6 +35,12 @@ const {
     EncryptedPseudonymBatch,
     PseudonymPseudonymizationBatchProof,
     makeDistributedGlobalKeys,
+    makePseudonymRekeyFactor,
+    makeAttributeRekeyFactor,
+    BlindingFactor,
+    BlindingCommitment,
+    ScalarNonZero,
+    GroupElement,
 } = require("../pkg/libpep.js");
 
 const SECRET = Uint8Array.from(Buffer.from("secret"));
@@ -593,3 +599,24 @@ function swapFirstStringValue(target, donor) {
     }
     return false;
 }
+
+test('distributed_transcryptor_proves_its_shares', () => {
+    // The transcryptor makes the share and its proof from its own blinding and rekey factors;
+    // the user checks both halves against the published commitments.
+    const blindingScalar = ScalarNonZero.random();
+    const commitment = new BlindingCommitment(blindingScalar);
+    // `new BlindingFactor` takes the scalar by value, so it comes last.
+    const transcryptor = new DistributedTranscryptor("ps", "es", new BlindingFactor(blindingScalar));
+    const session = new EncryptionContext("session-1");
+    const secret = new EncryptionSecret(Uint8Array.from(Buffer.from("es")));
+
+    const [share, proof] = transcryptor.pseudonymSessionKeyShareWithProof(session);
+    const k = makePseudonymRekeyFactor(secret, session);
+    const rekeyCommitment = GroupElement.G().mul(k.scalar());
+    expect(proof.verifyPseudonymShare(share, commitment, rekeyCommitment)).toBe(true);
+
+    const [attributeShare, attributeProof] = transcryptor.attributeSessionKeyShareWithProof(session);
+    const ka = makeAttributeRekeyFactor(secret, session);
+    expect(attributeProof.verifyAttributeShare(attributeShare, commitment, GroupElement.G().mul(ka.scalar()))).toBe(true);
+    expect(attributeProof.verifyAttributeShare(attributeShare, commitment, rekeyCommitment)).toBe(false);
+});

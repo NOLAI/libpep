@@ -62,6 +62,13 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
 /// This trait extends [`Rekeyable`] to provide zero-knowledge proofs that
 /// rekey operations were performed correctly. The proof type
 /// ([`RekeyProof`](Self::RekeyProof)) implements [`VerifiableRekeyProof`].
+///
+/// This is the paper's VRK (Definition 10): the ciphertext is rekeyed and not rerandomized, so
+/// its second component `C` is unchanged, unlike the non-verifiable
+/// [`rekey`](crate::data::traits::Rekeyable::rekey), which rerandomizes first. A party that
+/// sees input and output can therefore match them by `C`. The paper accepts this because the
+/// verifier of a proof always learns that link (Section 3.2.1); choose who verifies
+/// accordingly (Section 3.6).
 pub trait VerifiableRekeyable: Rekeyable + Sized {
     /// The proof type for rekey operations.
     /// Implements [`VerifiableRekeyProof`] with `DataType = Self`.

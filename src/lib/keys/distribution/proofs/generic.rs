@@ -187,26 +187,3 @@ impl<G: Group> SessionKeyShareProof<G> {
         self.proof.n()
     }
 }
-
-/// Bundle of blinding commitments for a transcryptor.
-///
-/// Contains commitments B_i = b_i * G for both pseudonym and attribute blinding factors.
-/// These are preconfigured and shared with users to enable verification of session key shares.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct BlindingCommitments<G: Group> {
-    /// Blinding commitment for pseudonym session keys
-    pub pseudonym: BlindingCommitment<G>,
-    /// Blinding commitment for attribute session keys
-    pub attribute: BlindingCommitment<G>,
-}
-
-impl<G: Group> BlindingCommitments<G> {
-    /// Create blinding commitments from blinding factors.
-    pub fn new(pseudonym_blinding: &G::Scalar, attribute_blinding: &G::Scalar) -> Self {
-        Self {
-            pseudonym: BlindingCommitment::new(pseudonym_blinding),
-            attribute: BlindingCommitment::new(attribute_blinding),
-        }
-    }
-}

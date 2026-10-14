@@ -74,6 +74,11 @@ a major change against the published 0.13.0.
   check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
   only public values and now documents what it does not establish. Exposed in Python as
   `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
+- The Fiat–Shamir challenge of the Schnorr proofs (`elgamal::zkps`) is domain separated: it is
+  the ciphersuite's `HashToScalar` of `A || M || N || c1 || c2` under the tag
+  `"ZKPChallenge-" || contextString`, as the DLEQ proofs already were, so a proof of one
+  deployment or proof type never verifies as another. Proofs made by earlier versions do not
+  verify; the test vectors are regenerated.
 - Every block of a long value and every leaf of a JSON document is rerandomized with its own
   factor. One factor shared across a value left the differences between its ciphertexts intact
   through rekeying, which linked a shuffled batch of long attributes or JSON documents to its
@@ -89,6 +94,30 @@ a major change against the published 0.13.0.
 
 ### Breaking changes
 
+- A transcryptor has one blinding factor, used for its pseudonym and attribute shares alike
+  (Section 2.2.4 of the paper), so it publishes one `BlindingCommitment`: `BlindingCommitments`
+  is gone, `Verifier::register_blinding_commitment`, `blinding_commitment` and
+  `has_blinding_commitment` take and return one, and
+  `verify_session_key_share_with_commitment` no longer takes a pseudonym/attribute flag.
+- A session key share is proved as the paper's Section 3.5 describes, by the transcryptor that
+  holds the blinding factor and the rekey factor: `make_session_key_share_with_proof` (with the
+  pseudonym, attribute and `shares` variants) returns the share and `ZKP{U_i = b_i · K_i}`, and
+  `DistributedTranscryptor::pseudonym_session_key_share_with_proof`,
+  `attribute_session_key_share_with_proof` and `session_key_shares_with_proof` do the same for a
+  session. `make_pseudonym_session_keys_with_proof`, `make_attribute_session_keys_with_proof` and
+  `make_session_key_pair_with_proof`, which needed the global secret key the dealer discards,
+  are gone; `SessionKeyShareError` lives in `keys::distribution`. The bindings follow
+  (`DistributedTranscryptor.session_key_shares_with_proof` and friends), and
+  `peppy keys distributed share --prove` prints the proofs.
+- `elgamal::verifiable::rfc`, the wire layouts of the draft's verifiable mode, is gone until
+  that mode is implemented end to end; `elgamal::dleq` stays as the RFC 9497 primitive, and the
+  verifiable operations use the paper's proof encoding of `elgamal::zkps`.
+- Python `make_pseudonym_rekey_factor`, `make_attribute_rekey_factor` and
+  `make_pseudonymization_factor` take an `EncryptionContext` or `PseudonymizationDomain`
+  instead of a string, like every other function; JavaScript likewise.
+- The bindings gate the session key share proofs and the verifier's blinding-commitment and
+  cached-verification methods on `verifiable`, as the library does, instead of
+  `verifiable-derivation`.
 - `EncryptedBatch` keeps its items and key private, so a batch is only built through `new` or
   deserialization, both of which check that the items share one structure; `public_key()`,
   `as_items()` and `into_items()` read them.

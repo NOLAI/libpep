@@ -198,7 +198,8 @@ Mixing fresh randomness into a ciphertext before reshuffling also protects again
 
 With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and `k·G` to each factor, and every transcryption can produce a zero-knowledge proof that exactly the committed factors were applied.
 The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat–Shamir transform, and can be verified in batch.
-Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well.
+Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so a party that sees both sides of a verifiable transcryption can match attribute ciphertexts.
+Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well (Section 3.5).
 This closes the gap noted under [As a three-party OPRF](#as-a-three-party-oprf): a transcryptor that applies a wrong factor is now detected.
 The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
 
