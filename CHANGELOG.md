@@ -35,7 +35,9 @@ a major change against the published 0.13.0.
   `PepJsonValue`, `EncryptedPepJsonValue`, `PepJsonBuilder` and `JsonStructure`; the Python and
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
-- The verifiable commitments expose their group element through `point()`.
+- The verifiable commitments expose their group element through `point()` and are built from
+  the transcryption infos with `From` (`VerifiablePseudonymizationCommitment::from(info)` and
+  so on).
 - The verifiable layer is generic over the group, like the rest of the library: the proof
   types of `elgamal::verifiable`, `elgamal::zkps` and `elgamal::dleq`, the commitments, the
   Carter–Wegman master keys, the session key share proofs, the data-layer proofs and the
@@ -230,6 +232,12 @@ a major change against the published 0.13.0.
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
+- `peppy` does verifiable transcryption: `factors commitments` prints the commitments of a
+  transition, `--prove` on `pseudonym|attribute rekey|pseudonymize|transcrypt` and
+  `json transcrypt` adds the proof (JSON) to the output, and `verify-rekey`,
+  `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original
+  ciphertext and the commitments (exit status 3 if it does not hold). The `build-binary` feature
+  therefore enables `serde` and `verifiable`.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the

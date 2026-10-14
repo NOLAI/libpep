@@ -125,10 +125,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             out.value("attribute_secret_key", secret.attribute.value().to_hex());
             #[cfg(feature = "json")]
             if out.json() {
-                out.value(
-                    "global_public_keys",
-                    serde_json::to_value(public).expect("keys are serializable"),
-                );
+                out.value("global_public_keys", io::to_json(&public));
             }
         }
         Keys::Session(Session::Derive {
@@ -166,11 +163,10 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let (true, Some(pseudonym), Some(attribute)) = (out.json(), pseudonym, attribute) {
                 out.value(
                     "session_keys",
-                    serde_json::to_value(SessionKeys {
+                    io::to_json(&SessionKeys {
                         pseudonym,
                         attribute,
-                    })
-                    .expect("keys are serializable"),
+                    }),
                 );
             }
             #[cfg(not(feature = "json"))]
@@ -249,10 +245,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                 );
                 #[cfg(feature = "json")]
                 if out.json() {
-                    out.value(
-                        "session_keys",
-                        serde_json::to_value(keys).expect("keys are serializable"),
-                    );
+                    out.value("session_keys", io::to_json(&keys));
                 }
             }
             (Some(_), Some(_)) => {

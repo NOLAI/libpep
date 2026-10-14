@@ -6,9 +6,6 @@
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::data::traits::Encrypted;
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::verifiable::generic::{
-    PseudonymizationFactorCommitment, RekeyFactorCommitment,
-};
 use crate::factors::commitments::generic::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
@@ -32,13 +29,8 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> VerifiablePseudonymizationCommitment<G> {
-        let info = self.pseudonymization_info(domain_from, domain_to, session_from, session_to);
-        let reshuffle_commitment = PseudonymizationFactorCommitment::new(&info.s.0);
-        let rekey_commitment = RekeyFactorCommitment::new(&info.k.0);
-        VerifiablePseudonymizationCommitment {
-            reshuffle_commitment,
-            rekey_commitment,
-        }
+        self.pseudonymization_info(domain_from, domain_to, session_from, session_to)
+            .into()
     }
 
     /// Build the public commitment for a pseudonym rekey transition: `K = k·G`.
@@ -47,10 +39,7 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> VerifiableRekeyCommitment<G> {
-        let info = self.pseudonym_rekey_info(session_from, session_to);
-        VerifiableRekeyCommitment {
-            commitment: RekeyFactorCommitment::new(&info.k.0),
-        }
+        self.pseudonym_rekey_info(session_from, session_to).into()
     }
 
     /// Build the public commitment for an attribute rekey transition: `K = k·G`.
@@ -59,10 +48,7 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> VerifiableRekeyCommitment<G> {
-        let info = self.attribute_rekey_info(session_from, session_to);
-        VerifiableRekeyCommitment {
-            commitment: RekeyFactorCommitment::new(&info.k.0),
-        }
+        self.attribute_rekey_info(session_from, session_to).into()
     }
 
     /// Build the combined public commitments for a transcryption transition:
@@ -74,15 +60,8 @@ impl<G: Group> Transcryptor<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> VerifiableTranscryptionCommitment<G> {
-        VerifiableTranscryptionCommitment {
-            pseudonym: self.pseudonymization_commitment(
-                domain_from,
-                domain_to,
-                session_from,
-                session_to,
-            ),
-            attribute: self.attribute_rekey_commitment(session_from, session_to),
-        }
+        self.transcryption_info(domain_from, domain_to, session_from, session_to)
+            .into()
     }
 
     /// Perform a verifiable pseudonymization operation.

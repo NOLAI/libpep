@@ -3,7 +3,7 @@
 //! A proof of a record is one proof per pseudonym and per attribute; a batch proof lays all
 //! pseudonyms and all attributes of all records out in two lists.
 
-#[cfg(feature = "long")]
+#[cfg(all(feature = "batch", feature = "long"))]
 use crate::data::long::generic::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use crate::data::records::generic::EncryptedRecord;
 #[cfg(feature = "long")]
