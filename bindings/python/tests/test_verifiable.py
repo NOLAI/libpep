@@ -17,6 +17,9 @@ import unittest
 
 from libpep.data import (
     Attribute,
+    LongAttribute,
+    LongPseudonym,
+    LongPseudonymPseudonymizationProof,
     Pseudonym,
     Record,
     EncryptedRecord,
@@ -41,6 +44,7 @@ from libpep.contexts import (
     PseudonymizationDomain,
     EncryptionContext,
 )
+from libpep import ProofRejectedError
 from libpep.client import Client, encrypt, decrypt
 from libpep.transcryptor import DistributedTranscryptor, Transcryptor
 from libpep.verifier import Verifier
@@ -148,6 +152,83 @@ class TestVerifiable(unittest.TestCase):
         decrypted = decrypt(result, attribute_session2_keys.secret)
         original_decrypted = decrypt(enc_attr, attribute_session1_keys.secret)
         self.assertEqual(decrypted.to_hex(), original_decrypted.to_hex())
+
+    def test_verifiable_long_values(self):
+        # Long pseudonyms and attributes are proven block by block; the proofs round-trip
+        # through JSON and verify only against the commitments of their own transition.
+        pseudonym_global_keys = make_pseudonym_global_keys()
+        attribute_global_keys = make_attribute_global_keys()
+        enc_secret = EncryptionSecret(SECRET)
+
+        domain1 = PseudonymizationDomain("domain1")
+        domain2 = PseudonymizationDomain("domain2")
+        session1 = EncryptionContext("session1")
+        session2 = EncryptionContext("session2")
+
+        pseudonym_session1_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session1, enc_secret,
+        )
+        pseudonym_session2_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session2, enc_secret,
+        )
+        attribute_session1_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session1, enc_secret,
+        )
+        attribute_session2_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session2, enc_secret,
+        )
+
+        transcryptor = Transcryptor("secret", "secret")
+        verifier = Verifier()
+        text = "an identifier that is much longer than sixteen bytes"
+
+        long_pseudo = LongPseudonym.from_string_padded(text)
+        enc_pseudo = encrypt(long_pseudo, pseudonym_session1_keys.public)
+        info = transcryptor.pseudonymization_info(domain1, domain2, session1, session2)
+        commitments = transcryptor.pseudonymization_commitment(
+            domain1, domain2, session1, session2,
+        )
+        proof = transcryptor.verifiable_long_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
+        )
+        proof = LongPseudonymPseudonymizationProof.from_json(proof.to_json())
+        result = verifier.verify_long_pseudonymization(
+            enc_pseudo, proof, pseudonym_session1_keys.public, commitments,
+        )
+        decrypted = decrypt(result, pseudonym_session2_keys.secret)
+        self.assertEqual(len(decrypted.pseudonyms()), len(long_pseudo.pseudonyms()))
+        self.assertNotEqual(
+            [p.to_hex() for p in decrypted.pseudonyms()],
+            [p.to_hex() for p in long_pseudo.pseudonyms()],
+        )
+        other = transcryptor.pseudonymization_commitment(domain2, domain1, session1, session2)
+        with self.assertRaises(ProofRejectedError):
+            verifier.verify_long_pseudonymization(
+                enc_pseudo, proof, pseudonym_session1_keys.public, other,
+            )
+
+        rekey_proof = transcryptor.verifiable_long_pseudonym_rekey(enc_pseudo, session1, session2)
+        rekeyed = verifier.verify_long_pseudonym_rekey(
+            enc_pseudo, rekey_proof, transcryptor.pseudonym_rekey_commitment(session1, session2),
+        )
+        self.assertEqual(
+            decrypt(rekeyed, pseudonym_session2_keys.secret).to_string_padded(), text,
+        )
+
+        long_attr = LongAttribute.from_string_padded(text)
+        enc_attr = encrypt(long_attr, attribute_session1_keys.public)
+        rekey_info = transcryptor.attribute_rekey_info(session1, session2)
+        attr_proof = transcryptor.verifiable_long_attribute_rekey(enc_attr, rekey_info)
+        rekeyed = verifier.verify_long_attribute_rekey(
+            enc_attr, attr_proof, transcryptor.attribute_rekey_commitment(session1, session2),
+        )
+        self.assertEqual(
+            decrypt(rekeyed, attribute_session2_keys.secret).to_string_padded(), text,
+        )
+        with self.assertRaises(ProofRejectedError):
+            verifier.verify_long_attribute_rekey(
+                enc_attr, attr_proof, transcryptor.pseudonym_rekey_commitment(session1, session2),
+            )
 
     def test_verifiable_record_transcryption(self):
         # End-to-end: prove + verify a transcryption on a composite (record)

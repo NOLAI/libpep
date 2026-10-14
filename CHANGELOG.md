@@ -238,6 +238,11 @@ a major change against the published 0.13.0.
   `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original
   ciphertext and the commitments (exit status 3 if it does not hold). The `build-binary` feature
   therefore enables `serde` and `verifiable`.
+- The verifiable operations on single long values in the bindings: Python
+  `Transcryptor.verifiable_long_pseudonymize`, `verifiable_long_pseudonym_rekey` and
+  `verifiable_long_attribute_rekey` with the `Verifier.verify_long_*` counterparts and the
+  `LongPseudonymPseudonymizationProof`, `LongPseudonymRekeyProof` and `LongAttributeRekeyProof`
+  classes; JavaScript `verifiableLongPseudonymize`, `verifyLongPseudonymization` and so on.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the

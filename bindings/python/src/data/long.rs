@@ -10,6 +10,10 @@ use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
 use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
@@ -154,12 +158,66 @@ pub fn py_decrypt_long_attribute(
     ))
 }
 
+/// A proof of a verifiable operation on a long value: one proof per block, serialized as JSON.
+#[cfg(feature = "verifiable")]
+macro_rules! py_long_proof {
+    ($(#[$doc:meta])* $py:ident($inner:ident) as $name:literal) => {
+        $(#[$doc])*
+        #[pyclass(name = $name, from_py_object)]
+        #[derive(Clone, From, Deref)]
+        pub struct $py(pub(crate) $inner);
+
+        #[pymethods]
+        impl $py {
+            /// Serialize to JSON.
+            #[cfg(feature = "serde")]
+            fn to_json(&self) -> PyResult<String> {
+                serde_json::to_string(&self.0).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Serialization failed: {e}"))
+                })
+            }
+
+            /// Deserialize from JSON.
+            #[cfg(feature = "serde")]
+            #[staticmethod]
+            fn from_json(json: &str) -> PyResult<Self> {
+                serde_json::from_str(json).map(Self).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
+                })
+            }
+        }
+    };
+}
+
+#[cfg(feature = "verifiable")]
+py_long_proof!(
+    /// Proof of a verifiable pseudonymization of a `LongEncryptedPseudonym`.
+    PyLongPseudonymPseudonymizationProof(LongPseudonymPseudonymizationProof)
+        as "LongPseudonymPseudonymizationProof"
+);
+#[cfg(feature = "verifiable")]
+py_long_proof!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedPseudonym`.
+    PyLongPseudonymRekeyProof(LongPseudonymRekeyProof) as "LongPseudonymRekeyProof"
+);
+#[cfg(feature = "verifiable")]
+py_long_proof!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedAttribute`.
+    PyLongAttributeRekeyProof(LongAttributeRekeyProof) as "LongAttributeRekeyProof"
+);
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register types only
     m.add_class::<PyLongPseudonym>()?;
     m.add_class::<PyLongAttribute>()?;
     m.add_class::<PyLongEncryptedPseudonym>()?;
     m.add_class::<PyLongEncryptedAttribute>()?;
+    #[cfg(feature = "verifiable")]
+    {
+        m.add_class::<PyLongPseudonymPseudonymizationProof>()?;
+        m.add_class::<PyLongPseudonymRekeyProof>()?;
+        m.add_class::<PyLongAttributeRekeyProof>()?;
+    }
 
     Ok(())
 }

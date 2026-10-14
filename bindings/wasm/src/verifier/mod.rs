@@ -1,6 +1,11 @@
 //! WASM bindings for the verifier.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
+#[cfg(feature = "long")]
+use crate::data::long::{
+    WASMLongAttributeRekeyProof, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym,
+    WASMLongPseudonymPseudonymizationProof, WASMLongPseudonymRekeyProof,
+};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
 use crate::factors::commitments::{
     WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
@@ -240,6 +245,69 @@ impl WASMVerifier {
         self.inner
             .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
             .map(WASMEncryptedAttribute)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[wasm_bindgen(js_name = verifyLongPseudonymization)]
+    pub fn verify_long_pseudonymization(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymPseudonymizationProof,
+        commitments: &WASMVerifiablePseudonymizationCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        self.inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    /// `public_key` is the key the original was encrypted under.
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = verifyLongPseudonymization)]
+    pub fn verify_long_pseudonymization(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymPseudonymizationProof,
+        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
+        commitments: &WASMVerifiablePseudonymizationCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        self.inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &pk, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the rekeying of a long pseudonym, returning the reconstructed value.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifyLongPseudonymRekey)]
+    pub fn verify_long_pseudonym_rekey(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymRekeyProof,
+        commitments: &WASMVerifiableRekeyCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        self.inner
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the rekeying of a long attribute, returning the reconstructed value.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifyLongAttributeRekey)]
+    pub fn verify_long_attribute_rekey(
+        &self,
+        original: &WASMLongEncryptedAttribute,
+        proof: &WASMLongAttributeRekeyProof,
+        commitments: &WASMVerifiableRekeyCommitment,
+    ) -> Result<WASMLongEncryptedAttribute, JsValue> {
+        self.inner
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedAttribute)
             .map_err(crate::errors::verify_err_to_js)
     }
 

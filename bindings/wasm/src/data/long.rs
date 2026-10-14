@@ -9,6 +9,10 @@ use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::{PseudonymSessionPublicKey, PublicKey};
 use wasm_bindgen::prelude::*;
@@ -160,3 +164,48 @@ pub fn wasm_transcrypt_long_batch(
         .map(WASMLongEncryptedRecord::from)
         .collect())
 }
+
+/// A proof of a verifiable operation on a long value: one proof per block, serialized as JSON.
+#[cfg(feature = "verifiable")]
+macro_rules! wasm_long_proof {
+    ($(#[$doc:meta])* $w:ident($inner:ident) as $name:ident) => {
+        $(#[$doc])*
+        #[derive(Clone, From)]
+        #[wasm_bindgen(js_name = $name)]
+        pub struct $w(pub(crate) $inner);
+
+        #[wasm_bindgen(js_class = $name)]
+        impl $w {
+            #[cfg(feature = "serde")]
+            #[wasm_bindgen(js_name = toJSON)]
+            pub fn to_json(&self) -> Result<String, JsValue> {
+                serde_json::to_string(&self.0).map_err(crate::errors::malformed_proof_err)
+            }
+
+            #[cfg(feature = "serde")]
+            #[wasm_bindgen(js_name = fromJSON)]
+            pub fn from_json(json: &str) -> Result<$w, JsValue> {
+                serde_json::from_str(json)
+                    .map($w)
+                    .map_err(crate::errors::malformed_proof_err)
+            }
+        }
+    };
+}
+
+#[cfg(feature = "verifiable")]
+wasm_long_proof!(
+    /// Proof of a verifiable pseudonymization of a `LongEncryptedPseudonym`.
+    WASMLongPseudonymPseudonymizationProof(LongPseudonymPseudonymizationProof)
+        as LongPseudonymPseudonymizationProof
+);
+#[cfg(feature = "verifiable")]
+wasm_long_proof!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedPseudonym`.
+    WASMLongPseudonymRekeyProof(LongPseudonymRekeyProof) as LongPseudonymRekeyProof
+);
+#[cfg(feature = "verifiable")]
+wasm_long_proof!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedAttribute`.
+    WASMLongAttributeRekeyProof(LongAttributeRekeyProof) as LongAttributeRekeyProof
+);

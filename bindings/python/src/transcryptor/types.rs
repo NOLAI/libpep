@@ -3,6 +3,10 @@
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
+#[cfg(all(feature = "verifiable", feature = "long"))]
+use crate::data::long::{
+    PyLongAttributeRekeyProof, PyLongPseudonymPseudonymizationProof, PyLongPseudonymRekeyProof,
+};
 #[cfg(feature = "long")]
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
@@ -509,6 +513,60 @@ impl PyTranscryptor {
         crate::elgamal::verifiable::PyVerifiableRekey {
             inner: operation_proof.0,
         }
+    }
+
+    /// Verifiable pseudonymization of a long pseudonym: one proof per block.
+    #[cfg(all(feature = "verifiable", feature = "long", feature = "elgamal3"))]
+    fn verifiable_long_pseudonymize(
+        &self,
+        encrypted: &PyLongEncryptedPseudonym,
+        pseudo_info: &PyPseudonymizationInfo,
+    ) -> PyLongPseudonymPseudonymizationProof {
+        let info = PseudonymizationInfo::from(pseudo_info);
+        encrypted
+            .0
+            .verifiable_pseudonymize(&info, &mut rand::rng())
+            .into()
+    }
+
+    /// Verifiable pseudonymization of a long pseudonym: one proof per block. `public_key` is
+    /// the key the value is encrypted under.
+    #[cfg(all(feature = "verifiable", feature = "long", not(feature = "elgamal3")))]
+    fn verifiable_long_pseudonymize(
+        &self,
+        encrypted: &PyLongEncryptedPseudonym,
+        pseudo_info: &PyPseudonymizationInfo,
+        public_key: &PyPseudonymSessionPublicKey,
+    ) -> PyLongPseudonymPseudonymizationProof {
+        let info = PseudonymizationInfo::from(pseudo_info);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        encrypted
+            .0
+            .verifiable_pseudonymize(&info, &pk, &mut rand::rng())
+            .into()
+    }
+
+    /// Verifiable rekeying of a long attribute: one proof per block.
+    #[cfg(all(feature = "verifiable", feature = "long"))]
+    fn verifiable_long_attribute_rekey(
+        &self,
+        encrypted: &PyLongEncryptedAttribute,
+        rekey_info: &PyAttributeRekeyInfo,
+    ) -> PyLongAttributeRekeyProof {
+        let info = AttributeRekeyInfo::from(rekey_info);
+        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+    }
+
+    /// Verifiable rekeying of a long pseudonym: one proof per block.
+    #[cfg(all(feature = "verifiable", feature = "long"))]
+    fn verifiable_long_pseudonym_rekey(
+        &self,
+        encrypted: &PyLongEncryptedPseudonym,
+        session_from: &PyEncryptionContext,
+        session_to: &PyEncryptionContext,
+    ) -> PyLongPseudonymRekeyProof {
+        let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
+        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
     }
 
     /// Perform verifiable transcryption of a simple record (pseudonyms +
