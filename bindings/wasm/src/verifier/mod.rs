@@ -508,41 +508,42 @@ impl Default for WASMVerifier {
 // Verifiable-derivation methods (master keys, blinding commitments, session-
 // key-share verification, cached transcryption).
 // ---------------------------------------------------------------------------
-#[cfg(feature = "verifiable-derivation")]
+#[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_class = Verifier)]
 impl WASMVerifier {
-    /// Register blinding commitments for a transcryptor.
-    #[wasm_bindgen(js_name = registerBlindingCommitments)]
-    pub fn register_blinding_commitments(
+    /// Register the blinding commitment of a transcryptor.
+    #[wasm_bindgen(js_name = registerBlindingCommitment)]
+    pub fn register_blinding_commitment(
         &mut self,
         transcryptor_id: &str,
-        commitments: &crate::keys::distribution::proofs::WASMBlindingCommitments,
+        commitment: &crate::keys::distribution::proofs::WASMBlindingCommitment,
     ) -> Result<(), JsValue> {
         self.inner
-            .register_blinding_commitments(transcryptor_id.to_string(), commitments.0)
+            .register_blinding_commitment(transcryptor_id.to_string(), commitment.0)
             .map_err(crate::errors::register_commitments_err_to_js)
     }
 
-    /// Check if blinding commitments are registered for a transcryptor.
-    #[wasm_bindgen(js_name = hasBlindingCommitments)]
-    pub fn has_blinding_commitments(&self, transcryptor_id: &str) -> bool {
-        self.inner.has_blinding_commitments(transcryptor_id)
+    /// Whether a blinding commitment is registered for a transcryptor.
+    #[wasm_bindgen(js_name = hasBlindingCommitment)]
+    pub fn has_blinding_commitment(&self, transcryptor_id: &str) -> bool {
+        self.inner.has_blinding_commitment(transcryptor_id)
     }
 
-    /// Retrieve the blinding commitments for a transcryptor.
-    #[wasm_bindgen(js_name = getBlindingCommitments)]
-    pub fn get_blinding_commitments(
+    /// The blinding commitment registered for a transcryptor, if any.
+    #[wasm_bindgen(js_name = blindingCommitment)]
+    pub fn blinding_commitment(
         &self,
         transcryptor_id: &str,
-    ) -> Option<crate::keys::distribution::proofs::WASMBlindingCommitments> {
+    ) -> Option<crate::keys::distribution::proofs::WASMBlindingCommitment> {
         self.inner
-            .get_blinding_commitments(transcryptor_id)
+            .blinding_commitment(transcryptor_id)
             .copied()
-            .map(crate::keys::distribution::proofs::WASMBlindingCommitments)
+            .map(crate::keys::distribution::proofs::WASMBlindingCommitment)
     }
 
     /// Register master pseudonymization and rekeying public keys for a transcryptor.
     #[wasm_bindgen(js_name = registerMasterKeys)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn register_master_keys(
         &mut self,
         transcryptor_id: &str,
@@ -560,12 +561,14 @@ impl WASMVerifier {
 
     /// Check if master keys are registered for a transcryptor.
     #[wasm_bindgen(js_name = hasMasterKeys)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn has_master_keys(&self, transcryptor_id: &str) -> bool {
         self.inner.has_master_keys(transcryptor_id)
     }
 
     /// Retrieve the master pseudonymization public key for a transcryptor.
     #[wasm_bindgen(js_name = getMasterPseudonymKey)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn get_master_pseudonym_key(
         &self,
         transcryptor_id: &str,
@@ -578,6 +581,7 @@ impl WASMVerifier {
 
     /// Retrieve the master rekeying public key for a transcryptor.
     #[wasm_bindgen(js_name = getMasterRekeyKey)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn get_master_rekey_key(
         &self,
         transcryptor_id: &str,
@@ -594,14 +598,12 @@ impl WASMVerifier {
         &self,
         transcryptor_id: &str,
         rekey_commitment: &crate::elgamal::arithmetic::group_elements::WASMGroupElement,
-        for_pseudonym: bool,
         proof: &crate::keys::distribution::proofs::WASMSessionKeyShareProof,
     ) -> Result<(), JsValue> {
         self.inner
             .verify_session_key_share_with_commitment(
                 transcryptor_id,
                 &rekey_commitment.0,
-                for_pseudonym,
                 &proof.0,
             )
             .map_err(crate::errors::verify_err_to_js)

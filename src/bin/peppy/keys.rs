@@ -9,10 +9,10 @@ use libpep::elgamal::arithmetic::scalars::ScalarTraits;
 use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
-    make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
-    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedGlobalSecretKeys,
-    BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymSessionKeyShare, SessionKeyShare,
-    SessionKeyShares,
+    make_distributed_global_keys, make_session_key_shares, make_session_key_shares_with_proof,
+    AttributeSessionKeyShare, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey,
+    BlindedGlobalSecretKeys, BlindedPseudonymGlobalSecretKey, BlindingFactor,
+    PseudonymSessionKeyShare, SessionKeyShare, SessionKeyShares,
 };
 #[cfg(feature = "json")]
 use libpep::keys::SessionKeys;
@@ -82,6 +82,10 @@ pub enum Distributed {
         /// The encryption context (session).
         #[arg(long)]
         context: String,
+        /// Also output a proof of each share, for the user to verify against this
+        /// transcryptor's blinding commitment and the rekey commitment of the session.
+        #[arg(long)]
+        prove: bool,
     },
     /// Reconstruct session keys from a blinded global key and one share per transcryptor.
     Reconstruct {
@@ -193,17 +197,34 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             blinding,
             encryption_secret,
             context,
+            prove,
         }) => {
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
             let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
-            let shares = make_session_key_shares(
-                &make_pseudonym_rekey_factor(&secret, &context),
-                &make_attribute_rekey_factor(&secret, &context),
-                &blinding,
-            );
-            out.value("pseudonym_share", shares.pseudonym.to_hex());
-            out.value("attribute_share", shares.attribute.to_hex());
+            let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&secret, &context);
+            let attribute_rekey_factor = make_attribute_rekey_factor(&secret, &context);
+            if prove {
+                let (shares, proofs) = make_session_key_shares_with_proof(
+                    &pseudonym_rekey_factor,
+                    &attribute_rekey_factor,
+                    &blinding,
+                    rng,
+                )
+                .map_err(|e| io::Error::input(format!("blinding factor: {e}")))?;
+                out.value("pseudonym_share", shares.pseudonym.to_hex());
+                out.value("attribute_share", shares.attribute.to_hex());
+                out.value("pseudonym_share_proof", io::to_json(&proofs.pseudonym));
+                out.value("attribute_share_proof", io::to_json(&proofs.attribute));
+            } else {
+                let shares = make_session_key_shares(
+                    &pseudonym_rekey_factor,
+                    &attribute_rekey_factor,
+                    &blinding,
+                );
+                out.value("pseudonym_share", shares.pseudonym.to_hex());
+                out.value("attribute_share", shares.attribute.to_hex());
+            }
         }
         Keys::Distributed(Distributed::Reconstruct {
             blinded_pseudonym,

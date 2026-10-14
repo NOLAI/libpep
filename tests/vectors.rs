@@ -88,10 +88,12 @@ mod expected {
     /// `Seed`
     pub const SEED: &str = "6c69627065702d72697374726574746f3235352d5348413531322d7665632d31";
 
+
     // ===== DeriveFactor =====
 
     // DeriveFactor, the three labels of Table 1.
     // The secrets are ASCII byte strings, shown here as hex.
+
     /// `PS_1`
     pub const PS_1: &str = "7472616e7363727970746f722d312d70736575646f6e796d697a6174696f6e2d736563726574";
     /// `ES_1`
@@ -100,18 +102,21 @@ mod expected {
     pub const DOMAINIDENTIFIER: &str = "646f6d61696e2d61";
     /// `SessionIdentifier`
     pub const SESSIONIDENTIFIER: &str = "73657373696f6e2d61";
+
     /// `labelRekeyPseudonym`
     pub const SCALAR_LABELREKEYPSEUDONYM: &str = "01";
     /// `k_c`
     pub const SCALAR_K_C: &str = "70d5b3b5292a8db45d37f3ea19d72e11ac65a48d82b05cd184cdf906b944930b";
     /// `K_c`
     pub const K_C: &str = "e02076ebe02373bfc034edaef8a2569ff26ce589a8436b318a26e1f3a70dc560";
+
     /// `labelRekeyAttribute`
     pub const SCALAR_LABELREKEYATTRIBUTE: &str = "02";
     /// `k'_c`
     pub const SCALAR_K_PRIME_C: &str = "3b4c72d3eea7b6915144bfcb6e9198446e0663a318ebee76783c38233b537a05";
     /// `K'_c`
     pub const K_PRIME_C: &str = "680c39a2e1a372a129a8b75154cc827f6e22c813f2944a071e4541453d718918";
+
     /// `labelReshuffle`
     pub const SCALAR_LABELRESHUFFLE: &str = "03";
     /// `s_d`
@@ -124,6 +129,7 @@ mod expected {
     // EncryptPseudonym / TranscryptPseudonym / Decrypt, one ciphertext.
     // y is the global secret key; b is the encryption blinding scalar;
     // r is the rerandomization scalar of the transcryption.
+
     /// `Identifier`
     pub const IDENTIFIER: &str = "70617469656e742d3432";
     /// `M`
@@ -146,6 +152,7 @@ mod expected {
     pub const SCALAR_B: &str = "232520f90a6508350126f42f4b04e7f26c1418ed7ac7f1ae789fc7553f22b904";
     /// `V`
     pub const V: &str = "e43bfa2c70155100b745294e18c76e6ab0cbc105b211f4a884f44b4f069e1027087ccf25ecbfdabf1407590d4380b62335744fe2c0588d3b3dcb4c4ba6950840";
+
     /// `s`
     pub const SCALAR_S: &str = "0e6febf1b89503f7ca630f39bec91e51415f5a86d054e10e09066fdbfc90730e";
     /// `k`
@@ -156,6 +163,7 @@ mod expected {
     pub const V_PRIME: &str = "aa5aca7202007bfd59c8e95b19818a17faf3a4bab1ca202a5d8081af9b430e2dbaf02a128186a023d3812dbaf63e7d0e228d79556a2fa46c7aca91c5ed176955";
     /// `Y_to`
     pub const Y_TO: &str = "64a4932e3fe087554059df526f279c029b94c027389a3b5e9ab365992bbbf524";
+
     /// `P`
     pub const P: &str = "d81b4bc1c5ded30bb710ae627a734e6b263bee2aeb0b708104ba77de3744d929";
     /// `sk_to`
@@ -166,12 +174,14 @@ mod expected {
     // A batch of three pseudonyms (typePseudonym, 0x01) and three attributes
     // (typeAttribute, 0x02). The permutation and every r are drawn from the
     // recorded seed with stream label 02, so the output order is reproducible.
+
     /// `BatchSeed`
     pub const BATCHSEED: &str = "6c69627065702d72697374726574746f3235352d5348413531322d7665632d02";
     /// `typePseudonym`
     pub const SCALAR_TYPEPSEUDONYM: &str = "01";
     /// `typeAttribute`
     pub const SCALAR_TYPEATTRIBUTE: &str = "02";
+
     /// `PseudonymInput_0`
     pub const PSEUDONYMINPUT_0: &str = "70617469656e742d31";
     /// `PseudonymM_0`
@@ -196,6 +206,7 @@ mod expected {
     pub const PSEUDONYMB_2: &str = "7d594cbae2df704390e98f567cf10cc194d392cf89cb2d70bfc449a5f0c5fd0c";
     /// `PseudonymV_2`
     pub const PSEUDONYMV_2: &str = "38d06fca356dee46ece18ce53518c4b094167a7b3f339595c25b45949c09e47782458ce71edd69fb4043102073c018fc0ae2aa9fddcc0b5876376d21d4830c6c";
+
     /// `PseudonymOut_0`
     pub const PSEUDONYMOUT_0: &str = "08d523cbc988ae53b55037d76491344d75257244dc859fc9d9a9f72ff39d0647b02d8acd343a14d839341151ab58ac7d8184230ef3e0bed0b5606161f42e7c32";
     /// `PseudonymOut_1`
@@ -210,6 +221,7 @@ mod expected {
     pub const PSEUDONYMP_2: &str = "505c3ed908dd214123e0ae9db072641b1734c079d45853487445b647ecc5114b";
     /// `PseudonymPermutation`
     pub const PSEUDONYMPERMUTATION: &str = "2,0,1";
+
     /// `AttributeM_0`
     pub const ATTRIBUTEM_0: &str = "c239ba10c2cb7dbe363124bec3be7d0d898ab78470e1b471ad92fcca550e9321";
     /// `AttributeB_0`
@@ -228,6 +240,7 @@ mod expected {
     pub const ATTRIBUTEB_2: &str = "8bc9e1ff43f79c3702807e3caa641c3e51e7e1db8b76227307a0ae6d8f7da60b";
     /// `AttributeV_2`
     pub const ATTRIBUTEV_2: &str = "1425a836a0ec527bde77e1ec4f98baae5ddede709d2fc5b19a0399ad60375718406eb119f32ce2b64a6c9bdbe2ce35864537de6dcd7270d265789df10d039b16";
+
     /// `k_attribute`
     pub const SCALAR_K_ATTRIBUTE: &str = "cdfd3672876a7d530711e959d60e553b3dc499b9d3e666f5f3792d541cb51a08";
     /// `AttributeOut_0`
@@ -253,6 +266,7 @@ mod expected {
     // transcryptor on the same session agree on the key material. The proof
     // transcript is separated by its own labels, not by a protocol mode.
     // u_i is secret and is shown only so the vector can be reproduced.
+
     /// `b_1`
     pub const SCALAR_B_1: &str = "17dc8b002247c4b99d56d8f4a5ec806c6551f72f67d2c3e2e8d06bfa8854db05";
     /// `B_1`

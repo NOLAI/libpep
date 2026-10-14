@@ -205,11 +205,12 @@ create_exception!(
 #[cfg(feature = "verifiable")]
 #[allow(dead_code)]
 pub(crate) fn session_key_share_err_to_py(
-    e: libpep::keys::generation::SessionKeyShareError,
+    e: libpep::keys::distribution::SessionKeyShareError,
 ) -> PyErr {
-    use libpep::keys::generation::SessionKeyShareError;
+    use libpep::keys::distribution::SessionKeyShareError as LibError;
     match e {
-        SessionKeyShareError::WeakBlinding => WeakBlindingError::new_err(e.to_string()),
+        LibError::WeakBlinding => WeakBlindingError::new_err(e.to_string()),
+        _ => SessionKeyShareError::new_err(e.to_string()),
     }
 }
 

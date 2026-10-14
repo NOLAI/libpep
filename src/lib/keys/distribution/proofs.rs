@@ -49,8 +49,6 @@ use crate::elgamal::arithmetic::Ristretto255;
 
 /// The [`BlindingCommitment`](generic::BlindingCommitment) over ristretto255.
 pub type BlindingCommitment = generic::BlindingCommitment<Ristretto255>;
-/// The [`BlindingCommitments`](generic::BlindingCommitments) over ristretto255.
-pub type BlindingCommitments = generic::BlindingCommitments<Ristretto255>;
 /// The [`SessionKeyShareProof`](generic::SessionKeyShareProof) over ristretto255.
 pub type SessionKeyShareProof = generic::SessionKeyShareProof<Ristretto255>;
 

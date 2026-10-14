@@ -20,7 +20,7 @@ use crate::factors::commitments::generic::{
 use crate::factors::verifiable::generic::{
     MasterPseudonymizationPublicKey, MasterRekeyingPublicKey,
 };
-use crate::keys::distribution::proofs::generic::{BlindingCommitments, SessionKeyShareProof};
+use crate::keys::distribution::proofs::generic::{BlindingCommitment, SessionKeyShareProof};
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::generic::{PseudonymSessionPublicKey, SessionPublicKeys};
 use crate::transcryptor::TranscryptorId;
@@ -39,7 +39,7 @@ pub struct Verifier<G: Group> {
     pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache<G>,
     attribute_rekey_cache: AttributeRekeyCommitmentsCache<G>,
     /// Blinding commitments per transcryptor, for session-key-share verification.
-    blinding_commitments: HashMap<TranscryptorId, BlindingCommitments<G>>,
+    blinding_commitments: HashMap<TranscryptorId, BlindingCommitment<G>>,
     #[cfg(feature = "verifiable-derivation")]
     master_pseudonym_keys: HashMap<TranscryptorId, MasterPseudonymizationPublicKey<G>>,
     #[cfg(feature = "verifiable-derivation")]
@@ -101,43 +101,39 @@ impl<G: Group> Verifier<G> {
     // Blinding commitments (for session key share verification)
     // ------------------------------------------------------------------
 
-    /// Register the blinding commitments for a transcryptor.
+    /// Register the blinding commitment `B_i = b_i · G` of a transcryptor. A transcryptor has
+    /// one blinding factor, used for its pseudonym and attribute session key shares alike.
     ///
-    /// Rejects weak commitments (identity or `G`). A `B_i = G` would mean
-    /// `b_i = 1`, defeating the blinding entirely. Re-registering an already
-    /// present transcryptor with a *different* set of commitments is also
-    /// rejected (`ConflictingValue`): a session-share verifier with both an
-    /// old and a new blinding commitment from the same transcryptor cannot
-    /// safely decide which one was used.
-    pub fn register_blinding_commitments(
+    /// Rejects a weak commitment (identity or `G`): `B_i = G` would mean `b_i = 1`, defeating
+    /// the blinding entirely. Re-registering an already present transcryptor with a *different*
+    /// commitment is also rejected (`ConflictingValue`): a session-share verifier with both an
+    /// old and a new blinding commitment from the same transcryptor cannot safely decide which
+    /// one was used.
+    pub fn register_blinding_commitment(
         &mut self,
         transcryptor_id: TranscryptorId,
-        commitments: BlindingCommitments<G>,
+        commitment: BlindingCommitment<G>,
     ) -> Result<(), RegisterCommitmentsError> {
-        Self::validate_not_weak(&commitments.pseudonym.0, "blinding pseudonym")?;
-        Self::validate_not_weak(&commitments.attribute.0, "blinding attribute")?;
+        Self::validate_not_weak(&commitment.0, "blinding")?;
         match self.blinding_commitments.get(&transcryptor_id) {
-            Some(existing) if *existing != commitments => {
+            Some(existing) if *existing != commitment => {
                 Err(super::cache::CacheRegistrationError::ConflictingValue.into())
             }
             _ => {
                 self.blinding_commitments
-                    .insert(transcryptor_id, commitments);
+                    .insert(transcryptor_id, commitment);
                 Ok(())
             }
         }
     }
 
-    /// The blinding commitments registered for a transcryptor.
-    pub fn get_blinding_commitments(
-        &self,
-        transcryptor_id: &str,
-    ) -> Option<&BlindingCommitments<G>> {
+    /// The blinding commitment registered for a transcryptor.
+    pub fn blinding_commitment(&self, transcryptor_id: &str) -> Option<&BlindingCommitment<G>> {
         self.blinding_commitments.get(transcryptor_id)
     }
 
-    /// Whether blinding commitments are registered for a transcryptor.
-    pub fn has_blinding_commitments(&self, transcryptor_id: &str) -> bool {
+    /// Whether a blinding commitment is registered for a transcryptor.
+    pub fn has_blinding_commitment(&self, transcryptor_id: &str) -> bool {
         self.blinding_commitments.contains_key(transcryptor_id)
     }
 
@@ -875,23 +871,18 @@ impl<G: Group> Verifier<G> {
     // are now per-transition). Use [`verify_session_key_share_with_commitment`]
     // and supply the rekey commitment explicitly.
 
-    /// Verify a session-key-share proof with an explicitly supplied rekey commitment.
+    /// Verify a session-key-share proof against the registered blinding commitment of the
+    /// transcryptor and an explicitly supplied rekey commitment.
     pub fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
         rekey_commitment: &G::Element,
-        for_pseudonym: bool,
         proof: &SessionKeyShareProof<G>,
     ) -> Result<(), VerifyError> {
-        let blinding_commitments = self
-            .get_blinding_commitments(transcryptor_id)
+        let blinding_commitment = self
+            .blinding_commitment(transcryptor_id)
             .ok_or(VerifyError::UnknownCommitment)?;
-        let bc = if for_pseudonym {
-            &blinding_commitments.pseudonym
-        } else {
-            &blinding_commitments.attribute
-        };
-        if proof.verify(bc, rekey_commitment) {
+        if proof.verify(blinding_commitment, rekey_commitment) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)

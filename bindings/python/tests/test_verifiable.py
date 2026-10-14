@@ -758,6 +758,35 @@ class TestSessionKeyShareBinding(unittest.TestCase):
         commitment = BlindingCommitment(blinding)
         return blinding, rekey_factor, rekey_commitment, proof, commitment
 
+    def test_distributed_transcryptor_proves_its_shares(self):
+        # The transcryptor makes the share and its proof from its own blinding and rekey
+        # factors; the user checks both halves against the published commitments.
+        from libpep.elgamal.arithmetic.group_elements import GroupElement
+        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.factors import make_attribute_rekey_factor, make_pseudonym_rekey_factor
+        from libpep.keys import BlindingCommitment, BlindingFactor
+
+        blinding_scalar = ScalarNonZero.random()
+        transcryptor = DistributedTranscryptor("ps", "es", BlindingFactor(blinding_scalar))
+        session = EncryptionContext("session-1")
+        commitment = BlindingCommitment(blinding_scalar)
+        secret = EncryptionSecret(b"es")
+
+        share, proof = transcryptor.pseudonym_session_key_share_with_proof(session)
+        k = make_pseudonym_rekey_factor(secret, session)
+        rekey_commitment = GroupElement.generator().mul(k.scalar())
+        self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
+        self.assertEqual(share, transcryptor.pseudonym_session_key_share(session))
+
+        shares, pseudonym_proof, attribute_proof = (
+            transcryptor.session_key_shares_with_proof(session)
+        )
+        self.assertTrue(pseudonym_proof.verify_share(shares.pseudonym, commitment, rekey_commitment))
+        k = make_attribute_rekey_factor(secret, session)
+        attribute_commitment = GroupElement.generator().mul(k.scalar())
+        self.assertTrue(attribute_proof.verify_share(shares.attribute, commitment, attribute_commitment))
+        self.assertFalse(attribute_proof.verify_share(shares.attribute, commitment, rekey_commitment))
+
     def test_verify_share_accepts_the_matching_share(self):
         from libpep.keys import PseudonymSessionKeyShare
 

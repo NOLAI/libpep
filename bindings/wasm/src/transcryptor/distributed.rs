@@ -78,6 +78,46 @@ impl WASMDistributedTranscryptor {
         WASMSessionKeyShares(self.session_key_shares(&session.0))
     }
 
+    /// The pseudonym session key share for a session with the proof of its construction, as
+    /// `[share, proof]`; the user checks it with `SessionKeyShareProof.verifyPseudonymShare`.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = pseudonymSessionKeyShareWithProof)]
+    pub fn wasm_pseudonym_session_key_share_with_proof(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> Result<Box<[JsValue]>, JsValue> {
+        let (share, proof) = self
+            .pseudonym_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_js)?;
+        Ok(vec![
+            JsValue::from(WASMPseudonymSessionKeyShare(share)),
+            JsValue::from(crate::keys::distribution::proofs::WASMSessionKeyShareProof(
+                proof,
+            )),
+        ]
+        .into_boxed_slice())
+    }
+
+    /// The attribute session key share for a session with the proof of its construction, as
+    /// `[share, proof]`.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = attributeSessionKeyShareWithProof)]
+    pub fn wasm_attribute_session_key_share_with_proof(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> Result<Box<[JsValue]>, JsValue> {
+        let (share, proof) = self
+            .attribute_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_js)?;
+        Ok(vec![
+            JsValue::from(WASMAttributeSessionKeyShare(share)),
+            JsValue::from(crate::keys::distribution::proofs::WASMSessionKeyShareProof(
+                proof,
+            )),
+        ]
+        .into_boxed_slice())
+    }
+
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
     pub fn wasm_attribute_rekey_info(
         &self,

@@ -101,7 +101,8 @@ impl<G: Group> Transcryptor<G> {
         encrypted.verifiable_pseudonymize(info, public_key, rng)
     }
 
-    /// Perform a verifiable rekey operation.
+    /// Perform a verifiable rekey operation: the paper's VRK, without rerandomization (see
+    /// [`VerifiableRekeyable`](crate::data::verifiable::traits::VerifiableRekeyable)).
     ///
     /// The verifier recovers the result by calling
     /// [`Verifier::verify_rekey`](crate::verifier::Verifier::verify_rekey)
