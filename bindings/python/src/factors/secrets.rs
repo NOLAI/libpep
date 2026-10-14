@@ -15,12 +15,6 @@ impl PyPseudonymizationSecret {
     fn new(data: Vec<u8>) -> Self {
         Self(PseudonymizationSecret::from(data))
     }
-
-    #[staticmethod]
-    #[pyo3(name = "from")]
-    fn py_from(data: Vec<u8>) -> Self {
-        Self(PseudonymizationSecret::from(data))
-    }
 }
 
 /// Encryption secret used to derive rekey factors from encryption contexts.
@@ -33,12 +27,6 @@ pub struct PyEncryptionSecret(pub(crate) EncryptionSecret);
 impl PyEncryptionSecret {
     #[new]
     fn new(data: Vec<u8>) -> Self {
-        Self(EncryptionSecret::from(data))
-    }
-
-    #[staticmethod]
-    #[pyo3(name = "from")]
-    fn py_from(data: Vec<u8>) -> Self {
         Self(EncryptionSecret::from(data))
     }
 }
