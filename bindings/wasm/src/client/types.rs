@@ -29,11 +29,11 @@ use wasm_bindgen::prelude::*;
 /// An offline PEP client.
 #[cfg(feature = "offline")]
 #[derive(Clone, From, Into, Deref)]
-#[wasm_bindgen(js_name = OfflinePEPClient)]
+#[wasm_bindgen(js_name = OfflineClient)]
 pub struct WASMOfflinePEPClient(pub(crate) OfflineClient);
 
 #[cfg(feature = "offline")]
-#[wasm_bindgen(js_class = OfflinePEPClient)]
+#[wasm_bindgen(js_class = OfflineClient)]
 impl WASMOfflinePEPClient {
     #[wasm_bindgen(constructor)]
     pub fn new(global_keys: &WASMGlobalPublicKeys) -> Self {
@@ -176,7 +176,7 @@ impl WASMOfflinePEPClient {
 
     /// Encrypt a PepJsonValue using global public keys (offline mode).
     #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = encryptJSON)]
+    #[wasm_bindgen(js_name = encryptJson)]
     pub fn wasm_encrypt_json(&self, value: WASMPepJsonValue) -> WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let encrypted = value.0.encrypt_global(&self.0.global_public_keys, &mut rng);
@@ -185,7 +185,7 @@ impl WASMOfflinePEPClient {
 
     /// Encrypt a batch of PepJsonValues with global keys.
     #[cfg(all(feature = "json", feature = "batch"))]
-    #[wasm_bindgen(js_name = encryptJSONBatch)]
+    #[wasm_bindgen(js_name = encryptJsonBatch)]
     pub fn wasm_encrypt_json_batch(
         &self,
         values: Vec<WASMPepJsonValue>,

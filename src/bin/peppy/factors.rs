@@ -7,8 +7,8 @@ use clap::{Args, Subcommand};
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
 use libpep::factors::commitments::VerifiableTranscryptionCommitment;
 use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor, Factor,
-    TranscryptionInfo,
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
+    AttributeRekeyInfo, Factor, TranscryptionInfo,
 };
 
 #[derive(Subcommand)]
@@ -17,7 +17,7 @@ pub enum Factors {
     Reshuffle {
         /// The transcryptor's pseudonymization secret.
         #[arg(long)]
-        secret: String,
+        pseudonymization_secret: String,
         /// The pseudonymization domain.
         #[arg(long)]
         domain: String,
@@ -26,7 +26,7 @@ pub enum Factors {
     Rekey {
         /// The transcryptor's encryption secret.
         #[arg(long)]
-        secret: String,
+        encryption_secret: String,
         /// The encryption context (session); omit for the global context.
         #[arg(long)]
         context: Option<String>,
@@ -65,8 +65,32 @@ pub struct TransitionArgs {
     to_context: Option<String>,
 }
 
+/// A rekey transition of attributes: the transcryptor's encryption secret and the contexts.
+#[derive(Args)]
+pub struct AttributeTransitionArgs {
+    /// The transcryptor's encryption secret.
+    #[arg(long)]
+    encryption_secret: String,
+    /// The encryption context the data comes from; omit for the global context.
+    #[arg(long)]
+    from_context: Option<String>,
+    /// The encryption context the data goes to; omit for the global context.
+    #[arg(long)]
+    to_context: Option<String>,
+}
+
+impl AttributeTransitionArgs {
+    pub fn info(&self) -> Result<AttributeRekeyInfo> {
+        Ok(AttributeRekeyInfo::new(
+            &io::context(self.from_context.as_deref())?,
+            &io::context(self.to_context.as_deref())?,
+            &io::encryption_secret(&self.encryption_secret)?,
+        ))
+    }
+}
+
 impl TransitionArgs {
-    fn info(&self) -> Result<TranscryptionInfo> {
+    pub fn info(&self) -> Result<TranscryptionInfo> {
         Ok(TranscryptionInfo::new(
             &io::domain(&self.from_domain)?,
             &io::domain(&self.to_domain)?,
@@ -80,19 +104,22 @@ impl TransitionArgs {
 
 pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
     match cmd {
-        Factors::Reshuffle { secret, domain } => {
+        Factors::Reshuffle {
+            pseudonymization_secret,
+            domain,
+        } => {
             let factor = make_pseudonymization_factor(
-                &io::pseudonymization_secret(&secret)?,
+                &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::domain(&domain)?,
             );
             out.value("reshuffle_factor", factor.scalar().to_hex());
         }
         Factors::Rekey {
-            secret,
+            encryption_secret,
             context,
             attribute,
         } => {
-            let secret = io::encryption_secret(&secret)?;
+            let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(context.as_deref())?;
             let factor = if attribute {
                 make_attribute_rekey_factor(&secret, &context).scalar()

@@ -23,11 +23,11 @@ homepage = "https://github.com/NOLAI/libpep"
 repository.workspace = true
 documentation = "https://docs.rs/libpep"
 license.workspace = true
-keywords = ["crypto", "pep", "pseudonymization"]
-categories = ["cryptography", "algorithms"]
+keywords = ["crypto", "pep", "pseudonymization", "elgamal", "privacy"]
+categories = ["cryptography", "algorithms", "command-line-utilities"]
 description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
-exclude = ["bindings", "pkg", "pkg-web", "node_modules"]
+exclude = ["bindings", "pkg", "pkg-web", "node_modules", ".github"]
 
 [features]
 default = ["build-binary", "long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
@@ -129,7 +129,8 @@ assets = [
 ]
 
 [package.metadata.docs.rs]
-features = ["offline", "batch", "long", "serde", "elgamal3", "insecure"]
+# The default ciphertext mode (no elgamal3) with every feature that adds API
+features = ["offline", "batch", "batch-pk", "long", "serde", "json", "verifiable", "verifiable-derivation", "insecure", "global-pseudonyms"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [workspace.lints.rust]

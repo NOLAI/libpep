@@ -43,10 +43,9 @@ pub use crate::errors::BatchError;
 /// ciphertexts carry it (`elgamal3`).
 #[cfg_attr(
     feature = "serde",
-    derive(Serialize, Deserialize),
+    derive(Serialize),
     serde(bound(
-        serialize = "E: Serialize, <E::UnencryptedType as Encryptable>::PublicKeyType: Serialize",
-        deserialize = "E: Deserialize<'de>, <E::UnencryptedType as Encryptable>::PublicKeyType: Deserialize<'de>"
+        serialize = "E: Serialize, <E::UnencryptedType as Encryptable>::PublicKeyType: Serialize"
     ))
 )]
 pub struct EncryptedBatch<E: Encrypted> {
@@ -59,10 +58,43 @@ pub struct EncryptedBatch<E: Encrypted> {
     ///
     /// Present only under `(batch-pk, not elgamal3)`.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    pub public_key: <E::UnencryptedType as Encryptable>::PublicKeyType,
+    pub(crate) public_key: <E::UnencryptedType as Encryptable>::PublicKeyType,
 
-    /// The encrypted items.
-    pub items: Vec<E>,
+    /// The encrypted items. Private: a batch is only built through [`new`](Self::new) or
+    /// deserialization, both of which check that the items share one structure.
+    pub(crate) items: Vec<E>,
+}
+
+/// The fields of a batch as serialized; deserializing goes through the structure check.
+#[cfg(feature = "serde")]
+#[derive(Deserialize)]
+#[serde(
+    rename = "EncryptedBatch",
+    bound(
+        deserialize = "E: Deserialize<'de>, <E::UnencryptedType as Encryptable>::PublicKeyType: Deserialize<'de>"
+    )
+)]
+struct RawBatch<E: Encrypted> {
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    public_key: <E::UnencryptedType as Encryptable>::PublicKeyType,
+    items: Vec<E>,
+}
+
+#[cfg(feature = "serde")]
+impl<'de, E> Deserialize<'de> for EncryptedBatch<E>
+where
+    E: Encrypted + HasStructure + Deserialize<'de>,
+    <E::UnencryptedType as Encryptable>::PublicKeyType: Deserialize<'de>,
+{
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = RawBatch::<E>::deserialize(deserializer)?;
+        validate_structure(&raw.items).map_err(serde::de::Error::custom)?;
+        Ok(Self {
+            #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+            public_key: raw.public_key,
+            items: raw.items,
+        })
+    }
 }
 
 // Manual Clone/Debug impls — `derive` adds spurious bounds we don't want.
@@ -158,6 +190,12 @@ where
 }
 
 impl<E: Encrypted> EncryptedBatch<E> {
+    /// The public key the items are encrypted under.
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    pub fn public_key(&self) -> &<E::UnencryptedType as Encryptable>::PublicKeyType {
+        &self.public_key
+    }
+
     /// Consume the batch and return the inner items.
     pub fn into_items(self) -> Vec<E> {
         self.items

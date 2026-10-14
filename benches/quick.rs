@@ -395,7 +395,6 @@ fn bench_json_roundtrip_batch(c: &mut Criterion) {
     });
 }
 
-#[cfg(all(feature = "long", feature = "json", feature = "batch"))]
 criterion_group!(
     benches,
     bench_pseudonym_roundtrip,
@@ -408,66 +407,6 @@ criterion_group!(
     bench_long_attribute_roundtrip_batch,
     bench_json_roundtrip,
     bench_json_roundtrip_batch
-);
-
-#[cfg(all(feature = "long", feature = "json", not(feature = "batch")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_attribute_roundtrip,
-    bench_long_pseudonym_roundtrip,
-    bench_long_attribute_roundtrip,
-    bench_json_roundtrip
-);
-
-#[cfg(all(feature = "long", feature = "batch", not(feature = "json")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_pseudonym_roundtrip_batch,
-    bench_attribute_roundtrip,
-    bench_attribute_roundtrip_batch,
-    bench_long_pseudonym_roundtrip,
-    bench_long_pseudonym_roundtrip_batch,
-    bench_long_attribute_roundtrip,
-    bench_long_attribute_roundtrip_batch
-);
-
-#[cfg(all(feature = "long", not(feature = "json"), not(feature = "batch")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_attribute_roundtrip,
-    bench_long_pseudonym_roundtrip,
-    bench_long_attribute_roundtrip
-);
-
-#[cfg(all(feature = "json", feature = "batch", not(feature = "long")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_pseudonym_roundtrip_batch,
-    bench_attribute_roundtrip,
-    bench_attribute_roundtrip_batch,
-    bench_json_roundtrip,
-    bench_json_roundtrip_batch
-);
-
-#[cfg(all(feature = "json", not(feature = "long"), not(feature = "batch")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_attribute_roundtrip,
-    bench_json_roundtrip
-);
-
-#[cfg(all(feature = "batch", not(feature = "long"), not(feature = "json")))]
-criterion_group!(
-    benches,
-    bench_pseudonym_roundtrip,
-    bench_pseudonym_roundtrip_batch,
-    bench_attribute_roundtrip,
-    bench_attribute_roundtrip_batch
 );
 
 #[cfg(not(any(feature = "long", feature = "json", feature = "batch")))]

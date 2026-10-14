@@ -74,6 +74,10 @@ a major change against the published 0.13.0.
   check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
   only public values and now documents what it does not establish. Exposed in Python as
   `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
+- Every block of a long value and every leaf of a JSON document is rerandomized with its own
+  factor. One factor shared across a value left the differences between its ciphertexts intact
+  through rekeying, which linked a shuffled batch of long attributes or JSON documents to its
+  input.
 - Every transcryption now rerandomizes the ciphertext before applying the reshuffle and rekey
   factors (RRSK/RRK). Previously the high-level `pseudonymize`, `rekey` and `transcrypt` (and the
   batch variants) applied the factors only, so a malicious sender could place a pseudonym directly
@@ -84,6 +88,42 @@ a major change against the published 0.13.0.
   non-degenerate case).
 
 ### Breaking changes
+
+- `EncryptedBatch` keeps its items and key private, so a batch is only built through `new` or
+  deserialization, both of which check that the items share one structure; `public_key()`,
+  `as_items()` and `into_items()` read them.
+- `PepJsonBuilder::pseudonym` (and `pseudonym(..)` in `pep_json!`) always pads the identifier;
+  group elements go in through `pseudonym_hex` (`pseudonym_hex(..)` in the macro) instead of
+  being detected from the string.
+- Secrets, secret keys, blinding factors, session key shares and factors print redacted through
+  `Debug`. `InMemoryCommitmentsCache` no longer derives serde (its tuple keys never serialized
+  to JSON). `VerifiableRSKInner::verify` is crate-private. The `LongEncryptable` and
+  `LongEncrypted` traits are gone. `PaddingError::CountMismatch` replaces the misused
+  `TooManyBlocks` for a record with the wrong number of values. JSON objects are `BTreeMap`s.
+- Under `elgamal3` a verifiable batch proof over a batch without pseudonyms (attribute-only
+  records, JSON without pseudonym fields, an empty batch) verifies its rekey proofs instead of
+  always failing.
+- `Verifier::pseudonymization_commitments`, `pseudonym_rekey_commitments` and
+  `attribute_rekey_commitments` return registered commitments, so batch proofs can be checked
+  against the cache.
+- `make_distributed_global_keys` and its pseudonym and attribute variants panic for zero
+  transcryptors with a message (they always panicked); the bindings raise an error. The
+  derivation inputs (secrets, domains, contexts) must be shorter than
+  `factors::derivation::MAX_INPUT_LENGTH`; the CLI and the bindings refuse longer ones instead
+  of panicking.
+- JavaScript: `encryptJson`, `decryptJson`, `transcryptJson`, `transcryptJsonBatch`,
+  `encryptJsonBatch`, `decryptJsonBatch` and `verifyJsonTranscryption` are the only spellings;
+  the `JSON` duplicates are gone. `OfflinePEPClient` is `OfflineClient`, `rekeyPublicKeys` is
+  `rekeyPublicKey`. Python: a batch function given items of different types raises `TypeError`
+  instead of panicking.
+- `peppy`: `--encryption-secret` and `--pseudonymization-secret` name the secrets everywhere
+  (`--secret` is gone from `factors reshuffle|rekey`, `keys session derive` and
+  `keys distributed share`); `attribute transcrypt` no longer accepts the pseudonymization
+  flags; `encode`/`decode` use the PKCS#7 padding of the library, so an identifier gives the
+  same pseudonym on the command line as in a JSON document or the bindings; values print bare
+  when standard output is piped and labelled on a terminal; a wrong-key decryption exits with
+  3 and a failed proof with 4, since clap uses 2; `keys distributed reconstruct` refuses a call
+  without shares or with shares of a kind whose blinded key is missing.
 
 - The minimum supported Rust version is 1.88, up from 1.85. Transitive dependencies of
   `curve25519-dalek`, `sha2` and `hmac` raised their own floors during this cycle: `ctutils`
@@ -258,6 +298,10 @@ a major change against the published 0.13.0.
   CLI prints it as `key` / `keys`.
 
 ### Removed
+
+- The `default+verifiable` CI rows (`verifiable` is a default feature); the MSRV job checks the
+  default mode and `verifiable-derivation` as well; `cargo doc` runs with warnings denied; docs.rs
+  documents the default ciphertext mode with every feature instead of `elgamal3`.
 
 - `docs/scalar-mult-counts.md` and `docs/scalar-mult-counts-elgamal3.md`. They analysed scalar
   multiplication counts against a module layout several refactors old, and counted the whole flow

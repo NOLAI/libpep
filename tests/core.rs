@@ -22,32 +22,8 @@ use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 #[cfg(feature = "batch")]
 use std::collections::HashSet;
 
-/// Call a transcryption function with the argument list of the active ciphertext encoding: with
-/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
-macro_rules! tx {
-    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
-        #[cfg(feature = "elgamal3")]
-        let result = {
-            let _ = &$pk;
-            $f($enc, $info, $rng)
-        };
-        #[cfg(not(feature = "elgamal3"))]
-        let result = $f($enc, $info, $pk, $rng);
-        result
-    }};
-}
-
-/// Decrypt with the active ciphertext encoding (with `elgamal3`, decryption can fail).
-#[cfg(feature = "batch")]
-macro_rules! dec {
-    ($enc:expr, $sk:expr) => {{
-        #[cfg(feature = "elgamal3")]
-        let result = decrypt($enc, $sk).expect("decryption should succeed");
-        #[cfg(not(feature = "elgamal3"))]
-        let result = decrypt($enc, $sk);
-        result
-    }};
-}
+#[macro_use]
+mod common;
 
 #[test]
 fn test_core_flow() {
@@ -805,4 +781,35 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
         keys,
         make_session_keys(&global_secret, &session_b, &enc_secret)
     );
+}
+
+/// Every block of a long value gets its own rerandomization factor: with one shared factor the
+/// differences between the blocks would survive a rekey and link the output to the input.
+#[cfg(feature = "long")]
+#[test]
+fn long_values_rerandomize_every_block_independently() {
+    use libpep::data::long::LongPseudonym;
+    use libpep::data::simple::ElGamalEncrypted;
+    use libpep::data::traits::Encrypted;
+    use std::collections::HashSet;
+    let rng = &mut rand::rng();
+    let (_, global_secret) = make_pseudonym_global_keys(rng);
+    let secret = EncryptionSecret::from("secret".as_bytes());
+    let (pk, _) =
+        make_pseudonym_session_keys(&global_secret, &EncryptionContext::from("s"), &secret);
+    let long = LongPseudonym::from_string_padded("an identifier of several blocks, long enough");
+    let encrypted = encrypt(&long, &pk, rng);
+    assert!(encrypted.0.len() >= 3);
+    #[cfg(feature = "elgamal3")]
+    let rerandomized = encrypted.rerandomize(rng);
+    #[cfg(not(feature = "elgamal3"))]
+    let rerandomized = encrypted.rerandomize(&pk, rng);
+    // `B' - B = r_i·G` per block; with one factor they would all be equal.
+    let factors: HashSet<_> = encrypted
+        .0
+        .iter()
+        .zip(&rerandomized.0)
+        .map(|(before, after)| (after.value().gb - before.value().gb).to_hex())
+        .collect();
+    assert_eq!(factors.len(), encrypted.0.len());
 }

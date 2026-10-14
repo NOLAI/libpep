@@ -55,7 +55,7 @@ pub enum Session {
         attribute_global_secret: Option<String>,
         /// The transcryptor's encryption secret.
         #[arg(long)]
-        secret: String,
+        encryption_secret: String,
         /// The encryption context (session) to derive keys for.
         #[arg(long)]
         context: String,
@@ -78,7 +78,7 @@ pub enum Distributed {
         blinding: String,
         /// This transcryptor's encryption secret.
         #[arg(long)]
-        secret: String,
+        encryption_secret: String,
         /// The encryption context (session).
         #[arg(long)]
         context: String,
@@ -131,7 +131,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
         Keys::Session(Session::Derive {
             pseudonym_global_secret,
             attribute_global_secret,
-            secret,
+            encryption_secret,
             context,
         }) => {
             if pseudonym_global_secret.is_none() && attribute_global_secret.is_none() {
@@ -139,7 +139,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                     "give --pseudonym-global-secret, --attribute-global-secret or both",
                 ));
             }
-            let secret = io::encryption_secret(&secret)?;
+            let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
             let mut pseudonym = None;
             if let Some(global) = pseudonym_global_secret {
@@ -191,11 +191,11 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
         }
         Keys::Distributed(Distributed::Share {
             blinding,
-            secret,
+            encryption_secret,
             context,
         }) => {
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
-            let secret = io::encryption_secret(&secret)?;
+            let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
             let shares = make_session_key_shares(
                 &make_pseudonym_rekey_factor(&secret, &context),
@@ -211,6 +211,11 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             pseudonym_shares,
             attribute_shares,
         }) => match (blinded_pseudonym, blinded_attribute) {
+            _ if pseudonym_shares.is_empty() && attribute_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "give one --pseudonym-share or --attribute-share per transcryptor",
+                ))
+            }
             (Some(bp), Some(ba)) if pseudonym_shares.len() == attribute_shares.len() => {
                 let blinded = BlindedGlobalSecretKeys {
                     pseudonym: BlindedPseudonymGlobalSecretKey::from_scalar(io::scalar(
@@ -251,6 +256,16 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             (Some(_), Some(_)) => {
                 return Err(io::Error::input(
                     "give the same number of --pseudonym-share and --attribute-share values",
+                ))
+            }
+            (Some(_), None) if !attribute_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "--attribute-share needs --blinded-attribute",
+                ))
+            }
+            (None, Some(_)) if !pseudonym_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "--pseudonym-share needs --blinded-pseudonym",
                 ))
             }
             (Some(bp), None) => {

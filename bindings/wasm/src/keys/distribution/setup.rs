@@ -12,9 +12,20 @@ use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
+/// A distributed system needs at least one transcryptor.
+fn checked(n: usize) -> Result<usize, JsError> {
+    if n == 0 {
+        return Err(JsError::new(
+            "a distributed system needs at least one transcryptor",
+        ));
+    }
+    Ok(n)
+}
+
 /// Setup a distributed system with global keys.
 #[wasm_bindgen(js_name = makeDistributedGlobalKeys)]
-pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
+pub fn wasm_make_distributed_global_keys(n: usize) -> Result<Box<[JsValue]>, JsError> {
+    let n = checked(n)?;
     let mut rng = rand::rng();
     let (global_public_keys, blinded_keys, blinding_factors) =
         make_distributed_global_keys(n, &mut rng);
@@ -29,7 +40,7 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
         .map(WASMBlindingFactor)
         .collect();
 
-    vec![
+    Ok(vec![
         JsValue::from(global_keys),
         JsValue::from(blinded),
         JsValue::from(
@@ -40,7 +51,7 @@ pub fn wasm_make_distributed_global_keys(n: usize) -> Box<[JsValue]> {
                 .into_boxed_slice(),
         ),
     ]
-    .into_boxed_slice()
+    .into_boxed_slice())
 }
 
 /// Creates a blinded pseudonym global secret key.
@@ -79,7 +90,8 @@ pub fn wasm_make_blinded_attribute_global_secret_key(
 
 /// Generates distributed pseudonym global keys.
 #[wasm_bindgen(js_name = makeDistributedPseudonymGlobalKeys)]
-pub fn wasm_make_distributed_pseudonym_global_keys(n: usize) -> Box<[JsValue]> {
+pub fn wasm_make_distributed_pseudonym_global_keys(n: usize) -> Result<Box<[JsValue]>, JsError> {
+    let n = checked(n)?;
     let mut rng = rand::rng();
     let (public_key, blinded_key, blinding_factors) =
         make_distributed_pseudonym_global_keys(n, &mut rng);
@@ -91,7 +103,7 @@ pub fn wasm_make_distributed_pseudonym_global_keys(n: usize) -> Box<[JsValue]> {
         .map(WASMBlindingFactor)
         .collect();
 
-    vec![
+    Ok(vec![
         JsValue::from(public),
         JsValue::from(blinded),
         JsValue::from(
@@ -102,12 +114,13 @@ pub fn wasm_make_distributed_pseudonym_global_keys(n: usize) -> Box<[JsValue]> {
                 .into_boxed_slice(),
         ),
     ]
-    .into_boxed_slice()
+    .into_boxed_slice())
 }
 
 /// Generates distributed attribute global keys.
 #[wasm_bindgen(js_name = makeDistributedAttributeGlobalKeys)]
-pub fn wasm_make_distributed_attribute_global_keys(n: usize) -> Box<[JsValue]> {
+pub fn wasm_make_distributed_attribute_global_keys(n: usize) -> Result<Box<[JsValue]>, JsError> {
+    let n = checked(n)?;
     let mut rng = rand::rng();
     let (public_key, blinded_key, blinding_factors) =
         make_distributed_attribute_global_keys(n, &mut rng);
@@ -119,7 +132,7 @@ pub fn wasm_make_distributed_attribute_global_keys(n: usize) -> Box<[JsValue]> {
         .map(WASMBlindingFactor)
         .collect();
 
-    vec![
+    Ok(vec![
         JsValue::from(public),
         JsValue::from(blinded),
         JsValue::from(
@@ -130,5 +143,5 @@ pub fn wasm_make_distributed_attribute_global_keys(n: usize) -> Box<[JsValue]> {
                 .into_boxed_slice(),
         ),
     ]
-    .into_boxed_slice()
+    .into_boxed_slice())
 }

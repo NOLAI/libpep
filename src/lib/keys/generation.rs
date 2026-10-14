@@ -39,6 +39,11 @@ pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
     generic::make_attribute_global_keys(rng)
 }
 
+/// The [`SessionKeysWithProof`](generic::SessionKeysWithProof) over ristretto255.
+#[cfg(feature = "verifiable")]
+pub type SessionKeysWithProof<PK, SK> =
+    generic::SessionKeysWithProof<PK, SK, crate::elgamal::arithmetic::Ristretto255>;
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -229,8 +234,3 @@ mod tests {
         assert_eq!(session.pseudonym.secret, deserialized);
     }
 }
-
-/// The [`SessionKeysWithProof`](generic::SessionKeysWithProof) over ristretto255.
-#[cfg(feature = "verifiable")]
-pub type SessionKeysWithProof<PK, SK> =
-    generic::SessionKeysWithProof<PK, SK, crate::elgamal::arithmetic::Ristretto255>;

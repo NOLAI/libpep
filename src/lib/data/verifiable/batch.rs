@@ -521,7 +521,9 @@ impl<E: VerifiableBatchItem + Pseudonymizable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchPseudonymizationProof<E> {
         let (pseudonyms, _) = flatten(&self.items);
-        let gy = batch_gy(&pseudonyms).expect("the ciphertexts of a batch carry one key");
+        // Ciphertexts under different keys cannot be in one batch; a proof made with the
+        // generator in that case does not verify.
+        let gy = batch_gy(&pseudonyms).unwrap_or_else(E::Group::generator);
         self.pseudonymize_under(gy, info, rng)
     }
 }
@@ -654,7 +656,9 @@ impl<E: VerifiableBatchItem + Transcryptable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchTranscryptionProof<E> {
         let (pseudonyms, _) = flatten(&self.items);
-        let gy = batch_gy(&pseudonyms).expect("the ciphertexts of a batch carry one key");
+        // Ciphertexts under different keys cannot be in one batch; a proof made with the
+        // generator in that case does not verify.
+        let gy = batch_gy(&pseudonyms).unwrap_or_else(E::Group::generator);
         self.transcrypt_under(gy, info, rng)
     }
 }

@@ -1,8 +1,5 @@
 //! Verifiable operations of the simple data types, generic over the [`Group`].
 
-#[cfg(feature = "batch")]
-use crate::data::simple::generic::{EncryptedAttribute, EncryptedPseudonym};
-#[cfg(not(feature = "batch"))]
 use crate::data::simple::generic::{EncryptedAttribute, EncryptedPseudonym};
 use crate::data::simple::ElGamalEncrypted;
 #[cfg(feature = "batch")]

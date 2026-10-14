@@ -87,7 +87,7 @@ fn setup() -> (serde_json::Value, Session, Session) {
             field(&global, "pseudonym_secret_key"),
             "--attribute-global-secret",
             field(&global, "attribute_secret_key"),
-            "--secret",
+            "--encryption-secret",
             "encryption secret",
             "--context",
             context,
@@ -350,7 +350,7 @@ fn distributed_setup_shares_and_reconstruction() {
                 "share",
                 "--blinding",
                 factors[i],
-                "--secret",
+                "--encryption-secret",
                 &secrets[i],
                 "--context",
                 "session-1",
@@ -426,7 +426,7 @@ fn distributed_setup_shares_and_reconstruction() {
         "share",
         "--blinding",
         factors[0],
-        "--secret",
+        "--encryption-secret",
         &secrets[0],
         "--context",
         "session-2",
@@ -578,13 +578,13 @@ fn proofs_of_pseudonymization_verify() {
             })
             .collect();
         let run = peppy_with_stdin(&swapped, None);
-        assert_eq!(run.status, 3, "{}", run.stderr);
+        assert_eq!(run.status, 4, "{}", run.stderr);
         assert!(run.stderr.contains("does not verify"), "{}", run.stderr);
         assert!(run.stdout.is_empty());
         let other = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
         verify.pop();
         verify.push(&other);
-        assert_eq!(peppy_with_stdin(&verify, None).status, 3);
+        assert_eq!(peppy_with_stdin(&verify, None).status, 4);
     }
 }
 
@@ -729,7 +729,7 @@ fn proofs_of_json_transcryption_verify() {
         .collect();
     let mut full = vec!["--json"];
     full.extend_from_slice(&swapped);
-    assert_eq!(peppy_with_stdin(&full, None).status, 3);
+    assert_eq!(peppy_with_stdin(&full, None).status, 4);
 }
 
 #[test]
@@ -767,7 +767,7 @@ fn errors_have_messages_and_exit_codes() {
             &["pseudonym", "decrypt", "--key", b.secret(), &encrypted],
             None,
         );
-        assert_eq!(run.status, 2, "{}", run.stderr);
+        assert_eq!(run.status, 3, "{}", run.stderr);
         assert!(run.stderr.contains("does not match"));
     }
 }

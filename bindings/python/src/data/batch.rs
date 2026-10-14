@@ -116,7 +116,7 @@ impl PyPseudonymBatch {
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
         crate::keys::PyPseudonymSessionPublicKey(
             crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(&self.inner.public_key),
+                *libpep::keys::PublicKey::value(self.inner.public_key()),
             ),
         )
     }
@@ -266,7 +266,7 @@ impl PyAttributeBatch {
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
         crate::keys::PyAttributeSessionPublicKey(
             crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(&self.inner.public_key),
+                *libpep::keys::PublicKey::value(self.inner.public_key()),
             ),
         )
     }
@@ -396,7 +396,7 @@ impl PyLongPseudonymBatch {
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
         crate::keys::PyPseudonymSessionPublicKey(
             crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(&self.inner.public_key),
+                *libpep::keys::PublicKey::value(self.inner.public_key()),
             ),
         )
     }
@@ -547,7 +547,7 @@ impl PyLongAttributeBatch {
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
         crate::keys::PyAttributeSessionPublicKey(
             crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(&self.inner.public_key),
+                *libpep::keys::PublicKey::value(self.inner.public_key()),
             ),
         )
     }
@@ -673,7 +673,7 @@ impl PyRecordBatch {
     /// `(batch-pk, !elgamal3)`).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::distribution::shares::PySessionPublicKeys {
-        rust_session_public_keys_to_py(&self.inner.public_key)
+        rust_session_public_keys_to_py(self.inner.public_key())
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -777,7 +777,7 @@ impl PyLongRecordBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::distribution::shares::PySessionPublicKeys {
-        rust_session_public_keys_to_py(&self.inner.public_key)
+        rust_session_public_keys_to_py(self.inner.public_key())
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]

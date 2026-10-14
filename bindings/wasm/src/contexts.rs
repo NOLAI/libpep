@@ -1,7 +1,18 @@
 //! WASM bindings for pseudonymization domains and encryption contexts.
 
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::factors::derivation::MAX_INPUT_LENGTH;
 use wasm_bindgen::prelude::*;
+
+/// The factor derivation needs the identifier shorter than 2^16 bytes.
+fn checked(payload: &str) -> Result<&str, JsError> {
+    if payload.len() >= MAX_INPUT_LENGTH {
+        return Err(JsError::new(&format!(
+            "must be shorter than {MAX_INPUT_LENGTH} bytes"
+        )));
+    }
+    Ok(payload)
+}
 
 /// The domain a pseudonym exists in (typically a user's role or usergroup).
 #[derive(Clone, Debug)]
@@ -12,8 +23,8 @@ pub struct WASMPseudonymizationDomain(pub(crate) PseudonymizationDomain);
 impl WASMPseudonymizationDomain {
     /// Create a specific pseudonymization domain from a string identifier.
     #[wasm_bindgen(constructor)]
-    pub fn new(payload: &str) -> Self {
-        Self(PseudonymizationDomain::from(payload))
+    pub fn new(payload: &str) -> Result<WASMPseudonymizationDomain, JsError> {
+        Ok(Self(PseudonymizationDomain::from(checked(payload)?)))
     }
 
     /// Create a global pseudonymization domain.
@@ -33,8 +44,8 @@ pub struct WASMEncryptionContext(pub(crate) EncryptionContext);
 impl WASMEncryptionContext {
     /// Create a specific encryption context from a string identifier.
     #[wasm_bindgen(constructor)]
-    pub fn new(payload: &str) -> Self {
-        Self(EncryptionContext::from(payload))
+    pub fn new(payload: &str) -> Result<WASMEncryptionContext, JsError> {
+        Ok(Self(EncryptionContext::from(checked(payload)?)))
     }
 
     /// Create a global encryption context.

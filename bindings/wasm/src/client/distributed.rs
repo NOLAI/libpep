@@ -401,7 +401,7 @@ impl WASMClient {
 
     /// Encrypt a PepJsonValue using session keys.
     #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = encryptJSON)]
+    #[wasm_bindgen(js_name = encryptJson)]
     pub fn wasm_encrypt_json(&self, value: WASMPepJsonValue) -> WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
         use libpep::data::traits::Encryptable;
@@ -412,7 +412,7 @@ impl WASMClient {
 
     /// Encrypt a PepJsonValue using session keys.
     #[cfg(all(feature = "json", feature = "batch"))]
-    #[wasm_bindgen(js_name = encryptJSONBatch)]
+    #[wasm_bindgen(js_name = encryptJsonBatch)]
     pub fn wasm_encrypt_json_batch(
         &self,
         values: Vec<WASMPepJsonValue>,
@@ -432,7 +432,7 @@ impl WASMClient {
 
     /// Decrypt an encrypted PepJsonValue using session keys.
     #[cfg(all(feature = "json", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = decryptJSON)]
+    #[wasm_bindgen(js_name = decryptJson)]
     pub fn wasm_decrypt_json(
         &self,
         encrypted: WASMEncryptedPepJsonValue,
@@ -443,7 +443,7 @@ impl WASMClient {
 
     /// Decrypt an encrypted PepJsonValue using session keys.
     #[cfg(all(feature = "json", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = decryptJSON)]
+    #[wasm_bindgen(js_name = decryptJson)]
     pub fn wasm_decrypt_json(&self, encrypted: WASMEncryptedPepJsonValue) -> WASMPepJsonValue {
         use libpep::data::traits::Encrypted;
         WASMPepJsonValue(encrypted.0.decrypt(self.0.keys()))
@@ -451,7 +451,7 @@ impl WASMClient {
 
     /// Decrypt a batch of encrypted PepJsonValues using session keys.
     #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = decryptJSONBatch)]
+    #[wasm_bindgen(js_name = decryptJsonBatch)]
     pub fn wasm_decrypt_json_batch(
         &self,
         encrypted: Vec<WASMEncryptedPepJsonValue>,
@@ -466,7 +466,7 @@ impl WASMClient {
 
     /// Decrypt a batch of encrypted PepJsonValues using session keys.
     #[cfg(all(feature = "json", feature = "batch", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = decryptJSONBatch)]
+    #[wasm_bindgen(js_name = decryptJsonBatch)]
     pub fn wasm_decrypt_json_batch(
         &self,
         encrypted: Vec<WASMEncryptedPepJsonValue>,
