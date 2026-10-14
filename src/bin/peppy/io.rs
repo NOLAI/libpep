@@ -9,9 +9,19 @@ use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::verifiable::generic::{
+    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
+};
 use libpep::elgamal::ElGamal;
+#[cfg(feature = "json")]
+use libpep::factors::commitments::VerifiableTranscryptionCommitment;
+use libpep::factors::commitments::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{PublicKey, SecretKey};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt;
 use std::io::Read;
 
@@ -21,6 +31,8 @@ pub const EXIT_INPUT: i32 = 1;
 /// with the `elgamal3` feature, where ciphertexts carry the key they were encrypted for.
 #[cfg_attr(not(feature = "elgamal3"), allow(dead_code))]
 pub const EXIT_KEY_MISMATCH: i32 = 2;
+/// Exit code for a proof that does not verify.
+pub const EXIT_INVALID_PROOF: i32 = 3;
 
 /// A failure reported to the user with an exit code.
 #[derive(Debug)]
@@ -42,6 +54,13 @@ impl Error {
         Self {
             message: "decryption failed: the key does not match the ciphertext".into(),
             code: EXIT_KEY_MISMATCH,
+        }
+    }
+
+    pub fn invalid_proof() -> Self {
+        Self {
+            message: "the proof does not verify against the ciphertext and the commitments".into(),
+            code: EXIT_INVALID_PROOF,
         }
     }
 }
@@ -139,6 +158,48 @@ pub fn context(raw: Option<&str>) -> Result<EncryptionContext> {
         Some(r) => Ok(EncryptionContext::from(read_arg(r)?.as_str())),
         None => Ok(EncryptionContext::global()),
     }
+}
+
+pub fn rekey_commitment(raw: &str) -> Result<VerifiableRekeyCommitment> {
+    Ok(VerifiableRekeyCommitment {
+        commitment: RekeyFactorCommitment(FactorCommitment(point(raw, "rekey commitment")?)),
+    })
+}
+
+pub fn pseudonymization_commitment(
+    reshuffle: &str,
+    rekey: &str,
+) -> Result<VerifiablePseudonymizationCommitment> {
+    Ok(VerifiablePseudonymizationCommitment {
+        reshuffle_commitment: PseudonymizationFactorCommitment(FactorCommitment(point(
+            reshuffle,
+            "reshuffle commitment",
+        )?)),
+        rekey_commitment: rekey_commitment(rekey)?.commitment,
+    })
+}
+
+#[cfg(feature = "json")]
+pub fn transcryption_commitment(
+    reshuffle: &str,
+    pseudonym_rekey: &str,
+    attribute_rekey: &str,
+) -> Result<VerifiableTranscryptionCommitment> {
+    Ok(VerifiableTranscryptionCommitment {
+        pseudonym: pseudonymization_commitment(reshuffle, pseudonym_rekey)?,
+        attribute: rekey_commitment(attribute_rekey)?,
+    })
+}
+
+/// Parse a JSON value, such as a proof or an encrypted document.
+pub fn json<T: DeserializeOwned>(raw: &str, what: &str) -> Result<T> {
+    let text = read_arg(raw)?;
+    serde_json::from_str(&text).map_err(|e| Error::input(format!("{what}: not valid JSON: {e}")))
+}
+
+/// The JSON value of a proof, key or document, for [`Output::value`].
+pub fn to_json<T: Serialize>(value: &T) -> serde_json::Value {
+    serde_json::to_value(value).expect("library types are serializable")
 }
 
 /// Collects the values a command outputs and prints them in the selected format.

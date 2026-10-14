@@ -43,7 +43,7 @@ json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption supp
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms", "dep:hmac"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
-build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline"] # Build the peppy command line utility (requires long and offline)
+build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline", "serde", "verifiable"] # Build the peppy command line utility (requires long, offline, serde and verifiable)
 
 [lints]
 workspace = true

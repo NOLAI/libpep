@@ -4,8 +4,8 @@
 //! `pseudonym`, `attribute`, `json`, `elgamal`, `scalar`, `point`), the second the operation.
 //! See `peppy --help` and the README for a worked session.
 
-// The CLI reports errors through `io::Error`; the two remaining `expect`s are on
-// infallible serialization.
+// The CLI reports errors through `io::Error`; the remaining `expect`s are on infallible
+// serialization and on verifying a proof the command itself just made.
 #![allow(clippy::expect_used)]
 
 mod arith;
@@ -16,6 +16,7 @@ mod io;
 #[cfg(feature = "json")]
 mod json;
 mod keys;
+mod verifiable;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use io::Output;

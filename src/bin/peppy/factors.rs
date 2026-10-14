@@ -1,9 +1,11 @@
-//! `peppy factors`: derive reshuffle and rekey factors from secrets, and the info for a
-//! transcryption between two domains and contexts.
+//! `peppy factors`: derive reshuffle and rekey factors from secrets, the info for a
+//! transcryption between two domains and contexts, and the commitments to its factors that a
+//! transcryptor publishes for verifiable transcryption.
 
 use crate::io::{self, Output, Result};
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::factors::commitments::VerifiableTranscryptionCommitment;
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor, Factor,
     TranscryptionInfo,
@@ -34,26 +36,46 @@ pub enum Factors {
     },
     /// The factors that transcrypt from one domain and context to another: the ratios of the
     /// reshuffle and rekey factors of source and target.
-    Info {
-        /// The transcryptor's pseudonymization secret.
-        #[arg(long)]
-        pseudonymization_secret: String,
-        /// The transcryptor's encryption secret.
-        #[arg(long)]
-        encryption_secret: String,
-        /// The pseudonymization domain the data comes from.
-        #[arg(long)]
-        from_domain: String,
-        /// The pseudonymization domain the data goes to.
-        #[arg(long)]
-        to_domain: String,
-        /// The encryption context the data comes from; omit for the global context.
-        #[arg(long)]
-        from_context: Option<String>,
-        /// The encryption context the data goes to; omit for the global context.
-        #[arg(long)]
-        to_context: Option<String>,
-    },
+    Info(TransitionArgs),
+    /// The commitments to the factors of a transcryption, which a transcryptor publishes so that
+    /// its proofs (`--prove`) can be verified.
+    Commitments(TransitionArgs),
+}
+
+/// A transcryption transition: the transcryptor's secrets and the domains and contexts.
+#[derive(Args)]
+pub struct TransitionArgs {
+    /// The transcryptor's pseudonymization secret.
+    #[arg(long)]
+    pseudonymization_secret: String,
+    /// The transcryptor's encryption secret.
+    #[arg(long)]
+    encryption_secret: String,
+    /// The pseudonymization domain the data comes from.
+    #[arg(long)]
+    from_domain: String,
+    /// The pseudonymization domain the data goes to.
+    #[arg(long)]
+    to_domain: String,
+    /// The encryption context the data comes from; omit for the global context.
+    #[arg(long)]
+    from_context: Option<String>,
+    /// The encryption context the data goes to; omit for the global context.
+    #[arg(long)]
+    to_context: Option<String>,
+}
+
+impl TransitionArgs {
+    fn info(&self) -> Result<TranscryptionInfo> {
+        Ok(TranscryptionInfo::new(
+            &io::domain(&self.from_domain)?,
+            &io::domain(&self.to_domain)?,
+            &io::context(self.from_context.as_deref())?,
+            &io::context(self.to_context.as_deref())?,
+            &io::pseudonymization_secret(&self.pseudonymization_secret)?,
+            &io::encryption_secret(&self.encryption_secret)?,
+        ))
+    }
 }
 
 pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
@@ -79,25 +101,27 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
             };
             out.value("rekey_factor", factor.to_hex());
         }
-        Factors::Info {
-            pseudonymization_secret,
-            encryption_secret,
-            from_domain,
-            to_domain,
-            from_context,
-            to_context,
-        } => {
-            let info = TranscryptionInfo::new(
-                &io::domain(&from_domain)?,
-                &io::domain(&to_domain)?,
-                &io::context(from_context.as_deref())?,
-                &io::context(to_context.as_deref())?,
-                &io::pseudonymization_secret(&pseudonymization_secret)?,
-                &io::encryption_secret(&encryption_secret)?,
-            );
+        Factors::Info(transition) => {
+            let info = transition.info()?;
             out.value("reshuffle_factor", info.pseudonym.s.scalar().to_hex());
             out.value("pseudonym_rekey_factor", info.pseudonym.k.scalar().to_hex());
             out.value("attribute_rekey_factor", info.attribute.k.scalar().to_hex());
+        }
+        Factors::Commitments(transition) => {
+            let commitment = VerifiableTranscryptionCommitment::from(transition.info()?);
+            let pseudonym = commitment.pseudonym;
+            out.value(
+                "reshuffle_commitment",
+                pseudonym.reshuffle_commitment.point().to_hex(),
+            );
+            out.value(
+                "pseudonym_rekey_commitment",
+                pseudonym.rekey_commitment.point().to_hex(),
+            );
+            out.value(
+                "attribute_rekey_commitment",
+                commitment.attribute.commitment.point().to_hex(),
+            );
         }
     }
     Ok(())

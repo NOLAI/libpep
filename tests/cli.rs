@@ -507,6 +507,231 @@ fn json_documents() {
     assert_ne!(document["document"]["id"], "patient-42");
 }
 
+/// The commitments of the hospital→research, session-a→session-b transition.
+fn commitments() -> serde_json::Value {
+    let mut args = vec!["factors", "commitments"];
+    args.extend_from_slice(&TRANSCRYPT);
+    args.extend_from_slice(&[
+        "--from-domain",
+        "hospital",
+        "--to-domain",
+        "research",
+        "--from-context",
+        "session-a",
+        "--to-context",
+        "session-b",
+    ]);
+    peppy_json(&args)
+}
+
+#[test]
+fn proofs_of_pseudonymization_verify() {
+    let (_, a, b) = setup();
+    let commitments = commitments();
+    for text in [
+        "patient-42",
+        "an identifier that is much longer than sixteen bytes",
+    ] {
+        let value = peppy(&["pseudonym", "encode", text]);
+        let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
+        let mut args = vec!["pseudonym", "transcrypt", "--prove"];
+        args.extend_from_slice(&TRANSCRYPT);
+        args.extend_from_slice(&key_arg(a.public()));
+        args.extend_from_slice(&[
+            "--from-domain",
+            "hospital",
+            "--to-domain",
+            "research",
+            "--from-context",
+            "session-a",
+            "--to-context",
+            "session-b",
+            &encrypted,
+        ]);
+        let proven = peppy_json(&args);
+        let proof = proven["proof"].to_string();
+        let mut verify = vec!["pseudonym", "verify-pseudonymize"];
+        verify.extend_from_slice(&key_arg(a.public()));
+        verify.extend_from_slice(&[
+            "--reshuffle-commitment",
+            field(&commitments, "reshuffle_commitment"),
+            "--rekey-commitment",
+            field(&commitments, "pseudonym_rekey_commitment"),
+            "--proof",
+            &proof,
+            &encrypted,
+        ]);
+        let verified = peppy(&verify);
+        assert_eq!(verified, field(&proven, "ciphertext"));
+        let decrypted = peppy(&["pseudonym", "decrypt", "--key", b.secret(), &verified]);
+        assert_ne!(decrypted, value);
+
+        // The proof does not verify against the wrong commitments or the wrong ciphertext.
+        let swapped: Vec<&str> = verify
+            .iter()
+            .map(|arg| {
+                if *arg == field(&commitments, "reshuffle_commitment") {
+                    field(&commitments, "pseudonym_rekey_commitment")
+                } else {
+                    arg
+                }
+            })
+            .collect();
+        let run = peppy_with_stdin(&swapped, None);
+        assert_eq!(run.status, 3, "{}", run.stderr);
+        assert!(run.stderr.contains("does not verify"), "{}", run.stderr);
+        assert!(run.stdout.is_empty());
+        let other = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
+        verify.pop();
+        verify.push(&other);
+        assert_eq!(peppy_with_stdin(&verify, None).status, 3);
+    }
+}
+
+#[test]
+fn proofs_of_rekeying_verify() {
+    let (_, a, b) = setup();
+    let commitments = commitments();
+    let value = peppy(&["attribute", "encode", "blood type O"]);
+    let encrypted = peppy(&[
+        "attribute",
+        "encrypt",
+        "--key",
+        field(&a.keys, "attribute_public_key"),
+        &value,
+    ]);
+    let mut args = vec!["attribute", "transcrypt", "--prove"];
+    args.extend_from_slice(&key_arg(field(&a.keys, "attribute_public_key")));
+    args.extend_from_slice(&[
+        "--encryption-secret",
+        "encryption secret",
+        "--from-context",
+        "session-a",
+        "--to-context",
+        "session-b",
+        &encrypted,
+    ]);
+    let proven = peppy_json(&args);
+    let verified = peppy(&[
+        "attribute",
+        "verify-rekey",
+        "--rekey-commitment",
+        field(&commitments, "attribute_rekey_commitment"),
+        "--proof",
+        &proven["proof"].to_string(),
+        &encrypted,
+    ]);
+    assert_eq!(verified, field(&proven, "ciphertext"));
+    let decrypted = peppy(&[
+        "attribute",
+        "decrypt",
+        "--key",
+        field(&b.keys, "attribute_secret_key"),
+        &verified,
+    ]);
+    assert_eq!(decrypted, value);
+
+    // Rekeying a pseudonym with an explicit factor proves against the commitment to that factor.
+    let k = peppy(&["scalar", "random"]);
+    let commitment = peppy(&["point", "base", &k]);
+    let value = peppy(&["pseudonym", "random"]);
+    let encrypted = peppy(&["pseudonym", "encrypt", "--key", a.public(), &value]);
+    let mut args = vec!["pseudonym", "rekey", "--prove", "--k", &k];
+    args.extend_from_slice(&key_arg(a.public()));
+    args.push(&encrypted);
+    let proven = peppy_json(&args);
+    let verified = peppy(&[
+        "pseudonym",
+        "verify-rekey",
+        "--rekey-commitment",
+        &commitment,
+        "--proof",
+        &proven["proof"].to_string(),
+        &encrypted,
+    ]);
+    assert_eq!(verified, field(&proven, "ciphertext"));
+}
+
+#[cfg(feature = "json")]
+#[test]
+fn proofs_of_json_transcryption_verify() {
+    let (_, a, b) = setup();
+    let commitments = commitments();
+    let keys_a = a.keys.to_string();
+    let keys_b = b.keys.to_string();
+    let encrypted = peppy_json(&[
+        "json",
+        "encrypt",
+        "--keys",
+        &keys_a,
+        "--pseudonym-field",
+        "id",
+        r#"{"id":"patient-42","age":41,"notes":["a note that is longer than sixteen bytes"]}"#,
+    ])["encrypted"]
+        .to_string();
+    let mut args = vec!["json", "transcrypt", "--prove"];
+    args.extend_from_slice(&TRANSCRYPT);
+    #[cfg(not(feature = "elgamal3"))]
+    args.extend_from_slice(&["--keys", &keys_a]);
+    args.extend_from_slice(&[
+        "--from-domain",
+        "hospital",
+        "--to-domain",
+        "research",
+        "--from-context",
+        "session-a",
+        "--to-context",
+        "session-b",
+        &encrypted,
+    ]);
+    let proven = peppy_json(&args);
+    let proof = proven["proof"].to_string();
+    let mut verify = vec!["json", "verify-transcrypt"];
+    #[cfg(not(feature = "elgamal3"))]
+    verify.extend_from_slice(&["--keys", &keys_a]);
+    verify.extend_from_slice(&[
+        "--reshuffle-commitment",
+        field(&commitments, "reshuffle_commitment"),
+        "--pseudonym-rekey-commitment",
+        field(&commitments, "pseudonym_rekey_commitment"),
+        "--attribute-rekey-commitment",
+        field(&commitments, "attribute_rekey_commitment"),
+        "--proof",
+        &proof,
+        &encrypted,
+    ]);
+    let verified = peppy_json(&verify);
+    assert_eq!(verified["encrypted"], proven["encrypted"]);
+    let document = peppy_json(&[
+        "json",
+        "decrypt",
+        "--keys",
+        &keys_b,
+        &verified["encrypted"].to_string(),
+    ]);
+    assert_eq!(document["document"]["age"], 41);
+    assert_eq!(
+        document["document"]["notes"][0],
+        "a note that is longer than sixteen bytes"
+    );
+    assert_ne!(document["document"]["id"], "patient-42");
+
+    // Swapping the two rekey commitments breaks the proof.
+    let swapped: Vec<&str> = verify
+        .iter()
+        .map(|arg| {
+            if *arg == field(&commitments, "attribute_rekey_commitment") {
+                field(&commitments, "pseudonym_rekey_commitment")
+            } else {
+                arg
+            }
+        })
+        .collect();
+    let mut full = vec!["--json"];
+    full.extend_from_slice(&swapped);
+    assert_eq!(peppy_with_stdin(&full, None).status, 3);
+}
+
 #[test]
 fn inputs_from_stdin_and_files() {
     let (_, a, _) = setup();
