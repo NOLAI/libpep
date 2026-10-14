@@ -81,7 +81,9 @@
 //!   public hashes: knowing one derived factor reveals nothing about another, but knowing two
 //!   (n + 1 with n transcryptors) reveals the master secret and so every factor. The same holds
 //!   for anything the factors multiply: two pseudonyms of one subject, or two session keys,
-//!   give all of them. The default derivation has no such structure.
+//!   give all of them. The default derivation has no such structure, so the published
+//!   commitments of `verifiable` are the preferred scheme; this one trades security for
+//!   commitment storage.
 
 #![warn(missing_docs)]
 

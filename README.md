@@ -260,7 +260,9 @@ Default features:
 - `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat–Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
 
 Optional features:
-- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor.
+- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor (Section 3.3.1 of the paper).
+  This is not the preferred scheme: the factors are linear in two public hashes, so two leaked factors give the master secret, and two pseudonyms of one subject (or two session keys) give all of them.
+  Use the published commitments of the `verifiable` feature unless commitment storage is the binding constraint and that trade-off is acceptable.
 - `elgamal3`: ciphertexts additionally encode the public key they were encrypted for, the `(B, C, Y)` triple encoding of the original PEP framework.
   This makes decryption with a mismatched key detectable, at the cost of larger ciphertexts and slower operations.
   Decryption functions return an `Option` (or an error for batches) instead of a plain value.

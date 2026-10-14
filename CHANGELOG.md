@@ -301,6 +301,9 @@ a major change against the published 0.13.0.
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
+- The `verifiable-derivation` feature is documented as the alternative of Section 3.3.1 of the
+  paper and not the preferred scheme: its factors are linear in two public hashes, so two leaked
+  factors, two pseudonyms of one subject or two session keys reveal all of them.
 - `peppy` does verifiable transcryption: `factors commitments` prints the commitments of a
   transition, `--prove` on `pseudonym|attribute rekey|pseudonymize|transcrypt` and
   `json transcrypt` adds the proof (JSON) to the output, and `verify-rekey`,
