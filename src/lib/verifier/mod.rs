@@ -26,13 +26,12 @@
 //! implementing the matching `Verifiable*` trait (simple values, long
 //! values, records, JSON).
 //!
-//! Batch proofs are verified through the
-//! [`EncryptedBatch`](crate::data::batch::EncryptedBatch) type directly
-//! (`batch.verified_reconstruct_pseudonymize`, `verified_reconstruct_rekey`,
-//! `verified_reconstruct_transcrypt`). Those methods take commitments
-//! explicitly; if you want cached-commitment lookup at batch level, fetch
-//! the commitments from this verifier's cache (`has_*_commitments` query
-//! APIs) and pass them into the batch method.
+//! Batch proofs ([`BatchPseudonymizationProof`](crate::data::verifiable::batch::BatchPseudonymizationProof)
+//! and its rekey and transcryption counterparts) implement the same traits and go through the
+//! same methods. To verify a batch against cached commitments, fetch them with
+//! [`pseudonymization_commitments`](Verifier::pseudonymization_commitments),
+//! [`pseudonym_rekey_commitments`](Verifier::pseudonym_rekey_commitments) or
+//! [`attribute_rekey_commitments`](Verifier::attribute_rekey_commitments).
 
 pub mod cache;
 pub mod generic;
@@ -84,7 +83,6 @@ pub enum VerifyError {
     UnknownCommitment,
     /// Commitments are present but are weak / invalid.
     #[error("weak {commitment_type} commitment")]
-    /// Which commitment is weak.
     WeakCommitment {
         /// Which commitment is weak.
         commitment_type: &'static str,

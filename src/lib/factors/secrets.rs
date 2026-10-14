@@ -9,13 +9,15 @@ pub type Secret = Box<[u8]>;
 ///
 /// All reshuffle factors of a transcryptor derive from this secret; leaking it makes pseudonyms
 /// linkable across every domain that transcryptor serves.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
 /// Encryption secret used to derive rekey factors from an
 /// [`EncryptionContext`](crate::contexts::EncryptionContext).
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct EncryptionSecret(pub(crate) Secret);
+
+redacted_debug!(PseudonymizationSecret, EncryptionSecret);
 
 macro_rules! impl_secret {
     ($t:ident) => {

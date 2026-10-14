@@ -425,13 +425,13 @@ impl<G: InvertibleEncoding> LongRecord<G> {
     /// or a value has more blocks than the structure allows.
     pub fn pad_to(&self, structure: &LongRecordStructure) -> Result<Self, PaddingError> {
         if self.pseudonyms.len() != structure.pseudonym_blocks.len() {
-            return Err(PaddingError::TooManyBlocks {
+            return Err(PaddingError::CountMismatch {
                 current: self.pseudonyms.len(),
                 target: structure.pseudonym_blocks.len(),
             });
         }
         if self.attributes.len() != structure.attribute_blocks.len() {
-            return Err(PaddingError::TooManyBlocks {
+            return Err(PaddingError::CountMismatch {
                 current: self.attributes.len(),
                 target: structure.attribute_blocks.len(),
             });

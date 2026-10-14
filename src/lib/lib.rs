@@ -56,8 +56,9 @@
 //! ## Feature flags
 //!
 //! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
-//! towards global keys), `batch` (batch transcryption with shuffling), `serde`, `json`
-//! (structured data with nested pseudonyms), and `build-binary` (the `peppy` CLI).
+//! towards global keys), `batch` (batch transcryption with shuffling) with `batch-pk` (the batch
+//! carries the public key), `serde`, `json` (structured data with nested pseudonyms),
+//! `verifiable` (zero-knowledge proofs of transcryption), and `build-binary` (the `peppy` CLI).
 //!
 //! Optional features and their security implications:
 //!
@@ -76,8 +77,15 @@
 //! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
+//! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman
+//!   hash, so that a verifier computes any commitment from the master public keys. The
+//!   derivation is linear in the hashes, which weakens the unlinkability and key isolation the
+//!   default derivation gives; see the README before enabling it.
 
 #![warn(missing_docs)]
+
+#[macro_use]
+mod secrecy;
 
 pub mod client;
 pub mod contexts;

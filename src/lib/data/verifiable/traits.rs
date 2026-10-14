@@ -140,8 +140,7 @@ pub trait VerifiableRekeyProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }
 
@@ -199,8 +198,7 @@ pub trait VerifiablePseudonymizationProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }
 
@@ -256,7 +254,6 @@ pub trait VerifiableTranscryptionProof {
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output;
 }

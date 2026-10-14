@@ -25,12 +25,16 @@ where
     F: Fn(&mut R) -> (PK, SK),
     SK: BlindableGlobalSecretKey,
 {
+    assert!(
+        n > 0,
+        "a distributed system needs at least one transcryptor"
+    );
     let (pk, sk) = make_keys(rng);
     let blinding_factors: Vec<BlindingFactor<SK::Group>> =
         (0..n).map(|_| BlindingFactor::random(rng)).collect();
-    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
-    #[allow(clippy::unwrap_used)]
-    let bsk = make_blinded(&sk, &blinding_factors).unwrap();
+    // With at least one factor the product is 1 only with negligible probability.
+    #[allow(clippy::expect_used)]
+    let bsk = make_blinded(&sk, &blinding_factors).expect("random blinding factors");
     (pk, bsk, blinding_factors)
 }
 

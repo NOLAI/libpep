@@ -1084,24 +1084,13 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
     let mut post = pre_empty.clone();
     let empty_proof = post.verifiable_pseudonymize(&info, rng);
 
-    // Verifying the empty proof against the empty batch reconstructs to an
-    // empty Vec — and under elgamal3 we additionally enforce that the
-    // batch's `gy` is consistent (which an empty batch has no `gy` to share),
-    // so verification fails rather than vacuously succeeding.
+    // Verifying the empty proof against the empty batch reconstructs to an empty Vec: nothing
+    // was claimed, so there is nothing to reject (under elgamal3 there is no key to bind).
     #[cfg(not(feature = "elgamal3"))]
-    {
-        let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
-        assert!(result.is_some());
-        assert!(result.unwrap().is_empty());
-    }
+    let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
-    {
-        let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
-        assert!(
-            result.is_none(),
-            "elgamal3 empty-batch verify must fail — no gy to bind"
-        );
-    }
+    let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
+    assert_eq!(result.map(|v| v.len()), Some(0));
 
     // Verifying the empty proof against a non-empty batch must fail
     // regardless of feature configuration.

@@ -68,6 +68,24 @@ macro_rules! pep_json {
         pep_json!(@object builder, $($rest)*)
     }};
 
+    // Pseudonym given as hex group elements (last field, no trailing comma)
+    (@object $builder:ident, $key:literal : pseudonym_hex($value:expr)) => {{
+        let value = $value;
+        $builder
+            .pseudonym_hex($key, value.as_ref())
+            .expect("pseudonym_hex: not the hex encoding of group elements")
+            .build()
+    }};
+
+    // Pseudonym given as hex group elements, with more fields following
+    (@object $builder:ident, $key:literal : pseudonym_hex($value:expr), $($rest:tt)*) => {{
+        let value = $value;
+        let builder = $builder
+            .pseudonym_hex($key, value.as_ref())
+            .expect("pseudonym_hex: not the hex encoding of group elements");
+        pep_json!(@object builder, $($rest)*)
+    }};
+
     // Object field (last field, no trailing comma)
     (@object $builder:ident, $key:literal : { $($inner:tt)* }) => {{
         $builder.attribute($key, serde_json::json!({ $($inner)* })).build()

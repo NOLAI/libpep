@@ -87,8 +87,7 @@ impl<G: Group> VerifiableRerandomize<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }

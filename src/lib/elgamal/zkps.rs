@@ -181,9 +181,8 @@ mod tests {
 
     #[test]
     fn verify_rejects_identity_proof_components() {
-        // Defense in depth: even when a `Proof` is constructed via
-        // `Proof::new` (bypassing `decode`'s identity guard), the verifier
-        // must reject identity values in `n`, `c1`, or `c2`.
+        // Defense in depth: even when a `Proof` is built by hand (bypassing the identity guard
+        // of `from_slice`), the verifier must reject identity values in `n`, `c1`, or `c2`.
         let mut rng = rand::rng();
         let a = ScalarNonZero::random(&mut rng);
         let gm = GroupElement::random(&mut rng);

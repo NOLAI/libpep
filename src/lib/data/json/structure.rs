@@ -5,7 +5,7 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 /// Errors that can occur when unifying structures.
@@ -165,10 +165,10 @@ fn unify_two_structures(
 
         // Objects: must have same fields, unify field-wise
         (JsonStructure::Object(fields1), JsonStructure::Object(fields2)) => {
-            // Convert to HashMaps for easier lookup (using owned String keys)
-            let map1: HashMap<String, &JsonStructure> =
+            // Convert to BTreeMaps for easier lookup (using owned String keys)
+            let map1: BTreeMap<String, &JsonStructure> =
                 fields1.iter().map(|(k, v)| (k.clone(), v)).collect();
-            let map2: HashMap<String, &JsonStructure> =
+            let map2: BTreeMap<String, &JsonStructure> =
                 fields2.iter().map(|(k, v)| (k.clone(), v)).collect();
 
             // Check that both objects have the same set of keys
@@ -213,14 +213,11 @@ impl<G: InvertibleEncoding> EncryptedPepJsonValue<G> {
             EncryptedPepJsonValue::Array(arr) => {
                 JsonStructure::Array(arr.iter().map(|item| item.structure()).collect())
             }
-            EncryptedPepJsonValue::Object(obj) => {
-                let mut fields: Vec<_> = obj
-                    .iter()
+            EncryptedPepJsonValue::Object(obj) => JsonStructure::Object(
+                obj.iter()
                     .map(|(key, val)| (key.clone(), val.structure()))
-                    .collect();
-                fields.sort_by(|a, b| a.0.cmp(&b.0));
-                JsonStructure::Object(fields)
-            }
+                    .collect(),
+            ),
         }
     }
 }

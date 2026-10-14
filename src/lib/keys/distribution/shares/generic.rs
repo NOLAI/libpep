@@ -70,14 +70,14 @@ pub trait SessionKeyShare: Sized {
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
 /// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct PseudonymSessionKeyShare<G: Group>(pub(crate) G::Scalar);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
 /// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct AttributeSessionKeyShare<G: Group>(pub(crate) G::Scalar);
@@ -160,3 +160,5 @@ pub fn make_session_key_shares<G: Group>(
         attribute: make_attribute_session_key_share(attribute_rekey_factor, blinding_factor),
     }
 }
+
+redacted_debug!(PseudonymSessionKeyShare<G>, AttributeSessionKeyShare<G>);

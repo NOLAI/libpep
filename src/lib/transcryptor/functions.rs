@@ -8,12 +8,6 @@ use crate::factors::types::generic::{PseudonymizationInfo, RerandomizeFactor, Tr
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
-/// Polymorphic pseudonymize function for encrypted pseudonyms.
-///
-/// # Examples
-/// ```rust,ignore
-/// let pseudonymized = pseudonymize(&encrypted_pseudonym, &pseudonymization_info);
-/// ```
 /// Pseudonymize (rerandomize, reshuffle and rekey) an encrypted pseudonym.
 #[cfg(feature = "elgamal3")]
 pub fn pseudonymize<E, R>(encrypted: &E, info: &PseudonymizationInfo<E::Group>, rng: &mut R) -> E

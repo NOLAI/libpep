@@ -173,8 +173,8 @@ impl TryFrom<ScalarCanBeZero> for ScalarNonZero {
 
 /// Trait for encoding of scalars.
 ///
-/// Since scalars are typically secret values, we do not implement a way to serialize them, and
-/// encoding methods are not public.
+/// Scalars are typically secret values; the types that hold them as keys and factors print
+/// redacted and only encode where distribution needs it.
 pub trait ScalarTraits {
     /// Convert the scalar to a 32-byte array.
     fn to_bytes(&self) -> [u8; 32] {

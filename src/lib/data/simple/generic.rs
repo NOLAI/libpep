@@ -84,8 +84,6 @@ macro_rules! impl_simple_pair {
         }
 
         impl<G: Group> ElGamalEncrypted for $enc<G> {
-            type UnencryptedType = $plain<G>;
-
             fn value(&self) -> &ElGamal<G> {
                 &self.value
             }

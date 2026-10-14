@@ -9,7 +9,6 @@
 //! to a fixed number of blocks with external padding ([`pad_to`](LongPseudonym::pad_to)) for
 //! batch unlinkability. See the [`padding`](crate::data::padding) module.
 
-use crate::data::long::{LongEncryptable, LongEncrypted};
 use crate::data::padding::external::{create_external_padding_block, is_external_padding_block};
 use crate::data::padding::internal::unpad_block;
 use crate::data::padding::PaddingError;
@@ -191,36 +190,6 @@ macro_rules! impl_long_pair {
             }
         }
 
-        impl<G: Group> LongEncryptable for $plain<G> {
-            type EncryptedType = $enc<G>;
-            type Block = $block<G>;
-
-            fn blocks(&self) -> &[Self::Block] {
-                &self.0
-            }
-
-            fn from_encrypted_blocks(blocks: Vec<$enc_block<G>>) -> Self::EncryptedType {
-                $enc(blocks)
-            }
-        }
-
-        impl<G: Group> LongEncrypted for $enc<G> {
-            type UnencryptedType = $plain<G>;
-            type EncryptedBlock = $enc_block<G>;
-
-            fn encrypted_blocks(&self) -> &[Self::EncryptedBlock] {
-                &self.0
-            }
-
-            fn from_decrypted_blocks(blocks: Vec<$block<G>>) -> Self::UnencryptedType {
-                $plain(blocks)
-            }
-
-            fn from_encrypted_blocks(blocks: Vec<Self::EncryptedBlock>) -> Self {
-                Self(blocks)
-            }
-        }
-
         impl<G: Group> Encryptable for $plain<G> {
             type Group = G;
             type EncryptedType = $enc<G>;
@@ -299,20 +268,29 @@ macro_rules! impl_long_pair {
                 )
             }
 
+            /// Every block gets its own factor: with one factor the differences between the
+            /// blocks would survive transcryption and link the value to its input.
             #[cfg(feature = "elgamal3")]
             fn rerandomize<R>(&self, rng: &mut R) -> Self
             where
                 R: Rng + CryptoRng,
             {
-                self.rerandomize_known(&RerandomizeFactor(G::random_scalar(rng)))
+                Self(self.0.iter().map(|block| block.rerandomize(rng)).collect())
             }
 
+            /// Every block gets its own factor: with one factor the differences between the
+            /// blocks would survive transcryption and link the value to its input.
             #[cfg(not(feature = "elgamal3"))]
             fn rerandomize<R>(&self, public_key: &$pk<G>, rng: &mut R) -> Self
             where
                 R: Rng + CryptoRng,
             {
-                self.rerandomize_known(public_key, &RerandomizeFactor(G::random_scalar(rng)))
+                Self(
+                    self.0
+                        .iter()
+                        .map(|block| block.rerandomize(public_key, rng))
+                        .collect(),
+                )
             }
 
             #[cfg(feature = "elgamal3")]

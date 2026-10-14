@@ -111,8 +111,7 @@ impl<G: Group> VerifiableRSK<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }
@@ -205,9 +204,10 @@ impl<G: Group> VerifiableRSKInner<G> {
     }
 
     /// Verify this inner against an external `gt` and the published
-    /// `(S, K)` commitments.
+    /// `(S, K)` commitments. Crate-private: a caller-chosen `gt` would let any `B' = t·B`
+    /// verify, so the inner is only checked through the proof that carries its `gt`.
     #[must_use]
-    pub fn verify(
+    pub(crate) fn verify(
         &self,
         original: &ElGamal<G>,
         gt: &G::Element,
@@ -346,8 +346,7 @@ impl<G: Group> VerifiableRSK2<G> {
     }
 
     #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
+    /// The result of the operation, without verifying the proof.
     pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }

@@ -57,7 +57,7 @@ a major change against the published 0.13.0.
 - `zkps::Proof` encodes with `to_bytes`/`from_slice` (and `LENGTH`) like the other types,
   instead of `encode`/`decode`/`decode_from_slice` on a fixed array; `dleq::Proof` likewise
   returns a `Vec`. `JSONTranscryptionProof` and `VerifiableJSONBatch` are `JsonTranscryptionProof`
-  and `VerifiableJsonBatch`.
+  and `JsonTranscryptionBatchProof`.
 - `elgamal::zkps` no longer carries the unused signature functions (`sign`, `verify`,
   `sign_unlinkable`, `create_proof_unlinkable`).
 - The `verifier::verifier` module is merged into `verifier`.
@@ -142,8 +142,8 @@ a major change against the published 0.13.0.
   `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes` and
   `from_bytes` likewise; the `PublicKey`, `SecretKey`, `RekeyFactor`, `BlindedGlobalSecretKey`,
   `SessionKeyShare`, `Encryptable`, `Encrypted` and `Distributed` traits have an associated
-  `Group` type (`Padded` requires it to have an `InvertibleEncoding`); `RekeyFactor` has
-  `from_scalar`; the factor types have `from_scalar` instead of `From<ScalarNonZero>` in generic
+  `Group` type (`Padded` requires it to have an `InvertibleEncoding`); the factor types have
+  `from_scalar` instead of `From<ScalarNonZero>` in generic
   code (the ristretto255 aliases keep `From`). The tuple constructors `LongPseudonym(..)`,
   `LongAttribute(..)`, `LongEncryptedPseudonym(..)` and `LongEncryptedAttribute(..)` are
   functions with the same names, since type aliases cannot construct tuple structs.
@@ -181,7 +181,7 @@ a major change against the published 0.13.0.
   brainpoolP320r1 ciphersuites of the coPRF draft; the bindings and the CLI expose ristretto255
   only.
 
-- `tests/vectors/expected.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
+- `tests/vectors.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
   constants with one value per line. They pin the protocol's derived values byte for byte, so that
   an unintended change to the hashing or the factor derivation fails the suite instead of passing
   silently. They cover `DeriveFactor` for the three labels, `EncryptPseudonym` /
@@ -191,7 +191,7 @@ a major change against the published 0.13.0.
   reproducible. `tests/vectors.rs` recomputes each value and asserts it against its constant,
   naming the label that changed; update them deliberately with
   `cargo test --features batch,verifiable --test vectors -- --ignored --nocapture`, which prints
-  the current values in the layout of `expected.rs`.
+  the current values in the layout of the constants.
 - `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
   A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
@@ -252,9 +252,9 @@ a major change against the published 0.13.0.
   key parameter of the session key functions is `global_key` so it can be passed by keyword.
   The unreachable `PseudonymizationSecret.from` and `EncryptionSecret.from` are gone; the
   constructors do the same.
-- `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
-  `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
-  under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
+- `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `PseudonymizationInfo` and
+  `TranscryptionInfo` (the `factors::RekeyPublicKey` trait): the public key a transcrypted
+  ciphertext is encrypted under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
   CLI prints it as `key` / `keys`.
 
 ### Removed

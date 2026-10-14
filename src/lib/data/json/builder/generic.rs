@@ -1,7 +1,7 @@
 //! Builder for [`PepJsonValue`]s generic over the [`Group`](crate::elgamal::arithmetic::Group).
 
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::data::json::data::generic::PepJsonValue;
 #[cfg(feature = "long")]
@@ -24,14 +24,14 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 /// let encrypted = encrypt(&pep_value, &keys, &mut rng);
 /// ```
 pub struct PepJsonBuilder<G: InvertibleEncoding> {
-    fields: HashMap<String, PepJsonValue<G>>,
+    fields: BTreeMap<String, PepJsonValue<G>>,
 }
 
 impl<G: InvertibleEncoding> PepJsonBuilder<G> {
     /// Create a new builder.
     pub fn new() -> Self {
         Self {
-            fields: HashMap::new(),
+            fields: BTreeMap::new(),
         }
     }
 
@@ -89,105 +89,43 @@ impl<G: InvertibleEncoding> PepJsonBuilder<G> {
         self
     }
 
-    /// Add a string field as a pseudonym.
+    /// Add a string field as a pseudonym: the identifier is PKCS#7-padded into one block when
+    /// it fits (up to 15 bytes) and into a long pseudonym otherwise. Pseudonym values that
+    /// already are group elements go in through [`pseudonym_hex`](Self::pseudonym_hex).
     pub fn pseudonym(mut self, key: &str, value: &str) -> Self {
         use crate::data::padding::Padded;
         use crate::data::simple::generic::Pseudonym;
+
+        let pseudonym = match Pseudonym::from_string_padded(value) {
+            Ok(pseudonym) => PepJsonValue::Pseudonym(pseudonym),
+            Err(_) => PepJsonValue::LongPseudonym(LongPseudonym::from_string_padded(value)),
+        };
+        self.fields.insert(key.to_string(), pseudonym);
+        self
+    }
+
+    /// Add a pseudonym given as the hex encoding of its group elements: 64 hex digits for one
+    /// block, a multiple of 64 for a long pseudonym. Returns `None` if the string is not such an
+    /// encoding; identifiers go in through [`pseudonym`](Self::pseudonym).
+    pub fn pseudonym_hex(mut self, key: &str, hex: &str) -> Option<Self> {
+        use crate::data::simple::generic::Pseudonym;
         use crate::data::simple::ElGamalEncryptable;
 
-        // Try to decode as a direct 32-byte pseudonym value (hex string)
-        if let Some(pseudo) = Pseudonym::from_hex(value) {
-            self.fields
-                .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
-            return self;
+        if hex.is_empty() || hex.len() % 64 != 0 {
+            return None;
         }
-
-        // Try to decode as multi-block pseudonym (hex string with multiple 64-char blocks)
-        // Each block is 32 bytes = 64 hex chars
-        if value.len() > 64 && value.len().is_multiple_of(64) {
-            let num_blocks = value.len() / 64;
-            let mut blocks = Vec::with_capacity(num_blocks);
-            let mut all_decoded = true;
-
-            for i in 0..num_blocks {
-                let start = i * 64;
-                let end = start + 64;
-                if let Some(block) = Pseudonym::from_hex(&value[start..end]) {
-                    blocks.push(block);
-                } else {
-                    all_decoded = false;
-                    break;
-                }
-            }
-
-            if all_decoded {
-                self.fields.insert(
-                    key.to_string(),
-                    PepJsonValue::LongPseudonym(LongPseudonym(blocks)),
-                );
-                return self;
-            }
-        }
-
-        // Try to decode as 32 raw bytes
-        if value.len() == 32 {
-            if let Some(pseudo) = Pseudonym::from_slice(value.as_bytes()) {
-                self.fields
-                    .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
-                return self;
-            }
-        }
-
-        // Try to decode as multi-block pseudonym (raw bytes, multiple of 32)
-        let bytes = value.as_bytes();
-        if bytes.len() > 32 && bytes.len().is_multiple_of(32) {
-            let num_blocks = bytes.len() / 32;
-            let mut blocks = Vec::with_capacity(num_blocks);
-            let mut all_decoded = true;
-
-            for i in 0..num_blocks {
-                let start = i * 32;
-                let end = start + 32;
-                if let Some(block) = Pseudonym::from_slice(&bytes[start..end]) {
-                    blocks.push(block);
-                } else {
-                    all_decoded = false;
-                    break;
-                }
-            }
-
-            if all_decoded {
-                self.fields.insert(
-                    key.to_string(),
-                    PepJsonValue::LongPseudonym(LongPseudonym(blocks)),
-                );
-                return self;
-            }
-        }
-
-        // Check if it fits in a single block with PKCS#7 padding (≤15 bytes)
-        if bytes.len() <= 15 {
-            // Use PKCS#7 padding for short strings
-            match Pseudonym::from_string_padded(value) {
-                Ok(pseudo) => {
-                    self.fields
-                        .insert(key.to_string(), PepJsonValue::Pseudonym(pseudo));
-                }
-                Err(_) => {
-                    // Fallback to long pseudonym if padding fails
-                    let pseudo = LongPseudonym::from_string_padded(value);
-                    self.fields
-                        .insert(key.to_string(), PepJsonValue::LongPseudonym(pseudo));
-                }
-            }
+        let blocks = hex
+            .as_bytes()
+            .chunks(64)
+            .map(|chunk| Pseudonym::from_hex(std::str::from_utf8(chunk).ok()?))
+            .collect::<Option<Vec<_>>>()?;
+        let pseudonym = if blocks.len() == 1 {
+            PepJsonValue::Pseudonym(blocks[0])
         } else {
-            // Use long pseudonym for strings > 15 bytes
-            let pseudo = LongPseudonym::from_string_padded(value);
-            self.fields
-                .insert(key.to_string(), PepJsonValue::LongPseudonym(pseudo));
-        }
-
-        self
+            PepJsonValue::LongPseudonym(LongPseudonym(blocks))
+        };
+        self.fields.insert(key.to_string(), pseudonym);
+        Some(self)
     }
 
     /// Build the final PepJsonValue object.
