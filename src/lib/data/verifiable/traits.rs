@@ -9,7 +9,14 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::factors::{PseudonymizationInfo, TranscryptionInfo};
+use crate::elgamal::arithmetic::group::Group;
+use crate::factors::commitments::generic::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
+};
+use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::types::generic::{PseudonymSessionPublicKey, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
 
 /// A trait for encrypted pseudonyms that support verifiable pseudonymization.
@@ -20,14 +27,17 @@ use rand_core::{CryptoRng, Rng};
 pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
     /// The proof type for pseudonymization operations.
     /// Implements [`VerifiablePseudonymizationProof`] with `DataType = Self`.
-    type PseudonymizationProof: VerifiablePseudonymizationProof<DataType = Self>;
+    type PseudonymizationProof: VerifiablePseudonymizationProof<
+        Group = Self::Group,
+        DataType = Self,
+    >;
 
     /// Pseudonymize with proof generation, in elgamal3 mode (the recipient
     /// public key `Y` is carried by the ciphertext).
     #[cfg(feature = "elgamal3")]
     fn verifiable_pseudonymize<R>(
         &self,
-        info: &PseudonymizationInfo,
+        info: &PseudonymizationInfo<Self::Group>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
@@ -39,7 +49,7 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
     #[cfg(not(feature = "elgamal3"))]
     fn verifiable_pseudonymize<R>(
         &self,
-        info: &PseudonymizationInfo,
+        info: &PseudonymizationInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self::PseudonymizationProof
@@ -55,7 +65,7 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
 pub trait VerifiableRekeyable: Rekeyable + Sized {
     /// The proof type for rekey operations.
     /// Implements [`VerifiableRekeyProof`] with `DataType = Self`.
-    type RekeyProof: VerifiableRekeyProof<DataType = Self>;
+    type RekeyProof: VerifiableRekeyProof<Group = Self::Group, DataType = Self>;
 
     /// Rekey with proof generation.
     fn verifiable_rekey<R: Rng + CryptoRng>(
@@ -74,13 +84,13 @@ pub trait VerifiableRekeyable: Rekeyable + Sized {
 pub trait VerifiableTranscryptable: Transcryptable + Sized {
     /// The proof type for transcryption operations. Implements
     /// [`VerifiableTranscryptionProof`] with `DataType = Self`.
-    type TranscryptionProof: VerifiableTranscryptionProof<DataType = Self>;
+    type TranscryptionProof: VerifiableTranscryptionProof<Group = Self::Group, DataType = Self>;
 
     /// Transcrypt with proof generation, in elgamal3 mode.
     #[cfg(feature = "elgamal3")]
     fn verifiable_transcrypt<R>(
         &self,
-        info: &TranscryptionInfo,
+        info: &TranscryptionInfo<Self::Group>,
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
@@ -92,7 +102,7 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
     #[cfg(not(feature = "elgamal3"))]
     fn verifiable_transcrypt<R>(
         &self,
-        info: &TranscryptionInfo,
+        info: &TranscryptionInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self::TranscryptionProof
@@ -107,6 +117,8 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
 /// [`VerifiableRekey`](crate::elgamal::verifiable::VerifiableRekey) in the
 /// core layer.
 pub trait VerifiableRekeyProof {
+    /// The group the data is encrypted in.
+    type Group: Group;
     /// The data type this proof was generated for (the verifier-side input).
     type DataType;
     /// The data type the proof reconstructs to.
@@ -116,7 +128,7 @@ pub trait VerifiableRekeyProof {
     fn verify(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiableRekeyCommitment,
+        commitments: &VerifiableRekeyCommitment<Self::Group>,
     ) -> bool;
 
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
@@ -124,7 +136,7 @@ pub trait VerifiableRekeyProof {
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiableRekeyCommitment,
+        commitments: &VerifiableRekeyCommitment<Self::Group>,
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
@@ -142,6 +154,8 @@ pub trait VerifiableRekeyProof {
 ///
 /// Mirrors [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK).
 pub trait VerifiablePseudonymizationProof {
+    /// The group the data is encrypted in.
+    type Group: Group;
     /// The encrypted type the proof is about.
     type DataType;
     /// The result of the operation the proof is about.
@@ -152,7 +166,7 @@ pub trait VerifiablePseudonymizationProof {
     fn verify(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiablePseudonymizationCommitment,
+        commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> bool;
 
     #[cfg(not(feature = "elgamal3"))]
@@ -161,8 +175,8 @@ pub trait VerifiablePseudonymizationProof {
     fn verify(
         &self,
         original: &Self::DataType,
-        public_key: &crate::keys::PseudonymSessionPublicKey,
-        commitments: &crate::factors::VerifiablePseudonymizationCommitment,
+        public_key: &PseudonymSessionPublicKey<Self::Group>,
+        commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> bool;
 
     #[cfg(feature = "elgamal3")]
@@ -171,7 +185,7 @@ pub trait VerifiablePseudonymizationProof {
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiablePseudonymizationCommitment,
+        commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> Option<Self::Output>;
 
     #[cfg(not(feature = "elgamal3"))]
@@ -180,8 +194,8 @@ pub trait VerifiablePseudonymizationProof {
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
-        public_key: &crate::keys::PseudonymSessionPublicKey,
-        commitments: &crate::factors::VerifiablePseudonymizationCommitment,
+        public_key: &PseudonymSessionPublicKey<Self::Group>,
+        commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]
@@ -197,6 +211,8 @@ pub trait VerifiablePseudonymizationProof {
 /// without `elgamal3` the verifier needs the recipient public-key bundle
 /// (`SessionPublicKeys`). Under `elgamal3` the parameter is dropped.
 pub trait VerifiableTranscryptionProof {
+    /// The group the data is encrypted in.
+    type Group: Group;
     /// The encrypted type the proof is about.
     type DataType;
     /// The result of the operation the proof is about.
@@ -207,7 +223,7 @@ pub trait VerifiableTranscryptionProof {
     fn verify(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiableTranscryptionCommitment,
+        commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> bool;
 
     #[cfg(not(feature = "elgamal3"))]
@@ -216,8 +232,8 @@ pub trait VerifiableTranscryptionProof {
     fn verify(
         &self,
         original: &Self::DataType,
-        public_key: &crate::keys::SessionPublicKeys,
-        commitments: &crate::factors::VerifiableTranscryptionCommitment,
+        public_key: &SessionPublicKeys<Self::Group>,
+        commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> bool;
 
     #[cfg(feature = "elgamal3")]
@@ -226,7 +242,7 @@ pub trait VerifiableTranscryptionProof {
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
-        commitments: &crate::factors::VerifiableTranscryptionCommitment,
+        commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> Option<Self::Output>;
 
     #[cfg(not(feature = "elgamal3"))]
@@ -235,8 +251,8 @@ pub trait VerifiableTranscryptionProof {
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
-        public_key: &crate::keys::SessionPublicKeys,
-        commitments: &crate::factors::VerifiableTranscryptionCommitment,
+        public_key: &SessionPublicKeys<Self::Group>,
+        commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> Option<Self::Output>;
 
     #[cfg(feature = "insecure")]

@@ -1,6 +1,6 @@
 //! Python bindings for verifiable JSON transcryption.
 //!
-//! Wraps [`JSONTranscryptionProof`] and [`VerifiableJSONBatch`], and adds a
+//! Wraps [`JsonTranscryptionProof`] and [`VerifiableJsonBatch`], and adds a
 //! `verifiable_transcrypt` producer on the existing
 //! [`PyEncryptedPepJsonValue`].
 //!
@@ -11,9 +11,10 @@
 use crate::data::json::PyEncryptedPepJsonValue;
 use crate::factors::commitments::PyVerifiableTranscryptionCommitment;
 use crate::factors::types::PyTranscryptionInfo;
-use libpep::data::verifiable::json::JSONTranscryptionProof;
+use libpep::data::verifiable::json::JsonTranscryptionProof;
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-use libpep::data::verifiable::json::VerifiableJSONBatch;
+use libpep::data::verifiable::json::VerifiableJsonBatch;
+use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
 use libpep::factors::TranscryptionInfo;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -33,30 +34,30 @@ fn map_verify_err() -> PyErr {
 }
 
 // ---------------------------------------------------------------------------
-// JSONTranscryptionProof
+// JsonTranscryptionProof
 // ---------------------------------------------------------------------------
 
 /// Proof for verifiable transcryption of an `EncryptedPepJsonValue`.
-#[pyclass(name = "JSONTranscryptionProof", from_py_object)]
+#[pyclass(name = "JsonTranscryptionProof", from_py_object)]
 #[derive(Clone)]
-pub struct PyJSONTranscryptionProof {
-    pub(crate) inner: JSONTranscryptionProof,
+pub struct PyJsonTranscryptionProof {
+    pub(crate) inner: JsonTranscryptionProof,
 }
 
-impl From<JSONTranscryptionProof> for PyJSONTranscryptionProof {
-    fn from(inner: JSONTranscryptionProof) -> Self {
+impl From<JsonTranscryptionProof> for PyJsonTranscryptionProof {
+    fn from(inner: JsonTranscryptionProof) -> Self {
         Self { inner }
     }
 }
 
-impl From<PyJSONTranscryptionProof> for JSONTranscryptionProof {
-    fn from(p: PyJSONTranscryptionProof) -> Self {
+impl From<PyJsonTranscryptionProof> for JsonTranscryptionProof {
+    fn from(p: PyJsonTranscryptionProof) -> Self {
         p.inner
     }
 }
 
 #[pymethods]
-impl PyJSONTranscryptionProof {
+impl PyJsonTranscryptionProof {
     #[cfg(feature = "serde")]
     fn to_json(&self) -> PyResult<String> {
         serde_json::to_string(&self.inner).map_err(map_ser_err)
@@ -65,7 +66,7 @@ impl PyJSONTranscryptionProof {
     #[cfg(feature = "serde")]
     #[staticmethod]
     fn from_json(json: &str) -> PyResult<Self> {
-        serde_json::from_str::<JSONTranscryptionProof>(json)
+        serde_json::from_str::<JsonTranscryptionProof>(json)
             .map(|inner| Self { inner })
             .map_err(map_de_err)
     }
@@ -122,33 +123,33 @@ impl PyJSONTranscryptionProof {
 }
 
 // ---------------------------------------------------------------------------
-// VerifiableJSONBatch
+// VerifiableJsonBatch
 // ---------------------------------------------------------------------------
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-#[pyclass(name = "VerifiableJSONBatch", from_py_object)]
+#[pyclass(name = "VerifiableJsonBatch", from_py_object)]
 #[derive(Clone)]
-pub struct PyVerifiableJSONBatch {
-    pub(crate) inner: VerifiableJSONBatch,
+pub struct PyVerifiableJsonBatch {
+    pub(crate) inner: VerifiableJsonBatch,
 }
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-impl From<VerifiableJSONBatch> for PyVerifiableJSONBatch {
-    fn from(inner: VerifiableJSONBatch) -> Self {
+impl From<VerifiableJsonBatch> for PyVerifiableJsonBatch {
+    fn from(inner: VerifiableJsonBatch) -> Self {
         Self { inner }
     }
 }
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
-impl From<PyVerifiableJSONBatch> for VerifiableJSONBatch {
-    fn from(b: PyVerifiableJSONBatch) -> Self {
+impl From<PyVerifiableJsonBatch> for VerifiableJsonBatch {
+    fn from(b: PyVerifiableJsonBatch) -> Self {
         b.inner
     }
 }
 
 #[cfg(all(feature = "batch", feature = "verifiable"))]
 #[pymethods]
-impl PyVerifiableJSONBatch {
+impl PyVerifiableJsonBatch {
     #[cfg(feature = "serde")]
     fn to_json(&self) -> PyResult<String> {
         serde_json::to_string(&self.inner).map_err(map_ser_err)
@@ -157,7 +158,7 @@ impl PyVerifiableJSONBatch {
     #[cfg(feature = "serde")]
     #[staticmethod]
     fn from_json(json: &str) -> PyResult<Self> {
-        serde_json::from_str::<VerifiableJSONBatch>(json)
+        serde_json::from_str::<VerifiableJsonBatch>(json)
             .map(|inner| Self { inner })
             .map_err(map_de_err)
     }
@@ -175,11 +176,11 @@ impl PyEncryptedPepJsonValue {
     /// the reconstructed value.
     #[cfg(feature = "elgamal3")]
     #[pyo3(name = "verifiable_transcrypt")]
-    fn py_verifiable_transcrypt(&self, info: &PyTranscryptionInfo) -> PyJSONTranscryptionProof {
+    fn py_verifiable_transcrypt(&self, info: &PyTranscryptionInfo) -> PyJsonTranscryptionProof {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        PyJSONTranscryptionProof {
+        PyJsonTranscryptionProof {
             inner: self.0.verifiable_transcrypt(&info, &mut rng),
         }
     }
@@ -190,12 +191,12 @@ impl PyEncryptedPepJsonValue {
         &self,
         info: &PyTranscryptionInfo,
         session_keys: &crate::keys::PySessionKeys,
-    ) -> PyJSONTranscryptionProof {
+    ) -> PyJsonTranscryptionProof {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         let keys: libpep::keys::SessionKeys = session_keys.clone().into();
-        PyJSONTranscryptionProof {
+        PyJsonTranscryptionProof {
             inner: self
                 .0
                 .verifiable_transcrypt(&info, &keys.public(), &mut rng),
@@ -215,7 +216,7 @@ impl crate::verifier::PyVerifier {
     fn verify_json_transcryption(
         &self,
         original: &PyEncryptedPepJsonValue,
-        proof: &PyJSONTranscryptionProof,
+        proof: &PyJsonTranscryptionProof,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyEncryptedPepJsonValue> {
         self.verified_reconstruct_transcryption(&original.0, &proof.inner, &commitments.inner)
@@ -227,7 +228,7 @@ impl crate::verifier::PyVerifier {
     fn verify_json_transcryption(
         &self,
         original: &PyEncryptedPepJsonValue,
-        proof: &PyJSONTranscryptionProof,
+        proof: &PyJsonTranscryptionProof,
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyEncryptedPepJsonValue> {
@@ -248,8 +249,8 @@ impl crate::verifier::PyVerifier {
 // ---------------------------------------------------------------------------
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyJSONTranscryptionProof>()?;
+    m.add_class::<PyJsonTranscryptionProof>()?;
     #[cfg(all(feature = "batch", feature = "verifiable"))]
-    m.add_class::<PyVerifiableJSONBatch>()?;
+    m.add_class::<PyVerifiableJsonBatch>()?;
     Ok(())
 }

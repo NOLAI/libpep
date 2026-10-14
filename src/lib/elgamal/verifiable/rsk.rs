@@ -31,53 +31,52 @@
 use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
-use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
+use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 /// Proof of a verifiable RSK: the reshuffle and rekey of one ciphertext with a factor pair `(s,
 /// k)`.
-pub struct VerifiableRSK {
+pub struct VerifiableRSK<G: Group> {
     /// `T = (s·k⁻¹)·G`.
-    pub(crate) gt: GroupElement,
+    pub(crate) gt: G::Element,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
-    pub(crate) p_gs: Proof,
+    pub(crate) p_gs: Proof<G>,
     /// Per-message body.
-    pub(crate) inner: VerifiableRSKInner,
+    pub(crate) inner: VerifiableRSKInner<G>,
 }
 
-impl VerifiableRSK {
+impl<G: Group> VerifiableRSK<G> {
     /// `T = (s·k⁻¹)·G`.
-    pub fn gt(&self) -> &GroupElement {
+    pub fn gt(&self) -> &G::Element {
         &self.gt
     }
     /// The proof `ZKP{S = k * T}`.
-    pub fn p_gs(&self) -> &Proof {
+    pub fn p_gs(&self) -> &Proof<G> {
         &self.p_gs
     }
     /// The per-message inner sub-proofs body.
-    pub fn inner(&self) -> &VerifiableRSKInner {
+    pub fn inner(&self) -> &VerifiableRSKInner<G> {
         &self.inner
     }
 }
 
-impl VerifiableRSK {
+impl<G: Group> VerifiableRSK<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        s: &ScalarNonZero,
-        k: &ScalarNonZero,
+        v: &ElGamal<G>,
+        s: &G::Scalar,
+        k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let s_k_inv = s * k.invert();
-        let gt = s_k_inv * G;
-        let (_gk, p_gs) = create_proof(k, &gt, rng);
+        let s_k_inv = *s * G::scalar_inverse(k);
+        let gt = s_k_inv * G::generator();
+        let (_gk, p_gs) = create_proof::<G, R>(k, &gt, rng);
         let inner = VerifiableRSKInner::new(
             v,
             &s_k_inv,
@@ -92,7 +91,7 @@ impl VerifiableRSK {
     /// Reconstruct the RSK'd ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only — public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
-    pub(crate) fn result(&self) -> ElGamal {
+    pub(crate) fn result(&self) -> ElGamal<G> {
         self.inner.result()
     }
 
@@ -100,10 +99,10 @@ impl VerifiableRSK {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        reshuffle_commitments: &PseudonymizationFactorCommitment,
-        rekey_commitments: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        reshuffle_commitments: &PseudonymizationFactorCommitment<G>,
+        rekey_commitments: &RekeyFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, reshuffle_commitments, rekey_commitments) {
             Some(self.result())
         } else {
@@ -114,7 +113,7 @@ impl VerifiableRSK {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self) -> ElGamal {
+    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }
 
@@ -122,16 +121,16 @@ impl VerifiableRSK {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
+        original: &ElGamal<G>,
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
+        rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs = reshuffle_commitment.point();
         let gk = rekey_commitment.point();
         if *self.p_gs != gs {
             return false;
         }
-        if !verify_proof(&gk, &self.gt, &self.p_gs) {
+        if !verify_proof::<G>(&gk, &self.gt, &self.p_gs) {
             return false;
         }
         self.inner
@@ -147,45 +146,45 @@ impl VerifiableRSK {
 /// alone — it must be verified against an external `gt` plus the published
 /// `(S, K)` commitments.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRSKInner {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRSKInner<G: Group> {
     /// `ZKP{B' = (s·k⁻¹) * B}`: first component is `B' = (s·k⁻¹)·B`.
-    pub(crate) p_gb_prime: Proof,
+    pub(crate) p_gb_prime: Proof<G>,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
-    pub(crate) p_gc_prime: Proof,
+    pub(crate) p_gc_prime: Proof<G>,
     /// `ZKP{Y' = k * Y}`: first component is `Y' = k·Y`.
     #[cfg(feature = "elgamal3")]
-    pub(crate) p_gy_prime: Proof,
+    pub(crate) p_gy_prime: Proof<G>,
 }
 
-impl VerifiableRSKInner {
+impl<G: Group> VerifiableRSKInner<G> {
     /// The proof `ZKP{B' = (s·k⁻¹) * B}`.
-    pub fn p_gb_prime(&self) -> &Proof {
+    pub fn p_gb_prime(&self) -> &Proof<G> {
         &self.p_gb_prime
     }
     /// The proof `ZKP{C' = s * C}`.
-    pub fn p_gc_prime(&self) -> &Proof {
+    pub fn p_gc_prime(&self) -> &Proof<G> {
         &self.p_gc_prime
     }
     /// The proof `ZKP{Y' = k * Y}` (elgamal3 only).
     #[cfg(feature = "elgamal3")]
-    pub fn p_gy_prime(&self) -> &Proof {
+    pub fn p_gy_prime(&self) -> &Proof<G> {
         &self.p_gy_prime
     }
 }
 
-impl VerifiableRSKInner {
+impl<G: Group> VerifiableRSKInner<G> {
     pub(super) fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        s_k_inv: &ScalarNonZero,
-        s: &ScalarNonZero,
-        #[cfg(feature = "elgamal3")] k: &ScalarNonZero,
+        v: &ElGamal<G>,
+        s_k_inv: &G::Scalar,
+        s: &G::Scalar,
+        #[cfg(feature = "elgamal3")] k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let (_t_again, p_gb_prime) = create_proof(s_k_inv, &v.gb, rng);
-        let (_gs, p_gc_prime) = create_proof(s, &v.gc, rng);
+        let (_t_again, p_gb_prime) = create_proof::<G, R>(s_k_inv, &v.gb, rng);
+        let (_gs, p_gc_prime) = create_proof::<G, R>(s, &v.gc, rng);
         #[cfg(feature = "elgamal3")]
-        let (_gk_again, p_gy_prime) = create_proof(k, &v.gy, rng);
+        let (_gk_again, p_gy_prime) = create_proof::<G, R>(k, &v.gy, rng);
         Self {
             p_gb_prime,
             p_gc_prime,
@@ -196,7 +195,7 @@ impl VerifiableRSKInner {
 
     /// Reconstruct the RSK'd ciphertext, **without verifying** the proof.
     /// Internal use only.
-    pub(crate) fn result(&self) -> ElGamal {
+    pub(crate) fn result(&self) -> ElGamal<G> {
         ElGamal {
             gb: *self.p_gb_prime,
             gc: *self.p_gc_prime,
@@ -210,21 +209,21 @@ impl VerifiableRSKInner {
     #[must_use]
     pub fn verify(
         &self,
-        original: &ElGamal,
-        gt: &GroupElement,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
+        original: &ElGamal<G>,
+        gt: &G::Element,
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
         #[cfg_attr(not(feature = "elgamal3"), allow(unused_variables))]
-        rekey_commitment: &RekeyFactorCommitment,
+        rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs = reshuffle_commitment.point();
-        if !verify_proof(gt, &original.gb, &self.p_gb_prime) {
+        if !verify_proof::<G>(gt, &original.gb, &self.p_gb_prime) {
             return false;
         }
-        if !verify_proof(&gs, &original.gc, &self.p_gc_prime) {
+        if !verify_proof::<G>(&gs, &original.gc, &self.p_gc_prime) {
             return false;
         }
         #[cfg(feature = "elgamal3")]
-        if !verify_proof(&rekey_commitment.point(), &original.gy, &self.p_gy_prime) {
+        if !verify_proof::<G>(&rekey_commitment.point(), &original.gy, &self.p_gy_prime) {
             return false;
         }
         true
@@ -233,11 +232,11 @@ impl VerifiableRSKInner {
     /// Verify this inner and return the reconstructed RSK'd ciphertext.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        gt: &GroupElement,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        gt: &G::Element,
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
+        rekey_commitment: &RekeyFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, gt, reshuffle_commitment, rekey_commitment) {
             Some(self.result())
         } else {
@@ -254,59 +253,59 @@ impl VerifiableRSKInner {
 /// Mirrors the batched VRSK-2 layout: factor block + inner VRSK (batched or
 /// per-message).
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRSK2 {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRSK2<G: Group> {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub(crate) gs: GroupElement,
+    pub(crate) gs: G::Element,
     /// `K = (k_from⁻¹·k_to)·G`.
-    pub(crate) gk: GroupElement,
+    pub(crate) gk: G::Element,
     /// `ZKP{S_to = s_from * S}`: first component is `S_to = s_to·G`.
-    pub(crate) p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof<G>,
     /// `ZKP{K_to = k_from * K}`: first component is `K_to = k_to·G`.
-    pub(crate) p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof<G>,
     /// VRSK over the combined scalars.
-    pub(crate) inner: VerifiableRSK,
+    pub(crate) inner: VerifiableRSK<G>,
 }
 
-impl VerifiableRSK2 {
+impl<G: Group> VerifiableRSK2<G> {
     /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
-    pub fn gs(&self) -> &GroupElement {
+    pub fn gs(&self) -> &G::Element {
         &self.gs
     }
     /// The combined rekey commitment `K = (k_from⁻¹·k_to)·G`.
-    pub fn gk(&self) -> &GroupElement {
+    pub fn gk(&self) -> &G::Element {
         &self.gk
     }
     /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
-    pub fn p_gs_to(&self) -> &Proof {
+    pub fn p_gs_to(&self) -> &Proof<G> {
         &self.p_gs_to
     }
     /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
-    pub fn p_gk_to(&self) -> &Proof {
+    pub fn p_gk_to(&self) -> &Proof<G> {
         &self.p_gk_to
     }
     /// The inner VRSK over the combined scalars.
-    pub fn inner(&self) -> &VerifiableRSK {
+    pub fn inner(&self) -> &VerifiableRSK<G> {
         &self.inner
     }
 }
 
-impl VerifiableRSK2 {
+impl<G: Group> VerifiableRSK2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        s_from: &ScalarNonZero,
-        s_to: &ScalarNonZero,
-        k_from: &ScalarNonZero,
-        k_to: &ScalarNonZero,
+        v: &ElGamal<G>,
+        s_from: &G::Scalar,
+        s_to: &G::Scalar,
+        k_from: &G::Scalar,
+        k_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let s = s_from.invert() * s_to;
-        let k = k_from.invert() * k_to;
-        let gs = s * G;
-        let gk = k * G;
-        let (_gs_from, p_gs_to) = create_proof(s_from, &gs, rng);
-        let (_gk_from, p_gk_to) = create_proof(k_from, &gk, rng);
+        let s = G::scalar_inverse(s_from) * *s_to;
+        let k = G::scalar_inverse(k_from) * *k_to;
+        let gs = s * G::generator();
+        let gk = k * G::generator();
+        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
+        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
         let inner = VerifiableRSK::new(v, &s, &k, rng);
         Self {
             gs,
@@ -319,7 +318,7 @@ impl VerifiableRSK2 {
 
     /// Reconstruct the RSK'd ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self) -> ElGamal {
+    pub(crate) fn result(&self) -> ElGamal<G> {
         self.inner.result()
     }
 
@@ -327,12 +326,12 @@ impl VerifiableRSK2 {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(
             original,
             s_from_commitments,
@@ -349,7 +348,7 @@ impl VerifiableRSK2 {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self) -> ElGamal {
+    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
         self.result()
     }
 
@@ -360,28 +359,28 @@ impl VerifiableRSK2 {
     #[must_use]
     pub fn verify_factor(
         &self,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs_from = s_from_commitments.point();
         let gs_to = s_to_commitments.point();
         let gk_from = k_from_commitments.point();
         let gk_to = k_to_commitments.point();
         *self.p_gs_to == gs_to
-            && verify_proof(&gs_from, &self.gs, &self.p_gs_to)
+            && verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to)
             && *self.p_gk_to == gk_to
-            && verify_proof(&gk_from, &self.gk, &self.p_gk_to)
+            && verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
-    pub fn combined_reshuffle_commitment(&self) -> PseudonymizationFactorCommitment {
+    pub fn combined_reshuffle_commitment(&self) -> PseudonymizationFactorCommitment<G> {
         PseudonymizationFactorCommitment(FactorCommitment(self.gs))
     }
 
     /// The combined rekey commitment `K = (k_from⁻¹·k_to)·G`.
-    pub fn combined_rekey_commitment(&self) -> RekeyFactorCommitment {
+    pub fn combined_rekey_commitment(&self) -> RekeyFactorCommitment<G> {
         RekeyFactorCommitment(FactorCommitment(self.gk))
     }
 
@@ -389,11 +388,11 @@ impl VerifiableRSK2 {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
+        original: &ElGamal<G>,
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         self.verify_factor(
             s_from_commitments,
@@ -411,10 +410,14 @@ impl VerifiableRSK2 {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rsk, rsk2};
+    use crate::elgamal::verifiable::{
+        PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK, VerifiableRSK2,
+    };
+    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

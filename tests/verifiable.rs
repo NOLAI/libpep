@@ -6,6 +6,8 @@
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
 use libpep::data::simple::*;
+#[cfg(feature = "batch")]
+use libpep::data::verifiable::traits::VerifiablePseudonymizationProof;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;

@@ -36,6 +36,26 @@ a major change against the published 0.13.0.
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
 - The verifiable commitments expose their group element through `point()`.
+- The verifiable layer is generic over the group, like the rest of the library: the proof
+  types of `elgamal::verifiable`, `elgamal::zkps` and `elgamal::dleq`, the commitments, the
+  Carter–Wegman master keys, the session key share proofs, the data-layer proofs and the
+  `Verifier` all have a `G: Group` version in a `generic` submodule, and the names at the module
+  level are their ristretto255 instances. For this, `Group` gained `ScalarCanBeZero`, the scalar
+  field with its addition, and its encoding functions, and `hashing::hash_to_nonzero_scalar`, the
+  group's hash reduced to a non-zero scalar. Proof bytes on ristretto255 are unchanged.
+- The batch proofs of the data layer are three types generic over the item type,
+  `BatchPseudonymizationProof<E>`, `BatchRekeyProof<E>` and `BatchTranscryptionProof<E>` in
+  `data::verifiable::batch`, built on the `VerifiableBatchItem` trait that lays an item's
+  ciphertexts out in a list; the per-type names (`PseudonymPseudonymizationBatchProof`,
+  `RecordTranscryptionBatchProof`, ...) are aliases of them. The record batch proofs no longer
+  carry a `structure` field, and every batch of a transcryptable type has
+  `verifiable_transcrypt`. The data-layer proofs expose their `verify`,
+  `verified_reconstruct` and `unverified_reconstruct` only through the `Verifiable*Proof`
+  traits; the inherent duplicates are gone.
+- `zkps::Proof` encodes with `to_bytes`/`from_slice` (and `LENGTH`) like the other types,
+  instead of `encode`/`decode`/`decode_from_slice` on a fixed array; `dleq::Proof` likewise
+  returns a `Vec`. `JSONTranscryptionProof` and `VerifiableJSONBatch` are `JsonTranscryptionProof`
+  and `VerifiableJsonBatch`.
 - `elgamal::zkps` no longer carries the unused signature functions (`sign`, `verify`,
   `sign_unlinkable`, `create_proof_unlinkable`).
 - The `verifier::verifier` module is merged into `verifier`.

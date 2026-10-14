@@ -38,7 +38,7 @@ impl PyBlindingCommitment {
     #[staticmethod]
     fn from_point(point: PyGroupElement) -> Self {
         Self {
-            inner: BlindingCommitment(point.0),
+            inner: libpep::keys::distribution::proofs::generic::BlindingCommitment(point.0),
         }
     }
 

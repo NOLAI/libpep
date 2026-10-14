@@ -169,7 +169,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
+        let proof =
+            libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(core_proof);
 
         self.inner
             .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.0)
@@ -192,7 +193,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
+        let proof =
+            libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(core_proof);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
 
         self.inner
@@ -213,7 +215,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymRekeyProof(core_proof);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(core_proof);
 
         self.inner
             .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
@@ -233,7 +235,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedAttribute, JsValue> {
         let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::AttributeRekeyProof(core_proof);
+        let proof = libpep::data::verifiable::simple::generic::AttributeRekeyProof(core_proof);
 
         self.inner
             .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
@@ -325,7 +327,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
+        let proof =
+            libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
@@ -356,7 +359,8 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
             .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
+        let proof =
+            libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(core_proof);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verified_reconstruct_pseudonymization_cached(
@@ -386,7 +390,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
         let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymRekeyProof(core_proof);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonym_rekey_cached(
                 transcryptor_id,
@@ -412,7 +416,7 @@ impl WASMVerifier {
     ) -> Result<WASMEncryptedAttribute, JsValue> {
         let core_proof: VerifiableRekey =
             serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::AttributeRekeyProof(core_proof);
+        let proof = libpep::data::verifiable::simple::generic::AttributeRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_attribute_rekey_cached(
                 transcryptor_id,
