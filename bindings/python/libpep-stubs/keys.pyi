@@ -322,11 +322,11 @@ def make_attribute_session_key_share(rekey_factor, blinding_factor):
     """Create an attribute session key share."""
     ...
 
-def make_attribute_session_keys(global, session, secret):
+def make_attribute_session_keys(global_key, session, secret):
     """Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyEncryptionSecret`]."""
     ...
 
-def make_attribute_session_keys_with_proof(global, session, secret, blinding):
+def make_attribute_session_keys_with_proof(global_key, session, secret, blinding):
     """Generate attribute session keys together with a session-key-share proof."""
     ...
 
@@ -369,11 +369,11 @@ def make_pseudonym_session_key_share(rekey_factor, blinding_factor):
     """Create a pseudonym session key share."""
     ...
 
-def make_pseudonym_session_keys(global, session, secret):
+def make_pseudonym_session_keys(global_key, session, secret):
     """Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyEncryptionSecret`]."""
     ...
 
-def make_pseudonym_session_keys_with_proof(global, session, secret, blinding):
+def make_pseudonym_session_keys_with_proof(global_key, session, secret, blinding):
     """Generate pseudonym session keys together with a session-key-share proof."""
     ...
 
@@ -381,7 +381,7 @@ def make_session_key_shares(pseudonym_rekey_factor, attribute_rekey_factor, blin
     """Create session key shares."""
     ...
 
-def make_session_keys(global, session, secret):
+def make_session_keys(global_key, session, secret):
     """Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyEncryptionSecret`]."""
     ...
 

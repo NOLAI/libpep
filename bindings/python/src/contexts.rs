@@ -22,9 +22,11 @@ impl PyPseudonymizationDomain {
         Self(PseudonymizationDomain::from(payload))
     }
 
-    /// Create a global pseudonymization domain.
+    /// Create a global pseudonymization domain. Named with a trailing underscore because
+    /// `global` is a Python keyword.
     #[cfg(feature = "global-pseudonyms")]
     #[staticmethod]
+    #[pyo3(name = "global_")]
     fn global() -> Self {
         Self(PseudonymizationDomain::global())
     }
@@ -49,9 +51,11 @@ impl PyEncryptionContext {
         Self(EncryptionContext::from(payload))
     }
 
-    /// Create a global encryption context.
+    /// Create a global encryption context. Named with a trailing underscore because `global`
+    /// is a Python keyword.
     #[cfg(feature = "offline")]
     #[staticmethod]
+    #[pyo3(name = "global_")]
     fn global() -> Self {
         Self(EncryptionContext::global())
     }

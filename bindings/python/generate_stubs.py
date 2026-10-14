@@ -14,10 +14,10 @@ With ``--check``, exits non-zero if the stubs on disk differ from what would be
 generated (used in CI to keep stubs in sync with the API).
 """
 
+import ast
 import inspect
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 import libpep
@@ -147,36 +147,45 @@ def stub_module(mod, submodule_names: set[str]) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def generate(target: Path) -> None:
-    if target.exists():
-        shutil.rmtree(target)
+def stubs() -> dict[str, str]:
+    """The stub files, keyed by path relative to the stub package."""
     modules = discover(libpep)
+    out = {}
     for path, mod in modules.items():
         submodules = submodules_of(path, modules)
         parts = path.split(".") if path else []
-        rel = "/".join(parts + ["__init__"] if submodules or not path else parts)
-        p = target / (rel + ".pyi")
+        rel = "/".join(parts + ["__init__"] if submodules or not path else parts) + ".pyi"
+        out[rel] = stub_module(mod, submodules)
+        # A name the module exposes that is not a Python identifier (a keyword, say) makes
+        # the stub unparsable and the member unreachable from Python; catch it here.
+        ast.parse(out[rel], rel)
+    return out
+
+
+def generate(target: Path) -> None:
+    files = stubs()
+    if target.exists():
+        shutil.rmtree(target)
+    for rel, text in files.items():
+        p = target / rel
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(stub_module(mod, submodules))
+        p.write_text(text)
 
 
 def main() -> int:
     if "--check" in sys.argv:
-        with tempfile.TemporaryDirectory() as td:
-            fresh = Path(td) / "libpep-stubs"
-            generate(fresh)
-            current = {p.relative_to(OUT): p.read_text() for p in OUT.rglob("*.pyi")}
-            new = {p.relative_to(fresh): p.read_text() for p in fresh.rglob("*.pyi")}
-            if current != new:
-                changed = sorted(
-                    set(current) ^ set(new)
-                    | {k for k in set(current) & set(new) if current[k] != new[k]}
-                )
-                print("stubs out of date:", ", ".join(str(c) for c in changed))
-                print("run: python bindings/python/generate_stubs.py")
-                return 1
-            print("stubs up to date")
-            return 0
+        current = {str(p.relative_to(OUT)): p.read_text() for p in OUT.rglob("*.pyi")}
+        new = stubs()
+        if current != new:
+            changed = sorted(
+                set(current) ^ set(new)
+                | {k for k in set(current) & set(new) if current[k] != new[k]}
+            )
+            print("stubs out of date:", ", ".join(changed))
+            print("run: python bindings/python/generate_stubs.py")
+            return 1
+        print("stubs up to date")
+        return 0
     generate(OUT)
     print(f"stubs written to {OUT}")
     return 0

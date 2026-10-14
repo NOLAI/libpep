@@ -243,6 +243,15 @@ a major change against the published 0.13.0.
   `verifiable_long_attribute_rekey` with the `Verifier.verify_long_*` counterparts and the
   `LongPseudonymPseudonymizationProof`, `LongPseudonymRekeyProof` and `LongAttributeRekeyProof`
   classes; JavaScript `verifiableLongPseudonymize`, `verifyLongPseudonymization` and so on.
+- The Python stub generator discovers the submodules by walking the module tree instead of a
+  hand-kept list, which had left `libpep.verifier`, `libpep.elgamal.verifiable` and
+  `libpep.elgamal.zkps` without stubs; the package stubs re-export their submodules, and the
+  generator parses what it writes.
+- Python: `EncryptionContext.global_` and `PseudonymizationDomain.global_` (the global context
+  and domain) replace `global`, a keyword that made them unreachable, and the global secret
+  key parameter of the session key functions is `global_key` so it can be passed by keyword.
+  The unreachable `PseudonymizationSecret.from` and `EncryptionSecret.from` are gone; the
+  constructors do the same.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
   `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
   under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
