@@ -155,8 +155,9 @@ impl PyVerifier {
         operation_proof: &PyVerifiableRRSK,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let proof =
-            libpep::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
+            operation_proof.inner,
+        );
         self.0
             .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.inner)
             .map(PyEncryptedPseudonym)
@@ -177,8 +178,9 @@ impl PyVerifier {
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let proof =
-            libpep::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
+            operation_proof.inner,
+        );
         self.0
             .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.inner)
             .map(PyEncryptedPseudonym)
@@ -193,7 +195,7 @@ impl PyVerifier {
         proof: &PyVerifiableRekey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let wrapped = libpep::data::verifiable::simple::PseudonymRekeyProof(proof.inner);
+        let wrapped = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
             .map(PyEncryptedPseudonym)
@@ -208,7 +210,7 @@ impl PyVerifier {
         proof: &PyVerifiableRekey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyEncryptedAttribute> {
-        let wrapped = libpep::data::verifiable::simple::AttributeRekeyProof(proof.inner);
+        let wrapped = libpep::data::verifiable::simple::generic::AttributeRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
             .map(PyEncryptedAttribute)
@@ -302,8 +304,9 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let proof =
-            libpep::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
+            operation_proof.inner,
+        );
         self.0
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
@@ -332,8 +335,9 @@ impl PyVerifier {
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let proof =
-            libpep::data::verifiable::simple::PseudonymPseudonymizationProof(operation_proof.inner);
+        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
+            operation_proof.inner,
+        );
         self.0
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
@@ -359,7 +363,7 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let wrapped = libpep::data::verifiable::simple::PseudonymRekeyProof(proof.inner);
+        let wrapped = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_pseudonym_rekey_cached(
                 transcryptor_id,
@@ -382,7 +386,7 @@ impl PyVerifier {
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedAttribute> {
-        let wrapped = libpep::data::verifiable::simple::AttributeRekeyProof(proof.inner);
+        let wrapped = libpep::data::verifiable::simple::generic::AttributeRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_attribute_rekey_cached(
                 transcryptor_id,

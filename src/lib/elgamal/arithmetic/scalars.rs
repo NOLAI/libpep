@@ -81,8 +81,8 @@ impl ScalarNonZero {
 /// Scalar, can be zero.
 ///
 /// Can be converted to a [`GroupElement`](super::group_elements::GroupElement).
-/// Supports multiplication, inversion (so division is possible), addition and subtraction.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+/// Supports multiplication, addition and subtraction; the default value is zero.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 pub struct ScalarCanBeZero(pub(crate) Scalar);
 
 impl ScalarCanBeZero {
@@ -303,6 +303,15 @@ impl std::ops::Sub<ScalarCanBeZero> for ScalarCanBeZero {
 
     fn sub(mut self, rhs: Self) -> Self::Output {
         self.0 -= rhs.0;
+        self
+    }
+}
+
+impl std::ops::Mul<ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self.0 *= rhs.0;
         self
     }
 }

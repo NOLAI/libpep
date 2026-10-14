@@ -25,6 +25,7 @@ const ORDER: [u8; 32] = [
 
 impl Group for Ristretto255 {
     type Scalar = ScalarNonZero;
+    type ScalarCanBeZero = ScalarCanBeZero;
     type Element = GroupElement;
     type ElementBytes = [u8; 32];
     type ScalarBytes = [u8; 32];
@@ -94,6 +95,14 @@ impl Group for Ristretto255 {
 
     fn deserialize_scalar(bytes: &[u8]) -> Option<ScalarNonZero> {
         ScalarNonZero::from_slice(bytes)
+    }
+
+    fn serialize_scalar_can_be_zero(scalar: &ScalarCanBeZero) -> [u8; 32] {
+        scalar.to_bytes()
+    }
+
+    fn deserialize_scalar_can_be_zero(bytes: &[u8]) -> Option<ScalarCanBeZero> {
+        ScalarCanBeZero::from_slice(bytes)
     }
 
     fn scalar_mult_gen(scalar: &ScalarNonZero) -> GroupElement {

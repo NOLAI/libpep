@@ -28,6 +28,25 @@ use sha2::{Digest, Sha512};
 /// (RFC 9380, Section 5.3.3).
 const MAX_DST_LENGTH: usize = 255;
 
+/// Hash `parts` with the group's hash and reduce the digest to a non-zero scalar, with zero
+/// mapped to one.
+///
+/// This is the Fiat–Shamir challenge of the proofs in [`zkps`](crate::elgamal::zkps) and the
+/// hash of the Carter–Wegman derivation (`factors::verifiable`). On ristretto255-SHA512
+/// it is the SHA-512 digest reduced modulo the group order. A digest of any other length is
+/// zero-padded or truncated to the 64 bytes the reduction takes.
+pub fn hash_to_nonzero_scalar<G: Group>(parts: &[&[u8]]) -> G::Scalar {
+    let mut hasher = G::Hash::new();
+    for part in parts {
+        hasher.update(part);
+    }
+    let digest = hasher.finalize();
+    let mut bytes = [0u8; 64];
+    let n = digest.len().min(64);
+    bytes[..n].copy_from_slice(&digest[..n]);
+    G::scalar_from_uniform_bytes(&bytes).unwrap_or_else(G::scalar_one)
+}
+
 /// `expand_message_xmd` from RFC 9380, Section 5.3.1: hash `msg` to any requested number of
 /// bytes, under a label.
 ///

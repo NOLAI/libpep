@@ -18,13 +18,13 @@ impl WASMProof {
     /// Encodes the proof as a 128-byte array.
     #[wasm_bindgen(js_name = encode)]
     pub fn encode(&self) -> Vec<u8> {
-        self.0.encode().to_vec()
+        self.0.to_bytes()
     }
 
     /// Decodes a proof from a 128-byte array.
     #[wasm_bindgen(js_name = decode)]
     pub fn decode(v: Vec<u8>) -> Option<WASMProof> {
-        Proof::decode_from_slice(v.as_slice()).map(WASMProof)
+        Proof::from_slice(&v).map(WASMProof)
     }
 
     /// Encodes the proof as a URL-safe base64 string.

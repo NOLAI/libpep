@@ -33,37 +33,27 @@ impl PyProof {
 
     /// Encodes the proof as a hex string.
     fn to_hex(&self) -> String {
-        hex::encode(self.inner.encode())
+        hex::encode(self.inner.to_bytes())
     }
 
     /// Decodes a proof from a hex string.
     #[staticmethod]
     fn from_hex(s: &str) -> PyResult<Self> {
         let bytes = hex::decode(s).map_err(|e| PyValueError::new_err(format!("{}", e)))?;
-        if bytes.len() != 128 {
-            return Err(PyValueError::new_err("Invalid proof length"));
-        }
-        let mut arr = [0u8; 128];
-        arr.copy_from_slice(&bytes);
-        Proof::decode(&arr)
+        Proof::from_slice(&bytes)
             .map(|inner| PyProof { inner })
             .ok_or_else(|| PyValueError::new_err("Invalid proof encoding"))
     }
 
     /// Returns the encoded bytes of the proof.
     fn to_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
-        PyBytes::new(py, &self.inner.encode())
+        PyBytes::new(py, &self.inner.to_bytes())
     }
 
     /// Decodes a proof from bytes.
     #[staticmethod]
     fn from_bytes(bytes: &[u8]) -> PyResult<Self> {
-        if bytes.len() != 128 {
-            return Err(PyValueError::new_err("Invalid proof length"));
-        }
-        let mut arr = [0u8; 128];
-        arr.copy_from_slice(bytes);
-        Proof::decode(&arr)
+        Proof::from_slice(bytes)
             .map(|inner| PyProof { inner })
             .ok_or_else(|| PyValueError::new_err("Invalid proof encoding"))
     }

@@ -18,39 +18,38 @@
 //! is verified against the forward commitment `A = a·G`).
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
-use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
+use crate::elgamal::zkps::generic::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Verifiable reshuffle: `⟨ZKP{B' = s * B}, ZKP{C' = s * C}⟩`.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableReshuffle {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableReshuffle<G: Group> {
     /// `ZKP{B' = s * B}`: first component is `B' = s·B`.
-    pub(crate) p_gb_prime: Proof,
+    pub(crate) p_gb_prime: Proof<G>,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
-    pub(crate) p_gc_prime: Proof,
+    pub(crate) p_gc_prime: Proof<G>,
 }
 
-impl VerifiableReshuffle {
+impl<G: Group> VerifiableReshuffle<G> {
     /// The proof `ZKP{B' = s * B}`.
-    pub fn p_gb_prime(&self) -> &Proof {
+    pub fn p_gb_prime(&self) -> &Proof<G> {
         &self.p_gb_prime
     }
     /// The proof `ZKP{C' = s * C}`.
-    pub fn p_gc_prime(&self) -> &Proof {
+    pub fn p_gc_prime(&self) -> &Proof<G> {
         &self.p_gc_prime
     }
 }
 
-impl VerifiableReshuffle {
+impl<G: Group> VerifiableReshuffle<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(v: &ElGamal, s: &ScalarNonZero, rng: &mut R) -> Self {
-        let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar(s, &v.gb, &v.gc, rng);
+    pub fn new<R: Rng + CryptoRng>(v: &ElGamal<G>, s: &G::Scalar, rng: &mut R) -> Self {
+        let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar::<G, R>(s, &v.gb, &v.gc, rng);
         Self {
             p_gb_prime,
             p_gc_prime,
@@ -59,7 +58,7 @@ impl VerifiableReshuffle {
 
     /// Reconstruct the reshuffled ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self, _original: &ElGamal) -> ElGamal {
+    pub(crate) fn result(&self, _original: &ElGamal<G>) -> ElGamal<G> {
         ElGamal {
             gb: *self.p_gb_prime,
             gc: *self.p_gc_prime,
@@ -72,9 +71,9 @@ impl VerifiableReshuffle {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        commitments: &PseudonymizationFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        commitments: &PseudonymizationFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, commitments) {
             Some(self.result(original))
         } else {
@@ -85,7 +84,7 @@ impl VerifiableReshuffle {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
 
@@ -93,12 +92,12 @@ impl VerifiableReshuffle {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        commitment: &PseudonymizationFactorCommitment,
+        original: &ElGamal<G>,
+        commitment: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         let gs = commitment.point();
-        verify_proof(&gs, &original.gb, &self.p_gb_prime)
-            && verify_proof(&gs, &original.gc, &self.p_gc_prime)
+        verify_proof::<G>(&gs, &original.gb, &self.p_gb_prime)
+            && verify_proof::<G>(&gs, &original.gc, &self.p_gc_prime)
     }
 }
 
@@ -106,49 +105,49 @@ impl VerifiableReshuffle {
 /// `s = s_from⁻¹·s_to`, plus the per-factor sub-proof tying `S = s·G` to the
 /// published `S_from`, `S_to` commitments.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableReshuffle2 {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableReshuffle2<G: Group> {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub(crate) gs: GroupElement,
+    pub(crate) gs: G::Element,
     /// `ZKP{S_to = s_from * S}`: first component is `S_to = s_to·G`.
-    pub(crate) p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof<G>,
     /// The per-message reshuffle under the combined scalar.
-    pub(crate) inner: VerifiableReshuffle,
+    pub(crate) inner: VerifiableReshuffle<G>,
 }
 
-impl VerifiableReshuffle2 {
+impl<G: Group> VerifiableReshuffle2<G> {
     /// The combined commitment `S = (s_from⁻¹·s_to)·G`.
-    pub fn gs(&self) -> &GroupElement {
+    pub fn gs(&self) -> &G::Element {
         &self.gs
     }
     /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
-    pub fn p_gs_to(&self) -> &Proof {
+    pub fn p_gs_to(&self) -> &Proof<G> {
         &self.p_gs_to
     }
     /// The inner per-message reshuffle proof under the combined scalar.
-    pub fn inner(&self) -> &VerifiableReshuffle {
+    pub fn inner(&self) -> &VerifiableReshuffle<G> {
         &self.inner
     }
 }
 
-impl VerifiableReshuffle2 {
+impl<G: Group> VerifiableReshuffle2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        s_from: &ScalarNonZero,
-        s_to: &ScalarNonZero,
+        v: &ElGamal<G>,
+        s_from: &G::Scalar,
+        s_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let s = s_from.invert() * s_to;
-        let gs = s * G;
-        let (_gs_from, p_gs_to) = create_proof(s_from, &gs, rng);
+        let s = G::scalar_inverse(s_from) * *s_to;
+        let gs = s * G::generator();
+        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
         let inner = VerifiableReshuffle::new(v, &s, rng);
         Self { gs, p_gs_to, inner }
     }
 
     /// Reconstruct the reshuffled ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self, original: &ElGamal) -> ElGamal {
+    pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.inner.result(original)
     }
 
@@ -156,10 +155,10 @@ impl VerifiableReshuffle2 {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        from_commitments: &PseudonymizationFactorCommitment,
-        to_commitments: &PseudonymizationFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        from_commitments: &PseudonymizationFactorCommitment<G>,
+        to_commitments: &PseudonymizationFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, from_commitments, to_commitments) {
             Some(self.result(original))
         } else {
@@ -170,7 +169,7 @@ impl VerifiableReshuffle2 {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
 
@@ -181,16 +180,16 @@ impl VerifiableReshuffle2 {
     #[must_use]
     pub fn verify_factor(
         &self,
-        from_commitments: &PseudonymizationFactorCommitment,
-        to_commitments: &PseudonymizationFactorCommitment,
+        from_commitments: &PseudonymizationFactorCommitment<G>,
+        to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         let gs_from = from_commitments.point();
         let gs_to = to_commitments.point();
-        *self.p_gs_to == gs_to && verify_proof(&gs_from, &self.gs, &self.p_gs_to)
+        *self.p_gs_to == gs_to && verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to)
     }
 
     /// The combined commitment `S = (s_from⁻¹·s_to)·G`.
-    pub fn combined_commitment(&self) -> PseudonymizationFactorCommitment {
+    pub fn combined_commitment(&self) -> PseudonymizationFactorCommitment<G> {
         PseudonymizationFactorCommitment(FactorCommitment(self.gs))
     }
 
@@ -198,9 +197,9 @@ impl VerifiableReshuffle2 {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        from_commitments: &PseudonymizationFactorCommitment,
-        to_commitments: &PseudonymizationFactorCommitment,
+        original: &ElGamal<G>,
+        from_commitments: &PseudonymizationFactorCommitment<G>,
+        to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
@@ -210,10 +209,14 @@ impl VerifiableReshuffle2 {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
+    use crate::elgamal::verifiable::{
+        PseudonymizationFactorCommitment, VerifiableReshuffle, VerifiableReshuffle2,
+    };
+    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

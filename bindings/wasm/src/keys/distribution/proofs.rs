@@ -31,7 +31,7 @@ impl WASMBlindingCommitment {
     /// Construct from a preexisting group element.
     #[wasm_bindgen(js_name = fromPoint)]
     pub fn from_point(point: &WASMGroupElement) -> Self {
-        Self(BlindingCommitment(point.0))
+        Self(libpep::keys::distribution::proofs::generic::BlindingCommitment(point.0))
     }
 
     /// Get the commitment value as a group element.

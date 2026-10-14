@@ -46,173 +46,23 @@
 //!
 //! [RFC 9497, Section 2.2]: https://www.rfc-editor.org/rfc/rfc9497.html#section-2.2
 
-use rand_core::{CryptoRng, Rng};
+pub mod generic;
+
+pub use generic::ProofError;
 
 use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::hashing::hash_to_scalar_with_dst;
-use crate::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::Ristretto255;
+use rand_core::{CryptoRng, Rng};
+
+/// The [`Proof`](generic::Proof) over ristretto255.
+pub type Proof = generic::Proof<Ristretto255>;
 
 /// Byte length of a serialized proof: two scalars.
-pub const PROOF_SIZE: usize = 64;
+pub const PROOF_SIZE: usize = Proof::LENGTH;
 
-/// A DLEQ proof in the encoding of RFC 9497: the challenge `c` and the response `s`.
-///
-/// Serializes to exactly [`PROOF_SIZE`] bytes as `SerializeScalar(c) || SerializeScalar(s)`.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Proof {
-    /// The challenge scalar.
-    pub c: ScalarCanBeZero,
-    /// The response scalar.
-    pub s: ScalarCanBeZero,
-}
-
-impl Proof {
-    /// Serialize as `SerializeScalar(c) || SerializeScalar(s)`.
-    #[must_use]
-    pub fn to_bytes(&self) -> [u8; PROOF_SIZE] {
-        let mut out = [0u8; PROOF_SIZE];
-        out[..32].copy_from_slice(&self.c.to_bytes());
-        out[32..].copy_from_slice(&self.s.to_bytes());
-        out
-    }
-
-    /// Deserialize from exactly [`PROOF_SIZE`] bytes.
-    ///
-    /// Returns `None` if the input is not [`PROOF_SIZE`] bytes or either half is not a
-    /// canonical scalar encoding.
-    #[must_use]
-    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != PROOF_SIZE {
-            return None;
-        }
-        Some(Self {
-            c: ScalarCanBeZero::from_slice(&bytes[..32])?,
-            s: ScalarCanBeZero::from_slice(&bytes[32..])?,
-        })
-    }
-}
-
-/// Errors that can occur while generating a proof.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
-pub enum ProofError {
-    /// The `cs` and `ds` lists have different lengths, or are empty.
-    #[error("DLEQ proof needs equally long, non-empty element lists (got {cs} and {ds})")]
-    MismatchedLists {
-        /// Length of the `cs` list.
-        cs: usize,
-        /// Length of the `ds` list.
-        ds: usize,
-    },
-}
-
-/// The domain separation tags a proof transcript needs.
-///
-/// RFC 9497 uses the context string in two distinct ways here, and the difference matters for
-/// interoperability: `seedDST` is `"Seed-" || contextString` and appears *inside* the seed
-/// transcript, whereas the trailing `"Composite"` and `"Challenge"` labels are bare literals,
-/// with the context string entering only through `HashToScalar`'s own DST
-/// (`"HashToScalar-" || contextString`).
-///
-/// Normally built from the [`Ciphersuite`], whose context string is prefixed `"coPRFV1-"`.
-/// RFC 9497's own test vectors use its `"OPRFV1-"` prefix, so the test module builds these
-/// directly in order to cross-check the transcript against Appendix A.1.2.
-#[derive(Clone)]
-struct Dsts {
-    /// `"Seed-" || contextString`, hashed inside the seed transcript.
-    seed: Vec<u8>,
-    /// `"HashToScalar-" || contextString`, the DST of every `HashToScalar` call.
-    hash_to_scalar: Vec<u8>,
-}
-
-impl Dsts {
-    fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
-        Self {
-            seed: ciphersuite.dst(b"Seed-"),
-            hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
-        }
-    }
-}
-
-/// `I2OSP(len(bytes), 2) || bytes`, the length-prefixed encoding RFC 9497 uses in transcripts.
-fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) {
-    debug_assert!(bytes.len() <= u16::MAX as usize);
-    out.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
-    out.extend_from_slice(bytes);
-}
-
-/// The seed transcript of `ComputeComposites`:
-/// `I2OSP(len(Bm),2) || Bm || I2OSP(len("Seed-"||ctx),2) || "Seed-"||ctx`.
-fn compute_seed(b: &GroupElement, dsts: &Dsts) -> Vec<u8> {
-    use sha2::Digest;
-    let mut transcript = Vec::new();
-    push_len_prefixed(&mut transcript, &b.to_bytes());
-    push_len_prefixed(&mut transcript, &dsts.seed);
-    // RFC 9497 uses the ciphersuite's plain hash here, not expand_message_xmd.
-    sha2::Sha512::digest(&transcript).to_vec()
-}
-
-/// `ComputeComposites` of RFC 9497, Section 2.2.1.
-///
-/// Folds the `(C_i, D_i)` pairs into a single pair `(M, Z)` with per-index weights derived from
-/// the seed, so that one proof covers the whole list. When the prover's scalar `k` is known the
-/// fast path computes `Z = k * M` directly; otherwise `Z` is accumulated from the `ds`.
-fn compute_composites(
-    k: Option<&ScalarNonZero>,
-    b: &GroupElement,
-    cs: &[GroupElement],
-    ds: &[GroupElement],
-    dsts: &Dsts,
-) -> (GroupElement, GroupElement) {
-    let seed = compute_seed(b, dsts);
-
-    let mut m = GroupElement::identity();
-    let mut z = GroupElement::identity();
-
-    for (i, (c_i, d_i)) in cs.iter().zip(ds.iter()).enumerate() {
-        let mut transcript = Vec::new();
-        push_len_prefixed(&mut transcript, &seed);
-        transcript.extend_from_slice(&(i as u16).to_be_bytes());
-        push_len_prefixed(&mut transcript, &c_i.to_bytes());
-        push_len_prefixed(&mut transcript, &d_i.to_bytes());
-        transcript.extend_from_slice(b"Composite");
-
-        let d_i_scalar = hash_to_scalar_with_dst(&transcript, &dsts.hash_to_scalar);
-        m = m + d_i_scalar * *c_i;
-        if k.is_none() {
-            z = z + d_i_scalar * *d_i;
-        }
-    }
-
-    if let Some(k) = k {
-        z = *k * m;
-    }
-    (m, z)
-}
-
-/// The challenge transcript of RFC 9497, Section 2.2:
-/// the length-prefixed elements `B, M, Z, t2, t3` followed by the bare label `"Challenge"`.
-fn challenge(
-    b: &GroupElement,
-    m: &GroupElement,
-    z: &GroupElement,
-    t2: &GroupElement,
-    t3: &GroupElement,
-    dsts: &Dsts,
-) -> ScalarCanBeZero {
-    let mut transcript = Vec::new();
-    push_len_prefixed(&mut transcript, &b.to_bytes());
-    push_len_prefixed(&mut transcript, &m.to_bytes());
-    push_len_prefixed(&mut transcript, &z.to_bytes());
-    push_len_prefixed(&mut transcript, &t2.to_bytes());
-    push_len_prefixed(&mut transcript, &t3.to_bytes());
-    transcript.extend_from_slice(b"Challenge");
-    hash_to_scalar_with_dst(&transcript, &dsts.hash_to_scalar)
-}
-
-/// `GenerateProof` of RFC 9497, Section 2.2.
-///
-/// Proves that `b = k * a` and `ds[i] = k * cs[i]` for every `i`, without revealing `k`.
+/// `GenerateProof` of RFC 9497, Section 2.2; see [`generic::generate_proof`].
 ///
 /// # Errors
 ///
@@ -226,57 +76,10 @@ pub fn generate_proof<R: Rng + CryptoRng>(
     ciphersuite: &Ciphersuite,
     rng: &mut R,
 ) -> Result<Proof, ProofError> {
-    if cs.is_empty() || cs.len() != ds.len() {
-        return Err(ProofError::MismatchedLists {
-            cs: cs.len(),
-            ds: ds.len(),
-        });
-    }
-
-    let dsts = Dsts::from_ciphersuite(ciphersuite);
-    Ok(generate_proof_with(
-        k,
-        a,
-        b,
-        cs,
-        ds,
-        &dsts,
-        &ScalarNonZero::random(rng),
-    ))
+    generic::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, ciphersuite, rng)
 }
 
-/// The deterministic core of [`generate_proof`], with the proof's random scalar supplied.
-///
-/// Separated so that the RFC 9497 test vectors, which fix `ProofRandomScalar`, can be
-/// reproduced exactly. Callers outside the tests must use [`generate_proof`], which samples
-/// the scalar freshly: reusing one across proofs leaks the secret.
-fn generate_proof_with(
-    k: &ScalarNonZero,
-    a: &GroupElement,
-    b: &GroupElement,
-    cs: &[GroupElement],
-    ds: &[GroupElement],
-    dsts: &Dsts,
-    r: &ScalarNonZero,
-) -> Proof {
-    let (m, z) = compute_composites(Some(k), b, cs, ds, dsts);
-
-    let t2 = *r * *a;
-    let t3 = *r * m;
-
-    let c = challenge(b, &m, &z, &t2, &t3, dsts);
-    // s = r - c * k, in the full scalar field (c and s may be zero). `ScalarCanBeZero` has no
-    // multiplication operator, so the product is formed on the underlying scalars.
-    let ck = ScalarCanBeZero(c.raw() * k.raw());
-    let s = ScalarCanBeZero(*r.raw()) - ck;
-
-    Proof { c, s }
-}
-
-/// `VerifyProof` of RFC 9497, Section 2.2.
-///
-/// Checks that the same scalar relates `a` to `b` and every `cs[i]` to `ds[i]`. Returns `false`
-/// on any mismatch, and also when the lists are empty or of different lengths.
+/// `VerifyProof` of RFC 9497, Section 2.2; see [`generic::verify_proof`].
 #[must_use]
 pub fn verify_proof(
     a: &GroupElement,
@@ -286,38 +89,16 @@ pub fn verify_proof(
     proof: &Proof,
     ciphersuite: &Ciphersuite,
 ) -> bool {
-    verify_proof_with(a, b, cs, ds, proof, &Dsts::from_ciphersuite(ciphersuite))
-}
-
-/// The DST-parameterised core of [`verify_proof`].
-fn verify_proof_with(
-    a: &GroupElement,
-    b: &GroupElement,
-    cs: &[GroupElement],
-    ds: &[GroupElement],
-    proof: &Proof,
-    dsts: &Dsts,
-) -> bool {
-    if cs.is_empty() || cs.len() != ds.len() {
-        return false;
-    }
-
-    let (m, z) = compute_composites(None, b, cs, ds, dsts);
-
-    // t2 = s * A + c * B, t3 = s * M + c * Z
-    let t2 = proof.s * *a + proof.c * *b;
-    let t3 = proof.s * m + proof.c * z;
-
-    let expected = challenge(b, &m, &z, &t2, &t3, dsts);
-    expected == proof.c
+    generic::verify_proof::<Ristretto255>(a, b, cs, ds, proof, ciphersuite)
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use super::generic::{generate_proof_with, verify_proof_with, Dsts};
     use super::*;
     use crate::elgamal::arithmetic::group_elements::G;
-    use crate::elgamal::arithmetic::{Group, Ristretto255};
+    use crate::elgamal::arithmetic::Group;
 
     fn ctx() -> Ciphersuite {
         Ristretto255::CIPHERSUITE
@@ -461,9 +242,10 @@ mod tests {
             "EvaluationElement is not skSm * BlindedElement"
         );
 
-        let proof = generate_proof_with(&sk, &G, &pk, &[blinded], &[evaluated], &dsts, &r);
+        let proof =
+            generate_proof_with::<Ristretto255>(&sk, &G, &pk, &[blinded], &[evaluated], &dsts, &r);
         assert_eq!(hex::encode(proof.to_bytes()), expected);
-        assert!(verify_proof_with(
+        assert!(verify_proof_with::<Ristretto255>(
             &G,
             &pk,
             &[blinded],
@@ -492,9 +274,10 @@ mod tests {
         let expected = "cc203910175d786927eeb44ea847328047892ddf8590e723c37205cb74600b0a\
                         5ab5337c8eb4ceae0494c2cf89529dcf94572ed267473d567aeed6ab873dee08";
 
-        let proof = generate_proof_with(&sk, &G, &pk, &blinded, &evaluated, &dsts, &r);
+        let proof =
+            generate_proof_with::<Ristretto255>(&sk, &G, &pk, &blinded, &evaluated, &dsts, &r);
         assert_eq!(hex::encode(proof.to_bytes()), expected);
-        assert!(verify_proof_with(
+        assert!(verify_proof_with::<Ristretto255>(
             &G, &pk, &blinded, &evaluated, &proof, &dsts
         ));
 
@@ -502,7 +285,7 @@ mod tests {
         for i in 0..evaluated.len() {
             let mut tampered = evaluated;
             tampered[i] = G;
-            assert!(!verify_proof_with(
+            assert!(!verify_proof_with::<Ristretto255>(
                 &G, &pk, &blinded, &tampered, &proof, &dsts
             ));
         }

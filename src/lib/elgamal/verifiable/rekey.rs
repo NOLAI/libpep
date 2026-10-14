@@ -22,10 +22,9 @@
 //! forward commitment `A = a·G`.
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
-use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
+use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -39,37 +38,37 @@ use serde::{Deserialize, Serialize};
 /// * `p_gy_prime` (elgamal3) is `ZKP{Y' = k * Y}`: its first component equals
 ///   `Y' = k·Y`, verified against `K`.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRekey {
-    pub(crate) gb_prime: GroupElement,
-    pub(crate) p_gb: Proof,
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRekey<G: Group> {
+    pub(crate) gb_prime: G::Element,
+    pub(crate) p_gb: Proof<G>,
     #[cfg(feature = "elgamal3")]
-    pub(crate) p_gy_prime: Proof,
+    pub(crate) p_gy_prime: Proof<G>,
 }
 
-impl VerifiableRekey {
+impl<G: Group> VerifiableRekey<G> {
     /// The new first ciphertext component `B' = k⁻¹·B`.
-    pub fn gb_prime(&self) -> &GroupElement {
+    pub fn gb_prime(&self) -> &G::Element {
         &self.gb_prime
     }
     /// The proof `ZKP{B = k * B'}`.
-    pub fn p_gb(&self) -> &Proof {
+    pub fn p_gb(&self) -> &Proof<G> {
         &self.p_gb
     }
     /// The proof `ZKP{Y' = k * Y}` (elgamal3 only).
     #[cfg(feature = "elgamal3")]
-    pub fn p_gy_prime(&self) -> &Proof {
+    pub fn p_gy_prime(&self) -> &Proof<G> {
         &self.p_gy_prime
     }
 }
 
-impl VerifiableRekey {
+impl<G: Group> VerifiableRekey<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(v: &ElGamal, k: &ScalarNonZero, rng: &mut R) -> Self {
-        let gb_prime = k.invert() * v.gb;
-        let (_gk, p_gb) = create_proof(k, &gb_prime, rng);
+    pub fn new<R: Rng + CryptoRng>(v: &ElGamal<G>, k: &G::Scalar, rng: &mut R) -> Self {
+        let gb_prime = G::scalar_inverse(k) * v.gb;
+        let (_gk, p_gb) = create_proof::<G, R>(k, &gb_prime, rng);
         #[cfg(feature = "elgamal3")]
-        let (_gk_again, p_gy_prime) = create_proof(k, &v.gy, rng);
+        let (_gk_again, p_gy_prime) = create_proof::<G, R>(k, &v.gy, rng);
         Self {
             gb_prime,
             p_gb,
@@ -81,7 +80,7 @@ impl VerifiableRekey {
     /// Reconstruct the rekeyed ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only — public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
-    pub(crate) fn result(&self, original: &ElGamal) -> ElGamal {
+    pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         ElGamal {
             gb: self.gb_prime,
             gc: original.gc,
@@ -94,9 +93,9 @@ impl VerifiableRekey {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        commitments: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        commitments: &RekeyFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, commitments) {
             Some(self.result(original))
         } else {
@@ -107,22 +106,22 @@ impl VerifiableRekey {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(&self, original: &ElGamal, commitment: &RekeyFactorCommitment) -> bool {
+    pub fn verify(&self, original: &ElGamal<G>, commitment: &RekeyFactorCommitment<G>) -> bool {
         let gk = commitment.point();
         if *self.p_gb != original.gb {
             return false;
         }
-        if !verify_proof(&gk, &self.gb_prime, &self.p_gb) {
+        if !verify_proof::<G>(&gk, &self.gb_prime, &self.p_gb) {
             return false;
         }
         #[cfg(feature = "elgamal3")]
-        if !verify_proof(&gk, &original.gy, &self.p_gy_prime) {
+        if !verify_proof::<G>(&gk, &original.gy, &self.p_gy_prime) {
             return false;
         }
         true
@@ -138,49 +137,49 @@ impl VerifiableRekey {
 /// transition, build a single `VerifiableRekey2` once and re-use the inner
 /// [`VerifiableRekey`] / combined commitment for cheap per-ciphertext proofs.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRekey2 {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRekey2<G: Group> {
     /// `K = (k_from⁻¹ · k_to) · G`.
-    pub(crate) gk: GroupElement,
+    pub(crate) gk: G::Element,
     /// `ZKP{K_to = k_from * K}`: first component equals `K_to = k_to·G`.
-    pub(crate) p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof<G>,
     /// The per-message rekey under the combined scalar.
-    pub(crate) inner: VerifiableRekey,
+    pub(crate) inner: VerifiableRekey<G>,
 }
 
-impl VerifiableRekey2 {
+impl<G: Group> VerifiableRekey2<G> {
     /// The combined commitment `K = (k_from⁻¹·k_to)·G`.
-    pub fn gk(&self) -> &GroupElement {
+    pub fn gk(&self) -> &G::Element {
         &self.gk
     }
     /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
-    pub fn p_gk_to(&self) -> &Proof {
+    pub fn p_gk_to(&self) -> &Proof<G> {
         &self.p_gk_to
     }
     /// The inner per-message rekey proof under the combined scalar.
-    pub fn inner(&self) -> &VerifiableRekey {
+    pub fn inner(&self) -> &VerifiableRekey<G> {
         &self.inner
     }
 }
 
-impl VerifiableRekey2 {
+impl<G: Group> VerifiableRekey2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        k_from: &ScalarNonZero,
-        k_to: &ScalarNonZero,
+        v: &ElGamal<G>,
+        k_from: &G::Scalar,
+        k_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let k = k_from.invert() * k_to;
-        let gk = k * G;
-        let (_gk_from, p_gk_to) = create_proof(k_from, &gk, rng);
+        let k = G::scalar_inverse(k_from) * *k_to;
+        let gk = k * G::generator();
+        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
         let inner = VerifiableRekey::new(v, &k, rng);
         Self { gk, p_gk_to, inner }
     }
 
     /// Reconstruct the rekeyed ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self, original: &ElGamal) -> ElGamal {
+    pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.inner.result(original)
     }
 
@@ -188,10 +187,10 @@ impl VerifiableRekey2 {
     /// verify.
     pub fn verified_reconstruct(
         &self,
-        original: &ElGamal,
-        from_commitments: &RekeyFactorCommitment,
-        to_commitments: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
+        original: &ElGamal<G>,
+        from_commitments: &RekeyFactorCommitment<G>,
+        to_commitments: &RekeyFactorCommitment<G>,
+    ) -> Option<ElGamal<G>> {
         if self.verify(original, from_commitments, to_commitments) {
             Some(self.result(original))
         } else {
@@ -202,7 +201,7 @@ impl VerifiableRekey2 {
     #[cfg(feature = "insecure")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
+    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.result(original)
     }
 
@@ -213,18 +212,18 @@ impl VerifiableRekey2 {
     #[must_use]
     pub fn verify_factor(
         &self,
-        from_commitments: &RekeyFactorCommitment,
-        to_commitments: &RekeyFactorCommitment,
+        from_commitments: &RekeyFactorCommitment<G>,
+        to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gk_from = from_commitments.point();
         let gk_to = to_commitments.point();
-        *self.p_gk_to == gk_to && verify_proof(&gk_from, &self.gk, &self.p_gk_to)
+        *self.p_gk_to == gk_to && verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     /// The combined commitment `K = (k_from⁻¹·k_to)·G`, suitable for
     /// verifying many per-message [`VerifiableRekey`] proofs against once the
     /// outer `VerifiableRekey2` has been validated with [`Self::verify_factor`].
-    pub fn combined_commitment(&self) -> RekeyFactorCommitment {
+    pub fn combined_commitment(&self) -> RekeyFactorCommitment<G> {
         RekeyFactorCommitment(FactorCommitment(self.gk))
     }
 
@@ -232,9 +231,9 @@ impl VerifiableRekey2 {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        from_commitments: &RekeyFactorCommitment,
-        to_commitments: &RekeyFactorCommitment,
+        original: &ElGamal<G>,
+        from_commitments: &RekeyFactorCommitment<G>,
+        to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
@@ -244,10 +243,12 @@ impl VerifiableRekey2 {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rekey, rekey2};
+    use crate::elgamal::verifiable::{RekeyFactorCommitment, VerifiableRekey, VerifiableRekey2};
+    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

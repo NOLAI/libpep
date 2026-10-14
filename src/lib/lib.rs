@@ -37,7 +37,8 @@
 //!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
 //! - With the `verifiable` feature, [`elgamal::verifiable`] holds the primitives that emit
 //!   zero-knowledge proofs, [`verifier`] checks such proofs against factor commitments, and the
-//!   high-level layers gain verifiable counterparts of their operations.
+//!   high-level layers gain verifiable counterparts of their operations
+//!   ([`data::verifiable`]).
 //!
 //! ## Groups
 //!
@@ -45,9 +46,12 @@
 //! [`Group`](elgamal::arithmetic::Group) trait (the group API of RFC 9497). Every type that holds
 //! group material has a generic version with a `G: Group` parameter in a `generic` submodule
 //! next to it ([`data::simple::generic::Pseudonym`], [`keys::types::generic::SessionKeys`],
-//! [`transcryptor::types::generic::Transcryptor`], ...), and the name at the module level is an
-//! alias pinning [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented
-//! so far. Code that uses ristretto255 never needs the generic names.
+//! [`transcryptor::types::generic::Transcryptor`], [`elgamal::zkps::generic::Proof`], ...), and
+//! the name at the module level is an alias pinning
+//! [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented so far. Code
+//! that uses ristretto255 never needs the generic names. The one exception is
+//! [`elgamal::verifiable::rfc`], the wire layouts of the draft's verifiable mode, which are
+//! specified for ristretto255.
 //!
 //! ## Feature flags
 //!
