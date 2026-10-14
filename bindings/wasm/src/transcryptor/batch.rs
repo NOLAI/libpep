@@ -1,6 +1,5 @@
 //! WASM bindings for batch transcryption operations.
 
-use crate::data::json::WASMEncryptedPepJsonValue;
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::records::WASMEncryptedRecord;
@@ -288,37 +287,5 @@ pub fn wasm_transcrypt_long_record_batch(
                 .map(WASMLongEncryptedRecord::from)
                 .collect()
         })
-        .map_err(|e| e.to_string())
-}
-
-#[cfg(feature = "elgamal3")]
-/// Batch transcrypt encrypted JSON values.
-#[cfg(feature = "json")]
-#[wasm_bindgen(js_name = transcryptJSONBatch)]
-pub fn wasm_transcrypt_json_batch(
-    encrypted: Vec<WASMEncryptedPepJsonValue>,
-    info: &WASMTranscryptionInfo,
-) -> Result<Vec<WASMEncryptedPepJsonValue>, String> {
-    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    let mut rng = rand::rng();
-    transcrypt_batch(&mut rust_enc, &info.0, &mut rng)
-        .map(|result| result.into_iter().map(WASMEncryptedPepJsonValue).collect())
-        .map_err(|e| e.to_string())
-}
-
-#[cfg(not(feature = "elgamal3"))]
-/// Batch transcrypt encrypted JSON values.
-#[cfg(feature = "json")]
-#[wasm_bindgen(js_name = transcryptJSONBatch)]
-pub fn wasm_transcrypt_json_batch(
-    encrypted: Vec<WASMEncryptedPepJsonValue>,
-    info: &WASMTranscryptionInfo,
-    public_key: &WASMSessionPublicKeys,
-) -> Result<Vec<WASMEncryptedPepJsonValue>, String> {
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
-    let mut rust_enc: Vec<_> = encrypted.iter().map(|e| e.0.clone()).collect();
-    let mut rng = rand::rng();
-    transcrypt_batch(&mut rust_enc, &info.0, &pk, &mut rng)
-        .map(|result| result.into_iter().map(WASMEncryptedPepJsonValue).collect())
         .map_err(|e| e.to_string())
 }

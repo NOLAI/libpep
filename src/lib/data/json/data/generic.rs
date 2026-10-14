@@ -5,7 +5,6 @@ use crate::data::json::data::JsonError;
 #[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 use crate::data::json::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
-#[cfg(feature = "long")]
 use crate::data::long::generic::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
@@ -23,7 +22,6 @@ use crate::keys::types::generic::GlobalPublicKeys;
 use crate::keys::types::generic::GlobalSecretKeys;
 use crate::keys::types::generic::{SessionKeys, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -73,9 +71,9 @@ pub enum PepJsonValue<G: InvertibleEncoding> {
 ///
 /// Call `.decrypt()` to convert this back into a `PepJsonValue`, and `to_value` on that for
 /// the `serde_json::Value`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "data"))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(bound = "")]
+#[serde(tag = "type", content = "data")]
 pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
     /// JSON `null`, kept in the clear.
     Null,
@@ -266,7 +264,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             (Self::String(attr), JsonStructure::String(1)) => Ok(Self::String(*attr)),
 
             // Short string needs to be expanded to long string
-            #[cfg(feature = "long")]
             (Self::String(attr), JsonStructure::String(target_blocks)) if *target_blocks > 1 => {
                 // Convert to LongAttribute with 1 block, then pad
                 let long_attr = LongAttribute::from(vec![*attr]);
@@ -275,7 +272,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             }
 
             // Long string normalization
-            #[cfg(feature = "long")]
             (Self::LongString(long_attr), JsonStructure::String(target_blocks)) => {
                 let padded = long_attr.pad_to(*target_blocks)?;
                 Ok(Self::LongString(padded))
@@ -285,7 +281,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(1)) => Ok(Self::Pseudonym(*pseudo)),
 
             // Short pseudonym needs to be expanded to long pseudonym
-            #[cfg(feature = "long")]
             (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(target_blocks))
                 if *target_blocks > 1 =>
             {
@@ -296,7 +291,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             }
 
             // Long pseudonym normalization
-            #[cfg(feature = "long")]
             (Self::LongPseudonym(long_pseudo), JsonStructure::Pseudonym(target_blocks)) => {
                 let padded = long_pseudo.pad_to(*target_blocks)?;
                 Ok(Self::LongPseudonym(padded))
@@ -385,10 +379,8 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             Self::Bool(_) => JsonStructure::Bool,
             Self::Number(_) => JsonStructure::Number,
             Self::String(_) => JsonStructure::String(1),
-            #[cfg(feature = "long")]
             Self::LongString(long_attr) => JsonStructure::String(long_attr.len()),
             Self::Pseudonym(_) => JsonStructure::Pseudonym(1),
-            #[cfg(feature = "long")]
             Self::LongPseudonym(long_pseudo) => JsonStructure::Pseudonym(long_pseudo.len()),
             Self::Array(arr) => JsonStructure::Array(arr.iter().map(|v| v.structure()).collect()),
             Self::Object(obj) => JsonStructure::Object(

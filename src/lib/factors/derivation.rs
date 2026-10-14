@@ -24,6 +24,11 @@
 
 pub mod generic;
 
+/// Secrets, domains and contexts must be shorter than this many bytes: the derivation
+/// length-prefixes them with two bytes. Callers that take them from untrusted input check the
+/// length first; the derivation panics past it.
+pub const MAX_INPUT_LENGTH: usize = 1 << 16;
+
 use super::secrets::{EncryptionSecret, PseudonymizationSecret};
 use super::types::*;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};

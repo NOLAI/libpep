@@ -8,13 +8,14 @@
 //! The transcryption commands take `--prove` to also produce a proof of the operation; the
 //! `verify-*` commands check such a proof, see [`crate::verifiable`].
 
+use crate::factors::{AttributeTransitionArgs, TransitionArgs};
 use crate::io::{self, Output, Result};
 use crate::verifiable::{self, VerifyPseudonymizeArgs, VerifyRekeyArgs};
 use clap::{Args, Subcommand};
 use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use libpep::data::padding::PaddingError;
+use libpep::data::padding::{Padded, PaddingError};
 use libpep::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
@@ -27,7 +28,7 @@ use libpep::errors::ParseError;
 use libpep::factors::commitments::VerifiableRekeyCommitment;
 use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor, TranscryptionInfo,
+    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor,
 };
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
@@ -40,8 +41,6 @@ use rand_core::{CryptoRng, Rng};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-/// The largest identifier that fits one block through the lizard encoding.
-const LIZARD_BYTES: usize = 16;
 /// The length of one block (a group element) in hex digits.
 const HEX_BLOCK: usize = 64;
 
@@ -49,7 +48,7 @@ const HEX_BLOCK: usize = 64;
 pub enum PseudonymCommand {
     /// A random pseudonym.
     Random,
-    /// Encode an identifier as a pseudonym; identifiers over 16 bytes become long pseudonyms.
+    /// Encode an identifier as a pseudonym; identifiers over 15 bytes become long pseudonyms.
     Encode(EncodeArgs),
     /// Decode a pseudonym back to the identifier it encodes.
     Decode(DecodeArgs),
@@ -78,7 +77,7 @@ pub enum PseudonymCommand {
 pub enum AttributeCommand {
     /// A random attribute.
     Random,
-    /// Encode a value as an attribute; values over 16 bytes become long attributes.
+    /// Encode a value as an attribute; values over 15 bytes become long attributes.
     Encode(EncodeArgs),
     /// Decode an attribute back to the value it encodes.
     Decode(DecodeArgs),
@@ -92,7 +91,7 @@ pub enum AttributeCommand {
     Rekey(RekeyArgs),
     /// Transcrypt an encrypted attribute from one session to another, as a transcryptor with the
     /// given secret.
-    Transcrypt(TranscryptArgs),
+    Transcrypt(AttributeTranscryptArgs),
     /// Verify the proof of a rekeying or transcryption against the transcryptor's commitment and
     /// output the rekeyed ciphertext.
     VerifyRekey(VerifyRekeyArgs),
@@ -194,24 +193,25 @@ pub struct TranscryptArgs {
     #[cfg(not(feature = "elgamal3"))]
     #[arg(long)]
     key: String,
-    /// The transcryptor's pseudonymization secret (pseudonyms only).
+    #[command(flatten)]
+    transition: TransitionArgs,
+    /// Also output a proof of the operation, to be verified against the transcryptor's
+    /// commitments.
     #[arg(long)]
-    pseudonymization_secret: Option<String>,
-    /// The transcryptor's encryption secret.
+    prove: bool,
+    /// The ciphertext (base64), or the `|`-separated blocks of a long one.
+    #[arg(allow_hyphen_values = true)]
+    ciphertext: String,
+}
+
+#[derive(Args)]
+pub struct AttributeTranscryptArgs {
+    /// The public key the ciphertext is encrypted under (hex).
+    #[cfg(not(feature = "elgamal3"))]
     #[arg(long)]
-    encryption_secret: String,
-    /// The pseudonymization domain the data comes from (pseudonyms only).
-    #[arg(long)]
-    from_domain: Option<String>,
-    /// The pseudonymization domain the data goes to (pseudonyms only).
-    #[arg(long)]
-    to_domain: Option<String>,
-    /// The encryption context the data comes from; omit for the global context.
-    #[arg(long)]
-    from_context: Option<String>,
-    /// The encryption context the data goes to; omit for the global context.
-    #[arg(long)]
-    to_context: Option<String>,
+    key: String,
+    #[command(flatten)]
+    transition: AttributeTransitionArgs,
     /// Also output a proof of the operation, to be verified against the transcryptor's
     /// commitments.
     #[arg(long)]
@@ -225,6 +225,7 @@ pub struct TranscryptArgs {
 /// encrypted types prove their rekeying with a proof that is printed and parsed as JSON.
 pub trait Kind {
     type Plain: ElGamalEncryptable
+        + Padded
         + Encryptable<
             Group = Ristretto255,
             EncryptedType = Self::Enc,
@@ -453,36 +454,30 @@ impl<K: Kind> Cipher<K> {
     }
 }
 
+/// Encode text the way the library, the JSON documents and the bindings do: PKCS#7-padded into
+/// one block when it fits (up to 15 bytes), else into a long value.
 fn encode<K: Kind>(args: EncodeArgs, out: &mut Output) -> Result<()> {
     let text = io::read_arg(&args.text)?;
-    let bytes = text.as_bytes();
-    if bytes.len() <= LIZARD_BYTES {
-        let mut padded = [0u8; LIZARD_BYTES];
-        padded[..bytes.len()].copy_from_slice(bytes);
-        out.value("value", K::Plain::from_lizard(&padded).to_hex());
-    } else {
-        let long = K::long_from_text(&text);
-        out.note(&format!(
-            "The value is longer than {LIZARD_BYTES} bytes and is encoded as a long value with PKCS#7 padding. \
-             The number of blocks is visible, and blocks can reveal subgroups."
-        ));
-        out.value("value", K::long_to_hex(&long));
+    match K::Plain::from_string_padded(&text) {
+        Ok(value) => out.value("value", value.to_hex()),
+        Err(_) => {
+            let long = K::long_from_text(&text);
+            out.note(
+                "The value is longer than 15 bytes and is encoded as a long value with PKCS#7 padding. \
+                 The number of blocks is visible, and blocks can reveal subgroups.",
+            );
+            out.value("value", K::long_to_hex(&long));
+        }
     }
     Ok(())
 }
 
 fn decode<K: Kind>(args: DecodeArgs, out: &mut Output) -> Result<()> {
     let text = match Value::<K>::parse(&args.value)? {
-        Value::<K>::Short(v) => {
-            let bytes = v
-                .to_lizard()
-                .ok_or_else(|| io::Error::input("the value does not encode an identifier"))?;
-            let end = bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
-            String::from_utf8_lossy(&bytes[..end]).into_owned()
-        }
-        Value::<K>::Long(v) => K::long_to_text(&v)
-            .map_err(|e| io::Error::input(format!("the value does not encode text: {e}")))?,
-    };
+        Value::<K>::Short(v) => v.to_string_padded(),
+        Value::<K>::Long(v) => K::long_to_text(&v),
+    }
+    .map_err(|e| io::Error::input(format!("the value does not encode text: {e}")))?;
     out.value("text", text);
     Ok(())
 }
@@ -655,28 +650,7 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
-    let missing =
-        |what: &str| io::Error::input(format!("--{what} is required to transcrypt a pseudonym"));
-    let info = TranscryptionInfo::new(
-        &io::domain(
-            args.from_domain
-                .as_deref()
-                .ok_or_else(|| missing("from-domain"))?,
-        )?,
-        &io::domain(
-            args.to_domain
-                .as_deref()
-                .ok_or_else(|| missing("to-domain"))?,
-        )?,
-        &io::context(args.from_context.as_deref())?,
-        &io::context(args.to_context.as_deref())?,
-        &io::pseudonymization_secret(
-            args.pseudonymization_secret
-                .as_deref()
-                .ok_or_else(|| missing("pseudonymization-secret"))?,
-        )?,
-        &io::encryption_secret(&args.encryption_secret)?,
-    );
+    let info = args.transition.info()?;
     pseudonymize_with(
         &info.pseudonym,
         #[cfg(not(feature = "elgamal3"))]
@@ -689,23 +663,11 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
 }
 
 fn transcrypt_attribute<R: Rng + CryptoRng>(
-    args: TranscryptArgs,
+    args: AttributeTranscryptArgs,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
-    if args.pseudonymization_secret.is_some()
-        || args.from_domain.is_some()
-        || args.to_domain.is_some()
-    {
-        out.note(
-            "Attributes are not reshuffled; the pseudonymization secret and domains are ignored.",
-        );
-    }
-    let info = AttributeRekeyInfo::new(
-        &io::context(args.from_context.as_deref())?,
-        &io::context(args.to_context.as_deref())?,
-        &io::encryption_secret(&args.encryption_secret)?,
-    );
+    let info = args.transition.info()?;
     let cipher = Cipher::<AttributeKind>::parse(&args.ciphertext)?;
     #[cfg(not(feature = "elgamal3"))]
     let key: AttributeSessionPublicKey = io::public_key(&args.key, "public key")?;

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - '**'
+  pull_request:
 
 jobs:
   semver-checks:
@@ -26,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Core crate (default features: long, offline, batch, serde, json, build-binary)
+          # Core crate (default features: long, offline, batch, batch-pk, serde, json, verifiable, build-binary)
           - package: "libpep"
             features: ""
             name: "libpep default"
@@ -37,14 +38,11 @@ jobs:
             features: "legacy"
             name: "libpep default+legacy"
           - package: "libpep"
-            features: "verifiable"
-            name: "libpep default+verifiable"
-          - package: "libpep"
-            features: "verifiable,elgamal3"
-            name: "libpep default+verifiable+elgamal3"
-          - package: "libpep"
             features: "insecure"
             name: "libpep default+insecure"
+          - package: "libpep"
+            features: "insecure,verifiable-derivation"
+            name: "libpep default+verifiable-derivation"
           # Without default features (feature gating)
           - package: "libpep"
             features: ""
@@ -106,6 +104,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.88.0
         with:
           targets: wasm32-unknown-unknown
+      - run: cargo check -p libpep --all-targets
+      - run: cargo check -p libpep --all-targets --features "insecure,verifiable-derivation"
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
       - run: cargo check -p libpep-py
       - run: cargo check -p libpep-wasm
@@ -136,14 +136,11 @@ jobs:
             features: "legacy"
             name: "libpep default+legacy"
           - package: "libpep"
-            features: "verifiable"
-            name: "libpep default+verifiable"
-          - package: "libpep"
-            features: "verifiable,elgamal3"
-            name: "libpep default+verifiable+elgamal3"
-          - package: "libpep"
             features: "insecure"
             name: "libpep default+insecure"
+          - package: "libpep"
+            features: "insecure,verifiable-derivation"
+            name: "libpep default+verifiable-derivation"
           - package: "libpep-py"
             features: ""
             name: "libpep-py default"
@@ -163,6 +160,8 @@ jobs:
 
       - run: cargo test -p ${{ matrix.package }} --features "${{ matrix.features }}"
       - run: cargo doc -p ${{ matrix.package }} --no-deps --features "${{ matrix.features }}"
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   test-python:
     runs-on: ubuntu-latest
@@ -199,7 +198,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24.x'
-      - run: cargo install wasm-pack
+      - uses: taiki-e/install-action@wasm-pack
       - run: npm install
         working-directory: bindings/wasm
       - name: Build and test WASM package

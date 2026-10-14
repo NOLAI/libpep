@@ -3,6 +3,7 @@
 //! Session keys are given as the JSON object that `peppy keys session derive --json` prints,
 //! typically via `--keys @session.json`.
 
+use crate::factors::TransitionArgs;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
 use libpep::data::json::{EncryptedPepJsonValue, PepJsonBuilder};
@@ -12,7 +13,6 @@ use libpep::data::verifiable::traits::{VerifiableTranscryptable, VerifiableTrans
 use libpep::factors::commitments::VerifiableTranscryptionCommitment;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::factors::RekeyPublicKey;
-use libpep::factors::TranscryptionInfo;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::SessionPublicKeys;
 use libpep::keys::{GlobalPublicKeys, SessionKeys};
@@ -51,24 +51,8 @@ pub enum Json {
         #[cfg(not(feature = "elgamal3"))]
         #[arg(long)]
         keys: String,
-        /// The transcryptor's pseudonymization secret.
-        #[arg(long)]
-        pseudonymization_secret: String,
-        /// The transcryptor's encryption secret.
-        #[arg(long)]
-        encryption_secret: String,
-        /// The pseudonymization domain the data comes from.
-        #[arg(long)]
-        from_domain: String,
-        /// The pseudonymization domain the data goes to.
-        #[arg(long)]
-        to_domain: String,
-        /// The encryption context the data comes from; omit for the global context.
-        #[arg(long)]
-        from_context: Option<String>,
-        /// The encryption context the data goes to; omit for the global context.
-        #[arg(long)]
-        to_context: Option<String>,
+        #[command(flatten)]
+        transition: TransitionArgs,
         /// Also output a proof of the transcryption, to be verified against the transcryptor's
         /// commitments.
         #[arg(long)]
@@ -176,23 +160,11 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
         Json::Transcrypt {
             #[cfg(not(feature = "elgamal3"))]
             keys,
-            pseudonymization_secret,
-            encryption_secret,
-            from_domain,
-            to_domain,
-            from_context,
-            to_context,
+            transition,
             prove,
             value,
         } => {
-            let info = TranscryptionInfo::new(
-                &io::domain(&from_domain)?,
-                &io::domain(&to_domain)?,
-                &io::context(from_context.as_deref())?,
-                &io::context(to_context.as_deref())?,
-                &io::pseudonymization_secret(&pseudonymization_secret)?,
-                &io::encryption_secret(&encryption_secret)?,
-            );
+            let info = transition.info()?;
             let encrypted = encrypted_document(&value)?;
             #[cfg(not(feature = "elgamal3"))]
             let keys: SessionPublicKeys = public_keys_json(&keys)?;

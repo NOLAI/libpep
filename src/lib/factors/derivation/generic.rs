@@ -94,8 +94,8 @@ pub fn make_pseudonymization_factor<G: Group>(
 ///
 /// # Panics
 ///
-/// Panics if `secret` or `id` is 2^16 bytes or longer; the derivation input length-prefixes
-/// both with two bytes.
+/// Panics if `secret` or `id` is [`MAX_INPUT_LENGTH`](super::MAX_INPUT_LENGTH) bytes or
+/// longer; the derivation input length-prefixes both with two bytes.
 #[cfg(not(feature = "legacy"))]
 pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G::Scalar {
     let secret_len = u16::try_from(secret.len()).ok();

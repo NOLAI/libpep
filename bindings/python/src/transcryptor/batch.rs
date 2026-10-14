@@ -15,6 +15,30 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
+/// Extract every item of a list as one type: `None` when the first item is not of that type
+/// (so that another type can be tried), a `TypeError` when a later item is not.
+macro_rules! extract_all {
+    ($items:expr, $t:ty) => {{
+        let items: &[Bound<PyAny>] = &$items;
+        match items.first() {
+            Some(first) if first.extract::<$t>().is_err() => None,
+            _ => Some(
+                items
+                    .iter()
+                    .enumerate()
+                    .map(|(i, item)| {
+                        item.extract::<$t>().map_err(|_| {
+                            PyTypeError::new_err(format!(
+                                "item {i} is not of the same type as item 0"
+                            ))
+                        })
+                    })
+                    .collect::<PyResult<Vec<$t>>>()?,
+            ),
+        }
+    }};
+}
+
 /// Polymorphic batch pseudonymization.
 /// Accepts a mutable list of encrypted pseudonyms and pseudonymization info.
 #[pyfunction]
@@ -96,15 +120,8 @@ pub fn py_rekey_batch(
 
     // Try EncryptedPseudonym with PseudonymRekeyInfo
     if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-        if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
-                .iter()
-                .map(|e| {
-                    e.extract::<PyEncryptedPseudonym>()
-                        .expect("type already validated")
-                        .0
-                })
-                .collect();
+        if let Some(encs) = extract_all!(encrypted, PyEncryptedPseudonym) {
+            let mut rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
             let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
@@ -146,15 +163,8 @@ pub fn py_rekey_batch(
 
     // Try EncryptedAttribute with AttributeRekeyInfo
     if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-        if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
-                .iter()
-                .map(|e| {
-                    e.extract::<PyEncryptedAttribute>()
-                        .expect("type already validated")
-                        .0
-                })
-                .collect();
+        if let Some(encs) = extract_all!(encrypted, PyEncryptedAttribute) {
+            let mut rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
             let rust_info = AttributeRekeyInfo::from(&info);
             let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
@@ -220,15 +230,8 @@ pub fn py_transcrypt_batch(
     let transcryption_info = TranscryptionInfo::from(info);
 
     // Try EncryptedPseudonym
-    if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
-            .iter()
-            .map(|e| {
-                e.extract::<PyEncryptedPseudonym>()
-                    .expect("type already validated")
-                    .0
-            })
-            .collect();
+    if let Some(encs) = extract_all!(encrypted, PyEncryptedPseudonym) {
+        let mut rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
@@ -242,15 +245,8 @@ pub fn py_transcrypt_batch(
     }
 
     // Try EncryptedAttribute
-    if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
-            .iter()
-            .map(|e| {
-                e.extract::<PyEncryptedAttribute>()
-                    .expect("type already validated")
-                    .0
-            })
-            .collect();
+    if let Some(encs) = extract_all!(encrypted, PyEncryptedAttribute) {
+        let mut rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
         let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::attribute, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result

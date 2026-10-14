@@ -382,7 +382,7 @@ fn n_pep_batch_distributed_verifiable() {
         if let Some((pre, pre_pk, proof, commitments)) = prev.as_ref() {
             #[cfg(not(feature = "elgamal3"))]
             let reconstructed = proof
-                .verified_reconstruct_batch(pre, pre_pk, &current.public_key, commitments)
+                .verified_reconstruct_batch(pre, pre_pk, current.public_key(), commitments)
                 .expect("verification of previous step should succeed");
             #[cfg(feature = "elgamal3")]
             let reconstructed = proof
@@ -397,7 +397,7 @@ fn n_pep_batch_distributed_verifiable() {
         // transcryption. We save a *clone* of the pre-batch (originals) and its
         // pk so the next iteration can verify against them.
         let pre_batch = current.clone();
-        let pre_pk = current.public_key;
+        let pre_pk = *current.public_key();
         let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
         let commitments =
             system.pseudonymization_commitment(&domain_a, &domain_b, &session_a, &session_b);
@@ -410,7 +410,7 @@ fn n_pep_batch_distributed_verifiable() {
     let (pre, pre_pk, proof, commitments) = prev.expect("at least one transcryption step");
     #[cfg(not(feature = "elgamal3"))]
     let verified_batch = proof
-        .verified_reconstruct_batch(&pre, &pre_pk, &current.public_key, &commitments)
+        .verified_reconstruct_batch(&pre, &pre_pk, current.public_key(), &commitments)
         .expect("final verification should succeed");
     #[cfg(feature = "elgamal3")]
     let verified_batch = proof

@@ -269,7 +269,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn serde_roundtrip() {
         let mut rng = rand::rng();
@@ -402,7 +401,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_short_string_to_long() {
         use super::super::structure::JsonStructure;
 
@@ -424,7 +422,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_long_string_adds_padding() {
         use super::super::structure::JsonStructure;
 
@@ -455,7 +452,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_strings_different_sizes_encrypt_decrypt() {
         let mut rng = rand::rng();
         let keys = make_test_keys();
@@ -527,7 +523,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_pseudonyms_different_sizes() {
         use super::super::structure::JsonStructure;
         use crate::pep_json;
@@ -591,7 +586,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_nested_objects_different_string_sizes() {
         let mut rng = rand::rng();
         let keys = make_test_keys();
@@ -661,7 +655,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_errors_when_size_exceeds_target() {
         use super::super::structure::JsonStructure;
 
@@ -689,7 +682,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "long")]
     fn normalize_errors_on_structure_mismatch() {
         use super::super::structure::JsonStructure;
 

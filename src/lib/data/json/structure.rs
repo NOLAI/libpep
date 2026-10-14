@@ -3,7 +3,6 @@
 use super::data::generic::EncryptedPepJsonValue;
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use thiserror::Error;
@@ -32,8 +31,7 @@ pub enum UnifyError {
 ///
 /// For `String` and `Pseudonym` variants, the number of blocks is included to allow
 /// comparing structures of values with different string lengths.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JsonStructure {
     /// JSON `null`.
     Null,
@@ -399,7 +397,6 @@ mod tests {
     }
 
     /// Example showing what JsonStructure looks like when serialized
-    #[cfg(feature = "serde")]
     #[test]
     fn structure_serialization() {
         let mut rng = rand::rng();

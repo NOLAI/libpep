@@ -539,7 +539,7 @@ impl WASMDistributedTranscryptor {
     ///
     /// A transcrypted EncryptedPepJsonValue
     #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -562,7 +562,7 @@ impl WASMDistributedTranscryptor {
     ///
     /// A transcrypted EncryptedPepJsonValue
     #[cfg(all(feature = "json", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -574,7 +574,7 @@ impl WASMDistributedTranscryptor {
     }
 
     #[cfg(all(feature = "json", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -590,7 +590,7 @@ impl WASMDistributedTranscryptor {
     #[cfg(feature = "elgamal3")]
     /// Transcrypt a batch of EncryptedPepJsonValues and shuffle their order.
     #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = transcryptJSONBatch)]
+    #[wasm_bindgen(js_name = transcryptJsonBatch)]
     pub fn transcrypt_json_batch(
         &self,
         values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,
@@ -609,7 +609,7 @@ impl WASMDistributedTranscryptor {
     }
 
     #[cfg(all(feature = "json", feature = "batch", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = transcryptJSONBatch)]
+    #[wasm_bindgen(js_name = transcryptJsonBatch)]
     pub fn transcrypt_json_batch(
         &self,
         values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,

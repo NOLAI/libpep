@@ -4,7 +4,6 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 use crate::data::json::data::generic::PepJsonValue;
-#[cfg(feature = "long")]
 use crate::data::long::generic::LongPseudonym;
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
@@ -111,7 +110,7 @@ impl<G: InvertibleEncoding> PepJsonBuilder<G> {
         use crate::data::simple::generic::Pseudonym;
         use crate::data::simple::ElGamalEncryptable;
 
-        if hex.is_empty() || hex.len() % 64 != 0 {
+        if hex.is_empty() || !hex.len().is_multiple_of(64) {
             return None;
         }
         let blocks = hex

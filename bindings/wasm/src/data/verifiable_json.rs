@@ -202,7 +202,7 @@ impl WASMVerifier {
     /// Verify a JSON transcryption proof, returning the reconstructed
     /// encrypted JSON value on success.
     #[cfg(feature = "elgamal3")]
-    #[wasm_bindgen(js_name = verifyJSONTranscryption)]
+    #[wasm_bindgen(js_name = verifyJsonTranscryption)]
     pub fn verify_json_transcryption(
         &self,
         original: &WASMEncryptedPepJsonValue,
@@ -216,7 +216,7 @@ impl WASMVerifier {
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = verifyJSONTranscryption)]
+    #[wasm_bindgen(js_name = verifyJsonTranscryption)]
     pub fn verify_json_transcryption(
         &self,
         original: &WASMEncryptedPepJsonValue,

@@ -325,6 +325,55 @@ impl<G: Group> Verifier<G> {
         Ok(())
     }
 
+    /// The registered commitments of a pseudonymization transition.
+    pub fn pseudonymization_commitments(
+        &self,
+        transcryptor_id: &str,
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> Option<&VerifiablePseudonymizationCommitment<G>> {
+        let key: PseudonymizationKey = (
+            transcryptor_id.to_string(),
+            domain_from.clone(),
+            domain_to.clone(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonymization_cache.retrieve(&key)
+    }
+
+    /// The registered commitment of a pseudonym rekey transition.
+    pub fn pseudonym_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> Option<&VerifiableRekeyCommitment<G>> {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.pseudonym_rekey_cache.retrieve(&key)
+    }
+
+    /// The registered commitment of an attribute rekey transition.
+    pub fn attribute_rekey_commitments(
+        &self,
+        transcryptor_id: &str,
+        context_from: &EncryptionContext,
+        context_to: &EncryptionContext,
+    ) -> Option<&VerifiableRekeyCommitment<G>> {
+        let key: RekeyTransitionKey = (
+            transcryptor_id.to_string(),
+            context_from.clone(),
+            context_to.clone(),
+        );
+        self.attribute_rekey_cache.retrieve(&key)
+    }
+
     /// Whether commitments are registered for a pseudonymization transition.
     pub fn has_pseudonymization_commitments(
         &self,
