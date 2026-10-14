@@ -1,4 +1,5 @@
-//! Verifiable factor derivation using Carter-Wegman universal hashing.
+//! Verifiable factor derivation using Carter-Wegman universal hashing: the alternative of
+//! Section 3.3.1 of the paper, not the preferred scheme (see [Security](#security)).
 //!
 //! Factor commitments are publicly computable from master public keys, so
 //! the transcryptor does not need to publish a per-domain / per-session
@@ -25,7 +26,8 @@
 //! holds for the values the factors multiply: two pseudonyms of one subject in known domains
 //! give that subject's pseudonym in every domain, and two session keys give every session key.
 //! The commitment scheme of [`crate::factors::commitments`] with the default derivation has no
-//! such structure; choose this derivation only where that trade-off is acceptable.
+//! such structure and is the preferred scheme; choose this derivation only where commitment
+//! storage is the binding constraint and that trade-off is acceptable.
 //!
 
 //! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
