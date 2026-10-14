@@ -81,6 +81,9 @@ jobs:
           - package: "libpep-wasm"
             features: "insecure"
             name: "libpep-wasm default+insecure"
+          - package: "libpep-wasm"
+            features: "insecure,verifiable-derivation"
+            name: "libpep-wasm default+verifiable-derivation"
     name: cargo clippy (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v7

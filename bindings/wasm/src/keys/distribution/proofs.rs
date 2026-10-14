@@ -11,8 +11,8 @@ use crate::errors::malformed_proof_err;
 use crate::keys::distribution::shares::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
 };
-use crate::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
 use derive_more::{From, Into};
+use libpep::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
 use wasm_bindgen::prelude::*;
 
 /// Public commitment `B_i = b_i · G` to a per-transcryptor blinding factor.
