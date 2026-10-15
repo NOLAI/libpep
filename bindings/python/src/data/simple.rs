@@ -4,6 +4,10 @@ use crate::macros::{py_encrypted_impl, py_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;
 use libpep::data::simple::*;
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::simple::{
+    AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -34,7 +38,30 @@ py_encrypted_impl!(PyEncryptedPseudonym wraps EncryptedPseudonym as "EncryptedPs
 pub struct PyEncryptedAttribute(pub(crate) EncryptedAttribute);
 py_encrypted_impl!(PyEncryptedAttribute wraps EncryptedAttribute as "EncryptedAttribute");
 
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable pseudonymization of an `EncryptedPseudonym`.
+    PyPseudonymPseudonymizationProof(PseudonymPseudonymizationProof)
+        as "PseudonymPseudonymizationProof"
+);
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable rekeying of an `EncryptedPseudonym`.
+    PyPseudonymRekeyProof(PseudonymRekeyProof) as "PseudonymRekeyProof"
+);
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable rekeying of an `EncryptedAttribute`.
+    PyAttributeRekeyProof(AttributeRekeyProof) as "AttributeRekeyProof"
+);
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    #[cfg(feature = "verifiable")]
+    {
+        m.add_class::<PyPseudonymPseudonymizationProof>()?;
+        m.add_class::<PyPseudonymRekeyProof>()?;
+        m.add_class::<PyAttributeRekeyProof>()?;
+    }
     m.add_class::<PyPseudonym>()?;
     m.add_class::<PyAttribute>()?;
     m.add_class::<PyEncryptedPseudonym>()?;

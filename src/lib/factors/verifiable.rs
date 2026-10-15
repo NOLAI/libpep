@@ -54,6 +54,7 @@ mod tests {
     use crate::contexts::{EncryptionContext, PseudonymizationDomain};
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::arithmetic::Ristretto255;
+    use crate::factors::Factor;
 
     #[test]
     fn test_master_pseudonymization_key_derivation() {
@@ -64,7 +65,7 @@ mod tests {
         let factor = secret.derive_reshuffle_factor(&domain);
         let commitment = public.compute_reshuffle_commitment(&domain);
         // The commitment computed from the public key must equal s_d·G.
-        assert_eq!(commitment, factor * G);
+        assert_eq!(commitment.point(), factor.scalar() * G);
     }
 
     #[test]
@@ -75,7 +76,7 @@ mod tests {
         let context = EncryptionContext::from("test_session");
         let factor = secret.derive_pseudonym_rekey_factor(&context);
         let commitment = public.compute_pseudonym_rekey_commitment(&context);
-        assert_eq!(commitment, factor * G);
+        assert_eq!(commitment.point(), factor.scalar() * G);
     }
 
     #[test]

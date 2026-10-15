@@ -115,33 +115,9 @@ impl<G: Group> VerifiableRSKBatch<G> {
             .all(|(inner, o)| inner.verify(o, &self.gt, reshuffle_commitment, rekey_commitment))
     }
 
-    /// Verify the per-factor block and every inner against `originals`,
-    /// returning the reconstructed RSK'd ciphertexts.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal<G>],
-        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
-        rekey_commitment: &RekeyFactorCommitment<G>,
-    ) -> Option<Vec<ElGamal<G>>> {
-        if !self.verify_factor(reshuffle_commitment, rekey_commitment) {
-            return None;
-        }
-        if originals.len() != self.inners.len() {
-            return None;
-        }
-        self.inners
-            .iter()
-            .zip(originals.iter())
-            .map(|(inner, o)| {
-                inner.verified_reconstruct(o, &self.gt, reshuffle_commitment, rekey_commitment)
-            })
-            .collect()
-    }
-
-    /// Reconstruct the RSK'd ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, _originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
-        self.result()
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], reshuffle_commitment: &PseudonymizationFactorCommitment<G>, rekey_commitment: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, reshuffle_commitment, rekey_commitment);
+        unverified() = result();
     }
 }
 
@@ -277,35 +253,14 @@ impl<G: Group> VerifiableRSK2Batch<G> {
         )
     }
 
-    /// Verify all per-factor blocks and every inner against `originals`,
-    /// returning the reconstructed RSK-2'd ciphertexts.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal<G>],
-        s_from_commitments: &PseudonymizationFactorCommitment<G>,
-        s_to_commitments: &PseudonymizationFactorCommitment<G>,
-        k_from_commitments: &RekeyFactorCommitment<G>,
-        k_to_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<Vec<ElGamal<G>>> {
-        if !self.verify_factor(
-            s_from_commitments,
-            s_to_commitments,
-            k_from_commitments,
-            k_to_commitments,
-        ) {
-            return None;
-        }
-        self.inner.verified_reconstruct(
-            originals,
-            &self.combined_reshuffle_commitment(),
-            &self.combined_rekey_commitment(),
-        )
+    /// The RSK-2'd ciphertexts, **without verifying** the proof. Internal prover-side use only.
+    pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
+        self.inner.result()
     }
 
-    /// Reconstruct the RSK-2'd ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
-        self.inner.unverified_reconstruct(originals)
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], s_from_commitments: &PseudonymizationFactorCommitment<G>, s_to_commitments: &PseudonymizationFactorCommitment<G>, k_from_commitments: &RekeyFactorCommitment<G>, k_to_commitments: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, s_from_commitments, s_to_commitments, k_from_commitments, k_to_commitments);
+        unverified() = result();
     }
 }
 

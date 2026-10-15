@@ -24,6 +24,20 @@ pub struct ZeroArgumentError;
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ScalarNonZero(pub(crate) Scalar);
 
+/// Wiping a scalar leaves the zero value, which is not a valid `ScalarNonZero`: a wiped scalar
+/// must not be used again, only dropped.
+impl zeroize::Zeroize for ScalarNonZero {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl zeroize::Zeroize for ScalarCanBeZero {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
 impl ScalarNonZero {
     /// Always return a random non-zero scalar.
     #[must_use]

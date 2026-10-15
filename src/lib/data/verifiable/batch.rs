@@ -44,7 +44,32 @@ use std::marker::PhantomData;
 type PublicKeyOf<E> = <<E as Encrypted>::UnencryptedType as Encryptable>::PublicKeyType;
 
 /// An encrypted type whose ciphertexts can be laid out in one list for a batch proof, and
+/// rebuilt from such a list. Without `elgamal3`, its public key names the key its pseudonyms
+/// are rerandomized under ([`BatchPublicKey`]).
+#[cfg(not(feature = "elgamal3"))]
+pub trait VerifiableBatchItem:
+    Encrypted<UnencryptedType: Encryptable<PublicKeyType: BatchPublicKey<<Self as Encrypted>::Group>>>
+{
+    /// Append the pseudonym ciphertexts of this item to `pseudonyms` and the attribute
+    /// ciphertexts to `attributes`, in the order [`rebuild`](Self::rebuild) takes them.
+    fn flatten(
+        &self,
+        pseudonyms: &mut Vec<ElGamal<Self::Group>>,
+        attributes: &mut Vec<ElGamal<Self::Group>>,
+    );
+
+    /// Rebuild an item of the shape of `template` from the next ciphertexts of the iterators,
+    /// or `None` if they run out.
+    fn rebuild(
+        template: &Self,
+        pseudonyms: &mut impl Iterator<Item = ElGamal<Self::Group>>,
+        attributes: &mut impl Iterator<Item = ElGamal<Self::Group>>,
+    ) -> Option<Self>;
+}
+
+/// An encrypted type whose ciphertexts can be laid out in one list for a batch proof, and
 /// rebuilt from such a list.
+#[cfg(feature = "elgamal3")]
 pub trait VerifiableBatchItem: Encrypted {
     /// Append the pseudonym ciphertexts of this item to `pseudonyms` and the attribute
     /// ciphertexts to `attributes`, in the order [`rebuild`](Self::rebuild) takes them.
@@ -130,22 +155,8 @@ fn rebuild_own<E: VerifiableBatchItem>(
         .unwrap_or_else(|| unreachable!("the proof covers every ciphertext of the batch"))
 }
 
-/// The public key the pseudonyms of a batch are encrypted under, read from the ciphertexts.
-///
-/// Every verifiable batch proof folds one `gy` into its transcript. Picking the first item's
-/// key would let a prover mix ciphertexts under different keys into one batch and have only the
-/// first one checked, so the keys must all be equal. A batch without pseudonyms has no key to
-/// bind; its pseudonym proof is empty and the generator stands in.
 #[cfg(feature = "elgamal3")]
-fn batch_gy<G: Group>(pseudonyms: &[ElGamal<G>]) -> Option<G::Element> {
-    let Some(first) = pseudonyms.first() else {
-        return Some(G::generator());
-    };
-    pseudonyms
-        .iter()
-        .all(|c| c.gy == first.gy)
-        .then_some(first.gy)
-}
+use super::common_gy as batch_gy;
 
 /// Proof of a verifiable pseudonymization of a batch of `E`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -185,6 +196,65 @@ pub struct BatchTranscryptionProof<E: VerifiableBatchItem> {
     items: PhantomData<E>,
 }
 
+/// The key the pseudonyms of `original` were rerandomized under, given the key the verifier
+/// claims. With `batch-pk` the batch carries its key, and a claim that differs from it is
+/// refused instead of silently preferred.
+#[cfg(not(feature = "elgamal3"))]
+fn rerandomization_key<E: VerifiableBatchItem>(
+    original: &EncryptedBatch<E>,
+    claimed: &<E::Group as Group>::Element,
+) -> Option<<E::Group as Group>::Element> {
+    #[cfg(feature = "batch-pk")]
+    if original.public_key.pseudonym_element() != *claimed {
+        return None;
+    }
+    #[cfg(not(feature = "batch-pk"))]
+    let _ = original;
+    Some(*claimed)
+}
+
+impl<E: VerifiableBatchItem> BatchPseudonymizationProof<E> {
+    /// Verify against `items`, rerandomized under `gy`, and rebuild the result.
+    fn reconstruct_under(
+        &self,
+        items: &[E],
+        gy: &<E::Group as Group>::Element,
+        commitments: &VerifiablePseudonymizationCommitment<E::Group>,
+    ) -> Option<Vec<E>> {
+        let (pseudonyms, attributes) = flatten(items);
+        let news = self.0.verified_reconstruct(
+            &pseudonyms,
+            gy,
+            &commitments.reshuffle_commitment,
+            &commitments.rekey_commitment,
+        )?;
+        rebuild(items, news, attributes)
+    }
+}
+
+impl<E: VerifiableBatchItem> BatchTranscryptionProof<E> {
+    /// Verify against `items`, whose pseudonyms are rerandomized under `gy`, and rebuild the
+    /// result.
+    fn reconstruct_under(
+        &self,
+        items: &[E],
+        gy: &<E::Group as Group>::Element,
+        commitments: &VerifiableTranscryptionCommitment<E::Group>,
+    ) -> Option<Vec<E>> {
+        let (pseudonyms, attributes) = flatten(items);
+        let pseudonyms = self.pseudonyms.verified_reconstruct(
+            &pseudonyms,
+            gy,
+            &commitments.pseudonym.reshuffle_commitment,
+            &commitments.pseudonym.rekey_commitment,
+        )?;
+        let attributes = self
+            .attributes
+            .verified_reconstruct(&attributes, &commitments.attribute.commitment)?;
+        rebuild(items, pseudonyms, attributes)
+    }
+}
+
 impl<E: VerifiableBatchItem + Pseudonymizable> VerifiablePseudonymizationProof
     for BatchPseudonymizationProof<E>
 {
@@ -193,56 +263,16 @@ impl<E: VerifiableBatchItem + Pseudonymizable> VerifiablePseudonymizationProof
     type Output = Vec<E>;
 
     #[cfg(feature = "elgamal3")]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        commitments: &VerifiablePseudonymizationCommitment<E::Group>,
-    ) -> bool {
-        let (pseudonyms, _) = flatten(&original.items);
-        let Some(gy) = batch_gy(&pseudonyms) else {
-            return false;
-        };
-        self.0.verify(
-            &pseudonyms,
-            &gy,
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        public_key: &PseudonymSessionPublicKey<E::Group>,
-        commitments: &VerifiablePseudonymizationCommitment<E::Group>,
-    ) -> bool {
-        let (pseudonyms, _) = flatten(&original.items);
-        self.0.verify(
-            &pseudonyms,
-            public_key.value(),
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
-    }
-
-    #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<E::Group>,
     ) -> Option<Self::Output> {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        let gy = batch_gy(&pseudonyms)?;
-        let news = self.0.verified_reconstruct(
-            &pseudonyms,
-            &gy,
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )?;
-        rebuild(&original.items, news, attributes)
+        let gy = batch_gy(&flatten(&original.items).0)?;
+        self.reconstruct_under(&original.items, &gy, commitments)
     }
 
+    /// With `batch-pk`, `public_key` must be the key the batch carries.
     #[cfg(not(feature = "elgamal3"))]
     fn verified_reconstruct(
         &self,
@@ -250,14 +280,8 @@ impl<E: VerifiableBatchItem + Pseudonymizable> VerifiablePseudonymizationProof
         public_key: &PseudonymSessionPublicKey<E::Group>,
         commitments: &VerifiablePseudonymizationCommitment<E::Group>,
     ) -> Option<Self::Output> {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        let news = self.0.verified_reconstruct(
-            &pseudonyms,
-            public_key.value(),
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )?;
-        rebuild(&original.items, news, attributes)
+        let gy = rerandomization_key(original, public_key.value())?;
+        self.reconstruct_under(&original.items, &gy, commitments)
     }
 
     #[cfg(feature = "insecure")]
@@ -271,16 +295,6 @@ impl<E: VerifiableBatchItem + Rekeyable> VerifiableRekeyProof for BatchRekeyProo
     type Group = E::Group;
     type DataType = EncryptedBatch<E>;
     type Output = Vec<E>;
-
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        commitments: &VerifiableRekeyCommitment<E::Group>,
-    ) -> bool {
-        let (mut all, attributes) = flatten(&original.items);
-        all.extend(attributes);
-        self.0.verify(&all, &commitments.commitment)
-    }
 
     fn verified_reconstruct(
         &self,
@@ -316,63 +330,16 @@ impl<E: VerifiableBatchItem + Transcryptable> VerifiableTranscryptionProof
     type Output = Vec<E>;
 
     #[cfg(feature = "elgamal3")]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        commitments: &VerifiableTranscryptionCommitment<E::Group>,
-    ) -> bool {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        let Some(gy) = batch_gy(&pseudonyms) else {
-            return false;
-        };
-        self.pseudonyms.verify(
-            &pseudonyms,
-            &gy,
-            &commitments.pseudonym.reshuffle_commitment,
-            &commitments.pseudonym.rekey_commitment,
-        ) && self
-            .attributes
-            .verify(&attributes, &commitments.attribute.commitment)
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        public_key: &SessionPublicKeys<E::Group>,
-        commitments: &VerifiableTranscryptionCommitment<E::Group>,
-    ) -> bool {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        self.pseudonyms.verify(
-            &pseudonyms,
-            public_key.pseudonym.value(),
-            &commitments.pseudonym.reshuffle_commitment,
-            &commitments.pseudonym.rekey_commitment,
-        ) && self
-            .attributes
-            .verify(&attributes, &commitments.attribute.commitment)
-    }
-
-    #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableTranscryptionCommitment<E::Group>,
     ) -> Option<Self::Output> {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        let gy = batch_gy(&pseudonyms)?;
-        let pseudonyms = self.pseudonyms.verified_reconstruct(
-            &pseudonyms,
-            &gy,
-            &commitments.pseudonym.reshuffle_commitment,
-            &commitments.pseudonym.rekey_commitment,
-        )?;
-        let attributes = self
-            .attributes
-            .verified_reconstruct(&attributes, &commitments.attribute.commitment)?;
-        rebuild(&original.items, pseudonyms, attributes)
+        let gy = batch_gy(&flatten(&original.items).0)?;
+        self.reconstruct_under(&original.items, &gy, commitments)
     }
 
+    /// With `batch-pk`, `public_key` must be the key the batch carries.
     #[cfg(not(feature = "elgamal3"))]
     fn verified_reconstruct(
         &self,
@@ -380,17 +347,8 @@ impl<E: VerifiableBatchItem + Transcryptable> VerifiableTranscryptionProof
         public_key: &SessionPublicKeys<E::Group>,
         commitments: &VerifiableTranscryptionCommitment<E::Group>,
     ) -> Option<Self::Output> {
-        let (pseudonyms, attributes) = flatten(&original.items);
-        let pseudonyms = self.pseudonyms.verified_reconstruct(
-            &pseudonyms,
-            public_key.pseudonym.value(),
-            &commitments.pseudonym.reshuffle_commitment,
-            &commitments.pseudonym.rekey_commitment,
-        )?;
-        let attributes = self
-            .attributes
-            .verified_reconstruct(&attributes, &commitments.attribute.commitment)?;
-        rebuild(&original.items, pseudonyms, attributes)
+        let gy = rerandomization_key(original, public_key.pseudonym.value())?;
+        self.reconstruct_under(&original.items, &gy, commitments)
     }
 
     #[cfg(feature = "insecure")]
@@ -401,38 +359,51 @@ impl<E: VerifiableBatchItem + Transcryptable> VerifiableTranscryptionProof
     }
 }
 
-/// `verified_reconstruct` as a batch: the reconstructed items with the public key they are now
-/// encrypted under (with the `batch-pk` feature).
-macro_rules! verified_reconstruct_batch {
-    ($proof:ident, $bound:path, $commitment:ident $(, $key:ident: $key_ty:ty)?) => {
+// `verified_reconstruct` as a batch, the form to use for a whole batch: the key the pseudonyms
+// were rerandomized under comes from the batch itself (`batch-pk`), from the batch's own key
+// type (without `batch-pk`), or from the ciphertexts (`elgamal3`), so it is never given twice.
+
+/// The verified batch with the key it is encrypted under afterwards (`batch-pk`).
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+fn with_key<E: VerifiableBatchItem>(
+    items: Vec<E>,
+    public_key: &PublicKeyOf<E>,
+) -> EncryptedBatch<E> {
+    EncryptedBatch {
+        public_key: *public_key,
+        items,
+    }
+}
+
+macro_rules! verified_reconstruct_batch_rerandomized {
+    ($proof:ident, $bound:path, $commitment:ident) => {
         impl<E: VerifiableBatchItem + $bound> $proof<E> {
-            /// Verify the batch proof and return the resulting batch, or `None` if it does not
-            /// verify; `new_public_key` is the key the batch is encrypted under afterwards.
+            /// Verify the batch proof against the batch and the key it carries, and return the
+            /// resulting batch, or `None` if it does not verify; `new_public_key` is the key the
+            /// batch is encrypted under afterwards.
             #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
             pub fn verified_reconstruct_batch(
                 &self,
                 original: &EncryptedBatch<E>,
-                $($key: &$key_ty,)?
                 new_public_key: &PublicKeyOf<E>,
                 commitments: &$commitment<E::Group>,
             ) -> Option<EncryptedBatch<E>> {
-                let items = self.verified_reconstruct(original, $($key,)? commitments)?;
-                Some(EncryptedBatch {
-                    public_key: *new_public_key,
-                    items,
-                })
+                let gy = original.public_key.pseudonym_element();
+                let items = self.reconstruct_under(&original.items, &gy, commitments)?;
+                Some(with_key(items, new_public_key))
             }
 
             /// Verify the batch proof and return the resulting batch, or `None` if it does not
-            /// verify.
+            /// verify; `public_key` is the key the batch is encrypted under.
             #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
             pub fn verified_reconstruct_batch(
                 &self,
                 original: &EncryptedBatch<E>,
-                $($key: &$key_ty,)?
+                public_key: &PublicKeyOf<E>,
                 commitments: &$commitment<E::Group>,
             ) -> Option<EncryptedBatch<E>> {
-                let items = self.verified_reconstruct(original, $($key,)? commitments)?;
+                let gy = public_key.pseudonym_element();
+                let items = self.reconstruct_under(&original.items, &gy, commitments)?;
                 Some(EncryptedBatch { items })
             }
 
@@ -444,26 +415,50 @@ macro_rules! verified_reconstruct_batch {
                 original: &EncryptedBatch<E>,
                 commitments: &$commitment<E::Group>,
             ) -> Option<EncryptedBatch<E>> {
-                let items = self.verified_reconstruct(original, commitments)?;
+                let gy = batch_gy(&flatten(&original.items).0)?;
+                let items = self.reconstruct_under(&original.items, &gy, commitments)?;
                 Some(EncryptedBatch { items })
             }
         }
     };
 }
 
-verified_reconstruct_batch!(
+verified_reconstruct_batch_rerandomized!(
     BatchPseudonymizationProof,
     Pseudonymizable,
-    VerifiablePseudonymizationCommitment,
-    public_key: PseudonymSessionPublicKey<E::Group>
+    VerifiablePseudonymizationCommitment
 );
-verified_reconstruct_batch!(BatchRekeyProof, Rekeyable, VerifiableRekeyCommitment);
-verified_reconstruct_batch!(
+verified_reconstruct_batch_rerandomized!(
     BatchTranscryptionProof,
     Transcryptable,
-    VerifiableTranscryptionCommitment,
-    public_key: SessionPublicKeys<E::Group>
+    VerifiableTranscryptionCommitment
 );
+
+impl<E: VerifiableBatchItem + Rekeyable> BatchRekeyProof<E> {
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify;
+    /// `new_public_key` is the key the batch is encrypted under afterwards.
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    pub fn verified_reconstruct_batch(
+        &self,
+        original: &EncryptedBatch<E>,
+        new_public_key: &PublicKeyOf<E>,
+        commitments: &VerifiableRekeyCommitment<E::Group>,
+    ) -> Option<EncryptedBatch<E>> {
+        let items = self.verified_reconstruct(original, commitments)?;
+        Some(with_key(items, new_public_key))
+    }
+
+    /// Verify the batch proof and return the resulting batch, or `None` if it does not verify.
+    #[cfg(any(feature = "elgamal3", not(feature = "batch-pk")))]
+    pub fn verified_reconstruct_batch(
+        &self,
+        original: &EncryptedBatch<E>,
+        commitments: &VerifiableRekeyCommitment<E::Group>,
+    ) -> Option<EncryptedBatch<E>> {
+        let items = self.verified_reconstruct(original, commitments)?;
+        Some(EncryptedBatch { items })
+    }
+}
 
 // The prover's side: the operations on a batch that produce a proof. Where the batch carries
 // its public key (`batch-pk`), the key is converted along; otherwise it is an argument, or
@@ -490,7 +485,6 @@ impl<E: VerifiableBatchItem + Pseudonymizable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchPseudonymizationProof<E>
     where
-        PublicKeyOf<E>: BatchPublicKey<E::Group>,
         PseudonymizationInfo<E::Group>: RekeyPublicKey<PublicKeyOf<E>>,
     {
         let proof = self.pseudonymize_under(self.public_key.pseudonym_element(), info, rng);
@@ -506,10 +500,7 @@ impl<E: VerifiableBatchItem + Pseudonymizable> EncryptedBatch<E> {
         info: &PseudonymizationInfo<E::Group>,
         public_key: &PublicKeyOf<E>,
         rng: &mut R,
-    ) -> BatchPseudonymizationProof<E>
-    where
-        PublicKeyOf<E>: BatchPublicKey<E::Group>,
-    {
+    ) -> BatchPseudonymizationProof<E> {
         self.pseudonymize_under(public_key.pseudonym_element(), info, rng)
     }
 
@@ -625,7 +616,6 @@ impl<E: VerifiableBatchItem + Transcryptable> EncryptedBatch<E> {
         rng: &mut R,
     ) -> BatchTranscryptionProof<E>
     where
-        PublicKeyOf<E>: BatchPublicKey<E::Group>,
         TranscryptionInfo<E::Group>: RekeyPublicKey<PublicKeyOf<E>>,
     {
         let proof = self.transcrypt_under(self.public_key.pseudonym_element(), info, rng);
@@ -641,10 +631,7 @@ impl<E: VerifiableBatchItem + Transcryptable> EncryptedBatch<E> {
         info: &TranscryptionInfo<E::Group>,
         public_key: &PublicKeyOf<E>,
         rng: &mut R,
-    ) -> BatchTranscryptionProof<E>
-    where
-        PublicKeyOf<E>: BatchPublicKey<E::Group>,
-    {
+    ) -> BatchTranscryptionProof<E> {
         self.transcrypt_under(public_key.pseudonym_element(), info, rng)
     }
 

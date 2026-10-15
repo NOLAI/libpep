@@ -105,11 +105,10 @@ impl<K: Kind> RekeyProof<K> {
     }
 }
 
-/// The pseudonymization proof of a short or long encrypted pseudonym. A short proof is a few
-/// kilobytes of group elements, a long proof a vector of them.
+/// The pseudonymization proof of a short or long encrypted pseudonym; both are large, so boxed.
 enum PseudonymizationProof {
     Short(Box<PseudonymPseudonymizationProof>),
-    Long(LongPseudonymPseudonymizationProof),
+    Long(Box<LongPseudonymPseudonymizationProof>),
 }
 
 impl PseudonymizationProof {
@@ -121,7 +120,7 @@ impl PseudonymizationProof {
     ) -> Self {
         match cipher {
             Cipher::Short(c) => Self::Short(Box::new(c.verifiable_pseudonymize(info, rng))),
-            Cipher::Long(c) => Self::Long(c.verifiable_pseudonymize(info, rng)),
+            Cipher::Long(c) => Self::Long(Box::new(c.verifiable_pseudonymize(info, rng))),
         }
     }
 
@@ -134,7 +133,7 @@ impl PseudonymizationProof {
     ) -> Self {
         match cipher {
             Cipher::Short(c) => Self::Short(Box::new(c.verifiable_pseudonymize(info, key, rng))),
-            Cipher::Long(c) => Self::Long(c.verifiable_pseudonymize(info, key, rng)),
+            Cipher::Long(c) => Self::Long(Box::new(c.verifiable_pseudonymize(info, key, rng))),
         }
     }
 

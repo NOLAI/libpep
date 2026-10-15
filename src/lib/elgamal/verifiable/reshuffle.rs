@@ -67,26 +67,6 @@ impl<G: Group> VerifiableReshuffle<G> {
         }
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        commitments: &PseudonymizationFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, commitments) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
-        self.result(original)
-    }
-
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
@@ -97,6 +77,11 @@ impl<G: Group> VerifiableReshuffle<G> {
         let gs = commitment.point();
         verify_proof::<G>(&gs, &original.gb, &self.p_gb_prime)
             && verify_proof::<G>(&gs, &original.gc, &self.p_gc_prime)
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, commitments: &PseudonymizationFactorCommitment<G>) -> ElGamal<G> = verify(original, commitments);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 
@@ -150,27 +135,6 @@ impl<G: Group> VerifiableReshuffle2<G> {
         self.inner.result(original)
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        from_commitments: &PseudonymizationFactorCommitment<G>,
-        to_commitments: &PseudonymizationFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, from_commitments, to_commitments) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
-        self.result(original)
-    }
-
     /// Verify the per-factor sub-proof (`p_gs_to`) once. The combined
     /// commitment `S = self.gs` can then be reused to verify many per-message
     /// inner proofs via [`VerifiableReshuffle::verify`] against the
@@ -201,6 +165,11 @@ impl<G: Group> VerifiableReshuffle2<G> {
     ) -> bool {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, from_commitments: &PseudonymizationFactorCommitment<G>, to_commitments: &PseudonymizationFactorCommitment<G>) -> ElGamal<G> = verify(original, from_commitments, to_commitments);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 

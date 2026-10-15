@@ -18,6 +18,22 @@ pub struct PseudonymizationSecret(pub(crate) Secret);
 pub struct EncryptionSecret(pub(crate) Secret);
 
 redacted_debug!(PseudonymizationSecret, EncryptionSecret);
+zeroize_fields!(PseudonymizationSecret { 0 }, EncryptionSecret { 0 });
+
+impl Drop for PseudonymizationSecret {
+    fn drop(&mut self) {
+        zeroize::Zeroize::zeroize(self);
+    }
+}
+
+impl Drop for EncryptionSecret {
+    fn drop(&mut self) {
+        zeroize::Zeroize::zeroize(self);
+    }
+}
+
+impl zeroize::ZeroizeOnDrop for PseudonymizationSecret {}
+impl zeroize::ZeroizeOnDrop for EncryptionSecret {}
 
 macro_rules! impl_secret {
     ($t:ident) => {
@@ -50,3 +66,22 @@ macro_rules! impl_secret {
 
 impl_secret!(PseudonymizationSecret);
 impl_secret!(EncryptionSecret);
+
+#[cfg(test)]
+mod zeroize_tests {
+    use super::*;
+    use zeroize::Zeroize;
+
+    #[test]
+    fn wiping_a_secret_clears_its_bytes() {
+        let mut secret = EncryptionSecret::from("a secret".as_bytes());
+        secret.zeroize();
+        assert!(secret.as_bytes().iter().all(|&b| b == 0));
+    }
+
+    #[test]
+    fn secrets_print_redacted() {
+        let secret = PseudonymizationSecret::from("a secret".as_bytes());
+        assert_eq!(format!("{secret:?}"), "PseudonymizationSecret([redacted])");
+    }
+}

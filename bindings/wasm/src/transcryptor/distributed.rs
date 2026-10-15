@@ -311,13 +311,9 @@ impl WASMDistributedTranscryptor {
         rekey_info: &WASMAttributeRekeyInfo,
     ) -> Result<Vec<WASMEncryptedAttribute>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
-            .rekey_batch(
-                &mut encrypted,
-                &AttributeRekeyInfo::from(rekey_info),
-                &mut rng,
-            )
+            .rekey_batch(&encrypted, &AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
             .into_iter()
@@ -336,10 +332,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedAttribute>, wasm_bindgen::JsValue> {
         let pk = AttributeSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .rekey_batch(
-                &mut encrypted,
+                &encrypted,
                 &AttributeRekeyInfo::from(rekey_info),
                 &pk,
                 &mut rng,
@@ -360,10 +356,10 @@ impl WASMDistributedTranscryptor {
         pseudonymization_info: &WASMPseudonymizationInfo,
     ) -> Result<Vec<WASMEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &mut rng,
             )
@@ -385,10 +381,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &pk,
                 &mut rng,
@@ -525,11 +521,10 @@ impl WASMDistributedTranscryptor {
         pseudonymization_info: &WASMPseudonymizationInfo,
     ) -> Result<Vec<WASMLongEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<LongEncryptedPseudonym> =
-            encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &mut rng,
             )
@@ -551,11 +546,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMLongEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<LongEncryptedPseudonym> =
-            encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &pk,
                 &mut rng,

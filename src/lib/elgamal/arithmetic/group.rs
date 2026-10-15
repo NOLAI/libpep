@@ -77,6 +77,7 @@ macro_rules! group_trait {
                 + Debug
                 + Send
                 + Sync
+                + zeroize::Zeroize
                 + 'static
                 + Mul<Self::Scalar, Output = Self::Scalar>
                 + Mul<Self::Element, Output = Self::Element>

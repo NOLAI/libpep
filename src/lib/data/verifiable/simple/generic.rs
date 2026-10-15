@@ -41,35 +41,6 @@ impl<G: Group> VerifiablePseudonymizationProof for PseudonymPseudonymizationProo
     type Output = EncryptedPseudonym<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
-    ) -> bool {
-        self.0.verify(
-            original.value(),
-            &original.value().gy,
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        public_key: &PseudonymSessionPublicKey<G>,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
-    ) -> bool {
-        self.0.verify(
-            original.value(),
-            public_key.value(),
-            &commitments.reshuffle_commitment,
-            &commitments.rekey_commitment,
-        )
-    }
-
-    #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
@@ -163,14 +134,6 @@ macro_rules! rekey_proof {
             type Group = G;
             type DataType = $data<G>;
             type Output = $data<G>;
-
-            fn verify(
-                &self,
-                original: &Self::DataType,
-                commitments: &VerifiableRekeyCommitment<G>,
-            ) -> bool {
-                self.0.verify(original.value(), &commitments.commitment)
-            }
 
             fn verified_reconstruct(
                 &self,

@@ -89,14 +89,12 @@ impl WASMPseudonymPseudonymizationBatchProof {
     pub fn verified_reconstruct_batch(
         &self,
         original: &WASMEncryptedPseudonymBatch,
-        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         new_public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -307,14 +305,12 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
     pub fn verified_reconstruct_batch(
         &self,
         original: &WASMLongEncryptedPseudonymBatch,
-        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         new_public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -527,19 +523,12 @@ impl WASMRecordTranscryptionBatchProof {
     pub fn verified_reconstruct_batch(
         &self,
         original: &WASMEncryptedRecordBatch,
-        session_keys: &crate::keys::types::WASMSessionKeys,
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         self.0
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.0,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
             .map(|inner| WASMEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -618,19 +607,12 @@ impl WASMLongRecordTranscryptionBatchProof {
     pub fn verified_reconstruct_batch(
         &self,
         original: &WASMLongEncryptedRecordBatch,
-        session_keys: &crate::keys::types::WASMSessionKeys,
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         self.0
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.0,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
             .map(|inner| WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }

@@ -77,28 +77,6 @@ impl<G: Group> VerifiableRRSK<G> {
         self.rsk.result()
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        gy: &G::Element,
-        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
-        rekey_commitment: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, gy, reshuffle_commitment, rekey_commitment) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
-        self.result()
-    }
-
     /// Verify the proof against `original` and `gy`.
     #[must_use]
     pub fn verify(
@@ -114,6 +92,11 @@ impl<G: Group> VerifiableRRSK<G> {
         let rerandomized = self.rerandomize.result(original);
         self.rsk
             .verify(&rerandomized, reshuffle_commitment, rekey_commitment)
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element, reshuffle_commitment: &PseudonymizationFactorCommitment<G>, rekey_commitment: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, gy, reshuffle_commitment, rekey_commitment);
+        unverified() = result();
     }
 }
 
@@ -162,38 +145,6 @@ impl<G: Group> VerifiableRRSK2<G> {
         self.rsk2.result()
     }
 
-    #[allow(clippy::too_many_arguments)]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        gy: &G::Element,
-        s_from_commitments: &PseudonymizationFactorCommitment<G>,
-        s_to_commitments: &PseudonymizationFactorCommitment<G>,
-        k_from_commitments: &RekeyFactorCommitment<G>,
-        k_to_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(
-            original,
-            gy,
-            s_from_commitments,
-            s_to_commitments,
-            k_from_commitments,
-            k_to_commitments,
-        ) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
-        self.result()
-    }
-
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     /// Verify the proof against the original ciphertext and the commitments.
@@ -217,6 +168,11 @@ impl<G: Group> VerifiableRRSK2<G> {
             k_from_commitments,
             k_to_commitments,
         )
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element, s_from_commitments: &PseudonymizationFactorCommitment<G>, s_to_commitments: &PseudonymizationFactorCommitment<G>, k_from_commitments: &RekeyFactorCommitment<G>, k_to_commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, gy, s_from_commitments, s_to_commitments, k_from_commitments, k_to_commitments);
+        unverified() = result();
     }
 }
 

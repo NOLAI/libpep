@@ -58,28 +58,9 @@ impl<G: Group> VerifiableRekeyBatch<G> {
                 .all(|(inner, o)| inner.verify(o, commitment))
     }
 
-    /// Verify every inner against `originals` and return the reconstructed
-    /// rekeyed ciphertexts. Returns `None` if any inner fails to verify or
-    /// if `originals.len()` mismatches the batch length.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal<G>],
-        commitment: &RekeyFactorCommitment<G>,
-    ) -> Option<Vec<ElGamal<G>>> {
-        if originals.len() != self.inners.len() {
-            return None;
-        }
-        self.inners
-            .iter()
-            .zip(originals.iter())
-            .map(|(inner, o)| inner.verified_reconstruct(o, commitment))
-            .collect()
-    }
-
-    /// Reconstruct the rekeyed ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
-        self.result(originals)
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], commitment: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, commitment);
+        unverified(originals: &[ElGamal<G>]) = result(originals);
     }
 }
 
@@ -139,7 +120,6 @@ impl<G: Group> VerifiableRekey2Batch<G> {
 
     /// Apply each entry's rekey to the corresponding ciphertext,
     /// **without verifying** any proofs. Internal prover-side use only.
-    #[cfg(feature = "insecure")]
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()
@@ -188,33 +168,9 @@ impl<G: Group> VerifiableRekey2Batch<G> {
             .all(|(inner, o)| inner.verify(o, &commitment))
     }
 
-    /// Verify the per-factor block and every inner against `originals`,
-    /// returning the reconstructed rekeyed ciphertexts. Returns `None` if
-    /// any verification step fails or if `originals.len()` mismatches.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal<G>],
-        from_commitments: &RekeyFactorCommitment<G>,
-        to_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<Vec<ElGamal<G>>> {
-        if !self.verify_factor(from_commitments, to_commitments) {
-            return None;
-        }
-        if originals.len() != self.inners.len() {
-            return None;
-        }
-        let commitment = self.combined_commitment();
-        self.inners
-            .iter()
-            .zip(originals.iter())
-            .map(|(inner, o)| inner.verified_reconstruct(o, &commitment))
-            .collect()
-    }
-
-    /// Reconstruct the rekeyed ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
-        self.result(originals)
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], from_commitments: &RekeyFactorCommitment<G>, to_commitments: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, from_commitments, to_commitments);
+        unverified(originals: &[ElGamal<G>]) = result(originals);
     }
 }
 

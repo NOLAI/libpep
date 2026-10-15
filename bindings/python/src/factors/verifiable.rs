@@ -56,10 +56,8 @@ impl PyMasterPseudonymizationSecret {
     fn derive_reshuffle_factor(
         &self,
         domain: &PyPseudonymizationDomain,
-    ) -> crate::elgamal::arithmetic::scalars::PyScalarNonZero {
-        crate::elgamal::arithmetic::scalars::PyScalarNonZero(
-            self.inner.derive_reshuffle_factor(&domain.0),
-        )
+    ) -> crate::factors::types::PyReshuffleFactor {
+        crate::factors::types::PyReshuffleFactor(self.inner.derive_reshuffle_factor(&domain.0))
     }
 }
 
@@ -104,8 +102,11 @@ impl PyMasterPseudonymizationPublicKey {
     }
 
     /// Compute the reshuffle factor commitment `S_d = s_d·G` for a domain.
-    fn compute_reshuffle_commitment(&self, domain: &PyPseudonymizationDomain) -> PyGroupElement {
-        PyGroupElement(self.inner.compute_reshuffle_commitment(&domain.0))
+    fn compute_reshuffle_commitment(
+        &self,
+        domain: &PyPseudonymizationDomain,
+    ) -> crate::elgamal::verifiable::PyPseudonymizationFactorCommitment {
+        self.inner.compute_reshuffle_commitment(&domain.0).into()
     }
 
     /// Serialize to JSON.
@@ -171,22 +172,22 @@ impl PyMasterRekeyingSecret {
         }
     }
 
-    /// Derive a pseudonym rekeying factor for a context.
-    fn derive_pseudonym_rekey(
+    /// Derive the pseudonym rekey factor of a context.
+    fn derive_pseudonym_rekey_factor(
         &self,
         context: &PyEncryptionContext,
-    ) -> crate::elgamal::arithmetic::scalars::PyScalarNonZero {
-        crate::elgamal::arithmetic::scalars::PyScalarNonZero(
+    ) -> crate::factors::types::PyPseudonymRekeyFactor {
+        crate::factors::types::PyPseudonymRekeyFactor(
             self.inner.derive_pseudonym_rekey_factor(&context.0),
         )
     }
 
-    /// Derive an attribute rekeying factor for a context.
-    fn derive_attribute_rekey(
+    /// Derive the attribute rekey factor of a context.
+    fn derive_attribute_rekey_factor(
         &self,
         context: &PyEncryptionContext,
-    ) -> crate::elgamal::arithmetic::scalars::PyScalarNonZero {
-        crate::elgamal::arithmetic::scalars::PyScalarNonZero(
+    ) -> crate::factors::types::PyAttributeRekeyFactor {
+        crate::factors::types::PyAttributeRekeyFactor(
             self.inner.derive_attribute_rekey_factor(&context.0),
         )
     }
@@ -233,13 +234,23 @@ impl PyMasterRekeyingPublicKey {
     }
 
     /// Compute the pseudonym rekey factor commitment `K_s = k_s·G` for a context.
-    fn compute_pseudonym_rekey_commitment(&self, context: &PyEncryptionContext) -> PyGroupElement {
-        PyGroupElement(self.inner.compute_pseudonym_rekey_commitment(&context.0))
+    fn compute_pseudonym_rekey_commitment(
+        &self,
+        context: &PyEncryptionContext,
+    ) -> crate::elgamal::verifiable::PyRekeyFactorCommitment {
+        self.inner
+            .compute_pseudonym_rekey_commitment(&context.0)
+            .into()
     }
 
     /// Compute the attribute rekey factor commitment for a context.
-    fn compute_attribute_rekey_commitment(&self, context: &PyEncryptionContext) -> PyGroupElement {
-        PyGroupElement(self.inner.compute_attribute_rekey_commitment(&context.0))
+    fn compute_attribute_rekey_commitment(
+        &self,
+        context: &PyEncryptionContext,
+    ) -> crate::elgamal::verifiable::PyRekeyFactorCommitment {
+        self.inner
+            .compute_attribute_rekey_commitment(&context.0)
+            .into()
     }
 
     /// Serialize to JSON.

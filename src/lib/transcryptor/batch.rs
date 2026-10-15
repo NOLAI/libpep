@@ -170,36 +170,38 @@ impl<E: Transcryptable + HasStructure> EncryptedBatch<E> {
     }
 }
 
-/// Validate the structure of `encrypted`, shuffle it, and return `f(item, rng)` for every item.
-fn batch<E: HasStructure + Clone, R: Rng + CryptoRng>(
-    encrypted: &mut [E],
+/// Validate the structure of `encrypted` and return `f(item, rng)` for every item, shuffled.
+/// The input is left as it is.
+fn batch<E: HasStructure, R: Rng + CryptoRng>(
+    encrypted: &[E],
     rng: &mut R,
     mut f: impl FnMut(&E, &mut R) -> E,
 ) -> Result<Vec<E>, BatchError> {
     validate_structure(encrypted)?;
-    shuffle(encrypted, rng);
-    Ok(encrypted.iter().map(|item| f(item, rng)).collect())
+    let mut out: Vec<E> = encrypted.iter().map(|item| f(item, rng)).collect();
+    shuffle(&mut out, rng);
+    Ok(out)
 }
 
-/// Pseudonymize a slice of encrypted pseudonyms and shuffle them.
+/// Pseudonymize a slice of encrypted pseudonyms; the results are shuffled.
 ///
 /// # Errors
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
 pub fn pseudonymize_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &PseudonymizationInfo<E::Group>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Pseudonymizable + HasStructure + Clone,
+    E: Pseudonymizable + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.pseudonymize(info, rng))
 }
 
-/// Pseudonymize a slice of encrypted pseudonyms and shuffle them. `public_key` is the key they
+/// Pseudonymize a slice of encrypted pseudonyms; the results are shuffled. `public_key` is the key they
 /// are currently encrypted under.
 ///
 /// # Errors
@@ -207,13 +209,13 @@ where
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
 pub fn pseudonymize_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &PseudonymizationInfo<E::Group>,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Pseudonymizable + HasStructure + Clone,
+    E: Pseudonymizable + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();
@@ -222,25 +224,25 @@ where
     })
 }
 
-/// Rekey a slice of encrypted values and shuffle them.
+/// Rekey a slice of encrypted values; the results are shuffled.
 ///
 /// # Errors
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
 pub fn rekey_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &E::RekeyInfo,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Rekeyable + HasStructure + Clone,
+    E: Rekeyable + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.rekey(info, rng))
 }
 
-/// Rekey a slice of encrypted values and shuffle them. `public_key` is the key they are
+/// Rekey a slice of encrypted values; the results are shuffled. `public_key` is the key they are
 /// currently encrypted under.
 ///
 /// # Errors
@@ -248,38 +250,38 @@ where
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
 pub fn rekey_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &E::RekeyInfo,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Rekeyable + HasStructure + Clone,
+    E: Rekeyable + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();
     batch(encrypted, rng, |item, rng| item.rekey(info, &key, rng))
 }
 
-/// Transcrypt a slice of encrypted values and shuffle them.
+/// Transcrypt a slice of encrypted values; the results are shuffled.
 ///
 /// # Errors
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
 pub fn transcrypt_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &TranscryptionInfo<E::Group>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Transcryptable + HasStructure + Clone,
+    E: Transcryptable + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.transcrypt(info, rng))
 }
 
-/// Transcrypt a slice of encrypted values and shuffle them. `public_key` is the key they are
+/// Transcrypt a slice of encrypted values; the results are shuffled. `public_key` is the key they are
 /// currently encrypted under.
 ///
 /// # Errors
@@ -287,13 +289,13 @@ where
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
 pub fn transcrypt_batch<E, R>(
-    encrypted: &mut [E],
+    encrypted: &[E],
     info: &TranscryptionInfo<E::Group>,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Transcryptable + HasStructure + Clone,
+    E: Transcryptable + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();

@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "bindings/python", "bindings/wasm"]
+members = [".", "peppy", "bindings/python", "bindings/wasm"]
 resolver = "2"
 
 [workspace.package]
@@ -24,13 +24,13 @@ repository.workspace = true
 documentation = "https://docs.rs/libpep"
 license.workspace = true
 keywords = ["crypto", "pep", "pseudonymization", "elgamal", "privacy"]
-categories = ["cryptography", "algorithms", "command-line-utilities"]
+categories = ["cryptography", "algorithms"]
 description = "Library for polymorphic encryption and pseudonymization"
 readme = "README.md"
-exclude = ["bindings", "pkg", "pkg-web", "node_modules", ".github"]
+exclude = ["bindings", "peppy", "pkg", "pkg-web", "node_modules", ".github"]
 
 [features]
-default = ["build-binary", "long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
+default = ["long", "offline", "batch", "batch-pk", "serde", "json", "verifiable"]
 serde = ["dep:serde"] # For (de)serialization support via Serde
 verifiable = [] # Enable verifiable operations with zero-knowledge proofs
 verifiable-derivation = ["verifiable"] # Carter-Wegman factor derivation with publicly computable commitments; not the preferred scheme, see the README
@@ -43,7 +43,6 @@ json = ["long", "serde", "dep:serde_json"] # For JSON encryption/decryption supp
 global-pseudonyms = ["offline"] # Allow pseudonyms in a global domain (uses global pseudonyms with reshuffle factor 1), which is potentially insecure
 legacy = ["elgamal3", "offline", "global-pseudonyms", "dep:hmac"] # For compatibility with the legacy PEP repository implementation
 insecure = [] # Enable insecure methods that typically should not be used in production (does not include "global-pseudonyms", which is a separate feature)
-build-binary = ["dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:serde_json", "rand", "long", "offline", "serde", "verifiable"] # Build the peppy command line utility (requires long, offline, serde and verifiable)
 
 [lints]
 workspace = true
@@ -53,14 +52,9 @@ name = "libpep"
 crate-type = ["rlib"]
 path = "src/lib/lib.rs"
 
-[[bin]]
-name = "peppy"
-required-features = ["build-binary"]
-
 [dependencies]
-curve25519-dalek = { version = "=5.0.0", features = ["rand_core", "lizard"] }
+curve25519-dalek = { version = "=5.0.0", features = ["rand_core", "lizard", "zeroize"] }
 rand_core = "^0.10"
-rand = { version = "^0.10", optional = true }
 sha2 = "^0.11.0"
 hmac = { version = "^0.13.0", optional = true }
 derive_more = { version = "^2.0", features = ["deref", "from", "into"] }
@@ -69,9 +63,7 @@ base64 = "^0.23.0"
 serde = { version = "^1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0", optional = true }
 thiserror = "^2.0"
-clap = { version = "^4.6", features = ["derive", "wrap_help"], optional = true }
-clap_complete = { version = "^4.6", optional = true }
-clap_mangen = { version = "^0.3", optional = true }
+zeroize = "^1.8"
 
 [dev-dependencies]
 serde_json = "^1.0"
@@ -113,20 +105,6 @@ required-features = ["verifiable"]
 name = "dleq"
 harness = false
 required-features = ["verifiable"]
-
-[package.metadata.deb]
-name = "peppy"
-depends = ""
-assets = [
-    ["peppy.1", "usr/man/man1/", "444"],
-    ["target/release/peppy", "usr/bin/peppy", "555"],
-]
-
-[package.metadata.freebsd]
-assets = [
-    ["peppy.1", "man/man1/", "444"],
-    ["target/release/peppy", "bin/peppy", "555"],
-]
 
 [package.metadata.docs.rs]
 # The default ciphertext mode (no elgamal3) with every feature that adds API

@@ -7,7 +7,6 @@
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::errors::json_err;
 use derive_more::{From, Into};
 use libpep::factors::verifiable::{
@@ -48,8 +47,8 @@ impl WASMMasterPseudonymizationSecret {
     pub fn derive_reshuffle_factor(
         &self,
         domain: &WASMPseudonymizationDomain,
-    ) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0.derive_reshuffle_factor(&domain.0))
+    ) -> crate::factors::types::WASMReshuffleFactor {
+        self.0.derive_reshuffle_factor(&domain.0).into()
     }
 }
 
@@ -87,8 +86,10 @@ impl WASMMasterPseudonymizationPublicKey {
     pub fn compute_reshuffle_commitment(
         &self,
         domain: &WASMPseudonymizationDomain,
-    ) -> WASMGroupElement {
-        WASMGroupElement(self.0.compute_reshuffle_commitment(&domain.0))
+    ) -> crate::elgamal::verifiable::WASMPseudonymizationFactorCommitment {
+        crate::elgamal::verifiable::WASMPseudonymizationFactorCommitment(
+            self.0.compute_reshuffle_commitment(&domain.0),
+        )
     }
 
     /// Serialize to JSON.
@@ -135,16 +136,22 @@ impl WASMMasterRekeyingSecret {
         WASMMasterRekeyingPublicKey(self.0.public_key())
     }
 
-    /// Derive a pseudonym rekeying factor for a context.
-    #[wasm_bindgen(js_name = derivePseudonymRekey)]
-    pub fn derive_pseudonym_rekey(&self, context: &WASMEncryptionContext) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0.derive_pseudonym_rekey_factor(&context.0))
+    /// Derive the pseudonym rekey factor of a context.
+    #[wasm_bindgen(js_name = derivePseudonymRekeyFactor)]
+    pub fn derive_pseudonym_rekey_factor(
+        &self,
+        context: &WASMEncryptionContext,
+    ) -> crate::factors::types::WASMPseudonymRekeyFactor {
+        self.0.derive_pseudonym_rekey_factor(&context.0).into()
     }
 
-    /// Derive an attribute rekeying factor for a context.
-    #[wasm_bindgen(js_name = deriveAttributeRekey)]
-    pub fn derive_attribute_rekey(&self, context: &WASMEncryptionContext) -> WASMScalarNonZero {
-        WASMScalarNonZero(self.0.derive_attribute_rekey_factor(&context.0))
+    /// Derive the attribute rekey factor of a context.
+    #[wasm_bindgen(js_name = deriveAttributeRekeyFactor)]
+    pub fn derive_attribute_rekey_factor(
+        &self,
+        context: &WASMEncryptionContext,
+    ) -> crate::factors::types::WASMAttributeRekeyFactor {
+        self.0.derive_attribute_rekey_factor(&context.0).into()
     }
 }
 
@@ -182,8 +189,10 @@ impl WASMMasterRekeyingPublicKey {
     pub fn compute_pseudonym_rekey_commitment(
         &self,
         context: &WASMEncryptionContext,
-    ) -> WASMGroupElement {
-        WASMGroupElement(self.0.compute_pseudonym_rekey_commitment(&context.0))
+    ) -> crate::elgamal::verifiable::WASMRekeyFactorCommitment {
+        crate::elgamal::verifiable::WASMRekeyFactorCommitment(
+            self.0.compute_pseudonym_rekey_commitment(&context.0),
+        )
     }
 
     /// Compute the attribute rekey factor commitment for a context.
@@ -191,8 +200,10 @@ impl WASMMasterRekeyingPublicKey {
     pub fn compute_attribute_rekey_commitment(
         &self,
         context: &WASMEncryptionContext,
-    ) -> WASMGroupElement {
-        WASMGroupElement(self.0.compute_attribute_rekey_commitment(&context.0))
+    ) -> crate::elgamal::verifiable::WASMRekeyFactorCommitment {
+        crate::elgamal::verifiable::WASMRekeyFactorCommitment(
+            self.0.compute_attribute_rekey_commitment(&context.0),
+        )
     }
 
     /// Serialize to JSON.

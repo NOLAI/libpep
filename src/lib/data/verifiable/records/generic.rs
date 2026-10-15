@@ -57,47 +57,6 @@ macro_rules! record_proof {
             type Output = $data<G>;
 
             #[cfg(feature = "elgamal3")]
-            fn verify(
-                &self,
-                original: &Self::DataType,
-                commitments: &VerifiableTranscryptionCommitment<G>,
-            ) -> bool {
-                self.pseudonym_operation_proofs.len() == original.pseudonyms.len()
-                    && self.attribute_operation_proofs.len() == original.attributes.len()
-                    && self
-                        .pseudonym_operation_proofs
-                        .iter()
-                        .zip(&original.pseudonyms)
-                        .all(|(p, orig)| p.verify(orig, &commitments.pseudonym))
-                    && self
-                        .attribute_operation_proofs
-                        .iter()
-                        .zip(&original.attributes)
-                        .all(|(p, orig)| p.verify(orig, &commitments.attribute))
-            }
-
-            #[cfg(not(feature = "elgamal3"))]
-            fn verify(
-                &self,
-                original: &Self::DataType,
-                keys: &SessionPublicKeys<G>,
-                commitments: &VerifiableTranscryptionCommitment<G>,
-            ) -> bool {
-                self.pseudonym_operation_proofs.len() == original.pseudonyms.len()
-                    && self.attribute_operation_proofs.len() == original.attributes.len()
-                    && self
-                        .pseudonym_operation_proofs
-                        .iter()
-                        .zip(&original.pseudonyms)
-                        .all(|(p, orig)| p.verify(orig, &keys.pseudonym, &commitments.pseudonym))
-                    && self
-                        .attribute_operation_proofs
-                        .iter()
-                        .zip(&original.attributes)
-                        .all(|(p, orig)| p.verify(orig, &commitments.attribute))
-            }
-
-            #[cfg(feature = "elgamal3")]
             fn verified_reconstruct(
                 &self,
                 original: &Self::DataType,

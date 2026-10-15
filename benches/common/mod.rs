@@ -105,14 +105,14 @@ where
         #[cfg(feature = "elgamal3")]
         {
             batch = system
-                .transcrypt_batch(&mut batch, &info, rng)
+                .transcrypt_batch(&batch, &info, rng)
                 .expect("transcrypt batch")
                 .to_vec();
         }
         #[cfg(not(feature = "elgamal3"))]
         {
             batch = system
-                .transcrypt_batch(&mut batch, &info, &key, rng)
+                .transcrypt_batch(&batch, &info, &key, rng)
                 .expect("transcrypt batch")
                 .to_vec();
             key = next_key(&info, &key);
@@ -145,14 +145,14 @@ where
         #[cfg(feature = "elgamal3")]
         {
             batch = system
-                .rekey_batch(&mut batch, &info, rng)
+                .rekey_batch(&batch, &info, rng)
                 .expect("rekey batch")
                 .to_vec();
         }
         #[cfg(not(feature = "elgamal3"))]
         {
             batch = system
-                .rekey_batch(&mut batch, &info, &key, rng)
+                .rekey_batch(&batch, &info, &key, rng)
                 .expect("rekey batch")
                 .to_vec();
             key = next_key(&info, &key);

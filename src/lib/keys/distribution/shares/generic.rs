@@ -168,6 +168,11 @@ pub fn make_session_key_shares<G: Group>(
 }
 
 redacted_debug!(PseudonymSessionKeyShare<G>, AttributeSessionKeyShare<G>);
+zeroize_fields!(
+    PseudonymSessionKeyShare<G> { 0 },
+    AttributeSessionKeyShare<G> { 0 },
+    SessionKeyShares<G> { pseudonym, attribute },
+);
 
 /// Why a session key share with a proof was refused.
 #[cfg(feature = "verifiable")]

@@ -35,7 +35,7 @@ JavaScript, for Node.js and browsers:
 npm install @nolai/libpep-wasm
 ```
 
-The `peppy` command-line tool is installed with `cargo install libpep`.
+The `peppy` command-line tool is installed with `cargo install peppy`.
 
 ## Quick start
 
@@ -96,63 +96,7 @@ The public key a ciphertext is encrypted under travels with it from transcryptor
 
 ## Command line
 
-The `peppy` tool exposes the library on the command line. The first word names what is operated on, the second the operation:
-
-| Group | Operations |
-|-------|------------|
-| `keys global`, `keys session`, `keys distributed` | `generate`; `derive`; `setup`, `share`, `reconstruct`, `update` |
-| `factors` | `reshuffle`, `rekey`, `info`, `commitments` |
-| `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, `verify-rekey`, and `pseudonymize`, `verify-pseudonymize` for pseudonyms |
-| `json` | `encrypt`, `decrypt`, `transcrypt`, `verify-transcrypt` |
-| `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
-| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `mul`, `from-hash`, `hash-to-group` |
-
-`point hash-to-group` domain-separates its hash with the ciphersuite this build implements (`ristretto255-SHA512`); there is one, so there is nothing to select. Factor derivation is separated by the transcryptor secrets, the domain and the session.
-
-Values print one per line on standard output, labelled when that is a terminal and bare when piped; `--json` prints all values of a command as one object, which is the form to use when a command prints several values.
-Any value argument may be `-` to read standard input or `@path` to read a file.
-Scalars and group elements are hex, ciphertexts base64, and long values are given as space-separated (plain) or `|`-separated (encrypted) blocks.
-Malformed input exits with status 1 (a usage error with 2, from clap); with the `elgamal3` feature a decryption with the wrong key exits with status 3; a proof that does not verify exits with status 4.
-
-The quick start above, on the command line:
-
-```bash
-peppy keys global generate --json > global.json
-peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-a --json > session-a.json
-peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-b --json > session-b.json
-
-value=$(peppy pseudonym encode patient-42)
-encrypted=$(peppy pseudonym encrypt --key "$(jq -r .pseudonym_public_key session-a.json)" "$value")
-transcrypted=$(peppy pseudonym transcrypt \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json | jq -r .ciphertext)
-peppy pseudonym decrypt --key "$(jq -r .pseudonym_secret_key session-b.json)" "$transcrypted"
-```
-
-Transcryption is verifiable on the command line as well: `factors commitments` prints the commitments a transcryptor publishes for a transition, `--prove` on `rekey`, `pseudonymize` and `transcrypt` adds a `proof` (JSON) to the output, and `verify-rekey`, `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original ciphertext and the commitments, printing the transcrypted ciphertext only if it holds.
-A proof of `pseudonym transcrypt` is a pseudonymization proof, a proof of `attribute transcrypt` a rekey proof.
-
-```bash
-peppy factors commitments \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --json > commitments.json
-peppy pseudonym transcrypt --prove \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json > transcrypted.json
-jq -c .proof transcrypted.json > proof.json
-peppy pseudonym verify-pseudonymize \
-    --reshuffle-commitment "$(jq -r .reshuffle_commitment commitments.json)" \
-    --rekey-commitment "$(jq -r .pseudonym_rekey_commitment commitments.json)" \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" --proof @proof.json "$encrypted"
-```
-
-`peppy keys distributed setup -n 3` sets up a system with three transcryptors; each one then answers a client with `keys distributed share`, and the client combines the shares with `keys distributed reconstruct`.
-`peppy completions <shell>` prints a completion script and `peppy man` the man page.
+The `peppy` crate in [`peppy/`](peppy/) exposes the library on the command line, including verifiable transcryption; see its [README](peppy/README.md).
 
 ## How it works
 
@@ -255,7 +199,6 @@ Default features:
 - `batch`: batch transcryption with shuffling, so that outputs cannot be linked to inputs by position.
 - `serde`: serialization and deserialization support via Serde.
 - `json`: JSON documents with nested pseudonyms and attributes.
-- `build-binary`: the `peppy` command-line tool (enables `long`, `offline`, `serde` and `verifiable`).
 - `batch-pk`: batches carry the public key their ciphertexts are encrypted under, so batch operations that rerandomize do not need it as a separate argument. No effect under `elgamal3`, where every ciphertext carries its key.
 - `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat–Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
 
