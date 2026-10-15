@@ -34,7 +34,7 @@ extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 libpep = { workspace = true }
-pyo3 = { version = "0.29", features = ["abi3-py39", "multiple-pymethods"] }
+pyo3 = { version = "0.30", features = ["abi3-py39", "multiple-pymethods"] }
 derive_more = { version = "^2.1", features = ["from", "into", "deref"] }
 hex = "^0.4"
 rand = "^0.10"
