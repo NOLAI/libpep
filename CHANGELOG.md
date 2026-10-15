@@ -119,8 +119,8 @@ a major change against the published 0.13.0.
 
 ### Breaking changes
 
-- `peppy` is its own crate in `peppy/` (`cargo install peppy`); the `build-binary` feature and the
-  CLI dependencies are gone from libpep.
+- The `build-binary` feature is `cli` and no longer a default feature, so the library no longer
+  pulls in clap. Install `peppy` with `cargo install libpep --features cli`.
 - The batch slice functions (`pseudonymize_batch`, `rekey_batch`, `transcrypt_batch` and their
   verifiable and transcryptor counterparts) take `&[E]` and no longer shuffle the caller's slice
   in place; the output is shuffled. The test vectors of the batch outputs are regenerated.

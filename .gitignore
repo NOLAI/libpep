@@ -146,7 +146,7 @@ dist
 .pnp.*
 
 # Generated with `peppy man > peppy.1` when packaging
-/peppy/peppy.1
+/peppy.1
 
 # WASM build
 /bindings/wasm/pkg/

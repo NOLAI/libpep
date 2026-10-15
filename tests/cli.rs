@@ -1,4 +1,5 @@
 //! End-to-end tests of the `peppy` command-line tool, run against the built binary.
+#![cfg(feature = "cli")]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::HashSet;
