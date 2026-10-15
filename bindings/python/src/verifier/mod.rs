@@ -6,9 +6,10 @@ use crate::data::long::{
     PyLongAttributeRekeyProof, PyLongEncryptedAttribute, PyLongEncryptedPseudonym,
     PyLongPseudonymPseudonymizationProof, PyLongPseudonymRekeyProof,
 };
+use crate::data::simple::{
+    PyAttributeRekeyProof, PyPseudonymPseudonymizationProof, PyPseudonymRekeyProof,
+};
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::elgamal::verifiable::PyVerifiableRRSK;
-use crate::elgamal::verifiable::PyVerifiableRekey;
 use crate::factors::commitments::{
     PyVerifiablePseudonymizationCommitment, PyVerifiableRekeyCommitment,
     PyVerifiableTranscryptionCommitment,
@@ -157,14 +158,11 @@ impl PyVerifier {
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRRSK,
+        proof: &PyPseudonymPseudonymizationProof,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
-            operation_proof.inner,
-        );
         self.0
-            .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.inner)
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &commitments.inner)
             .map(PyEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_py)
     }
@@ -178,16 +176,13 @@ impl PyVerifier {
     fn verify_pseudonymization(
         &self,
         original: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRRSK,
+        proof: &PyPseudonymPseudonymizationProof,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
-            operation_proof.inner,
-        );
         self.0
-            .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.inner)
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &pk, &commitments.inner)
             .map(PyEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_py)
     }
@@ -197,12 +192,11 @@ impl PyVerifier {
     fn verify_pseudonym_rekey(
         &self,
         original: &PyEncryptedPseudonym,
-        proof: &PyVerifiableRekey,
+        proof: &PyPseudonymRekeyProof,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let wrapped = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(proof.inner);
         self.0
-            .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.inner)
             .map(PyEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_py)
     }
@@ -212,12 +206,11 @@ impl PyVerifier {
     fn verify_attribute_rekey(
         &self,
         original: &PyEncryptedAttribute,
-        proof: &PyVerifiableRekey,
+        proof: &PyAttributeRekeyProof,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyEncryptedAttribute> {
-        let wrapped = libpep::data::verifiable::simple::generic::AttributeRekeyProof(proof.inner);
         self.0
-            .verified_reconstruct_rekey(&original.0, &wrapped, &commitments.inner)
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.inner)
             .map(PyEncryptedAttribute)
             .map_err(crate::errors::verify_err_to_py)
     }
@@ -362,20 +355,17 @@ impl PyVerifier {
         &self,
         transcryptor_id: &str,
         original: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRRSK,
+        proof: &PyPseudonymPseudonymizationProof,
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
-            operation_proof.inner,
-        );
         self.0
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &domain_from.0,
                 &domain_to.0,
                 &context_from.0,
@@ -391,7 +381,7 @@ impl PyVerifier {
         &self,
         transcryptor_id: &str,
         original: &PyEncryptedPseudonym,
-        operation_proof: &PyVerifiableRRSK,
+        proof: &PyPseudonymPseudonymizationProof,
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
         domain_from: &PyPseudonymizationDomain,
         domain_to: &PyPseudonymizationDomain,
@@ -399,14 +389,11 @@ impl PyVerifier {
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let proof = libpep::data::verifiable::simple::generic::PseudonymPseudonymizationProof(
-            operation_proof.inner,
-        );
         self.0
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &pk,
                 &domain_from.0,
                 &domain_to.0,
@@ -423,16 +410,15 @@ impl PyVerifier {
         &self,
         transcryptor_id: &str,
         original: &PyEncryptedPseudonym,
-        proof: &PyVerifiableRekey,
+        proof: &PyPseudonymRekeyProof,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedPseudonym> {
-        let wrapped = libpep::data::verifiable::simple::generic::PseudonymRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_pseudonym_rekey_cached(
                 transcryptor_id,
                 &original.0,
-                &wrapped,
+                &proof.0,
                 &context_from.0,
                 &context_to.0,
             )
@@ -446,16 +432,15 @@ impl PyVerifier {
         &self,
         transcryptor_id: &str,
         original: &PyEncryptedAttribute,
-        proof: &PyVerifiableRekey,
+        proof: &PyAttributeRekeyProof,
         context_from: &PyEncryptionContext,
         context_to: &PyEncryptionContext,
     ) -> PyResult<PyEncryptedAttribute> {
-        let wrapped = libpep::data::verifiable::simple::generic::AttributeRekeyProof(proof.inner);
         self.0
             .verified_reconstruct_attribute_rekey_cached(
                 transcryptor_id,
                 &original.0,
-                &wrapped,
+                &proof.0,
                 &context_from.0,
                 &context_to.0,
             )
@@ -645,15 +630,13 @@ impl PyVerifier {
         &self,
         original: &crate::data::batch::PyPseudonymBatch,
         proof: &crate::data::verifiable_batch::PyPseudonymPseudonymizationBatchProof,
-        public_key: &crate::keys::PyPseudonymSessionPublicKey,
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<crate::data::batch::PyPseudonymBatch> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -767,15 +750,13 @@ impl PyVerifier {
         &self,
         original: &crate::data::batch::PyLongPseudonymBatch,
         proof: &crate::data::verifiable_batch::PyLongPseudonymPseudonymizationBatchProof,
-        public_key: &crate::keys::PyPseudonymSessionPublicKey,
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<crate::data::batch::PyLongPseudonymBatch> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -889,20 +870,13 @@ impl PyVerifier {
         &self,
         original: &crate::data::batch::PyRecordBatch,
         proof: &crate::data::verifiable_batch::PyRecordTranscryptionBatchProof,
-        session_keys: &crate::keys::PySessionKeys,
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<crate::data::batch::PyRecordBatch> {
-        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.inner,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
             .map(crate::data::batch::PyRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -948,20 +922,13 @@ impl PyVerifier {
         &self,
         original: &crate::data::batch::PyLongRecordBatch,
         proof: &crate::data::verifiable_batch::PyLongRecordTranscryptionBatchProof,
-        session_keys: &crate::keys::PySessionKeys,
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<crate::data::batch::PyLongRecordBatch> {
-        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.inner,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
             .map(crate::data::batch::PyLongRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)

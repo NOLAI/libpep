@@ -138,3 +138,14 @@ redacted_debug!(
     AttributeSessionSecretKey<G>,
     GlobalSecretKeys<G>,
 );
+
+zeroize_fields!(
+    PseudonymGlobalSecretKey<G> { 0 },
+    AttributeGlobalSecretKey<G> { 0 },
+    PseudonymSessionSecretKey<G> { 0 },
+    AttributeSessionSecretKey<G> { 0 },
+    GlobalSecretKeys<G> { pseudonym, attribute },
+    PseudonymSessionKeys<G> { secret },
+    AttributeSessionKeys<G> { secret },
+    SessionKeys<G> { pseudonym, attribute },
+);

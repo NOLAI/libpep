@@ -78,7 +78,7 @@ pub(crate) struct Dsts {
 }
 
 impl Dsts {
-    fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
+    pub(crate) fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
         Self {
             seed: ciphersuite.dst(b"Seed-"),
             hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
@@ -164,7 +164,8 @@ fn challenge<G: Group>(
     hash_to_scalar::<G>(&transcript, &dsts.hash_to_scalar)
 }
 
-/// `GenerateProof` of RFC 9497, Section 2.2.
+/// `GenerateProof` of RFC 9497, Section 2.2, domain separated by the group's
+/// [`CIPHERSUITE`](Group::CIPHERSUITE).
 ///
 /// Proves that `b = k * a` and `ds[i] = k * cs[i]` for every `i`, without revealing `k`.
 ///
@@ -177,7 +178,6 @@ pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
     b: &G::Element,
     cs: &[G::Element],
     ds: &[G::Element],
-    ciphersuite: &Ciphersuite,
     rng: &mut R,
 ) -> Result<Proof<G>, ProofError> {
     if cs.is_empty() || cs.len() != ds.len() {
@@ -187,7 +187,7 @@ pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
         });
     }
 
-    let dsts = Dsts::from_ciphersuite(ciphersuite);
+    let dsts = Dsts::from_ciphersuite(&G::CIPHERSUITE);
     Ok(generate_proof_with::<G>(
         k,
         a,
@@ -225,7 +225,8 @@ pub(crate) fn generate_proof_with<G: Group>(
     Proof { c, s }
 }
 
-/// `VerifyProof` of RFC 9497, Section 2.2.
+/// `VerifyProof` of RFC 9497, Section 2.2, domain separated by the group's
+/// [`CIPHERSUITE`](Group::CIPHERSUITE).
 ///
 /// Checks that the same scalar relates `a` to `b` and every `cs[i]` to `ds[i]`. Returns `false`
 /// on any mismatch, and also when the lists are empty or of different lengths.
@@ -236,9 +237,15 @@ pub fn verify_proof<G: Group>(
     cs: &[G::Element],
     ds: &[G::Element],
     proof: &Proof<G>,
-    ciphersuite: &Ciphersuite,
 ) -> bool {
-    verify_proof_with::<G>(a, b, cs, ds, proof, &Dsts::from_ciphersuite(ciphersuite))
+    verify_proof_with::<G>(
+        a,
+        b,
+        cs,
+        ds,
+        proof,
+        &Dsts::from_ciphersuite(&G::CIPHERSUITE),
+    )
 }
 
 /// The DST-parameterised core of [`verify_proof`].

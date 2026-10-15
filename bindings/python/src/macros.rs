@@ -516,6 +516,39 @@ macro_rules! py_dispatch {
     };
 }
 
+/// A proof type of the data layer as a Python class with JSON (de)serialization.
+#[cfg(feature = "verifiable")]
+macro_rules! py_proof_class {
+    ($(#[$doc:meta])* $py:ident($inner:ident) as $name:literal) => {
+        $(#[$doc])*
+        #[pyclass(name = $name, from_py_object)]
+        #[derive(Clone, derive_more::From, derive_more::Deref)]
+        pub struct $py(pub(crate) $inner);
+
+        #[pymethods]
+        impl $py {
+            /// Serialize to JSON.
+            #[cfg(feature = "serde")]
+            fn to_json(&self) -> PyResult<String> {
+                serde_json::to_string(&self.0).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Serialization failed: {e}"))
+                })
+            }
+
+            /// Deserialize from JSON.
+            #[cfg(feature = "serde")]
+            #[staticmethod]
+            fn from_json(json: &str) -> PyResult<Self> {
+                serde_json::from_str(json).map(Self).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
+                })
+            }
+        }
+    };
+}
+
+#[cfg(feature = "verifiable")]
+pub(crate) use py_proof_class;
 pub(crate) use {
     py_dispatch, py_encrypted_impl, py_global_pubkey_impl, py_long_encrypted_impl,
     py_long_plaintext_impl, py_plaintext_impl, py_scalar_key_impl, py_session_pubkey_impl,

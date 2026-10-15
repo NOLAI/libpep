@@ -65,6 +65,26 @@ a major change against the published 0.13.0.
 - In the JavaScript bindings, `fromHash` returns `undefined` for input that is not 64 bytes
   instead of aborting.
 
+- The data-layer proof traits provide `verify` as `verified_reconstruct(..).is_some()`, so an
+  implementation only supplies `verified_reconstruct`.
+- `elgamal::dleq::generate_proof` and `verify_proof` take the ciphersuite from the group
+  (`G::CIPHERSUITE`) instead of an argument; `generate_proof_with` and `verify_proof_with` keep
+  explicit tags. `Ciphersuite` no longer implements serde, and `Ciphersuite::new` is hidden: it
+  exists for the `ciphersuite!` macro.
+- `unverified_reconstruct` on the RSK and RRSK proofs and their batches (`insecure`) takes no
+  originals, which it never used. `VerifiableRerandomizeBatch::verify` checks the number of
+  originals.
+- The `verifiable-derivation` methods return typed values: `derive_reshuffle_factor`,
+  `derive_pseudonym_rekey_factor` and `derive_attribute_rekey_factor` give the factor types, and
+  the `compute_*_commitment` functions the commitment types. In the bindings the methods are
+  `derive_pseudonym_rekey_factor` / `derivePseudonymRekeyFactor` and the attribute counterparts.
+- In the JavaScript bindings, `verifiablePseudonymize`, `verifiablePseudonymRekey` and
+  `verifiableAttributeRekey` return `PseudonymPseudonymizationProof`, `PseudonymRekeyProof` and
+  `AttributeRekeyProof` objects (with `toJSON`/`fromJSON`) instead of JSON strings, and the
+  `Verifier` methods take them; Python returns and takes the same classes. The module-level
+  `verifiable_*` functions of `elgamal.verifiable` that duplicated the classes' constructors are
+  gone from both bindings, except `verifiable_rerandomize` and `verifiable_rerandomize_batch`.
+
 ### Security
 
 - Session key share verification did not bind the received scalar to the proof.
@@ -92,7 +112,28 @@ a major change against the published 0.13.0.
 - Factor derivation rejects a factor equal to 1 as well as 0 (derived factors are unchanged in the
   non-degenerate case).
 
+- Secrets are wiped from memory: the byte secrets (`PseudonymizationSecret`, `EncryptionSecret`)
+  and the Carter–Wegman master secrets zeroize on drop, and the secret keys, factors, blinding
+  factors and shares implement `zeroize::Zeroize` (they are `Copy`, so wiping them is the
+  caller's call).
+
 ### Breaking changes
+
+- `peppy` is its own crate in `peppy/` (`cargo install peppy`); the `build-binary` feature and the
+  CLI dependencies are gone from libpep.
+- The batch slice functions (`pseudonymize_batch`, `rekey_batch`, `transcrypt_batch` and their
+  verifiable and transcryptor counterparts) take `&[E]` and no longer shuffle the caller's slice
+  in place; the output is shuffled. The test vectors of the batch outputs are regenerated.
+- Under `batch-pk`, the batch proofs verify against the key stored in the original batch:
+  `verified_reconstruct_batch` (and `Verifier::verify_*_batch`) no longer take the original's key
+  as a separate argument, and reject a batch whose stored key is not the one the proof was made
+  for. The bindings follow.
+- A long pseudonym's pseudonymization proof is one RRSK batch proof over its blocks
+  (`LongPseudonymPseudonymizationProof(VerifiableRRSKBatch)`), sharing the factor proofs, instead
+  of one proof per block.
+- The string form of a `LongEncryptedRecord` prefixes each list with its count
+  (`{n}:{items};{m}:{items}`), so a record with no pseudonyms or attributes round-trips;
+  `ParseError::InvalidCount` reports a bad count.
 
 - A transcryptor has one blinding factor, used for its pseudonym and attribute shares alike
   (Section 2.2.4 of the paper), so it publishes one `BlindingCommitment`: `BlindingCommitments`
@@ -308,8 +349,7 @@ a major change against the published 0.13.0.
   transition, `--prove` on `pseudonym|attribute rekey|pseudonymize|transcrypt` and
   `json transcrypt` adds the proof (JSON) to the output, and `verify-rekey`,
   `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original
-  ciphertext and the commitments (exit status 3 if it does not hold). The `build-binary` feature
-  therefore enables `serde` and `verifiable`.
+  ciphertext and the commitments (exit status 4 if it does not hold).
 - The verifiable operations on single long values in the bindings: Python
   `Transcryptor.verifiable_long_pseudonymize`, `verifiable_long_pseudonym_rekey` and
   `verifiable_long_attribute_rekey` with the `Verifier.verify_long_*` counterparts and the

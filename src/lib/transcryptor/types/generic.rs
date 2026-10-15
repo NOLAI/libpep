@@ -220,13 +220,12 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn rekey_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         rekey_info: &E::RekeyInfo,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Rekeyable<Group = G> + crate::data::traits::HasStructure + Clone,
-        E::RekeyInfo: Copy,
+        E: Rekeyable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::rekey_batch(encrypted, rekey_info, rng)
@@ -243,14 +242,13 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
     pub fn rekey_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         rekey_info: &E::RekeyInfo,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Rekeyable<Group = G> + crate::data::traits::HasStructure + Clone,
-        E::RekeyInfo: Copy,
+        E: Rekeyable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::rekey_batch(encrypted, rekey_info, public_key, rng)
@@ -266,12 +264,12 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn pseudonymize_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         pseudonymization_info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure + Clone,
+        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
@@ -288,13 +286,13 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
     pub fn pseudonymize_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         pseudonymization_info: &PseudonymizationInfo<G>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure + Clone,
+        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::pseudonymize_batch(
@@ -315,12 +313,12 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", feature = "elgamal3"))]
     pub fn transcrypt_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         transcryption_info: &TranscryptionInfo<G>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Transcryptable<Group = G> + crate::data::traits::HasStructure + Clone,
+        E: Transcryptable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::transcrypt_batch(encrypted, transcryption_info, rng)
@@ -337,13 +335,13 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(all(feature = "batch", not(feature = "elgamal3")))]
     pub fn transcrypt_batch<E, R>(
         &self,
-        encrypted: &mut [E],
+        encrypted: &[E],
         transcryption_info: &TranscryptionInfo<G>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::errors::BatchError>
     where
-        E: Transcryptable<Group = G> + crate::data::traits::HasStructure + Clone,
+        E: Transcryptable<Group = G> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::transcrypt_batch(encrypted, transcryption_info, public_key, rng)

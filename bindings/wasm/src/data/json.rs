@@ -477,8 +477,8 @@ pub fn wasm_transcrypt_json_batch(
     transcryption_info: &WASMTranscryptionInfo,
 ) -> Result<Vec<WASMEncryptedPepJsonValue>, JsValue> {
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
-    let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &mut rng)
+    let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
+    let transcrypted = transcrypt_batch(&rust_values, &transcryption_info.0, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(transcrypted
@@ -511,8 +511,8 @@ pub fn wasm_transcrypt_json_batch(
 ) -> Result<Vec<WASMEncryptedPepJsonValue>, JsValue> {
     let pk = libpep::keys::SessionPublicKeys::from(public_key);
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
-    let transcrypted = transcrypt_batch(&mut rust_values, &transcryption_info.0, &pk, &mut rng)
+    let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
+    let transcrypted = transcrypt_batch(&rust_values, &transcryption_info.0, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
 
     Ok(transcrypted

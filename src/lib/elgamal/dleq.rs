@@ -18,8 +18,9 @@
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
 //! the seed (`"Seed-" || contextString`), exactly as in the RFC. The context string comes from
-//! the [`Ciphersuite`], so two deployments with different context strings produce proofs
-//! that never verify against one another.
+//! the group's ciphersuite,
+//! [`Group::CIPHERSUITE`](crate::elgamal::arithmetic::Group::CIPHERSUITE), so two deployments
+//! with different context strings produce proofs that never verify against one another.
 //!
 //! The implementation is cross-checked against the ristretto255-SHA512 VOPRF test vectors of
 //! RFC 9497 Appendix A.1.2, for both a single pair and a batch of two.
@@ -30,9 +31,7 @@
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
-//! # use libpep::elgamal::arithmetic::{Group, Ristretto255};
 //! let mut rng = rand::rng();
-//! let ctx = Ristretto255::CIPHERSUITE;
 //!
 //! let k = ScalarNonZero::random(&mut rng);
 //! let a = G;
@@ -40,8 +39,8 @@
 //! let cs = [GroupElement::random(&mut rng), GroupElement::random(&mut rng)];
 //! let ds = [k * cs[0], k * cs[1]];
 //!
-//! let proof = generate_proof(&k, &a, &b, &cs, &ds, &ctx, &mut rng).unwrap();
-//! assert!(verify_proof(&a, &b, &cs, &ds, &proof, &ctx));
+//! let proof = generate_proof(&k, &a, &b, &cs, &ds, &mut rng).unwrap();
+//! assert!(verify_proof(&a, &b, &cs, &ds, &proof));
 //! ```
 //!
 //! [RFC 9497, Section 2.2]: https://www.rfc-editor.org/rfc/rfc9497.html#section-2.2
@@ -50,7 +49,6 @@ pub mod generic;
 
 pub use generic::ProofError;
 
-use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group_elements::GroupElement;
 use crate::elgamal::arithmetic::scalars::ScalarNonZero;
 use crate::elgamal::arithmetic::Ristretto255;
@@ -73,10 +71,9 @@ pub fn generate_proof<R: Rng + CryptoRng>(
     b: &GroupElement,
     cs: &[GroupElement],
     ds: &[GroupElement],
-    ciphersuite: &Ciphersuite,
     rng: &mut R,
 ) -> Result<Proof, ProofError> {
-    generic::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, ciphersuite, rng)
+    generic::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, rng)
 }
 
 /// `VerifyProof` of RFC 9497, Section 2.2; see [`generic::verify_proof`].
@@ -87,9 +84,8 @@ pub fn verify_proof(
     cs: &[GroupElement],
     ds: &[GroupElement],
     proof: &Proof,
-    ciphersuite: &Ciphersuite,
 ) -> bool {
-    generic::verify_proof::<Ristretto255>(a, b, cs, ds, proof, ciphersuite)
+    generic::verify_proof::<Ristretto255>(a, b, cs, ds, proof)
 }
 
 #[cfg(test)]
@@ -100,17 +96,13 @@ mod tests {
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::arithmetic::Group;
 
-    fn ctx() -> Ciphersuite {
-        Ristretto255::CIPHERSUITE
-    }
-
     #[test]
     fn single_pair_round_trip() {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &ctx(), rng).unwrap();
-        assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &ctx()));
+        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], rng).unwrap();
+        assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof));
     }
 
     #[test]
@@ -119,8 +111,8 @@ mod tests {
         let k = ScalarNonZero::random(rng);
         let cs: Vec<_> = (0..3).map(|_| GroupElement::random(rng)).collect();
         let ds: Vec<_> = cs.iter().map(|c| k * *c).collect();
-        let proof = generate_proof(&k, &G, &(k * G), &cs, &ds, &ctx(), rng).unwrap();
-        assert!(verify_proof(&G, &(k * G), &cs, &ds, &proof, &ctx()));
+        let proof = generate_proof(&k, &G, &(k * G), &cs, &ds, rng).unwrap();
+        assert!(verify_proof(&G, &(k * G), &cs, &ds, &proof));
     }
 
     /// A batched proof must not verify if any single `d_i` is replaced.
@@ -130,13 +122,13 @@ mod tests {
         let k = ScalarNonZero::random(rng);
         let cs: Vec<_> = (0..3).map(|_| GroupElement::random(rng)).collect();
         let ds: Vec<_> = cs.iter().map(|c| k * *c).collect();
-        let proof = generate_proof(&k, &G, &(k * G), &cs, &ds, &ctx(), rng).unwrap();
+        let proof = generate_proof(&k, &G, &(k * G), &cs, &ds, rng).unwrap();
 
         for i in 0..ds.len() {
             let mut tampered = ds.clone();
             tampered[i] = GroupElement::random(rng);
             assert!(
-                !verify_proof(&G, &(k * G), &cs, &tampered, &proof, &ctx()),
+                !verify_proof(&G, &(k * G), &cs, &tampered, &proof),
                 "tampering with d_{i} was not detected"
             );
         }
@@ -148,15 +140,8 @@ mod tests {
         let k = ScalarNonZero::random(rng);
         let other = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &ctx(), rng).unwrap();
-        assert!(!verify_proof(
-            &G,
-            &(other * G),
-            &[c],
-            &[k * c],
-            &proof,
-            &ctx()
-        ));
+        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], rng).unwrap();
+        assert!(!verify_proof(&G, &(other * G), &[c], &[k * c], &proof));
     }
 
     /// The context string is part of the challenge, so proofs do not cross ciphersuites.
@@ -165,13 +150,22 @@ mod tests {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let a = Ristretto255::CIPHERSUITE;
         // A different ciphersuite identifier gives a different context string, so the challenge
         // differs and a proof made under one does not verify under the other.
-        let b = crate::ciphersuite!("other-suite");
-        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &a, rng).unwrap();
-        assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &a));
-        assert!(!verify_proof(&G, &(k * G), &[c], &[k * c], &proof, &b));
+        let ours = Dsts::from_ciphersuite(&Ristretto255::CIPHERSUITE);
+        let other = Dsts::from_ciphersuite(&crate::ciphersuite!("other-suite"));
+        let r = ScalarNonZero::random(rng);
+        let proof =
+            generate_proof_with::<Ristretto255>(&k, &G, &(k * G), &[c], &[k * c], &ours, &r);
+        assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof));
+        assert!(!verify_proof_with::<Ristretto255>(
+            &G,
+            &(k * G),
+            &[c],
+            &[k * c],
+            &proof,
+            &other
+        ));
     }
 
     #[test]
@@ -180,11 +174,11 @@ mod tests {
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
         assert_eq!(
-            generate_proof(&k, &G, &(k * G), &[c], &[], &ctx(), rng).unwrap_err(),
+            generate_proof(&k, &G, &(k * G), &[c], &[], rng).unwrap_err(),
             ProofError::MismatchedLists { cs: 1, ds: 0 }
         );
         assert_eq!(
-            generate_proof(&k, &G, &(k * G), &[], &[], &ctx(), rng).unwrap_err(),
+            generate_proof(&k, &G, &(k * G), &[], &[], rng).unwrap_err(),
             ProofError::MismatchedLists { cs: 0, ds: 0 }
         );
     }
@@ -192,7 +186,7 @@ mod tests {
     /// The DSTs of RFC 9497's own VOPRF ciphersuite, whose context string is
     /// `"OPRFV1-" || I2OSP(modeVOPRF, 1) || "-" || "ristretto255-SHA512"` with modeVOPRF = 0x01.
     ///
-    /// This is deliberately NOT our [`Ciphersuite`]: the draft uses the prefix `"coPRFV1-"` so that
+    /// This is deliberately NOT our [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite): the draft uses the prefix `"coPRFV1-"` so that
     /// pseudonyms of the two protocols are domain separated on the same group. Reproducing the
     /// RFC's vectors therefore requires the RFC's own context string.
     fn rfc9497_voprf_dsts() -> Dsts {
@@ -296,7 +290,7 @@ mod tests {
         let rng = &mut rand::rng();
         let k = ScalarNonZero::random(rng);
         let c = GroupElement::random(rng);
-        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], &ctx(), rng).unwrap();
+        let proof = generate_proof(&k, &G, &(k * G), &[c], &[k * c], rng).unwrap();
         let bytes = proof.to_bytes();
         assert_eq!(bytes.len(), PROOF_SIZE);
         assert_eq!(Proof::from_slice(&bytes).unwrap(), proof);

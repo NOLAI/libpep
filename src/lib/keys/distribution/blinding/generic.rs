@@ -235,3 +235,10 @@ redacted_debug!(
     BlindedPseudonymGlobalSecretKey<G>,
     BlindedAttributeGlobalSecretKey<G>,
 );
+
+zeroize_fields!(
+    BlindingFactor<G> { 0 },
+    BlindedPseudonymGlobalSecretKey<G> { 0 },
+    BlindedAttributeGlobalSecretKey<G> { 0 },
+    BlindedGlobalSecretKeys<G> { pseudonym, attribute },
+);

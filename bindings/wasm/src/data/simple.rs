@@ -4,6 +4,10 @@ use crate::macros::{wasm_encrypted_impl, wasm_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;
 use libpep::data::simple::*;
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::simple::{
+    AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof,
+};
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym that can be used to identify a user.
@@ -29,3 +33,20 @@ wasm_encrypted_impl!(WASMEncryptedPseudonym wraps EncryptedPseudonym as "Encrypt
 #[wasm_bindgen(js_name = EncryptedAttribute)]
 pub struct WASMEncryptedAttribute(pub(crate) EncryptedAttribute);
 wasm_encrypted_impl!(WASMEncryptedAttribute wraps EncryptedAttribute as "EncryptedAttribute");
+
+#[cfg(feature = "verifiable")]
+crate::macros::wasm_proof_class!(
+    /// Proof of a verifiable pseudonymization of an `EncryptedPseudonym`.
+    WASMPseudonymPseudonymizationProof(PseudonymPseudonymizationProof)
+        as PseudonymPseudonymizationProof
+);
+#[cfg(feature = "verifiable")]
+crate::macros::wasm_proof_class!(
+    /// Proof of a verifiable rekeying of an `EncryptedPseudonym`.
+    WASMPseudonymRekeyProof(PseudonymRekeyProof) as PseudonymRekeyProof
+);
+#[cfg(feature = "verifiable")]
+crate::macros::wasm_proof_class!(
+    /// Proof of a verifiable rekeying of an `EncryptedAttribute`.
+    WASMAttributeRekeyProof(AttributeRekeyProof) as AttributeRekeyProof
+);

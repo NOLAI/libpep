@@ -3,6 +3,10 @@
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::hashing::hash_to_nonzero_scalar;
+use crate::elgamal::verifiable::generic::{
+    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
+};
+use crate::factors::types::generic::{AttributeRekeyFactor, PseudonymRekeyFactor, ReshuffleFactor};
 use rand_core::{CryptoRng, Rng};
 
 /// Extract the payload of a pseudonymization domain, returning `None` for the
@@ -110,17 +114,14 @@ impl<G: Group> MasterPseudonymizationSecret<G> {
         }
     }
 
-    /// Derive a reshuffling factor for a specific domain:
-    /// `s_d = x₁ · H₁(d) + x₂ · H₂(d)`.
-    pub fn derive_reshuffle_factor(&self, domain: &PseudonymizationDomain) -> G::Scalar {
-        match domain_payload(domain) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"reshuffle", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"reshuffle", payload.as_bytes());
-                cw_combine::<G>(&h1, &self.x1, &h2, &self.x2)
-            }
-            None => G::scalar_one(),
-        }
+    /// Derive the reshuffle factor of a domain: `s_d = x₁ · H₁(d) + x₂ · H₂(d)`.
+    pub fn derive_reshuffle_factor(&self, domain: &PseudonymizationDomain) -> ReshuffleFactor<G> {
+        ReshuffleFactor(derive::<G>(
+            b"reshuffle",
+            domain_payload(domain),
+            &self.x1,
+            &self.x2,
+        ))
     }
 }
 
@@ -141,70 +142,99 @@ impl<G: Group> MasterRekeyingSecret<G> {
         }
     }
 
-    /// Derive a pseudonym rekeying factor for a specific session:
-    /// `k_s = y₁ · H₁(s) + y₂ · H₂(s)`.
-    pub fn derive_pseudonym_rekey_factor(&self, context: &EncryptionContext) -> G::Scalar {
-        match context_payload(context) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"pseudonym_rekey", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"pseudonym_rekey", payload.as_bytes());
-                cw_combine::<G>(&h1, &self.y1, &h2, &self.y2)
-            }
-            None => G::scalar_one(),
-        }
+    /// Derive the pseudonym rekey factor of a session: `k_s = y₁ · H₁(s) + y₂ · H₂(s)`.
+    pub fn derive_pseudonym_rekey_factor(
+        &self,
+        context: &EncryptionContext,
+    ) -> PseudonymRekeyFactor<G> {
+        PseudonymRekeyFactor(derive::<G>(
+            b"pseudonym_rekey",
+            context_payload(context),
+            &self.y1,
+            &self.y2,
+        ))
     }
 
-    /// Derive an attribute rekeying factor for a specific session.
-    pub fn derive_attribute_rekey_factor(&self, context: &EncryptionContext) -> G::Scalar {
-        match context_payload(context) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"attribute_rekey", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"attribute_rekey", payload.as_bytes());
-                cw_combine::<G>(&h1, &self.y1, &h2, &self.y2)
-            }
-            None => G::scalar_one(),
-        }
+    /// Derive the attribute rekey factor of a session.
+    pub fn derive_attribute_rekey_factor(
+        &self,
+        context: &EncryptionContext,
+    ) -> AttributeRekeyFactor<G> {
+        AttributeRekeyFactor(derive::<G>(
+            b"attribute_rekey",
+            context_payload(context),
+            &self.y1,
+            &self.y2,
+        ))
     }
 }
 
 impl<G: Group> MasterPseudonymizationPublicKey<G> {
-    /// Compute the reshuffle factor commitment `S_d = s_d·G` for a domain.
-    pub fn compute_reshuffle_commitment(&self, domain: &PseudonymizationDomain) -> G::Element {
-        match domain_payload(domain) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"reshuffle", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"reshuffle", payload.as_bytes());
-                h1 * self.x1 + h2 * self.x2
-            }
-            None => G::generator(),
-        }
+    /// Compute the commitment `S_d = s_d·G` to the reshuffle factor of a domain.
+    pub fn compute_reshuffle_commitment(
+        &self,
+        domain: &PseudonymizationDomain,
+    ) -> PseudonymizationFactorCommitment<G> {
+        PseudonymizationFactorCommitment(FactorCommitment(commit::<G>(
+            b"reshuffle",
+            domain_payload(domain),
+            &self.x1,
+            &self.x2,
+        )))
     }
 }
 
 impl<G: Group> MasterRekeyingPublicKey<G> {
-    /// Compute the pseudonym rekey factor commitment `K_s = k_s·G` for a
-    /// session.
-    pub fn compute_pseudonym_rekey_commitment(&self, context: &EncryptionContext) -> G::Element {
-        match context_payload(context) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"pseudonym_rekey", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"pseudonym_rekey", payload.as_bytes());
-                h1 * self.y1 + h2 * self.y2
-            }
-            None => G::generator(),
-        }
+    /// Compute the commitment `K_s = k_s·G` to the pseudonym rekey factor of a session.
+    pub fn compute_pseudonym_rekey_commitment(
+        &self,
+        context: &EncryptionContext,
+    ) -> RekeyFactorCommitment<G> {
+        RekeyFactorCommitment(FactorCommitment(commit::<G>(
+            b"pseudonym_rekey",
+            context_payload(context),
+            &self.y1,
+            &self.y2,
+        )))
     }
 
-    /// Compute the attribute rekey factor commitment for a session.
-    pub fn compute_attribute_rekey_commitment(&self, context: &EncryptionContext) -> G::Element {
-        match context_payload(context) {
-            Some(payload) => {
-                let h1 = hash_to_scalar_1::<G>(b"attribute_rekey", payload.as_bytes());
-                let h2 = hash_to_scalar_2::<G>(b"attribute_rekey", payload.as_bytes());
-                h1 * self.y1 + h2 * self.y2
-            }
-            None => G::generator(),
+    /// Compute the commitment to the attribute rekey factor of a session.
+    pub fn compute_attribute_rekey_commitment(
+        &self,
+        context: &EncryptionContext,
+    ) -> RekeyFactorCommitment<G> {
+        RekeyFactorCommitment(FactorCommitment(commit::<G>(
+            b"attribute_rekey",
+            context_payload(context),
+            &self.y1,
+            &self.y2,
+        )))
+    }
+}
+
+/// `a · H₁(id) + b · H₂(id)` under the label of the factor kind, or one for the global domain or
+/// context.
+fn derive<G: Group>(label: &[u8], id: Option<&str>, a: &G::Scalar, b: &G::Scalar) -> G::Scalar {
+    match id {
+        Some(id) => cw_combine::<G>(
+            &hash_to_scalar_1::<G>(label, id.as_bytes()),
+            a,
+            &hash_to_scalar_2::<G>(label, id.as_bytes()),
+            b,
+        ),
+        None => G::scalar_one(),
+    }
+}
+
+/// `H₁(id) · A + H₂(id) · B`, the commitment to [`derive`] from the public keys `A = a·G` and
+/// `B = b·G`, or `G` for the global domain or context.
+fn commit<G: Group>(label: &[u8], id: Option<&str>, a: &G::Element, b: &G::Element) -> G::Element {
+    match id {
+        Some(id) => {
+            hash_to_scalar_1::<G>(label, id.as_bytes()) * *a
+                + hash_to_scalar_2::<G>(label, id.as_bytes()) * *b
         }
+        None => G::generator(),
     }
 }
 
@@ -217,3 +247,23 @@ pub(crate) fn hash_to_scalar_1<G: Group>(typ: &[u8], input: &[u8]) -> G::Scalar 
 pub(crate) fn hash_to_scalar_2<G: Group>(typ: &[u8], input: &[u8]) -> G::Scalar {
     hash_to_nonzero_scalar::<G>(&[b"h2:", typ, b":", input])
 }
+
+zeroize_fields!(
+    MasterPseudonymizationSecret<G> { x1, x2 },
+    MasterRekeyingSecret<G> { y1, y2 },
+);
+
+impl<G: Group> Drop for MasterPseudonymizationSecret<G> {
+    fn drop(&mut self) {
+        zeroize::Zeroize::zeroize(self);
+    }
+}
+
+impl<G: Group> Drop for MasterRekeyingSecret<G> {
+    fn drop(&mut self) {
+        zeroize::Zeroize::zeroize(self);
+    }
+}
+
+impl<G: Group> zeroize::ZeroizeOnDrop for MasterPseudonymizationSecret<G> {}
+impl<G: Group> zeroize::ZeroizeOnDrop for MasterRekeyingSecret<G> {}

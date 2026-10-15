@@ -1,45 +1,83 @@
 //! Verifiable operations of the long data types, generic over the [`Group`].
 //!
-//! A proof of a long value is one proof per block; a batch proof lays all blocks of all values
-//! out in one list.
+//! The pseudonymization proof of a long pseudonym is one RRSK batch proof over its blocks, which
+//! share the factor proofs; a rekey proof is one proof per block. A batch proof lays all blocks
+//! of all values out in one list.
 
 use crate::data::long::generic::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "batch")]
-use crate::data::simple::generic::{EncryptedAttribute, EncryptedPseudonym};
-#[cfg(feature = "batch")]
+use crate::data::simple::generic::EncryptedAttribute;
+use crate::data::simple::generic::EncryptedPseudonym;
 use crate::data::simple::ElGamalEncrypted;
 #[cfg(feature = "batch")]
 use crate::data::verifiable::batch::{
     BatchPseudonymizationProof, BatchRekeyProof, VerifiableBatchItem,
 };
-use crate::data::verifiable::simple::generic::{
-    AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof,
-};
+#[cfg(feature = "elgamal3")]
+use crate::data::verifiable::common_gy;
+use crate::data::verifiable::simple::generic::{AttributeRekeyProof, PseudonymRekeyProof};
 use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
 use crate::elgamal::arithmetic::group::Group;
-#[cfg(feature = "batch")]
 use crate::elgamal::generic::ElGamal;
+use crate::elgamal::verifiable::generic::VerifiableRRSKBatch;
 use crate::factors::commitments::generic::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use crate::factors::types::generic::PseudonymizationInfo;
+#[cfg(not(feature = "elgamal3"))]
+use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::generic::PseudonymSessionPublicKey;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// Proof of a verifiable pseudonymization of a [`LongEncryptedPseudonym`]: one proof per block.
+/// Proof of a verifiable pseudonymization of a [`LongEncryptedPseudonym`]: one RRSK batch proof
+/// over its blocks, so the proofs of the factors (`T`, `S`, `K`) appear once rather than once per
+/// block.
 #[derive(Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
     serde(bound = "", transparent)
 )]
-pub struct LongPseudonymPseudonymizationProof<G: Group>(pub Vec<PseudonymPseudonymizationProof<G>>);
+pub struct LongPseudonymPseudonymizationProof<G: Group>(pub VerifiableRRSKBatch<G>);
+
+/// The ciphertexts of the blocks of a long value.
+fn blocks<G: Group>(value: &LongEncryptedPseudonym<G>) -> Vec<ElGamal<G>> {
+    value.0.iter().map(|block| *block.value()).collect()
+}
+
+/// The long value of the given block ciphertexts.
+fn from_blocks<G: Group>(blocks: Vec<ElGamal<G>>) -> LongEncryptedPseudonym<G> {
+    LongEncryptedPseudonym(
+        blocks
+            .into_iter()
+            .map(EncryptedPseudonym::from_value)
+            .collect(),
+    )
+}
+
+impl<G: Group> LongPseudonymPseudonymizationProof<G> {
+    fn reconstruct_under(
+        &self,
+        original: &LongEncryptedPseudonym<G>,
+        gy: &G::Element,
+        commitments: &VerifiablePseudonymizationCommitment<G>,
+    ) -> Option<LongEncryptedPseudonym<G>> {
+        self.0
+            .verified_reconstruct(
+                &blocks(original),
+                gy,
+                &commitments.reshuffle_commitment,
+                &commitments.rekey_commitment,
+            )
+            .map(from_blocks)
+    }
+}
 
 impl<G: Group> VerifiablePseudonymizationProof for LongPseudonymPseudonymizationProof<G> {
     type Group = G;
@@ -47,49 +85,13 @@ impl<G: Group> VerifiablePseudonymizationProof for LongPseudonymPseudonymization
     type Output = LongEncryptedPseudonym<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
-    ) -> bool {
-        self.0.len() == original.0.len()
-            && self
-                .0
-                .iter()
-                .zip(&original.0)
-                .all(|(p, block)| p.verify(block, commitments))
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verify(
-        &self,
-        original: &Self::DataType,
-        public_key: &PseudonymSessionPublicKey<G>,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
-    ) -> bool {
-        self.0.len() == original.0.len()
-            && self
-                .0
-                .iter()
-                .zip(&original.0)
-                .all(|(p, block)| p.verify(block, public_key, commitments))
-    }
-
-    #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
-        if self.0.len() != original.0.len() {
-            return None;
-        }
-        self.0
-            .iter()
-            .zip(&original.0)
-            .map(|(p, block)| p.verified_reconstruct(block, commitments))
-            .collect::<Option<_>>()
-            .map(LongEncryptedPseudonym)
+        let gy = common_gy(&blocks(original))?;
+        self.reconstruct_under(original, &gy, commitments)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -99,26 +101,12 @@ impl<G: Group> VerifiablePseudonymizationProof for LongPseudonymPseudonymization
         public_key: &PseudonymSessionPublicKey<G>,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
-        if self.0.len() != original.0.len() {
-            return None;
-        }
-        self.0
-            .iter()
-            .zip(&original.0)
-            .map(|(p, block)| p.verified_reconstruct(block, public_key, commitments))
-            .collect::<Option<_>>()
-            .map(LongEncryptedPseudonym)
+        self.reconstruct_under(original, public_key.value(), commitments)
     }
 
     #[cfg(feature = "insecure")]
-    fn unverified_reconstruct(&self, original: &Self::DataType) -> Self::Output {
-        LongEncryptedPseudonym(
-            self.0
-                .iter()
-                .zip(&original.0)
-                .map(|(p, block)| p.unverified_reconstruct(block))
-                .collect(),
-        )
+    fn unverified_reconstruct(&self, _original: &Self::DataType) -> Self::Output {
+        from_blocks(self.0.result())
     }
 }
 
@@ -131,12 +119,12 @@ impl<G: Group> VerifiablePseudonymizable for LongEncryptedPseudonym<G> {
         info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof {
-        LongPseudonymPseudonymizationProof(
-            self.0
-                .iter()
-                .map(|block| block.verifiable_pseudonymize(info, rng))
-                .collect(),
-        )
+        let blocks = blocks(self);
+        // The blocks of one value carry one key; with mixed keys the proof does not verify.
+        let gy = common_gy(&blocks).unwrap_or_else(G::generator);
+        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new(
+            &blocks, &gy, &info.s.0, &info.k.0, rng,
+        ))
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -146,12 +134,13 @@ impl<G: Group> VerifiablePseudonymizable for LongEncryptedPseudonym<G> {
         public_key: &PseudonymSessionPublicKey<G>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof {
-        LongPseudonymPseudonymizationProof(
-            self.0
-                .iter()
-                .map(|block| block.verifiable_pseudonymize(info, public_key, rng))
-                .collect(),
-        )
+        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new(
+            &blocks(self),
+            public_key.value(),
+            &info.s.0,
+            &info.k.0,
+            rng,
+        ))
     }
 }
 
@@ -171,19 +160,6 @@ macro_rules! long_rekey_proof {
             type Group = G;
             type DataType = $data<G>;
             type Output = $data<G>;
-
-            fn verify(
-                &self,
-                original: &Self::DataType,
-                commitments: &VerifiableRekeyCommitment<G>,
-            ) -> bool {
-                self.0.len() == original.0.len()
-                    && self
-                        .0
-                        .iter()
-                        .zip(&original.0)
-                        .all(|(p, block)| p.verify(block, commitments))
-            }
 
             fn verified_reconstruct(
                 &self,

@@ -68,31 +68,12 @@ impl<G: Group> VerifiableRerandomizeBatch<G> {
 
     /// Verify every entry's `ZKP{Y_r = r·Y}` against the shared `Y`.
     #[must_use]
-    pub fn verify(&self, gy: &G::Element) -> bool {
-        self.inners.iter().all(|rer| rer.verify(gy))
+    pub fn verify(&self, originals: &[ElGamal<G>], gy: &G::Element) -> bool {
+        originals.len() == self.inners.len() && self.inners.iter().all(|rer| rer.verify(gy))
     }
 
-    /// Verify every inner against `originals` and `gy`, returning the
-    /// reconstructed rerandomized ciphertexts. Returns `None` on any
-    /// failure (proof tampering or length mismatch).
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal<G>],
-        gy: &G::Element,
-    ) -> Option<Vec<ElGamal<G>>> {
-        if originals.len() != self.inners.len() {
-            return None;
-        }
-        self.inners
-            .iter()
-            .zip(originals.iter())
-            .map(|(inner, o)| inner.verified_reconstruct(o, gy))
-            .collect()
-    }
-
-    /// Reconstruct the rerandomized ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
-        self.result(originals)
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], gy: &G::Element) -> Vec<ElGamal<G>> = verify(originals, gy);
+        unverified(originals: &[ElGamal<G>]) = result(originals);
     }
 }

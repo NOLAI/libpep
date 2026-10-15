@@ -89,26 +89,6 @@ impl<G: Group> VerifiableRekey<G> {
         }
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, commitments) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
-        self.result(original)
-    }
-
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(&self, original: &ElGamal<G>, commitment: &RekeyFactorCommitment<G>) -> bool {
@@ -124,6 +104,11 @@ impl<G: Group> VerifiableRekey<G> {
             return false;
         }
         true
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, commitments);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 
@@ -182,27 +167,6 @@ impl<G: Group> VerifiableRekey2<G> {
         self.inner.result(original)
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        from_commitments: &RekeyFactorCommitment<G>,
-        to_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, from_commitments, to_commitments) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
-        self.result(original)
-    }
-
     /// Verify the per-factor sub-proof (`p_gk_to`) once against the commitments; the
     /// per-message inner proofs are then checked against
     /// [`combined_commitment`](Self::combined_commitment).
@@ -234,6 +198,11 @@ impl<G: Group> VerifiableRekey2<G> {
     ) -> bool {
         self.verify_factor(from_commitments, to_commitments)
             && self.inner.verify(original, &self.combined_commitment())
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, from_commitments: &RekeyFactorCommitment<G>, to_commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, from_commitments, to_commitments);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 

@@ -53,4 +53,8 @@ pub enum ParseError {
     /// The pseudonyms and attributes of a record are not separated by `;`.
     #[error("expected pseudonyms and attributes separated by ';'")]
     MissingSeparator,
+    /// A part of a long record does not start with the number of its values, or has a different
+    /// number of values than it states.
+    #[error("expected the number of values before ':', matching the values: {0}")]
+    InvalidCount(String),
 }

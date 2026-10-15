@@ -368,7 +368,7 @@ class TestVerifiable(unittest.TestCase):
 
         current = EncryptedPseudonymBatch(encrypted_items, client_a_pk)
 
-        # Chain: each step records (pre-batch, pre-pk, proof, commitments) so
+        # Chain: each step records (pre-batch, proof, commitments) so
         # the *next* step can verify it before doing its own transcryption.
         prev = None
 
@@ -378,17 +378,16 @@ class TestVerifiable(unittest.TestCase):
             # and proof; that reconstruction must match what this transcryptor
             # actually received.
             if prev is not None:
-                pre_batch, pre_pk, proof, commitments = prev
+                pre_batch, proof, commitments = prev
                 reconstructed = proof.verified_reconstruct_batch(
-                    pre_batch, pre_pk, current.public_key(), commitments,
+                    pre_batch, current.public_key(), commitments,
                 )
                 self.assertEqual(reconstructed.items(), current.items())
 
             # Step 2: this transcryptor builds and applies its own verifiable
-            # batch transcryption. We save a clone of the pre-batch + its pk
-            # so the next iteration can verify against them.
-            pre_pk = current.public_key()
-            pre_batch_clone = EncryptedPseudonymBatch(current.items(), pre_pk)
+            # batch transcryption. We save a clone of the pre-batch, which
+            # carries its key, so the next iteration can verify against it.
+            pre_batch_clone = EncryptedPseudonymBatch(current.items(), current.public_key())
 
             info = system.pseudonymization_info(
                 domain_a, domain_b, session_a, session_b,
@@ -397,13 +396,13 @@ class TestVerifiable(unittest.TestCase):
                 domain_a, domain_b, session_a, session_b,
             )
             proof = current.verifiable_pseudonymize(info)
-            prev = (pre_batch_clone, pre_pk, proof, commitments)
+            prev = (pre_batch_clone, proof, commitments)
 
         # Final: client B verifies the last transcryptor's proof, then decrypts.
         self.assertIsNotNone(prev)
-        pre_batch, pre_pk, proof, commitments = prev
+        pre_batch, proof, commitments = prev
         verified_batch = proof.verified_reconstruct_batch(
-            pre_batch, pre_pk, current.public_key(), commitments,
+            pre_batch, current.public_key(), commitments,
         )
         self.assertEqual(verified_batch.items(), current.items())
 

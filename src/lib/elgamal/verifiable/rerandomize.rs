@@ -72,24 +72,9 @@ impl<G: Group> VerifiableRerandomize<G> {
         verify_proof::<G>(&self.gr, gy, &self.p_gy_r)
     }
 
-    /// Verify the proof against `original` and `gy`, returning the
-    /// reconstructed rerandomized ciphertext.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        gy: &G::Element,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(gy) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self, original: &ElGamal<G>) -> ElGamal<G> {
-        self.result(original)
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element) -> ElGamal<G> = verify(gy);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 

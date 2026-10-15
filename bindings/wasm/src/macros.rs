@@ -430,8 +430,35 @@ macro_rules! wasm_global_crypt_fns {
     )+};
 }
 
+/// A class wrapping a proof of a verifiable operation, serialized as JSON.
+macro_rules! wasm_proof_class {
+    ($(#[$doc:meta])* $w:ident($inner:ident) as $name:ident) => {
+        $(#[$doc])*
+        #[derive(Clone, From)]
+        #[wasm_bindgen(js_name = $name)]
+        pub struct $w(pub(crate) $inner);
+
+        #[wasm_bindgen(js_class = $name)]
+        impl $w {
+            #[cfg(feature = "serde")]
+            #[wasm_bindgen(js_name = toJSON)]
+            pub fn to_json(&self) -> Result<String, JsValue> {
+                serde_json::to_string(&self.0).map_err(crate::errors::malformed_proof_err)
+            }
+
+            #[cfg(feature = "serde")]
+            #[wasm_bindgen(js_name = fromJSON)]
+            pub fn from_json(json: &str) -> Result<$w, JsValue> {
+                serde_json::from_str(json)
+                    .map($w)
+                    .map_err(crate::errors::malformed_proof_err)
+            }
+        }
+    };
+}
+
 pub(crate) use {
     wasm_encrypted_impl, wasm_global_crypt_fns, wasm_long_encrypted_impl, wasm_long_plaintext_impl,
-    wasm_pair_impl, wasm_plaintext_impl, wasm_point_key_impl, wasm_scalar_key_impl,
-    wasm_session_crypt_fns,
+    wasm_pair_impl, wasm_plaintext_impl, wasm_point_key_impl, wasm_proof_class,
+    wasm_scalar_key_impl, wasm_session_crypt_fns,
 };

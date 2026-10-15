@@ -95,27 +95,6 @@ impl<G: Group> VerifiableRSK<G> {
         self.inner.result()
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        reshuffle_commitments: &PseudonymizationFactorCommitment<G>,
-        rekey_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, reshuffle_commitments, rekey_commitments) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
-        self.result()
-    }
-
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
@@ -134,6 +113,11 @@ impl<G: Group> VerifiableRSK<G> {
         }
         self.inner
             .verify(original, &self.gt, reshuffle_commitment, rekey_commitment)
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, reshuffle_commitments: &PseudonymizationFactorCommitment<G>, rekey_commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, reshuffle_commitments, rekey_commitments);
+        unverified() = result();
     }
 }
 
@@ -228,21 +212,6 @@ impl<G: Group> VerifiableRSKInner<G> {
         }
         true
     }
-
-    /// Verify this inner and return the reconstructed RSK'd ciphertext.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        gt: &G::Element,
-        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
-        rekey_commitment: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(original, gt, reshuffle_commitment, rekey_commitment) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
 }
 
 /// Verifiable RSK-2: per-factor sub-proofs (`p_gs_to`, `p_gk_to`) tying the
@@ -322,35 +291,6 @@ impl<G: Group> VerifiableRSK2<G> {
         self.inner.result()
     }
 
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal<G>,
-        s_from_commitments: &PseudonymizationFactorCommitment<G>,
-        s_to_commitments: &PseudonymizationFactorCommitment<G>,
-        k_from_commitments: &RekeyFactorCommitment<G>,
-        k_to_commitments: &RekeyFactorCommitment<G>,
-    ) -> Option<ElGamal<G>> {
-        if self.verify(
-            original,
-            s_from_commitments,
-            s_to_commitments,
-            k_from_commitments,
-            k_to_commitments,
-        ) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// The result of the operation, without verifying the proof.
-    pub fn unverified_reconstruct(&self) -> ElGamal<G> {
-        self.result()
-    }
-
     /// Verify the per-factor sub-proofs (`p_gs_to`, `p_gk_to`) tying the
     /// combined commitments to the published factor commitments. Does not
     /// verify the inner VRSK's per-message body — use [`Self::verify`] or
@@ -403,6 +343,11 @@ impl<G: Group> VerifiableRSK2<G> {
             &self.combined_reshuffle_commitment(),
             &self.combined_rekey_commitment(),
         )
+    }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, s_from_commitments: &PseudonymizationFactorCommitment<G>, s_to_commitments: &PseudonymizationFactorCommitment<G>, k_from_commitments: &RekeyFactorCommitment<G>, k_to_commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, s_from_commitments, s_to_commitments, k_from_commitments, k_to_commitments);
+        unverified() = result();
     }
 }
 

@@ -136,7 +136,9 @@ pub trait VerifiableRekeyProof {
         &self,
         original: &Self::DataType,
         commitments: &VerifiableRekeyCommitment<Self::Group>,
-    ) -> bool;
+    ) -> bool {
+        self.verified_reconstruct(original, commitments).is_some()
+    }
 
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
@@ -173,7 +175,9 @@ pub trait VerifiablePseudonymizationProof {
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
-    ) -> bool;
+    ) -> bool {
+        self.verified_reconstruct(original, commitments).is_some()
+    }
 
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
@@ -183,7 +187,10 @@ pub trait VerifiablePseudonymizationProof {
         original: &Self::DataType,
         public_key: &PseudonymSessionPublicKey<Self::Group>,
         commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
-    ) -> bool;
+    ) -> bool {
+        self.verified_reconstruct(original, public_key, commitments)
+            .is_some()
+    }
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
@@ -229,7 +236,9 @@ pub trait VerifiableTranscryptionProof {
         &self,
         original: &Self::DataType,
         commitments: &VerifiableTranscryptionCommitment<Self::Group>,
-    ) -> bool;
+    ) -> bool {
+        self.verified_reconstruct(original, commitments).is_some()
+    }
 
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
@@ -239,7 +248,10 @@ pub trait VerifiableTranscryptionProof {
         original: &Self::DataType,
         public_key: &SessionPublicKeys<Self::Group>,
         commitments: &VerifiableTranscryptionCommitment<Self::Group>,
-    ) -> bool;
+    ) -> bool {
+        self.verified_reconstruct(original, public_key, commitments)
+            .is_some()
+    }
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
