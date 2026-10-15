@@ -56,8 +56,8 @@
 //! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
 //! towards global keys), `batch` (batch transcryption with shuffling) with `batch-pk` (the batch
 //! carries the public key), `serde`, `json` (structured data with nested pseudonyms), and
-//! `verifiable` (zero-knowledge proofs of transcryption). The `peppy` command-line tool is a
-//! separate crate.
+//! `verifiable` (zero-knowledge proofs of transcryption). The optional `cli` feature builds the
+//! `peppy` command-line tool.
 //!
 //! Optional features and their security implications:
 //!

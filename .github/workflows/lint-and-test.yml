@@ -56,13 +56,13 @@ jobs:
             features: "json"
             name: "libpep no-default+json"
             args: "--no-default-features"
-          # Command line crate
-          - package: "peppy"
-            features: ""
-            name: "peppy default"
-          - package: "peppy"
-            features: "elgamal3,insecure"
-            name: "peppy default+elgamal3+insecure"
+          # The peppy command line tool
+          - package: "libpep"
+            features: "cli"
+            name: "libpep default+cli"
+          - package: "libpep"
+            features: "cli,elgamal3,insecure"
+            name: "libpep default+cli+elgamal3+insecure"
           # Python binding crate
           - package: "libpep-py"
             features: ""
@@ -114,7 +114,7 @@ jobs:
       - run: cargo check -p libpep --all-targets
       - run: cargo check -p libpep --all-targets --features "insecure,verifiable-derivation"
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
-      - run: cargo check -p peppy --all-targets
+      - run: cargo check -p libpep --all-targets --features cli
       - run: cargo check -p libpep-py
       - run: cargo check -p libpep-wasm
       - run: cargo check -p libpep-wasm --target wasm32-unknown-unknown
@@ -149,12 +149,12 @@ jobs:
           - package: "libpep"
             features: "insecure,verifiable-derivation"
             name: "libpep default+verifiable-derivation"
-          - package: "peppy"
-            features: ""
-            name: "peppy default"
-          - package: "peppy"
-            features: "elgamal3"
-            name: "peppy default+elgamal3"
+          - package: "libpep"
+            features: "cli"
+            name: "libpep default+cli"
+          - package: "libpep"
+            features: "cli,elgamal3"
+            name: "libpep default+cli+elgamal3"
           - package: "libpep-py"
             features: ""
             name: "libpep-py default"
