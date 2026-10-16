@@ -111,10 +111,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.88.0
         with:
           targets: wasm32-unknown-unknown
-      - run: cargo check -p libpep --all-targets
-      - run: cargo check -p libpep --all-targets --features "insecure,verifiable-derivation"
+      # The MSRV covers the library and the CLI, not the dev-dependencies of the tests and
+      # benchmarks (energy-bench needs a newer compiler), so no --all-targets.
+      - run: cargo check -p libpep
+      - run: cargo check -p libpep --features "insecure,verifiable-derivation"
       - run: cargo check -p libpep --features "insecure,elgamal3,legacy"
-      - run: cargo check -p libpep --all-targets --features cli
+      - run: cargo check -p libpep --features cli
       - run: cargo check -p libpep-py
       - run: cargo check -p libpep-wasm
       - run: cargo check -p libpep-wasm --target wasm32-unknown-unknown

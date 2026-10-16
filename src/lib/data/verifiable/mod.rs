@@ -12,7 +12,7 @@ pub mod traits;
 /// into its transcript, or `None` if they carry different keys. Picking the first one's key
 /// would let a prover mix ciphertexts under different keys and have only the first one
 /// checked. Without ciphertexts there is no key to bind, and the generator stands in.
-#[cfg(feature = "elgamal3")]
+#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
 pub(crate) fn common_gy<G: crate::elgamal::arithmetic::group::Group>(
     ciphertexts: &[crate::elgamal::generic::ElGamal<G>],
 ) -> Option<G::Element> {
