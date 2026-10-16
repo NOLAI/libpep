@@ -4,10 +4,9 @@ use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use super::rsk::VerifiableRSKInner;
-use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
+use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -19,43 +18,43 @@ use serde::{Deserialize, Serialize};
 /// the batch header. Each per-message [`VerifiableRSKInner`] carries only
 /// the genuinely ciphertext-dependent sub-proofs.
 #[derive(Eq, PartialEq, Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRSKBatch {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRSKBatch<G: Group> {
     /// `T = (s·k⁻¹)·G`.
-    pub(crate) gt: GroupElement,
+    pub(crate) gt: G::Element,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
-    pub(crate) p_gs: Proof,
+    pub(crate) p_gs: Proof<G>,
     /// Per-message inners; verified against `gt` plus the published
     /// `(S, K)` commitments.
-    pub(crate) inners: Vec<VerifiableRSKInner>,
+    pub(crate) inners: Vec<VerifiableRSKInner<G>>,
 }
 
-impl VerifiableRSKBatch {
+impl<G: Group> VerifiableRSKBatch<G> {
     /// `T = (s·k⁻¹)·G`.
-    pub fn gt(&self) -> &GroupElement {
+    pub fn gt(&self) -> &G::Element {
         &self.gt
     }
     /// The hoisted factor sub-proof `ZKP{S = k * T}`.
-    pub fn p_gs(&self) -> &Proof {
+    pub fn p_gs(&self) -> &Proof<G> {
         &self.p_gs
     }
     /// The per-message inner bodies.
-    pub fn inners(&self) -> &[VerifiableRSKInner] {
+    pub fn inners(&self) -> &[VerifiableRSKInner<G>] {
         &self.inners
     }
 }
 
-impl VerifiableRSKBatch {
+impl<G: Group> VerifiableRSKBatch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        ciphertexts: &[ElGamal],
-        s: &ScalarNonZero,
-        k: &ScalarNonZero,
+        ciphertexts: &[ElGamal<G>],
+        s: &G::Scalar,
+        k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let s_k_inv = s * k.invert();
-        let gt = s_k_inv * G;
-        let (_gk, p_gs) = create_proof(k, &gt, rng);
+        let s_k_inv = *s * G::scalar_inverse(k);
+        let gt = s_k_inv * G::generator();
+        let (_gk, p_gs) = create_proof::<G, R>(k, &gt, rng);
         let inners = ciphertexts
             .iter()
             .map(|v| {
@@ -74,7 +73,7 @@ impl VerifiableRSKBatch {
 
     /// Reconstruct the RSK'd ciphertexts from this batch proof,
     /// **without verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self) -> Vec<ElGamal> {
+    pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
         self.inners.iter().map(|inner| inner.result()).collect()
     }
 
@@ -82,15 +81,15 @@ impl VerifiableRSKBatch {
     #[must_use]
     pub fn verify_factor(
         &self,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
+        rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs = reshuffle_commitment.point();
         let gk = rekey_commitment.point();
         if *self.p_gs != gs {
             return false;
         }
-        if !verify_proof(&gk, &self.gt, &self.p_gs) {
+        if !verify_proof::<G>(&gk, &self.gt, &self.p_gs) {
             return false;
         }
         true
@@ -100,9 +99,9 @@ impl VerifiableRSKBatch {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        originals: &[ElGamal],
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
+        originals: &[ElGamal<G>],
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
+        rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         if !self.verify_factor(reshuffle_commitment, rekey_commitment) {
             return false;
@@ -116,33 +115,9 @@ impl VerifiableRSKBatch {
             .all(|(inner, o)| inner.verify(o, &self.gt, reshuffle_commitment, rekey_commitment))
     }
 
-    /// Verify the per-factor block and every inner against `originals`,
-    /// returning the reconstructed RSK'd ciphertexts.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal],
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
-    ) -> Option<Vec<ElGamal>> {
-        if !self.verify_factor(reshuffle_commitment, rekey_commitment) {
-            return None;
-        }
-        if originals.len() != self.inners.len() {
-            return None;
-        }
-        self.inners
-            .iter()
-            .zip(originals.iter())
-            .map(|(inner, o)| {
-                inner.verified_reconstruct(o, &self.gt, reshuffle_commitment, rekey_commitment)
-            })
-            .collect()
-    }
-
-    /// Reconstruct the RSK'd ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, _originals: &[ElGamal]) -> Vec<ElGamal> {
-        self.result()
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], reshuffle_commitment: &PseudonymizationFactorCommitment<G>, rekey_commitment: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, reshuffle_commitment, rekey_commitment);
+        unverified() = result();
     }
 }
 
@@ -153,59 +128,59 @@ impl VerifiableRSKBatch {
 /// p_gk_to)` plus an `inner` that is itself the batched VRSK over the
 /// combined scalars `(s, k) = (s_from⁻¹·s_to, k_from⁻¹·k_to)`.
 #[derive(Eq, PartialEq, Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRSK2Batch {
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRSK2Batch<G: Group> {
     /// `S = (s_from⁻¹·s_to)·G`.
-    pub(crate) gs: GroupElement,
+    pub(crate) gs: G::Element,
     /// `K = (k_from⁻¹·k_to)·G`.
-    pub(crate) gk: GroupElement,
+    pub(crate) gk: G::Element,
     /// `ZKP{S_to = s_from * S}`.
-    pub(crate) p_gs_to: Proof,
+    pub(crate) p_gs_to: Proof<G>,
     /// `ZKP{K_to = k_from * K}`.
-    pub(crate) p_gk_to: Proof,
+    pub(crate) p_gk_to: Proof<G>,
     /// VRSK batch over the combined scalars.
-    pub(crate) inner: VerifiableRSKBatch,
+    pub(crate) inner: VerifiableRSKBatch<G>,
 }
 
-impl VerifiableRSK2Batch {
+impl<G: Group> VerifiableRSK2Batch<G> {
     /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
-    pub fn gs(&self) -> &GroupElement {
+    pub fn gs(&self) -> &G::Element {
         &self.gs
     }
     /// The combined rekey commitment `K = (k_from⁻¹·k_to)·G`.
-    pub fn gk(&self) -> &GroupElement {
+    pub fn gk(&self) -> &G::Element {
         &self.gk
     }
     /// The per-factor sub-proof `ZKP{S_to = s_from * S}`.
-    pub fn p_gs_to(&self) -> &Proof {
+    pub fn p_gs_to(&self) -> &Proof<G> {
         &self.p_gs_to
     }
     /// The per-factor sub-proof `ZKP{K_to = k_from * K}`.
-    pub fn p_gk_to(&self) -> &Proof {
+    pub fn p_gk_to(&self) -> &Proof<G> {
         &self.p_gk_to
     }
     /// The inner VRSK batch over the combined scalars.
-    pub fn inner(&self) -> &VerifiableRSKBatch {
+    pub fn inner(&self) -> &VerifiableRSKBatch<G> {
         &self.inner
     }
 }
 
-impl VerifiableRSK2Batch {
+impl<G: Group> VerifiableRSK2Batch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        ciphertexts: &[ElGamal],
-        s_from: &ScalarNonZero,
-        s_to: &ScalarNonZero,
-        k_from: &ScalarNonZero,
-        k_to: &ScalarNonZero,
+        ciphertexts: &[ElGamal<G>],
+        s_from: &G::Scalar,
+        s_to: &G::Scalar,
+        k_from: &G::Scalar,
+        k_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let s = s_from.invert() * s_to;
-        let k = k_from.invert() * k_to;
-        let gs = s * G;
-        let gk = k * G;
-        let (_gs_from, p_gs_to) = create_proof(s_from, &gs, rng);
-        let (_gk_from, p_gk_to) = create_proof(k_from, &gk, rng);
+        let s = G::scalar_inverse(s_from) * *s_to;
+        let k = G::scalar_inverse(k_from) * *k_to;
+        let gs = s * G::generator();
+        let gk = k * G::generator();
+        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
+        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
         let inner = VerifiableRSKBatch::new(ciphertexts, &s, &k, rng);
         Self {
             gs,
@@ -217,12 +192,12 @@ impl VerifiableRSK2Batch {
     }
 
     /// The commitment to the combined reshuffle factor `s_from⁻¹·s_to`.
-    pub fn combined_reshuffle_commitment(&self) -> PseudonymizationFactorCommitment {
+    pub fn combined_reshuffle_commitment(&self) -> PseudonymizationFactorCommitment<G> {
         PseudonymizationFactorCommitment(FactorCommitment(self.gs))
     }
 
     /// The commitment to the combined rekey factor `k_from⁻¹·k_to`.
-    pub fn combined_rekey_commitment(&self) -> RekeyFactorCommitment {
+    pub fn combined_rekey_commitment(&self) -> RekeyFactorCommitment<G> {
         RekeyFactorCommitment(FactorCommitment(self.gk))
     }
 
@@ -232,19 +207,19 @@ impl VerifiableRSK2Batch {
     #[must_use]
     pub fn verify_factor(
         &self,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs_from = s_from_commitments.point();
         let gs_to = s_to_commitments.point();
         let gk_from = k_from_commitments.point();
         let gk_to = k_to_commitments.point();
-        if *self.p_gs_to != gs_to || !verify_proof(&gs_from, &self.gs, &self.p_gs_to) {
+        if *self.p_gs_to != gs_to || !verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to) {
             return false;
         }
-        if *self.p_gk_to != gk_to || !verify_proof(&gk_from, &self.gk, &self.p_gk_to) {
+        if *self.p_gk_to != gk_to || !verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to) {
             return false;
         }
         self.inner.verify_factor(
@@ -257,11 +232,11 @@ impl VerifiableRSK2Batch {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        originals: &[ElGamal],
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
+        originals: &[ElGamal<G>],
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         if !self.verify_factor(
             s_from_commitments,
@@ -278,44 +253,29 @@ impl VerifiableRSK2Batch {
         )
     }
 
-    /// Verify all per-factor blocks and every inner against `originals`,
-    /// returning the reconstructed RSK-2'd ciphertexts.
-    pub fn verified_reconstruct(
-        &self,
-        originals: &[ElGamal],
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
-    ) -> Option<Vec<ElGamal>> {
-        if !self.verify_factor(
-            s_from_commitments,
-            s_to_commitments,
-            k_from_commitments,
-            k_to_commitments,
-        ) {
-            return None;
-        }
-        self.inner.verified_reconstruct(
-            originals,
-            &self.combined_reshuffle_commitment(),
-            &self.combined_rekey_commitment(),
-        )
+    /// The RSK-2'd ciphertexts, **without verifying** the proof. Internal prover-side use only.
+    pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
+        self.inner.result()
     }
 
-    /// Reconstruct the RSK-2'd ciphertexts **without verifying** the proof.
-    #[cfg(feature = "insecure")]
-    pub fn unverified_reconstruct(&self, originals: &[ElGamal]) -> Vec<ElGamal> {
-        self.inner.unverified_reconstruct(originals)
+    reconstruct! {
+        verified(originals: &[ElGamal<G>], s_from_commitments: &PseudonymizationFactorCommitment<G>, s_to_commitments: &PseudonymizationFactorCommitment<G>, k_from_commitments: &RekeyFactorCommitment<G>, k_to_commitments: &RekeyFactorCommitment<G>) -> Vec<ElGamal<G>> = verify(originals, s_from_commitments, s_to_commitments, k_from_commitments, k_to_commitments);
+        unverified() = result();
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rsk, rsk2};
+    use crate::elgamal::verifiable::{
+        PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK2Batch,
+        VerifiableRSKBatch,
+    };
+    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

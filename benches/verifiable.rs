@@ -8,31 +8,23 @@
 //! Inputs are generated in the `iter_batched` setup closure so only the
 //! operation or verification itself is timed.
 
-#[cfg(feature = "verifiable")]
 use criterion::{criterion_group, criterion_main, Criterion};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::primitives::{rekey, rekey2, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::verifiable::{
     PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
     VerifiableRSK, VerifiableRSK2, VerifiableRekey, VerifiableRekey2, VerifiableReshuffle,
     VerifiableReshuffle2,
 };
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::{encrypt, ElGamal};
 
-#[cfg(feature = "verifiable")]
 fn setup_pk() -> GroupElement {
     let mut rng = rand::rng();
     let sk = ScalarNonZero::random(&mut rng);
     sk * G
 }
 
-#[cfg(feature = "verifiable")]
 fn rrsk_primitive(
     c: &ElGamal,
     _gy: &GroupElement,
@@ -51,7 +43,6 @@ fn rrsk_primitive(
     }
 }
 
-#[cfg(feature = "verifiable")]
 fn rrsk2_primitive(
     c: &ElGamal,
     _gy: &GroupElement,
@@ -72,7 +63,6 @@ fn rrsk2_primitive(
     }
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
     c.bench_function("verifiable_reshuffle_create", |b| {
         b.iter_batched(
@@ -90,7 +80,6 @@ fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
     c.bench_function("verifiable_reshuffle_verify", |b| {
         b.iter_batched(
@@ -111,7 +100,6 @@ fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey_create(c: &mut Criterion) {
     c.bench_function("verifiable_rekey_create", |b| {
         b.iter_batched(
@@ -129,7 +117,6 @@ fn bench_verifiable_rekey_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rekey_verify", |b| {
         b.iter_batched(
@@ -150,7 +137,6 @@ fn bench_verifiable_rekey_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk_create(c: &mut Criterion) {
     c.bench_function("verifiable_rsk_create", |b| {
         b.iter_batched(
@@ -169,7 +155,6 @@ fn bench_verifiable_rsk_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rsk_verify", |b| {
         b.iter_batched(
@@ -192,7 +177,6 @@ fn bench_verifiable_rsk_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle2_create(c: &mut Criterion) {
     c.bench_function("verifiable_reshuffle2_create", |b| {
         b.iter_batched(
@@ -213,7 +197,6 @@ fn bench_verifiable_reshuffle2_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_reshuffle2_verify(c: &mut Criterion) {
     c.bench_function("verifiable_reshuffle2_verify", |b| {
         b.iter_batched(
@@ -238,7 +221,6 @@ fn bench_verifiable_reshuffle2_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey2_create(c: &mut Criterion) {
     c.bench_function("verifiable_rekey2_create", |b| {
         b.iter_batched(
@@ -259,7 +241,6 @@ fn bench_verifiable_rekey2_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rekey2_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rekey2_verify", |b| {
         b.iter_batched(
@@ -284,7 +265,6 @@ fn bench_verifiable_rekey2_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk2_create(c: &mut Criterion) {
     c.bench_function("verifiable_rsk2_create", |b| {
         b.iter_batched(
@@ -307,7 +287,6 @@ fn bench_verifiable_rsk2_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rsk2_verify", |b| {
         b.iter_batched(
@@ -339,7 +318,6 @@ fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk_create(c: &mut Criterion) {
     c.bench_function("verifiable_rrsk_create", |b| {
         b.iter_batched(
@@ -361,7 +339,6 @@ fn bench_verifiable_rrsk_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rrsk_verify", |b| {
         b.iter_batched(
@@ -385,7 +362,6 @@ fn bench_verifiable_rrsk_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk2_create(c: &mut Criterion) {
     c.bench_function("verifiable_rrsk2_create", |b| {
         b.iter_batched(
@@ -411,7 +387,6 @@ fn bench_verifiable_rrsk2_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
     c.bench_function("verifiable_rrsk2_verify", |b| {
         b.iter_batched(
@@ -452,7 +427,6 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
     use libpep::elgamal::verifiable::VerifiableRerandomize;
     c.bench_function("verifiable_rerandomize_create", |b| {
@@ -471,7 +445,6 @@ fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
     use libpep::elgamal::primitives::rerandomize;
     use libpep::elgamal::verifiable::VerifiableRerandomize;
@@ -504,7 +477,6 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
 // numbers are directly comparable: a `baseline_rsk` run measures just the
 // `rsk(...)` primitive call, whereas `verifiable_rsk_create` measures
 // `VerifiableRSK::new(...)` which is the same primitive plus the proof.
-#[cfg(feature = "verifiable")]
 fn bench_baseline_reshuffle(c: &mut Criterion) {
     c.bench_function("baseline_reshuffle", |b| {
         b.iter_batched(
@@ -522,7 +494,6 @@ fn bench_baseline_reshuffle(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rekey(c: &mut Criterion) {
     c.bench_function("baseline_rekey", |b| {
         b.iter_batched(
@@ -540,7 +511,6 @@ fn bench_baseline_rekey(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rsk(c: &mut Criterion) {
     c.bench_function("baseline_rsk", |b| {
         b.iter_batched(
@@ -559,7 +529,6 @@ fn bench_baseline_rsk(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_reshuffle2(c: &mut Criterion) {
     c.bench_function("baseline_reshuffle2", |b| {
         b.iter_batched(
@@ -578,7 +547,6 @@ fn bench_baseline_reshuffle2(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rekey2(c: &mut Criterion) {
     c.bench_function("baseline_rekey2", |b| {
         b.iter_batched(
@@ -597,7 +565,6 @@ fn bench_baseline_rekey2(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rsk2(c: &mut Criterion) {
     c.bench_function("baseline_rsk2", |b| {
         b.iter_batched(
@@ -620,7 +587,6 @@ fn bench_baseline_rsk2(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rrsk(c: &mut Criterion) {
     c.bench_function("baseline_rrsk", |b| {
         b.iter_batched(
@@ -640,7 +606,6 @@ fn bench_baseline_rrsk(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rrsk2(c: &mut Criterion) {
     c.bench_function("baseline_rrsk2", |b| {
         b.iter_batched(
@@ -664,7 +629,6 @@ fn bench_baseline_rrsk2(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_baseline_rerandomize(c: &mut Criterion) {
     use libpep::elgamal::primitives::rerandomize;
     c.bench_function("baseline_rerandomize", |b| {
@@ -693,7 +657,6 @@ fn bench_baseline_rerandomize(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "verifiable")]
 criterion_group!(
     benches,
     bench_baseline_rerandomize,
@@ -725,7 +688,6 @@ criterion_group!(
     bench_verifiable_rrsk2_verify,
 );
 
-#[cfg(feature = "verifiable")]
 criterion_main!(benches);
 
 #[cfg(not(feature = "verifiable"))]

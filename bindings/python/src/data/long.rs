@@ -10,6 +10,10 @@ use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
 use libpep::keys::types::{
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
     PseudonymSessionSecretKey,
@@ -154,12 +158,35 @@ pub fn py_decrypt_long_attribute(
     ))
 }
 
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable pseudonymization of a `LongEncryptedPseudonym`.
+    PyLongPseudonymPseudonymizationProof(LongPseudonymPseudonymizationProof)
+        as "LongPseudonymPseudonymizationProof"
+);
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedPseudonym`.
+    PyLongPseudonymRekeyProof(LongPseudonymRekeyProof) as "LongPseudonymRekeyProof"
+);
+#[cfg(feature = "verifiable")]
+crate::macros::py_proof_class!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedAttribute`.
+    PyLongAttributeRekeyProof(LongAttributeRekeyProof) as "LongAttributeRekeyProof"
+);
+
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register types only
     m.add_class::<PyLongPseudonym>()?;
     m.add_class::<PyLongAttribute>()?;
     m.add_class::<PyLongEncryptedPseudonym>()?;
     m.add_class::<PyLongEncryptedAttribute>()?;
+    #[cfg(feature = "verifiable")]
+    {
+        m.add_class::<PyLongPseudonymPseudonymizationProof>()?;
+        m.add_class::<PyLongPseudonymRekeyProof>()?;
+        m.add_class::<PyLongAttributeRekeyProof>()?;
+    }
 
     Ok(())
 }

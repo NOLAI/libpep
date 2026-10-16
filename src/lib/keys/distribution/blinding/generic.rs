@@ -7,7 +7,7 @@ use crate::keys::types::generic::{AttributeGlobalSecretKey, PseudonymGlobalSecre
 use rand_core::{CryptoRng, Rng};
 
 /// A blinding factor used to blind a global secret key during system setup.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct BlindingFactor<G: Group>(pub(crate) G::Scalar);
 
 impl<G: Group> BlindingFactor<G> {
@@ -102,7 +102,7 @@ pub trait BlindedGlobalSecretKey: Sized {
 /// A blinded pseudonym global secret key, which is the pseudonym global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct BlindedPseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
@@ -110,7 +110,7 @@ pub struct BlindedPseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 /// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
 /// of the transcryptors.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct BlindedAttributeGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
@@ -229,3 +229,16 @@ pub fn make_blinded_global_keys<G: Group>(
         attribute,
     })
 }
+
+redacted_debug!(
+    BlindingFactor<G>,
+    BlindedPseudonymGlobalSecretKey<G>,
+    BlindedAttributeGlobalSecretKey<G>,
+);
+
+zeroize_fields!(
+    BlindingFactor<G> { 0 },
+    BlindedPseudonymGlobalSecretKey<G> { 0 },
+    BlindedAttributeGlobalSecretKey<G> { 0 },
+    BlindedGlobalSecretKeys<G> { pseudonym, attribute },
+);

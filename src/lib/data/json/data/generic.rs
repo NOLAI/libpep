@@ -5,7 +5,6 @@ use crate::data::json::data::JsonError;
 #[cfg(feature = "batch")]
 use crate::data::json::unify_structures;
 use crate::data::json::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
-#[cfg(feature = "long")]
 use crate::data::long::generic::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
@@ -23,18 +22,18 @@ use crate::keys::types::generic::GlobalPublicKeys;
 use crate::keys::types::generic::GlobalSecretKeys;
 use crate::keys::types::generic::{SessionKeys, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// A JSON value where primitive types are stored as unencrypted PEP types.
 ///
 /// - `Null` remains as-is
 /// - `Bool` is stored as a single `Attribute` (1 byte)
 /// - `Number` is stored as a single `Attribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
-/// - `String` is stored as a `LongAttribute` (variable length)
-/// - `Pseudonym` is stored as a `LongPseudonym` (can be pseudonymized/reshuffled)
+/// - `String` is stored as an `Attribute` when it fits one block, else as a `LongAttribute`
+/// - `Pseudonym` is stored as a `Pseudonym` when it fits one block, else as a `LongPseudonym`
+///   (can be pseudonymized/reshuffled)
 /// - `Array` and `Object` contain nested `PepJsonValue`s
 ///
 /// Call `.encrypt()` to convert this into an `EncryptedPepJsonValue`.
@@ -50,14 +49,14 @@ pub enum PepJsonValue<G: InvertibleEncoding> {
     String(Attribute<G>),
     /// Long string that requires multiple blocks
     LongString(LongAttribute<G>),
-    /// Short pseudonym from 32-byte value
+    /// A pseudonym of one block.
     Pseudonym(Pseudonym<G>),
-    /// Long pseudonym (multiple 32-byte values or lizard-encoded)
+    /// A pseudonym of several blocks.
     LongPseudonym(LongPseudonym<G>),
     /// An array of values.
     Array(Vec<PepJsonValue<G>>),
     /// An object of named values.
-    Object(HashMap<String, PepJsonValue<G>>),
+    Object(BTreeMap<String, PepJsonValue<G>>),
 }
 
 /// An encrypted JSON value where primitive types are encrypted as PEP types.
@@ -65,14 +64,16 @@ pub enum PepJsonValue<G: InvertibleEncoding> {
 /// - `Null` remains unencrypted
 /// - `Bool` is encrypted as a single `EncryptedAttribute` (1 byte)
 /// - `Number` is encrypted as a single `EncryptedAttribute` (9 bytes: 1 byte type tag + 8 bytes data for u64/i64/f64)
-/// - `String` is encrypted as a `LongEncryptedAttribute` (variable length)
-/// - `Pseudonym` is encrypted as a `LongEncryptedPseudonym` (can be pseudonymized/reshuffled)
+/// - `String` is encrypted as an `EncryptedAttribute` or a `LongEncryptedAttribute`
+/// - `Pseudonym` is encrypted as an `EncryptedPseudonym` or a `LongEncryptedPseudonym` (can be
+///   pseudonymized/reshuffled)
 /// - `Array` and `Object` contain nested `EncryptedPepJsonValue`s
 ///
-/// Call `.decrypt()` to convert this back into a regular `serde_json::Value`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "data"))]
+/// Call `.decrypt()` to convert this back into a `PepJsonValue`, and `to_value` on that for
+/// the `serde_json::Value`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(bound = "")]
+#[serde(tag = "type", content = "data")]
 pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
     /// JSON `null`, kept in the clear.
     Null,
@@ -91,7 +92,7 @@ pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
     /// An array of encrypted values.
     Array(Vec<EncryptedPepJsonValue<G>>),
     /// An object of named encrypted values.
-    Object(HashMap<String, EncryptedPepJsonValue<G>>),
+    Object(BTreeMap<String, EncryptedPepJsonValue<G>>),
 }
 
 impl<G: InvertibleEncoding> PepJsonValue<G> {
@@ -200,7 +201,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
                 Self::Array(out)
             }
             Value::Object(obj) => {
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 out.extend(obj.iter().map(|(k, v)| (k.clone(), Self::from_value(v))));
                 Self::Object(out)
             }
@@ -263,7 +264,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             (Self::String(attr), JsonStructure::String(1)) => Ok(Self::String(*attr)),
 
             // Short string needs to be expanded to long string
-            #[cfg(feature = "long")]
             (Self::String(attr), JsonStructure::String(target_blocks)) if *target_blocks > 1 => {
                 // Convert to LongAttribute with 1 block, then pad
                 let long_attr = LongAttribute::from(vec![*attr]);
@@ -272,7 +272,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             }
 
             // Long string normalization
-            #[cfg(feature = "long")]
             (Self::LongString(long_attr), JsonStructure::String(target_blocks)) => {
                 let padded = long_attr.pad_to(*target_blocks)?;
                 Ok(Self::LongString(padded))
@@ -282,7 +281,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(1)) => Ok(Self::Pseudonym(*pseudo)),
 
             // Short pseudonym needs to be expanded to long pseudonym
-            #[cfg(feature = "long")]
             (Self::Pseudonym(pseudo), JsonStructure::Pseudonym(target_blocks))
                 if *target_blocks > 1 =>
             {
@@ -293,7 +291,6 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             }
 
             // Long pseudonym normalization
-            #[cfg(feature = "long")]
             (Self::LongPseudonym(long_pseudo), JsonStructure::Pseudonym(target_blocks)) => {
                 let padded = long_pseudo.pad_to(*target_blocks)?;
                 Ok(Self::LongPseudonym(padded))
@@ -319,7 +316,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
 
             // Object padding - recursively pad each field
             (Self::Object(obj), JsonStructure::Object(target_fields)) => {
-                let mut padded = HashMap::new();
+                let mut padded = BTreeMap::new();
 
                 for (key, target_struct) in target_fields {
                     match obj.get(key) {
@@ -382,20 +379,15 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
             Self::Bool(_) => JsonStructure::Bool,
             Self::Number(_) => JsonStructure::Number,
             Self::String(_) => JsonStructure::String(1),
-            #[cfg(feature = "long")]
             Self::LongString(long_attr) => JsonStructure::String(long_attr.len()),
             Self::Pseudonym(_) => JsonStructure::Pseudonym(1),
-            #[cfg(feature = "long")]
             Self::LongPseudonym(long_pseudo) => JsonStructure::Pseudonym(long_pseudo.len()),
             Self::Array(arr) => JsonStructure::Array(arr.iter().map(|v| v.structure()).collect()),
-            Self::Object(obj) => {
-                let mut fields: Vec<_> = obj
-                    .iter()
+            Self::Object(obj) => JsonStructure::Object(
+                obj.iter()
                     .map(|(k, v)| (k.clone(), v.structure()))
-                    .collect();
-                fields.sort_by(|a, b| a.0.cmp(&b.0));
-                JsonStructure::Object(fields)
-            }
+                    .collect(),
+            ),
         }
     }
 }
@@ -537,7 +529,7 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPepJsonValue<G> {
                 Some(PepJsonValue::Array(out))
             }
             EncryptedPepJsonValue::Object(obj) => {
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     out.insert(k.clone(), v.decrypt(keys)?);
                 }
@@ -612,7 +604,7 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPepJsonValue<G> {
                 Some(PepJsonValue::Array(out))
             }
             EncryptedPepJsonValue::Object(obj) => {
-                let mut out = HashMap::with_capacity(obj.len());
+                let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     out.insert(k.clone(), v.decrypt_global(secret_key)?);
                 }
@@ -655,15 +647,44 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPepJsonValue<G> {
         }
     }
 
+    /// Every leaf gets its own factor: with one factor the differences between the leaves
+    /// would survive transcryption and link the document to its input.
     #[cfg(feature = "elgamal3")]
     fn rerandomize<R>(&self, rng: &mut R) -> Self
     where
         R: Rng + CryptoRng,
     {
-        let r = G::random_scalar(rng);
-        self.rerandomize_known(&RerandomizeFactor(r))
+        match self {
+            EncryptedPepJsonValue::Null => EncryptedPepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => EncryptedPepJsonValue::Bool(enc.rerandomize(rng)),
+            EncryptedPepJsonValue::Number(enc) => {
+                EncryptedPepJsonValue::Number(enc.rerandomize(rng))
+            }
+            EncryptedPepJsonValue::String(enc) => {
+                EncryptedPepJsonValue::String(enc.rerandomize(rng))
+            }
+            EncryptedPepJsonValue::LongString(enc) => {
+                EncryptedPepJsonValue::LongString(enc.rerandomize(rng))
+            }
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                EncryptedPepJsonValue::Pseudonym(enc.rerandomize(rng))
+            }
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                EncryptedPepJsonValue::LongPseudonym(enc.rerandomize(rng))
+            }
+            EncryptedPepJsonValue::Array(arr) => {
+                EncryptedPepJsonValue::Array(arr.iter().map(|x| x.rerandomize(rng)).collect())
+            }
+            EncryptedPepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.rerandomize(rng)))
+                    .collect(),
+            ),
+        }
     }
 
+    /// Every leaf gets its own factor: with one factor the differences between the leaves
+    /// would survive transcryption and link the document to its input.
     #[cfg(not(feature = "elgamal3"))]
     fn rerandomize<R>(
         &self,
@@ -673,8 +694,35 @@ impl<G: InvertibleEncoding> Encrypted for EncryptedPepJsonValue<G> {
     where
         R: Rng + CryptoRng,
     {
-        let r = G::random_scalar(rng);
-        self.rerandomize_known(public_key, &RerandomizeFactor(r))
+        match self {
+            EncryptedPepJsonValue::Null => EncryptedPepJsonValue::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                EncryptedPepJsonValue::Bool(enc.rerandomize(&public_key.attribute, rng))
+            }
+            EncryptedPepJsonValue::Number(enc) => {
+                EncryptedPepJsonValue::Number(enc.rerandomize(&public_key.attribute, rng))
+            }
+            EncryptedPepJsonValue::String(enc) => {
+                EncryptedPepJsonValue::String(enc.rerandomize(&public_key.attribute, rng))
+            }
+            EncryptedPepJsonValue::LongString(enc) => {
+                EncryptedPepJsonValue::LongString(enc.rerandomize(&public_key.attribute, rng))
+            }
+            EncryptedPepJsonValue::Pseudonym(enc) => {
+                EncryptedPepJsonValue::Pseudonym(enc.rerandomize(&public_key.pseudonym, rng))
+            }
+            EncryptedPepJsonValue::LongPseudonym(enc) => {
+                EncryptedPepJsonValue::LongPseudonym(enc.rerandomize(&public_key.pseudonym, rng))
+            }
+            EncryptedPepJsonValue::Array(arr) => EncryptedPepJsonValue::Array(
+                arr.iter().map(|x| x.rerandomize(public_key, rng)).collect(),
+            ),
+            EncryptedPepJsonValue::Object(obj) => EncryptedPepJsonValue::Object(
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.rerandomize(public_key, rng)))
+                    .collect(),
+            ),
+        }
     }
 
     #[cfg(feature = "elgamal3")]

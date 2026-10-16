@@ -37,14 +37,14 @@ pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
 
 /// Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
 #[pyfunction]
-#[pyo3(name = "make_pseudonym_session_keys", signature = (global, session, secret))]
+#[pyo3(name = "make_pseudonym_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_pseudonym_session_keys(
-    global: &PyPseudonymGlobalSecretKey,
+    global_key: &PyPseudonymGlobalSecretKey,
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
-        &PseudonymGlobalSecretKey::from_scalar(*global.0),
+        &PseudonymGlobalSecretKey::from_scalar(*global_key.0),
         &session.0,
         &secret.0,
     );
@@ -56,14 +56,14 @@ pub fn py_make_pseudonym_session_keys(
 
 /// Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
 #[pyfunction]
-#[pyo3(name = "make_attribute_session_keys", signature = (global, session, secret))]
+#[pyo3(name = "make_attribute_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_attribute_session_keys(
-    global: &PyAttributeGlobalSecretKey,
+    global_key: &PyAttributeGlobalSecretKey,
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
-        &AttributeGlobalSecretKey::from_scalar(*global.0),
+        &AttributeGlobalSecretKey::from_scalar(*global_key.0),
         &session.0,
         &secret.0,
     );
@@ -97,16 +97,16 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
 
 /// Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyEncryptionSecret`].
 #[pyfunction]
-#[pyo3(name = "make_session_keys", signature = (global, session, secret))]
+#[pyo3(name = "make_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_session_keys(
-    global: &PyGlobalSecretKeys,
+    global_key: &PyGlobalSecretKeys,
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PySessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {
-            pseudonym: PseudonymGlobalSecretKey::from_scalar(*global.pseudonym.0),
-            attribute: AttributeGlobalSecretKey::from_scalar(*global.attribute.0),
+            pseudonym: PseudonymGlobalSecretKey::from_scalar(*global_key.pseudonym.0),
+            attribute: AttributeGlobalSecretKey::from_scalar(*global_key.attribute.0),
         },
         &session.0,
         &secret.0,
@@ -127,90 +127,6 @@ pub fn py_make_session_keys(
     }
 }
 
-/// Result bundle for `make_pseudonym_session_keys_with_proof`.
-#[cfg(feature = "verifiable-derivation")]
-#[pyclass(name = "PseudonymSessionKeysWithProof", from_py_object)]
-#[derive(Clone)]
-pub struct PyPseudonymSessionKeysWithProof {
-    #[pyo3(get)]
-    pub public: PyPseudonymSessionPublicKey,
-    #[pyo3(get)]
-    pub secret: PyPseudonymSessionSecretKey,
-    #[pyo3(get)]
-    pub proof: crate::keys::distribution::proofs::PySessionKeyShareProof,
-    #[pyo3(get)]
-    pub blinding_commitment: crate::keys::distribution::proofs::PyBlindingCommitment,
-}
-
-/// Result bundle for `make_attribute_session_keys_with_proof`.
-#[cfg(feature = "verifiable-derivation")]
-#[pyclass(name = "AttributeSessionKeysWithProof", from_py_object)]
-#[derive(Clone)]
-pub struct PyAttributeSessionKeysWithProof {
-    #[pyo3(get)]
-    pub public: PyAttributeSessionPublicKey,
-    #[pyo3(get)]
-    pub secret: PyAttributeSessionSecretKey,
-    #[pyo3(get)]
-    pub proof: crate::keys::distribution::proofs::PySessionKeyShareProof,
-    #[pyo3(get)]
-    pub blinding_commitment: crate::keys::distribution::proofs::PyBlindingCommitment,
-}
-
-/// Generate pseudonym session keys together with a session-key-share proof.
-#[cfg(feature = "verifiable-derivation")]
-#[pyfunction]
-#[pyo3(name = "make_pseudonym_session_keys_with_proof")]
-pub fn py_make_pseudonym_session_keys_with_proof(
-    global: &PyPseudonymGlobalSecretKey,
-    session: &crate::contexts::PyEncryptionContext,
-    secret: &PyEncryptionSecret,
-    blinding: &crate::keys::distribution::blinding::PyBlindingFactor,
-) -> PyResult<PyPseudonymSessionKeysWithProof> {
-    let mut rng = rand::rng();
-    let (public, secret_key, proof, blinding_commitment) = make_pseudonym_session_keys_with_proof(
-        &PseudonymGlobalSecretKey::from_scalar(*global.0),
-        &session.0,
-        &secret.0,
-        &blinding.0,
-        &mut rng,
-    )
-    .map_err(crate::errors::session_key_share_err_to_py)?;
-    Ok(PyPseudonymSessionKeysWithProof {
-        public: PyPseudonymSessionPublicKey::from(PyGroupElement::from(*public)),
-        secret: PyPseudonymSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
-        proof: proof.into(),
-        blinding_commitment: blinding_commitment.into(),
-    })
-}
-
-/// Generate attribute session keys together with a session-key-share proof.
-#[cfg(feature = "verifiable-derivation")]
-#[pyfunction]
-#[pyo3(name = "make_attribute_session_keys_with_proof")]
-pub fn py_make_attribute_session_keys_with_proof(
-    global: &PyAttributeGlobalSecretKey,
-    session: &crate::contexts::PyEncryptionContext,
-    secret: &PyEncryptionSecret,
-    blinding: &crate::keys::distribution::blinding::PyBlindingFactor,
-) -> PyResult<PyAttributeSessionKeysWithProof> {
-    let mut rng = rand::rng();
-    let (public, secret_key, proof, blinding_commitment) = make_attribute_session_keys_with_proof(
-        &AttributeGlobalSecretKey::from_scalar(*global.0),
-        &session.0,
-        &secret.0,
-        &blinding.0,
-        &mut rng,
-    )
-    .map_err(crate::errors::session_key_share_err_to_py)?;
-    Ok(PyAttributeSessionKeysWithProof {
-        public: PyAttributeSessionPublicKey::from(PyGroupElement::from(*public)),
-        secret: PyAttributeSessionSecretKey::from(PyScalarNonZero::from(*secret_key.value())),
-        proof: proof.into(),
-        blinding_commitment: blinding_commitment.into(),
-    })
-}
-
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_make_global_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_pseudonym_global_keys, m)?)?;
@@ -218,18 +134,5 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_make_pseudonym_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_attribute_session_keys, m)?)?;
     m.add_function(wrap_pyfunction!(py_make_session_keys, m)?)?;
-    #[cfg(feature = "verifiable-derivation")]
-    {
-        m.add_class::<PyPseudonymSessionKeysWithProof>()?;
-        m.add_class::<PyAttributeSessionKeysWithProof>()?;
-        m.add_function(wrap_pyfunction!(
-            py_make_pseudonym_session_keys_with_proof,
-            m
-        )?)?;
-        m.add_function(wrap_pyfunction!(
-            py_make_attribute_session_keys_with_proof,
-            m
-        )?)?;
-    }
     Ok(())
 }

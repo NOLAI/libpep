@@ -1,15 +1,13 @@
 //! Python bindings for session-key-share zero-knowledge proofs.
 //!
-//! These bindings are part of the `verifiable-derivation` surface: the
-//! underlying Rust types live under `crate::keys::distribution::proofs` and
-//! are only available with `feature = "verifiable"`.
+//! Mirrors `libpep::keys::distribution::proofs`; available with `feature = "verifiable"`.
 
-#![cfg(feature = "verifiable-derivation")]
+#![cfg(feature = "verifiable")]
 
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
-use libpep::keys::distribution::{BlindingCommitment, BlindingCommitments, SessionKeyShareProof};
+use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -38,7 +36,7 @@ impl PyBlindingCommitment {
     #[staticmethod]
     fn from_point(point: PyGroupElement) -> Self {
         Self {
-            inner: BlindingCommitment(point.0),
+            inner: libpep::keys::distribution::proofs::generic::BlindingCommitment(point.0),
         }
     }
 
@@ -73,78 +71,6 @@ impl From<BlindingCommitment> for PyBlindingCommitment {
 
 impl From<PyBlindingCommitment> for BlindingCommitment {
     fn from(py: PyBlindingCommitment) -> Self {
-        py.inner
-    }
-}
-
-/// Pair of blinding commitments for one transcryptor (pseudonym + attribute).
-#[pyclass(name = "BlindingCommitments", from_py_object)]
-#[derive(Clone, Copy)]
-pub struct PyBlindingCommitments {
-    pub(crate) inner: BlindingCommitments,
-}
-
-#[pymethods]
-#[allow(clippy::wrong_self_convention)]
-impl PyBlindingCommitments {
-    /// Create blinding commitments from pseudonym and attribute blinding scalars.
-    #[new]
-    fn new(pseudonym_blinding: PyScalarNonZero, attribute_blinding: PyScalarNonZero) -> Self {
-        Self {
-            inner: BlindingCommitments::new(&pseudonym_blinding.0, &attribute_blinding.0),
-        }
-    }
-
-    /// Build directly from two preconstructed commitments.
-    #[staticmethod]
-    fn from_commitments(pseudonym: PyBlindingCommitment, attribute: PyBlindingCommitment) -> Self {
-        Self {
-            inner: BlindingCommitments {
-                pseudonym: pseudonym.inner,
-                attribute: attribute.inner,
-            },
-        }
-    }
-
-    #[getter]
-    fn pseudonym(&self) -> PyBlindingCommitment {
-        PyBlindingCommitment {
-            inner: self.inner.pseudonym,
-        }
-    }
-
-    #[getter]
-    fn attribute(&self) -> PyBlindingCommitment {
-        PyBlindingCommitment {
-            inner: self.inner.attribute,
-        }
-    }
-
-    /// Serialize to JSON.
-    #[cfg(feature = "serde")]
-    fn to_json(&self) -> PyResult<String> {
-        serde_json::to_string(&self.inner)
-            .map_err(|e| PyValueError::new_err(format!("Serialization failed: {}", e)))
-    }
-
-    /// Deserialize from JSON.
-    #[cfg(feature = "serde")]
-    #[staticmethod]
-    fn from_json(json: &str) -> PyResult<Self> {
-        serde_json::from_str(json)
-            .map(|inner| Self { inner })
-            .map_err(|e| PyValueError::new_err(format!("Deserialization failed: {}", e)))
-    }
-}
-
-impl From<BlindingCommitments> for PyBlindingCommitments {
-    fn from(inner: BlindingCommitments) -> Self {
-        Self { inner }
-    }
-}
-
-impl From<PyBlindingCommitments> for BlindingCommitments {
-    fn from(py: PyBlindingCommitments) -> Self {
         py.inner
     }
 }
@@ -260,7 +186,6 @@ impl From<PySessionKeyShareProof> for SessionKeyShareProof {
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBlindingCommitment>()?;
-    m.add_class::<PyBlindingCommitments>()?;
     m.add_class::<PySessionKeyShareProof>()?;
     Ok(())
 }

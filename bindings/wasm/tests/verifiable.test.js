@@ -2,12 +2,16 @@
 //
 // Mirrors the Rust integration tests in `tests/verifiable.rs` 1:1 so the JS
 // and Rust APIs read the same; each test below corresponds to a same-named
-// Rust test. Proofs are passed as JSON strings on the WASM boundary (the
-// `verifiable*` methods on `Transcryptor` return JSON, the `verify*` methods
-// on `Verifier` accept JSON).
+// Rust test.
 
 const {
     Attribute,
+    LongAttribute,
+    LongPseudonym,
+    LongPseudonymPseudonymizationProof,
+    PseudonymPseudonymizationProof,
+    PseudonymRekeyProof,
+    AttributeRekeyProof,
     Pseudonym,
     PseudonymizationDomain,
     EncryptionContext,
@@ -19,6 +23,10 @@ const {
     encryptAttribute,
     decryptPseudonym,
     decryptAttribute,
+    encryptLongPseudonym,
+    encryptLongAttribute,
+    decryptLongPseudonym,
+    decryptLongAttribute,
     makePseudonymGlobalKeys,
     makeAttributeGlobalKeys,
     makePseudonymSessionKeys,
@@ -28,6 +36,12 @@ const {
     EncryptedPseudonymBatch,
     PseudonymPseudonymizationBatchProof,
     makeDistributedGlobalKeys,
+    makePseudonymRekeyFactor,
+    makeAttributeRekeyFactor,
+    BlindingFactor,
+    BlindingCommitment,
+    ScalarNonZero,
+    GroupElement,
 } = require("../pkg/libpep.js");
 
 const SECRET = Uint8Array.from(Buffer.from("secret"));
@@ -66,6 +80,70 @@ test('test_verifiable_pseudonymization_simple', () => {
     // Decrypting under the target session must succeed.
     const decrypted = decryptPseudonym(result, pseudonymSession2Keys.secret);
     expect(decrypted).toBeDefined();
+});
+
+test('test_verifiable_long_values', () => {
+    // Long pseudonyms and attributes are proven block by block; the proofs round-trip
+    // through JSON and verify only against the commitments of their own transition.
+    const pseudonymGlobalKeys = makePseudonymGlobalKeys();
+    const attributeGlobalKeys = makeAttributeGlobalKeys();
+    const encSecret = new EncryptionSecret(SECRET);
+
+    const domain1 = new PseudonymizationDomain("domain1");
+    const domain2 = new PseudonymizationDomain("domain2");
+    const session1 = new EncryptionContext("session1");
+    const session2 = new EncryptionContext("session2");
+
+    const pseudonymSession1Keys =
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const pseudonymSession2Keys =
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+    const attributeSession1Keys =
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+    const attributeSession2Keys =
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+
+    const transcryptor = new Transcryptor("secret", "secret");
+    const verifier = new Verifier();
+    const text = "an identifier that is much longer than sixteen bytes";
+
+    const longPseudo = LongPseudonym.fromStringPadded(text);
+    const encPseudo = encryptLongPseudonym(longPseudo, pseudonymSession1Keys.public);
+    const info = transcryptor.pseudonymizationInfo(domain1, domain2, session1, session2);
+    const commitments =
+        transcryptor.pseudonymizationCommitment(domain1, domain2, session1, session2);
+    const proof = LongPseudonymPseudonymizationProof.fromJSON(
+        transcryptor.verifiableLongPseudonymize(encPseudo, info, pseudonymSession1Keys.public).toJSON(),
+    );
+    const result = verifier.verifyLongPseudonymization(
+        encPseudo, proof, pseudonymSession1Keys.public, commitments,
+    );
+    const decrypted = decryptLongPseudonym(result, pseudonymSession2Keys.secret);
+    expect(decrypted.pseudonyms.length).toBe(longPseudo.pseudonyms.length);
+    expect(decrypted.pseudonyms.map((p) => p.toHex()))
+        .not.toEqual(longPseudo.pseudonyms.map((p) => p.toHex()));
+    const other = transcryptor.pseudonymizationCommitment(domain2, domain1, session1, session2);
+    expect(() => verifier.verifyLongPseudonymization(
+        encPseudo, proof, pseudonymSession1Keys.public, other,
+    )).toThrow();
+
+    const rekeyProof = transcryptor.verifiableLongPseudonymRekey(encPseudo, session1, session2);
+    const rekeyed = verifier.verifyLongPseudonymRekey(
+        encPseudo, rekeyProof, transcryptor.pseudonymRekeyCommitment(session1, session2),
+    );
+    expect(decryptLongPseudonym(rekeyed, pseudonymSession2Keys.secret).toStringPadded()).toBe(text);
+
+    const longAttr = LongAttribute.fromStringPadded(text);
+    const encAttr = encryptLongAttribute(longAttr, attributeSession1Keys.public);
+    const rekeyInfo = transcryptor.attributeRekeyInfo(session1, session2);
+    const attrProof = transcryptor.verifiableLongAttributeRekey(encAttr, rekeyInfo);
+    const rekeyedAttr = verifier.verifyLongAttributeRekey(
+        encAttr, attrProof, transcryptor.attributeRekeyCommitment(session1, session2),
+    );
+    expect(decryptLongAttribute(rekeyedAttr, attributeSession2Keys.secret).toStringPadded()).toBe(text);
+    expect(() => verifier.verifyLongAttributeRekey(
+        encAttr, attrProof, transcryptor.pseudonymRekeyCommitment(session1, session2),
+    )).toThrow();
 });
 
 test('test_verifiable_pseudonym_rekey', () => {
@@ -204,8 +282,8 @@ test('tampered_proof_rejected_pseudonymization', () => {
     const donorProof = transcryptor.verifiablePseudonymize(
         donorEnc, info, pseudonymSession1Keys.public,
     );
-    const tampered = swapFirstString(proof, donorProof);
-    expect(tampered).not.toEqual(proof);
+    const tampered = swapFirstString(PseudonymPseudonymizationProof, proof, donorProof);
+    expect(tampered.toJSON()).not.toEqual(proof.toJSON());
 
     const verifier = new Verifier();
     expect(() => {
@@ -295,8 +373,8 @@ test('tampered_proof_rejected_pseudonym_rekey', () => {
 
     const donorEnc = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
     const donorProof = transcryptor.verifiablePseudonymRekey(donorEnc, s1, s2);
-    const tampered = swapFirstString(proof, donorProof);
-    expect(tampered).not.toEqual(proof);
+    const tampered = swapFirstString(PseudonymRekeyProof, proof, donorProof);
+    expect(tampered.toJSON()).not.toEqual(proof.toJSON());
 
     const verifier = new Verifier();
     expect(() => {
@@ -349,8 +427,8 @@ test('tampered_proof_rejected_attribute_rekey', () => {
 
     const donorEnc = encryptAttribute(Attribute.random(), attributeSession1Keys.public);
     const donorProof = transcryptor.verifiableAttributeRekey(donorEnc, rekeyInfo);
-    const tampered = swapFirstString(proof, donorProof);
-    expect(tampered).not.toEqual(proof);
+    const tampered = swapFirstString(AttributeRekeyProof, proof, donorProof);
+    expect(tampered.toJSON()).not.toEqual(proof.toJSON());
 
     const verifier = new Verifier();
     expect(() => {
@@ -422,7 +500,7 @@ test('n_pep_batch_distributed_verifiable', () => {
 
     let current = new EncryptedPseudonymBatch(encryptedItems, clientAPk);
 
-    // Chain: each step records (pre-batch, pre-pk, proof, commitments) so the
+    // Chain: each step records (pre-batch, proof, commitments) so the
     // next step can verify it before doing its own transcryption.
     let prev = null;
 
@@ -432,9 +510,9 @@ test('n_pep_batch_distributed_verifiable', () => {
         // proof; that reconstruction must match what this transcryptor
         // actually received.
         if (prev !== null) {
-            const { preBatch, prePk, proof, commitments } = prev;
+            const { preBatch, proof, commitments } = prev;
             const reconstructed = proof.verifiedReconstructBatch(
-                preBatch, prePk, current.publicKey, commitments,
+                preBatch, current.publicKey, commitments,
             );
             // Compare items by base64 serialization to avoid object identity.
             const recItems = reconstructed.items.map((p) => p.toBase64());
@@ -443,25 +521,24 @@ test('n_pep_batch_distributed_verifiable', () => {
         }
 
         // Step 2: this transcryptor builds and applies its own verifiable
-        // batch transcryption. We save a clone of the pre-batch + its pk so
+        // batch transcryption. We save a clone of the pre-batch (which carries its key) so
         // the next iteration can verify against them.
-        const prePk = current.publicKey;
-        const preBatch = new EncryptedPseudonymBatch(current.items, prePk);
+        const preBatch = new EncryptedPseudonymBatch(current.items, current.publicKey);
 
         const info = system.pseudonymizationInfo(domainA, domainB, sessionA, sessionB);
         const commitments = system.pseudonymizationCommitment(
             domainA, domainB, sessionA, sessionB,
         );
         const proof = current.verifiablePseudonymize(info);
-        prev = { preBatch, prePk, proof, commitments };
+        prev = { preBatch, proof, commitments };
     }
 
     // Final step: client B verifies the last transcryptor's proof, then
     // decrypts.
     expect(prev).not.toBeNull();
-    const { preBatch, prePk, proof, commitments } = prev;
+    const { preBatch, proof, commitments } = prev;
     const verifiedBatch = proof.verifiedReconstructBatch(
-        preBatch, prePk, current.publicKey, commitments,
+        preBatch, current.publicKey, commitments,
     );
     const verItems = verifiedBatch.items.map((p) => p.toBase64());
     const curItems = current.items.map((p) => p.toBase64());
@@ -476,19 +553,19 @@ test('n_pep_batch_distributed_verifiable', () => {
 });
 
 // Swap the first leaf string value in `target` with the corresponding value
-// in `donor` and return the resulting JSON. Both `target` and `donor` are
+// in `donor` and parse the result as a `ProofClass`. Both `target` and `donor` are
 // serialized proofs of the same shape (produced by two independent
 // `verifiable*` calls). Every Ristretto/scalar point in the proof JSON is a
 // fixed-length hex string; blindly flipping a character would yield an
 // undecodable point, so we cross-graft from another *valid* proof — that
 // keeps every individual element decodable while breaking proof relations.
-function swapFirstString(targetJson, donorJson) {
-    const target = JSON.parse(targetJson);
-    const donor = JSON.parse(donorJson);
+function swapFirstString(ProofClass, targetProof, donorProof) {
+    const target = JSON.parse(targetProof.toJSON());
+    const donor = JSON.parse(donorProof.toJSON());
     if (!swapFirstStringValue(target, donor)) {
         throw new Error("swapFirstString: no swappable string leaf found");
     }
-    return JSON.stringify(target);
+    return ProofClass.fromJSON(JSON.stringify(target));
 }
 
 function swapFirstStringValue(target, donor) {
@@ -522,3 +599,24 @@ function swapFirstStringValue(target, donor) {
     }
     return false;
 }
+
+test('distributed_transcryptor_proves_its_shares', () => {
+    // The transcryptor makes the share and its proof from its own blinding and rekey factors;
+    // the user checks both halves against the published commitments.
+    const blindingScalar = ScalarNonZero.random();
+    const commitment = new BlindingCommitment(blindingScalar);
+    // `new BlindingFactor` takes the scalar by value, so it comes last.
+    const transcryptor = new DistributedTranscryptor("ps", "es", new BlindingFactor(blindingScalar));
+    const session = new EncryptionContext("session-1");
+    const secret = new EncryptionSecret(Uint8Array.from(Buffer.from("es")));
+
+    const [share, proof] = transcryptor.pseudonymSessionKeyShareWithProof(session);
+    const k = makePseudonymRekeyFactor(secret, session);
+    const rekeyCommitment = GroupElement.G().mul(k.scalar());
+    expect(proof.verifyPseudonymShare(share, commitment, rekeyCommitment)).toBe(true);
+
+    const [attributeShare, attributeProof] = transcryptor.attributeSessionKeyShareWithProof(session);
+    const ka = makeAttributeRekeyFactor(secret, session);
+    expect(attributeProof.verifyAttributeShare(attributeShare, commitment, GroupElement.G().mul(ka.scalar()))).toBe(true);
+    expect(attributeProof.verifyAttributeShare(attributeShare, commitment, rekeyCommitment)).toBe(false);
+});

@@ -1,8 +1,15 @@
 //! WASM bindings for verifiable transcryptor operations.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::errors::malformed_proof_err;
+#[cfg(feature = "long")]
+use crate::data::long::{
+    WASMLongAttributeRekeyProof, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym,
+    WASMLongPseudonymPseudonymizationProof, WASMLongPseudonymRekeyProof,
+};
+use crate::data::simple::{
+    WASMAttributeRekeyProof, WASMEncryptedAttribute, WASMEncryptedPseudonym,
+    WASMPseudonymPseudonymizationProof, WASMPseudonymRekeyProof,
+};
 use crate::factors::commitments::{
     WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
     WASMVerifiableTranscryptionCommitment,
@@ -60,74 +67,116 @@ impl WASMTranscryptor {
         )
     }
 
-    /// Perform verifiable pseudonymization.
-    ///
-    /// Returns a JSON string containing the operation proof — self-contained
-    /// in the forward-direction construction.
-    #[cfg(all(feature = "serde", feature = "elgamal3"))]
+    /// Perform verifiable pseudonymization and return the operation proof.
+    #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = verifiablePseudonymize)]
     pub fn verifiable_pseudonymize(
         &self,
         encrypted: &WASMEncryptedPseudonym,
         pseudo_info: &WASMPseudonymizationInfo,
-    ) -> Result<String, JsValue> {
-        let mut rng = rand::rng();
-        let operation_proof = encrypted
+    ) -> WASMPseudonymPseudonymizationProof {
+        encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &mut rng);
-
-        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
+            .verifiable_pseudonymize(&pseudo_info.0, &mut rand::rng())
+            .into()
     }
 
-    #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
+    #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = verifiablePseudonymize)]
     pub fn verifiable_pseudonymize(
         &self,
         encrypted: &WASMEncryptedPseudonym,
         pseudo_info: &WASMPseudonymizationInfo,
         public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
-    ) -> Result<String, JsValue> {
-        let mut rng = rand::rng();
+    ) -> WASMPseudonymPseudonymizationProof {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let operation_proof = encrypted
+        encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rng);
-
-        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
+            .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rand::rng())
+            .into()
     }
 
-    /// Perform verifiable attribute rekey.
-    ///
-    /// Returns a JSON string containing the operation proof.
-    #[cfg(feature = "serde")]
+    /// Perform verifiable attribute rekey and return the operation proof.
     #[wasm_bindgen(js_name = verifiableAttributeRekey)]
     pub fn verifiable_attribute_rekey(
         &self,
         encrypted: &WASMEncryptedAttribute,
         rekey_info: &WASMAttributeRekeyInfo,
-    ) -> Result<String, JsValue> {
-        let mut rng = rand::rng();
-        let operation_proof = encrypted.0.verifiable_rekey(&rekey_info.0, &mut rng);
-
-        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
+    ) -> WASMAttributeRekeyProof {
+        encrypted
+            .0
+            .verifiable_rekey(&rekey_info.0, &mut rand::rng())
+            .into()
     }
 
-    /// Perform verifiable pseudonym rekey.
-    ///
-    /// Returns a JSON string containing the operation proof.
-    #[cfg(feature = "serde")]
+    /// Perform verifiable pseudonym rekey and return the operation proof.
     #[wasm_bindgen(js_name = verifiablePseudonymRekey)]
     pub fn verifiable_pseudonym_rekey(
         &self,
         encrypted: &WASMEncryptedPseudonym,
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-    ) -> Result<String, JsValue> {
-        let mut rng = rand::rng();
+    ) -> WASMPseudonymRekeyProof {
         let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
+        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+    }
 
-        serde_json::to_string(&operation_proof).map_err(malformed_proof_err)
+    /// Verifiable pseudonymization of a long pseudonym: one batch proof over its blocks.
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[wasm_bindgen(js_name = verifiableLongPseudonymize)]
+    pub fn verifiable_long_pseudonymize(
+        &self,
+        encrypted: &WASMLongEncryptedPseudonym,
+        pseudo_info: &WASMPseudonymizationInfo,
+    ) -> WASMLongPseudonymPseudonymizationProof {
+        encrypted
+            .0
+            .verifiable_pseudonymize(&pseudo_info.0, &mut rand::rng())
+            .into()
+    }
+
+    /// Verifiable pseudonymization of a long pseudonym: one batch proof over its blocks.
+    /// `public_key` is the key the value is encrypted under.
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = verifiableLongPseudonymize)]
+    pub fn verifiable_long_pseudonymize(
+        &self,
+        encrypted: &WASMLongEncryptedPseudonym,
+        pseudo_info: &WASMPseudonymizationInfo,
+        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
+    ) -> WASMLongPseudonymPseudonymizationProof {
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        encrypted
+            .0
+            .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rand::rng())
+            .into()
+    }
+
+    /// Verifiable rekeying of a long attribute: one proof per block.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifiableLongAttributeRekey)]
+    pub fn verifiable_long_attribute_rekey(
+        &self,
+        encrypted: &WASMLongEncryptedAttribute,
+        rekey_info: &WASMAttributeRekeyInfo,
+    ) -> WASMLongAttributeRekeyProof {
+        encrypted
+            .0
+            .verifiable_rekey(&rekey_info.0, &mut rand::rng())
+            .into()
+    }
+
+    /// Verifiable rekeying of a long pseudonym: one proof per block.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifiableLongPseudonymRekey)]
+    pub fn verifiable_long_pseudonym_rekey(
+        &self,
+        encrypted: &WASMLongEncryptedPseudonym,
+        session_from: &WASMEncryptionContext,
+        session_to: &WASMEncryptionContext,
+    ) -> WASMLongPseudonymRekeyProof {
+        let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
+        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
     }
 
     /// Build the combined public commitments for a transcryption transition

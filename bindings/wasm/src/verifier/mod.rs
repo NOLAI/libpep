@@ -1,12 +1,19 @@
 //! WASM bindings for the verifier.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
+#[cfg(feature = "long")]
+use crate::data::long::{
+    WASMLongAttributeRekeyProof, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym,
+    WASMLongPseudonymPseudonymizationProof, WASMLongPseudonymRekeyProof,
+};
+use crate::data::simple::{
+    WASMAttributeRekeyProof, WASMEncryptedAttribute, WASMEncryptedPseudonym,
+    WASMPseudonymPseudonymizationProof, WASMPseudonymRekeyProof,
+};
 use crate::factors::commitments::{
     WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
     WASMVerifiableTranscryptionCommitment,
 };
-use libpep::elgamal::verifiable::{VerifiableRRSK, VerifiableRekey};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use libpep::verifier::Verifier;
@@ -157,22 +164,16 @@ impl WASMVerifier {
     /// Verify a pseudonymization operation against the combined commitments,
     /// returning the reconstructed pseudonym on success or throwing on
     /// failure.
-    ///
-    /// The proof is passed as a JSON string due to WASM limitations.
-    #[cfg(all(feature = "serde", feature = "elgamal3"))]
+    #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = verifyPseudonymization)]
     pub fn verify_pseudonymization(
         &self,
         original: &WASMEncryptedPseudonym,
-        operation_proof_json: &str,
+        proof: &WASMPseudonymPseudonymizationProof,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
-
         self.inner
-            .verified_reconstruct_pseudonymization(&original.0, &proof, &commitments.0)
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &commitments.0)
             .map(WASMEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_js)
     }
@@ -181,63 +182,113 @@ impl WASMVerifier {
     /// returning the reconstructed pseudonym on success. In non-elgamal3
     /// builds the recipient public key the original ciphertext was encrypted
     /// under must be supplied.
-    #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
+    #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = verifyPseudonymization)]
     pub fn verify_pseudonymization(
         &self,
         original: &WASMEncryptedPseudonym,
-        operation_proof_json: &str,
+        proof: &WASMPseudonymPseudonymizationProof,
         public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
 
         self.inner
-            .verified_reconstruct_pseudonymization(&original.0, &proof, &pk, &commitments.0)
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &pk, &commitments.0)
             .map(WASMEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_js)
     }
 
     /// Verify a pseudonym rekey operation, returning the reconstructed
     /// pseudonym on success.
-    #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyPseudonymRekey)]
     pub fn verify_pseudonym_rekey(
         &self,
         original: &WASMEncryptedPseudonym,
-        proof_json: &str,
+        proof: &WASMPseudonymRekeyProof,
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRekey =
-            serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymRekeyProof(core_proof);
-
         self.inner
-            .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
             .map(WASMEncryptedPseudonym)
             .map_err(crate::errors::verify_err_to_js)
     }
 
     /// Verify an attribute rekey operation, returning the reconstructed
     /// attribute on success.
-    #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyAttributeRekey)]
     pub fn verify_attribute_rekey(
         &self,
         original: &WASMEncryptedAttribute,
-        proof_json: &str,
+        proof: &WASMAttributeRekeyProof,
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMEncryptedAttribute, JsValue> {
-        let core_proof: VerifiableRekey =
-            serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::AttributeRekeyProof(core_proof);
-
         self.inner
-            .verified_reconstruct_rekey(&original.0, &proof, &commitments.0)
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
             .map(WASMEncryptedAttribute)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    #[cfg(all(feature = "long", feature = "elgamal3"))]
+    #[wasm_bindgen(js_name = verifyLongPseudonymization)]
+    pub fn verify_long_pseudonymization(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymPseudonymizationProof,
+        commitments: &WASMVerifiablePseudonymizationCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        self.inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the pseudonymization of a long pseudonym, returning the reconstructed value.
+    /// `public_key` is the key the original was encrypted under.
+    #[cfg(all(feature = "long", not(feature = "elgamal3")))]
+    #[wasm_bindgen(js_name = verifyLongPseudonymization)]
+    pub fn verify_long_pseudonymization(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymPseudonymizationProof,
+        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
+        commitments: &WASMVerifiablePseudonymizationCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        self.inner
+            .verified_reconstruct_pseudonymization(&original.0, &proof.0, &pk, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the rekeying of a long pseudonym, returning the reconstructed value.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifyLongPseudonymRekey)]
+    pub fn verify_long_pseudonym_rekey(
+        &self,
+        original: &WASMLongEncryptedPseudonym,
+        proof: &WASMLongPseudonymRekeyProof,
+        commitments: &WASMVerifiableRekeyCommitment,
+    ) -> Result<WASMLongEncryptedPseudonym, JsValue> {
+        self.inner
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedPseudonym)
+            .map_err(crate::errors::verify_err_to_js)
+    }
+
+    /// Verify the rekeying of a long attribute, returning the reconstructed value.
+    #[cfg(feature = "long")]
+    #[wasm_bindgen(js_name = verifyLongAttributeRekey)]
+    pub fn verify_long_attribute_rekey(
+        &self,
+        original: &WASMLongEncryptedAttribute,
+        proof: &WASMLongAttributeRekeyProof,
+        commitments: &WASMVerifiableRekeyCommitment,
+    ) -> Result<WASMLongEncryptedAttribute, JsValue> {
+        self.inner
+            .verified_reconstruct_rekey(&original.0, &proof.0, &commitments.0)
+            .map(WASMLongEncryptedAttribute)
             .map_err(crate::errors::verify_err_to_js)
     }
 
@@ -310,27 +361,24 @@ impl WASMVerifier {
     }
 
     /// Cache-backed pseudonymization verification.
-    #[cfg(all(feature = "serde", feature = "elgamal3"))]
+    #[cfg(feature = "elgamal3")]
     #[allow(clippy::too_many_arguments)]
     #[wasm_bindgen(js_name = verifyPseudonymizationCached)]
     pub fn verify_pseudonymization_cached(
         &self,
         transcryptor_id: &str,
         original: &WASMEncryptedPseudonym,
-        operation_proof_json: &str,
+        proof: &WASMPseudonymPseudonymizationProof,
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &domain_from.0,
                 &domain_to.0,
                 &context_from.0,
@@ -340,29 +388,26 @@ impl WASMVerifier {
             .map_err(crate::errors::verify_err_to_js)
     }
 
-    #[cfg(all(feature = "serde", not(feature = "elgamal3")))]
+    #[cfg(not(feature = "elgamal3"))]
     #[allow(clippy::too_many_arguments)]
     #[wasm_bindgen(js_name = verifyPseudonymizationCached)]
     pub fn verify_pseudonymization_cached(
         &self,
         transcryptor_id: &str,
         original: &WASMEncryptedPseudonym,
-        operation_proof_json: &str,
+        proof: &WASMPseudonymPseudonymizationProof,
         public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         domain_from: &WASMPseudonymizationDomain,
         domain_to: &WASMPseudonymizationDomain,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRRSK = serde_json::from_str(operation_proof_json)
-            .map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymPseudonymizationProof(core_proof);
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verified_reconstruct_pseudonymization_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &pk,
                 &domain_from.0,
                 &domain_to.0,
@@ -374,24 +419,20 @@ impl WASMVerifier {
     }
 
     /// Cache-backed pseudonym rekey verification.
-    #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyPseudonymRekeyCached)]
     pub fn verify_pseudonym_rekey_cached(
         &self,
         transcryptor_id: &str,
         original: &WASMEncryptedPseudonym,
-        proof_json: &str,
+        proof: &WASMPseudonymRekeyProof,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedPseudonym, JsValue> {
-        let core_proof: VerifiableRekey =
-            serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::PseudonymRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_pseudonym_rekey_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &context_from.0,
                 &context_to.0,
             )
@@ -400,24 +441,20 @@ impl WASMVerifier {
     }
 
     /// Cache-backed attribute rekey verification.
-    #[cfg(feature = "serde")]
     #[wasm_bindgen(js_name = verifyAttributeRekeyCached)]
     pub fn verify_attribute_rekey_cached(
         &self,
         transcryptor_id: &str,
         original: &WASMEncryptedAttribute,
-        proof_json: &str,
+        proof: &WASMAttributeRekeyProof,
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<WASMEncryptedAttribute, JsValue> {
-        let core_proof: VerifiableRekey =
-            serde_json::from_str(proof_json).map_err(crate::errors::malformed_proof_err)?;
-        let proof = libpep::data::verifiable::simple::AttributeRekeyProof(core_proof);
         self.inner
             .verified_reconstruct_attribute_rekey_cached(
                 transcryptor_id,
                 &original.0,
-                &proof,
+                &proof.0,
                 &context_from.0,
                 &context_to.0,
             )
@@ -436,41 +473,42 @@ impl Default for WASMVerifier {
 // Verifiable-derivation methods (master keys, blinding commitments, session-
 // key-share verification, cached transcryption).
 // ---------------------------------------------------------------------------
-#[cfg(feature = "verifiable-derivation")]
+#[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_class = Verifier)]
 impl WASMVerifier {
-    /// Register blinding commitments for a transcryptor.
-    #[wasm_bindgen(js_name = registerBlindingCommitments)]
-    pub fn register_blinding_commitments(
+    /// Register the blinding commitment of a transcryptor.
+    #[wasm_bindgen(js_name = registerBlindingCommitment)]
+    pub fn register_blinding_commitment(
         &mut self,
         transcryptor_id: &str,
-        commitments: &crate::keys::distribution::proofs::WASMBlindingCommitments,
+        commitment: &crate::keys::distribution::proofs::WASMBlindingCommitment,
     ) -> Result<(), JsValue> {
         self.inner
-            .register_blinding_commitments(transcryptor_id.to_string(), commitments.0)
+            .register_blinding_commitment(transcryptor_id.to_string(), commitment.0)
             .map_err(crate::errors::register_commitments_err_to_js)
     }
 
-    /// Check if blinding commitments are registered for a transcryptor.
-    #[wasm_bindgen(js_name = hasBlindingCommitments)]
-    pub fn has_blinding_commitments(&self, transcryptor_id: &str) -> bool {
-        self.inner.has_blinding_commitments(transcryptor_id)
+    /// Whether a blinding commitment is registered for a transcryptor.
+    #[wasm_bindgen(js_name = hasBlindingCommitment)]
+    pub fn has_blinding_commitment(&self, transcryptor_id: &str) -> bool {
+        self.inner.has_blinding_commitment(transcryptor_id)
     }
 
-    /// Retrieve the blinding commitments for a transcryptor.
-    #[wasm_bindgen(js_name = getBlindingCommitments)]
-    pub fn get_blinding_commitments(
+    /// The blinding commitment registered for a transcryptor, if any.
+    #[wasm_bindgen(js_name = blindingCommitment)]
+    pub fn blinding_commitment(
         &self,
         transcryptor_id: &str,
-    ) -> Option<crate::keys::distribution::proofs::WASMBlindingCommitments> {
+    ) -> Option<crate::keys::distribution::proofs::WASMBlindingCommitment> {
         self.inner
-            .get_blinding_commitments(transcryptor_id)
+            .blinding_commitment(transcryptor_id)
             .copied()
-            .map(crate::keys::distribution::proofs::WASMBlindingCommitments)
+            .map(crate::keys::distribution::proofs::WASMBlindingCommitment)
     }
 
     /// Register master pseudonymization and rekeying public keys for a transcryptor.
     #[wasm_bindgen(js_name = registerMasterKeys)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn register_master_keys(
         &mut self,
         transcryptor_id: &str,
@@ -488,12 +526,14 @@ impl WASMVerifier {
 
     /// Check if master keys are registered for a transcryptor.
     #[wasm_bindgen(js_name = hasMasterKeys)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn has_master_keys(&self, transcryptor_id: &str) -> bool {
         self.inner.has_master_keys(transcryptor_id)
     }
 
     /// Retrieve the master pseudonymization public key for a transcryptor.
     #[wasm_bindgen(js_name = getMasterPseudonymKey)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn get_master_pseudonym_key(
         &self,
         transcryptor_id: &str,
@@ -506,6 +546,7 @@ impl WASMVerifier {
 
     /// Retrieve the master rekeying public key for a transcryptor.
     #[wasm_bindgen(js_name = getMasterRekeyKey)]
+    #[cfg(feature = "verifiable-derivation")]
     pub fn get_master_rekey_key(
         &self,
         transcryptor_id: &str,
@@ -522,14 +563,12 @@ impl WASMVerifier {
         &self,
         transcryptor_id: &str,
         rekey_commitment: &crate::elgamal::arithmetic::group_elements::WASMGroupElement,
-        for_pseudonym: bool,
         proof: &crate::keys::distribution::proofs::WASMSessionKeyShareProof,
     ) -> Result<(), JsValue> {
         self.inner
             .verify_session_key_share_with_commitment(
                 transcryptor_id,
                 &rekey_commitment.0,
-                for_pseudonym,
                 &proof.0,
             )
             .map_err(crate::errors::verify_err_to_js)
@@ -580,13 +619,15 @@ impl WASMVerifier {
         context_to: &WASMEncryptionContext,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
         let orig: libpep::data::records::EncryptedRecord = original.clone().into();
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
+        // Verification needs only the public halves; `public()` projects them out so a caller
+        // may still pass the full `SessionKeys` it holds.
+        let pk = libpep::keys::SessionKeys::from(*session_keys).public();
         self.inner
             .verified_reconstruct_transcryption_cached(
                 transcryptor_id,
                 &orig,
                 &proof.0,
-                &sk,
+                &pk,
                 &domain_from.0,
                 &domain_to.0,
                 &context_from.0,
@@ -615,15 +656,13 @@ impl WASMVerifier {
         &self,
         original: &crate::data::batch::WASMEncryptedPseudonymBatch,
         proof: &crate::data::verifiable_batch::WASMPseudonymPseudonymizationBatchProof,
-        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         new_public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<crate::data::batch::WASMEncryptedPseudonymBatch, JsValue> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -744,15 +783,13 @@ impl WASMVerifier {
         &self,
         original: &crate::data::batch::WASMLongEncryptedPseudonymBatch,
         proof: &crate::data::verifiable_batch::WASMLongPseudonymPseudonymizationBatchProof,
-        public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         new_public_key: &crate::keys::types::WASMPseudonymSessionPublicKey,
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<crate::data::batch::WASMLongEncryptedPseudonymBatch, JsValue> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.0)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -873,20 +910,13 @@ impl WASMVerifier {
         &self,
         original: &crate::data::batch::WASMEncryptedRecordBatch,
         proof: &crate::data::verifiable_batch::WASMRecordTranscryptionBatchProof,
-        session_keys: &crate::keys::types::WASMSessionKeys,
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMEncryptedRecordBatch, JsValue> {
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.0,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -935,20 +965,13 @@ impl WASMVerifier {
         &self,
         original: &crate::data::batch::WASMLongEncryptedRecordBatch,
         proof: &crate::data::verifiable_batch::WASMLongRecordTranscryptionBatchProof,
-        session_keys: &crate::keys::types::WASMSessionKeys,
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMLongEncryptedRecordBatch, JsValue> {
-        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.0,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)

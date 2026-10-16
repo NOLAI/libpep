@@ -9,10 +9,10 @@ use libpep::elgamal::arithmetic::scalars::ScalarTraits;
 use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
-    make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
-    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedGlobalSecretKeys,
-    BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymSessionKeyShare, SessionKeyShare,
-    SessionKeyShares,
+    make_distributed_global_keys, make_session_key_shares, make_session_key_shares_with_proof,
+    AttributeSessionKeyShare, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey,
+    BlindedGlobalSecretKeys, BlindedPseudonymGlobalSecretKey, BlindingFactor,
+    PseudonymSessionKeyShare, SessionKeyShare, SessionKeyShares,
 };
 #[cfg(feature = "json")]
 use libpep::keys::SessionKeys;
@@ -55,7 +55,7 @@ pub enum Session {
         attribute_global_secret: Option<String>,
         /// The transcryptor's encryption secret.
         #[arg(long)]
-        secret: String,
+        encryption_secret: String,
         /// The encryption context (session) to derive keys for.
         #[arg(long)]
         context: String,
@@ -78,10 +78,14 @@ pub enum Distributed {
         blinding: String,
         /// This transcryptor's encryption secret.
         #[arg(long)]
-        secret: String,
+        encryption_secret: String,
         /// The encryption context (session).
         #[arg(long)]
         context: String,
+        /// Also output a proof of each share, for the user to verify against this
+        /// transcryptor's blinding commitment and the rekey commitment of the session.
+        #[arg(long)]
+        prove: bool,
     },
     /// Reconstruct session keys from a blinded global key and one share per transcryptor.
     Reconstruct {
@@ -125,16 +129,13 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             out.value("attribute_secret_key", secret.attribute.value().to_hex());
             #[cfg(feature = "json")]
             if out.json() {
-                out.value(
-                    "global_public_keys",
-                    serde_json::to_value(public).expect("keys are serializable"),
-                );
+                out.value("global_public_keys", io::to_json(&public));
             }
         }
         Keys::Session(Session::Derive {
             pseudonym_global_secret,
             attribute_global_secret,
-            secret,
+            encryption_secret,
             context,
         }) => {
             if pseudonym_global_secret.is_none() && attribute_global_secret.is_none() {
@@ -142,7 +143,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                     "give --pseudonym-global-secret, --attribute-global-secret or both",
                 ));
             }
-            let secret = io::encryption_secret(&secret)?;
+            let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
             let mut pseudonym = None;
             if let Some(global) = pseudonym_global_secret {
@@ -166,11 +167,10 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let (true, Some(pseudonym), Some(attribute)) = (out.json(), pseudonym, attribute) {
                 out.value(
                     "session_keys",
-                    serde_json::to_value(SessionKeys {
+                    io::to_json(&SessionKeys {
                         pseudonym,
                         attribute,
-                    })
-                    .expect("keys are serializable"),
+                    }),
                 );
             }
             #[cfg(not(feature = "json"))]
@@ -195,19 +195,36 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
         }
         Keys::Distributed(Distributed::Share {
             blinding,
-            secret,
+            encryption_secret,
             context,
+            prove,
         }) => {
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
-            let secret = io::encryption_secret(&secret)?;
+            let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
-            let shares = make_session_key_shares(
-                &make_pseudonym_rekey_factor(&secret, &context),
-                &make_attribute_rekey_factor(&secret, &context),
-                &blinding,
-            );
-            out.value("pseudonym_share", shares.pseudonym.to_hex());
-            out.value("attribute_share", shares.attribute.to_hex());
+            let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&secret, &context);
+            let attribute_rekey_factor = make_attribute_rekey_factor(&secret, &context);
+            if prove {
+                let (shares, proofs) = make_session_key_shares_with_proof(
+                    &pseudonym_rekey_factor,
+                    &attribute_rekey_factor,
+                    &blinding,
+                    rng,
+                )
+                .map_err(|e| io::Error::input(format!("blinding factor: {e}")))?;
+                out.value("pseudonym_share", shares.pseudonym.to_hex());
+                out.value("attribute_share", shares.attribute.to_hex());
+                out.value("pseudonym_share_proof", io::to_json(&proofs.pseudonym));
+                out.value("attribute_share_proof", io::to_json(&proofs.attribute));
+            } else {
+                let shares = make_session_key_shares(
+                    &pseudonym_rekey_factor,
+                    &attribute_rekey_factor,
+                    &blinding,
+                );
+                out.value("pseudonym_share", shares.pseudonym.to_hex());
+                out.value("attribute_share", shares.attribute.to_hex());
+            }
         }
         Keys::Distributed(Distributed::Reconstruct {
             blinded_pseudonym,
@@ -215,6 +232,11 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             pseudonym_shares,
             attribute_shares,
         }) => match (blinded_pseudonym, blinded_attribute) {
+            _ if pseudonym_shares.is_empty() && attribute_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "give one --pseudonym-share or --attribute-share per transcryptor",
+                ))
+            }
             (Some(bp), Some(ba)) if pseudonym_shares.len() == attribute_shares.len() => {
                 let blinded = BlindedGlobalSecretKeys {
                     pseudonym: BlindedPseudonymGlobalSecretKey::from_scalar(io::scalar(
@@ -249,15 +271,22 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                 );
                 #[cfg(feature = "json")]
                 if out.json() {
-                    out.value(
-                        "session_keys",
-                        serde_json::to_value(keys).expect("keys are serializable"),
-                    );
+                    out.value("session_keys", io::to_json(&keys));
                 }
             }
             (Some(_), Some(_)) => {
                 return Err(io::Error::input(
                     "give the same number of --pseudonym-share and --attribute-share values",
+                ))
+            }
+            (Some(_), None) if !attribute_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "--attribute-share needs --blinded-attribute",
+                ))
+            }
+            (None, Some(_)) if !pseudonym_shares.is_empty() => {
+                return Err(io::Error::input(
+                    "--pseudonym-share needs --blinded-pseudonym",
                 ))
             }
             (Some(bp), None) => {

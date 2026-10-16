@@ -41,10 +41,9 @@ impl_from_value!(
 );
 
 /// An encrypted type that is a single ElGamal ciphertext, with the encodings of the ciphertext.
-pub trait ElGamalEncrypted: Encrypted {
-    /// The plaintext type, a single group element.
-    type UnencryptedType: ElGamalEncryptable<EncryptedType = Self, Group = Self::Group>;
-
+pub trait ElGamalEncrypted:
+    Encrypted<UnencryptedType: ElGamalEncryptable<EncryptedType = Self, Group = Self::Group>>
+{
     /// Get the [ElGamal] ciphertext value.
     fn value(&self) -> &ElGamal<Self::Group>;
     /// Create from an [ElGamal] ciphertext.

@@ -38,8 +38,8 @@ impl GroupElement {
     /// Returns `None` if the point is not valid (only ~6.25% of all 32-byte strings are valid
     /// encodings, use lizard technique to decode arbitrary data).
     ///
-    /// Curve25519 has exactly 2^255 - 19 points.
-    /// Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order
+    /// Curve25519 is defined over the field of 2^255 - 19 elements and has 8·ℓ points.
+    /// Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order ℓ =
     /// 2^252 + 27742317777372353535851937790883648493 (the Elligator mapping takes 253 bits).
     ///
     /// The identity element is rejected as well: no valid pseudonym, attribute, public key or

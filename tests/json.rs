@@ -12,34 +12,8 @@ use libpep::pep_json;
 use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
 
-/// Call a transcryption function with the argument list of the active ciphertext encoding: with
-/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
-macro_rules! tx {
-    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
-        #[cfg(feature = "elgamal3")]
-        let result = {
-            let _ = &$pk;
-            $f($enc, $info, $rng)
-        };
-        #[cfg(not(feature = "elgamal3"))]
-        let result = $f($enc, $info, $pk, $rng);
-        result
-    }};
-}
-
-/// As [`tx!`], for a method call `$obj.$method(...)`.
-macro_rules! txm {
-    ($obj:ident . $m:ident, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
-        #[cfg(feature = "elgamal3")]
-        let result = {
-            let _ = &$pk;
-            $obj.$m($enc, $info, $rng)
-        };
-        #[cfg(not(feature = "elgamal3"))]
-        let result = $obj.$m($enc, $info, $pk, $rng);
-        result
-    }};
-}
+#[macro_use]
+mod common;
 
 #[test]
 fn test_json_transcryption_with_macro() {
@@ -547,8 +521,8 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
 
     // 4. Create PepJson from the hex values using pep_json! macro
     let transcrypted_pep = pep_json!({
-        "short_id": pseudonym(short_id_hex),  // Reconstructs as Pseudonym (1 block)
-        "long_id": pseudonym(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
+        "short_id": pseudonym_hex(short_id_hex),  // Reconstructs as Pseudonym (1 block)
+        "long_id": pseudonym_hex(long_id_hex),    // Reconstructs as LongPseudonym (2 blocks)
         "name": "Alice",
         "age": 30
     });
@@ -672,8 +646,10 @@ fn test_pseudonym_roundtrip_with_builder() {
 
     // 5. Rebuild PepJson from the hex values using the builder
     let transcrypted_pep = PepJsonBuilder::new()
-        .pseudonym("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
-        .pseudonym("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
+        .pseudonym_hex("short_id", short_id_hex) // Reconstructs as Pseudonym (1 block)
+        .unwrap()
+        .pseudonym_hex("long_id", long_id_hex) // Reconstructs as LongPseudonym (2 blocks)
+        .unwrap()
         .attribute("name", json!("Alice"))
         .attribute("age", json!(30))
         .build();
@@ -806,8 +782,8 @@ fn test_unicode_pseudonyms_and_attributes() {
 
     // 4. Reconstruct PepJson from hex values
     let transcrypted_pep = pep_json!({
-        "emoji_id": pseudonym(emoji_id_hex),
-        "chinese_id": pseudonym(chinese_id_hex),
+        "emoji_id": pseudonym_hex(emoji_id_hex),
+        "chinese_id": pseudonym_hex(chinese_id_hex),
         "arabic_name": "مرحبا بك",
         "cyrillic_name": "Здравствуй",
         "mixed": "Café™ ñoño 你好 🏥",

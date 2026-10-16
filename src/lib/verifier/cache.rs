@@ -5,12 +5,11 @@
 //! rejects a different commitment for a transition it already holds.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::factors::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
+use crate::factors::commitments::generic::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+};
 use std::collections::HashMap;
 use std::hash::Hash;
-
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 
 /// Error returned when registering a commitment fails.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -29,7 +28,7 @@ pub enum CacheRegistrationError {
 /// This trait defines the interface for storing and retrieving factor commitments.
 /// Implementations can use different storage backends (in-memory, persistent, etc.).
 pub trait CommitmentsCache {
-    /// The key type for cache lookups (domain or context).
+    /// The key type for cache lookups: the transcryptor and the transition.
     type Key;
     /// The commitment type stored in the cache.
     type Commitments;
@@ -77,7 +76,6 @@ pub trait CommitmentsCache {
 /// the same value is idempotent. An optional `max_entries` cap protects
 /// against memory-DoS when registration is reachable from untrusted code.
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct InMemoryCommitmentsCache<Key, Commitments>
 where
     Key: Eq + Hash,
@@ -181,7 +179,7 @@ use crate::transcryptor::TranscryptorId;
 
 /// Cache keyed by `(transcryptor, domain_from, domain_to, context_from, context_to)`
 /// storing the combined pseudonymization commitments for a transition.
-pub type PseudonymizationCommitmentsCache = InMemoryCommitmentsCache<
+pub type PseudonymizationCommitmentsCache<G> = InMemoryCommitmentsCache<
     (
         TranscryptorId,
         PseudonymizationDomain,
@@ -189,21 +187,21 @@ pub type PseudonymizationCommitmentsCache = InMemoryCommitmentsCache<
         EncryptionContext,
         EncryptionContext,
     ),
-    VerifiablePseudonymizationCommitment,
+    VerifiablePseudonymizationCommitment<G>,
 >;
 
 /// Cache keyed by `(transcryptor, context_from, context_to)` storing the
 /// combined pseudonym-rekey commitment for a transition.
-pub type PseudonymRekeyCommitmentsCache = InMemoryCommitmentsCache<
+pub type PseudonymRekeyCommitmentsCache<G> = InMemoryCommitmentsCache<
     (TranscryptorId, EncryptionContext, EncryptionContext),
-    VerifiableRekeyCommitment,
+    VerifiableRekeyCommitment<G>,
 >;
 
 /// Cache keyed by `(transcryptor, context_from, context_to)` storing the
 /// combined attribute-rekey commitment for a transition.
-pub type AttributeRekeyCommitmentsCache = InMemoryCommitmentsCache<
+pub type AttributeRekeyCommitmentsCache<G> = InMemoryCommitmentsCache<
     (TranscryptorId, EncryptionContext, EncryptionContext),
-    VerifiableRekeyCommitment,
+    VerifiableRekeyCommitment<G>,
 >;
 
 #[cfg(test)]

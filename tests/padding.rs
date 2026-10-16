@@ -10,20 +10,8 @@ use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::pseudonymize;
 use std::error::Error;
 
-/// Call a transcryption function with the argument list of the active ciphertext encoding: with
-/// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
-macro_rules! tx {
-    ($f:path, $enc:expr, $info:expr, $pk:expr, $rng:expr) => {{
-        #[cfg(feature = "elgamal3")]
-        let result = {
-            let _ = &$pk;
-            $f($enc, $info, $rng)
-        };
-        #[cfg(not(feature = "elgamal3"))]
-        let result = $f($enc, $info, $pk, $rng);
-        result
-    }};
-}
+#[macro_use]
+mod common;
 
 #[test]
 fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {

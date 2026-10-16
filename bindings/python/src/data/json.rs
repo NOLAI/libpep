@@ -311,9 +311,9 @@ pub fn py_transcrypt_batch(
     public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<PyEncryptedPepJsonValue>> {
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
+    let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &mut rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
+    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted
@@ -334,9 +334,9 @@ pub fn py_transcrypt_json_batch(
     public_key: Option<&Bound<PyAny>>,
 ) -> PyResult<Vec<PyEncryptedPepJsonValue>> {
     let mut rng = rand::rng();
-    let mut rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
+    let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
     let info: TranscryptionInfo = transcryption_info.into();
-    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &mut rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
+    let transcrypted = crate::transcrypt_with!(transcrypt_batch, &rust_values, &info, public_key => crate::keys::pk::session, &mut rng)
         .map_err(|e| PyValueError::new_err(format!("Batch transcryption failed: {}", e)))?;
 
     Ok(transcrypted

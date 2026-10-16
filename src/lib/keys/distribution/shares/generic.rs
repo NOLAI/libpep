@@ -6,9 +6,15 @@ use super::super::blinding::generic::{
 };
 use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
+#[cfg(feature = "verifiable")]
+use crate::elgamal::verifiable::generic::RekeyFactorCommitment;
 use crate::factors::types::generic::{AttributeRekeyFactor, Factor, PseudonymRekeyFactor};
+#[cfg(feature = "verifiable")]
+use crate::keys::distribution::proofs::generic::SessionKeyShareProof;
 use crate::keys::traits::SecretKey;
 use crate::keys::types::generic::{AttributeSessionSecretKey, PseudonymSessionSecretKey};
+#[cfg(feature = "verifiable")]
+use rand_core::{CryptoRng, Rng};
 
 /// One transcryptor's contribution to a session key.
 ///
@@ -70,14 +76,14 @@ pub trait SessionKeyShare: Sized {
 
 /// A pseudonym session key share, which is a part of a pseudonym session key provided by one transcryptor.
 /// By combining all pseudonym session key shares and the [`BlindedPseudonymGlobalSecretKey`], a pseudonym session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct PseudonymSessionKeyShare<G: Group>(pub(crate) G::Scalar);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
 /// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 pub struct AttributeSessionKeyShare<G: Group>(pub(crate) G::Scalar);
@@ -159,4 +165,98 @@ pub fn make_session_key_shares<G: Group>(
         pseudonym: make_pseudonym_session_key_share(pseudonym_rekey_factor, blinding_factor),
         attribute: make_attribute_session_key_share(attribute_rekey_factor, blinding_factor),
     }
+}
+
+redacted_debug!(PseudonymSessionKeyShare<G>, AttributeSessionKeyShare<G>);
+zeroize_fields!(
+    PseudonymSessionKeyShare<G> { 0 },
+    AttributeSessionKeyShare<G> { 0 },
+    SessionKeyShares<G> { pseudonym, attribute },
+);
+
+/// Why a session key share with a proof was refused.
+#[cfg(feature = "verifiable")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum SessionKeyShareError {
+    /// The blinding factor is 1: its commitment equals `G` and the share `u_i = k_i` is the
+    /// rekey factor in the clear. Generate a fresh blinding factor (for example with
+    /// [`BlindingFactor::random`], which excludes 1).
+    #[error("blinding factor must not be 1")]
+    WeakBlinding,
+}
+
+/// The proofs of both session key shares of a transcryptor.
+#[cfg(feature = "verifiable")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound = ""))]
+pub struct SessionKeyShareProofs<G: Group> {
+    /// The proof of the pseudonym session key share.
+    pub pseudonym: SessionKeyShareProof<G>,
+    /// The proof of the attribute session key share.
+    pub attribute: SessionKeyShareProof<G>,
+}
+
+/// A session key share `u_i = b_i · k_i` with the proof `ZKP{U_i = b_i · K_i}` that it was made
+/// from the committed blinding factor and rekey factor (Section 3.5 of the paper). The user
+/// receiving the share checks it with
+/// [`SessionKeyShareProof::verify_share`].
+#[cfg(feature = "verifiable")]
+pub fn make_session_key_share_with_proof<S: SessionKeyShare, R: Rng + CryptoRng>(
+    rekey_factor: &S::Factor,
+    blinding_factor: &BlindingFactor<S::Group>,
+    rng: &mut R,
+) -> Result<(S, SessionKeyShareProof<S::Group>), SessionKeyShareError> {
+    if *blinding_factor.value() == <S::Group as Group>::scalar_one() {
+        return Err(SessionKeyShareError::WeakBlinding);
+    }
+    let share = S::from_rekey_factor(rekey_factor, blinding_factor);
+    let rekey_commitment = RekeyFactorCommitment::<S::Group>::new(&rekey_factor.scalar());
+    let proof = SessionKeyShareProof::new(blinding_factor.value(), &rekey_commitment.point(), rng);
+    Ok((share, proof))
+}
+
+/// A [`PseudonymSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
+#[cfg(feature = "verifiable")]
+pub fn make_pseudonym_session_key_share_with_proof<G: Group, R: Rng + CryptoRng>(
+    rekey_factor: &PseudonymRekeyFactor<G>,
+    blinding_factor: &BlindingFactor<G>,
+    rng: &mut R,
+) -> Result<(PseudonymSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
+    make_session_key_share_with_proof(rekey_factor, blinding_factor, rng)
+}
+
+/// An [`AttributeSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
+#[cfg(feature = "verifiable")]
+pub fn make_attribute_session_key_share_with_proof<G: Group, R: Rng + CryptoRng>(
+    rekey_factor: &AttributeRekeyFactor<G>,
+    blinding_factor: &BlindingFactor<G>,
+    rng: &mut R,
+) -> Result<(AttributeSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
+    make_session_key_share_with_proof(rekey_factor, blinding_factor, rng)
+}
+
+/// Both session key shares with their proofs; see [`make_session_key_share_with_proof`].
+#[cfg(feature = "verifiable")]
+pub fn make_session_key_shares_with_proof<G: Group, R: Rng + CryptoRng>(
+    pseudonym_rekey_factor: &PseudonymRekeyFactor<G>,
+    attribute_rekey_factor: &AttributeRekeyFactor<G>,
+    blinding_factor: &BlindingFactor<G>,
+    rng: &mut R,
+) -> Result<(SessionKeyShares<G>, SessionKeyShareProofs<G>), SessionKeyShareError> {
+    let (pseudonym, pseudonym_proof) =
+        make_pseudonym_session_key_share_with_proof(pseudonym_rekey_factor, blinding_factor, rng)?;
+    let (attribute, attribute_proof) =
+        make_attribute_session_key_share_with_proof(attribute_rekey_factor, blinding_factor, rng)?;
+    Ok((
+        SessionKeyShares {
+            pseudonym,
+            attribute,
+        },
+        SessionKeyShareProofs {
+            pseudonym: pseudonym_proof,
+            attribute: attribute_proof,
+        },
+    ))
 }

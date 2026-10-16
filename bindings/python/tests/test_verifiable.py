@@ -17,6 +17,9 @@ import unittest
 
 from libpep.data import (
     Attribute,
+    LongAttribute,
+    LongPseudonym,
+    LongPseudonymPseudonymizationProof,
     Pseudonym,
     Record,
     EncryptedRecord,
@@ -41,6 +44,7 @@ from libpep.contexts import (
     PseudonymizationDomain,
     EncryptionContext,
 )
+from libpep import ProofRejectedError
 from libpep.client import Client, encrypt, decrypt
 from libpep.transcryptor import DistributedTranscryptor, Transcryptor
 from libpep.verifier import Verifier
@@ -148,6 +152,83 @@ class TestVerifiable(unittest.TestCase):
         decrypted = decrypt(result, attribute_session2_keys.secret)
         original_decrypted = decrypt(enc_attr, attribute_session1_keys.secret)
         self.assertEqual(decrypted.to_hex(), original_decrypted.to_hex())
+
+    def test_verifiable_long_values(self):
+        # Long pseudonyms and attributes are proven block by block; the proofs round-trip
+        # through JSON and verify only against the commitments of their own transition.
+        pseudonym_global_keys = make_pseudonym_global_keys()
+        attribute_global_keys = make_attribute_global_keys()
+        enc_secret = EncryptionSecret(SECRET)
+
+        domain1 = PseudonymizationDomain("domain1")
+        domain2 = PseudonymizationDomain("domain2")
+        session1 = EncryptionContext("session1")
+        session2 = EncryptionContext("session2")
+
+        pseudonym_session1_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session1, enc_secret,
+        )
+        pseudonym_session2_keys = make_pseudonym_session_keys(
+            pseudonym_global_keys.secret, session2, enc_secret,
+        )
+        attribute_session1_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session1, enc_secret,
+        )
+        attribute_session2_keys = make_attribute_session_keys(
+            attribute_global_keys.secret, session2, enc_secret,
+        )
+
+        transcryptor = Transcryptor("secret", "secret")
+        verifier = Verifier()
+        text = "an identifier that is much longer than sixteen bytes"
+
+        long_pseudo = LongPseudonym.from_string_padded(text)
+        enc_pseudo = encrypt(long_pseudo, pseudonym_session1_keys.public)
+        info = transcryptor.pseudonymization_info(domain1, domain2, session1, session2)
+        commitments = transcryptor.pseudonymization_commitment(
+            domain1, domain2, session1, session2,
+        )
+        proof = transcryptor.verifiable_long_pseudonymize(
+            enc_pseudo, info, pseudonym_session1_keys.public,
+        )
+        proof = LongPseudonymPseudonymizationProof.from_json(proof.to_json())
+        result = verifier.verify_long_pseudonymization(
+            enc_pseudo, proof, pseudonym_session1_keys.public, commitments,
+        )
+        decrypted = decrypt(result, pseudonym_session2_keys.secret)
+        self.assertEqual(len(decrypted.pseudonyms()), len(long_pseudo.pseudonyms()))
+        self.assertNotEqual(
+            [p.to_hex() for p in decrypted.pseudonyms()],
+            [p.to_hex() for p in long_pseudo.pseudonyms()],
+        )
+        other = transcryptor.pseudonymization_commitment(domain2, domain1, session1, session2)
+        with self.assertRaises(ProofRejectedError):
+            verifier.verify_long_pseudonymization(
+                enc_pseudo, proof, pseudonym_session1_keys.public, other,
+            )
+
+        rekey_proof = transcryptor.verifiable_long_pseudonym_rekey(enc_pseudo, session1, session2)
+        rekeyed = verifier.verify_long_pseudonym_rekey(
+            enc_pseudo, rekey_proof, transcryptor.pseudonym_rekey_commitment(session1, session2),
+        )
+        self.assertEqual(
+            decrypt(rekeyed, pseudonym_session2_keys.secret).to_string_padded(), text,
+        )
+
+        long_attr = LongAttribute.from_string_padded(text)
+        enc_attr = encrypt(long_attr, attribute_session1_keys.public)
+        rekey_info = transcryptor.attribute_rekey_info(session1, session2)
+        attr_proof = transcryptor.verifiable_long_attribute_rekey(enc_attr, rekey_info)
+        rekeyed = verifier.verify_long_attribute_rekey(
+            enc_attr, attr_proof, transcryptor.attribute_rekey_commitment(session1, session2),
+        )
+        self.assertEqual(
+            decrypt(rekeyed, attribute_session2_keys.secret).to_string_padded(), text,
+        )
+        with self.assertRaises(ProofRejectedError):
+            verifier.verify_long_attribute_rekey(
+                enc_attr, attr_proof, transcryptor.pseudonym_rekey_commitment(session1, session2),
+            )
 
     def test_verifiable_record_transcryption(self):
         # End-to-end: prove + verify a transcryption on a composite (record)
@@ -287,7 +368,7 @@ class TestVerifiable(unittest.TestCase):
 
         current = EncryptedPseudonymBatch(encrypted_items, client_a_pk)
 
-        # Chain: each step records (pre-batch, pre-pk, proof, commitments) so
+        # Chain: each step records (pre-batch, proof, commitments) so
         # the *next* step can verify it before doing its own transcryption.
         prev = None
 
@@ -297,17 +378,16 @@ class TestVerifiable(unittest.TestCase):
             # and proof; that reconstruction must match what this transcryptor
             # actually received.
             if prev is not None:
-                pre_batch, pre_pk, proof, commitments = prev
+                pre_batch, proof, commitments = prev
                 reconstructed = proof.verified_reconstruct_batch(
-                    pre_batch, pre_pk, current.public_key(), commitments,
+                    pre_batch, current.public_key(), commitments,
                 )
                 self.assertEqual(reconstructed.items(), current.items())
 
             # Step 2: this transcryptor builds and applies its own verifiable
-            # batch transcryption. We save a clone of the pre-batch + its pk
-            # so the next iteration can verify against them.
-            pre_pk = current.public_key()
-            pre_batch_clone = EncryptedPseudonymBatch(current.items(), pre_pk)
+            # batch transcryption. We save a clone of the pre-batch, which
+            # carries its key, so the next iteration can verify against it.
+            pre_batch_clone = EncryptedPseudonymBatch(current.items(), current.public_key())
 
             info = system.pseudonymization_info(
                 domain_a, domain_b, session_a, session_b,
@@ -316,13 +396,13 @@ class TestVerifiable(unittest.TestCase):
                 domain_a, domain_b, session_a, session_b,
             )
             proof = current.verifiable_pseudonymize(info)
-            prev = (pre_batch_clone, pre_pk, proof, commitments)
+            prev = (pre_batch_clone, proof, commitments)
 
         # Final: client B verifies the last transcryptor's proof, then decrypts.
         self.assertIsNotNone(prev)
-        pre_batch, pre_pk, proof, commitments = prev
+        pre_batch, proof, commitments = prev
         verified_batch = proof.verified_reconstruct_batch(
-            pre_batch, pre_pk, current.public_key(), commitments,
+            pre_batch, current.public_key(), commitments,
         )
         self.assertEqual(verified_batch.items(), current.items())
 
@@ -676,6 +756,35 @@ class TestSessionKeyShareBinding(unittest.TestCase):
         proof = SessionKeyShareProof(blinding, rekey_commitment)
         commitment = BlindingCommitment(blinding)
         return blinding, rekey_factor, rekey_commitment, proof, commitment
+
+    def test_distributed_transcryptor_proves_its_shares(self):
+        # The transcryptor makes the share and its proof from its own blinding and rekey
+        # factors; the user checks both halves against the published commitments.
+        from libpep.elgamal.arithmetic.group_elements import GroupElement
+        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.factors import make_attribute_rekey_factor, make_pseudonym_rekey_factor
+        from libpep.keys import BlindingCommitment, BlindingFactor
+
+        blinding_scalar = ScalarNonZero.random()
+        transcryptor = DistributedTranscryptor("ps", "es", BlindingFactor(blinding_scalar))
+        session = EncryptionContext("session-1")
+        commitment = BlindingCommitment(blinding_scalar)
+        secret = EncryptionSecret(b"es")
+
+        share, proof = transcryptor.pseudonym_session_key_share_with_proof(session)
+        k = make_pseudonym_rekey_factor(secret, session)
+        rekey_commitment = GroupElement.generator().mul(k.scalar())
+        self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
+        self.assertEqual(share, transcryptor.pseudonym_session_key_share(session))
+
+        shares, pseudonym_proof, attribute_proof = (
+            transcryptor.session_key_shares_with_proof(session)
+        )
+        self.assertTrue(pseudonym_proof.verify_share(shares.pseudonym, commitment, rekey_commitment))
+        k = make_attribute_rekey_factor(secret, session)
+        attribute_commitment = GroupElement.generator().mul(k.scalar())
+        self.assertTrue(attribute_proof.verify_share(shares.attribute, commitment, attribute_commitment))
+        self.assertFalse(attribute_proof.verify_share(shares.attribute, commitment, rekey_commitment))
 
     def test_verify_share_accepts_the_matching_share(self):
         from libpep.keys import PseudonymSessionKeyShare

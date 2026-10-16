@@ -11,40 +11,39 @@
 //! In `elgamal3` mode `Y` is carried by the ciphertext; in the default mode
 //! the caller supplies it explicitly to the constructor and verifier.
 
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
+use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 /// Proof of a verifiable rerandomization: the commitment `R = r·G` and the proof that `Y_r =
 /// r·Y`.
-pub struct VerifiableRerandomize {
+pub struct VerifiableRerandomize<G: Group> {
     /// `R = r·G`.
-    pub(crate) gr: GroupElement,
+    pub(crate) gr: G::Element,
     /// `ZKP{Y_r = r * Y}`: first component is `Y_r = r·Y`.
-    pub(crate) p_gy_r: Proof,
+    pub(crate) p_gy_r: Proof<G>,
 }
 
-impl VerifiableRerandomize {
+impl<G: Group> VerifiableRerandomize<G> {
     /// The commitment `R = r·G`.
-    pub fn gr(&self) -> &GroupElement {
+    pub fn gr(&self) -> &G::Element {
         &self.gr
     }
     /// The proof `ZKP{Y_r = r * Y}`.
-    pub fn p_gy_r(&self) -> &Proof {
+    pub fn p_gy_r(&self) -> &Proof<G> {
         &self.p_gy_r
     }
 }
 
-impl VerifiableRerandomize {
+impl<G: Group> VerifiableRerandomize<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(gy: &GroupElement, r: &ScalarNonZero, rng: &mut R) -> Self {
-        let (gr, p_gy_r) = create_proof(r, gy, rng);
+    pub fn new<R: Rng + CryptoRng>(gy: &G::Element, r: &G::Scalar, rng: &mut R) -> Self {
+        let (gr, p_gy_r) = create_proof::<G, R>(r, gy, rng);
         Self { gr, p_gy_r }
     }
 
@@ -53,7 +52,7 @@ impl VerifiableRerandomize {
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
     ///
     /// `B_r = R + B`, `C_r = Y_r + C`, `Y_r = Y` (elgamal3).
-    pub(crate) fn result(&self, original: &ElGamal) -> ElGamal {
+    pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         ElGamal {
             gb: self.gr + original.gb,
             gc: *self.p_gy_r + original.gc,
@@ -69,25 +68,13 @@ impl VerifiableRerandomize {
     /// (the proof binds `R = r·G` to `gy` only), so no `original` argument
     /// is needed for verification.
     #[must_use]
-    pub fn verify(&self, gy: &GroupElement) -> bool {
-        verify_proof(&self.gr, gy, &self.p_gy_r)
+    pub fn verify(&self, gy: &G::Element) -> bool {
+        verify_proof::<G>(&self.gr, gy, &self.p_gy_r)
     }
 
-    /// Verify the proof against `original` and `gy`, returning the
-    /// reconstructed rerandomized ciphertext.
-    pub fn verified_reconstruct(&self, original: &ElGamal, gy: &GroupElement) -> Option<ElGamal> {
-        if self.verify(gy) {
-            Some(self.result(original))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn unverified_reconstruct(&self, original: &ElGamal) -> ElGamal {
-        self.result(original)
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element) -> ElGamal<G> = verify(gy);
+        unverified(original: &ElGamal<G>) = result(original);
     }
 }
 
@@ -98,11 +85,11 @@ impl VerifiableRerandomize {
 // not otherwise accessible to external callers.
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
 /// Rerandomize `original` with a fresh factor and return the result with its proof.
-pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
-    original: &ElGamal,
-    r: &ScalarNonZero,
+pub fn verifiable_rerandomize<G: Group, R: Rng + CryptoRng>(
+    original: &ElGamal<G>,
+    r: &G::Scalar,
     rng: &mut R,
-) -> (ElGamal, VerifiableRerandomize) {
+) -> (ElGamal<G>, VerifiableRerandomize<G>) {
     let proof = VerifiableRerandomize::new(&original.gy, r, rng);
     let result = proof.result(original);
     (result, proof)
@@ -111,12 +98,12 @@ pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
 #[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 /// Rerandomize `original` with a fresh factor and return the result with its proof; `gy` is the
 /// key it is encrypted under.
-pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
-    original: &ElGamal,
-    gy: &GroupElement,
-    r: &ScalarNonZero,
+pub fn verifiable_rerandomize<G: Group, R: Rng + CryptoRng>(
+    original: &ElGamal<G>,
+    gy: &G::Element,
+    r: &G::Scalar,
     rng: &mut R,
-) -> (ElGamal, VerifiableRerandomize) {
+) -> (ElGamal<G>, VerifiableRerandomize<G>) {
     let proof = VerifiableRerandomize::new(gy, r, rng);
     let result = proof.result(original);
     (result, proof)
@@ -125,10 +112,12 @@ pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::rerandomize;
+    use crate::elgamal::verifiable::VerifiableRerandomize;
+    use crate::elgamal::ElGamal;
 
     fn setup_ct_and_pk() -> (ElGamal, GroupElement) {
         let mut rng = rand::rng();

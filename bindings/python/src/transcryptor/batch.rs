@@ -15,6 +15,30 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
+/// Extract every item of a list as one type: `None` when the first item is not of that type
+/// (so that another type can be tried), a `TypeError` when a later item is not.
+macro_rules! extract_all {
+    ($items:expr, $t:ty) => {{
+        let items: &[Bound<PyAny>] = &$items;
+        match items.first() {
+            Some(first) if first.extract::<$t>().is_err() => None,
+            _ => Some(
+                items
+                    .iter()
+                    .enumerate()
+                    .map(|(i, item)| {
+                        item.extract::<$t>().map_err(|_| {
+                            PyTypeError::new_err(format!(
+                                "item {i} is not of the same type as item 0"
+                            ))
+                        })
+                    })
+                    .collect::<PyResult<Vec<$t>>>()?,
+            ),
+        }
+    }};
+}
+
 /// Polymorphic batch pseudonymization.
 /// Accepts a mutable list of encrypted pseudonyms and pseudonymization info.
 #[pyfunction]
@@ -39,8 +63,8 @@ pub fn py_pseudonymize_batch(
             .iter()
             .map(|e| e.extract::<PyEncryptedPseudonym>())
             .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0).collect();
-        let result = crate::transcrypt_with!(pseudonymize_batch, &mut rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
+        let rust_encs: Vec<_> = encs.iter().map(|e| e.0).collect();
+        let result = crate::transcrypt_with!(pseudonymize_batch, &rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()
@@ -59,8 +83,8 @@ pub fn py_pseudonymize_batch(
             .iter()
             .map(|e| e.extract::<PyLongEncryptedPseudonym>())
             .collect::<Result<Vec<_>, _>>()?;
-        let mut rust_encs: Vec<_> = encs.iter().map(|e| e.0.clone()).collect();
-        let result = crate::transcrypt_with!(pseudonymize_batch, &mut rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
+        let rust_encs: Vec<_> = encs.iter().map(|e| e.0.clone()).collect();
+        let result = crate::transcrypt_with!(pseudonymize_batch, &rust_encs, &pseudonymization_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()
@@ -96,16 +120,9 @@ pub fn py_rekey_batch(
 
     // Try EncryptedPseudonym with PseudonymRekeyInfo
     if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
-        if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
-                .iter()
-                .map(|e| {
-                    e.extract::<PyEncryptedPseudonym>()
-                        .expect("type already validated")
-                        .0
-                })
-                .collect();
-            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
+        if let Some(encs) = extract_all!(encrypted, PyEncryptedPseudonym) {
+            let rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
+            let result = crate::transcrypt_with!(rekey_batch, &rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_iter()
@@ -122,7 +139,7 @@ pub fn py_rekey_batch(
     #[cfg(feature = "long")]
     if let Ok(info) = rekey_info.extract::<PyPseudonymRekeyInfo>() {
         if encrypted[0].extract::<PyLongEncryptedPseudonym>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let rust_encs: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyLongEncryptedPseudonym>()
@@ -131,7 +148,7 @@ pub fn py_rekey_batch(
                         .clone()
                 })
                 .collect();
-            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &rust_encs, &info.0, public_key => crate::keys::pk::pseudonym, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_iter()
@@ -146,17 +163,10 @@ pub fn py_rekey_batch(
 
     // Try EncryptedAttribute with AttributeRekeyInfo
     if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
-        if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
-                .iter()
-                .map(|e| {
-                    e.extract::<PyEncryptedAttribute>()
-                        .expect("type already validated")
-                        .0
-                })
-                .collect();
+        if let Some(encs) = extract_all!(encrypted, PyEncryptedAttribute) {
+            let rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_iter()
@@ -173,7 +183,7 @@ pub fn py_rekey_batch(
     #[cfg(feature = "long")]
     if let Ok(info) = rekey_info.extract::<PyAttributeRekeyInfo>() {
         if encrypted[0].extract::<PyLongEncryptedAttribute>().is_ok() {
-            let mut rust_encs: Vec<_> = encrypted
+            let rust_encs: Vec<_> = encrypted
                 .iter()
                 .map(|e| {
                     e.extract::<PyLongEncryptedAttribute>()
@@ -183,7 +193,7 @@ pub fn py_rekey_batch(
                 })
                 .collect();
             let rust_info = AttributeRekeyInfo::from(&info);
-            let result = crate::transcrypt_with!(rekey_batch, &mut rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
+            let result = crate::transcrypt_with!(rekey_batch, &rust_encs, &rust_info, public_key => crate::keys::pk::attribute, &mut rng)
                 .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
             return Ok(result
                 .into_iter()
@@ -220,16 +230,9 @@ pub fn py_transcrypt_batch(
     let transcryption_info = TranscryptionInfo::from(info);
 
     // Try EncryptedPseudonym
-    if encrypted[0].extract::<PyEncryptedPseudonym>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
-            .iter()
-            .map(|e| {
-                e.extract::<PyEncryptedPseudonym>()
-                    .expect("type already validated")
-                    .0
-            })
-            .collect();
-        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::pseudonym, &mut rng)
+    if let Some(encs) = extract_all!(encrypted, PyEncryptedPseudonym) {
+        let rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
+        let result = crate::transcrypt_with!(transcrypt_batch, &rust_encs, &transcryption_info, public_key => crate::keys::pk::pseudonym, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()
@@ -242,16 +245,9 @@ pub fn py_transcrypt_batch(
     }
 
     // Try EncryptedAttribute
-    if encrypted[0].extract::<PyEncryptedAttribute>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
-            .iter()
-            .map(|e| {
-                e.extract::<PyEncryptedAttribute>()
-                    .expect("type already validated")
-                    .0
-            })
-            .collect();
-        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::attribute, &mut rng)
+    if let Some(encs) = extract_all!(encrypted, PyEncryptedAttribute) {
+        let rust_encs: Vec<_> = encs.into_iter().map(|e| e.0).collect();
+        let result = crate::transcrypt_with!(transcrypt_batch, &rust_encs, &transcryption_info, public_key => crate::keys::pk::attribute, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()
@@ -265,7 +261,7 @@ pub fn py_transcrypt_batch(
 
     // Try EncryptedRecord
     if encrypted[0].extract::<PyEncryptedRecord>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let rust_encs: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedRecord>()
@@ -274,7 +270,7 @@ pub fn py_transcrypt_batch(
                     .clone()
             })
             .collect();
-        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()
@@ -289,7 +285,7 @@ pub fn py_transcrypt_batch(
     // Try EncryptedPepJsonValue
     #[cfg(feature = "json")]
     if encrypted[0].extract::<PyEncryptedPepJsonValue>().is_ok() {
-        let mut rust_encs: Vec<_> = encrypted
+        let rust_encs: Vec<_> = encrypted
             .iter()
             .map(|e| {
                 e.extract::<PyEncryptedPepJsonValue>()
@@ -298,7 +294,7 @@ pub fn py_transcrypt_batch(
                     .clone()
             })
             .collect();
-        let result = crate::transcrypt_with!(transcrypt_batch, &mut rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
+        let result = crate::transcrypt_with!(transcrypt_batch, &rust_encs, &transcryption_info, public_key => crate::keys::pk::session, &mut rng)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{}", e)))?;
         return Ok(result
             .into_iter()

@@ -52,9 +52,10 @@ pub trait PublicKey: Sized {
 
 /// A secret key: a scalar whose public key is `sk * G`.
 ///
-/// Secret keys are not encoded, as they should not be shared. Secret material is read through
-/// explicit [`value`](Self::value) calls rather than `Deref`, so every read is visible at the
-/// call site.
+/// Secret keys have no hex or byte encoding; the session secret keys and shares serialize with
+/// serde for key distribution only. Secret material is read through explicit
+/// [`value`](Self::value) calls rather than `Deref`, so every read is visible at the call site,
+/// and prints redacted.
 pub trait SecretKey: Sized {
     /// The group the key is a scalar of.
     type Group: Group;

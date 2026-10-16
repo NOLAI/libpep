@@ -37,7 +37,8 @@
 //!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
 //! - With the `verifiable` feature, [`elgamal::verifiable`] holds the primitives that emit
 //!   zero-knowledge proofs, [`verifier`] checks such proofs against factor commitments, and the
-//!   high-level layers gain verifiable counterparts of their operations.
+//!   high-level layers gain verifiable counterparts of their operations
+//!   ([`data::verifiable`]).
 //!
 //! ## Groups
 //!
@@ -45,15 +46,18 @@
 //! [`Group`](elgamal::arithmetic::Group) trait (the group API of RFC 9497). Every type that holds
 //! group material has a generic version with a `G: Group` parameter in a `generic` submodule
 //! next to it ([`data::simple::generic::Pseudonym`], [`keys::types::generic::SessionKeys`],
-//! [`transcryptor::types::generic::Transcryptor`], ...), and the name at the module level is an
-//! alias pinning [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented
-//! so far. Code that uses ristretto255 never needs the generic names.
+//! [`transcryptor::types::generic::Transcryptor`], [`elgamal::zkps::generic::Proof`], ...), and
+//! the name at the module level is an alias pinning
+//! [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented so far. Code
+//! that uses ristretto255 never needs the generic names.
 //!
 //! ## Feature flags
 //!
 //! Default features: `long` (pseudonyms and attributes over 15 bytes), `offline` (encryption
-//! towards global keys), `batch` (batch transcryption with shuffling), `serde`, `json`
-//! (structured data with nested pseudonyms), and `build-binary` (the `peppy` CLI).
+//! towards global keys), `batch` (batch transcryption with shuffling) with `batch-pk` (the batch
+//! carries the public key), `serde`, `json` (structured data with nested pseudonyms), and
+//! `verifiable` (zero-knowledge proofs of transcryption). The optional `cli` feature builds the
+//! `peppy` command-line tool.
 //!
 //! Optional features and their security implications:
 //!
@@ -72,8 +76,20 @@
 //! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
+//! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman
+//!   hash (Section 3.3.1 of the paper), so that a verifier computes any commitment from the
+//!   master public keys instead of storing one per factor. The factors are then linear in two
+//!   public hashes: knowing one derived factor reveals nothing about another, but knowing two
+//!   (n + 1 with n transcryptors) reveals the master secret and so every factor. The same holds
+//!   for anything the factors multiply: two pseudonyms of one subject, or two session keys,
+//!   give all of them. The default derivation has no such structure, so the published
+//!   commitments of `verifiable` are the preferred scheme; this one trades security for
+//!   commitment storage.
 
 #![warn(missing_docs)]
+
+#[macro_use]
+mod secrecy;
 
 pub mod client;
 pub mod contexts;

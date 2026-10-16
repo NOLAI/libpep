@@ -103,7 +103,7 @@ impl WASMEncryptedPseudonymBatch {
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMPseudonymSessionPublicKey {
         WASMPseudonymSessionPublicKey(WASMGroupElement::from(*libpep::keys::PublicKey::value(
-            &self.inner.public_key,
+            self.inner.public_key(),
         )))
     }
 
@@ -238,7 +238,7 @@ impl WASMEncryptedAttributeBatch {
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMAttributeSessionPublicKey {
         WASMAttributeSessionPublicKey(WASMGroupElement::from(*libpep::keys::PublicKey::value(
-            &self.inner.public_key,
+            self.inner.public_key(),
         )))
     }
 
@@ -345,7 +345,7 @@ impl WASMLongEncryptedPseudonymBatch {
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMPseudonymSessionPublicKey {
         WASMPseudonymSessionPublicKey(WASMGroupElement::from(*libpep::keys::PublicKey::value(
-            &self.inner.public_key,
+            self.inner.public_key(),
         )))
     }
 
@@ -476,7 +476,7 @@ impl WASMLongEncryptedAttributeBatch {
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMAttributeSessionPublicKey {
         WASMAttributeSessionPublicKey(WASMGroupElement::from(*libpep::keys::PublicKey::value(
-            &self.inner.public_key,
+            self.inner.public_key(),
         )))
     }
 
@@ -577,7 +577,7 @@ impl WASMEncryptedRecordBatch {
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMSessionPublicKeys {
-        WASMSessionPublicKeys::from(self.inner.public_key)
+        WASMSessionPublicKeys::from(*self.inner.public_key())
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -669,7 +669,7 @@ impl WASMLongEncryptedRecordBatch {
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMSessionPublicKeys {
-        WASMSessionPublicKeys::from(self.inner.public_key)
+        WASMSessionPublicKeys::from(*self.inner.public_key())
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]

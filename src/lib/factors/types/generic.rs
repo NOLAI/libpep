@@ -22,8 +22,11 @@ pub trait Factor: Copy {
 macro_rules! factor {
     ($(#[$doc:meta])* $name:ident) => {
         $(#[$doc])*
-        #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+        #[derive(Copy, Clone, Eq, PartialEq)]
         pub struct $name<G: Group>(pub(crate) G::Scalar);
+
+        redacted_debug!($name<G>);
+        zeroize_fields!($name<G> { 0 });
 
         impl<G: Group> Factor for $name<G> {
             type Group = G;

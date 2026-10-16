@@ -6,6 +6,12 @@
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
 use libpep::data::simple::*;
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
+use libpep::data::verifiable::traits::VerifiablePseudonymizationProof;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;
@@ -368,7 +374,6 @@ fn n_pep_batch_distributed_verifiable() {
     let mut current = initial_batch;
     let mut prev: Option<(
         EncryptedBatch<EncryptedPseudonym>,
-        libpep::keys::PseudonymSessionPublicKey,
         libpep::data::verifiable::simple::PseudonymPseudonymizationBatchProof,
         libpep::factors::VerifiablePseudonymizationCommitment,
     )> = None;
@@ -377,10 +382,10 @@ fn n_pep_batch_distributed_verifiable() {
         // Step 1: verify the previous step (if any) using the saved pre-batch,
         // proof, and commitments. The verification reconstructs the post-batch
         // from the previous step's pre-batch and proof.
-        if let Some((pre, pre_pk, proof, commitments)) = prev.as_ref() {
+        if let Some((pre, proof, commitments)) = prev.as_ref() {
             #[cfg(not(feature = "elgamal3"))]
             let reconstructed = proof
-                .verified_reconstruct_batch(pre, pre_pk, &current.public_key, commitments)
+                .verified_reconstruct_batch(pre, current.public_key(), commitments)
                 .expect("verification of previous step should succeed");
             #[cfg(feature = "elgamal3")]
             let reconstructed = proof
@@ -392,23 +397,22 @@ fn n_pep_batch_distributed_verifiable() {
         }
 
         // Step 2: this transcryptor builds and applies its own verifiable batch
-        // transcryption. We save a *clone* of the pre-batch (originals) and its
-        // pk so the next iteration can verify against them.
+        // transcryption. We save a *clone* of the pre-batch (originals, which carry their
+        // key) so the next iteration can verify against them.
         let pre_batch = current.clone();
-        let pre_pk = current.public_key;
         let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
         let commitments =
             system.pseudonymization_commitment(&domain_a, &domain_b, &session_a, &session_b);
         let proof = current.verifiable_pseudonymize(&info.pseudonym, rng);
 
-        prev = Some((pre_batch, pre_pk, proof, commitments));
+        prev = Some((pre_batch, proof, commitments));
     }
 
     // Final step: client B verifies the last transcryptor's proof, then decrypts.
-    let (pre, pre_pk, proof, commitments) = prev.expect("at least one transcryption step");
+    let (pre, proof, commitments) = prev.expect("at least one transcryption step");
     #[cfg(not(feature = "elgamal3"))]
     let verified_batch = proof
-        .verified_reconstruct_batch(&pre, &pre_pk, &current.public_key, &commitments)
+        .verified_reconstruct_batch(&pre, current.public_key(), &commitments)
         .expect("final verification should succeed");
     #[cfg(feature = "elgamal3")]
     let verified_batch = proof
@@ -880,7 +884,11 @@ fn tampered_proof_rejected_record_transcryption() {
 /// return everything the negative tests below need: the pre-batch (originals),
 /// the produced proof, the post-batch (mutated by the proving step), the
 /// transcryptor commitments, and the session-A public key.
-#[cfg(all(feature = "batch", feature = "serde"))]
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
 #[allow(clippy::type_complexity)]
 fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
     rng: &mut R,
@@ -922,7 +930,11 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
 
 /// A batch proof whose serialized form has had a single string component
 /// swapped must be rejected.
-#[cfg(all(feature = "batch", feature = "serde"))]
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
 #[test]
 fn tampered_proof_rejected_pseudonymization_batch() {
     let rng = &mut rand::rng();
@@ -944,7 +956,11 @@ fn tampered_proof_rejected_pseudonymization_batch() {
 /// Verifying a batch proof against a different (but well-formed) pre-batch
 /// must be rejected: each per-item inner proof binds to its original
 /// ciphertext.
-#[cfg(all(feature = "batch", feature = "serde"))]
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
 #[test]
 fn wrong_original_rejected_pseudonymization_batch() {
     let rng = &mut rand::rng();
@@ -967,7 +983,11 @@ fn wrong_original_rejected_pseudonymization_batch() {
 
 /// Reordering items within the input batch must be rejected: the per-item
 /// inner proofs are positionally bound to their originals.
-#[cfg(all(feature = "batch", feature = "serde"))]
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
 #[test]
 fn reordered_originals_rejected_pseudonymization_batch() {
     let rng = &mut rand::rng();
@@ -998,7 +1018,12 @@ fn reordered_originals_rejected_pseudonymization_batch() {
 /// Verifying a batch proof against a different recipient public key must be
 /// rejected (non-`elgamal3` only — under `elgamal3` the recipient key is
 /// embedded in `gy` and changing it amounts to changing the originals).
-#[cfg(all(feature = "batch", feature = "serde", not(feature = "elgamal3")))]
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde",
+    not(feature = "elgamal3")
+))]
 #[test]
 fn wrong_recipient_pk_rejected_pseudonymization_batch() {
     let rng = &mut rand::rng();
@@ -1082,24 +1107,13 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
     let mut post = pre_empty.clone();
     let empty_proof = post.verifiable_pseudonymize(&info, rng);
 
-    // Verifying the empty proof against the empty batch reconstructs to an
-    // empty Vec — and under elgamal3 we additionally enforce that the
-    // batch's `gy` is consistent (which an empty batch has no `gy` to share),
-    // so verification fails rather than vacuously succeeding.
+    // Verifying the empty proof against the empty batch reconstructs to an empty Vec: nothing
+    // was claimed, so there is nothing to reject (under elgamal3 there is no key to bind).
     #[cfg(not(feature = "elgamal3"))]
-    {
-        let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
-        assert!(result.is_some());
-        assert!(result.unwrap().is_empty());
-    }
+    let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
-    {
-        let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
-        assert!(
-            result.is_none(),
-            "elgamal3 empty-batch verify must fail — no gy to bind"
-        );
-    }
+    let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
+    assert_eq!(result.map(|v| v.len()), Some(0));
 
     // Verifying the empty proof against a non-empty batch must fail
     // regardless of feature configuration.
@@ -1147,4 +1161,104 @@ fn mixed_gy_rejected_pseudonymization_batch() {
         result.is_none(),
         "mixed-gy batch must be rejected by the shared_gy guard"
     );
+}
+
+/// The Carter–Wegman derivation of Section 3.3.1 of the paper: the transcryptor derives the
+/// factors of each domain and session from its master secrets, and the verifier computes the
+/// commitments to them from the master public keys alone, without a per-factor registration.
+/// A transitive RRSK proof (VRRSK2) then verifies against those computed commitments.
+#[cfg(feature = "verifiable-derivation")]
+#[test]
+fn factors_derived_from_master_keys_verify_against_computed_commitments() {
+    use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+    use libpep::elgamal::verifiable::VerifiableRRSK2;
+    use libpep::factors::verifiable::{MasterPseudonymizationSecret, MasterRekeyingSecret};
+    use libpep::factors::Factor;
+
+    let rng = &mut rand::rng();
+    let master_pseudonymization = MasterPseudonymizationSecret::random(rng);
+    let master_rekeying = MasterRekeyingSecret::random(rng);
+    let (pseudonymization_public, rekeying_public) = (
+        master_pseudonymization.public_key(),
+        master_rekeying.public_key(),
+    );
+
+    // The verifier learns the master public keys once.
+    let mut verifier = Verifier::new();
+    verifier
+        .register_master_keys("t1".to_string(), pseudonymization_public, rekeying_public)
+        .expect("strong master keys register");
+    assert_eq!(
+        verifier.get_master_pseudonym_key("t1"),
+        Some(&pseudonymization_public)
+    );
+
+    let (hospital, research) = (
+        PseudonymizationDomain::from("hospital"),
+        PseudonymizationDomain::from("research"),
+    );
+    let (session_a, session_b) = (
+        EncryptionContext::from("session-a"),
+        EncryptionContext::from("session-b"),
+    );
+
+    // The transcryptor derives the factors; the verifier computes their commitments.
+    let s_from = master_pseudonymization.derive_reshuffle_factor(&hospital);
+    let s_to = master_pseudonymization.derive_reshuffle_factor(&research);
+    let k_from = master_rekeying.derive_pseudonym_rekey_factor(&session_a);
+    let k_to = master_rekeying.derive_pseudonym_rekey_factor(&session_b);
+    let (s_from_c, s_to_c) = (
+        pseudonymization_public.compute_reshuffle_commitment(&hospital),
+        pseudonymization_public.compute_reshuffle_commitment(&research),
+    );
+    let (k_from_c, k_to_c) = (
+        rekeying_public.compute_pseudonym_rekey_commitment(&session_a),
+        rekeying_public.compute_pseudonym_rekey_commitment(&session_b),
+    );
+    assert_eq!(s_from_c.point(), s_from.scalar() * G);
+    assert_eq!(s_to_c.point(), s_to.scalar() * G);
+    assert_eq!(k_from_c.point(), k_from.scalar() * G);
+    assert_eq!(k_to_c.point(), k_to.scalar() * G);
+    assert_ne!(s_from, s_to, "domains derive different factors");
+    assert_ne!(
+        master_rekeying
+            .derive_attribute_rekey_factor(&session_a)
+            .scalar(),
+        k_from.scalar(),
+        "pseudonym and attribute rekey factors are separated"
+    );
+
+    // A pseudonym in session a, hospital domain, transcrypted to session b, research domain.
+    let y = ScalarNonZero::random(rng);
+    let message = GroupElement::random(rng);
+    let original = libpep::elgamal::encrypt(&message, &(y * G), rng);
+    let r = ScalarNonZero::random(rng);
+    let proof = VerifiableRRSK2::new(
+        &original,
+        &(y * G),
+        &r,
+        &s_from.scalar(),
+        &s_to.scalar(),
+        &k_from.scalar(),
+        &k_to.scalar(),
+        rng,
+    );
+    let result = proof
+        .verified_reconstruct(&original, &(y * G), &s_from_c, &s_to_c, &k_from_c, &k_to_c)
+        .expect("the proof verifies against the computed commitments");
+    let y_to = y * k_from.scalar().invert() * k_to.scalar();
+    #[cfg(not(feature = "elgamal3"))]
+    let decrypted = libpep::elgamal::decrypt(&result, &y_to);
+    #[cfg(feature = "elgamal3")]
+    let decrypted = libpep::elgamal::decrypt(&result, &y_to).expect("the key matches");
+    assert_eq!(
+        decrypted,
+        s_from.scalar().invert() * s_to.scalar() * message
+    );
+
+    // The commitment of another domain does not verify the proof.
+    let other =
+        pseudonymization_public.compute_reshuffle_commitment(&PseudonymizationDomain::from("x"));
+    assert!(!proof.verify(&original, &(y * G), &s_from_c, &other, &k_from_c, &k_to_c));
 }

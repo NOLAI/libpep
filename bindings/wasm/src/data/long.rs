@@ -3,12 +3,18 @@ use crate::data::simple::{
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{WASMPseudonymSessionPublicKey, WASMSessionPublicKeys};
+#[cfg(feature = "verifiable")]
+use crate::macros::wasm_proof_class;
 use crate::macros::{wasm_long_encrypted_impl, wasm_long_plaintext_impl};
 use derive_more::{Deref, From};
 use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
 use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::{PseudonymSessionPublicKey, PublicKey};
 use wasm_bindgen::prelude::*;
@@ -71,8 +77,8 @@ pub fn wasm_rekey_long_pseudonym_batch(
     rekey_info: &WASMPseudonymRekeyInfo,
 ) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
     let mut rng = rand::rng();
-    let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
-    let result = rekey_batch(&mut enc, &rekey_info.0, &mut rng)
+    let enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+    let result = rekey_batch(&enc, &rekey_info.0, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result.into_iter().map(WASMLongEncryptedPseudonym).collect())
 }
@@ -89,8 +95,8 @@ pub fn wasm_rekey_long_pseudonym_batch(
 ) -> Result<Vec<WASMLongEncryptedPseudonym>, JsValue> {
     let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
     let mut rng = rand::rng();
-    let mut enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
-    let result = rekey_batch(&mut enc, &rekey_info.0, &pk, &mut rng)
+    let enc: Vec<_> = encrypted.into_iter().map(|e| e.0).collect();
+    let result = rekey_batch(&enc, &rekey_info.0, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result.into_iter().map(WASMLongEncryptedPseudonym).collect())
 }
@@ -112,7 +118,7 @@ pub fn wasm_transcrypt_long_batch(
     transcryption_info: &WASMTranscryptionInfo,
 ) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
     let mut rng = rand::rng();
-    let mut enc: Vec<LongEncryptedRecord> = encrypted
+    let enc: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
         .map(LongEncryptedRecord::from)
         .collect();
@@ -120,7 +126,7 @@ pub fn wasm_transcrypt_long_batch(
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
     };
-    let result = transcrypt_batch(&mut enc, &info, &mut rng)
+    let result = transcrypt_batch(&enc, &info, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result
         .into_iter()
@@ -145,7 +151,7 @@ pub fn wasm_transcrypt_long_batch(
 ) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
     let pk = libpep::keys::SessionPublicKeys::from(public_key);
     let mut rng = rand::rng();
-    let mut enc: Vec<LongEncryptedRecord> = encrypted
+    let enc: Vec<LongEncryptedRecord> = encrypted
         .into_iter()
         .map(LongEncryptedRecord::from)
         .collect();
@@ -153,10 +159,27 @@ pub fn wasm_transcrypt_long_batch(
         pseudonym: transcryption_info.0.pseudonym,
         attribute: transcryption_info.0.attribute,
     };
-    let result = transcrypt_batch(&mut enc, &info, &pk, &mut rng)
+    let result = transcrypt_batch(&enc, &info, &pk, &mut rng)
         .map_err(|e| JsValue::from_str(&format!("{}", e)))?;
     Ok(result
         .into_iter()
         .map(WASMLongEncryptedRecord::from)
         .collect())
 }
+
+#[cfg(feature = "verifiable")]
+wasm_proof_class!(
+    /// Proof of a verifiable pseudonymization of a `LongEncryptedPseudonym`.
+    WASMLongPseudonymPseudonymizationProof(LongPseudonymPseudonymizationProof)
+        as LongPseudonymPseudonymizationProof
+);
+#[cfg(feature = "verifiable")]
+wasm_proof_class!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedPseudonym`.
+    WASMLongPseudonymRekeyProof(LongPseudonymRekeyProof) as LongPseudonymRekeyProof
+);
+#[cfg(feature = "verifiable")]
+wasm_proof_class!(
+    /// Proof of a verifiable rekeying of a `LongEncryptedAttribute`.
+    WASMLongAttributeRekeyProof(LongAttributeRekeyProof) as LongAttributeRekeyProof
+);

@@ -50,6 +50,14 @@ pub enum PaddingError {
         /// The number of blocks asked for.
         target: usize,
     },
+    /// A record has a different number of values than the structure it is padded to.
+    #[error("the record has {current} values where the structure has {target}")]
+    CountMismatch {
+        /// The number of values the record has.
+        current: usize,
+        /// The number of values in the structure.
+        target: usize,
+    },
     /// The decoded bytes are not valid UTF-8.
     #[error("the decoded bytes are not valid UTF-8")]
     Utf8(#[from] std::string::FromUtf8Error),

@@ -8,8 +8,9 @@
 //!   factor that is 0 or 1 is rejected and the derivation retried with the next counter.
 //! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
-//! The labels are the same in both: `0x01` pseudonym rekey, `0x02` attribute rekey,
-//! `0x03` reshuffle.
+//! The labels differ: the draft uses `0x01` for a pseudonym rekey factor, `0x02` for an
+//! attribute rekey factor and `0x03` for a reshuffle factor; the legacy derivation uses `0x02`
+//! for a pseudonym rekey factor and `0x01` for the other two, with the audience type.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::group::Group;
@@ -93,8 +94,8 @@ pub fn make_pseudonymization_factor<G: Group>(
 ///
 /// # Panics
 ///
-/// Panics if `secret` or `id` is 2^16 bytes or longer; the derivation input length-prefixes
-/// both with two bytes.
+/// Panics if `secret` or `id` is [`MAX_INPUT_LENGTH`](super::MAX_INPUT_LENGTH) bytes or
+/// longer; the derivation input length-prefixes both with two bytes.
 #[cfg(not(feature = "legacy"))]
 pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G::Scalar {
     let secret_len = u16::try_from(secret.len()).ok();

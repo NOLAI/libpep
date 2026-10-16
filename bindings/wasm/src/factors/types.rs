@@ -301,7 +301,7 @@ impl WASMTranscryptionInfo {
 
     /// The public keys that data transcrypted with this info is encrypted under, given the keys it
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
-    #[wasm_bindgen(js_name = rekeyPublicKeys)]
+    #[wasm_bindgen(js_name = rekeyPublicKey)]
     pub fn rekey_public_key(&self, before: &WASMSessionPublicKeys) -> WASMSessionPublicKeys {
         let before: libpep::keys::SessionPublicKeys = (*before).into();
         self.0.rekey_public_key(&before).into()

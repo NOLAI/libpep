@@ -60,8 +60,8 @@ use std::fmt;
 /// another without learning either the input or the output. The abstraction is due to Lehmann's
 /// ScrambleDB work, which named it; this protocol builds on it rather than introducing it.
 ///
-/// `V1` versions the domain separation scheme, **not the crate**. It is easy to misread next to
-/// a crate at 0.14: the two are independent, and a release that changes neither the hashing
+/// `V1` versions the domain separation scheme, **not the crate**: the two are independent, and
+/// a release that changes neither the hashing
 /// construction nor the tag layout leaves this at `V1`. Should that construction ever change
 /// incompatibly, the prefix becomes `coPRFV2-`, so deployments on either side of the change
 /// derive unrelated values instead of silently disagreeing about the same ones.
@@ -76,7 +76,6 @@ pub const PREFIX: &str = "coPRFV1-";
 /// Reached through [`Group::CIPHERSUITE`](super::Group::CIPHERSUITE); see the
 /// [module documentation](self).
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ciphersuite {
     identifier: &'static str,
     context_string: &'static str,
@@ -85,10 +84,10 @@ pub struct Ciphersuite {
 impl Ciphersuite {
     /// The ciphersuite with the given identifier and the context string it implies.
     ///
-    /// `context_string` must be `"coPRFV1-" || identifier`; pass it rather than building it so
-    /// that the whole value is a compile-time constant. Use the
-    /// [`ciphersuite!`](crate::ciphersuite) macro instead of calling this directly, so the two
-    /// cannot disagree.
+    /// Public only for the [`ciphersuite!`](crate::ciphersuite) macro, which a [`Group`](super::Group)
+    /// implementation outside this crate expands; it builds `context_string` as
+    /// `"coPRFV1-" || identifier` at compile time, so the two cannot disagree.
+    #[doc(hidden)]
     #[must_use]
     pub const fn new(identifier: &'static str, context_string: &'static str) -> Self {
         Self {

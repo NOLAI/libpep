@@ -108,14 +108,12 @@ impl PyPseudonymPseudonymizationBatchProof {
     fn verified_reconstruct_batch(
         &self,
         original: &PyPseudonymBatch,
-        public_key: &crate::keys::PyPseudonymSessionPublicKey,
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyPseudonymBatch> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(PyPseudonymBatch::from)
             .ok_or_else(map_verify_err)
     }
@@ -320,14 +318,12 @@ impl PyLongPseudonymPseudonymizationBatchProof {
     fn verified_reconstruct_batch(
         &self,
         original: &PyLongPseudonymBatch,
-        public_key: &crate::keys::PyPseudonymSessionPublicKey,
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyLongPseudonymBatch> {
-        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
-            .verified_reconstruct_batch(&original.inner, &pk, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
             .map(PyLongPseudonymBatch::from)
             .ok_or_else(map_verify_err)
     }
@@ -536,19 +532,12 @@ impl PyRecordTranscryptionBatchProof {
     fn verified_reconstruct_batch(
         &self,
         original: &PyRecordBatch,
-        session_keys: &crate::keys::PySessionKeys,
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyRecordBatch> {
-        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         self.inner
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.inner,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
             .map(PyRecordBatch::from)
             .ok_or_else(map_verify_err)
     }
@@ -625,19 +614,12 @@ impl PyLongRecordTranscryptionBatchProof {
     fn verified_reconstruct_batch(
         &self,
         original: &PyLongRecordBatch,
-        session_keys: &crate::keys::PySessionKeys,
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyLongRecordBatch> {
-        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         self.inner
-            .verified_reconstruct_batch(
-                &original.inner,
-                &sk.public(),
-                &new_sk.public(),
-                &commitments.inner,
-            )
+            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
             .map(PyLongRecordBatch::from)
             .ok_or_else(map_verify_err)
     }

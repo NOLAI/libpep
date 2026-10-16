@@ -35,13 +35,55 @@ a major change against the published 0.13.0.
   `PepJsonValue`, `EncryptedPepJsonValue`, `PepJsonBuilder` and `JsonStructure`; the Python and
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
-- The verifiable commitments expose their group element through `point()`.
+- The verifiable commitments expose their group element through `point()` and are built from
+  the transcryption infos with `From` (`VerifiablePseudonymizationCommitment::from(info)` and
+  so on).
+- The verifiable layer is generic over the group, like the rest of the library: the proof
+  types of `elgamal::verifiable`, `elgamal::zkps` and `elgamal::dleq`, the commitments, the
+  Carter–Wegman master keys, the session key share proofs, the data-layer proofs and the
+  `Verifier` all have a `G: Group` version in a `generic` submodule, and the names at the module
+  level are their ristretto255 instances. For this, `Group` gained `ScalarCanBeZero`, the scalar
+  field with its addition, and its encoding functions, and `hashing::hash_to_nonzero_scalar`, the
+  group's hash reduced to a non-zero scalar. Proof bytes on ristretto255 are unchanged.
+- The batch proofs of the data layer are three types generic over the item type,
+  `BatchPseudonymizationProof<E>`, `BatchRekeyProof<E>` and `BatchTranscryptionProof<E>` in
+  `data::verifiable::batch`, built on the `VerifiableBatchItem` trait that lays an item's
+  ciphertexts out in a list; the per-type names (`PseudonymPseudonymizationBatchProof`,
+  `RecordTranscryptionBatchProof`, ...) are aliases of them. The record batch proofs no longer
+  carry a `structure` field, and every batch of a transcryptable type has
+  `verifiable_transcrypt`. The data-layer proofs expose their `verify`,
+  `verified_reconstruct` and `unverified_reconstruct` only through the `Verifiable*Proof`
+  traits; the inherent duplicates are gone.
+- `zkps::Proof` encodes with `to_bytes`/`from_slice` (and `LENGTH`) like the other types,
+  instead of `encode`/`decode`/`decode_from_slice` on a fixed array; `dleq::Proof` likewise
+  returns a `Vec`. `JSONTranscryptionProof` and `VerifiableJSONBatch` are `JsonTranscryptionProof`
+  and `JsonTranscryptionBatchProof`.
 - `elgamal::zkps` no longer carries the unused signature functions (`sign`, `verify`,
   `sign_unlinkable`, `create_proof_unlinkable`).
 - The `verifier::verifier` module is merged into `verifier`.
 - Every public item is documented (`missing_docs` warns).
 - In the JavaScript bindings, `fromHash` returns `undefined` for input that is not 64 bytes
   instead of aborting.
+
+- The data-layer proof traits provide `verify` as `verified_reconstruct(..).is_some()`, so an
+  implementation only supplies `verified_reconstruct`.
+- `elgamal::dleq::generate_proof` and `verify_proof` take the ciphersuite from the group
+  (`G::CIPHERSUITE`) instead of an argument; `generate_proof_with` and `verify_proof_with` keep
+  explicit tags. `Ciphersuite` no longer implements serde, and `Ciphersuite::new` is hidden: it
+  exists for the `ciphersuite!` macro.
+- `unverified_reconstruct` on the RSK and RRSK proofs and their batches (`insecure`) takes no
+  originals, which it never used. `VerifiableRerandomizeBatch::verify` checks the number of
+  originals.
+- The `verifiable-derivation` methods return typed values: `derive_reshuffle_factor`,
+  `derive_pseudonym_rekey_factor` and `derive_attribute_rekey_factor` give the factor types, and
+  the `compute_*_commitment` functions the commitment types. In the bindings the methods are
+  `derive_pseudonym_rekey_factor` / `derivePseudonymRekeyFactor` and the attribute counterparts.
+- In the JavaScript bindings, `verifiablePseudonymize`, `verifiablePseudonymRekey` and
+  `verifiableAttributeRekey` return `PseudonymPseudonymizationProof`, `PseudonymRekeyProof` and
+  `AttributeRekeyProof` objects (with `toJSON`/`fromJSON`) instead of JSON strings, and the
+  `Verifier` methods take them; Python returns and takes the same classes. The module-level
+  `verifiable_*` functions of `elgamal.verifiable` that duplicated the classes' constructors are
+  gone from both bindings, except `verifiable_rerandomize` and `verifiable_rerandomize_batch`.
 
 ### Security
 
@@ -52,6 +94,15 @@ a major change against the published 0.13.0.
   check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
   only public values and now documents what it does not establish. Exposed in Python as
   `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
+- The Fiat–Shamir challenge of the Schnorr proofs (`elgamal::zkps`) is domain separated: it is
+  the ciphersuite's `HashToScalar` of `A || M || N || c1 || c2` under the tag
+  `"ZKPChallenge-" || contextString`, as the DLEQ proofs already were, so a proof of one
+  deployment or proof type never verifies as another. Proofs made by earlier versions do not
+  verify; the test vectors are regenerated.
+- Every block of a long value and every leaf of a JSON document is rerandomized with its own
+  factor. One factor shared across a value left the differences between its ciphertexts intact
+  through rekeying, which linked a shuffled batch of long attributes or JSON documents to its
+  input.
 - Every transcryption now rerandomizes the ciphertext before applying the reshuffle and rekey
   factors (RRSK/RRK). Previously the high-level `pseudonymize`, `rekey` and `transcrypt` (and the
   batch variants) applied the factors only, so a malicious sender could place a pseudonym directly
@@ -61,7 +112,88 @@ a major change against the published 0.13.0.
 - Factor derivation rejects a factor equal to 1 as well as 0 (derived factors are unchanged in the
   non-degenerate case).
 
+- Secrets are wiped from memory: the byte secrets (`PseudonymizationSecret`, `EncryptionSecret`)
+  and the Carter–Wegman master secrets zeroize on drop, and the secret keys, factors, blinding
+  factors and shares implement `zeroize::Zeroize` (they are `Copy`, so wiping them is the
+  caller's call).
+
 ### Breaking changes
+
+- The `build-binary` feature is `cli` and no longer a default feature, so the library no longer
+  pulls in clap. Install `peppy` with `cargo install libpep --features cli`.
+- The batch slice functions (`pseudonymize_batch`, `rekey_batch`, `transcrypt_batch` and their
+  verifiable and transcryptor counterparts) take `&[E]` and no longer shuffle the caller's slice
+  in place; the output is shuffled. The test vectors of the batch outputs are regenerated.
+- Under `batch-pk`, the batch proofs verify against the key stored in the original batch:
+  `verified_reconstruct_batch` (and `Verifier::verify_*_batch`) no longer take the original's key
+  as a separate argument, and reject a batch whose stored key is not the one the proof was made
+  for. The bindings follow.
+- A long pseudonym's pseudonymization proof is one RRSK batch proof over its blocks
+  (`LongPseudonymPseudonymizationProof(VerifiableRRSKBatch)`), sharing the factor proofs, instead
+  of one proof per block.
+- The string form of a `LongEncryptedRecord` prefixes each list with its count
+  (`{n}:{items};{m}:{items}`), so a record with no pseudonyms or attributes round-trips;
+  `ParseError::InvalidCount` reports a bad count.
+
+- A transcryptor has one blinding factor, used for its pseudonym and attribute shares alike
+  (Section 2.2.4 of the paper), so it publishes one `BlindingCommitment`: `BlindingCommitments`
+  is gone, `Verifier::register_blinding_commitment`, `blinding_commitment` and
+  `has_blinding_commitment` take and return one, and
+  `verify_session_key_share_with_commitment` no longer takes a pseudonym/attribute flag.
+- A session key share is proved as the paper's Section 3.5 describes, by the transcryptor that
+  holds the blinding factor and the rekey factor: `make_session_key_share_with_proof` (with the
+  pseudonym, attribute and `shares` variants) returns the share and `ZKP{U_i = b_i · K_i}`, and
+  `DistributedTranscryptor::pseudonym_session_key_share_with_proof`,
+  `attribute_session_key_share_with_proof` and `session_key_shares_with_proof` do the same for a
+  session. `make_pseudonym_session_keys_with_proof`, `make_attribute_session_keys_with_proof` and
+  `make_session_key_pair_with_proof`, which needed the global secret key the dealer discards,
+  are gone; `SessionKeyShareError` lives in `keys::distribution`. The bindings follow
+  (`DistributedTranscryptor.session_key_shares_with_proof` and friends), and
+  `peppy keys distributed share --prove` prints the proofs.
+- `elgamal::verifiable::rfc`, the wire layouts of the draft's verifiable mode, is gone until
+  that mode is implemented end to end; `elgamal::dleq` stays as the RFC 9497 primitive, and the
+  verifiable operations use the paper's proof encoding of `elgamal::zkps`.
+- Python `make_pseudonym_rekey_factor`, `make_attribute_rekey_factor` and
+  `make_pseudonymization_factor` take an `EncryptionContext` or `PseudonymizationDomain`
+  instead of a string, like every other function; JavaScript likewise.
+- The bindings gate the session key share proofs and the verifier's blinding-commitment and
+  cached-verification methods on `verifiable`, as the library does, instead of
+  `verifiable-derivation`.
+- `EncryptedBatch` keeps its items and key private, so a batch is only built through `new` or
+  deserialization, both of which check that the items share one structure; `public_key()`,
+  `as_items()` and `into_items()` read them.
+- `PepJsonBuilder::pseudonym` (and `pseudonym(..)` in `pep_json!`) always pads the identifier;
+  group elements go in through `pseudonym_hex` (`pseudonym_hex(..)` in the macro) instead of
+  being detected from the string.
+- Secrets, secret keys, blinding factors, session key shares and factors print redacted through
+  `Debug`. `InMemoryCommitmentsCache` no longer derives serde (its tuple keys never serialized
+  to JSON). `VerifiableRSKInner::verify` is crate-private. The `LongEncryptable` and
+  `LongEncrypted` traits are gone. `PaddingError::CountMismatch` replaces the misused
+  `TooManyBlocks` for a record with the wrong number of values. JSON objects are `BTreeMap`s.
+- Under `elgamal3` a verifiable batch proof over a batch without pseudonyms (attribute-only
+  records, JSON without pseudonym fields, an empty batch) verifies its rekey proofs instead of
+  always failing.
+- `Verifier::pseudonymization_commitments`, `pseudonym_rekey_commitments` and
+  `attribute_rekey_commitments` return registered commitments, so batch proofs can be checked
+  against the cache.
+- `make_distributed_global_keys` and its pseudonym and attribute variants panic for zero
+  transcryptors with a message (they always panicked); the bindings raise an error. The
+  derivation inputs (secrets, domains, contexts) must be shorter than
+  `factors::derivation::MAX_INPUT_LENGTH`; the CLI and the bindings refuse longer ones instead
+  of panicking.
+- JavaScript: `encryptJson`, `decryptJson`, `transcryptJson`, `transcryptJsonBatch`,
+  `encryptJsonBatch`, `decryptJsonBatch` and `verifyJsonTranscryption` are the only spellings;
+  the `JSON` duplicates are gone. `OfflinePEPClient` is `OfflineClient`, `rekeyPublicKeys` is
+  `rekeyPublicKey`. Python: a batch function given items of different types raises `TypeError`
+  instead of panicking.
+- `peppy`: `--encryption-secret` and `--pseudonymization-secret` name the secrets everywhere
+  (`--secret` is gone from `factors reshuffle|rekey`, `keys session derive` and
+  `keys distributed share`); `attribute transcrypt` no longer accepts the pseudonymization
+  flags; `encode`/`decode` use the PKCS#7 padding of the library, so an identifier gives the
+  same pseudonym on the command line as in a JSON document or the bindings; values print bare
+  when standard output is piped and labelled on a terminal; a wrong-key decryption exits with
+  3 and a failed proof with 4, since clap uses 2; `keys distributed reconstruct` refuses a call
+  without shares or with shares of a kind whose blinded key is missing.
 
 - The minimum supported Rust version is 1.88, up from 1.85. Transitive dependencies of
   `curve25519-dalek`, `sha2` and `hmac` raised their own floors during this cycle: `ctutils`
@@ -120,8 +252,8 @@ a major change against the published 0.13.0.
   `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes` and
   `from_bytes` likewise; the `PublicKey`, `SecretKey`, `RekeyFactor`, `BlindedGlobalSecretKey`,
   `SessionKeyShare`, `Encryptable`, `Encrypted` and `Distributed` traits have an associated
-  `Group` type (`Padded` requires it to have an `InvertibleEncoding`); `RekeyFactor` has
-  `from_scalar`; the factor types have `from_scalar` instead of `From<ScalarNonZero>` in generic
+  `Group` type (`Padded` requires it to have an `InvertibleEncoding`); the factor types have
+  `from_scalar` instead of `From<ScalarNonZero>` in generic
   code (the ristretto255 aliases keep `From`). The tuple constructors `LongPseudonym(..)`,
   `LongAttribute(..)`, `LongEncryptedPseudonym(..)` and `LongEncryptedAttribute(..)` are
   functions with the same names, since type aliases cannot construct tuple structs.
@@ -159,7 +291,7 @@ a major change against the published 0.13.0.
   brainpoolP320r1 ciphersuites of the coPRF draft; the bindings and the CLI expose ristretto255
   only.
 
-- `tests/vectors/expected.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
+- `tests/vectors.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
   constants with one value per line. They pin the protocol's derived values byte for byte, so that
   an unintended change to the hashing or the factor derivation fails the suite instead of passing
   silently. They cover `DeriveFactor` for the three labels, `EncryptPseudonym` /
@@ -169,7 +301,7 @@ a major change against the published 0.13.0.
   reproducible. `tests/vectors.rs` recomputes each value and asserts it against its constant,
   naming the label that changed; update them deliberately with
   `cargo test --features batch,verifiable --test vectors -- --ignored --nocapture`, which prints
-  the current values in the layout of `expected.rs`.
+  the current values in the layout of the constants.
 - `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
   A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
@@ -210,12 +342,38 @@ a major change against the published 0.13.0.
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
-- `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo` and `PseudonymizationInfo`, and
-  `rekey_public_keys` on `TranscryptionInfo`: the public key a transcrypted ciphertext is encrypted
-  under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
+- The `verifiable-derivation` feature is documented as the alternative of Section 3.3.1 of the
+  paper and not the preferred scheme: its factors are linear in two public hashes, so two leaked
+  factors, two pseudonyms of one subject or two session keys reveal all of them.
+- `peppy` does verifiable transcryption: `factors commitments` prints the commitments of a
+  transition, `--prove` on `pseudonym|attribute rekey|pseudonymize|transcrypt` and
+  `json transcrypt` adds the proof (JSON) to the output, and `verify-rekey`,
+  `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original
+  ciphertext and the commitments (exit status 4 if it does not hold).
+- The verifiable operations on single long values in the bindings: Python
+  `Transcryptor.verifiable_long_pseudonymize`, `verifiable_long_pseudonym_rekey` and
+  `verifiable_long_attribute_rekey` with the `Verifier.verify_long_*` counterparts and the
+  `LongPseudonymPseudonymizationProof`, `LongPseudonymRekeyProof` and `LongAttributeRekeyProof`
+  classes; JavaScript `verifiableLongPseudonymize`, `verifyLongPseudonymization` and so on.
+- The Python stub generator discovers the submodules by walking the module tree instead of a
+  hand-kept list, which had left `libpep.verifier`, `libpep.elgamal.verifiable` and
+  `libpep.elgamal.zkps` without stubs; the package stubs re-export their submodules, and the
+  generator parses what it writes.
+- Python: `EncryptionContext.global_` and `PseudonymizationDomain.global_` (the global context
+  and domain) replace `global`, a keyword that made them unreachable, and the global secret
+  key parameter of the session key functions is `global_key` so it can be passed by keyword.
+  The unreachable `PseudonymizationSecret.from` and `EncryptionSecret.from` are gone; the
+  constructors do the same.
+- `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `PseudonymizationInfo` and
+  `TranscryptionInfo` (the `factors::RekeyPublicKey` trait): the public key a transcrypted
+  ciphertext is encrypted under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
   CLI prints it as `key` / `keys`.
 
 ### Removed
+
+- The `default+verifiable` CI rows (`verifiable` is a default feature); the MSRV job checks the
+  default mode and `verifiable-derivation` as well; `cargo doc` runs with warnings denied; docs.rs
+  documents the default ciphertext mode with every feature instead of `elgamal3`.
 
 - `docs/scalar-mult-counts.md` and `docs/scalar-mult-counts-elgamal3.md`. They analysed scalar
   multiplication counts against a module layout several refactors old, and counted the whole flow

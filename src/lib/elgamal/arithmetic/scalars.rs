@@ -24,6 +24,20 @@ pub struct ZeroArgumentError;
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct ScalarNonZero(pub(crate) Scalar);
 
+/// Wiping a scalar leaves the zero value, which is not a valid `ScalarNonZero`: a wiped scalar
+/// must not be used again, only dropped.
+impl zeroize::Zeroize for ScalarNonZero {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl zeroize::Zeroize for ScalarCanBeZero {
+    fn zeroize(&mut self) {
+        self.0.zeroize();
+    }
+}
+
 impl ScalarNonZero {
     /// Always return a random non-zero scalar.
     #[must_use]
@@ -81,8 +95,8 @@ impl ScalarNonZero {
 /// Scalar, can be zero.
 ///
 /// Can be converted to a [`GroupElement`](super::group_elements::GroupElement).
-/// Supports multiplication, inversion (so division is possible), addition and subtraction.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+/// Supports multiplication, addition and subtraction; the default value is zero.
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 pub struct ScalarCanBeZero(pub(crate) Scalar);
 
 impl ScalarCanBeZero {
@@ -173,8 +187,8 @@ impl TryFrom<ScalarCanBeZero> for ScalarNonZero {
 
 /// Trait for encoding of scalars.
 ///
-/// Since scalars are typically secret values, we do not implement a way to serialize them, and
-/// encoding methods are not public.
+/// Scalars are typically secret values; the types that hold them as keys and factors print
+/// redacted and only encode where distribution needs it.
 pub trait ScalarTraits {
     /// Convert the scalar to a 32-byte array.
     fn to_bytes(&self) -> [u8; 32] {
@@ -303,6 +317,15 @@ impl std::ops::Sub<ScalarCanBeZero> for ScalarCanBeZero {
 
     fn sub(mut self, rhs: Self) -> Self::Output {
         self.0 -= rhs.0;
+        self
+    }
+}
+
+impl std::ops::Mul<ScalarCanBeZero> for ScalarCanBeZero {
+    type Output = ScalarCanBeZero;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        self.0 *= rhs.0;
         self
     }
 }

@@ -16,11 +16,7 @@
 
 pub mod generic;
 
-use crate::data::simple::{
-    Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
-    Pseudonym,
-};
-use crate::data::traits::{Encryptable, Encrypted};
+use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::elgamal::arithmetic::Ristretto255;
 
 /// The [`LongPseudonym`](generic::LongPseudonym) over ristretto255.
@@ -56,43 +52,6 @@ pub fn LongEncryptedAttribute(blocks: Vec<EncryptedAttribute>) -> LongEncryptedA
     generic::LongEncryptedAttribute(blocks)
 }
 
-/// A marker trait for encryptable types that use multi-block (long) encryption.
-pub trait LongEncryptable {
-    /// The encrypted type
-    type EncryptedType: LongEncrypted;
-
-    /// The single-block type that makes up this long type
-    type Block: ElGamalEncryptable;
-
-    /// Get the blocks that make up this long type
-    fn blocks(&self) -> &[Self::Block];
-
-    /// Create the encrypted long type from encrypted blocks
-    fn from_encrypted_blocks(
-        blocks: Vec<<Self::Block as Encryptable>::EncryptedType>,
-    ) -> Self::EncryptedType;
-}
-
-/// A marker trait for long encrypted types that can be decrypted.
-pub trait LongEncrypted {
-    /// The unencrypted type
-    type UnencryptedType: LongEncryptable;
-
-    /// The single-block encrypted type that makes up this long encrypted type
-    type EncryptedBlock: ElGamalEncrypted;
-
-    /// Get the encrypted blocks that make up this long encrypted type
-    fn encrypted_blocks(&self) -> &[Self::EncryptedBlock];
-
-    /// Create from decrypted blocks
-    fn from_decrypted_blocks(
-        blocks: Vec<<Self::EncryptedBlock as Encrypted>::UnencryptedType>,
-    ) -> Self::UnencryptedType;
-
-    /// Create from encrypted blocks
-    fn from_encrypted_blocks(blocks: Vec<Self::EncryptedBlock>) -> Self;
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -100,6 +59,7 @@ mod tests {
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
     use crate::data::padding::PaddingError;
+    use crate::data::simple::ElGamalEncryptable;
     use crate::errors::ParseError;
     use crate::factors::EncryptionSecret;
     use crate::keys::{make_attribute_session_keys, make_pseudonym_session_keys};

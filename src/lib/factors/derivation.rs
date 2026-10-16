@@ -13,8 +13,9 @@
 //!   and the derivation retried with the next counter.
 //! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
-//! The labels are the same in both: `0x01` pseudonym rekey, `0x02` attribute rekey,
-//! `0x03` reshuffle.
+//! The labels differ: the draft uses `0x01` for a pseudonym rekey factor, `0x02` for an
+//! attribute rekey factor and `0x03` for a reshuffle factor; the legacy derivation uses `0x02`
+//! for a pseudonym rekey factor and `0x01` for the other two, with the audience type.
 //!
 //! None of these take a [`Ciphersuite`](crate::elgamal::arithmetic::ciphersuite::Ciphersuite): the secret is part of
 //! the hash input, so deployments with different secrets already derive unrelated factors, and the
@@ -22,6 +23,11 @@
 //! [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite) module docs.
 
 pub mod generic;
+
+/// Secrets, domains and contexts must be shorter than this many bytes: the derivation
+/// length-prefixes them with two bytes. Callers that take them from untrusted input check the
+/// length first; the derivation panics past it.
+pub const MAX_INPUT_LENGTH: usize = 1 << 16;
 
 use super::secrets::{EncryptionSecret, PseudonymizationSecret};
 use super::types::*;

@@ -1,6 +1,6 @@
 //! Test vectors for the ristretto255-SHA512 ciphersuite.
 //!
-//! The expected values live as Rust constants in `tests/vectors/expected.rs`, one per line, and
+//! The expected values live as Rust constants in `the `expected` module of `tests/vectors.rs``, one per line, and
 //! this file recomputes every one of them and asserts equality. Any change in derived factors,
 //! encodings, transcryption or proofs therefore fails the test instead of passing silently.
 //!
@@ -15,7 +15,7 @@
 //! cargo test --features batch,verifiable --test vectors -- --ignored --nocapture
 //! ```
 //!
-//! which prints the current values in the layout of `expected.rs`; copy the output there after
+//! which prints the current values in the layout of the `expected` module; copy the output there after
 //! checking the diff value by value.
 //!
 //! The vectors cover the batch operations and the verifiable session key share, so the test is
@@ -88,10 +88,12 @@ mod expected {
     /// `Seed`
     pub const SEED: &str = "6c69627065702d72697374726574746f3235352d5348413531322d7665632d31";
 
+
     // ===== DeriveFactor =====
 
     // DeriveFactor, the three labels of Table 1.
     // The secrets are ASCII byte strings, shown here as hex.
+
     /// `PS_1`
     pub const PS_1: &str = "7472616e7363727970746f722d312d70736575646f6e796d697a6174696f6e2d736563726574";
     /// `ES_1`
@@ -100,18 +102,21 @@ mod expected {
     pub const DOMAINIDENTIFIER: &str = "646f6d61696e2d61";
     /// `SessionIdentifier`
     pub const SESSIONIDENTIFIER: &str = "73657373696f6e2d61";
+
     /// `labelRekeyPseudonym`
     pub const SCALAR_LABELREKEYPSEUDONYM: &str = "01";
     /// `k_c`
     pub const SCALAR_K_C: &str = "70d5b3b5292a8db45d37f3ea19d72e11ac65a48d82b05cd184cdf906b944930b";
     /// `K_c`
     pub const K_C: &str = "e02076ebe02373bfc034edaef8a2569ff26ce589a8436b318a26e1f3a70dc560";
+
     /// `labelRekeyAttribute`
     pub const SCALAR_LABELREKEYATTRIBUTE: &str = "02";
     /// `k'_c`
     pub const SCALAR_K_PRIME_C: &str = "3b4c72d3eea7b6915144bfcb6e9198446e0663a318ebee76783c38233b537a05";
     /// `K'_c`
     pub const K_PRIME_C: &str = "680c39a2e1a372a129a8b75154cc827f6e22c813f2944a071e4541453d718918";
+
     /// `labelReshuffle`
     pub const SCALAR_LABELRESHUFFLE: &str = "03";
     /// `s_d`
@@ -124,6 +129,7 @@ mod expected {
     // EncryptPseudonym / TranscryptPseudonym / Decrypt, one ciphertext.
     // y is the global secret key; b is the encryption blinding scalar;
     // r is the rerandomization scalar of the transcryption.
+
     /// `Identifier`
     pub const IDENTIFIER: &str = "70617469656e742d3432";
     /// `M`
@@ -146,6 +152,7 @@ mod expected {
     pub const SCALAR_B: &str = "232520f90a6508350126f42f4b04e7f26c1418ed7ac7f1ae789fc7553f22b904";
     /// `V`
     pub const V: &str = "e43bfa2c70155100b745294e18c76e6ab0cbc105b211f4a884f44b4f069e1027087ccf25ecbfdabf1407590d4380b62335744fe2c0588d3b3dcb4c4ba6950840";
+
     /// `s`
     pub const SCALAR_S: &str = "0e6febf1b89503f7ca630f39bec91e51415f5a86d054e10e09066fdbfc90730e";
     /// `k`
@@ -156,6 +163,7 @@ mod expected {
     pub const V_PRIME: &str = "aa5aca7202007bfd59c8e95b19818a17faf3a4bab1ca202a5d8081af9b430e2dbaf02a128186a023d3812dbaf63e7d0e228d79556a2fa46c7aca91c5ed176955";
     /// `Y_to`
     pub const Y_TO: &str = "64a4932e3fe087554059df526f279c029b94c027389a3b5e9ab365992bbbf524";
+
     /// `P`
     pub const P: &str = "d81b4bc1c5ded30bb710ae627a734e6b263bee2aeb0b708104ba77de3744d929";
     /// `sk_to`
@@ -166,12 +174,14 @@ mod expected {
     // A batch of three pseudonyms (typePseudonym, 0x01) and three attributes
     // (typeAttribute, 0x02). The permutation and every r are drawn from the
     // recorded seed with stream label 02, so the output order is reproducible.
+
     /// `BatchSeed`
     pub const BATCHSEED: &str = "6c69627065702d72697374726574746f3235352d5348413531322d7665632d02";
     /// `typePseudonym`
     pub const SCALAR_TYPEPSEUDONYM: &str = "01";
     /// `typeAttribute`
     pub const SCALAR_TYPEATTRIBUTE: &str = "02";
+
     /// `PseudonymInput_0`
     pub const PSEUDONYMINPUT_0: &str = "70617469656e742d31";
     /// `PseudonymM_0`
@@ -196,20 +206,22 @@ mod expected {
     pub const PSEUDONYMB_2: &str = "7d594cbae2df704390e98f567cf10cc194d392cf89cb2d70bfc449a5f0c5fd0c";
     /// `PseudonymV_2`
     pub const PSEUDONYMV_2: &str = "38d06fca356dee46ece18ce53518c4b094167a7b3f339595c25b45949c09e47782458ce71edd69fb4043102073c018fc0ae2aa9fddcc0b5876376d21d4830c6c";
+
     /// `PseudonymOut_0`
-    pub const PSEUDONYMOUT_0: &str = "08d523cbc988ae53b55037d76491344d75257244dc859fc9d9a9f72ff39d0647b02d8acd343a14d839341151ab58ac7d8184230ef3e0bed0b5606161f42e7c32";
+    pub const PSEUDONYMOUT_0: &str = "fa5d0eab85ea7b280ad4ab422674ba828b282795f0a39d411b8a95a4135bb46b40b4e55074fe32c81359e588534b3f77cf00c7cc183ef043bba02e54ddb09613";
     /// `PseudonymOut_1`
-    pub const PSEUDONYMOUT_1: &str = "286eaef85fe205addce8d7ab3614af6a0140a54df4248ea549b299fd6df7de2afeb650a5f2df3dd35cf918b8488d9923c42afea40387b4c20f274cba1bdca848";
+    pub const PSEUDONYMOUT_1: &str = "9afe7eb5e9d865bf452947cf02292f0393e51c9d5ff680cafd952232ebbcfa563e4fa8c8b513f6af706a98c67cede54728b970effb893547a76d55d8aadc7568";
     /// `PseudonymOut_2`
-    pub const PSEUDONYMOUT_2: &str = "ee2ad84bada8601cdd99bcc8e58549488da90ee939a36e33052c49adb65f032e62c7e385a49ca9512b849a4a0a4a0a9b1acaa05be178324dd6622a75121d0225";
+    pub const PSEUDONYMOUT_2: &str = "6ed157cb8df3071f7d973b02cde6495866be382d43c333c14e965d81e45b024a766aa8055e5b8465cb0b334d7bdc4a4eaf2205c8089814f98baaee57e98c9012";
     /// `PseudonymP_0`
-    pub const PSEUDONYMP_0: &str = "7e6da74d1804fbfa3fbfdbae3be7a8eb4583ac8216b68a7112a333b78f1ba879";
+    pub const PSEUDONYMP_0: &str = "868ef3a059cf1fc6ab1fc7c3ed60472ae5fd354f777a809515c5162a538d9e26";
     /// `PseudonymP_1`
-    pub const PSEUDONYMP_1: &str = "868ef3a059cf1fc6ab1fc7c3ed60472ae5fd354f777a809515c5162a538d9e26";
+    pub const PSEUDONYMP_1: &str = "505c3ed908dd214123e0ae9db072641b1734c079d45853487445b647ecc5114b";
     /// `PseudonymP_2`
-    pub const PSEUDONYMP_2: &str = "505c3ed908dd214123e0ae9db072641b1734c079d45853487445b647ecc5114b";
+    pub const PSEUDONYMP_2: &str = "7e6da74d1804fbfa3fbfdbae3be7a8eb4583ac8216b68a7112a333b78f1ba879";
     /// `PseudonymPermutation`
-    pub const PSEUDONYMPERMUTATION: &str = "2,0,1";
+    pub const PSEUDONYMPERMUTATION: &str = "0,1,2";
+
     /// `AttributeM_0`
     pub const ATTRIBUTEM_0: &str = "c239ba10c2cb7dbe363124bec3be7d0d898ab78470e1b471ad92fcca550e9321";
     /// `AttributeB_0`
@@ -228,22 +240,23 @@ mod expected {
     pub const ATTRIBUTEB_2: &str = "8bc9e1ff43f79c3702807e3caa641c3e51e7e1db8b76227307a0ae6d8f7da60b";
     /// `AttributeV_2`
     pub const ATTRIBUTEV_2: &str = "1425a836a0ec527bde77e1ec4f98baae5ddede709d2fc5b19a0399ad60375718406eb119f32ce2b64a6c9bdbe2ce35864537de6dcd7270d265789df10d039b16";
+
     /// `k_attribute`
     pub const SCALAR_K_ATTRIBUTE: &str = "cdfd3672876a7d530711e959d60e553b3dc499b9d3e666f5f3792d541cb51a08";
     /// `AttributeOut_0`
-    pub const ATTRIBUTEOUT_0: &str = "9cad1fa49038541fec4e05897106279d3886f37b23af74a6e15903a095f995400a17fd153d3b851ce9f51dda396d520f34d94072dfc34f4258b1ca64c4728d68";
+    pub const ATTRIBUTEOUT_0: &str = "801405eab64019707c5153dc8b3de178da1024a5600c56696d7bf3e69512c75446970093b24e6dab82aa0010c91310225e31bdc8674bb9c9714d6a47155f035e";
     /// `AttributeOut_1`
-    pub const ATTRIBUTEOUT_1: &str = "a072e3e4b0e39f302064b3ac26ef6458e3bdca8338b861457385ba74a789dd784628e3c748eb9828447571c57487c151e8caa27c145b19e8a253a6eb813c2b2f";
+    pub const ATTRIBUTEOUT_1: &str = "0cbd747cfcf038872d4cd16784f5e3baa46f502c8ae858cf582c3899ad55bc4bfa2a5c818d70f5bf0c7b746c3532575716309a0a7e435822efdff40e83497c06";
     /// `AttributeOut_2`
-    pub const ATTRIBUTEOUT_2: &str = "f0b257978939f2fba6d397f5a2159bb839538364345f1fddd4a6992c6c201b583cf07ff500304c9d79f081a9dea6412cf77b644859150765e5c0cca2a414c531";
+    pub const ATTRIBUTEOUT_2: &str = "f202a143288177e7564f961aefedf122d2c4db9040689fd16b07a3ccc6dfd35840ed2b9c139dbd03744a2bad26e2b3bf122e68dca64f90938b4abeb962e1af3e";
     /// `AttributeP_0`
-    pub const ATTRIBUTEP_0: &str = "c239ba10c2cb7dbe363124bec3be7d0d898ab78470e1b471ad92fcca550e9321";
+    pub const ATTRIBUTEP_0: &str = "ccb89ef69f031f7254bbb447fdecd4269f4f00b93bebfb2e9b1eca92df03336e";
     /// `AttributeP_1`
-    pub const ATTRIBUTEP_1: &str = "ccb89ef69f031f7254bbb447fdecd4269f4f00b93bebfb2e9b1eca92df03336e";
+    pub const ATTRIBUTEP_1: &str = "f25d853f29cb794ba7da5e52c8c548dbdae6c21ddc09ffe17fb54e71500e3d7b";
     /// `AttributeP_2`
-    pub const ATTRIBUTEP_2: &str = "f25d853f29cb794ba7da5e52c8c548dbdae6c21ddc09ffe17fb54e71500e3d7b";
+    pub const ATTRIBUTEP_2: &str = "c239ba10c2cb7dbe363124bec3be7d0d898ab78470e1b471ad92fcca550e9321";
     /// `AttributePermutation`
-    pub const ATTRIBUTEPERMUTATION: &str = "0,2,1";
+    pub const ATTRIBUTEPERMUTATION: &str = "2,1,0";
 
     // ===== Session key share =====
 
@@ -253,6 +266,7 @@ mod expected {
     // transcryptor on the same session agree on the key material. The proof
     // transcript is separated by its own labels, not by a protocol mode.
     // u_i is secret and is shown only so the vector can be reproduced.
+
     /// `b_1`
     pub const SCALAR_B_1: &str = "17dc8b002247c4b99d56d8f4a5ec806c6551f72f67d2c3e2e8d06bfa8854db05";
     /// `B_1`
@@ -369,13 +383,13 @@ fn expected_for(name: &str) -> &'static str {
         .find(|(label, _)| *label == name)
         .map(|(_, value)| *value)
         .unwrap_or_else(|| {
-            panic!("no expected constant for {name}; add it to tests/vectors/expected.rs")
+            panic!("no expected constant for {name}; add it to the `expected` module of `tests/vectors.rs`")
         })
 }
 
 /// Record a computed value and check it against its constant.
 ///
-/// `out` collects the values in the layout of `expected.rs`, so that the ignored
+/// `out` collects the values in the layout of the `expected` module, so that the ignored
 /// `print_vectors_for_copying` test can emit them; the assertion is what makes this a test.
 fn put(out: &mut String, name: &str, value: &str) {
     writeln!(
@@ -388,7 +402,7 @@ fn put(out: &mut String, name: &str, value: &str) {
         assert_eq!(
             value,
             expected_for(name),
-            "{name} differs from tests/vectors/expected.rs. If this change is intended, \
+            "{name} differs from the `expected` module of `tests/vectors.rs`. If this change is intended, \
              regenerate the constants with: cargo test --features batch,verifiable --test \
              vectors -- --ignored --nocapture"
         );
@@ -612,7 +626,7 @@ fn vectors_batch(out: &mut String) {
         &enc_secret,
     );
 
-    let transcrypted = pseudonymize_batch(&mut pseudonyms.clone(), &info, &pk_from, &mut rng)
+    let transcrypted = pseudonymize_batch(&pseudonyms.clone(), &info, &pk_from, &mut rng)
         .expect("batch pseudonymization should succeed");
 
     for (i, c) in transcrypted.iter().enumerate() {
@@ -661,7 +675,7 @@ fn vectors_batch(out: &mut String) {
     let rekey_info = AttributeRekeyInfo::new(&session_from, &session_to, &enc_secret);
     put(out, "k_attribute", &rekey_info.k.scalar().to_hex());
 
-    let rekeyed = rekey_batch(&mut attributes.clone(), &rekey_info, &apk_from, &mut rng)
+    let rekeyed = rekey_batch(&attributes.clone(), &rekey_info, &apk_from, &mut rng)
         .expect("batch rekeying should succeed");
 
     for (i, c) in rekeyed.iter().enumerate() {
@@ -755,7 +769,7 @@ fn generate() -> String {
     out
 }
 
-/// Recompute every vector and assert each against its constant in `expected.rs`.
+/// Recompute every vector and assert each against its constant in the `expected` module.
 ///
 /// [`put`] does the per-value assertion, so a mismatch names the exact label that changed
 /// instead of printing a whole-file diff.
@@ -768,7 +782,7 @@ fn test_vectors_match_the_expected_constants() {
     );
 }
 
-/// Print the current vectors in the layout of `expected.rs`, for copying after an intended
+/// Print the current vectors in the layout of the `expected` module, for copying after an intended
 /// change. Ignored by default, and asserts nothing:
 ///
 /// ```text

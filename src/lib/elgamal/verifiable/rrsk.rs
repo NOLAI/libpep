@@ -15,18 +15,17 @@
 //! components. The verifier reconstructs them from the rerandomize step and
 //! then verifies the VRSK / VRSK2 proof against them.
 //!
-//! Unlike the standalone [`VerifiableRerandomize`],
-//! which is only available with `insecure` because the rerandomization can be
-//! applied unbounded, VRRSK and VRRSK-2 *do* tie the rerandomization to a
-//! specific `(s, k)` (or `(s_from, s_to, k_from, k_to)`) tuple via the
-//! subsequent RSK proof and so are available in the default feature set.
+//! Unlike a standalone [`VerifiableRerandomize`] (whose free function
+//! `verifiable_rerandomize` is only available with `insecure`, because an
+//! unbounded rerandomization proves nothing about the factors), VRRSK and
+//! VRRSK-2 tie the rerandomization to a specific `(s, k)` (or
+//! `(s_from, s_to, k_from, k_to)`) tuple via the subsequent RSK proof.
 
 use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use super::rerandomize::VerifiableRerandomize;
 use super::rsk::{VerifiableRSK, VerifiableRSK2};
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::ElGamal;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::generic::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -34,35 +33,35 @@ use serde::{Deserialize, Serialize};
 /// Verifiable RRSK: a [`VerifiableRerandomize`] composed with a
 /// [`VerifiableRSK`] on the rerandomized ciphertext.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRRSK {
-    pub(crate) rerandomize: VerifiableRerandomize,
-    pub(crate) rsk: VerifiableRSK,
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRRSK<G: Group> {
+    pub(crate) rerandomize: VerifiableRerandomize<G>,
+    pub(crate) rsk: VerifiableRSK<G>,
 }
 
-impl VerifiableRRSK {
+impl<G: Group> VerifiableRRSK<G> {
     /// The rerandomize sub-proof.
-    pub fn rerandomize(&self) -> &VerifiableRerandomize {
+    pub fn rerandomize(&self) -> &VerifiableRerandomize<G> {
         &self.rerandomize
     }
     /// The RSK sub-proof.
-    pub fn rsk(&self) -> &VerifiableRSK {
+    pub fn rsk(&self) -> &VerifiableRSK<G> {
         &self.rsk
     }
 }
 
-impl VerifiableRRSK {
+impl<G: Group> VerifiableRRSK<G> {
     /// Build a VRRSK proof.
     ///
     /// `gy` is the recipient public key against which the ciphertext was
     /// encrypted (in `elgamal3` mode this equals `v.gy`; in the default mode
     /// the caller supplies it explicitly).
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        gy: &GroupElement,
-        r: &ScalarNonZero,
-        s: &ScalarNonZero,
-        k: &ScalarNonZero,
+        v: &ElGamal<G>,
+        gy: &G::Element,
+        r: &G::Scalar,
+        s: &G::Scalar,
+        k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
         let rerandomize = VerifiableRerandomize::new(gy, r, rng);
@@ -74,41 +73,18 @@ impl VerifiableRRSK {
     /// Reconstruct the RRSK'd ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only — public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
-    pub(crate) fn result(&self) -> ElGamal {
+    pub(crate) fn result(&self) -> ElGamal<G> {
         self.rsk.result()
-    }
-
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal,
-        gy: &GroupElement,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
-        if self.verify(original, gy, reshuffle_commitment, rekey_commitment) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn unverified_reconstruct(&self) -> ElGamal {
-        self.result()
     }
 
     /// Verify the proof against `original` and `gy`.
     #[must_use]
     pub fn verify(
         &self,
-        original: &ElGamal,
-        gy: &GroupElement,
-        reshuffle_commitment: &PseudonymizationFactorCommitment,
-        rekey_commitment: &RekeyFactorCommitment,
+        original: &ElGamal<G>,
+        gy: &G::Element,
+        reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
+        rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         if !self.rerandomize.verify(gy) {
             return false;
@@ -117,39 +93,44 @@ impl VerifiableRRSK {
         self.rsk
             .verify(&rerandomized, reshuffle_commitment, rekey_commitment)
     }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element, reshuffle_commitment: &PseudonymizationFactorCommitment<G>, rekey_commitment: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, gy, reshuffle_commitment, rekey_commitment);
+        unverified() = result();
+    }
 }
 
 /// Verifiable RRSK-2: a [`VerifiableRerandomize`] composed with a
 /// [`VerifiableRSK2`] on the rerandomized ciphertext.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct VerifiableRRSK2 {
-    pub(crate) rerandomize: VerifiableRerandomize,
-    pub(crate) rsk2: VerifiableRSK2,
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct VerifiableRRSK2<G: Group> {
+    pub(crate) rerandomize: VerifiableRerandomize<G>,
+    pub(crate) rsk2: VerifiableRSK2<G>,
 }
 
-impl VerifiableRRSK2 {
+impl<G: Group> VerifiableRRSK2<G> {
     /// The rerandomize sub-proof.
-    pub fn rerandomize(&self) -> &VerifiableRerandomize {
+    pub fn rerandomize(&self) -> &VerifiableRerandomize<G> {
         &self.rerandomize
     }
     /// The RSK-2 sub-proof.
-    pub fn rsk2(&self) -> &VerifiableRSK2 {
+    pub fn rsk2(&self) -> &VerifiableRSK2<G> {
         &self.rsk2
     }
 }
 
-impl VerifiableRRSK2 {
+impl<G: Group> VerifiableRRSK2<G> {
     #[allow(clippy::too_many_arguments)]
     /// Apply the operation and produce its proof, with randomness from `rng`.
     pub fn new<R: Rng + CryptoRng>(
-        v: &ElGamal,
-        gy: &GroupElement,
-        r: &ScalarNonZero,
-        s_from: &ScalarNonZero,
-        s_to: &ScalarNonZero,
-        k_from: &ScalarNonZero,
-        k_to: &ScalarNonZero,
+        v: &ElGamal<G>,
+        gy: &G::Element,
+        r: &G::Scalar,
+        s_from: &G::Scalar,
+        s_to: &G::Scalar,
+        k_from: &G::Scalar,
+        k_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
         let rerandomize = VerifiableRerandomize::new(gy, r, rng);
@@ -160,41 +141,8 @@ impl VerifiableRRSK2 {
 
     /// Reconstruct the RRSK-2'd ciphertext from this proof, **without
     /// verifying** it. Internal prover-side use only.
-    pub(crate) fn result(&self) -> ElGamal {
+    pub(crate) fn result(&self) -> ElGamal<G> {
         self.rsk2.result()
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn verified_reconstruct(
-        &self,
-        original: &ElGamal,
-        gy: &GroupElement,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
-    ) -> Option<ElGamal> {
-        if self.verify(
-            original,
-            gy,
-            s_from_commitments,
-            s_to_commitments,
-            k_from_commitments,
-            k_to_commitments,
-        ) {
-            Some(self.result())
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature = "insecure")]
-    /// Verify the proof and return the result of the operation, or `None` if the proof does not
-    /// verify.
-    pub fn unverified_reconstruct(&self) -> ElGamal {
-        self.result()
     }
 
     #[must_use]
@@ -202,12 +150,12 @@ impl VerifiableRRSK2 {
     /// Verify the proof against the original ciphertext and the commitments.
     pub fn verify(
         &self,
-        original: &ElGamal,
-        gy: &GroupElement,
-        s_from_commitments: &PseudonymizationFactorCommitment,
-        s_to_commitments: &PseudonymizationFactorCommitment,
-        k_from_commitments: &RekeyFactorCommitment,
-        k_to_commitments: &RekeyFactorCommitment,
+        original: &ElGamal<G>,
+        gy: &G::Element,
+        s_from_commitments: &PseudonymizationFactorCommitment<G>,
+        s_to_commitments: &PseudonymizationFactorCommitment<G>,
+        k_from_commitments: &RekeyFactorCommitment<G>,
+        k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         if !self.rerandomize.verify(gy) {
             return false;
@@ -221,15 +169,24 @@ impl VerifiableRRSK2 {
             k_to_commitments,
         )
     }
+
+    reconstruct! {
+        verified(original: &ElGamal<G>, gy: &G::Element, s_from_commitments: &PseudonymizationFactorCommitment<G>, s_to_commitments: &PseudonymizationFactorCommitment<G>, k_from_commitments: &RekeyFactorCommitment<G>, k_to_commitments: &RekeyFactorCommitment<G>) -> ElGamal<G> = verify(original, gy, s_from_commitments, s_to_commitments, k_from_commitments, k_to_commitments);
+        unverified() = result();
+    }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rrsk, rrsk2};
+    use crate::elgamal::verifiable::{
+        PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
+    };
+    use crate::elgamal::ElGamal;
 
     fn make_pk_ct() -> (GroupElement, ElGamal) {
         let mut rng = rand::rng();

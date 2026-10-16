@@ -10,24 +10,15 @@
 
 #![allow(clippy::expect_used)]
 
-#[cfg(feature = "verifiable")]
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-#[cfg(feature = "verifiable")]
-use libpep::elgamal::arithmetic::{Group, Ristretto255};
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::dleq;
-#[cfg(feature = "verifiable")]
 use libpep::elgamal::zkps;
 
-#[cfg(feature = "verifiable")]
 const SIZES: [usize; 3] = [1, 10, 100];
 
 /// A secret scalar and m pairs `(C_i, D_i = k * C_i)`.
-#[cfg(feature = "verifiable")]
 fn setup(m: usize) -> (ScalarNonZero, Vec<GroupElement>, Vec<GroupElement>) {
     let rng = &mut rand::rng();
     let k = ScalarNonZero::random(rng);
@@ -36,9 +27,7 @@ fn setup(m: usize) -> (ScalarNonZero, Vec<GroupElement>, Vec<GroupElement>) {
     (k, cs, ds)
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_generate(c: &mut Criterion) {
-    let ctx = Ristretto255::CIPHERSUITE;
     let mut group = c.benchmark_group("proof_generate");
 
     for m in SIZES {
@@ -47,8 +36,7 @@ fn bench_generate(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("rfc9497_batched", m), &m, |b, _| {
             let rng = &mut rand::rng();
             b.iter(|| {
-                dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, &ctx, rng)
-                    .expect("well-formed lists")
+                dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, rng).expect("well-formed lists")
             });
         });
 
@@ -65,23 +53,21 @@ fn bench_generate(c: &mut Criterion) {
     group.finish();
 }
 
-#[cfg(feature = "verifiable")]
 fn bench_verify(c: &mut Criterion) {
-    let ctx = Ristretto255::CIPHERSUITE;
     let mut group = c.benchmark_group("proof_verify");
 
     for m in SIZES {
         let (k, cs, ds) = setup(m);
         let rng = &mut rand::rng();
         let batched =
-            dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, &ctx, rng).expect("well-formed lists");
+            dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, rng).expect("well-formed lists");
         let per_ciphertext: Vec<_> = cs
             .iter()
             .map(|c_i| zkps::create_proof(&k, c_i, rng))
             .collect();
 
         group.bench_with_input(BenchmarkId::new("rfc9497_batched", m), &m, |b, _| {
-            b.iter(|| dleq::verify_proof(&G, &(k * G), &cs, &ds, &batched, &ctx));
+            b.iter(|| dleq::verify_proof(&G, &(k * G), &cs, &ds, &batched));
         });
 
         group.bench_with_input(BenchmarkId::new("paper_per_ciphertext", m), &m, |b, _| {
@@ -98,7 +84,6 @@ fn bench_verify(c: &mut Criterion) {
 /// Reports the exact wire size of each encoding at every batch size.
 ///
 /// Sizes are deterministic, so this is a measurement of the format rather than of the machine.
-#[cfg(feature = "verifiable")]
 fn bench_proof_size(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_size_bytes");
     for m in SIZES {
@@ -113,10 +98,5 @@ fn bench_proof_size(c: &mut Criterion) {
     group.finish();
 }
 
-#[cfg(feature = "verifiable")]
 criterion_group!(benches, bench_generate, bench_verify, bench_proof_size);
-#[cfg(feature = "verifiable")]
 criterion_main!(benches);
-
-#[cfg(not(feature = "verifiable"))]
-fn main() {}

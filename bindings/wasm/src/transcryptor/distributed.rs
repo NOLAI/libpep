@@ -78,6 +78,46 @@ impl WASMDistributedTranscryptor {
         WASMSessionKeyShares(self.session_key_shares(&session.0))
     }
 
+    /// The pseudonym session key share for a session with the proof of its construction, as
+    /// `[share, proof]`; the user checks it with `SessionKeyShareProof.verifyPseudonymShare`.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = pseudonymSessionKeyShareWithProof)]
+    pub fn wasm_pseudonym_session_key_share_with_proof(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> Result<Box<[JsValue]>, JsValue> {
+        let (share, proof) = self
+            .pseudonym_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_js)?;
+        Ok(vec![
+            JsValue::from(WASMPseudonymSessionKeyShare(share)),
+            JsValue::from(crate::keys::distribution::proofs::WASMSessionKeyShareProof(
+                proof,
+            )),
+        ]
+        .into_boxed_slice())
+    }
+
+    /// The attribute session key share for a session with the proof of its construction, as
+    /// `[share, proof]`.
+    #[cfg(feature = "verifiable")]
+    #[wasm_bindgen(js_name = attributeSessionKeyShareWithProof)]
+    pub fn wasm_attribute_session_key_share_with_proof(
+        &self,
+        session: &WASMEncryptionContext,
+    ) -> Result<Box<[JsValue]>, JsValue> {
+        let (share, proof) = self
+            .attribute_session_key_share_with_proof(&session.0, &mut rand::rng())
+            .map_err(crate::errors::session_key_share_err_to_js)?;
+        Ok(vec![
+            JsValue::from(WASMAttributeSessionKeyShare(share)),
+            JsValue::from(crate::keys::distribution::proofs::WASMSessionKeyShareProof(
+                proof,
+            )),
+        ]
+        .into_boxed_slice())
+    }
+
     #[wasm_bindgen(js_name = attributeRekeyInfo)]
     pub fn wasm_attribute_rekey_info(
         &self,
@@ -271,13 +311,9 @@ impl WASMDistributedTranscryptor {
         rekey_info: &WASMAttributeRekeyInfo,
     ) -> Result<Vec<WASMEncryptedAttribute>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
-            .rekey_batch(
-                &mut encrypted,
-                &AttributeRekeyInfo::from(rekey_info),
-                &mut rng,
-            )
+            .rekey_batch(&encrypted, &AttributeRekeyInfo::from(rekey_info), &mut rng)
             .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{}", e)))?;
         Ok(result
             .into_iter()
@@ -296,10 +332,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedAttribute>, wasm_bindgen::JsValue> {
         let pk = AttributeSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedAttribute> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .rekey_batch(
-                &mut encrypted,
+                &encrypted,
                 &AttributeRekeyInfo::from(rekey_info),
                 &pk,
                 &mut rng,
@@ -320,10 +356,10 @@ impl WASMDistributedTranscryptor {
         pseudonymization_info: &WASMPseudonymizationInfo,
     ) -> Result<Vec<WASMEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &mut rng,
             )
@@ -345,10 +381,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<EncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &pk,
                 &mut rng,
@@ -485,11 +521,10 @@ impl WASMDistributedTranscryptor {
         pseudonymization_info: &WASMPseudonymizationInfo,
     ) -> Result<Vec<WASMLongEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let mut rng = rand::rng();
-        let mut encrypted: Vec<LongEncryptedPseudonym> =
-            encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &mut rng,
             )
@@ -511,11 +546,10 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMLongEncryptedPseudonym>, wasm_bindgen::JsValue> {
         let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
         let mut rng = rand::rng();
-        let mut encrypted: Vec<LongEncryptedPseudonym> =
-            encrypted.into_iter().map(|e| e.0).collect();
+        let encrypted: Vec<LongEncryptedPseudonym> = encrypted.into_iter().map(|e| e.0).collect();
         let result = self
             .pseudonymize_batch(
-                &mut encrypted,
+                &encrypted,
                 &PseudonymizationInfo::from(pseudonymization_info),
                 &pk,
                 &mut rng,
@@ -539,7 +573,7 @@ impl WASMDistributedTranscryptor {
     ///
     /// A transcrypted EncryptedPepJsonValue
     #[cfg(feature = "json")]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -562,7 +596,7 @@ impl WASMDistributedTranscryptor {
     ///
     /// A transcrypted EncryptedPepJsonValue
     #[cfg(all(feature = "json", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -574,7 +608,7 @@ impl WASMDistributedTranscryptor {
     }
 
     #[cfg(all(feature = "json", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = transcryptJSON)]
+    #[wasm_bindgen(js_name = transcryptJson)]
     pub fn transcrypt_json(
         &self,
         encrypted: &crate::data::json::WASMEncryptedPepJsonValue,
@@ -590,7 +624,7 @@ impl WASMDistributedTranscryptor {
     #[cfg(feature = "elgamal3")]
     /// Transcrypt a batch of EncryptedPepJsonValues and shuffle their order.
     #[cfg(all(feature = "json", feature = "batch", feature = "elgamal3"))]
-    #[wasm_bindgen(js_name = transcryptJSONBatch)]
+    #[wasm_bindgen(js_name = transcryptJsonBatch)]
     pub fn transcrypt_json_batch(
         &self,
         values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,
@@ -609,7 +643,7 @@ impl WASMDistributedTranscryptor {
     }
 
     #[cfg(all(feature = "json", feature = "batch", not(feature = "elgamal3")))]
-    #[wasm_bindgen(js_name = transcryptJSONBatch)]
+    #[wasm_bindgen(js_name = transcryptJsonBatch)]
     pub fn transcrypt_json_batch(
         &self,
         values: Vec<crate::data::json::WASMEncryptedPepJsonValue>,

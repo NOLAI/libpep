@@ -4,24 +4,31 @@
 //! The two commands share one implementation through [`Kind`], which names the plain, encrypted,
 //! long and key types of each. A value with more than one block is treated as a long value:
 //! plain blocks are space-separated hex, encrypted blocks are `|`-separated base64.
+//!
+//! The transcryption commands take `--prove` to also produce a proof of the operation; the
+//! `verify-*` commands check such a proof, see [`crate::verifiable`].
 
+use crate::factors::{AttributeTransitionArgs, TransitionArgs};
 use crate::io::{self, Output, Result};
+use crate::verifiable::{self, VerifyPseudonymizeArgs, VerifyRekeyArgs};
 use clap::{Args, Subcommand};
 use libpep::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
-use libpep::data::padding::PaddingError;
+use libpep::data::padding::{Padded, PaddingError};
 use libpep::data::simple::{
     Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
     Pseudonym,
 };
 use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use libpep::data::verifiable::traits::{VerifiableRekeyProof, VerifiableRekeyable};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::errors::ParseError;
+use libpep::factors::commitments::VerifiableRekeyCommitment;
 use libpep::factors::{
     AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor, TranscryptionInfo,
+    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor,
 };
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
@@ -31,9 +38,9 @@ use libpep::keys::{
 #[cfg(feature = "insecure")]
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use rand_core::{CryptoRng, Rng};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
-/// The largest identifier that fits one block through the lizard encoding.
-const LIZARD_BYTES: usize = 16;
 /// The length of one block (a group element) in hex digits.
 const HEX_BLOCK: usize = 64;
 
@@ -41,7 +48,7 @@ const HEX_BLOCK: usize = 64;
 pub enum PseudonymCommand {
     /// A random pseudonym.
     Random,
-    /// Encode an identifier as a pseudonym; identifiers over 16 bytes become long pseudonyms.
+    /// Encode an identifier as a pseudonym; identifiers over 15 bytes become long pseudonyms.
     Encode(EncodeArgs),
     /// Decode a pseudonym back to the identifier it encodes.
     Decode(DecodeArgs),
@@ -58,13 +65,19 @@ pub enum PseudonymCommand {
     /// Transcrypt an encrypted pseudonym from one domain and session to another, as a
     /// transcryptor with the given secrets.
     Transcrypt(TranscryptArgs),
+    /// Verify the proof of a rekeying against the transcryptor's commitment and output the
+    /// rekeyed ciphertext.
+    VerifyRekey(VerifyRekeyArgs),
+    /// Verify the proof of a pseudonymization or transcryption against the transcryptor's
+    /// commitments and output the pseudonymized ciphertext.
+    VerifyPseudonymize(VerifyPseudonymizeArgs),
 }
 
 #[derive(Subcommand)]
 pub enum AttributeCommand {
     /// A random attribute.
     Random,
-    /// Encode a value as an attribute; values over 16 bytes become long attributes.
+    /// Encode a value as an attribute; values over 15 bytes become long attributes.
     Encode(EncodeArgs),
     /// Decode an attribute back to the value it encodes.
     Decode(DecodeArgs),
@@ -78,7 +91,10 @@ pub enum AttributeCommand {
     Rekey(RekeyArgs),
     /// Transcrypt an encrypted attribute from one session to another, as a transcryptor with the
     /// given secret.
-    Transcrypt(TranscryptArgs),
+    Transcrypt(AttributeTranscryptArgs),
+    /// Verify the proof of a rekeying or transcryption against the transcryptor's commitment and
+    /// output the rekeyed ciphertext.
+    VerifyRekey(VerifyRekeyArgs),
 }
 
 #[derive(Args)]
@@ -141,6 +157,10 @@ pub struct RekeyArgs {
     /// The rekey factor from the current to the new session (hex).
     #[arg(long)]
     k: String,
+    /// Also output a proof of the operation, to be verified against the transcryptor's
+    /// commitments.
+    #[arg(long)]
+    prove: bool,
     /// The ciphertext (base64), or the `|`-separated blocks of a long one.
     #[arg(allow_hyphen_values = true)]
     ciphertext: String,
@@ -158,6 +178,10 @@ pub struct PseudonymizeArgs {
     /// The rekey factor from the current to the new session (hex).
     #[arg(long)]
     k: String,
+    /// Also output a proof of the operation, to be verified against the transcryptor's
+    /// commitments.
+    #[arg(long)]
+    prove: bool,
     /// The ciphertext (base64), or the `|`-separated blocks of a long one.
     #[arg(allow_hyphen_values = true)]
     ciphertext: String,
@@ -169,32 +193,39 @@ pub struct TranscryptArgs {
     #[cfg(not(feature = "elgamal3"))]
     #[arg(long)]
     key: String,
-    /// The transcryptor's pseudonymization secret (pseudonyms only).
+    #[command(flatten)]
+    transition: TransitionArgs,
+    /// Also output a proof of the operation, to be verified against the transcryptor's
+    /// commitments.
     #[arg(long)]
-    pseudonymization_secret: Option<String>,
-    /// The transcryptor's encryption secret.
-    #[arg(long)]
-    encryption_secret: String,
-    /// The pseudonymization domain the data comes from (pseudonyms only).
-    #[arg(long)]
-    from_domain: Option<String>,
-    /// The pseudonymization domain the data goes to (pseudonyms only).
-    #[arg(long)]
-    to_domain: Option<String>,
-    /// The encryption context the data comes from; omit for the global context.
-    #[arg(long)]
-    from_context: Option<String>,
-    /// The encryption context the data goes to; omit for the global context.
-    #[arg(long)]
-    to_context: Option<String>,
+    prove: bool,
     /// The ciphertext (base64), or the `|`-separated blocks of a long one.
     #[arg(allow_hyphen_values = true)]
     ciphertext: String,
 }
 
-/// The types that make up one kind of data, so that the commands are written once.
+#[derive(Args)]
+pub struct AttributeTranscryptArgs {
+    /// The public key the ciphertext is encrypted under (hex).
+    #[cfg(not(feature = "elgamal3"))]
+    #[arg(long)]
+    key: String,
+    #[command(flatten)]
+    transition: AttributeTransitionArgs,
+    /// Also output a proof of the operation, to be verified against the transcryptor's
+    /// commitments.
+    #[arg(long)]
+    prove: bool,
+    /// The ciphertext (base64), or the `|`-separated blocks of a long one.
+    #[arg(allow_hyphen_values = true)]
+    ciphertext: String,
+}
+
+/// The types that make up one kind of data, so that the commands are written once. The
+/// encrypted types prove their rekeying with a proof that is printed and parsed as JSON.
 pub trait Kind {
     type Plain: ElGamalEncryptable
+        + Padded
         + Encryptable<
             Group = Ristretto255,
             EncryptedType = Self::Enc,
@@ -202,23 +233,36 @@ pub trait Kind {
             GlobalPublicKeyType = Self::GlobalPk,
         >;
     type Enc: ElGamalEncrypted
-        + Encrypted<UnencryptedType = Self::Plain, SecretKeyType = Self::SessionSk>
-        + Rekeyable<RekeyInfo = Self::RekeyInfo>
-        + Transcryptable;
+        + Encrypted<
+            Group = Ristretto255,
+            UnencryptedType = Self::Plain,
+            SecretKeyType = Self::SessionSk,
+        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
+        + Transcryptable
+        + VerifiableRekeyable<
+            RekeyProof: VerifiableRekeyProof<Output = Self::Enc> + Serialize + DeserializeOwned,
+        >;
     type Long: Encryptable<
         EncryptedType = Self::LongEnc,
         PublicKeyType = Self::SessionPk,
         GlobalPublicKeyType = Self::GlobalPk,
     >;
-    type LongEnc: Encrypted<UnencryptedType = Self::Long, SecretKeyType = Self::SessionSk>
-        + Rekeyable<RekeyInfo = Self::RekeyInfo>
-        + Transcryptable;
+    type LongEnc: Encrypted<
+            Group = Ristretto255,
+            UnencryptedType = Self::Long,
+            SecretKeyType = Self::SessionSk,
+        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
+        + Transcryptable
+        + VerifiableRekeyable<
+            RekeyProof: VerifiableRekeyProof<Output = Self::LongEnc> + Serialize + DeserializeOwned,
+        >;
     type SessionPk: PublicKey<Group = Ristretto255>;
     type SessionSk: SecretKey<Group = Ristretto255>;
     type GlobalPk: PublicKey<Group = Ristretto255>;
     #[cfg(feature = "insecure")]
     type GlobalSk: SecretKey<Group = Ristretto255>;
-    type RekeyInfo: Copy;
+    /// The info of a rekeying, which also gives the commitment to its factor.
+    type RekeyInfo: Copy + Into<VerifiableRekeyCommitment>;
 
     fn rekey_info(k: ScalarNonZero) -> Self::RekeyInfo;
     /// The public key a ciphertext is encrypted under after rekeying with `info`.
@@ -383,13 +427,13 @@ impl<K: Kind> Value<K> {
 }
 
 /// An encrypted value of one kind, short or long.
-enum Cipher<K: Kind> {
+pub enum Cipher<K: Kind> {
     Short(K::Enc),
     Long(K::LongEnc),
 }
 
 impl<K: Kind> Cipher<K> {
-    fn parse(raw: &str) -> Result<Self> {
+    pub fn parse(raw: &str) -> Result<Self> {
         let text = io::read_arg(raw)?;
         if text.contains('|') {
             K::long_enc_deserialize(&text)
@@ -402,7 +446,7 @@ impl<K: Kind> Cipher<K> {
         }
     }
 
-    fn emit(&self, out: &mut Output) {
+    pub fn emit(&self, out: &mut Output) {
         match self {
             Cipher::Short(c) => out.value("ciphertext", c.to_base64()),
             Cipher::Long(c) => out.value("ciphertext", K::long_enc_serialize(c)),
@@ -410,36 +454,30 @@ impl<K: Kind> Cipher<K> {
     }
 }
 
+/// Encode text the way the library, the JSON documents and the bindings do: PKCS#7-padded into
+/// one block when it fits (up to 15 bytes), else into a long value.
 fn encode<K: Kind>(args: EncodeArgs, out: &mut Output) -> Result<()> {
     let text = io::read_arg(&args.text)?;
-    let bytes = text.as_bytes();
-    if bytes.len() <= LIZARD_BYTES {
-        let mut padded = [0u8; LIZARD_BYTES];
-        padded[..bytes.len()].copy_from_slice(bytes);
-        out.value("value", K::Plain::from_lizard(&padded).to_hex());
-    } else {
-        let long = K::long_from_text(&text);
-        out.note(&format!(
-            "The value is longer than {LIZARD_BYTES} bytes and is encoded as a long value with PKCS#7 padding. \
-             The number of blocks is visible, and blocks can reveal subgroups."
-        ));
-        out.value("value", K::long_to_hex(&long));
+    match K::Plain::from_string_padded(&text) {
+        Ok(value) => out.value("value", value.to_hex()),
+        Err(_) => {
+            let long = K::long_from_text(&text);
+            out.note(
+                "The value is longer than 15 bytes and is encoded as a long value with PKCS#7 padding. \
+                 The number of blocks is visible, and blocks can reveal subgroups.",
+            );
+            out.value("value", K::long_to_hex(&long));
+        }
     }
     Ok(())
 }
 
 fn decode<K: Kind>(args: DecodeArgs, out: &mut Output) -> Result<()> {
     let text = match Value::<K>::parse(&args.value)? {
-        Value::<K>::Short(v) => {
-            let bytes = v
-                .to_lizard()
-                .ok_or_else(|| io::Error::input("the value does not encode an identifier"))?;
-            let end = bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
-            String::from_utf8_lossy(&bytes[..end]).into_owned()
-        }
-        Value::<K>::Long(v) => K::long_to_text(&v)
-            .map_err(|e| io::Error::input(format!("the value does not encode text: {e}")))?,
-    };
+        Value::<K>::Short(v) => v.to_string_padded(),
+        Value::<K>::Long(v) => K::long_to_text(&v),
+    }
+    .map_err(|e| io::Error::input(format!("the value does not encode text: {e}")))?;
     out.value("text", text);
     Ok(())
 }
@@ -518,29 +556,31 @@ fn rerandomize<K: Kind, R: Rng + CryptoRng>(
     Ok(())
 }
 
-/// Emit a transcrypted ciphertext and, without `elgamal3`, the public key it is now encrypted
-/// under, which the next transcryptor (or the storage) needs to rerandomize it.
-macro_rules! emit_transcrypted {
-    ($kind:ty, $cipher:expr, $out:expr, $rng:expr, $key_arg:expr, $info:expr, $op:ident, $next_key:expr) => {{
+/// Apply a transcryption operation to a short or long ciphertext; without `elgamal3` the
+/// operation also takes the public key the ciphertext is encrypted under.
+macro_rules! transcrypted {
+    ($kind:ty, $cipher:expr, $rng:expr, $key:ident, $info:expr, $op:ident) => {{
         #[cfg(feature = "elgamal3")]
-        {
-            let result = match $cipher {
-                Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, $rng)),
-                Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, $rng)),
-            };
-            result.emit($out);
-        }
+        let result = match $cipher {
+            Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, $rng)),
+            Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, $rng)),
+        };
         #[cfg(not(feature = "elgamal3"))]
-        {
-            let key: <$kind as Kind>::SessionPk = io::public_key(&$key_arg, "public key")?;
-            let result = match $cipher {
-                Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, &key, $rng)),
-                Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, &key, $rng)),
-            };
-            result.emit($out);
-            $out.value("key", $next_key(&key).to_hex());
-        }
+        let result = match $cipher {
+            Cipher::Short(c) => Cipher::<$kind>::Short(c.$op($info, &$key, $rng)),
+            Cipher::Long(c) => Cipher::<$kind>::Long(c.$op($info, &$key, $rng)),
+        };
+        result
     }};
+}
+
+/// Without `elgamal3`, emit the public key a transcrypted ciphertext is now encrypted under,
+/// which the next transcryptor (or the storage) needs to rerandomize it.
+macro_rules! emit_next_key {
+    ($out:expr, $key:ident, $next_key:expr) => {
+        #[cfg(not(feature = "elgamal3"))]
+        $out.value("key", $next_key(&$key).to_hex());
+    };
 }
 
 fn rekey<K: Kind, R: Rng + CryptoRng>(
@@ -550,9 +590,38 @@ fn rekey<K: Kind, R: Rng + CryptoRng>(
 ) -> Result<()> {
     let info = K::rekey_info(io::scalar(&args.k, "k")?);
     let cipher = Cipher::<K>::parse(&args.ciphertext)?;
-    emit_transcrypted!(K, cipher, out, rng, args.key, &info, rekey, |key| {
-        K::rekey_public_key(&info, key)
-    });
+    #[cfg(not(feature = "elgamal3"))]
+    let key: K::SessionPk = io::public_key(&args.key, "public key")?;
+    if args.prove {
+        verifiable::prove_rekey(&cipher, &info, rng, out);
+    } else {
+        transcrypted!(K, cipher, rng, key, &info, rekey).emit(out);
+    }
+    emit_next_key!(out, key, |key| K::rekey_public_key(&info, key));
+    Ok(())
+}
+
+/// Pseudonymize an encrypted pseudonym with `info`, with a proof if `prove`.
+fn pseudonymize_with<R: Rng + CryptoRng>(
+    info: &PseudonymizationInfo,
+    #[cfg(not(feature = "elgamal3"))] key_arg: &str,
+    prove: bool,
+    ciphertext: &str,
+    rng: &mut R,
+    out: &mut Output,
+) -> Result<()> {
+    let cipher = Cipher::<PseudonymKind>::parse(ciphertext)?;
+    #[cfg(not(feature = "elgamal3"))]
+    let key: PseudonymSessionPublicKey = io::public_key(key_arg, "public key")?;
+    if prove {
+        #[cfg(feature = "elgamal3")]
+        verifiable::prove_pseudonymize(&cipher, info, rng, out);
+        #[cfg(not(feature = "elgamal3"))]
+        verifiable::prove_pseudonymize(&cipher, info, &key, rng, out);
+    } else {
+        transcrypted!(PseudonymKind, cipher, rng, key, info, pseudonymize).emit(out);
+    }
+    emit_next_key!(out, key, |key| info.rekey_public_key(key));
     Ok(())
 }
 
@@ -565,18 +634,15 @@ fn pseudonymize<R: Rng + CryptoRng>(
         s: ReshuffleFactor::from(io::scalar(&args.s, "s")?),
         k: PseudonymRekeyFactor::from(io::scalar(&args.k, "k")?),
     };
-    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
-    emit_transcrypted!(
-        PseudonymKind,
-        cipher,
-        out,
-        rng,
-        args.key,
+    pseudonymize_with(
         &info,
-        pseudonymize,
-        |key| info.rekey_public_key(key)
-    );
-    Ok(())
+        #[cfg(not(feature = "elgamal3"))]
+        &args.key,
+        args.prove,
+        &args.ciphertext,
+        rng,
+        out,
+    )
 }
 
 fn transcrypt_pseudonym<R: Rng + CryptoRng>(
@@ -584,71 +650,33 @@ fn transcrypt_pseudonym<R: Rng + CryptoRng>(
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
-    let missing =
-        |what: &str| io::Error::input(format!("--{what} is required to transcrypt a pseudonym"));
-    let info = TranscryptionInfo::new(
-        &io::domain(
-            args.from_domain
-                .as_deref()
-                .ok_or_else(|| missing("from-domain"))?,
-        )?,
-        &io::domain(
-            args.to_domain
-                .as_deref()
-                .ok_or_else(|| missing("to-domain"))?,
-        )?,
-        &io::context(args.from_context.as_deref())?,
-        &io::context(args.to_context.as_deref())?,
-        &io::pseudonymization_secret(
-            args.pseudonymization_secret
-                .as_deref()
-                .ok_or_else(|| missing("pseudonymization-secret"))?,
-        )?,
-        &io::encryption_secret(&args.encryption_secret)?,
-    );
-    let cipher = Cipher::<PseudonymKind>::parse(&args.ciphertext)?;
-    emit_transcrypted!(
-        PseudonymKind,
-        cipher,
-        out,
+    let info = args.transition.info()?;
+    pseudonymize_with(
+        &info.pseudonym,
+        #[cfg(not(feature = "elgamal3"))]
+        &args.key,
+        args.prove,
+        &args.ciphertext,
         rng,
-        args.key,
-        &info,
-        transcrypt,
-        |key| info.pseudonym.rekey_public_key(key)
-    );
-    Ok(())
+        out,
+    )
 }
 
 fn transcrypt_attribute<R: Rng + CryptoRng>(
-    args: TranscryptArgs,
+    args: AttributeTranscryptArgs,
     rng: &mut R,
     out: &mut Output,
 ) -> Result<()> {
-    if args.pseudonymization_secret.is_some()
-        || args.from_domain.is_some()
-        || args.to_domain.is_some()
-    {
-        out.note(
-            "Attributes are not reshuffled; the pseudonymization secret and domains are ignored.",
-        );
-    }
-    let info = AttributeRekeyInfo::new(
-        &io::context(args.from_context.as_deref())?,
-        &io::context(args.to_context.as_deref())?,
-        &io::encryption_secret(&args.encryption_secret)?,
-    );
+    let info = args.transition.info()?;
     let cipher = Cipher::<AttributeKind>::parse(&args.ciphertext)?;
-    emit_transcrypted!(
-        AttributeKind,
-        cipher,
-        out,
-        rng,
-        args.key,
-        &info,
-        rekey,
-        |key| info.rekey_public_key(key)
-    );
+    #[cfg(not(feature = "elgamal3"))]
+    let key: AttributeSessionPublicKey = io::public_key(&args.key, "public key")?;
+    if args.prove {
+        verifiable::prove_rekey(&cipher, &info, rng, out);
+    } else {
+        transcrypted!(AttributeKind, cipher, rng, key, &info, rekey).emit(out);
+    }
+    emit_next_key!(out, key, |key| info.rekey_public_key(key));
     Ok(())
 }
 
@@ -670,6 +698,8 @@ pub fn run_pseudonym<R: Rng + CryptoRng>(
         PseudonymCommand::Rekey(args) => rekey::<PseudonymKind, R>(args, rng, out),
         PseudonymCommand::Pseudonymize(args) => pseudonymize(args, rng, out),
         PseudonymCommand::Transcrypt(args) => transcrypt_pseudonym(args, rng, out),
+        PseudonymCommand::VerifyRekey(args) => verifiable::verify_rekey::<PseudonymKind>(args, out),
+        PseudonymCommand::VerifyPseudonymize(args) => verifiable::verify_pseudonymize(args, out),
     }
 }
 
@@ -690,5 +720,6 @@ pub fn run_attribute<R: Rng + CryptoRng>(
         AttributeCommand::Rerandomize(args) => rerandomize::<AttributeKind, R>(args, rng, out),
         AttributeCommand::Rekey(args) => rekey::<AttributeKind, R>(args, rng, out),
         AttributeCommand::Transcrypt(args) => transcrypt_attribute(args, rng, out),
+        AttributeCommand::VerifyRekey(args) => verifiable::verify_rekey::<AttributeKind>(args, out),
     }
 }

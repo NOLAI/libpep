@@ -378,24 +378,41 @@ impl<G: Group> EncryptedRecord<G> {
     }
 }
 
+/// Encode the long values of one part of a long record as their count, a `:`, and their
+/// encodings joined with `~`. The count makes a single value without blocks (encoded as the
+/// empty string) distinct from no values at all.
+#[cfg(feature = "long")]
+fn serialize_long_items(items: impl ExactSizeIterator<Item = String>) -> String {
+    let count = items.len();
+    format!("{count}:{}", items.collect::<Vec<_>>().join("~"))
+}
+
+/// Decode the format of [`serialize_long_items`].
+#[cfg(feature = "long")]
+fn parse_long_items<T>(
+    part: &str,
+    parse: impl Fn(&str) -> Result<T, ParseError>,
+) -> Result<Vec<T>, ParseError> {
+    let invalid = || ParseError::InvalidCount(part.to_string());
+    let (count, items) = part.split_once(':').ok_or_else(invalid)?;
+    let count: usize = count.parse().map_err(|_| invalid())?;
+    if count == 0 {
+        return items.is_empty().then(Vec::new).ok_or_else(invalid);
+    }
+    let parsed = items.split('~').map(parse).collect::<Result<Vec<_>, _>>()?;
+    (parsed.len() == count)
+        .then_some(parsed)
+        .ok_or_else(invalid)
+}
+
 #[cfg(feature = "long")]
 impl<G: Group> LongEncryptedRecord<G> {
-    /// Encode as the encodings of the long pseudonyms (see
-    /// [`LongEncryptedPseudonym::serialize`]) joined with `~`, a `;`, and those of the long
-    /// attributes joined with `~`.
+    /// Encode as the number of long pseudonyms, a `:`, their encodings (see
+    /// [`LongEncryptedPseudonym::serialize`]) joined with `~`, a `;`, and the same for the long
+    /// attributes: `2:p1~p2;1:a1`.
     pub fn serialize(&self) -> String {
-        let pseudonyms = self
-            .pseudonyms
-            .iter()
-            .map(|p| p.serialize())
-            .collect::<Vec<_>>()
-            .join("~");
-        let attributes = self
-            .attributes
-            .iter()
-            .map(|a| a.serialize())
-            .collect::<Vec<_>>()
-            .join("~");
+        let pseudonyms = serialize_long_items(self.pseudonyms.iter().map(|p| p.serialize()));
+        let attributes = serialize_long_items(self.attributes.iter().map(|a| a.serialize()));
         format!("{pseudonyms};{attributes}")
     }
 
@@ -403,13 +420,13 @@ impl<G: Group> LongEncryptedRecord<G> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the separator is missing or a part is not a base64-encoded
-    /// ciphertext.
+    /// Returns an error if the separator or a count is missing, a count does not match, or a
+    /// part is not a base64-encoded ciphertext.
     pub fn deserialize(s: &str) -> Result<Self, ParseError> {
         let (pseudonyms, attributes) = split_record(s)?;
         Ok(Self {
-            pseudonyms: parse_items(pseudonyms, '~', LongEncryptedPseudonym::deserialize)?,
-            attributes: parse_items(attributes, '~', LongEncryptedAttribute::deserialize)?,
+            pseudonyms: parse_long_items(pseudonyms, LongEncryptedPseudonym::deserialize)?,
+            attributes: parse_long_items(attributes, LongEncryptedAttribute::deserialize)?,
         })
     }
 }
@@ -425,13 +442,13 @@ impl<G: InvertibleEncoding> LongRecord<G> {
     /// or a value has more blocks than the structure allows.
     pub fn pad_to(&self, structure: &LongRecordStructure) -> Result<Self, PaddingError> {
         if self.pseudonyms.len() != structure.pseudonym_blocks.len() {
-            return Err(PaddingError::TooManyBlocks {
+            return Err(PaddingError::CountMismatch {
                 current: self.pseudonyms.len(),
                 target: structure.pseudonym_blocks.len(),
             });
         }
         if self.attributes.len() != structure.attribute_blocks.len() {
-            return Err(PaddingError::TooManyBlocks {
+            return Err(PaddingError::CountMismatch {
                 current: self.attributes.len(),
                 target: structure.attribute_blocks.len(),
             });

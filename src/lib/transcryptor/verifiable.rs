@@ -4,15 +4,18 @@
 //! transcryption operations that generate zero-knowledge proofs.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::factors::{
-    PseudonymizationInfo, TranscryptionInfo, VerifiablePseudonymizationCommitment,
-    VerifiableRekeyCommitment, VerifiableTranscryptionCommitment,
+use crate::data::traits::Encrypted;
+use crate::elgamal::arithmetic::group::Group;
+use crate::factors::commitments::generic::{
+    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    VerifiableTranscryptionCommitment,
 };
+use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
 use rand_core::{CryptoRng, Rng};
 
-use super::types::Transcryptor;
+use super::types::generic::Transcryptor;
 
-impl Transcryptor {
+impl<G: Group> Transcryptor<G> {
     /// Build the public commitments for a pseudonymization transition:
     /// forward commitments `S = s·G` and `K = k·G` to the reshuffle and rekey
     /// factors. The commitments are bound to the same `(domain_from,
@@ -25,15 +28,9 @@ impl Transcryptor {
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> VerifiablePseudonymizationCommitment {
-        use crate::elgamal::verifiable::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
-        let info = self.pseudonymization_info(domain_from, domain_to, session_from, session_to);
-        let reshuffle_commitment = PseudonymizationFactorCommitment::new(&info.s.0);
-        let rekey_commitment = RekeyFactorCommitment::new(&info.k.0);
-        VerifiablePseudonymizationCommitment {
-            reshuffle_commitment,
-            rekey_commitment,
-        }
+    ) -> VerifiablePseudonymizationCommitment<G> {
+        self.pseudonymization_info(domain_from, domain_to, session_from, session_to)
+            .into()
     }
 
     /// Build the public commitment for a pseudonym rekey transition: `K = k·G`.
@@ -41,12 +38,8 @@ impl Transcryptor {
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> VerifiableRekeyCommitment {
-        use crate::elgamal::verifiable::RekeyFactorCommitment;
-        let info = self.pseudonym_rekey_info(session_from, session_to);
-        VerifiableRekeyCommitment {
-            commitment: RekeyFactorCommitment::new(&info.k.0),
-        }
+    ) -> VerifiableRekeyCommitment<G> {
+        self.pseudonym_rekey_info(session_from, session_to).into()
     }
 
     /// Build the public commitment for an attribute rekey transition: `K = k·G`.
@@ -54,12 +47,8 @@ impl Transcryptor {
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> VerifiableRekeyCommitment {
-        use crate::elgamal::verifiable::RekeyFactorCommitment;
-        let info = self.attribute_rekey_info(session_from, session_to);
-        VerifiableRekeyCommitment {
-            commitment: RekeyFactorCommitment::new(&info.k.0),
-        }
+    ) -> VerifiableRekeyCommitment<G> {
+        self.attribute_rekey_info(session_from, session_to).into()
     }
 
     /// Build the combined public commitments for a transcryption transition:
@@ -70,33 +59,26 @@ impl Transcryptor {
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> VerifiableTranscryptionCommitment {
-        VerifiableTranscryptionCommitment {
-            pseudonym: self.pseudonymization_commitment(
-                domain_from,
-                domain_to,
-                session_from,
-                session_to,
-            ),
-            attribute: self.attribute_rekey_commitment(session_from, session_to),
-        }
+    ) -> VerifiableTranscryptionCommitment<G> {
+        self.transcryption_info(domain_from, domain_to, session_from, session_to)
+            .into()
     }
 
     /// Perform a verifiable pseudonymization operation.
     ///
     /// Uses RRSK with a freshly sampled rerandomize factor. The verifier
     /// recovers the result by calling
-    /// [`Verifier::verify_pseudonymization`](crate::verifier::Verifier::verify_pseudonymization)
+    /// [`Verifier::verified_reconstruct_pseudonymization`](crate::verifier::Verifier::verified_reconstruct_pseudonymization)
     /// (or its `_cached` variant) on the returned proof.
     #[cfg(feature = "elgamal3")]
     pub fn verifiable_pseudonymize<E, R>(
         &self,
         encrypted: &E,
-        info: &PseudonymizationInfo,
+        info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) -> E::PseudonymizationProof
     where
-        E: crate::data::verifiable::traits::VerifiablePseudonymizable,
+        E: crate::data::verifiable::traits::VerifiablePseudonymizable + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, rng)
@@ -108,18 +90,19 @@ impl Transcryptor {
     pub fn verifiable_pseudonymize<E, R>(
         &self,
         encrypted: &E,
-        info: &PseudonymizationInfo,
+        info: &PseudonymizationInfo<G>,
         public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> E::PseudonymizationProof
     where
-        E: crate::data::verifiable::traits::VerifiablePseudonymizable,
+        E: crate::data::verifiable::traits::VerifiablePseudonymizable + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, public_key, rng)
     }
 
-    /// Perform a verifiable rekey operation.
+    /// Perform a verifiable rekey operation: the paper's VRK, without rerandomization (see
+    /// [`VerifiableRekeyable`](crate::data::verifiable::traits::VerifiableRekeyable)).
     ///
     /// The verifier recovers the result by calling
     /// [`Verifier::verify_rekey`](crate::verifier::Verifier::verify_rekey)
@@ -131,7 +114,7 @@ impl Transcryptor {
         rng: &mut R,
     ) -> E::RekeyProof
     where
-        E: crate::data::verifiable::traits::VerifiableRekeyable,
+        E: crate::data::verifiable::traits::VerifiableRekeyable + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_rekey(info, rng)
@@ -144,11 +127,11 @@ impl Transcryptor {
     pub fn verifiable_transcrypt<E, R>(
         &self,
         encrypted: &E,
-        info: &TranscryptionInfo,
+        info: &TranscryptionInfo<G>,
         rng: &mut R,
     ) -> E::TranscryptionProof
     where
-        E: crate::data::verifiable::traits::VerifiableTranscryptable,
+        E: crate::data::verifiable::traits::VerifiableTranscryptable + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_transcrypt(info, rng)
@@ -161,12 +144,12 @@ impl Transcryptor {
     pub fn verifiable_transcrypt<E, R>(
         &self,
         encrypted: &E,
-        info: &TranscryptionInfo,
+        info: &TranscryptionInfo<G>,
         public_key: &<E::UnencryptedType as crate::data::traits::Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> E::TranscryptionProof
     where
-        E: crate::data::verifiable::traits::VerifiableTranscryptable,
+        E: crate::data::verifiable::traits::VerifiableTranscryptable + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_transcrypt(info, public_key, rng)

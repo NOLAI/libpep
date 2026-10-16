@@ -77,10 +77,28 @@ macro_rules! group_trait {
                 + Debug
                 + Send
                 + Sync
+                + zeroize::Zeroize
                 + 'static
                 + Mul<Self::Scalar, Output = Self::Scalar>
                 + Mul<Self::Element, Output = Self::Element>
+                + TryFrom<Self::ScalarCanBeZero>
                 $($extra)*;
+
+            /// A scalar that may be zero: an element of the scalar field with its addition, for
+            /// the challenges and responses of zero-knowledge proofs, which are sums. The
+            /// default value is zero.
+            type ScalarCanBeZero: Copy
+                + Eq
+                + Debug
+                + Default
+                + Send
+                + Sync
+                + 'static
+                + Add<Self::ScalarCanBeZero, Output = Self::ScalarCanBeZero>
+                + Sub<Self::ScalarCanBeZero, Output = Self::ScalarCanBeZero>
+                + Mul<Self::ScalarCanBeZero, Output = Self::ScalarCanBeZero>
+                + Mul<Self::Element, Output = Self::Element>
+                + From<Self::Scalar>;
 
             /// A group element.
             type Element: Copy
@@ -179,6 +197,12 @@ macro_rules! group_trait {
 
             /// `DeserializeScalar`: decode a scalar, rejecting non-canonical encodings and zero.
             fn deserialize_scalar(bytes: &[u8]) -> Option<Self::Scalar>;
+
+            /// The canonical `NS`-byte encoding of a scalar that may be zero.
+            fn serialize_scalar_can_be_zero(scalar: &Self::ScalarCanBeZero) -> Self::ScalarBytes;
+
+            /// Decode a scalar that may be zero, rejecting non-canonical encodings.
+            fn deserialize_scalar_can_be_zero(bytes: &[u8]) -> Option<Self::ScalarCanBeZero>;
 
             /// `ScalarMultGen`: multiply the generator by a scalar.
             fn scalar_mult_gen(scalar: &Self::Scalar) -> Self::Element;

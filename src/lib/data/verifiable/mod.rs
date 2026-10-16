@@ -1,11 +1,32 @@
 //! Verifiable data-layer types.
 //!
-//! Mirrors the structure of [`crate::data`]: per non-verifiable module
-//! (`simple`, `long`, `records`, `json`) there is a matching verifiable
-//! module here that contains the proof types and the verifiable-operation
-//! impls. Verifier-side and prover-side traits live in [`traits`].
+//! Mirrors the structure of [`crate::data`]: per data module (`simple`, `long`, `records`,
+//! `json`) there is a matching module here with the proof types and the verifiable operations,
+//! generic over the group in a `generic` submodule. The prover-side and verifier-side traits
+//! live in [`traits`], and [`batch`] holds the batch proofs, which are generic over the item
+//! type.
 
 pub mod traits;
+
+/// The public key carried by every one of `ciphertexts`, which a proof over all of them folds
+/// into its transcript, or `None` if they carry different keys. Picking the first one's key
+/// would let a prover mix ciphertexts under different keys and have only the first one
+/// checked. Without ciphertexts there is no key to bind, and the generator stands in.
+#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
+pub(crate) fn common_gy<G: crate::elgamal::arithmetic::group::Group>(
+    ciphertexts: &[crate::elgamal::generic::ElGamal<G>],
+) -> Option<G::Element> {
+    let Some(first) = ciphertexts.first() else {
+        return Some(G::generator());
+    };
+    ciphertexts
+        .iter()
+        .all(|c| c.gy == first.gy)
+        .then_some(first.gy)
+}
+
+#[cfg(feature = "batch")]
+pub mod batch;
 
 pub mod simple;
 
@@ -16,23 +37,3 @@ pub mod records;
 
 #[cfg(feature = "json")]
 pub mod json;
-
-/// Under `elgamal3` each ciphertext carries its own `gy`. Verifiable batch
-/// proofs in this layer fold a single `gy` into their Fiat-Shamir transcript;
-/// silently picking `gy = first.gy` would let an attacker mix ciphertexts
-/// encrypted under different ephemeral keys into one batch and have only the
-/// first item's rerandomization actually checked. This helper enforces that
-/// all items share a `gy` and returns it, or `None` on mismatch (empty input
-/// is also `None` — there is nothing to verify against).
-#[cfg(all(feature = "elgamal3", feature = "batch"))]
-#[inline]
-pub(crate) fn shared_gy(
-    originals: &[crate::elgamal::ElGamal],
-) -> Option<crate::elgamal::arithmetic::group_elements::GroupElement> {
-    let first = originals.first()?;
-    if originals.iter().all(|c| c.gy == first.gy) {
-        Some(first.gy)
-    } else {
-        None
-    }
-}

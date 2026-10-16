@@ -7,11 +7,20 @@ use crate::factors::derivation::generic::{
 };
 use crate::factors::{EncryptionSecret, PseudonymizationSecret};
 use crate::keys::distribution::blinding::generic::BlindingFactor;
+#[cfg(feature = "verifiable")]
+use crate::keys::distribution::proofs::generic::SessionKeyShareProof;
 use crate::keys::distribution::shares::generic::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
     AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
+#[cfg(feature = "verifiable")]
+use crate::keys::distribution::shares::generic::{
+    make_attribute_session_key_share_with_proof, make_pseudonym_session_key_share_with_proof,
+    make_session_key_shares_with_proof, SessionKeyShareError, SessionKeyShareProofs,
+};
 use crate::transcryptor::types::generic::Transcryptor;
+#[cfg(feature = "verifiable")]
+use rand_core::{CryptoRng, Rng};
 
 /// A [`Transcryptor`] in a distributed setup: it additionally holds the blinding factor with
 /// which it contributes session key shares.
@@ -80,6 +89,48 @@ impl<G: Group> DistributedTranscryptor<G> {
             &pseudonym_rekey_factor,
             &attribute_rekey_factor,
             &self.blinding_factor,
+        )
+    }
+
+    /// The pseudonym session key share for a session with the proof of its construction, for the
+    /// user to check with [`SessionKeyShareProof::verify_share`].
+    #[cfg(feature = "verifiable")]
+    pub fn pseudonym_session_key_share_with_proof<R: Rng + CryptoRng>(
+        &self,
+        session: &EncryptionContext,
+        rng: &mut R,
+    ) -> Result<(PseudonymSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
+        let k = make_pseudonym_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        make_pseudonym_session_key_share_with_proof(&k, &self.blinding_factor, rng)
+    }
+
+    /// The attribute session key share for a session with the proof of its construction.
+    #[cfg(feature = "verifiable")]
+    pub fn attribute_session_key_share_with_proof<R: Rng + CryptoRng>(
+        &self,
+        session: &EncryptionContext,
+        rng: &mut R,
+    ) -> Result<(AttributeSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
+        let k = make_attribute_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        make_attribute_session_key_share_with_proof(&k, &self.blinding_factor, rng)
+    }
+
+    /// Both session key shares for a session with the proofs of their construction.
+    #[cfg(feature = "verifiable")]
+    pub fn session_key_shares_with_proof<R: Rng + CryptoRng>(
+        &self,
+        session: &EncryptionContext,
+        rng: &mut R,
+    ) -> Result<(SessionKeyShares<G>, SessionKeyShareProofs<G>), SessionKeyShareError> {
+        let pseudonym_rekey_factor =
+            make_pseudonym_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        let attribute_rekey_factor =
+            make_attribute_rekey_factor::<G>(self.system.rekeying_secret(), session);
+        make_session_key_shares_with_proof(
+            &pseudonym_rekey_factor,
+            &attribute_rekey_factor,
+            &self.blinding_factor,
+            rng,
         )
     }
 }

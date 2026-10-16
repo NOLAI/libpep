@@ -34,6 +34,12 @@ pub use shares::{
     make_session_key_shares, AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShare,
     SessionKeyShares,
 };
+#[cfg(feature = "verifiable")]
+pub use shares::{
+    make_attribute_session_key_share_with_proof, make_pseudonym_session_key_share_with_proof,
+    make_session_key_share_with_proof, make_session_key_shares_with_proof, SessionKeyShareError,
+    SessionKeyShareProofs,
+};
 
 #[cfg(feature = "verifiable")]
 pub use proofs::*;
