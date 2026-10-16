@@ -1,4 +1,4 @@
-//! The verifiable PEP primitives: every operation of [`primitives`](crate::elgamal::primitives)
+//! The verifiable PEP primitives: every operation of [`primitives`]
 //! with a zero-knowledge proof of its correct application, and the commitments to the factors
 //! the proofs are verified against.
 //!
