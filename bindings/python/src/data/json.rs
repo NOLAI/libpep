@@ -212,7 +212,7 @@ impl PyJsonStructure {
 }
 
 /// Builder for constructing PepJsonValue objects with mixed attribute and pseudonym fields.
-#[pyclass(name = "PepJsonBuilder", skip_from_py_object)]
+#[pyclass(name = "PepJsonBuilder")]
 pub struct PyPepJsonBuilder {
     builder: PepJsonBuilder,
 }
