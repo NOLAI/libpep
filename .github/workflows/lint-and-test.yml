@@ -213,7 +213,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
       - uses: actions/setup-node@v7
         with:
-          node-version: '24.x'
+          node-version: '26.x'
       - uses: taiki-e/install-action@wasm-pack
       - run: npm install
         working-directory: bindings/wasm
