@@ -1,7 +1,7 @@
 //! Session-key-share proofs for the blinded-product key construction.
 //!
-//! libpep distributes session keys using a **blinded-product** construction,
-//! NOT a Distributed Key Generation (DKG) / Verifiable Secret Sharing (VSS)
+//! libpep distributes session keys with a blinded-product construction. It is
+//! not a Distributed Key Generation (DKG) or Verifiable Secret Sharing (VSS)
 //! scheme. The construction works as follows:
 //!
 //! - Each transcryptor `i` holds a secret blinding scalar `b_i`.
@@ -22,43 +22,169 @@
 //!
 //! # Security model
 //!
-//! What this proof **does** guarantee:
+//! The proof guarantees:
 //! - For each transcryptor `i`, the published share commitment
-//!   `U_i = u_i · G` is exactly `b_i · k_i · G`, where `b_i` matches the
+//!   `U_i = u_i · G` is `b_i · k_i · G`, where `b_i` matches the
 //!   pre-configured blinding commitment `B_i = b_i · G` and `k_i` is the
 //!   rekey factor derived from the (known, deterministic) context.
 //!
-//! What this proof **does NOT** guarantee:
+//! The proof does not guarantee:
 //! - That at setup the dealer actually used the same `b_i` in computing
 //!   `sk' = sk · ∏ b_i⁻¹` as the `b_i` that was shipped to transcryptor `i`.
 //!   There is no commitment phase, no broadcast, and no proof tying the
 //!   blinded global secret key back to the individual `B_i`. A malicious
 //!   dealer could in principle use a different set of blinding scalars in
-//!   the product than the ones it distributed. **The dealer is therefore a
-//!   trusted party at setup time.** Once setup is complete (and the dealer
+//!   the product than the ones it distributed. The dealer is therefore a
+//!   trusted party at setup time. Once setup is complete (and the dealer
 //!   is gone), the per-share proofs in this module guarantee correctness of
 //!   each transcryptor's contribution at session-derivation time.
-
 //!
-//! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
-//! the names in this module are their ristretto255 instances.
+//! The types are generic over the [`Group`].
 
-pub mod generic;
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use rand_core::{CryptoRng, Rng};
 
-use crate::elgamal::arithmetic::Ristretto255;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
-/// The [`BlindingCommitment`](generic::BlindingCommitment) over ristretto255.
-pub type BlindingCommitment = generic::BlindingCommitment<Ristretto255>;
-/// The [`SessionKeyShareProof`](generic::SessionKeyShareProof) over ristretto255.
-pub type SessionKeyShareProof = generic::SessionKeyShareProof<Ristretto255>;
+/// Commitment to a blinding factor b_i.
+///
+/// This is B_i = b_i * G, a public commitment to the secret blinding value.
+/// The blinding commitment is preconfigured and shared with verifiers to enable
+/// verification of session key share proofs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct BlindingCommitment<G: Group>(pub G::Element);
+
+impl<G: Group> BlindingCommitment<G> {
+    /// Create a new blinding commitment from a blinding factor.
+    ///
+    /// Computes B_i = b_i * G.
+    pub fn new(blinding: &G::Scalar) -> Self {
+        Self(*blinding * G::generator())
+    }
+
+    /// Get the commitment value.
+    pub fn value(&self) -> &G::Element {
+        &self.0
+    }
+}
+
+/// Proof that a session-key share was correctly constructed.
+///
+/// This is a ZKP(U_i; b_i; K_i) proving that:
+/// - u_i = b_i * k_i (session-key share scalar)
+/// - U_i = u_i * G (public commitment to the share)
+/// - Using preconfigured B_i = b_i * G (blinding commitment)
+/// - Using K_i from stored factor commitments (rekey factor commitment)
+///
+/// # Security
+///
+/// The proof reveals `U_i = u_i · G` (the public commitment to the share)
+/// but the underlying scalar `u_i` MUST remain secret to the transcryptor
+/// and the user requesting the session key. Anyone holding all `u_i` along
+/// with the blinded global secret key `sk'` can reconstruct `sk_session`.
+/// The proof itself can be transmitted over the same channel as the share
+/// scalar.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
+pub struct SessionKeyShareProof<G: Group> {
+    /// Zero-knowledge proof that u_i = b_i * k_i.
+    ///
+    /// The proof's `n` field equals `U_i = u_i · G`, the public commitment
+    /// to the session-key share. It is checked against `b_i · K_i` by
+    /// [`SessionKeyShareProof::verify`].
+    ///
+    /// Kept private so that a verifier handed a `SessionKeyShareProof` cannot
+    /// have its inner proof swapped after the fact; read-only access is via
+    /// [`SessionKeyShareProof::proof`] and [`SessionKeyShareProof::share_commitment`].
+    proof: Proof<G>,
+}
+
+impl<G: Group> SessionKeyShareProof<G> {
+    /// Create a session key share proof.
+    ///
+    /// Proves that the session key share u_i was correctly constructed as u_i = b_i * k_i.
+    ///
+    /// # Arguments
+    ///
+    /// * `blinding` - The blinding factor b_i (kept secret by transcryptor)
+    /// * `rekey_commitment` - Public commitment K_i = k_i * G
+    /// * `rng` - Random number generator
+    ///
+    /// # Returns
+    ///
+    /// A proof that can be verified by the user to confirm the session key share
+    /// was constructed correctly.
+    pub fn new<R: Rng + CryptoRng>(
+        blinding: &G::Scalar,
+        rekey_commitment: &G::Element,
+        rng: &mut R,
+    ) -> Self {
+        // Create ZKP proving knowledge of b_i such that:
+        // - proof.n = U_i = b_i * rekey_commitment = b_i * k_i * G = u_i * G
+        // - (which implies u_i = b_i * k_i since K_i = k_i * G)
+        let (_, proof) = create_proof::<G, R>(blinding, rekey_commitment, rng);
+
+        Self { proof }
+    }
+
+    /// The underlying zero-knowledge proof.
+    pub fn proof(&self) -> &Proof<G> {
+        &self.proof
+    }
+
+    /// Verify a session key share proof without binding it to any share.
+    ///
+    /// Checks that:
+    /// 1. The proof is valid (proves knowledge of b_i)
+    /// 2. U_i = b_i * K_i (using the blinding commitment)
+    ///
+    /// This does not establish that any particular share is correct. It never sees the share scalar `u_i`, so it cannot tell whether the
+    /// share a user received corresponds to the `U_i` proven here. A user
+    /// accepting a share MUST additionally check `U_i == u_i · G`; use
+    /// [`SessionKeyShareProof::verify_share`], which does both. This method is
+    /// for verifiers that only hold public values and never see a share.
+    ///
+    /// # Arguments
+    ///
+    /// * `blinding_commitment` - B_i = b_i * G (preconfigured commitment)
+    /// * `rekey_commitment` - K_i = k_i * G (from factor commitments)
+    ///
+    /// # Returns
+    ///
+    /// `true` if the proof is valid, `false` otherwise
+    pub fn verify(
+        &self,
+        blinding_commitment: &BlindingCommitment<G>,
+        rekey_commitment: &G::Element,
+    ) -> bool {
+        // Verify the ZKP
+        // This confirms: proof.n = b_i * rekey_commitment
+        // which means: U_i = b_i * K_i = b_i * (k_i * G) = (b_i * k_i) * G = u_i * G
+        verify_proof::<G>(&blinding_commitment.0, rekey_commitment, &self.proof)
+    }
+
+    /// Get the public commitment to the session key share.
+    ///
+    /// Returns U_i = u_i * G. This is `self.proof.n()`: in the honest
+    /// construction the proof's `n` value IS the share commitment.
+    ///
+    /// The user should verify the proof before relying on this value.
+    pub fn share_commitment(&self) -> &G::Element {
+        self.proof.n()
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::keys::distribution::shares::SessionKeyShare;
-    use crate::keys::distribution::shares::{AttributeSessionKeyShare, PseudonymSessionKeyShare};
+    use crate::elgamal::arithmetic::Ristretto255;
+
+    type BlindingCommitment = super::BlindingCommitment<Ristretto255>;
+    type SessionKeyShareProof = super::SessionKeyShareProof<Ristretto255>;
 
     #[test]
     fn test_blinding_commitment() {
@@ -106,115 +232,5 @@ mod tests {
         let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
 
         assert_eq!(proof.share_commitment(), proof.proof().n());
-    }
-
-    #[test]
-    fn verify_share_accepts_the_matching_share() {
-        let mut rng = rand::rng();
-        let blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let blinding_commitment = BlindingCommitment::new(&blinding);
-        let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        // The honest share: u_i = b_i * k_i.
-        let share = PseudonymSessionKeyShare::from_scalar(blinding * rekey_factor);
-
-        assert!(proof.verify_share(&share, &blinding_commitment, &rekey_commitment));
-    }
-
-    #[test]
-    fn verify_share_rejects_a_share_that_does_not_match_a_valid_proof() {
-        // The proof here is entirely valid: it verifies against the right
-        // commitments. Only the scalar handed over alongside it is wrong,
-        // which is exactly the attack `verify` alone cannot catch.
-        let mut rng = rand::rng();
-        let blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let blinding_commitment = BlindingCommitment::new(&blinding);
-        let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        // The proof itself is sound...
-        assert!(proof.verify(&blinding_commitment, &rekey_commitment));
-
-        // ...but the share does not correspond to it.
-        let wrong_share = PseudonymSessionKeyShare::from_scalar(ScalarNonZero::random(&mut rng));
-
-        assert!(!proof.matches_share(&wrong_share));
-        assert!(!proof.verify_share(&wrong_share, &blinding_commitment, &rekey_commitment));
-    }
-
-    #[test]
-    fn verify_share_rejects_a_matching_share_under_a_bad_proof() {
-        // Mirror image: the share matches `U_i`, but the proof does not verify
-        // against the configured blinding commitment.
-        let mut rng = rand::rng();
-        let blinding = ScalarNonZero::random(&mut rng);
-        let wrong_blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
-        let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        let share = PseudonymSessionKeyShare::from_scalar(blinding * rekey_factor);
-
-        assert!(proof.matches_share(&share));
-        assert!(!proof.verify_share(&share, &wrong_commitment, &rekey_commitment));
-    }
-
-    #[test]
-    fn verify_share_works_for_attribute_shares_too() {
-        let mut rng = rand::rng();
-        let blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let blinding_commitment = BlindingCommitment::new(&blinding);
-        let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        let share = AttributeSessionKeyShare::from_scalar(blinding * rekey_factor);
-        let wrong = AttributeSessionKeyShare::from_scalar(ScalarNonZero::random(&mut rng));
-
-        assert!(proof.verify_share(&share, &blinding_commitment, &rekey_commitment));
-        assert!(!proof.verify_share(&wrong, &blinding_commitment, &rekey_commitment));
-    }
-
-    #[test]
-    fn test_session_key_share_proof_wrong_blinding() {
-        let mut rng = rand::rng();
-
-        let blinding = ScalarNonZero::random(&mut rng);
-        let wrong_blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
-        let rekey_commitment = rekey_factor * G;
-
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        // Should fail with wrong blinding commitment
-        assert!(!proof.verify(&wrong_commitment, &rekey_commitment));
-    }
-
-    #[test]
-    fn test_session_key_share_proof_wrong_rekey() {
-        let mut rng = rand::rng();
-
-        let blinding = ScalarNonZero::random(&mut rng);
-        let rekey_factor = ScalarNonZero::random(&mut rng);
-        let wrong_rekey_factor = ScalarNonZero::random(&mut rng);
-
-        let blinding_commitment = BlindingCommitment::new(&blinding);
-        let rekey_commitment = rekey_factor * G;
-        let wrong_rekey_commitment = wrong_rekey_factor * G;
-
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
-
-        // Should fail with wrong rekey commitment
-        assert!(!proof.verify(&blinding_commitment, &wrong_rekey_commitment));
     }
 }

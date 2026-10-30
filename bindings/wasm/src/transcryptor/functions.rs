@@ -1,5 +1,10 @@
 //! WASM bindings for transcryption functions.
 
+use crate::aliases::{
+    AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
+};
+#[cfg(not(feature = "elgamal3"))]
+use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
@@ -10,13 +15,9 @@ use crate::factors::types::{
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
-use libpep::factors::{
-    AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
-};
+use libpep::factors::Factor;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
-#[cfg(not(feature = "elgamal3"))]
-use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use wasm_bindgen::prelude::*;
 
@@ -231,7 +232,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     v: &WASMEncryptedPseudonym,
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedPseudonym {
-    rerandomize_known(&v.0, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize an encrypted pseudonym using a known factor.
@@ -243,7 +244,7 @@ pub fn wasm_rerandomize_encrypted_pseudonym_known(
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedPseudonym {
     let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
-    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize an encrypted attribute using a known factor.
@@ -253,7 +254,7 @@ pub fn wasm_rerandomize_encrypted_attribute_known(
     v: &WASMEncryptedAttribute,
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedAttribute {
-    rerandomize_known(&v.0, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize an encrypted attribute using a known factor.
@@ -265,7 +266,7 @@ pub fn wasm_rerandomize_encrypted_attribute_known(
     r: &WASMScalarNonZero,
 ) -> WASMEncryptedAttribute {
     let pk = AttributeSessionPublicKey::from_point(*public_key.0);
-    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 // ============================================================================
@@ -423,7 +424,7 @@ pub fn wasm_rerandomize_long_encrypted_pseudonym_known(
     v: &WASMLongEncryptedPseudonym,
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedPseudonym {
-    rerandomize_known(&v.0, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize a long encrypted pseudonym using a known factor.
@@ -435,7 +436,7 @@ pub fn wasm_rerandomize_long_encrypted_pseudonym_known(
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedPseudonym {
     let pk = PseudonymSessionPublicKey::from_point(*public_key.0);
-    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize a long encrypted attribute using a known factor.
@@ -445,7 +446,7 @@ pub fn wasm_rerandomize_long_encrypted_attribute_known(
     v: &WASMLongEncryptedAttribute,
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedAttribute {
-    rerandomize_known(&v.0, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 /// Rerandomize a long encrypted attribute using a known factor.
@@ -457,7 +458,7 @@ pub fn wasm_rerandomize_long_encrypted_attribute_known(
     r: &WASMScalarNonZero,
 ) -> WASMLongEncryptedAttribute {
     let pk = AttributeSessionPublicKey::from_point(*public_key.0);
-    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from(r.0)).into()
+    rerandomize_known(&v.0, &pk, &RerandomizeFactor::from_scalar(r.0)).into()
 }
 
 // ============================================================================

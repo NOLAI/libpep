@@ -1,13 +1,14 @@
 //! Python bindings for key generation functions.
 
 use super::types::*;
+use crate::aliases::*;
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::factors::secrets::PyEncryptionSecret;
 use crate::keys::types::PyAttributeSessionPublicKey;
 use crate::keys::types::PyPseudonymSessionPublicKey;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::keys::generation::*;
-use libpep::keys::types::*;
 use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 
@@ -16,7 +17,7 @@ use pyo3::prelude::*;
 #[pyo3(name = "make_pseudonym_global_keys")]
 pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_pseudonym_global_keys(&mut rng);
+    let (public, secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
     PyPseudonymGlobalKeyPair {
         public: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public)),
         secret: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
@@ -28,7 +29,7 @@ pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
 #[pyo3(name = "make_attribute_global_keys")]
 pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_attribute_global_keys(&mut rng);
+    let (public, secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
     PyAttributeGlobalKeyPair {
         public: PyAttributeGlobalPublicKey::from(PyGroupElement::from(*public)),
         secret: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
@@ -78,7 +79,7 @@ pub fn py_make_attribute_session_keys(
 #[pyo3(name = "make_global_keys")]
 pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     let mut rng = rand::rng();
-    let (public, secret) = make_global_keys(&mut rng);
+    let (public, secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     (
         PyGlobalPublicKeys {
             pseudonym: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public.pseudonym)),

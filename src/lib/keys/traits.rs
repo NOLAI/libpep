@@ -2,10 +2,10 @@
 //!
 //! Only the global and session keys that data is encrypted towards and decrypted with implement
 //! these traits. The intermediate material of the distributed setup (blinding factors, blinded
-//! global secret keys, session key shares) is not a key and deliberately does not; see
+//! global secret keys, session key shares) is not a key and does not implement them; see
 //! [`distribution`](super::distribution).
 
-use super::types::generic::*;
+use super::types::*;
 use crate::elgamal::arithmetic::group::{decode_hex, Group};
 
 /// A public key: a group element of the form `sk * G`, which can be encoded to and decoded
@@ -116,10 +116,10 @@ impl_key_pair!(
 /// [`Attribute`] an [`AttributeSessionPublicKey`]. This trait is what a caller may hand over to
 /// satisfy that requirement: the specific key itself, or a bundle to take it from.
 ///
-/// Because `K` comes from the data type, a bundle can only ever yield the matching half. Passing
-/// [`SessionPublicKeys`] where a pseudonym is encrypted selects `pseudonym`, and there is no
-/// impl that would hand an attribute key to a pseudonym operation, so the key separation of the
-/// two kinds of data cannot be crossed by choosing a different argument.
+/// Because `K` comes from the data type, a bundle yields only the matching half. Passing
+/// [`SessionPublicKeys`] where a pseudonym is encrypted selects `pseudonym`, and no impl hands an
+/// attribute key to a pseudonym operation, so the key separation between the two kinds of data
+/// holds whichever argument the caller passes.
 ///
 /// [`Encryptable`]: crate::data::traits::Encryptable
 /// [`PublicKeyType`]: crate::data::traits::Encryptable::PublicKeyType

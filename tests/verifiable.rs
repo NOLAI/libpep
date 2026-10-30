@@ -3,6 +3,23 @@
 #![cfg(feature = "verifiable")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod common;
+
+use common::aliases::Transcryptor;
+use common::aliases::Verifier;
+use common::aliases::{
+    Attribute, AttributeSessionKeys, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
+    PseudonymSessionKeys, Ristretto255, SessionKeys,
+};
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
+use common::aliases::{
+    PseudonymPseudonymizationBatchProof, PseudonymSessionPublicKey,
+    VerifiablePseudonymizationCommitment,
+};
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
 use libpep::data::simple::*;
@@ -15,8 +32,6 @@ use libpep::data::verifiable::traits::VerifiablePseudonymizationProof;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;
-use libpep::transcryptor::Transcryptor;
-use libpep::verifier::Verifier;
 
 /// Serde-roundtrip a verifiable proof, flipping a single character inside the
 /// JSON encoding to produce a syntactically valid but semantically different
@@ -85,7 +100,8 @@ fn swap_first_string_value(target: &mut serde_json::Value, donor: &serde_json::V
 fn test_verifiable_pseudonymization_simple() {
     let rng = &mut rand::rng();
 
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -138,7 +154,8 @@ fn test_verifiable_pseudonymization_simple() {
 fn test_verifiable_pseudonym_rekey() {
     let rng = &mut rand::rng();
 
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -181,7 +198,8 @@ fn test_verifiable_pseudonym_rekey() {
 fn test_verifiable_attribute_rekey() {
     let rng = &mut rand::rng();
 
-    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_attribute_global_public, attribute_global_secret) =
+        make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -224,7 +242,8 @@ fn test_verifiable_attribute_rekey() {
 fn test_verifier_cache_pseudonymization() {
     let rng = &mut rand::rng();
 
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -326,9 +345,10 @@ fn test_verifier_cache_pseudonymization() {
 #[cfg(all(feature = "batch", feature = "batch-pk", not(feature = "elgamal3")))]
 #[test]
 fn n_pep_batch_distributed_verifiable() {
-    use libpep::client::{Client, Distributed};
+    use crate::common::aliases::Client;
+    use crate::common::aliases::DistributedTranscryptor;
+    use libpep::client::Distributed;
     use libpep::data::batch::EncryptedBatch;
-    use libpep::transcryptor::DistributedTranscryptor;
 
     let n = 3;
     let rng = &mut rand::rng();
@@ -374,8 +394,8 @@ fn n_pep_batch_distributed_verifiable() {
     let mut current = initial_batch;
     let mut prev: Option<(
         EncryptedBatch<EncryptedPseudonym>,
-        libpep::data::verifiable::simple::PseudonymPseudonymizationBatchProof,
-        libpep::factors::VerifiablePseudonymizationCommitment,
+        PseudonymPseudonymizationBatchProof,
+        VerifiablePseudonymizationCommitment,
     )> = None;
 
     for system in &systems {
@@ -434,11 +454,13 @@ fn n_pep_batch_distributed_verifiable() {
 /// `Verifier::verify_transcryption` (verifier).
 #[test]
 fn test_verifiable_record_transcryption() {
-    use libpep::data::records::{EncryptedRecord, Record};
+    use crate::common::aliases::{EncryptedRecord, Record};
 
     let rng = &mut rand::rng();
-    let (_global_pseudonym_pk, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
-    let (_global_attribute_pk, global_attribute_sk) = make_attribute_global_keys(rng);
+    let (_global_pseudonym_pk, global_pseudonym_sk) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_global_attribute_pk, global_attribute_sk) =
+        make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -525,7 +547,7 @@ fn tampered_proof_rejected_pseudonymization() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -575,7 +597,7 @@ fn wrong_original_rejected_pseudonymization() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -619,7 +641,7 @@ fn wrong_commitments_rejected_pseudonymization() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -663,7 +685,7 @@ fn tampered_proof_rejected_pseudonym_rekey() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -695,7 +717,7 @@ fn wrong_original_rejected_pseudonym_rekey() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
+    let (_, pseudonym_global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -725,7 +747,7 @@ fn tampered_proof_rejected_attribute_rekey() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_, attribute_global_secret) = make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -757,7 +779,7 @@ fn wrong_original_rejected_attribute_rekey() {
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_, attribute_global_secret) = make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -784,12 +806,12 @@ fn wrong_original_rejected_attribute_rekey() {
 #[cfg(feature = "serde")]
 #[test]
 fn tampered_proof_rejected_record_transcryption() {
-    use libpep::data::records::{EncryptedRecord, Record};
+    use crate::common::aliases::{EncryptedRecord, Record};
     use libpep::verifier::VerifyError;
 
     let rng = &mut rand::rng();
-    let (_, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
-    let (_, global_attribute_sk) = make_attribute_global_keys(rng);
+    let (_, global_pseudonym_sk) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_, global_attribute_sk) = make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -895,11 +917,11 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
 ) -> (
     libpep::data::batch::EncryptedBatch<EncryptedPseudonym>,
     libpep::data::batch::EncryptedBatch<EncryptedPseudonym>,
-    libpep::data::verifiable::simple::PseudonymPseudonymizationBatchProof,
-    libpep::factors::VerifiablePseudonymizationCommitment,
+    PseudonymPseudonymizationBatchProof,
+    VerifiablePseudonymizationCommitment,
     PseudonymSessionPublicKey,
 ) {
-    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let (_, gsk) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -1016,7 +1038,7 @@ fn reordered_originals_rejected_pseudonymization_batch() {
 }
 
 /// Verifying a batch proof against a different recipient public key must be
-/// rejected (non-`elgamal3` only — under `elgamal3` the recipient key is
+/// rejected (non-`elgamal3` only; under `elgamal3` the recipient key is
 /// embedded in `gy` and changing it amounts to changing the originals).
 #[cfg(all(
     feature = "batch",
@@ -1029,7 +1051,7 @@ fn wrong_recipient_pk_rejected_pseudonymization_batch() {
     let rng = &mut rand::rng();
     let (pre, _post, proof, commitments, _pk1) = batch_pseudonymize_fixture(rng);
     // Fresh, unrelated recipient public key.
-    let (other_pk, _) = make_pseudonym_global_keys(rng);
+    let (other_pk, _) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let other_session_pk = PseudonymSessionPublicKey::from_point(*other_pk);
 
     let result = proof.verified_reconstruct(&pre, &other_session_pk, &commitments);
@@ -1045,7 +1067,7 @@ fn wrong_recipient_pk_rejected_pseudonymization_batch() {
 #[test]
 fn single_element_batch_verified_pseudonymization() {
     let rng = &mut rand::rng();
-    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let (_, gsk) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -1083,7 +1105,7 @@ fn single_element_batch_verified_pseudonymization() {
 #[test]
 fn empty_batch_proof_only_verifies_against_empty_batch() {
     let rng = &mut rand::rng();
-    let (_, gsk) = make_pseudonym_global_keys(rng);
+    let (_, gsk) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -1142,7 +1164,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     let (pre, _post, proof, commitments, _pk1) = batch_pseudonymize_fixture(rng);
     // Build a foreign item under a *different* recipient session key so the
     // `gy` differs from the rest of the batch.
-    let (_, gsk2) = make_pseudonym_global_keys(rng);
+    let (_, gsk2) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let enc_secret2 = EncryptionSecret::from("other-secret".as_bytes());
     let (other_session_pk, _) = make_pseudonym_session_keys(
         &gsk2,
@@ -1163,17 +1185,17 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     );
 }
 
-/// The Carter–Wegman derivation of Section 3.3.1 of the paper: the transcryptor derives the
+/// The Carter-Wegman derivation of Section 3.3.1 of the paper: the transcryptor derives the
 /// factors of each domain and session from its master secrets, and the verifier computes the
 /// commitments to them from the master public keys alone, without a per-factor registration.
 /// A transitive RRSK proof (VRRSK2) then verifies against those computed commitments.
 #[cfg(feature = "verifiable-derivation")]
 #[test]
 fn factors_derived_from_master_keys_verify_against_computed_commitments() {
+    use crate::common::aliases::{MasterPseudonymizationSecret, MasterRekeyingSecret};
     use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
     use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
     use libpep::elgamal::verifiable::VerifiableRRSK2;
-    use libpep::factors::verifiable::{MasterPseudonymizationSecret, MasterRekeyingSecret};
     use libpep::factors::Factor;
 
     let rng = &mut rand::rng();

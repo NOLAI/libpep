@@ -3,8 +3,8 @@
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
 use super::rekey::VerifiableRekey;
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -38,7 +38,7 @@ impl<G: Group> VerifiableRekeyBatch<G> {
     }
 
     /// Apply each entry's rekey to the corresponding ciphertext,
-    /// **without verifying** any proofs. Internal prover-side use only.
+    /// without verifying any proofs. Internal prover-side use only.
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()
@@ -67,8 +67,8 @@ impl<G: Group> VerifiableRekeyBatch<G> {
 /// A batch of [`super::VerifiableRekey2`] proofs sharing one `(k_from, k_to)` factor pair.
 ///
 /// Mirrors [`super::VerifiableRekey2`]'s layout (`gk`, `p_gk_to`, `inner: VerifiableRekey`)
-/// at batch level — the inner scalar `k = k_from⁻¹·k_to` is hoisted into the
-/// single `gk`/`p_gk_to` pair, and the per-message inners are still ordinary
+/// at batch level: the inner scalar `k = k_from⁻¹·k_to` is hoisted into the
+/// single `gk`/`p_gk_to` pair, and the per-message inners are ordinary
 /// [`VerifiableRekey`] values that verify against [`Self::combined_commitment`].
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
@@ -119,7 +119,7 @@ impl<G: Group> VerifiableRekey2Batch<G> {
     }
 
     /// Apply each entry's rekey to the corresponding ciphertext,
-    /// **without verifying** any proofs. Internal prover-side use only.
+    /// without verifying any proofs. Internal prover-side use only.
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()
@@ -179,12 +179,12 @@ impl<G: Group> VerifiableRekey2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rekey, rekey2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         RekeyFactorCommitment, VerifiableRekey2Batch, VerifiableRekeyBatch,
     };
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

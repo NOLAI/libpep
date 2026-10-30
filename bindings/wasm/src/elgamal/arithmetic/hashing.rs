@@ -1,4 +1,4 @@
-//! WASM bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
+//! WASM bindings for hashing to the group and to scalars (RFC 9380).
 
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarCanBeZero;
@@ -43,7 +43,7 @@ pub fn wasm_hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> WASMGroupElement {
     hashing::hash_to_group_with_dst(msg, dst).into()
 }
 
-/// `HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain
+/// `HashToScalar` of the ristretto255-SHA512 ciphersuite under the complete domain
 /// separation tag `dst`. The result can be zero.
 #[wasm_bindgen(js_name = hashToScalarWithDst)]
 pub fn wasm_hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> WASMScalarCanBeZero {

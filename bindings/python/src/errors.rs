@@ -64,8 +64,8 @@ create_exception!(
 );
 
 #[cfg(feature = "batch")]
-pub(crate) fn batch_err_to_py(e: libpep::errors::BatchError) -> PyErr {
-    use libpep::errors::BatchError as CoreBatchError;
+pub(crate) fn batch_err_to_py(e: libpep::data::batch::BatchError) -> PyErr {
+    use libpep::data::batch::BatchError as CoreBatchError;
     let msg = e.to_string();
     match e {
         CoreBatchError::InconsistentStructure { .. } => InconsistentStructureError::new_err(msg),
@@ -172,7 +172,7 @@ pub(crate) fn cache_registration_err_to_py(e: libpep::verifier::CacheRegistratio
 }
 
 // ---------------------------------------------------------------------------
-// RegisterCommitmentsError — unwraps to inner Weak or Cache variant.
+// RegisterCommitmentsError: unwraps to the inner Weak or Cache variant.
 // ---------------------------------------------------------------------------
 
 #[cfg(feature = "verifiable")]
@@ -186,7 +186,7 @@ pub(crate) fn register_commitments_err_to_py(
 }
 
 // ---------------------------------------------------------------------------
-// SessionKeyShareError — refusal to generate a session-key share.
+// SessionKeyShareError: refusal to generate a session-key share.
 // ---------------------------------------------------------------------------
 
 create_exception!(

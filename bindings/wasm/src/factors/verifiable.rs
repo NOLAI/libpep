@@ -5,14 +5,14 @@
 
 #![cfg(feature = "verifiable-derivation")]
 
+use crate::aliases::{
+    MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,
+    MasterRekeyingSecret,
+};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::errors::json_err;
 use derive_more::{From, Into};
-use libpep::factors::verifiable::{
-    MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,
-    MasterRekeyingSecret,
-};
 use wasm_bindgen::prelude::*;
 
 /// Master pseudonymization secret with two Carter-Wegman components.

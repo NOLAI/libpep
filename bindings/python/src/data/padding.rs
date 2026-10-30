@@ -1,11 +1,11 @@
 //! Python bindings for PKCS#7 padding operations on Pseudonym and Attribute types.
 //!
-//! Note: These are also exposed as methods on PyPseudonym and PyAttribute in core.rs.
-//! This module provides standalone function versions for API completeness.
+//! These are also exposed as methods on PyPseudonym and PyAttribute in core.rs. This module
+//! provides standalone function versions.
 
+use crate::aliases::{Attribute, Pseudonym};
 use crate::data::simple::{PyAttribute, PyPseudonym};
 use libpep::data::padding::Padded;
-use libpep::data::simple::{Attribute, Pseudonym};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 

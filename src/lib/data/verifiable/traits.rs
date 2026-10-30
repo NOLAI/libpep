@@ -2,21 +2,21 @@
 //!
 //! The data-layer companion to the per-operation-type proof structs in
 //! [`crate::elgamal::verifiable`]. Each operation kind (rekey, pseudonymization,
-//! transcryption) has its own pair of traits — one for the encrypted type
+//! transcryption) has its own pair of traits: one for the encrypted type
 //! that can generate a proof, and one for the proof type that can verify
-//! and reconstruct.
+//! it and reconstruct the result.
 
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
 use crate::elgamal::arithmetic::group::Group;
-use crate::factors::commitments::generic::{
+use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
-use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
+use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
-use crate::keys::types::generic::{PseudonymSessionPublicKey, SessionPublicKeys};
+use crate::keys::types::{PseudonymSessionPublicKey, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
 
 /// A trait for encrypted pseudonyms that support verifiable pseudonymization.
@@ -59,8 +59,8 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
 
 /// A trait for encrypted types that support verifiable rekeying.
 ///
-/// This trait extends [`Rekeyable`] to provide zero-knowledge proofs that
-/// rekey operations were performed correctly. The proof type
+/// This trait extends [`Rekeyable`] with zero-knowledge proofs that
+/// a rekey operation was performed correctly. The proof type
 /// ([`RekeyProof`](Self::RekeyProof)) implements [`VerifiableRekeyProof`].
 ///
 /// This is the paper's VRK (Definition 10): the ciphertext is rekeyed and not rerandomized, so
@@ -124,7 +124,7 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
 /// [`VerifiableRekey`](crate::elgamal::verifiable::VerifiableRekey) in the
 /// core layer.
 pub trait VerifiableRekeyProof {
-    /// The group the data is encrypted in.
+    /// The group the proof is over.
     type Group: Group;
     /// The data type this proof was generated for (the verifier-side input).
     type DataType;
@@ -162,7 +162,7 @@ pub trait VerifiableRekeyProof {
 ///
 /// Mirrors [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK).
 pub trait VerifiablePseudonymizationProof {
-    /// The group the data is encrypted in.
+    /// The group the proof is over.
     type Group: Group;
     /// The encrypted type the proof is about.
     type DataType;
@@ -223,7 +223,7 @@ pub trait VerifiablePseudonymizationProof {
 /// without `elgamal3` the verifier needs the recipient public-key bundle
 /// (`SessionPublicKeys`). Under `elgamal3` the parameter is dropped.
 pub trait VerifiableTranscryptionProof {
-    /// The group the data is encrypted in.
+    /// The group the proof is over.
     type Group: Group;
     /// The encrypted type the proof is about.
     type DataType;

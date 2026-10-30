@@ -1,5 +1,9 @@
 //! [`PseudonymizationDomain`]s and [`EncryptionContext`]s: the identifiers that data is
-//! pseudonymized and encrypted for, from which the transcryption factors are derived.
+//! pseudonymized and encrypted for, from which the transcryption factors are derived, and the
+//! [`TranscryptorId`] that names a transcryptor.
+
+/// Identifier of a transcryptor.
+pub type TranscryptorId = String;
 
 /// The domain in which pseudonyms exist (typically a user's role or user group).
 ///

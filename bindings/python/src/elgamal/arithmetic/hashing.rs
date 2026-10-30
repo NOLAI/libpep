@@ -1,4 +1,4 @@
-//! Python bindings for hashing to the group and to scalars (RFC 9380, RFC 9497).
+//! Python bindings for hashing to the group and to scalars (RFC 9380).
 
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarCanBeZero;
@@ -36,7 +36,7 @@ pub fn py_hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> PyGroupElement {
     hashing::hash_to_group_with_dst(msg, dst).into()
 }
 
-/// `HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain
+/// `HashToScalar` of the ristretto255-SHA512 ciphersuite under the complete domain
 /// separation tag `dst`. The result can be zero.
 #[pyfunction]
 #[pyo3(name = "hash_to_scalar_with_dst")]

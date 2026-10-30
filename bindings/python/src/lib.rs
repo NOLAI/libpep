@@ -1,6 +1,7 @@
 //! Python bindings for [libpep](https://crates.io/crates/libpep), built with PyO3 and distributed on PyPI as `libpep-py`
 //! (importable as `libpep`).
 
+pub(crate) mod aliases;
 pub(crate) mod macros;
 
 pub mod client;
@@ -65,14 +66,14 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
         #[cfg(feature = "batch")]
         data::batch::register(sm)?;
         #[cfg(all(feature = "batch", feature = "verifiable"))]
-        data::verifiable_batch::register(sm)?;
+        data::verifiable::batch::register(sm)?;
         Ok(())
     })?;
     #[cfg(feature = "json")]
     add_submodule(&data_module, "libpep.data.json", |sm| {
         data::json::register(sm)?;
         #[cfg(feature = "verifiable")]
-        data::verifiable_json::register(sm)?;
+        data::verifiable::json::register(sm)?;
         Ok(())
     })?;
     #[cfg(not(feature = "json"))]

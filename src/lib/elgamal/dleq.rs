@@ -1,35 +1,35 @@
-//! Discrete-logarithm-equivalence (DLEQ) proofs in the encoding of RFC 9497.
+//! Discrete-logarithm-equivalence (DLEQ) proofs in the two-scalar `(c, s)` encoding.
+//!
+//! The proofs are generic over the [`Group`].
 //!
 //! A DLEQ proof shows that the same secret scalar `k` relates two pairs of group elements,
 //! `B = k * A` and `D_i = k * C_i`, without revealing `k`. This module implements the
-//! `GenerateProof` / `VerifyProof` pair of [RFC 9497, Section 2.2], including the
+//! `GenerateProof` / `VerifyProof` pair, including the
 //! `ComputeComposites` batching that lets a single proof cover many `(C_i, D_i)` pairs
 //! transformed with the same scalar.
 //!
 //! # Relation to [`super::zkps`]
 //!
 //! [`super::zkps::Proof`] is the four-element encoding `(N, C1, C2, s)` of the published paper.
-//! It remains available and unchanged. The encoding here is the RFC's: a proof is the two
-//! scalars `(c, s)` and the verifier recomputes the commitments. Proofs in the two encodings are
-//! **not** interchangeable.
+//! The encoding here differs: a proof is the two scalars `(c, s)` and the verifier recomputes the
+//! commitments. Proofs in the two encodings are not interchangeable.
 //!
 //! # Domain separation
 //!
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
-//! the seed (`"Seed-" || contextString`), exactly as in the RFC. The context string comes from
-//! the group's ciphersuite,
-//! [`Group::CIPHERSUITE`](crate::elgamal::arithmetic::Group::CIPHERSUITE), so two deployments
+//! the seed (`"Seed-" || contextString`). The context string comes from the group's ciphersuite,
+//! [`Group::CIPHERSUITE`], so two deployments
 //! with different context strings produce proofs that never verify against one another.
 //!
-//! The implementation is cross-checked against the ristretto255-SHA512 VOPRF test vectors of
-//! RFC 9497 Appendix A.1.2, for both a single pair and a batch of two.
+//! The implementation is checked against published ristretto255-SHA512 test vectors, for both a single pair and a batch of two.
 //!
 //! # Example
 //!
 //! ```
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+//! # use libpep::elgamal::arithmetic::Ristretto255;
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
 //! let mut rng = rand::rng();
 //!
@@ -39,62 +39,312 @@
 //! let cs = [GroupElement::random(&mut rng), GroupElement::random(&mut rng)];
 //! let ds = [k * cs[0], k * cs[1]];
 //!
-//! let proof = generate_proof(&k, &a, &b, &cs, &ds, &mut rng).unwrap();
-//! assert!(verify_proof(&a, &b, &cs, &ds, &proof));
+//! let proof = generate_proof::<Ristretto255, _>(&k, &a, &b, &cs, &ds, &mut rng).unwrap();
+//! assert!(verify_proof::<Ristretto255>(&a, &b, &cs, &ds, &proof));
 //! ```
-//!
-//! [RFC 9497, Section 2.2]: https://www.rfc-editor.org/rfc/rfc9497.html#section-2.2
 
-pub mod generic;
-
-pub use generic::ProofError;
-
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
+use crate::elgamal::arithmetic::group::Group;
 use rand_core::{CryptoRng, Rng};
+use sha2::Digest;
 
-/// The [`Proof`](generic::Proof) over ristretto255.
-pub type Proof = generic::Proof<Ristretto255>;
+/// A DLEQ proof in the two-scalar encoding: the challenge `c` and the response `s`.
+///
+/// Serializes to [`LENGTH`](Self::LENGTH) bytes as `SerializeScalar(c) || SerializeScalar(s)`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Proof<G: Group> {
+    /// The challenge scalar.
+    pub c: G::ScalarCanBeZero,
+    /// The response scalar.
+    pub s: G::ScalarCanBeZero,
+}
 
-/// Byte length of a serialized proof: two scalars.
-pub const PROOF_SIZE: usize = Proof::LENGTH;
+impl<G: Group> Proof<G> {
+    /// The length of a serialized proof in bytes: two scalars.
+    pub const LENGTH: usize = 2 * G::NS;
 
-/// `GenerateProof` of RFC 9497, Section 2.2; see [`generic::generate_proof`].
+    /// Serialize as `SerializeScalar(c) || SerializeScalar(s)`.
+    #[must_use]
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(Self::LENGTH);
+        out.extend_from_slice(G::serialize_scalar_can_be_zero(&self.c).as_ref());
+        out.extend_from_slice(G::serialize_scalar_can_be_zero(&self.s).as_ref());
+        out
+    }
+
+    /// Deserialize from exactly [`LENGTH`](Self::LENGTH) bytes.
+    ///
+    /// Returns `None` if the input has another length or either half is not a canonical scalar
+    /// encoding.
+    #[must_use]
+    pub fn from_slice(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::LENGTH {
+            return None;
+        }
+        Some(Self {
+            c: G::deserialize_scalar_can_be_zero(&bytes[..G::NS])?,
+            s: G::deserialize_scalar_can_be_zero(&bytes[G::NS..])?,
+        })
+    }
+}
+
+/// Errors that can occur while generating a proof.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
+pub enum ProofError {
+    /// The `cs` and `ds` lists have different lengths, or are empty.
+    #[error("DLEQ proof needs equally long, non-empty element lists (got {cs} and {ds})")]
+    MismatchedLists {
+        /// Length of the `cs` list.
+        cs: usize,
+        /// Length of the `ds` list.
+        ds: usize,
+    },
+}
+
+/// The domain separation tags a proof transcript needs.
+///
+/// The context string is used in two distinct ways here, and the difference matters for
+/// interoperability: `seedDST` is `"Seed-" || contextString` and appears *inside* the seed
+/// transcript, whereas the trailing `"Composite"` and `"Challenge"` labels are bare literals,
+/// with the context string entering only through `HashToScalar`'s own DST
+/// (`"HashToScalar-" || contextString`).
+///
+/// Normally built from the [`Ciphersuite`], whose context string is prefixed `"nPEPV1-"`.
+/// The published test vectors use a different prefix, so the test module builds these
+/// directly to cross-check the transcript against them.
+#[derive(Clone)]
+pub(crate) struct Dsts {
+    /// `"Seed-" || contextString`, hashed inside the seed transcript.
+    pub(crate) seed: Vec<u8>,
+    /// `"HashToScalar-" || contextString`, the DST of every `HashToScalar` call.
+    pub(crate) hash_to_scalar: Vec<u8>,
+}
+
+impl Dsts {
+    pub(crate) fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
+        Self {
+            seed: ciphersuite.dst(b"Seed-"),
+            hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
+        }
+    }
+}
+
+/// `HashToScalar` in the full scalar field: zero is zero.
+fn hash_to_scalar<G: Group>(msg: &[u8], dst: &[u8]) -> G::ScalarCanBeZero {
+    G::hash_to_scalar(msg, dst).map_or_else(Default::default, Into::into)
+}
+
+/// `I2OSP(len(bytes), 2) || bytes`, the length-prefixed encoding used in transcripts.
+fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) {
+    debug_assert!(bytes.len() <= u16::MAX as usize);
+    out.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
+    out.extend_from_slice(bytes);
+}
+
+/// The seed transcript of `ComputeComposites`:
+/// `I2OSP(len(Bm),2) || Bm || I2OSP(len("Seed-"||ctx),2) || "Seed-"||ctx`.
+fn compute_seed<G: Group>(b: &G::Element, dsts: &Dsts) -> Vec<u8> {
+    let mut transcript = Vec::new();
+    push_len_prefixed(&mut transcript, G::serialize_element(b).as_ref());
+    push_len_prefixed(&mut transcript, &dsts.seed);
+    // The ciphersuite's plain hash is used here, not expand_message_xmd.
+    G::Hash::digest(&transcript).to_vec()
+}
+
+/// `ComputeComposites`.
+///
+/// Folds the `(C_i, D_i)` pairs into a single pair `(M, Z)` with per-index weights derived from
+/// the seed, so that one proof covers the whole list. When the prover's scalar `k` is known the
+/// fast path computes `Z = k * M` directly; otherwise `Z` is accumulated from the `ds`.
+fn compute_composites<G: Group>(
+    k: Option<&G::Scalar>,
+    b: &G::Element,
+    cs: &[G::Element],
+    ds: &[G::Element],
+    dsts: &Dsts,
+) -> (G::Element, G::Element) {
+    let seed = compute_seed::<G>(b, dsts);
+
+    let mut m = G::identity();
+    let mut z = G::identity();
+
+    for (i, (c_i, d_i)) in cs.iter().zip(ds.iter()).enumerate() {
+        let mut transcript = Vec::new();
+        push_len_prefixed(&mut transcript, &seed);
+        transcript.extend_from_slice(&(i as u16).to_be_bytes());
+        push_len_prefixed(&mut transcript, G::serialize_element(c_i).as_ref());
+        push_len_prefixed(&mut transcript, G::serialize_element(d_i).as_ref());
+        transcript.extend_from_slice(b"Composite");
+
+        let d_i_scalar = hash_to_scalar::<G>(&transcript, &dsts.hash_to_scalar);
+        m = m + d_i_scalar * *c_i;
+        if k.is_none() {
+            z = z + d_i_scalar * *d_i;
+        }
+    }
+
+    if let Some(k) = k {
+        z = *k * m;
+    }
+    (m, z)
+}
+
+/// The challenge transcript:
+/// the length-prefixed elements `B, M, Z, t2, t3` followed by the bare label `"Challenge"`.
+fn challenge<G: Group>(
+    b: &G::Element,
+    m: &G::Element,
+    z: &G::Element,
+    t2: &G::Element,
+    t3: &G::Element,
+    dsts: &Dsts,
+) -> G::ScalarCanBeZero {
+    let mut transcript = Vec::new();
+    for element in [b, m, z, t2, t3] {
+        push_len_prefixed(&mut transcript, G::serialize_element(element).as_ref());
+    }
+    transcript.extend_from_slice(b"Challenge");
+    hash_to_scalar::<G>(&transcript, &dsts.hash_to_scalar)
+}
+
+/// `GenerateProof`, domain separated by the group's
+/// [`CIPHERSUITE`](Group::CIPHERSUITE).
+///
+/// Proves that `b = k * a` and `ds[i] = k * cs[i]` for every `i`, without revealing `k`.
 ///
 /// # Errors
 ///
 /// Returns [`ProofError::MismatchedLists`] if `cs` and `ds` differ in length or are empty.
-pub fn generate_proof<R: Rng + CryptoRng>(
-    k: &ScalarNonZero,
-    a: &GroupElement,
-    b: &GroupElement,
-    cs: &[GroupElement],
-    ds: &[GroupElement],
+pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
+    k: &G::Scalar,
+    a: &G::Element,
+    b: &G::Element,
+    cs: &[G::Element],
+    ds: &[G::Element],
     rng: &mut R,
-) -> Result<Proof, ProofError> {
-    generic::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, rng)
+) -> Result<Proof<G>, ProofError> {
+    if cs.is_empty() || cs.len() != ds.len() {
+        return Err(ProofError::MismatchedLists {
+            cs: cs.len(),
+            ds: ds.len(),
+        });
+    }
+
+    let dsts = Dsts::from_ciphersuite(&G::CIPHERSUITE);
+    Ok(generate_proof_with::<G>(
+        k,
+        a,
+        b,
+        cs,
+        ds,
+        &dsts,
+        &G::random_scalar(rng),
+    ))
 }
 
-/// `VerifyProof` of RFC 9497, Section 2.2; see [`generic::verify_proof`].
+/// The deterministic core of [`generate_proof`], with the proof's random scalar supplied.
+///
+/// Separated so that published test vectors, which fix `ProofRandomScalar`, can be
+/// reproduced exactly. Callers outside the tests must use [`generate_proof`], which samples
+/// the scalar freshly: reusing one across proofs leaks the secret.
+pub(crate) fn generate_proof_with<G: Group>(
+    k: &G::Scalar,
+    a: &G::Element,
+    b: &G::Element,
+    cs: &[G::Element],
+    ds: &[G::Element],
+    dsts: &Dsts,
+    r: &G::Scalar,
+) -> Proof<G> {
+    let (m, z) = compute_composites::<G>(Some(k), b, cs, ds, dsts);
+
+    let t2 = *r * *a;
+    let t3 = *r * m;
+
+    let c = challenge::<G>(b, &m, &z, &t2, &t3, dsts);
+    // s = r - c * k, in the full scalar field (c and s may be zero).
+    let s = G::ScalarCanBeZero::from(*r) - c * G::ScalarCanBeZero::from(*k);
+
+    Proof { c, s }
+}
+
+/// `VerifyProof`, domain separated by the group's
+/// [`CIPHERSUITE`](Group::CIPHERSUITE).
+///
+/// Checks that the same scalar relates `a` to `b` and every `cs[i]` to `ds[i]`. Returns `false`
+/// on any mismatch, and also when the lists are empty or of different lengths.
 #[must_use]
-pub fn verify_proof(
-    a: &GroupElement,
-    b: &GroupElement,
-    cs: &[GroupElement],
-    ds: &[GroupElement],
-    proof: &Proof,
+pub fn verify_proof<G: Group>(
+    a: &G::Element,
+    b: &G::Element,
+    cs: &[G::Element],
+    ds: &[G::Element],
+    proof: &Proof<G>,
 ) -> bool {
-    generic::verify_proof::<Ristretto255>(a, b, cs, ds, proof)
+    verify_proof_with::<G>(
+        a,
+        b,
+        cs,
+        ds,
+        proof,
+        &Dsts::from_ciphersuite(&G::CIPHERSUITE),
+    )
+}
+
+/// The DST-parameterised core of [`verify_proof`].
+pub(crate) fn verify_proof_with<G: Group>(
+    a: &G::Element,
+    b: &G::Element,
+    cs: &[G::Element],
+    ds: &[G::Element],
+    proof: &Proof<G>,
+    dsts: &Dsts,
+) -> bool {
+    if cs.is_empty() || cs.len() != ds.len() {
+        return false;
+    }
+
+    let (m, z) = compute_composites::<G>(None, b, cs, ds, dsts);
+
+    // t2 = s * A + c * B, t3 = s * M + c * Z
+    let t2 = proof.s * *a + proof.c * *b;
+    let t3 = proof.s * m + proof.c * z;
+
+    let expected = challenge::<G>(b, &m, &z, &t2, &t3, dsts);
+    expected == proof.c
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::generic::{generate_proof_with, verify_proof_with, Dsts};
     use super::*;
-    use crate::elgamal::arithmetic::group_elements::G;
-    use crate::elgamal::arithmetic::Group;
+    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
+    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::{Group, Ristretto255};
+
+    type Proof = super::Proof<Ristretto255>;
+    const PROOF_SIZE: usize = Proof::LENGTH;
+
+    fn generate_proof<R: Rng + CryptoRng>(
+        k: &ScalarNonZero,
+        a: &GroupElement,
+        b: &GroupElement,
+        cs: &[GroupElement],
+        ds: &[GroupElement],
+        rng: &mut R,
+    ) -> Result<Proof, ProofError> {
+        super::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, rng)
+    }
+
+    fn verify_proof(
+        a: &GroupElement,
+        b: &GroupElement,
+        cs: &[GroupElement],
+        ds: &[GroupElement],
+        proof: &Proof,
+    ) -> bool {
+        super::verify_proof::<Ristretto255>(a, b, cs, ds, proof)
+    }
 
     #[test]
     fn single_pair_round_trip() {
@@ -183,13 +433,12 @@ mod tests {
         );
     }
 
-    /// The DSTs of RFC 9497's own VOPRF ciphersuite, whose context string is
+    /// The DSTs of the test vectors' ciphersuite, whose context string is
     /// `"OPRFV1-" || I2OSP(modeVOPRF, 1) || "-" || "ristretto255-SHA512"` with modeVOPRF = 0x01.
     ///
-    /// This is deliberately NOT our [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite): the draft uses the prefix `"coPRFV1-"` so that
-    /// pseudonyms of the two protocols are domain separated on the same group. Reproducing the
-    /// RFC's vectors therefore requires the RFC's own context string.
-    fn rfc9497_voprf_dsts() -> Dsts {
+    /// This is not this crate's [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite), whose
+    /// prefix is `"nPEPV1-"`, so reproducing the vectors requires their own context string.
+    fn voprf_dsts() -> Dsts {
         let mut ctx = b"OPRFV1-".to_vec();
         ctx.push(0x01);
         ctx.push(b'-');
@@ -213,13 +462,13 @@ mod tests {
         ScalarNonZero::from_slice(&hex::decode(hex_str).unwrap()).unwrap()
     }
 
-    /// Cross-check `GenerateProof` against RFC 9497 Appendix A.1.2, Test Vector 1 (batch size 1).
+    /// Cross-check `GenerateProof` against VOPRF Appendix A.1.2, Test Vector 1 (batch size 1).
     ///
     /// With `a = G`, `b = pkSm`, `cs = [BlindedElement]`, `ds = [EvaluationElement]` and the
     /// vector's fixed `ProofRandomScalar`, the produced proof bytes must equal the vector's.
     #[test]
-    fn rfc9497_appendix_a_1_2_single() {
-        let dsts = rfc9497_voprf_dsts();
+    fn voprf_appendix_a_1_2_single() {
+        let dsts = voprf_dsts();
         let sk = scalar("e6f73f344b79b379f1a0dd37e07ff62e38d9f71345ce62ae3a9bc60b04ccd909");
         let pk = element("c803e2cc6b05fc15064549b5920659ca4a77b2cca6f04f6b357009335476ad4e");
         let blinded = element("863f330cc1a1259ed5a5998a23acfd37fb4351a793a5b3c090b642ddc439b945");
@@ -252,8 +501,8 @@ mod tests {
     /// The same cross-check for Test Vector 3 (batch size 2), which exercises
     /// `ComputeComposites` over more than one pair.
     #[test]
-    fn rfc9497_appendix_a_1_2_batched() {
-        let dsts = rfc9497_voprf_dsts();
+    fn voprf_appendix_a_1_2_batched() {
+        let dsts = voprf_dsts();
         let sk = scalar("e6f73f344b79b379f1a0dd37e07ff62e38d9f71345ce62ae3a9bc60b04ccd909");
         let pk = element("c803e2cc6b05fc15064549b5920659ca4a77b2cca6f04f6b357009335476ad4e");
         let blinded = [

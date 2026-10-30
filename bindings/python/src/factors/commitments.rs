@@ -1,6 +1,6 @@
 //! Python bindings for commitment types.
 
-use libpep::factors::{
+use crate::aliases::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
@@ -73,8 +73,8 @@ impl From<VerifiableRekeyCommitment> for PyVerifiableRekeyCommitment {
     }
 }
 
-/// Combined transcryption commitments — pseudonymization (reshuffle + rekey)
-/// plus attribute rekey — for a transition (Python).
+/// Combined transcryption commitments for a transition (Python): pseudonymization
+/// (reshuffle + rekey) plus attribute rekey.
 #[pyclass(name = "VerifiableTranscryptionCommitment", from_py_object)]
 #[derive(Clone)]
 pub struct PyVerifiableTranscryptionCommitment {

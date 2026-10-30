@@ -1,5 +1,10 @@
 //! WASM bindings for batch transcryption operations.
 
+use crate::aliases::EncryptedRecord;
+#[cfg(feature = "long")]
+use crate::aliases::LongEncryptedRecord;
+#[cfg(not(feature = "elgamal3"))]
+use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::records::WASMEncryptedRecord;
@@ -14,11 +19,8 @@ use crate::factors::types::{
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
-use libpep::data::records::EncryptedRecord;
-#[cfg(feature = "long")]
-use libpep::data::records::LongEncryptedRecord;
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
+use libpep::keys::PublicKey;
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use wasm_bindgen::prelude::*;
 
@@ -231,7 +233,7 @@ pub fn wasm_transcrypt_record_batch(
     info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
 ) -> Result<Vec<WASMEncryptedRecord>, String> {
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
     let rust_enc: Vec<_> = encrypted
         .into_iter()
         .map(|e: WASMEncryptedRecord| EncryptedRecord::from(e))
@@ -274,7 +276,7 @@ pub fn wasm_transcrypt_long_record_batch(
     info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
 ) -> Result<Vec<WASMLongEncryptedRecord>, String> {
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
     let rust_enc: Vec<_> = encrypted
         .into_iter()
         .map(|e: WASMLongEncryptedRecord| LongEncryptedRecord::from(e))

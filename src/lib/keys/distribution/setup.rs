@@ -1,44 +1,85 @@
 //! System setup for distributed transcryptors: blinding factors and blinded global secret keys.
 //!
 //! This module provides functions to set up a distributed system with multiple transcryptors.
-//! The setup is generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
-//! the functions in this module set up a ristretto255 system, as there is nothing to infer the
-//! group from.
-
-pub mod generic;
+//!
+//! The functions take the group as a type parameter, as there is nothing to infer it from.
 
 use super::blinding::*;
+use crate::elgamal::arithmetic::group::Group;
+use crate::keys::generation::{make_attribute_global_keys, make_pseudonym_global_keys};
+use crate::keys::traits::SecretKey;
 use crate::keys::types::*;
 use rand_core::{CryptoRng, Rng};
+
+/// A function that blinds a global secret key with the transcryptors' blinding factors.
+type Blinder<SK> = fn(
+    &SK,
+    &[BlindingFactor<<SK as SecretKey>::Group>],
+) -> Option<<SK as BlindableGlobalSecretKey>::BlindedType>;
+
+/// Generic function to setup a distributed system with global keys, blinded global secret key and blinding factors.
+fn make_distributed_global_keys_generic<R, PK, SK, F>(
+    n: usize,
+    rng: &mut R,
+    make_keys: F,
+    make_blinded: Blinder<SK>,
+) -> (PK, SK::BlindedType, Vec<BlindingFactor<SK::Group>>)
+where
+    R: Rng + CryptoRng,
+    F: Fn(&mut R) -> (PK, SK),
+    SK: BlindableGlobalSecretKey,
+{
+    assert!(
+        n > 0,
+        "a distributed system needs at least one transcryptor"
+    );
+    let (pk, sk) = make_keys(rng);
+    let blinding_factors: Vec<BlindingFactor<SK::Group>> =
+        (0..n).map(|_| BlindingFactor::random(rng)).collect();
+    // With at least one factor the product is 1 only with negligible probability.
+    #[allow(clippy::expect_used)]
+    let bsk = make_blinded(&sk, &blinding_factors).expect("random blinding factors");
+    (pk, bsk, blinding_factors)
+}
 
 /// Setup a distributed system with pseudonym global keys, a blinded global secret key and a list of
 /// blinding factors for pseudonyms.
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::transcryptor::DistributedTranscryptor)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`Client`](crate::client::Client)s.
-pub fn make_distributed_pseudonym_global_keys<R: Rng + CryptoRng>(
+pub fn make_distributed_pseudonym_global_keys<G: Group, R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
-    PseudonymGlobalPublicKey,
-    BlindedPseudonymGlobalSecretKey,
-    Vec<BlindingFactor>,
+    PseudonymGlobalPublicKey<G>,
+    BlindedPseudonymGlobalSecretKey<G>,
+    Vec<BlindingFactor<G>>,
 ) {
-    generic::make_distributed_pseudonym_global_keys(n, rng)
+    make_distributed_global_keys_generic(
+        n,
+        rng,
+        make_pseudonym_global_keys,
+        make_blinded_pseudonym_global_secret_key,
+    )
 }
 
 /// Setup a distributed system with attribute global keys, a blinded global secret key and a list of
 /// blinding factors for attributes.
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::transcryptor::DistributedTranscryptor)s), the global public key
 /// and blinded global secret key can be publicly shared with anyone and are required by [`Client`](crate::client::Client)s.
-pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
+pub fn make_distributed_attribute_global_keys<G: Group, R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
-    AttributeGlobalPublicKey,
-    BlindedAttributeGlobalSecretKey,
-    Vec<BlindingFactor>,
+    AttributeGlobalPublicKey<G>,
+    BlindedAttributeGlobalSecretKey<G>,
+    Vec<BlindingFactor<G>>,
 ) {
-    generic::make_distributed_attribute_global_keys(n, rng)
+    make_distributed_global_keys_generic(
+        n,
+        rng,
+        make_attribute_global_keys,
+        make_blinded_attribute_global_secret_key,
+    )
 }
 
 /// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
@@ -48,13 +89,31 @@ pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::transcryptor::DistributedTranscryptor)s),
 /// the global public keys and blinded global secret keys can be publicly shared with anyone and are
 /// required by [`Client`](crate::client::Client)s.
-pub fn make_distributed_global_keys<R: Rng + CryptoRng>(
+pub fn make_distributed_global_keys<G: Group, R: Rng + CryptoRng>(
     n: usize,
     rng: &mut R,
 ) -> (
-    GlobalPublicKeys,
-    BlindedGlobalSecretKeys,
-    Vec<BlindingFactor>,
+    GlobalPublicKeys<G>,
+    BlindedGlobalSecretKeys<G>,
+    Vec<BlindingFactor<G>>,
 ) {
-    generic::make_distributed_global_keys(n, rng)
+    let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys(rng);
+    let (attribute_pk, attribute_sk) = make_attribute_global_keys(rng);
+
+    let blinding_factors: Vec<BlindingFactor<G>> =
+        (0..n).map(|_| BlindingFactor::random(rng)).collect();
+
+    // Unwrap is safe: only fails if product of random blinding factors equals 1 (cryptographically negligible)
+    #[allow(clippy::unwrap_used)]
+    let blinded_global_keys =
+        make_blinded_global_keys(&pseudonym_sk, &attribute_sk, &blinding_factors).unwrap();
+
+    (
+        GlobalPublicKeys {
+            pseudonym: pseudonym_pk,
+            attribute: attribute_pk,
+        },
+        blinded_global_keys,
+        blinding_factors,
+    )
 }

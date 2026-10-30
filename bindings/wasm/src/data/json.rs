@@ -1,5 +1,16 @@
 //! WASM bindings for PEP JSON encryption.
 
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::aliases::GlobalPublicKeys;
+use crate::aliases::PepJsonBuilder;
+use crate::aliases::SessionKeys;
+use crate::aliases::TranscryptionInfo;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::aliases::{
+    AttributeGlobalPublicKey, AttributeGlobalSecretKey, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey,
+};
+use crate::aliases::{EncryptedPepJsonValue, PepJsonValue};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 #[cfg(feature = "batch")]
@@ -16,20 +27,11 @@ use libpep::client::{decrypt, encrypt};
 use libpep::client::{decrypt_batch, encrypt_batch};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::client::{decrypt_global, encrypt_global};
-use libpep::data::json::builder::PepJsonBuilder;
-use libpep::data::json::data::{EncryptedPepJsonValue, PepJsonValue};
 use libpep::data::json::structure::JsonStructure;
 use libpep::data::json::utils;
 use libpep::data::traits::Transcryptable;
-use libpep::factors::TranscryptionInfo;
 #[cfg(all(feature = "offline", feature = "insecure"))]
-use libpep::keys::GlobalPublicKeys;
-use libpep::keys::SessionKeys;
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use libpep::keys::{
-    AttributeGlobalPublicKey, AttributeGlobalSecretKey, PseudonymGlobalPublicKey,
-    PseudonymGlobalSecretKey, PublicKey, SecretKey,
-};
+use libpep::keys::{PublicKey, SecretKey};
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use serde_json::Value;
@@ -89,9 +91,9 @@ impl WASMPepJsonValue {
     /// Pads this PepJsonValue to match a target structure by adding external padding blocks.
     ///
     /// This method adds external padding blocks (separate from PKCS#7 padding) to
-    /// LongString and LongPseudonym variants to ensure all instances have the same
-    /// number of blocks when encrypted. This is necessary for batch transcryption where
-    /// all values must have identical structure.
+    /// LongString and LongPseudonym variants so that all instances have the same
+    /// number of blocks when encrypted. Batch transcryption requires all values to have
+    /// identical structure.
     ///
     /// # Arguments
     ///
@@ -200,7 +202,7 @@ impl WASMEncryptedPepJsonValue {
         public_key: &WASMSessionPublicKeys,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
-        let pk = libpep::keys::SessionPublicKeys::from(public_key);
+        let pk = crate::aliases::SessionPublicKeys::from(public_key);
         let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
@@ -509,7 +511,7 @@ pub fn wasm_transcrypt_json_batch(
     transcryption_info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
 ) -> Result<Vec<WASMEncryptedPepJsonValue>, JsValue> {
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
     let mut rng = rand::rng();
     let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
     let transcrypted = transcrypt_batch(&rust_values, &transcryption_info.0, &pk, &mut rng)

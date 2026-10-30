@@ -2,6 +2,8 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
     PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
+use crate::aliases::*;
+use crate::aliases::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
@@ -13,9 +15,10 @@ use libpep::client::distributed::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
-use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
-use libpep::keys::distribution::*;
-use libpep::keys::*;
+use libpep::factors::Factor;
+use libpep::keys::distribution::SessionKeyShare;
+use libpep::keys::distribution::{make_attribute_session_key_share, make_session_key_shares};
+use libpep::keys::{PublicKey, SecretKey};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -126,8 +129,9 @@ impl PySessionSecretKeys {
 }
 
 /// Session keys (public and secret) for both pseudonyms and attributes.
-/// This is an alternative structure that splits by public/secret instead of pseudonym/attribute.
-/// Note: Not registered as "SessionKeys" to avoid conflict with the main SessionKeys type in types.rs.
+/// This alternative structure splits by public/secret instead of pseudonym/attribute.
+/// It is not registered as "SessionKeys", which would conflict with the main SessionKeys type
+/// in types.rs.
 #[derive(Clone, From, Into)]
 #[pyclass(name = "SessionKeysPublicSecret", from_py_object)]
 pub struct PySessionKeys {
@@ -336,10 +340,10 @@ pub fn py_make_pseudonym_session_key_share(
     rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PyPseudonymSessionKeyShare {
-    use libpep::factors::types::PseudonymRekeyFactor;
+    use crate::aliases::PseudonymRekeyFactor;
     use libpep::keys::distribution::make_pseudonym_session_key_share;
     PyPseudonymSessionKeyShare(make_pseudonym_session_key_share(
-        &PseudonymRekeyFactor::from(rekey_factor.0),
+        &PseudonymRekeyFactor::from_scalar(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -352,7 +356,7 @@ pub fn py_make_attribute_session_key_share(
     blinding_factor: &PyBlindingFactor,
 ) -> PyAttributeSessionKeyShare {
     PyAttributeSessionKeyShare(make_attribute_session_key_share(
-        &AttributeRekeyFactor::from(rekey_factor.0),
+        &AttributeRekeyFactor::from_scalar(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -366,8 +370,8 @@ pub fn py_make_session_key_shares(
     blinding_factor: &PyBlindingFactor,
 ) -> PySessionKeyShares {
     let shares = make_session_key_shares(
-        &PseudonymRekeyFactor::from(pseudonym_rekey_factor.0),
-        &AttributeRekeyFactor::from(attribute_rekey_factor.0),
+        &PseudonymRekeyFactor::from_scalar(pseudonym_rekey_factor.0),
+        &AttributeRekeyFactor::from_scalar(attribute_rekey_factor.0),
         &blinding_factor.0,
     );
     PySessionKeyShares {

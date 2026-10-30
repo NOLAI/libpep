@@ -3,8 +3,8 @@
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
 use super::reshuffle::VerifiableReshuffle;
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ impl<G: Group> VerifiableReshuffleBatch<G> {
     }
 
     /// Apply each entry's reshuffle to the corresponding ciphertext,
-    /// **without verifying** any proofs. Internal prover-side use only.
+    /// without verifying any proofs. Internal prover-side use only.
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()
@@ -116,7 +116,7 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
     }
 
     /// Apply each entry's reshuffle to the corresponding ciphertext,
-    /// **without verifying** any proofs. Internal prover-side use only.
+    /// without verifying any proofs. Internal prover-side use only.
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()
@@ -174,12 +174,12 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
     };
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

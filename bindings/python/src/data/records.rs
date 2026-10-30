@@ -1,5 +1,9 @@
 //! Python bindings for Record types.
 
+use crate::aliases::SessionKeys;
+use crate::aliases::{EncryptedRecord, Record};
+#[cfg(feature = "long")]
+use crate::aliases::{LongEncryptedRecord, LongRecord};
 #[cfg(feature = "long")]
 use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
@@ -7,10 +11,8 @@ use crate::data::long::{
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use crate::keys::PySessionKeys;
 use libpep::client::{decrypt, encrypt};
-use libpep::data::records::{EncryptedRecord, Record};
 #[cfg(feature = "long")]
-use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
-use libpep::keys::types::SessionKeys;
+use libpep::data::records::LongRecordStructure;
 use pyo3::prelude::*;
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
@@ -188,9 +190,9 @@ impl PyLongRecord {
     /// Pads this LongRecord to match a target structure by adding external padding blocks.
     ///
     /// This method adds external padding blocks (separate from PKCS#7 padding) to
-    /// each pseudonym and attribute to ensure all records have the same structure.
-    /// This is necessary for batch transcryption where all values must have identical
-    /// structure to prevent linkability attacks.
+    /// each pseudonym and attribute so that all records have the same structure.
+    /// Batch transcryption needs this: all values must have identical structure to
+    /// prevent linkability attacks.
     ///
     /// Args:
     ///     structure: The target structure specifying the number of blocks for each field
@@ -350,7 +352,7 @@ impl PyLongRecordStructure {
 #[pyclass(name = "RecordTranscryptionProof", from_py_object)]
 #[derive(Clone)]
 pub struct PyRecordTranscryptionProof {
-    pub(crate) inner: libpep::data::verifiable::records::RecordTranscryptionProof,
+    pub(crate) inner: crate::aliases::RecordTranscryptionProof,
 }
 
 #[cfg(feature = "verifiable")]
@@ -380,7 +382,7 @@ impl PyRecordTranscryptionProof {
 #[pyclass(name = "LongRecordTranscryptionProof", from_py_object)]
 #[derive(Clone)]
 pub struct PyLongRecordTranscryptionProof {
-    pub(crate) inner: libpep::data::verifiable::records::LongRecordTranscryptionProof,
+    pub(crate) inner: crate::aliases::LongRecordTranscryptionProof,
 }
 
 #[cfg(all(feature = "verifiable", feature = "long"))]

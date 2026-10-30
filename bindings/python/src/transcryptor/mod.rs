@@ -5,6 +5,8 @@ pub mod batch;
 pub mod distributed;
 pub mod functions;
 pub mod types;
+#[cfg(feature = "verifiable")]
+pub mod verifiable;
 
 pub use distributed::PyDistributedTranscryptor;
 pub use types::PyTranscryptor;

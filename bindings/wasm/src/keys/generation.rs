@@ -1,12 +1,13 @@
 //! WASM bindings for key generation functions.
 
 use super::types::*;
+use crate::aliases::*;
 use crate::contexts::WASMEncryptionContext;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::WASMEncryptionSecret;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::keys::generation::*;
-use libpep::keys::types::*;
 use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
@@ -14,7 +15,7 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(js_name = makeGlobalKeys)]
 pub fn wasm_make_global_keys() -> WASMGlobalKeyPairs {
     let mut rng = rand::rng();
-    let (public, secret) = make_global_keys(&mut rng);
+    let (public, secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     WASMGlobalKeyPairs::new(
         WASMGlobalPublicKeys::new(
             WASMPseudonymGlobalPublicKey(WASMGroupElement::from(*public.pseudonym)),
@@ -31,7 +32,7 @@ pub fn wasm_make_global_keys() -> WASMGlobalKeyPairs {
 #[wasm_bindgen(js_name = makePseudonymGlobalKeys)]
 pub fn wasm_make_pseudonym_global_keys() -> WASMPseudonymGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_pseudonym_global_keys(&mut rng);
+    let (public, secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
     WASMPseudonymGlobalKeyPair::new(
         WASMPseudonymGlobalPublicKey(WASMGroupElement::from(*public)),
         WASMPseudonymGlobalSecretKey(WASMScalarNonZero::from(*secret.value())),
@@ -42,7 +43,7 @@ pub fn wasm_make_pseudonym_global_keys() -> WASMPseudonymGlobalKeyPair {
 #[wasm_bindgen(js_name = makeAttributeGlobalKeys)]
 pub fn wasm_make_attribute_global_keys() -> WASMAttributeGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_attribute_global_keys(&mut rng);
+    let (public, secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
     WASMAttributeGlobalKeyPair::new(
         WASMAttributeGlobalPublicKey(WASMGroupElement::from(*public)),
         WASMAttributeGlobalSecretKey(WASMScalarNonZero::from(*secret.value())),
@@ -56,7 +57,7 @@ pub fn wasm_make_pseudonym_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMPseudonymSessionKeyPair {
-    let (public, secret_key) = make_pseudonym_session_keys(
+    let (public, secret_key) = make_pseudonym_session_keys::<Ristretto255>(
         &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
@@ -74,7 +75,7 @@ pub fn wasm_make_attribute_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMAttributeSessionKeyPair {
-    let (public, secret_key) = make_attribute_session_keys(
+    let (public, secret_key) = make_attribute_session_keys::<Ristretto255>(
         &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
@@ -92,7 +93,7 @@ pub fn wasm_make_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeys {
-    let keys = make_session_keys(
+    let keys = make_session_keys::<Ristretto255>(
         &GlobalSecretKeys {
             pseudonym: PseudonymGlobalSecretKey::from_scalar(global.pseudonym().0 .0),
             attribute: AttributeGlobalSecretKey::from_scalar(global.attribute().0 .0),

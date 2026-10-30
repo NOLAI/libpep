@@ -1,18 +1,20 @@
 //! WASM bindings for Record types - standalone encrypt/decrypt operations.
 
+use crate::aliases::{EncryptedRecord, Record};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::errors::malformed_proof_err;
-use libpep::data::records::{EncryptedRecord, Record};
 use wasm_bindgen::prelude::*;
 
+#[cfg(feature = "long")]
+use crate::aliases::{LongEncryptedRecord, LongRecord};
 #[cfg(feature = "long")]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
 #[cfg(feature = "long")]
-use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
+use libpep::data::records::LongRecordStructure;
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
 #[wasm_bindgen(js_name = Record)]
@@ -175,9 +177,9 @@ impl WASMLongRecord {
     /// Pads this LongRecord to match a target structure by adding external padding blocks.
     ///
     /// This method adds external padding blocks (separate from PKCS#7 padding) to
-    /// each pseudonym and attribute to ensure all records have the same structure.
-    /// This is necessary for batch transcryption where all values must have identical
-    /// structure to prevent linkability attacks.
+    /// each pseudonym and attribute so that all records have the same structure.
+    /// Batch transcryption requires all values to have identical structure, to prevent
+    /// linkability attacks.
     ///
     /// # Arguments
     ///
@@ -348,9 +350,7 @@ impl WASMLongRecordStructure {
 #[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_name = RecordTranscryptionProof)]
 #[derive(Clone)]
-pub struct WASMRecordTranscryptionProof(
-    pub(crate) libpep::data::verifiable::records::RecordTranscryptionProof,
-);
+pub struct WASMRecordTranscryptionProof(pub(crate) crate::aliases::RecordTranscryptionProof);
 
 #[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_class = RecordTranscryptionProof)]
@@ -373,10 +373,8 @@ impl WASMRecordTranscryptionProof {
 }
 
 #[cfg(feature = "verifiable")]
-impl From<libpep::data::verifiable::records::RecordTranscryptionProof>
-    for WASMRecordTranscryptionProof
-{
-    fn from(p: libpep::data::verifiable::records::RecordTranscryptionProof) -> Self {
+impl From<crate::aliases::RecordTranscryptionProof> for WASMRecordTranscryptionProof {
+    fn from(p: crate::aliases::RecordTranscryptionProof) -> Self {
         Self(p)
     }
 }
@@ -385,7 +383,7 @@ impl From<libpep::data::verifiable::records::RecordTranscryptionProof>
 #[wasm_bindgen(js_name = LongRecordTranscryptionProof)]
 #[derive(Clone)]
 pub struct WASMLongRecordTranscryptionProof(
-    pub(crate) libpep::data::verifiable::records::LongRecordTranscryptionProof,
+    pub(crate) crate::aliases::LongRecordTranscryptionProof,
 );
 
 #[cfg(all(feature = "verifiable", feature = "long"))]
@@ -407,10 +405,8 @@ impl WASMLongRecordTranscryptionProof {
 }
 
 #[cfg(all(feature = "verifiable", feature = "long"))]
-impl From<libpep::data::verifiable::records::LongRecordTranscryptionProof>
-    for WASMLongRecordTranscryptionProof
-{
-    fn from(p: libpep::data::verifiable::records::LongRecordTranscryptionProof) -> Self {
+impl From<crate::aliases::LongRecordTranscryptionProof> for WASMLongRecordTranscryptionProof {
+    fn from(p: crate::aliases::LongRecordTranscryptionProof) -> Self {
         Self(p)
     }
 }

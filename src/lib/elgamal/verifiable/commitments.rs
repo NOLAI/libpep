@@ -1,11 +1,10 @@
 //! Public commitments to verifiable-transcryption factors.
 //!
-//! A commitment to a scalar factor `a` is simply the forward group element
-//! `A = a·G`. There is no separate "inverse" commitment `a⁻¹·G`: every
-//! verifiable operation proves a forward relation against `A`, so the bridge
-//! between forward and inverse commitments is no longer needed.
+//! A commitment to a scalar factor `a` is the forward group element
+//! `A = a·G`. There is no separate "inverse" commitment `a⁻¹·G`, because every
+//! verifiable operation proves a forward relation against `A`.
 //!
-//! Validity of a commitment value (e.g. that it is not trivially weak) is
+//! Validity of a commitment value (e.g. that it is not trivially weak) is the
 //! responsibility of the verifier; no zero-knowledge proof of well-formedness
 //! is required.
 
@@ -33,9 +32,8 @@ impl<G: Group> FactorCommitment<G> {
 /// Commitment to a rekey factor `k`: `K = k·G`.
 ///
 /// Structurally identical to [`PseudonymizationFactorCommitment`]; the two types exist to
-/// prevent mixing up rekey and reshuffle commitments at call sites. The wrappers deliberately
-/// do not convert into each other or into [`FactorCommitment`]: the group element is reached
-/// through the explicit [`point`](Self::point), which is meant to surface in code review.
+/// prevent mixing up rekey and reshuffle commitments at call sites. The wrappers do not convert into each other or into [`FactorCommitment`]: the group element is reached
+/// through the explicit [`point`](Self::point), which is meant to be visible in code review.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 pub struct RekeyFactorCommitment<G: Group>(pub FactorCommitment<G>);

@@ -2,11 +2,15 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
     PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
+use libpep::keys::distribution::{
+    make_distributed_attribute_global_keys, make_distributed_global_keys,
+    make_distributed_pseudonym_global_keys,
+};
+
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::keys::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };
-use libpep::keys::distribution::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 

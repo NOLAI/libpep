@@ -1,6 +1,7 @@
 //! Polymorphic encryption and decryption helper functions for client operations.
 
 use crate::data::traits::{Encryptable, Encrypted};
+use crate::elgamal::arithmetic::group::Group;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
@@ -18,13 +19,13 @@ use rand_core::{CryptoRng, Rng};
 /// // Or from the session's public keys, which selects the pseudonym half here:
 /// let encrypted_pseudonym = encrypt(&pseudonym, &session_public_keys, &mut rng);
 /// ```
-pub fn encrypt<M, R>(
+pub fn encrypt<G: Group, M, R>(
     message: &M,
     key: &impl KeyProvider<M::PublicKeyType>,
     rng: &mut R,
 ) -> M::EncryptedType
 where
-    M: Encryptable,
+    M: Encryptable<Group = G>,
     R: Rng + CryptoRng,
 {
     message.encrypt(&key.get_key(), rng)
@@ -39,12 +40,12 @@ where
 /// let attribute = decrypt(&encrypted_attribute, &attribute_key);
 /// ```
 #[cfg(feature = "elgamal3")]
-pub fn decrypt<E>(
+pub fn decrypt<G: Group, E>(
     encrypted: &E,
     key: &impl KeyProvider<E::SecretKeyType>,
 ) -> Option<E::UnencryptedType>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     encrypted.decrypt(&key.get_key())
 }
@@ -58,9 +59,12 @@ where
 /// &attribute_key);
 /// ```
 #[cfg(not(feature = "elgamal3"))]
-pub fn decrypt<E>(encrypted: &E, key: &impl KeyProvider<E::SecretKeyType>) -> E::UnencryptedType
+pub fn decrypt<G: Group, E>(
+    encrypted: &E,
+    key: &impl KeyProvider<E::SecretKeyType>,
+) -> E::UnencryptedType
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     encrypted.decrypt(&key.get_key())
 }
@@ -72,13 +76,13 @@ where
 /// let encrypted = encrypt_global(&pseudonym, &global_key, &mut rng);
 /// ```
 #[cfg(feature = "offline")]
-pub fn encrypt_global<M, R>(
+pub fn encrypt_global<G: Group, M, R>(
     message: &M,
     key: &impl KeyProvider<M::GlobalPublicKeyType>,
     rng: &mut R,
 ) -> M::EncryptedType
 where
-    M: Encryptable,
+    M: Encryptable<Group = G>,
     R: Rng + CryptoRng,
 {
     message.encrypt_global(&key.get_key(), rng)
@@ -87,24 +91,24 @@ where
 /// Polymorphic decrypt_global function for offline decryption.
 /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
 #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
-pub fn decrypt_global<E>(
+pub fn decrypt_global<G: Group, E>(
     encrypted: &E,
     key: &impl KeyProvider<E::GlobalSecretKeyType>,
 ) -> Option<E::UnencryptedType>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     encrypted.decrypt_global(&key.get_key())
 }
 
 /// Polymorphic decrypt_global function for offline decryption.
 #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
-pub fn decrypt_global<E>(
+pub fn decrypt_global<G: Group, E>(
     encrypted: &E,
     key: &impl KeyProvider<E::GlobalSecretKeyType>,
 ) -> E::UnencryptedType
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     encrypted.decrypt_global(&key.get_key())
 }

@@ -2,7 +2,10 @@
 
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
-use libpep::elgamal::zkps::{create_proof, verify_proof, Proof};
+use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::zkps::{create_proof, verify_proof};
+
+type Proof = libpep::elgamal::zkps::Proof<Ristretto255>;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -76,7 +79,7 @@ fn create_zkp_proof(
     message: &PyGroupElement,
 ) -> (PyGroupElement, PyProof) {
     let mut rng = rand::rng();
-    let (public_key, proof) = create_proof(&secret.0, &message.0, &mut rng);
+    let (public_key, proof) = create_proof::<Ristretto255, _>(&secret.0, &message.0, &mut rng);
     (PyGroupElement(public_key), PyProof { inner: proof })
 }
 
@@ -87,7 +90,7 @@ fn verify_zkp_proof(
     message: &PyGroupElement,
     proof: &PyProof,
 ) -> bool {
-    verify_proof(&public_key.0, &message.0, &proof.inner)
+    verify_proof::<Ristretto255>(&public_key.0, &message.0, &proof.inner)
 }
 
 /// Register the zkps module.

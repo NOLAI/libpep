@@ -3,19 +3,20 @@
 //! Session keys are given as the JSON object that `peppy keys session derive --json` prints,
 //! typically via `--keys @session.json`.
 
+#[cfg(not(feature = "elgamal3"))]
+use crate::aliases::SessionPublicKeys;
+use crate::aliases::{
+    GlobalPublicKeys, JsonTranscryptionProof, PepJsonBuilder, Ristretto255, SessionKeys,
+    VerifiableTranscryptionCommitment,
+};
 use crate::factors::TransitionArgs;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::data::json::{EncryptedPepJsonValue, PepJsonBuilder};
+use libpep::data::json::EncryptedPepJsonValue;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
-use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::{VerifiableTranscryptable, VerifiableTranscryptionProof};
-use libpep::factors::commitments::VerifiableTranscryptionCommitment;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::factors::RekeyPublicKey;
-#[cfg(not(feature = "elgamal3"))]
-use libpep::keys::SessionPublicKeys;
-use libpep::keys::{GlobalPublicKeys, SessionKeys};
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -117,7 +118,7 @@ fn document(raw: &str) -> Result<serde_json::Value> {
     io::json(raw, "value")
 }
 
-fn encrypted_document(raw: &str) -> Result<EncryptedPepJsonValue> {
+fn encrypted_document(raw: &str) -> Result<EncryptedPepJsonValue<Ristretto255>> {
     serde_json::from_value(document(raw)?)
         .map_err(|e| io::Error::input(format!("value: not an encrypted document: {e}")))
 }

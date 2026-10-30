@@ -1,11 +1,10 @@
 pub mod ciphersuite;
-pub mod group_elements;
 pub mod hashing;
-#[allow(clippy::wrong_self_convention)]
-pub mod scalars;
+pub mod ristretto255;
 
 // Re-export for internal Rust use
 pub(crate) use group_elements::PyGroupElement;
+pub use ristretto255::{group_elements, scalars};
 pub(crate) use scalars::PyScalarNonZero;
 
 use pyo3::prelude::*;

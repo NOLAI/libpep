@@ -1,8 +1,10 @@
 //! Batch operations for encryption and decryption.
 
-use crate::data::batch::EncryptedBatch;
-use crate::data::traits::{Encryptable, Encrypted, HasStructure};
-use crate::errors::BatchError;
+use crate::data::batch::{BatchError, Batchable, EncryptedBatch};
+#[cfg(any(feature = "insecure", feature = "offline"))]
+use crate::data::traits::Encryptable;
+use crate::data::traits::{Encrypted, HasStructure};
+use crate::elgamal::arithmetic::group::Group;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
@@ -15,13 +17,13 @@ use rand_core::{CryptoRng, Rng};
 /// # Errors
 ///
 /// Returns an error if the values cannot be brought to one structure.
-pub fn encrypt_batch<M, R>(
+pub fn encrypt_batch<G: Group, M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::PublicKeyType>,
     rng: &mut R,
 ) -> Result<EncryptedBatch<M::EncryptedType>, BatchError>
 where
-    M: Encryptable + Clone,
+    M: Batchable<Group = G>,
     M::PublicKeyType: Clone,
     M::EncryptedType: HasStructure,
     R: Rng + CryptoRng,
@@ -44,13 +46,13 @@ where
 /// The result is not an [`EncryptedBatch`]: values of different structure must not be
 /// shuffled together, as their shapes would link them.
 #[cfg(feature = "insecure")]
-pub fn encrypt_batch_raw<M, R>(
+pub fn encrypt_batch_raw<G: Group, M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::PublicKeyType>,
     rng: &mut R,
 ) -> Vec<M::EncryptedType>
 where
-    M: Encryptable,
+    M: Encryptable<Group = G>,
     R: Rng + CryptoRng,
 {
     let key = key.get_key();
@@ -62,13 +64,13 @@ where
 /// The result is not an [`EncryptedBatch`]: values encrypted towards the global keys are not
 /// in a session yet, and become a batch once rekeyed into one.
 #[cfg(feature = "offline")]
-pub fn encrypt_global_batch<M, R>(
+pub fn encrypt_global_batch<G: Group, M, R>(
     messages: &[M],
     key: &impl KeyProvider<M::GlobalPublicKeyType>,
     rng: &mut R,
 ) -> Vec<M::EncryptedType>
 where
-    M: Encryptable,
+    M: Encryptable<Group = G>,
     R: Rng + CryptoRng,
 {
     let key = key.get_key();
@@ -84,12 +86,12 @@ where
 ///
 /// Returns an error if any decryption fails; only possible with the `elgamal3` feature.
 #[cfg(feature = "elgamal3")]
-pub fn decrypt_batch<E>(
+pub fn decrypt_batch<G: Group, E>(
     encrypted: &[E],
     key: &impl KeyProvider<E::SecretKeyType>,
 ) -> Result<Vec<E::UnencryptedType>, BatchError>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     let key = key.get_key();
     encrypted
@@ -108,12 +110,12 @@ where
 ///
 /// Never fails without the `elgamal3` feature; the result type is the same in both modes.
 #[cfg(not(feature = "elgamal3"))]
-pub fn decrypt_batch<E>(
+pub fn decrypt_batch<G: Group, E>(
     encrypted: &[E],
     key: &impl KeyProvider<E::SecretKeyType>,
 ) -> Result<Vec<E::UnencryptedType>, BatchError>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     let key = key.get_key();
     Ok(encrypted.iter().map(|x| x.decrypt(&key)).collect())
@@ -125,12 +127,12 @@ where
 ///
 /// Returns an error if any decryption fails; only possible with the `elgamal3` feature.
 #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
-pub fn decrypt_global_batch<E>(
+pub fn decrypt_global_batch<G: Group, E>(
     encrypted: &[E],
     key: &impl KeyProvider<E::GlobalSecretKeyType>,
 ) -> Result<Vec<E::UnencryptedType>, BatchError>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     let key = key.get_key();
     encrypted
@@ -149,12 +151,12 @@ where
 ///
 /// Never fails without the `elgamal3` feature; the result type is the same in both modes.
 #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
-pub fn decrypt_global_batch<E>(
+pub fn decrypt_global_batch<G: Group, E>(
     encrypted: &[E],
     key: &impl KeyProvider<E::GlobalSecretKeyType>,
 ) -> Result<Vec<E::UnencryptedType>, BatchError>
 where
-    E: Encrypted,
+    E: Encrypted<Group = G>,
 {
     let key = key.get_key();
     Ok(encrypted.iter().map(|x| x.decrypt_global(&key)).collect())

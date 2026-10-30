@@ -1,12 +1,15 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use libpep::client::{Client, Distributed};
+mod common;
+
+use common::aliases::DistributedTranscryptor;
+use common::aliases::{Attribute, Client, Pseudonym};
+use libpep::client::Distributed;
 use libpep::contexts::*;
 use libpep::data::simple::*;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::transcryptor::DistributedTranscryptor;
 
 #[test]
 fn n_pep() {

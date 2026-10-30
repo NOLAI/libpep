@@ -1,5 +1,9 @@
 //! Python bindings for transcryption functions.
 
+use crate::aliases::TranscryptionInfo;
+use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
+#[cfg(not(feature = "elgamal3"))]
+use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
 #[cfg(feature = "long")]
@@ -12,12 +16,9 @@ use crate::factors::types::{
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
-use libpep::factors::TranscryptionInfo;
-use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
+use libpep::factors::Factor;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
-#[cfg(not(feature = "elgamal3"))]
-use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -260,7 +261,7 @@ pub fn py_rerandomize_known(
     factor: &PyScalarNonZero,
 ) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
-    let rerand_factor = RerandomizeFactor::from(factor.0);
+    let rerand_factor = RerandomizeFactor::from_scalar(factor.0);
 
     // Try EncryptedPseudonym
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {
@@ -304,7 +305,7 @@ pub fn py_rerandomize_known(
     factor: &PyScalarNonZero,
 ) -> PyResult<Py<PyAny>> {
     let py = encrypted.py();
-    let rerand_factor = RerandomizeFactor::from(factor.0);
+    let rerand_factor = RerandomizeFactor::from_scalar(factor.0);
 
     // Try EncryptedPseudonym with PseudonymSessionPublicKey
     if let Ok(ep) = encrypted.extract::<PyEncryptedPseudonym>() {

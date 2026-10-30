@@ -13,7 +13,8 @@ use crate::data::batch::{shuffle, validate_structure, BatchError, EncryptedBatch
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
+use crate::elgamal::arithmetic::group::Group;
+use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
 use crate::factors::RekeyPublicKey;
 #[cfg(not(feature = "elgamal3"))]
@@ -36,14 +37,14 @@ fn shuffle_map<E, R: Rng + CryptoRng>(
 }
 
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-impl<E: Pseudonymizable + HasStructure> EncryptedBatch<E>
+impl<G: Group, E: Pseudonymizable<Group = G> + HasStructure> EncryptedBatch<E>
 where
-    PseudonymizationInfo<E::Group>: RekeyPublicKey<PublicKeyOf<E>>,
+    PseudonymizationInfo<G>: RekeyPublicKey<PublicKeyOf<E>>,
 {
     /// Pseudonymize every item and shuffle. The batch's public key is converted along.
     pub fn pseudonymize<R: Rng + CryptoRng>(
         &mut self,
-        info: &PseudonymizationInfo<E::Group>,
+        info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) {
         let key = self.public_key;
@@ -55,7 +56,7 @@ where
 }
 
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-impl<E: Rekeyable + HasStructure> EncryptedBatch<E>
+impl<G: Group, E: Rekeyable<Group = G> + HasStructure> EncryptedBatch<E>
 where
     E::RekeyInfo: RekeyPublicKey<PublicKeyOf<E>>,
 {
@@ -70,16 +71,12 @@ where
 }
 
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-impl<E: Transcryptable + HasStructure> EncryptedBatch<E>
+impl<G: Group, E: Transcryptable<Group = G> + HasStructure> EncryptedBatch<E>
 where
-    TranscryptionInfo<E::Group>: RekeyPublicKey<PublicKeyOf<E>>,
+    TranscryptionInfo<G>: RekeyPublicKey<PublicKeyOf<E>>,
 {
     /// Transcrypt every item and shuffle. The batch's public key is converted along.
-    pub fn transcrypt<R: Rng + CryptoRng>(
-        &mut self,
-        info: &TranscryptionInfo<E::Group>,
-        rng: &mut R,
-    ) {
+    pub fn transcrypt<R: Rng + CryptoRng>(&mut self, info: &TranscryptionInfo<G>, rng: &mut R) {
         let key = self.public_key;
         shuffle_map(&mut self.items, rng, |item, rng| {
             item.transcrypt(info, &key, rng)
@@ -89,12 +86,12 @@ where
 }
 
 #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-impl<E: Pseudonymizable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Pseudonymizable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Pseudonymize every item and shuffle. `public_key` is the key the items are currently
     /// encrypted under.
     pub fn pseudonymize<R: Rng + CryptoRng>(
         &mut self,
-        info: &PseudonymizationInfo<E::Group>,
+        info: &PseudonymizationInfo<G>,
         public_key: &PublicKeyOf<E>,
         rng: &mut R,
     ) {
@@ -105,7 +102,7 @@ impl<E: Pseudonymizable + HasStructure> EncryptedBatch<E> {
 }
 
 #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-impl<E: Rekeyable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Rekeyable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Rekey every item and shuffle. `public_key` is the key the items are currently encrypted
     /// under.
     pub fn rekey<R: Rng + CryptoRng>(
@@ -121,12 +118,12 @@ impl<E: Rekeyable + HasStructure> EncryptedBatch<E> {
 }
 
 #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
-impl<E: Transcryptable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Transcryptable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Transcrypt every item and shuffle. `public_key` is the key the items are currently
     /// encrypted under.
     pub fn transcrypt<R: Rng + CryptoRng>(
         &mut self,
-        info: &TranscryptionInfo<E::Group>,
+        info: &TranscryptionInfo<G>,
         public_key: &PublicKeyOf<E>,
         rng: &mut R,
     ) {
@@ -137,11 +134,11 @@ impl<E: Transcryptable + HasStructure> EncryptedBatch<E> {
 }
 
 #[cfg(feature = "elgamal3")]
-impl<E: Pseudonymizable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Pseudonymizable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Pseudonymize every item and shuffle.
     pub fn pseudonymize<R: Rng + CryptoRng>(
         &mut self,
-        info: &PseudonymizationInfo<E::Group>,
+        info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) {
         shuffle_map(&mut self.items, rng, |item, rng| {
@@ -151,7 +148,7 @@ impl<E: Pseudonymizable + HasStructure> EncryptedBatch<E> {
 }
 
 #[cfg(feature = "elgamal3")]
-impl<E: Rekeyable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Rekeyable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Rekey every item and shuffle.
     pub fn rekey<R: Rng + CryptoRng>(&mut self, info: &E::RekeyInfo, rng: &mut R) {
         shuffle_map(&mut self.items, rng, |item, rng| item.rekey(info, rng));
@@ -159,13 +156,9 @@ impl<E: Rekeyable + HasStructure> EncryptedBatch<E> {
 }
 
 #[cfg(feature = "elgamal3")]
-impl<E: Transcryptable + HasStructure> EncryptedBatch<E> {
+impl<G: Group, E: Transcryptable<Group = G> + HasStructure> EncryptedBatch<E> {
     /// Transcrypt every item and shuffle.
-    pub fn transcrypt<R: Rng + CryptoRng>(
-        &mut self,
-        info: &TranscryptionInfo<E::Group>,
-        rng: &mut R,
-    ) {
+    pub fn transcrypt<R: Rng + CryptoRng>(&mut self, info: &TranscryptionInfo<G>, rng: &mut R) {
         shuffle_map(&mut self.items, rng, |item, rng| item.transcrypt(info, rng));
     }
 }
@@ -189,13 +182,13 @@ fn batch<E: HasStructure, R: Rng + CryptoRng>(
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
-pub fn pseudonymize_batch<E, R>(
+pub fn pseudonymize_batch<G: Group, E, R>(
     encrypted: &[E],
-    info: &PseudonymizationInfo<E::Group>,
+    info: &PseudonymizationInfo<G>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Pseudonymizable + HasStructure,
+    E: Pseudonymizable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.pseudonymize(info, rng))
@@ -208,14 +201,14 @@ where
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
-pub fn pseudonymize_batch<E, R>(
+pub fn pseudonymize_batch<G: Group, E, R>(
     encrypted: &[E],
-    info: &PseudonymizationInfo<E::Group>,
+    info: &PseudonymizationInfo<G>,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Pseudonymizable + HasStructure,
+    E: Pseudonymizable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();
@@ -230,13 +223,13 @@ where
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
-pub fn rekey_batch<E, R>(
+pub fn rekey_batch<G: Group, E, R>(
     encrypted: &[E],
     info: &E::RekeyInfo,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Rekeyable + HasStructure,
+    E: Rekeyable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.rekey(info, rng))
@@ -249,14 +242,14 @@ where
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
-pub fn rekey_batch<E, R>(
+pub fn rekey_batch<G: Group, E, R>(
     encrypted: &[E],
     info: &E::RekeyInfo,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Rekeyable + HasStructure,
+    E: Rekeyable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();
@@ -269,13 +262,13 @@ where
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(feature = "elgamal3")]
-pub fn transcrypt_batch<E, R>(
+pub fn transcrypt_batch<G: Group, E, R>(
     encrypted: &[E],
-    info: &TranscryptionInfo<E::Group>,
+    info: &TranscryptionInfo<G>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Transcryptable + HasStructure,
+    E: Transcryptable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     batch(encrypted, rng, |item, rng| item.transcrypt(info, rng))
@@ -288,14 +281,14 @@ where
 ///
 /// Returns an error if the items do not all have the same structure.
 #[cfg(not(feature = "elgamal3"))]
-pub fn transcrypt_batch<E, R>(
+pub fn transcrypt_batch<G: Group, E, R>(
     encrypted: &[E],
-    info: &TranscryptionInfo<E::Group>,
+    info: &TranscryptionInfo<G>,
     public_key: &impl KeyProvider<PublicKeyOf<E>>,
     rng: &mut R,
 ) -> Result<Vec<E>, BatchError>
 where
-    E: Transcryptable + HasStructure,
+    E: Transcryptable<Group = G> + HasStructure,
     R: Rng + CryptoRng,
 {
     let key = public_key.get_key();

@@ -24,11 +24,13 @@ a major change against the published 0.13.0.
 - The `EncryptedBatch` operations are generic over the encrypted type and infallible (the
   structure is validated on construction); the slice functions `pseudonymize_batch`, `rekey_batch`
   and `transcrypt_batch` return a `Vec`. The unused `BatchEncryptable` trait is gone; batch
-  preprocessing is `Encryptable::preprocess_for_batch`.
+  preprocessing is `Batchable::preprocess_for_batch`, a trait of `data::batch` that every encryptable type implements.
 - Padding and parsing errors are typed: `data::padding::PaddingError` replaces `std::io::Error`
-  in the padded encodings and `pad_to`, `errors::ParseError` in the string decoders of long
-  encrypted values and records, and `JsonError` wraps a `PaddingError` instead of a string.
-  `CacheRegistrationError` and `ZeroArgumentError` are `thiserror` errors.
+  in the padded encodings and `pad_to`, `data::errors::ParseError` (also reachable as `data::records::ParseError` and `data::long::ParseError`) in the
+  string decoders of long encrypted values and records, and `JsonError` wraps a `PaddingError` instead of a string.
+  `CacheRegistrationError` and `ZeroArgumentError` are `thiserror` errors. There is no `errors`
+  module any more: `BatchError` is `data::batch::BatchError` and exists only with the `batch`
+  feature.
 - Names: `make_pseudonymisation_factor` is `make_pseudonymization_factor`, and
   `Transcryptor::pseudonymisation_secret` is `pseudonymization_secret`, in Rust and the bindings.
   `PEPJSONValue`, `EncryptedPEPJSONValue`, `PEPJSONBuilder` and `JSONStructure` are
@@ -38,13 +40,10 @@ a major change against the published 0.13.0.
 - The verifiable commitments expose their group element through `point()` and are built from
   the transcryption infos with `From` (`VerifiablePseudonymizationCommitment::from(info)` and
   so on).
-- The verifiable layer is generic over the group, like the rest of the library: the proof
-  types of `elgamal::verifiable`, `elgamal::zkps` and `elgamal::dleq`, the commitments, the
-  Carter–Wegman master keys, the session key share proofs, the data-layer proofs and the
-  `Verifier` all have a `G: Group` version in a `generic` submodule, and the names at the module
-  level are their ristretto255 instances. For this, `Group` gained `ScalarCanBeZero`, the scalar
-  field with its addition, and its encoding functions, and `hashing::hash_to_nonzero_scalar`, the
-  group's hash reduced to a non-zero scalar. Proof bytes on ristretto255 are unchanged.
+- The verifiable primitives of `elgamal` (`elgamal::verifiable`, `elgamal::zkps`,
+  `elgamal::dleq`) are generic over the group. For this, `Group` gained `ScalarCanBeZero`, the
+  scalar field with its addition, and its encoding functions, and `hashing::hash_to_nonzero_scalar`,
+  the group's hash reduced to a non-zero scalar. Proof bytes on ristretto255 are unchanged.
 - The batch proofs of the data layer are three types generic over the item type,
   `BatchPseudonymizationProof<E>`, `BatchRekeyProof<E>` and `BatchTranscryptionProof<E>` in
   `data::verifiable::batch`, built on the `VerifiableBatchItem` trait that lays an item's
@@ -213,7 +212,7 @@ a major change against the published 0.13.0.
   only derivation outside `legacy`, which is unchanged and still reproduces the PEP repository
   implementation bit for bit.
 - A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
-  `"coPRFV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
+  `"nPEPV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
   *and* a hash (`ristretto255-SHA512`), so it belongs to the group: it is the associated constant
   `Group::CIPHERSUITE`, taken verbatim from the draft's ciphersuite table, and cannot be
   constructed from an arbitrary string. One group's identifier therefore cannot be paired with
@@ -247,16 +246,18 @@ a major change against the published 0.13.0.
   `SessionPublicKeys`; `SessionKeys.public()`).
 - `peppy`: `pseudonym|attribute rekey|pseudonymize|transcrypt` take `--key`, `json transcrypt`
   takes `--keys` (without `elgamal3`).
-- The library is generic over the prime-order group (see *Added*). The ristretto255 API is
-  unchanged in use, with these exceptions: `ElGamal::to_bytes` returns a `Vec<u8>` and
-  `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes` and
-  `from_bytes` likewise; the `PublicKey`, `SecretKey`, `RekeyFactor`, `BlindedGlobalSecretKey`,
-  `SessionKeyShare`, `Encryptable`, `Encrypted` and `Distributed` traits have an associated
-  `Group` type (`Padded` requires it to have an `InvertibleEncoding`); the factor types have
-  `from_scalar` instead of `From<ScalarNonZero>` in generic
-  code (the ristretto255 aliases keep `From`). The tuple constructors `LongPseudonym(..)`,
-  `LongAttribute(..)`, `LongEncryptedPseudonym(..)` and `LongEncryptedAttribute(..)` are
-  functions with the same names, since type aliases cannot construct tuple structs.
+- The whole API is generic over the prime-order group (see *Added*): the `elgamal` module and the
+  high-level API (`data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) take a
+  `G: Group` parameter (`elgamal::arithmetic::Group`), which users instantiate with
+  `Ristretto255` (`Pseudonym<Ristretto255>`). The group is inferred wherever it follows from the
+  arguments; functions that create keys from randomness alone take it explicitly
+  (`make_global_keys::<Ristretto255, _>`). The bindings, `peppy` and the tests name the group once
+  in a small aliases file. Other changes: `ElGamal<G>` is generic and
+  `encrypt` takes the group explicitly (`encrypt::<Ristretto255, _>`); `ElGamal::to_bytes` returns a
+  `Vec<u8>` and `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes`
+  and `from_bytes` likewise; `elgamal::zkps` and `elgamal::dleq` are generic, so their functions
+  take the group explicitly; `BatchError` is `data::batch::BatchError` and exists only with the
+  `batch` feature, and `ParseError` is `data::records::ParseError`.
 
 ### Added
 
@@ -282,14 +283,9 @@ a major change against the published 0.13.0.
   RFC 9497 test vectors. Optional encodings:
   `InvertibleEncoding` (the lizard encoding, implemented for ristretto255) and `OaepEncoding` (for
   Weierstrass curves, to be implemented).
-- Every group-parameterized type and function lives in a `generic` submodule next to its module
-  (`data::simple::generic::Pseudonym<G>`, `keys::types::generic::SessionKeys<G>`,
-  `transcryptor::types::generic::Transcryptor<G>`, ...); the names at the module level are type
-  aliases pinning `Ristretto255`, so ristretto255 code is unchanged. Functions that infer the
-  group from their arguments are generic; the ones that generate keys from randomness alone are
-  ristretto255 instances, with generic versions in `generic`. Groundwork for the P-256, P-384 and
-  brainpoolP320r1 ciphersuites of the coPRF draft; the bindings and the CLI expose ristretto255
-  only.
+- The whole API (`elgamal`, `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) is
+  generic over the group, so other groups can be built on it. The bindings and the CLI use
+  ristretto255.
 
 - `tests/vectors.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
   constants with one value per line. They pin the protocol's derived values byte for byte, so that

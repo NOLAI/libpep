@@ -1,7 +1,7 @@
 //! Verifiable rekey and verifiable rekey-2.
 //!
 //! Implements the [`VerifiableRekey`] and [`VerifiableRekey2`] constructions
-//! exactly as specified in the paper:
+//! as specified in the paper:
 //!
 //! ```text
 //!  VRekey(⟨B, C, Y⟩, k)  = ⟨ B', ZKP{B = k * B'}, ZKP{Y' = k * Y} ⟩
@@ -13,18 +13,18 @@
 //! scalar `k = k_from⁻¹·k_to`) plus the per-factor sub-proof tying `K` to the
 //! transcryptor's published `K_from`, `K_to` commitments. The per-factor
 //! sub-proof depends only on `(k_from, k_to)` and not on any individual
-//! ciphertext — so when transcrypting many ciphertexts under the same
+//! ciphertext, so when transcrypting many ciphertexts under the same
 //! transition, the outer `VerifiableRekey2` can be built once and the inner
 //! [`VerifiableRekey`] re-generated cheaply per ciphertext.
 //!
-//! Each proof is a *forward* discrete-log equality proof: the first component
+//! Each proof is a forward discrete-log equality proof: the first component
 //! of a `ZKP{N = a * M}` equals `a·M`, and the proof is verified against the
 //! forward commitment `A = a·G`.
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -77,8 +77,8 @@ impl<G: Group> VerifiableRekey<G> {
         }
     }
 
-    /// Reconstruct the rekeyed ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only — public callers should
+    /// Reconstruct the rekeyed ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only; public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
     pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         ElGamal {
@@ -161,8 +161,8 @@ impl<G: Group> VerifiableRekey2<G> {
         Self { gk, p_gk_to, inner }
     }
 
-    /// Reconstruct the rekeyed ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only.
+    /// Reconstruct the rekeyed ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only.
     pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.inner.result(original)
     }
@@ -211,10 +211,10 @@ impl<G: Group> VerifiableRekey2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rekey, rekey2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{RekeyFactorCommitment, VerifiableRekey, VerifiableRekey2};
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

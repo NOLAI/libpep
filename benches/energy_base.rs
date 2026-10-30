@@ -1,6 +1,7 @@
 use energy_bench::{EnergyBench, EnergyBenchConfig};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
@@ -49,7 +50,7 @@ fn main() {
         bench.benchmark(metadata, || {
             for _ in 0..iterations {
                 let mut rng_inner = rand::rng();
-                let _ = encrypt(&message, &public_key, &mut rng_inner);
+                let _ = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng_inner);
             }
             Ok::<_, ()>(())
         });
@@ -60,7 +61,7 @@ fn main() {
         let (secret_key, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
 
         let metadata = BenchMetadata {
             operation: "decrypt",
@@ -80,7 +81,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let r = ScalarNonZero::random(&mut rng);
 
         let metadata = BenchMetadata {
@@ -104,7 +105,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let s = ScalarNonZero::random(&mut rng);
 
         let metadata = BenchMetadata {
@@ -125,7 +126,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let k = ScalarNonZero::random(&mut rng);
 
         let metadata = BenchMetadata {
@@ -146,7 +147,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
 
@@ -168,7 +169,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let r = ScalarNonZero::random(&mut rng);
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
@@ -194,7 +195,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
 
@@ -216,7 +217,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
 
@@ -238,7 +239,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
@@ -262,7 +263,7 @@ fn main() {
         let (_, public_key) = setup_keys();
         let mut rng = rng();
         let message = GroupElement::random(&mut rng);
-        let encrypted = encrypt(&message, &public_key, &mut rng);
+        let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
         let r = ScalarNonZero::random(&mut rng);
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);

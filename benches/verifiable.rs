@@ -1,8 +1,8 @@
 //! Benchmarks for the verifiable transcryption primitives.
 //!
 //! For each operation we measure:
-//!   * `*_create` — running the verifiable operation (generates the proofs).
-//!   * `*_verify` — verifying the proof against the input ciphertext and the
+//!   * `*_create`: running the verifiable operation (generates the proofs).
+//!   * `*_verify`: verifying the proof against the input ciphertext and the
 //!     forward factor commitment(s).
 //!
 //! Inputs are generated in the `iter_batched` setup closure so only the
@@ -11,6 +11,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives::{rekey, rekey2, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2};
 use libpep::elgamal::verifiable::{
     PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
@@ -26,12 +27,12 @@ fn setup_pk() -> GroupElement {
 }
 
 fn rrsk_primitive(
-    c: &ElGamal,
+    c: &ElGamal<Ristretto255>,
     _gy: &GroupElement,
     r: &ScalarNonZero,
     s: &ScalarNonZero,
     k: &ScalarNonZero,
-) -> ElGamal {
+) -> ElGamal<Ristretto255> {
     #[cfg(feature = "elgamal3")]
     {
         let _ = _gy;
@@ -44,14 +45,14 @@ fn rrsk_primitive(
 }
 
 fn rrsk2_primitive(
-    c: &ElGamal,
+    c: &ElGamal<Ristretto255>,
     _gy: &GroupElement,
     r: &ScalarNonZero,
     s_from: &ScalarNonZero,
     s_to: &ScalarNonZero,
     k_from: &ScalarNonZero,
     k_to: &ScalarNonZero,
-) -> ElGamal {
+) -> ElGamal<Ristretto255> {
     #[cfg(feature = "elgamal3")]
     {
         let _ = _gy;
@@ -70,7 +71,7 @@ fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 (encrypted, s, rng)
             },
@@ -87,7 +88,7 @@ fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let proof = VerifiableReshuffle::new(&encrypted, &s, &mut rng);
                 let result = reshuffle(&encrypted, &s);
@@ -107,7 +108,7 @@ fn bench_verifiable_rekey_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, k, rng)
             },
@@ -124,7 +125,7 @@ fn bench_verifiable_rekey_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 let proof = VerifiableRekey::new(&encrypted, &k, &mut rng);
                 let result = rekey(&encrypted, &k);
@@ -144,7 +145,7 @@ fn bench_verifiable_rsk_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, s, k, rng)
@@ -162,7 +163,7 @@ fn bench_verifiable_rsk_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 let proof = VerifiableRSK::new(&encrypted, &s, &k, &mut rng);
@@ -184,7 +185,7 @@ fn bench_verifiable_reshuffle2_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 (encrypted, s_from, s_to, rng)
@@ -204,7 +205,7 @@ fn bench_verifiable_reshuffle2_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 let proof = VerifiableReshuffle2::new(&encrypted, &s_from, &s_to, &mut rng);
@@ -228,7 +229,7 @@ fn bench_verifiable_rekey2_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
                 (encrypted, k_from, k_to, rng)
@@ -248,7 +249,7 @@ fn bench_verifiable_rekey2_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
                 let proof = VerifiableRekey2::new(&encrypted, &k_from, &k_to, &mut rng);
@@ -272,7 +273,7 @@ fn bench_verifiable_rsk2_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
@@ -294,7 +295,7 @@ fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
@@ -325,7 +326,7 @@ fn bench_verifiable_rrsk_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
@@ -346,7 +347,7 @@ fn bench_verifiable_rrsk_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
@@ -369,7 +370,7 @@ fn bench_verifiable_rrsk2_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
@@ -394,7 +395,7 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
@@ -435,11 +436,13 @@ fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 (encrypted, pk, r, rng)
             },
-            |(_encrypted, pk, r, mut rng)| VerifiableRerandomize::new(&pk, &r, &mut rng),
+            |(_encrypted, pk, r, mut rng)| {
+                VerifiableRerandomize::<Ristretto255>::new(&pk, &r, &mut rng)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -454,9 +457,9 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRerandomize::new(&pk, &r, &mut rng);
+                let proof = VerifiableRerandomize::<Ristretto255>::new(&pk, &r, &mut rng);
                 #[cfg(feature = "elgamal3")]
                 let result = rerandomize(&encrypted, &r);
                 #[cfg(not(feature = "elgamal3"))]
@@ -484,7 +487,7 @@ fn bench_baseline_reshuffle(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 (encrypted, s)
             },
@@ -501,7 +504,7 @@ fn bench_baseline_rekey(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, k)
             },
@@ -518,7 +521,7 @@ fn bench_baseline_rsk(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, s, k)
@@ -536,7 +539,7 @@ fn bench_baseline_reshuffle2(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 (encrypted, s_from, s_to)
@@ -554,7 +557,7 @@ fn bench_baseline_rekey2(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
                 (encrypted, k_from, k_to)
@@ -572,7 +575,7 @@ fn bench_baseline_rsk2(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
@@ -594,7 +597,7 @@ fn bench_baseline_rrsk(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
@@ -613,7 +616,7 @@ fn bench_baseline_rrsk2(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
@@ -637,7 +640,7 @@ fn bench_baseline_rerandomize(c: &mut Criterion) {
                 let pk = setup_pk();
                 let mut rng = rand::rng();
                 let m = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&m, &pk, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 (encrypted, pk, r)
             },

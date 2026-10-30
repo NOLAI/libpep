@@ -1,25 +1,29 @@
 //! `peppy keys`: global, session and distributed key material.
 
+#[cfg(feature = "json")]
+use crate::aliases::SessionKeys;
+use crate::aliases::{
+    AttributeGlobalSecretKey, AttributeSessionKeyShare, AttributeSessionKeys,
+    AttributeSessionSecretKey, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKeys,
+    BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymGlobalSecretKey,
+    PseudonymSessionKeyShare, PseudonymSessionKeys, PseudonymSessionSecretKey, Ristretto255,
+    SessionKeyShares,
+};
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
 use libpep::client::distributed::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
 };
+use libpep::elgamal::arithmetic::group::Group;
+use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use libpep::keys::distribution::{
     make_distributed_global_keys, make_session_key_shares, make_session_key_shares_with_proof,
-    AttributeSessionKeyShare, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey,
-    BlindedGlobalSecretKeys, BlindedPseudonymGlobalSecretKey, BlindingFactor,
-    PseudonymSessionKeyShare, SessionKeyShare, SessionKeyShares,
+    BlindedGlobalSecretKey, SessionKeyShare,
 };
-#[cfg(feature = "json")]
-use libpep::keys::SessionKeys;
 use libpep::keys::{
-    make_attribute_session_keys, make_global_keys, make_pseudonym_session_keys,
-    AttributeGlobalSecretKey, AttributeSessionKeys, AttributeSessionSecretKey,
-    PseudonymGlobalSecretKey, PseudonymSessionKeys, PseudonymSessionSecretKey, PublicKey,
+    make_attribute_session_keys, make_global_keys, make_pseudonym_session_keys, PublicKey,
     SecretKey,
 };
 use rand_core::{CryptoRng, Rng};
@@ -122,7 +126,7 @@ pub enum Distributed {
 pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Keys::Global(Global::Generate) => {
-            let (public, secret) = make_global_keys(rng);
+            let (public, secret) = make_global_keys::<Ristretto255, _>(rng);
             out.value("pseudonym_public_key", public.pseudonym.to_hex());
             out.value("pseudonym_secret_key", secret.pseudonym.value().to_hex());
             out.value("attribute_public_key", public.attribute.to_hex());
@@ -182,7 +186,8 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                     "a distributed system needs at least one transcryptor",
                 ));
             }
-            let (public, blinded, factors) = make_distributed_global_keys(n, rng);
+            let (public, blinded, factors) =
+                make_distributed_global_keys::<Ristretto255, _>(n, rng);
             out.value("pseudonym_public_key", public.pseudonym.to_hex());
             out.value("attribute_public_key", public.attribute.to_hex());
             out.value("blinded_pseudonym_secret_key", blinded.pseudonym.to_hex());
@@ -355,6 +360,9 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
     Ok(())
 }
 
-fn share<S: SessionKeyShare<Group = Ristretto255>>(raw: &str, what: &str) -> Result<S> {
+fn share<S: SessionKeyShare<Group: Group<Scalar = ScalarNonZero>>>(
+    raw: &str,
+    what: &str,
+) -> Result<S> {
     Ok(S::from_scalar(io::scalar(raw, what)?))
 }

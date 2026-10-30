@@ -1,12 +1,16 @@
 #![cfg(all(feature = "offline", feature = "insecure"))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod common;
+
+use common::aliases::Ristretto255;
+use common::aliases::{Attribute, Pseudonym};
+#[cfg(feature = "long")]
+use common::aliases::{LongAttribute, LongPseudonym};
 use libpep::client::{decrypt_global, encrypt_global};
 #[cfg(feature = "batch")]
 use libpep::client::{decrypt_global_batch, encrypt_global_batch};
-#[cfg(feature = "long")]
-use libpep::data::long::{LongAttribute, LongPseudonym};
-use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::data::simple::ElGamalEncryptable;
 #[cfg(feature = "json")]
 use libpep::keys::make_global_keys;
 use libpep::keys::{make_attribute_global_keys, make_pseudonym_global_keys};
@@ -16,8 +20,8 @@ use libpep::pep_json;
 #[test]
 fn test_encrypt_decrypt_global() {
     let rng = &mut rand::rng();
-    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys(rng);
-    let (attribute_public, attribute_secret) = make_attribute_global_keys(rng);
+    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (attribute_public, attribute_secret) = make_attribute_global_keys::<Ristretto255, _>(rng);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt_global(&pseudo, &pseudonym_public, rng);
@@ -42,8 +46,8 @@ fn test_encrypt_decrypt_global() {
 #[cfg(feature = "elgamal3")]
 fn test_decrypt_global_wrong_key_fails() {
     let rng = &mut rand::rng();
-    let (pseudonym_public, _pseudonym_secret) = make_pseudonym_global_keys(rng);
-    let (_other_public, other_secret) = make_pseudonym_global_keys(rng);
+    let (pseudonym_public, _pseudonym_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_other_public, other_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt_global(&pseudo, &pseudonym_public, rng);
@@ -54,8 +58,8 @@ fn test_decrypt_global_wrong_key_fails() {
 #[cfg(feature = "long")]
 fn test_encrypt_decrypt_global_long() {
     let rng = &mut rand::rng();
-    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys(rng);
-    let (attribute_public, attribute_secret) = make_attribute_global_keys(rng);
+    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (attribute_public, attribute_secret) = make_attribute_global_keys::<Ristretto255, _>(rng);
 
     let pseudo = LongPseudonym::from_bytes_padded("a-pseudonym-longer-than-15-bytes".as_bytes());
     let enc_pseudo = encrypt_global(&pseudo, &pseudonym_public, rng);
@@ -81,7 +85,7 @@ fn test_encrypt_decrypt_global_long() {
 #[cfg(feature = "json")]
 fn test_encrypt_decrypt_global_json() {
     let rng = &mut rand::rng();
-    let (global_public, global_secret) = make_global_keys(rng);
+    let (global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
 
     let record = pep_json!({
         "patient_id": pseudonym("patient-12345"),
@@ -104,7 +108,7 @@ fn test_encrypt_decrypt_global_json() {
 #[cfg(feature = "batch")]
 fn test_encrypt_decrypt_global_batch() {
     let rng = &mut rand::rng();
-    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys(rng);
+    let (pseudonym_public, pseudonym_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
 
     let pseudonyms: Vec<Pseudonym> = (0..5).map(|_| Pseudonym::random(rng)).collect();
     let encrypted = encrypt_global_batch(&pseudonyms, &pseudonym_public, rng);
@@ -117,7 +121,7 @@ fn test_encrypt_decrypt_global_batch() {
 #[cfg(all(feature = "batch", feature = "json"))]
 fn test_encrypt_decrypt_global_batch_json() {
     let rng = &mut rand::rng();
-    let (global_public, global_secret) = make_global_keys(rng);
+    let (global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
 
     let records: Vec<_> = (0..3)
         .map(|i| {

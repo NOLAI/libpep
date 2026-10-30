@@ -125,6 +125,7 @@ macro_rules! pep_json {
 mod tests {
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -132,7 +133,9 @@ mod tests {
     };
     use serde_json::json;
 
-    fn make_test_keys() -> SessionKeys {
+    type PepJsonValue = crate::data::json::data::PepJsonValue<Ristretto255>;
+
+    fn make_test_keys() -> SessionKeys<Ristretto255> {
         let mut rng = rand::rng();
         let (_, attr_global_secret) = make_attribute_global_keys(&mut rng);
         let (_, pseudo_global_secret) = make_pseudonym_global_keys(&mut rng);
@@ -313,10 +316,10 @@ mod tests {
 
         // Verify it creates the correct variant
         match pep_value {
-            crate::data::json::data::PepJsonValue::Pseudonym(_) => {
+            PepJsonValue::Pseudonym(_) => {
                 // Expected for short pseudonyms
             }
-            crate::data::json::data::PepJsonValue::LongPseudonym(_) => {
+            PepJsonValue::LongPseudonym(_) => {
                 // Also acceptable if string is long
             }
             _ => panic!("Expected Pseudonym or LongPseudonym variant"),

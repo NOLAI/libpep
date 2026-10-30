@@ -1,7 +1,7 @@
 //! Core traits for encryption and decryption operations.
 
 use crate::elgamal::arithmetic::group::Group;
-use crate::factors::types::generic::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
+use crate::factors::types::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
 use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
@@ -33,7 +33,7 @@ use rand_core::{CryptoRng, Rng};
 /// encrypt(&pseudonym, &session_keys.public(), rng);
 /// ```
 pub trait Encryptable: Sized {
-    /// The group the value is encrypted in.
+    /// The group the data is encrypted over.
     type Group: Group;
 
     /// The encrypted version of this type.
@@ -64,22 +64,11 @@ pub trait Encryptable: Sized {
     ) -> Self::EncryptedType
     where
         R: Rng + CryptoRng;
-
-    /// Hook for batch-level preprocessing before encryption. Default is a
-    /// pass-through; override when the encrypted batch needs items to share
-    /// a uniform shape (e.g. JSON values padded to a unified structure).
-    #[cfg(feature = "batch")]
-    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, crate::errors::BatchError>
-    where
-        Self: Clone,
-    {
-        Ok(items.to_vec())
-    }
 }
 
 /// A trait for encrypted data types that can be decrypted back into [`Encryptable`] types.
 pub trait Encrypted: Sized {
-    /// The group the value is encrypted in.
+    /// The group the data is encrypted over.
     type Group: Group;
 
     /// The unencrypted version of this type.
@@ -159,7 +148,7 @@ pub trait Encrypted: Sized {
 // separately); they must not be applied to input from an untrusted sender.
 //
 // Without the `elgamal3` feature a ciphertext does not carry the public key it is encrypted under,
-// so the caller supplies it, exactly as for [`Encrypted::rerandomize`]. For a single transcryptor
+// so the caller supplies it, as for [`Encrypted::rerandomize`]. For a single transcryptor
 // this is the sender's session public key; in the distributed setting it is the key the previous
 // transcryptor transcrypted towards.
 

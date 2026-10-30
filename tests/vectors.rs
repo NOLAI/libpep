@@ -35,8 +35,14 @@
 ))]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+mod common;
+
+use common::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use common::aliases::{AttributeRekeyInfo, PseudonymizationInfo};
+use common::aliases::{BlindingCommitment, SessionKeyShareProof};
+use common::aliases::{EncryptedAttribute, EncryptedPseudonym};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::simple::{ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym};
+use libpep::data::simple::ElGamalEncrypted;
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::hashing::hash_to_group;
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
@@ -46,15 +52,9 @@ use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, 
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
-use libpep::factors::{
-    AttributeRekeyInfo, EncryptionSecret, Factor, PseudonymizationInfo, PseudonymizationSecret,
-};
-use libpep::keys::distribution::proofs::{BlindingCommitment, SessionKeyShareProof};
+use libpep::factors::{EncryptionSecret, Factor, PseudonymizationSecret};
 use libpep::keys::traits::{PublicKey, SecretKey};
-use libpep::keys::{
-    make_attribute_session_keys, make_pseudonym_session_keys, AttributeGlobalSecretKey,
-    PseudonymGlobalSecretKey,
-};
+use libpep::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
@@ -84,7 +84,7 @@ mod expected {
     /// `Ciphersuite`
     pub const CIPHERSUITE: &str = "ristretto255-SHA512";
     /// `ContextString`
-    pub const CONTEXTSTRING: &str = "636f50524656312d72697374726574746f3235352d534841353132";
+    pub const CONTEXTSTRING: &str = "6e50455056312d72697374726574746f3235352d534841353132";
     /// `Seed`
     pub const SEED: &str = "6c69627065702d72697374726574746f3235352d5348413531322d7665632d31";
 
@@ -106,23 +106,23 @@ mod expected {
     /// `labelRekeyPseudonym`
     pub const SCALAR_LABELREKEYPSEUDONYM: &str = "01";
     /// `k_c`
-    pub const SCALAR_K_C: &str = "70d5b3b5292a8db45d37f3ea19d72e11ac65a48d82b05cd184cdf906b944930b";
+    pub const SCALAR_K_C: &str = "9e1063dfacc4da6b89565e9fd97543433d2856765c311d00b1a714f213b2d308";
     /// `K_c`
-    pub const K_C: &str = "e02076ebe02373bfc034edaef8a2569ff26ce589a8436b318a26e1f3a70dc560";
+    pub const K_C: &str = "a2c04b4513c51654575727d906f54d8e9d4932b98014d489ae5c0f66293a1f03";
 
     /// `labelRekeyAttribute`
     pub const SCALAR_LABELREKEYATTRIBUTE: &str = "02";
     /// `k'_c`
-    pub const SCALAR_K_PRIME_C: &str = "3b4c72d3eea7b6915144bfcb6e9198446e0663a318ebee76783c38233b537a05";
+    pub const SCALAR_K_PRIME_C: &str = "233b4879c55f58c4cad13fa52245fa793d9f3fa02ba1e28281cd3000605b650d";
     /// `K'_c`
-    pub const K_PRIME_C: &str = "680c39a2e1a372a129a8b75154cc827f6e22c813f2944a071e4541453d718918";
+    pub const K_PRIME_C: &str = "d490876938e82b115871d3b45763d3043530c9306d5e5041eba736f06358337a";
 
     /// `labelReshuffle`
     pub const SCALAR_LABELRESHUFFLE: &str = "03";
     /// `s_d`
-    pub const SCALAR_S_D: &str = "48d30a5db673de12cd8a4c524739e029e73d2ec23017a50f653d422776d2bc0c";
+    pub const SCALAR_S_D: &str = "7ad6409b47f6664fd9c3fbc1b9c45dad0fcd01f54c8533517b875de90de9e404";
     /// `S_d`
-    pub const S_D: &str = "269f4bec48097732310c3c4d6d6d956e2189f046342e8c5a9efdfc3113c8182d";
+    pub const S_D: &str = "f052c54006ddf0647da052c57e7732ecda11749c1df8282210eaa6b74c1cd16a";
 
     // ===== Single pseudonym =====
 
@@ -133,7 +133,7 @@ mod expected {
     /// `Identifier`
     pub const IDENTIFIER: &str = "70617469656e742d3432";
     /// `M`
-    pub const M: &str = "9443144f8ff6b653c612fa635402ad3598a4e29ebf87eb8d964afcf5c13a3163";
+    pub const M: &str = "00191151a59a9dd40a4f9ab5d9c99be793ddff916e9b9d7238a3ab4e359aec07";
     /// `y`
     pub const SCALAR_Y: &str = "f60c0ff0af9a5212ea4294c5f4184fcd8758c32c54bddee2c6aed4238a31270c";
     /// `Y`
@@ -147,27 +147,27 @@ mod expected {
     /// `SessionTo`
     pub const SESSIONTO: &str = "73657373696f6e2d62";
     /// `pk_from`
-    pub const SCALAR_PK_FROM: &str = "1c937821ab471f8749460b52b4061fdc904f814d4d9e76d7440f459b131ef84d";
+    pub const SCALAR_PK_FROM: &str = "7ed1d7f1f90401133709a5c65d5b8a564c6943f6cbeca39bb3381e03f53aec04";
     /// `b`
     pub const SCALAR_B: &str = "232520f90a6508350126f42f4b04e7f26c1418ed7ac7f1ae789fc7553f22b904";
     /// `V`
-    pub const V: &str = "e43bfa2c70155100b745294e18c76e6ab0cbc105b211f4a884f44b4f069e1027087ccf25ecbfdabf1407590d4380b62335744fe2c0588d3b3dcb4c4ba6950840";
+    pub const V: &str = "e43bfa2c70155100b745294e18c76e6ab0cbc105b211f4a884f44b4f069e102756228635e652053bc0cbb41449f38cf583af9e9217e35cb6e45ca14a90b4af5b";
 
     /// `s`
-    pub const SCALAR_S: &str = "0e6febf1b89503f7ca630f39bec91e51415f5a86d054e10e09066fdbfc90730e";
+    pub const SCALAR_S: &str = "8330955409c994b9f5345c9c4788ce61f278351ad9cb6f2f21ffada70b509a01";
     /// `k`
-    pub const SCALAR_K: &str = "95408df0a4df432f1e82fb24b18084f6b69d313c05585c43c7b5c69f801c2407";
+    pub const SCALAR_K: &str = "4764ef625f74fd5d148a2d4e6a0bc43be07e4dfccb3b0ef381c0952cd42f0a04";
     /// `r`
     pub const SCALAR_R: &str = "3a778c5e60f053849173544065dce7808e65347c0a77ace6fee8c934ca18370d";
     /// `V'`
-    pub const V_PRIME: &str = "aa5aca7202007bfd59c8e95b19818a17faf3a4bab1ca202a5d8081af9b430e2dbaf02a128186a023d3812dbaf63e7d0e228d79556a2fa46c7aca91c5ed176955";
+    pub const V_PRIME: &str = "f8ae7c6ea3d30fba07e1788610bd3880cf91bbb6231fcec449a2a56f8b250f180ecef7fc5c3ca8741a84b74914359209cb5790d5e01693814c9d7ff45ca1dd6e";
     /// `Y_to`
-    pub const Y_TO: &str = "64a4932e3fe087554059df526f279c029b94c027389a3b5e9ab365992bbbf524";
+    pub const Y_TO: &str = "8cac918bf6e8b6d9808b11e9db1f55be0346936725658bd18c4af50b6d2e866c";
 
     /// `P`
-    pub const P: &str = "d81b4bc1c5ded30bb710ae627a734e6b263bee2aeb0b708104ba77de3744d929";
+    pub const P: &str = "5ca238c0e468a5047cdb9f36159c7d3c6aa7479f499356a5463a3d75adf3696e";
     /// `sk_to`
-    pub const SCALAR_SK_TO: &str = "6a4d402c45358f48ccc5ede5f1b7302766aac7fb0265bc93069e806eba04170a";
+    pub const SCALAR_SK_TO: &str = "b46dd218345aa5adf1f665900a90df3d3cb83553df7e1937c673985d90f1780d";
 
     // ===== Batch of three =====
 
@@ -185,40 +185,40 @@ mod expected {
     /// `PseudonymInput_0`
     pub const PSEUDONYMINPUT_0: &str = "70617469656e742d31";
     /// `PseudonymM_0`
-    pub const PSEUDONYMM_0: &str = "ca8d9791d56f50e3bbeac7e42849e23a0b558d1cd53ff7a28e6e408a025e6103";
+    pub const PSEUDONYMM_0: &str = "3c750759cc3582101060d574636cea9cbc935181bde2821312fbfee91c957546";
     /// `PseudonymB_0`
     pub const PSEUDONYMB_0: &str = "57b9dc9d1f93c84f917571e16cc5f5d924bade895d30569387d41d402ae87a05";
     /// `PseudonymV_0`
-    pub const PSEUDONYMV_0: &str = "a8edd258e26a572d2302694ef9079d45d529cd4645ec29257f8ab791891c9837aa04e57f99f883bbb2d366ef15f2f4e39b296f3b601fb2f1fd4cdd7a2d7d7d71";
+    pub const PSEUDONYMV_0: &str = "a8edd258e26a572d2302694ef9079d45d529cd4645ec29257f8ab791891c983712b7028f759ec15929ef4d0e5fdaba099068f1946cb5b5f9d3f24e07df08257f";
     /// `PseudonymInput_1`
     pub const PSEUDONYMINPUT_1: &str = "70617469656e742d32";
     /// `PseudonymM_1`
-    pub const PSEUDONYMM_1: &str = "e00fc0d8dc482166b7d36df4dcd3c2f8dc8422ca308fd7891834d2cf34d97d4b";
+    pub const PSEUDONYMM_1: &str = "9c20f48d7ea00873fba3e26d83a0f847e95078ffdfaba1f024ad0418899c2f42";
     /// `PseudonymB_1`
     pub const PSEUDONYMB_1: &str = "f7fc4da3d3984af314d278dff7a06b4a4ffa3319bcb4ced72f10e25757985503";
     /// `PseudonymV_1`
-    pub const PSEUDONYMV_1: &str = "fcb594cb294c7d18ed058658ba577a28eec42e044e5acb84c0560043a13140117c945871b119b8ba62969d0fed4fde919fe80d097202c420eea042cf70a8354e";
+    pub const PSEUDONYMV_1: &str = "fcb594cb294c7d18ed058658ba577a28eec42e044e5acb84c0560043a1314011a2e1b4aad1712885cbc08ace2f2b0d39b74ed8a4e7e46904b42cb7338527584f";
     /// `PseudonymInput_2`
     pub const PSEUDONYMINPUT_2: &str = "70617469656e742d33";
     /// `PseudonymM_2`
-    pub const PSEUDONYMM_2: &str = "d6a6568823286edeb5a591a8ee3280cb871eeaa870ae89bc6b4c7589526a540b";
+    pub const PSEUDONYMM_2: &str = "94508e154ef88d683d903c6a8031b83b67379b3a0326e1e6f0846129e1babc60";
     /// `PseudonymB_2`
     pub const PSEUDONYMB_2: &str = "7d594cbae2df704390e98f567cf10cc194d392cf89cb2d70bfc449a5f0c5fd0c";
     /// `PseudonymV_2`
-    pub const PSEUDONYMV_2: &str = "38d06fca356dee46ece18ce53518c4b094167a7b3f339595c25b45949c09e47782458ce71edd69fb4043102073c018fc0ae2aa9fddcc0b5876376d21d4830c6c";
+    pub const PSEUDONYMV_2: &str = "38d06fca356dee46ece18ce53518c4b094167a7b3f339595c25b45949c09e47764380ae19024abb11d2e323ecc45de44b55a56326a22238563f89b03f3b40c16";
 
     /// `PseudonymOut_0`
-    pub const PSEUDONYMOUT_0: &str = "fa5d0eab85ea7b280ad4ab422674ba828b282795f0a39d411b8a95a4135bb46b40b4e55074fe32c81359e588534b3f77cf00c7cc183ef043bba02e54ddb09613";
+    pub const PSEUDONYMOUT_0: &str = "f067bfdf1803c057a11924351476612b2f691942d592d0e1bdecd35d2effec03f406d632fb3efa3fd1d9a6a17f3534990c5351d4042aa068f3449c429cc2287c";
     /// `PseudonymOut_1`
-    pub const PSEUDONYMOUT_1: &str = "9afe7eb5e9d865bf452947cf02292f0393e51c9d5ff680cafd952232ebbcfa563e4fa8c8b513f6af706a98c67cede54728b970effb893547a76d55d8aadc7568";
+    pub const PSEUDONYMOUT_1: &str = "ba50872490dddab0c28e62a13abe2dfb2aac92bff6195c06add703a6188fe821e68f28f3fdb02896c83a36a00fa743bea76b7c5862f74aae3cc322ec3c52e864";
     /// `PseudonymOut_2`
-    pub const PSEUDONYMOUT_2: &str = "6ed157cb8df3071f7d973b02cde6495866be382d43c333c14e965d81e45b024a766aa8055e5b8465cb0b334d7bdc4a4eaf2205c8089814f98baaee57e98c9012";
+    pub const PSEUDONYMOUT_2: &str = "08e416c6a560fa695b5696de64acd5370b9260940e023b6e502b8b2cc3ce1c652e5cc764a6c928a458ea0d58d3b5efad5935b0e79256be9cbd85f643ed13515f";
     /// `PseudonymP_0`
-    pub const PSEUDONYMP_0: &str = "868ef3a059cf1fc6ab1fc7c3ed60472ae5fd354f777a809515c5162a538d9e26";
+    pub const PSEUDONYMP_0: &str = "ec8c1d0d0c625da643e6d7875e99c15148ae203fa248f88939ca6b7ec5972973";
     /// `PseudonymP_1`
-    pub const PSEUDONYMP_1: &str = "505c3ed908dd214123e0ae9db072641b1734c079d45853487445b647ecc5114b";
+    pub const PSEUDONYMP_1: &str = "b8bf966e67930545e2bb0149c9b1dab887273d40a249a558887700ce5932ff68";
     /// `PseudonymP_2`
-    pub const PSEUDONYMP_2: &str = "7e6da74d1804fbfa3fbfdbae3be7a8eb4583ac8216b68a7112a333b78f1ba879";
+    pub const PSEUDONYMP_2: &str = "facb92b2e578f6cdb7a80c0781902e78efc76829829529fa16a467ab15e86b73";
     /// `PseudonymPermutation`
     pub const PSEUDONYMPERMUTATION: &str = "0,1,2";
 
@@ -227,28 +227,28 @@ mod expected {
     /// `AttributeB_0`
     pub const ATTRIBUTEB_0: &str = "7ff2a46fda994c67e247a9a23f053c422b23d343a185b9c3467b791bfde8d405";
     /// `AttributeV_0`
-    pub const ATTRIBUTEV_0: &str = "12c7a68d8d4279b6ff17e517e10a304442318e075c7a7f5eca06fe35549c4624c82daf6e35d66249d91d3bfd70b4f06c6dc91fad73e2a5561d51e7935d419632";
+    pub const ATTRIBUTEV_0: &str = "12c7a68d8d4279b6ff17e517e10a304442318e075c7a7f5eca06fe35549c46242c8f5e0803d202f03c0b9cd41753060f09fbfd5d085bcc9b576ce559046ed10d";
     /// `AttributeM_1`
     pub const ATTRIBUTEM_1: &str = "f25d853f29cb794ba7da5e52c8c548dbdae6c21ddc09ffe17fb54e71500e3d7b";
     /// `AttributeB_1`
     pub const ATTRIBUTEB_1: &str = "54c0fd66874e0f08eeb4d58093d0b58c43c035ea108d7772b6f8f3695251a30f";
     /// `AttributeV_1`
-    pub const ATTRIBUTEV_1: &str = "7a7b822ec72e16b75bf717f54998bed1eccbfb0871d3764230b9a73b2913127176c0b2837f226126d3fe11ba08aa4881e7a91d5703eae3e1d1fcccd77ffaf026";
+    pub const ATTRIBUTEV_1: &str = "7a7b822ec72e16b75bf717f54998bed1eccbfb0871d3764230b9a73b291312717ca2df6c05668030b731bf68520758b6e06a1c7bf722d0113bd86195c0a11f77";
     /// `AttributeM_2`
     pub const ATTRIBUTEM_2: &str = "ccb89ef69f031f7254bbb447fdecd4269f4f00b93bebfb2e9b1eca92df03336e";
     /// `AttributeB_2`
     pub const ATTRIBUTEB_2: &str = "8bc9e1ff43f79c3702807e3caa641c3e51e7e1db8b76227307a0ae6d8f7da60b";
     /// `AttributeV_2`
-    pub const ATTRIBUTEV_2: &str = "1425a836a0ec527bde77e1ec4f98baae5ddede709d2fc5b19a0399ad60375718406eb119f32ce2b64a6c9bdbe2ce35864537de6dcd7270d265789df10d039b16";
+    pub const ATTRIBUTEV_2: &str = "1425a836a0ec527bde77e1ec4f98baae5ddede709d2fc5b19a0399ad6037571866a6f5955e8f5670ef7014c918cdadb943a6889f90963ca98876cacbabf97650";
 
     /// `k_attribute`
-    pub const SCALAR_K_ATTRIBUTE: &str = "cdfd3672876a7d530711e959d60e553b3dc499b9d3e666f5f3792d541cb51a08";
+    pub const SCALAR_K_ATTRIBUTE: &str = "40cf146efdc310243fbaa0ec1195a311339185b64d212990177ff7fa4ba22e03";
     /// `AttributeOut_0`
-    pub const ATTRIBUTEOUT_0: &str = "801405eab64019707c5153dc8b3de178da1024a5600c56696d7bf3e69512c75446970093b24e6dab82aa0010c91310225e31bdc8674bb9c9714d6a47155f035e";
+    pub const ATTRIBUTEOUT_0: &str = "ba7d1a467b476e8cdebde57e58d50649de4b6532787a5742407ba35a1b283f6b68937518c730e2ff518a13ee056e2c82ea881ffaa2ff88ce06eeebcc5be42f61";
     /// `AttributeOut_1`
-    pub const ATTRIBUTEOUT_1: &str = "0cbd747cfcf038872d4cd16784f5e3baa46f502c8ae858cf582c3899ad55bc4bfa2a5c818d70f5bf0c7b746c3532575716309a0a7e435822efdff40e83497c06";
+    pub const ATTRIBUTEOUT_1: &str = "e8d404259cb2759fd644cdabe84af35c0736978d1661b0565a08ed81a315b125ac44384dda5d3e1411af4d2365b9f6b2580c065ff4f4de7158cb8dcd1b5b730c";
     /// `AttributeOut_2`
-    pub const ATTRIBUTEOUT_2: &str = "f202a143288177e7564f961aefedf122d2c4db9040689fd16b07a3ccc6dfd35840ed2b9c139dbd03744a2bad26e2b3bf122e68dca64f90938b4abeb962e1af3e";
+    pub const ATTRIBUTEOUT_2: &str = "0c5143c4af16c1eb1f6da36ca11c953b8adc6f910e089471deb3c0533483bc17149a8fdc701889cc84e254c756000d14f36c122b237e78597e56c0f3aaa25a47";
     /// `AttributeP_0`
     pub const ATTRIBUTEP_0: &str = "ccb89ef69f031f7254bbb447fdecd4269f4f00b93bebfb2e9b1eca92df03336e";
     /// `AttributeP_1`
@@ -272,11 +272,11 @@ mod expected {
     /// `B_1`
     pub const B_1: &str = "ca2459c021f08341da7d44ebc35456686ec2f97b91e6fcc1ae50fa874599cd1e";
     /// `K_c_1`
-    pub const K_C_1: &str = "e02076ebe02373bfc034edaef8a2569ff26ce589a8436b318a26e1f3a70dc560";
+    pub const K_C_1: &str = "a2c04b4513c51654575727d906f54d8e9d4932b98014d489ae5c0f66293a1f03";
     /// `u_1`
-    pub const SCALAR_U_1: &str = "b4f3a40f57788fe8898e3e6e7978ff2568809e3754ebca6d82d01ab94dc7d20a";
+    pub const SCALAR_U_1: &str = "92d081fa00b670576bf7a8ce3208b2974f4bf5a6108609c1d67742c3ebd82705";
     /// `U_1`
-    pub const U_1: &str = "b4701454d81777f4ffb776046e9c440526e43c563d75d922365ce0cbe1b08979";
+    pub const U_1: &str = "e856108b5eda788634c05bc6436ffbaf53a1e4de085d8a64d6ff0554a6e74c71";
 }
 
 /// The seed of every ChaCha20 RNG used below, recorded as [`expected::SEED`].
@@ -290,7 +290,7 @@ fn rng_for(label: u8) -> ChaCha20Rng {
     ChaCha20Rng::from_seed(seed)
 }
 
-fn ciphertext_hex(c: &ElGamal) -> String {
+fn ciphertext_hex(c: &ElGamal<Ristretto255>) -> String {
     hex::encode(c.to_bytes())
 }
 
@@ -453,7 +453,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "SessionIdentifier", &hex::encode(b"session-a"));
     out.push('\n');
 
-    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
+    let k = make_pseudonym_rekey_factor::<Ristretto255>(&enc_secret, &session);
     put(
         out,
         "labelRekeyPseudonym",
@@ -463,7 +463,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "K_c", &(k.scalar() * G).to_hex());
     out.push('\n');
 
-    let ka = make_attribute_rekey_factor(&enc_secret, &session);
+    let ka = make_attribute_rekey_factor::<Ristretto255>(&enc_secret, &session);
     put(
         out,
         "labelRekeyAttribute",
@@ -473,7 +473,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "K'_c", &(ka.scalar() * G).to_hex());
     out.push('\n');
 
-    let s = make_pseudonymization_factor(&pseudo_secret, &domain);
+    let s = make_pseudonymization_factor::<Ristretto255>(&pseudo_secret, &domain);
     put(out, "labelReshuffle", &format!("{LABEL_RESHUFFLE:02x}"));
     put(out, "s_d", &s.scalar().to_hex());
     put(out, "S_d", &(s.scalar() * G).to_hex());
@@ -545,7 +545,7 @@ fn vectors_single_pseudonym(out: &mut String) {
     let r = ScalarNonZero::random(&mut rng);
     let s = info.s.scalar();
     let k = info.k.scalar();
-    let rerandomized = ElGamal {
+    let rerandomized = ElGamal::<Ristretto255> {
         gb: ciphertext.gb + r * G,
         gc: ciphertext.gc + r * *pk_from.value(),
     };
@@ -712,7 +712,7 @@ fn vectors_session_key_share(out: &mut String) {
     let enc_secret = EncryptionSecret::from(b"transcryptor-1-encryption-secret".to_vec());
     let session = EncryptionContext::from("session-a");
 
-    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
+    let k = make_pseudonym_rekey_factor::<Ristretto255>(&enc_secret, &session);
     let k_commitment = k.scalar() * G;
 
     let b = ScalarNonZero::random(&mut rng);

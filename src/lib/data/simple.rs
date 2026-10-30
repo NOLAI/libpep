@@ -1,194 +1,272 @@
 //! Core data types for pseudonyms and attributes, their encrypted versions,
 //! and session-key based encryption and decryption operations.
 //!
-//! The types are generic over the [`Group`] in [`generic`]; the names in this module are their
-//! ristretto255 instances. The [`ElGamalEncryptable`] and [`ElGamalEncrypted`] traits give
-//! access to the single group element or ciphertext behind them, and to its encodings.
+//! The [`ElGamalEncryptable`] and [`ElGamalEncrypted`] traits of [`data::elgamal`](crate::data::elgamal)
+//! give access to the single group element or ciphertext behind these types, and to its encodings.
+//!
+//! The types are generic over the [`Group`].
 
-pub mod generic;
-
-use crate::data::traits::{Encryptable, Encrypted};
-use crate::elgamal::arithmetic::group::{Group, InvertibleEncoding};
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::generic::ElGamal;
+pub use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::ElGamal;
+use crate::factors::types::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
+    TranscryptionInfo,
+};
+use crate::keys::traits::{PublicKey, SecretKey};
+use crate::keys::types::*;
+use derive_more::Deref;
 use rand_core::{CryptoRng, Rng};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
-/// The [`Pseudonym`](generic::Pseudonym) over ristretto255.
-pub type Pseudonym = generic::Pseudonym<Ristretto255>;
-/// The [`Attribute`](generic::Attribute) over ristretto255.
-pub type Attribute = generic::Attribute<Ristretto255>;
-/// The [`EncryptedPseudonym`](generic::EncryptedPseudonym) over ristretto255.
-pub type EncryptedPseudonym = generic::EncryptedPseudonym<Ristretto255>;
-/// The [`EncryptedAttribute`](generic::EncryptedAttribute) over ristretto255.
-pub type EncryptedAttribute = generic::EncryptedAttribute<Ristretto255>;
+/// A pseudonym (in the background, this is a group element) that can be used to identify a user
+/// within a specific context, which can be encrypted, rekeyed and reshuffled.
+///
+/// Pseudonyms in different domains are unlinkable because
+/// [reshuffling](crate::elgamal::primitives::reshuffle) obliviously evaluates the Diffie-Hellman PRF
+/// on them. This requires origin pseudonyms to be uniformly random or lizard-encoded; see the
+/// security note on [`ElGamalEncryptable`].
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(bound = "", transparent)
+)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
+pub struct Pseudonym<G: Group> {
+    /// The group element.
+    pub value: G::Element,
+}
 
-macro_rules! impl_from_value {
-    ($($t:ident: $v:ty),+ $(,)?) => {$(
-        impl From<$v> for $t {
-            fn from(value: $v) -> Self {
+/// An attribute (in the background, this is a group element), which should not be identifiable
+/// and can be encrypted and rekeyed, but not reshuffled.
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(bound = "", transparent)
+)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
+pub struct Attribute<G: Group> {
+    /// The group element.
+    pub value: G::Element,
+}
+
+/// An encrypted pseudonym, which is an [`ElGamal`] encryption of a [`Pseudonym`].
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(bound = "", transparent)
+)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
+pub struct EncryptedPseudonym<G: Group> {
+    /// The ciphertext.
+    pub value: ElGamal<G>,
+}
+
+/// An encrypted attribute, which is an [`ElGamal`] encryption of an [`Attribute`].
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(bound = "", transparent)
+)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
+pub struct EncryptedAttribute<G: Group> {
+    /// The ciphertext.
+    pub value: ElGamal<G>,
+}
+
+/// The encryption, decryption and rerandomization of a plaintext/ciphertext pair that is a single
+/// group element and a single ElGamal ciphertext, under the given key types.
+macro_rules! impl_simple_pair {
+    ($plain:ident / $enc:ident, $pk:ident / $sk:ident, $gpk:ident / $gsk:ident) => {
+        impl<G: Group> ElGamalEncryptable for $plain<G> {
+            fn value(&self) -> &G::Element {
+                &self.value
+            }
+            fn from_point(value: G::Element) -> Self {
                 Self { value }
             }
         }
-    )+};
+
+        impl<G: Group> ElGamalEncrypted for $enc<G> {
+            fn value(&self) -> &ElGamal<G> {
+                &self.value
+            }
+            fn from_value(value: ElGamal<G>) -> Self {
+                Self { value }
+            }
+        }
+
+        impl<G: Group> Encryptable for $plain<G> {
+            type Group = G;
+            type EncryptedType = $enc<G>;
+            type PublicKeyType = $pk<G>;
+            #[cfg(feature = "offline")]
+            type GlobalPublicKeyType = $gpk<G>;
+
+            fn encrypt<R>(&self, public_key: &$pk<G>, rng: &mut R) -> $enc<G>
+            where
+                R: Rng + CryptoRng,
+            {
+                $enc::from_value(crate::elgamal::encrypt(
+                    &self.value,
+                    public_key.value(),
+                    rng,
+                ))
+            }
+
+            #[cfg(feature = "offline")]
+            fn encrypt_global<R>(&self, public_key: &$gpk<G>, rng: &mut R) -> $enc<G>
+            where
+                R: Rng + CryptoRng,
+            {
+                $enc::from_value(crate::elgamal::encrypt(
+                    &self.value,
+                    public_key.value(),
+                    rng,
+                ))
+            }
+        }
+
+        impl<G: Group> Encrypted for $enc<G> {
+            type Group = G;
+            type UnencryptedType = $plain<G>;
+            type SecretKeyType = $sk<G>;
+            #[cfg(all(feature = "offline", feature = "insecure"))]
+            type GlobalSecretKeyType = $gsk<G>;
+
+            #[cfg(feature = "elgamal3")]
+            fn decrypt(&self, secret_key: &$sk<G>) -> Option<$plain<G>> {
+                crate::elgamal::decrypt(&self.value, secret_key.value()).map($plain::from_point)
+            }
+
+            #[cfg(not(feature = "elgamal3"))]
+            fn decrypt(&self, secret_key: &$sk<G>) -> $plain<G> {
+                $plain::from_point(crate::elgamal::decrypt(&self.value, secret_key.value()))
+            }
+
+            #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
+            fn decrypt_global(&self, secret_key: &$gsk<G>) -> Option<$plain<G>> {
+                crate::elgamal::decrypt(&self.value, secret_key.value()).map($plain::from_point)
+            }
+
+            #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
+            fn decrypt_global(&self, secret_key: &$gsk<G>) -> $plain<G> {
+                $plain::from_point(crate::elgamal::decrypt(&self.value, secret_key.value()))
+            }
+
+            #[cfg(feature = "elgamal3")]
+            fn rerandomize<R>(&self, rng: &mut R) -> Self
+            where
+                R: Rng + CryptoRng,
+            {
+                self.rerandomize_known(&RerandomizeFactor(G::random_scalar(rng)))
+            }
+
+            #[cfg(not(feature = "elgamal3"))]
+            fn rerandomize<R>(&self, public_key: &$pk<G>, rng: &mut R) -> Self
+            where
+                R: Rng + CryptoRng,
+            {
+                self.rerandomize_known(public_key, &RerandomizeFactor(G::random_scalar(rng)))
+            }
+
+            #[cfg(feature = "elgamal3")]
+            fn rerandomize_known(&self, factor: &RerandomizeFactor<G>) -> Self {
+                Self::from_value(crate::elgamal::primitives::rerandomize(
+                    &self.value,
+                    &factor.0,
+                ))
+            }
+
+            #[cfg(not(feature = "elgamal3"))]
+            fn rerandomize_known(
+                &self,
+                public_key: &$pk<G>,
+                factor: &RerandomizeFactor<G>,
+            ) -> Self {
+                Self::from_value(crate::elgamal::primitives::rerandomize(
+                    &self.value,
+                    public_key.value(),
+                    &factor.0,
+                ))
+            }
+        }
+
+        #[cfg(feature = "batch")]
+        impl<G: Group> crate::data::traits::HasStructure for $enc<G> {
+            type Structure = ();
+
+            fn structure(&self) -> Self::Structure {}
+        }
+    };
 }
 
-impl_from_value!(
-    Pseudonym: GroupElement,
-    Attribute: GroupElement,
-    EncryptedPseudonym: crate::elgamal::ElGamal,
-    EncryptedAttribute: crate::elgamal::ElGamal,
+impl_simple_pair!(
+    Pseudonym / EncryptedPseudonym,
+    PseudonymSessionPublicKey / PseudonymSessionSecretKey,
+    PseudonymGlobalPublicKey / PseudonymGlobalSecretKey
+);
+impl_simple_pair!(
+    Attribute / EncryptedAttribute,
+    AttributeSessionPublicKey / AttributeSessionSecretKey,
+    AttributeGlobalPublicKey / AttributeGlobalSecretKey
 );
 
-/// An encrypted type that is a single ElGamal ciphertext, with the encodings of the ciphertext.
-pub trait ElGamalEncrypted:
-    Encrypted<UnencryptedType: ElGamalEncryptable<EncryptedType = Self, Group = Self::Group>>
-{
-    /// Get the [ElGamal] ciphertext value.
-    fn value(&self) -> &ElGamal<Self::Group>;
-    /// Create from an [ElGamal] ciphertext.
-    fn from_value(value: ElGamal<Self::Group>) -> Self
-    where
-        Self: Sized;
-
-    /// Encode as bytes; see [`ElGamal::to_bytes`].
-    fn to_bytes(&self) -> Vec<u8> {
-        self.value().to_bytes()
-    }
-
-    /// Decode from a byte slice; see [`ElGamal::from_slice`].
-    fn from_slice(slice: &[u8]) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        ElGamal::from_slice(slice).map(Self::from_value)
-    }
-
-    /// Convert to base64 string.
-    fn to_base64(&self) -> String {
-        self.value().to_base64()
-    }
-
-    /// Convert from base64 string.
-    fn from_base64(s: &str) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        ElGamal::from_base64(s).map(Self::from_value)
+impl<G: Group> Pseudonymizable for EncryptedPseudonym<G> {
+    fn pseudonymize_raw(&self, info: &PseudonymizationInfo<G>) -> Self {
+        Self::from_value(crate::elgamal::primitives::rsk(
+            &self.value,
+            &info.s.0,
+            &info.k.0,
+        ))
     }
 }
 
-/// A plaintext type that is a single group element, with the encodings of the element.
-///
-/// # Access idioms
-///
-/// Plaintext value types expose their group element through the public `value` field,
-/// [`value`](Self::value) and [`from_point`](Self::from_point); *public* key types dereference
-/// to their group element; *secret* key material never dereferences and is read only through
-/// explicit `value()` calls.
-///
-/// # Security
-///
-/// Pseudonym unlinkability assumes that no party knows (or can feasibly find) discrete-log
-/// relations between origin identifiers. Origin identifiers are expected to be uniformly random
-/// group elements, either sampled directly ([`random`](Self::random)) or produced by the
-/// elligator2-based lizard encoding ([`from_lizard`](Self::from_lizard)), both of which rule such
-/// relations out. Importing group elements with other distributions via the raw decoders
-/// ([`from_bytes`](Self::from_bytes), [`from_hex`](Self::from_hex)) preserves any discrete-log
-/// relation between them in every domain (if `M1 = 2*M2`, then `s*M1 = 2*(s*M2)`). Individual
-/// pseudonyms remain unlinkable across domains, so this is acceptable as long as no party knows
-/// the relations between origin identifiers: a party that does could recognize related pseudonyms
-/// by testing for the known relation.
-pub trait ElGamalEncryptable: Encryptable {
-    /// The group element.
-    fn value(&self) -> &<Self::Group as Group>::Element;
-    /// Create from a group element.
-    fn from_point(value: <Self::Group as Group>::Element) -> Self
-    where
-        Self: Sized;
+impl<G: Group> Rekeyable for EncryptedPseudonym<G> {
+    type RekeyInfo = PseudonymRekeyInfo<G>;
 
-    /// Create with a random value.
-    fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self
-    where
-        Self: Sized,
-    {
-        Self::from_point(Self::Group::random_element(rng))
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
+        Self::from_value(crate::elgamal::primitives::rekey(&self.value, &info.k.0))
     }
-    /// Encode as a byte array of the group's element length (32 bytes on ristretto255).
-    fn to_bytes(&self) -> <Self::Group as Group>::ElementBytes {
-        Self::Group::serialize_element(self.value())
+}
+
+impl<G: Group> Rekeyable for EncryptedAttribute<G> {
+    type RekeyInfo = AttributeRekeyInfo<G>;
+
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
+        Self::from_value(crate::elgamal::primitives::rekey(&self.value, &info.k.0))
     }
-    /// Convert to a hexadecimal string (64 characters on ristretto255).
-    fn to_hex(&self) -> String {
-        hex::encode(self.to_bytes())
+}
+
+impl<G: Group> Transcryptable for EncryptedPseudonym<G> {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo<G>) -> Self {
+        self.pseudonymize_raw(&info.pseudonym)
     }
-    /// Create from a byte array of the group's element length.
-    /// Returns `None` if the input is not a valid encoding of a group element.
-    fn from_bytes(bytes: &<Self::Group as Group>::ElementBytes) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_slice(bytes.as_ref())
-    }
-    /// Create from a slice of bytes.
-    /// Returns `None` if the input is not a valid encoding of a group element.
-    fn from_slice(slice: &[u8]) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        Self::Group::deserialize_element(slice).map(Self::from_point)
-    }
-    /// Create from a hexadecimal string.
-    /// Returns `None` if the input is not a valid encoding of a group element.
-    fn from_hex(hex: &str) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        crate::elgamal::arithmetic::group::decode_hex::<<Self::Group as Group>::ElementBytes>(hex)
-            .and_then(|b| Self::from_slice(b.as_ref()))
-    }
-    /// Create from a 64-byte hash value.
-    /// See [`Group::element_from_uniform_bytes`].
-    fn from_hash(hash: &[u8; 64]) -> Self
-    where
-        Self: Sized,
-    {
-        Self::from_point(Self::Group::element_from_uniform_bytes(hash))
-    }
-    /// Create from a block of bytes (16 bytes on ristretto255) using the group's invertible
-    /// (lizard) encoding.
-    /// This is useful for creating a pseudonym from an existing identifier or encoding attributes,
-    /// as it accepts any block.
-    /// See [`InvertibleEncoding::encode_lizard`].
-    fn from_lizard(data: &<Self::Group as InvertibleEncoding>::Block) -> Self
-    where
-        Self: Sized,
-        Self::Group: InvertibleEncoding,
-    {
-        Self::from_point(Self::Group::encode_lizard(data))
-    }
-    /// Encode as a block of bytes (16 bytes on ristretto255) using the group's invertible
-    /// (lizard) encoding.
-    /// Returns `None` if the point is not a valid lizard encoding of a block.
-    /// See [`InvertibleEncoding::decode_lizard`].
-    /// If the value was created using [`ElGamalEncryptable::from_lizard`], this will return a valid value,
-    /// but otherwise it will most likely return `None`.
-    fn to_lizard(&self) -> Option<<Self::Group as InvertibleEncoding>::Block>
-    where
-        Self::Group: InvertibleEncoding,
-    {
-        Self::Group::decode_lizard(self.value())
+}
+
+impl<G: Group> Transcryptable for EncryptedAttribute<G> {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo<G>) -> Self {
+        self.rekey_raw(&info.attribute)
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
+    use crate::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::EncryptionSecret;
     use crate::keys::*;
+
+    type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;
+    type Attribute = crate::data::simple::Attribute<Ristretto255>;
+    type EncryptedPseudonym = crate::data::simple::EncryptedPseudonym<Ristretto255>;
+    #[cfg(feature = "serde")]
+    type EncryptedAttribute = crate::data::simple::EncryptedAttribute<Ristretto255>;
 
     #[test]
     fn pseudonym_encode_decode() {
@@ -240,7 +318,7 @@ mod tests {
     #[test]
     fn encrypt_decrypt_pseudonym() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =
@@ -259,7 +337,7 @@ mod tests {
     #[test]
     fn encrypt_decrypt_attribute() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_attribute_global_keys(&mut rng);
+        let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =
@@ -278,7 +356,7 @@ mod tests {
     #[test]
     fn encrypted_pseudonym_base64_roundtrip() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, _) =
@@ -297,7 +375,7 @@ mod tests {
     #[cfg(feature = "serde")]
     fn encrypted_attribute_serde_json() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_attribute_global_keys(&mut rng);
+        let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, _) =
@@ -315,7 +393,7 @@ mod tests {
     #[test]
     fn polymorphic_encrypt_decrypt() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =

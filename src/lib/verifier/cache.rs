@@ -5,7 +5,7 @@
 //! rejects a different commitment for a transition it already holds.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::factors::commitments::generic::{
+use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ use std::hash::Hash;
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum CacheRegistrationError {
     /// A different commitment was already registered under this key.
-    /// Re-registering the *same* value is idempotent and never returns this.
+    /// Re-registering the same value is idempotent and never returns this.
     #[error("a different commitment is already registered for this key")]
     ConflictingValue,
     /// The cache has reached its configured maximum size.
@@ -115,7 +115,7 @@ where
     }
 }
 
-// Note: the trait bound `Commitments: PartialEq + Clone` on the impl below
+// The trait bound `Commitments: PartialEq + Clone` on the impl below
 // covers `store`'s equality check; without it, conflicting-value detection
 // can't tell same from different.
 
@@ -175,7 +175,7 @@ where
     }
 }
 
-use crate::transcryptor::TranscryptorId;
+use crate::contexts::TranscryptorId;
 
 /// Cache keyed by `(transcryptor, domain_from, domain_to, context_from, context_to)`
 /// storing the combined pseudonymization commitments for a transition.

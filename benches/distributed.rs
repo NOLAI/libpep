@@ -1,12 +1,14 @@
+use common::aliases::Client;
+use common::aliases::DistributedTranscryptor;
+use common::aliases::EncryptedRecord;
+use common::aliases::SessionPublicKeys;
+use common::aliases::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use libpep::client::{Client, Distributed};
+use libpep::client::Distributed;
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::records::EncryptedRecord;
-use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::data::simple::ElGamalEncryptable;
 use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::SessionPublicKeys;
-use libpep::transcryptor::DistributedTranscryptor;
 
 #[path = "common/mod.rs"]
 mod common;
@@ -84,10 +86,7 @@ pub fn generate_entities(
     num_pseudonyms_per_entity: usize,
     num_attributes_per_entity: usize,
     client: &Client,
-) -> Vec<(
-    Vec<libpep::data::simple::EncryptedPseudonym>,
-    Vec<libpep::data::simple::EncryptedAttribute>,
-)> {
+) -> Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)> {
     let rng = &mut rng();
     (0..num_entities)
         .map(|_| {
@@ -110,10 +109,7 @@ pub fn generate_entities(
 
 /// Process entities individually through all servers
 pub fn process_entities_individually(
-    entities: &[(
-        Vec<libpep::data::simple::EncryptedPseudonym>,
-        Vec<libpep::data::simple::EncryptedAttribute>,
-    )],
+    entities: &[(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)],
     systems: &[DistributedTranscryptor],
     keys: &SessionPublicKeys,
     domain_a: &PseudonymizationDomain,
@@ -150,10 +146,7 @@ pub fn process_entities_individually(
 
 /// Process entities using batch operations
 pub fn process_entities_batch(
-    entities: Vec<(
-        Vec<libpep::data::simple::EncryptedPseudonym>,
-        Vec<libpep::data::simple::EncryptedAttribute>,
-    )>,
+    entities: Vec<(Vec<EncryptedPseudonym>, Vec<EncryptedAttribute>)>,
     systems: &[DistributedTranscryptor],
     keys: &SessionPublicKeys,
     domain_a: &PseudonymizationDomain,

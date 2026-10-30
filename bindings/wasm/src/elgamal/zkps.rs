@@ -3,7 +3,10 @@
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::zkps::{create_proof, verify_proof, Proof};
+use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::zkps::{create_proof, verify_proof};
+
+type Proof = libpep::elgamal::zkps::Proof<Ristretto255>;
 use wasm_bindgen::prelude::*;
 
 /// A zero-knowledge proof demonstrating knowledge of a discrete logarithm.
@@ -67,7 +70,7 @@ impl WASMZkpProofResult {
 #[wasm_bindgen(js_name = createZkpProof)]
 pub fn create_zkp_proof_wasm(a: &WASMScalarNonZero, gm: &WASMGroupElement) -> WASMZkpProofResult {
     let mut rng = rand::rng();
-    let (public_key, proof) = create_proof(a, gm, &mut rng);
+    let (public_key, proof) = create_proof::<Ristretto255, _>(a, gm, &mut rng);
     WASMZkpProofResult {
         public_key: WASMGroupElement::from(public_key),
         proof: WASMProof(proof),
@@ -81,5 +84,5 @@ pub fn verify_zkp_proof_wasm(
     gm: &WASMGroupElement,
     proof: &WASMProof,
 ) -> bool {
-    verify_proof(ga, gm, &proof.0)
+    verify_proof::<Ristretto255>(ga, gm, &proof.0)
 }

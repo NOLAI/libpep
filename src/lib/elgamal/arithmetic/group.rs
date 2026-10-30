@@ -1,5 +1,4 @@
-//! The prime-order group API of [RFC 9497, Section 2.1](https://www.rfc-editor.org/rfc/rfc9497#section-2.1),
-//! over which the rest of the library is generic.
+//! The prime-order group API over which the rest of the library is generic.
 //!
 //! A [`Group`] is a marker type: it carries no data, and names a ciphersuite (a group together
 //! with its scalar type, encodings and hash functions). The library's generic types take it as
@@ -7,7 +6,7 @@
 //! the non-generic names at the crate's module level (`Pseudonym`, `SessionKeys`, `Transcryptor`,
 //! ...) are aliases that pin it.
 //!
-//! Beyond the RFC 9497 API, [`Group`] has what the PEP operations need and RFC 9497 does not:
+//! Beyond a bare prime-order group API, [`Group`] has what the PEP operations need:
 //! a multiplicative identity for identity factors, random elements for pseudonyms, and the
 //! mapping of a 64-byte hash to a scalar or an element that factor derivation uses.
 //!
@@ -66,10 +65,9 @@ macro_rules! group_trait {
     ($($extra:tt)*) => {
         /// A prime-order group with its scalar field, serialization and hash-to-group functions.
         ///
-        /// See the [module documentation](self) for how it is used. The functions mirror
-        /// RFC 9497, Section 2.1; `Scalar` is always non-zero (the library never needs a zero
+        /// See the [module documentation](self) for how it is used. `Scalar` is always non-zero (the library never needs a zero
         /// scalar, and a zero factor would destroy a ciphertext), so the functions that reduce
-        /// a hash return `None` where the RFC would return zero.
+        /// a hash return `None` where a plain group API would return zero.
         pub trait Group: Copy + Clone + Debug + Default + Eq + Hash + Send + Sync + 'static {
             /// A non-zero scalar: an element of the field of integers modulo the group order.
             type Scalar: Copy
@@ -120,30 +118,30 @@ macro_rules! group_trait {
             /// The hash of this ciphersuite: `SHA-512` for `ristretto255-SHA512`.
             ///
             /// The second half of a ciphersuite identifier names a hash, so it is declared here
-            /// rather than left to each function to pick. Everything generic over a [`Group`]
-            /// that needs the ciphersuite's hash directly uses this, so an implementation whose
-            /// [`CIPHERSUITE`](Self::CIPHERSUITE) says `-SHA256` cannot quietly hash with
-            /// SHA-512: the two declarations sit side by side in the same impl.
+            /// and not left to each function to pick. Everything generic over a [`Group`]
+            /// that needs the ciphersuite's hash directly uses this. An implementation whose
+            /// [`CIPHERSUITE`](Self::CIPHERSUITE) says `-SHA256` therefore cannot hash with
+            /// SHA-512 unnoticed, because both declarations sit side by side in the same impl.
             ///
             /// This is the hash the ciphersuite is named after. It is not necessarily the hash
             /// inside [`hash_to_group`](Self::hash_to_group) and
-            /// [`hash_to_scalar`](Self::hash_to_scalar), which are free to reach it through
-            /// whatever expander RFC 9380 prescribes for the group.
+            /// [`hash_to_scalar`](Self::hash_to_scalar), which may use whatever expander
+            /// RFC 9380 prescribes for the group.
             type Hash: Digest + BlockSizeUser;
 
-            /// The length of a serialized element in bytes (`Ne` in RFC 9497).
+            /// The length of a serialized element in bytes (`Ne`).
             const NE: usize;
-            /// The length of a serialized scalar in bytes (`Ns` in RFC 9497).
+            /// The length of a serialized scalar in bytes (`Ns`).
             const NS: usize;
 
             /// The ciphersuite this group and its hash form, whose identifier the protocol's
             /// domain separation tags are built from.
             ///
-            /// A ciphersuite identifier names a group *and* a hash, and this trait's
+            /// A ciphersuite identifier names a group and a hash, and this trait's
             /// [`hash_to_group`](Self::hash_to_group) and
             /// [`hash_to_scalar`](Self::hash_to_scalar) are written against one hash, so the
             /// pair is fixed here. Build it with the
-            /// [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the draft's
+            /// [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the
             /// ciphersuite table, verbatim.
             const CIPHERSUITE: Ciphersuite;
 
@@ -240,10 +238,8 @@ pub trait InvertibleEncoding: Group {
 /// An OAEP-style embedding of byte strings in the x-coordinate of a point on a Weierstrass
 /// curve, in the manner of the Dutch BSNk pseudonymization scheme on brainpoolP320r1.
 ///
-/// Not implemented for any group yet: the padding format, the search for a y-coordinate and
-/// the handling of the point's sign are to be specified from the BSNk PP technical specification
-/// together with the first Weierstrass-curve group (see the draft's editor's note on the `oaep`
-/// encoding).
+/// The padding format, the search for a y-coordinate and the handling of the point's sign follow
+/// the BSNk PP technical specification.
 pub trait OaepEncoding: Group {
     /// The maximum number of payload bytes an element can carry.
     const MAX_LENGTH: usize;

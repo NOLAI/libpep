@@ -1,28 +1,22 @@
-//! Hashing to the group and to scalars, following [RFC 9380] and the ristretto255-SHA512
-//! ciphersuite of [RFC 9497].
+//! Hashing to the group and to scalars, generic over the [`Group`], following [RFC 9380].
 //!
 //! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1: it hashes a message to
 //! any requested number of bytes under a label (`xmd` names the variant for block-based hashes
-//! such as SHA-512). The functions below use it to produce the 64 uniform bytes they then map
-//! into the group or the scalar field. [`hash_to_group_with_dst`] is
-//! `hash_to_ristretto255` (RFC 9380, Appendix B) with SHA-512; [`hash_to_scalar_with_dst`] is the
-//! `HashToScalar` of RFC 9497, Section 4.1. Both take the complete domain separation tag, which
-//! is what the RFC test vectors exercise.
+//! such as SHA-512). The groups use it to produce the uniform bytes they map into the group or
+//! the scalar field.
 //!
 //! [`hash_to_group`] is the protocol-level encoding: it derives the tag from a group's
-//! [`Ciphersuite`](super::Ciphersuite) instead of taking one.
-//!
-//! [`GroupElement::from_hash`] and [`ScalarCanBeZero::from_hash`] remain the low-level
-//! primitives that map 64 uniform bytes to the group and to the scalar field.
+//! [`Ciphersuite`](super::Ciphersuite) instead of taking one. The raw-tag functions for
+//! ristretto255, [`hash_to_group_with_dst`] and [`hash_to_scalar_with_dst`], live in
+//! [`ristretto255::hashing`](super::ristretto255::hashing) and are re-exported here.
 //!
 //! [RFC 9380]: https://www.rfc-editor.org/rfc/rfc9380
-//! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 
 use super::group::Group;
-use super::group_elements::GroupElement;
-use super::scalars::ScalarCanBeZero;
 use sha2::digest::common::BlockSizeUser;
-use sha2::{Digest, Sha512};
+use sha2::Digest;
+
+pub use super::ristretto255::hashing::{hash_to_group_with_dst, hash_to_scalar_with_dst};
 
 /// The longest domain separation tag that is used as is; longer tags are hashed first
 /// (RFC 9380, Section 5.3.3).
@@ -31,8 +25,8 @@ const MAX_DST_LENGTH: usize = 255;
 /// Hash `parts` with the group's hash and reduce the digest to a non-zero scalar, with zero
 /// mapped to one.
 ///
-/// This is the Fiat–Shamir challenge of the proofs in [`zkps`](crate::elgamal::zkps) and the
-/// hash of the Carter–Wegman derivation (`factors::verifiable`). On ristretto255-SHA512
+/// This is the Fiat-Shamir challenge of the proofs in [`zkps`](crate::elgamal::zkps) and the
+/// hash of the Carter-Wegman derivation (`factors::verifiable`). On ristretto255-SHA512
 /// it is the SHA-512 digest reduced modulo the group order. A digest of any other length is
 /// zero-padded or truncated to the 64 bytes the reduction takes.
 pub fn hash_to_nonzero_scalar<G: Group>(parts: &[&[u8]]) -> G::Scalar {
@@ -52,14 +46,14 @@ pub fn hash_to_nonzero_scalar<G: Group>(parts: &[&[u8]]) -> G::Scalar {
 ///
 /// Where `H` returns a fixed number of bytes, this returns `len_in_bytes` of them, uniformly
 /// pseudorandom, by chaining `H` over a counter. The domain separation tag `dst` is mixed into
-/// every block, so the same message under two different tags gives two unrelated outputs; this
-/// is what keeps a pseudonym derived from an identifier unrelated to a factor derived from it.
+/// every block, so the same message under two different tags gives two unrelated outputs. This
+/// keeps a pseudonym derived from an identifier unrelated to a factor derived from it.
 /// The tag's own length is appended to it, so a message can never be mistaken for a tag.
 ///
 /// `xmd` is the RFC's name for the variant built on a Merkle-Damgård hash, i.e. one with an
 /// internal block size, such as SHA-512. Its counterpart `expand_message_xof` is built on an
-/// extendable-output function such as SHAKE and is *not* interchangeable with this one, so the
-/// suffix is part of the name rather than decoration.
+/// extendable-output function such as SHAKE and is not interchangeable with this one, so the
+/// suffix is part of the name.
 ///
 /// A tag longer than 255 bytes cannot carry a one-byte length, so it is replaced by
 /// `H("H2C-OVERSIZE-DST-" || dst)` as prescribed by Section 5.3.3.
@@ -125,63 +119,33 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
     uniform_bytes
 }
 
-/// Expand `msg` under `dst` to 64 bytes with SHA-512, the uniform input both the group and the
-/// scalar hash of the ristretto255-SHA512 ciphersuite are built from.
-///
-/// SHA-512 is pinned here because this is a ristretto255 primitive, not a generic one: it backs
-/// the raw-tag functions below and `Ristretto255`'s own trait methods, which the RFC 9380 and
-/// RFC 9497 test vectors exercise with SHA-512 by definition. Code that is generic over a
-/// [`Group`] must reach the ciphersuite's hash through [`Group::Hash`] instead.
-pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
-    let mut out = [0u8; 64];
-    out.copy_from_slice(&expand_message_xmd::<Sha512>(msg, dst, 64));
-    out
-}
-
-/// `hash_to_ristretto255` (RFC 9380, Appendix B) with `expand_message_xmd` and SHA-512, as
-/// `HashToGroup` of the ristretto255-SHA512 ciphersuite of RFC 9497: expand `msg` under `dst`
-/// to 64 bytes and apply the ristretto255 one-way map.
-///
-/// `dst` is the complete domain separation tag, e.g. `"HashToGroup-" || contextString`. To hash
-/// under a ciphersuite's tag instead of a raw one, use [`hash_to_group`].
-#[must_use]
-pub fn hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> GroupElement {
-    GroupElement::from_hash(&expand_64(msg, dst))
-}
-
 /// Encode an input as a group element: `HashToGroup(x)` under the domain separation tag
 /// `"HashToGroup-" || contextString` of `G`'s ciphersuite.
 ///
-/// This is the `hash_to_group` encoding of draft-doesburg-cfrg-coprf, the one encoding available
+/// This is the `hash_to_group` encoding, the only encoding available
 /// on every ciphersuite. It is not invertible: the origin party recognizes a pseudonym as
 /// belonging to `x` only by recomputing it. For an invertible encoding on ristretto255, see
-/// [`GroupElement::from_lizard`].
+/// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard).
 ///
-/// Unlike factor derivation, **no secret enters this hash**, so the input alone determines the
+/// No secret enters this hash, unlike factor derivation, so the input alone determines the
 /// output and another protocol hashing the same input on the same group would get the same
-/// element. The ciphersuite's `"coPRFV1-"` prefix is therefore what separates a pseudonym here
-/// from an RFC 9497 OPRF evaluation of the same identifier on ristretto255. The tag comes from
-/// [`G::CIPHERSUITE`](Group::CIPHERSUITE), so a group's identifier can never be paired with
-/// another group's operations.
+/// element. The ciphersuite's `"nPEPV1-"` prefix is what keeps a pseudonym here apart from other
+/// protocols' hashes of the same identifier on ristretto255. The tag comes from
+/// [`G::CIPHERSUITE`](Group::CIPHERSUITE), so a group's identifier cannot be paired with another
+/// group's operations.
 ///
-/// # Why the input is not hashed first
+/// # Input length
 ///
-/// `x` goes straight to `HashToGroup`. Reducing it with a plain hash beforehand is tempting and
-/// wrong on three counts:
+/// `x` goes straight to `HashToGroup`, without a prior hash. A pre-hash adds no collision
+/// resistance, because `HashToGroup` is already a secure hash onto the group: a collision in
+/// `HashToGroup(H(x))` is a collision in either `H` or `HashToGroup`. It also breaks
+/// interoperability, since an implementation that computes `HashToGroup(x)` gets different
+/// pseudonyms. Finally, it makes the hash choice matter twice, giving each new ciphersuite two
+/// chances to pair the wrong hash with its identifier.
 ///
-/// - It buys no collision resistance. `HashToGroup` is already a secure hash onto the group, so
-///   a collision in `HashToGroup(H(x))` is either a collision in `H` or one in `HashToGroup`.
-///   The extra compression round cannot rule out either, so it adds a cost and no property.
-/// - It costs interoperability for nothing. Anyone implementing this encoding from the obvious
-///   primitive gets `HashToGroup(x)` and therefore different pseudonyms, and the mismatch shows
-///   up only as pseudonyms that fail to line up across implementations.
-/// - It makes the hash choice load-bearing twice instead of once, so each new ciphersuite gets
-///   two independent chances to pair the wrong hash with its identifier.
-///
-/// The one thing a pre-hash does legitimately is bound the input length, so it survives for that
-/// alone: an `x` of 2^16 bytes or more is reduced with [`G::Hash`](Group::Hash) first. The
-/// threshold is the draft's bound on a hashed identifier. Within the bound, which is every
-/// realistic identifier, `x` is passed through unchanged.
+/// The one use of a pre-hash is to bound the input length: an `x` of 2^16 bytes or more is
+/// reduced with [`G::Hash`](Group::Hash) first. Shorter inputs, which include every realistic
+/// identifier, are passed through unchanged.
 ///
 /// # Encoding requirement
 ///
@@ -189,14 +153,15 @@ pub fn hash_to_group_with_dst(msg: &[u8], dst: &[u8]) -> GroupElement {
 /// `M_2 = a * M_1` the pseudonyms satisfy the same relation in every domain. Cross-domain
 /// unlinkability holds under DDH only for elements whose mutual discrete-log relations are
 /// unknown to every party, so an encoding MUST make it infeasible to produce two encoded inputs
-/// with a known discrete-log relation. **Encoding an identifier `x` as `x * G`, or as any scalar
-/// multiple of a fixed element, violates this and is forbidden.** This function satisfies the
-/// requirement by the random oracle property of hashing to the group;
-/// [`GroupElement::from_lizard`] does because inverting it would need a discrete logarithm; and
-/// [`GroupElement::random`] does trivially.
+/// with a known discrete-log relation. Encoding an identifier `x` as `x * G`, or as any scalar
+/// multiple of a fixed element, violates this and is forbidden. This function satisfies the
+/// requirement through the random oracle property of hashing to the group.
+/// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard) satisfies it
+/// because inverting it would need a discrete logarithm, and
+/// [`GroupElement::random`](super::group_elements::GroupElement::random) satisfies it trivially.
 #[must_use]
 pub fn hash_to_group<G: Group>(x: &[u8]) -> G::Element {
-    /// The draft's bound on a hashed identifier: at most `2^16 - 1` bytes.
+    /// The bound on a hashed identifier: at most `2^16 - 1` bytes.
     const MAX_HASH_INPUT: usize = u16::MAX as usize;
 
     let dst = G::CIPHERSUITE.dst(b"HashToGroup-");
@@ -207,25 +172,12 @@ pub fn hash_to_group<G: Group>(x: &[u8]) -> G::Element {
     }
 }
 
-/// `HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497: expand `msg` under `dst`
-/// to 64 bytes, interpret them as a little-endian integer and reduce it modulo the group order.
-///
-/// `dst` is the complete domain separation tag, e.g. `"HashToScalar-" || contextString`. The
-/// result can be zero (with negligible probability); callers that need a non-zero scalar check.
-///
-/// Named for symmetry with [`hash_to_group_with_dst`]: both take a raw tag.
-#[must_use]
-pub fn hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> ScalarCanBeZero {
-    ScalarCanBeZero::from_hash(&expand_64(msg, dst))
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
     use crate::elgamal::arithmetic::Ristretto255;
-    use sha2::Sha256;
+    use sha2::{Sha256, Sha512};
 
     fn q128() -> Vec<u8> {
         let mut v = b"q128_".to_vec();
@@ -342,77 +294,6 @@ mod tests {
         assert_ne!(a, expand_message_xmd::<Sha512>(b"msg", &dst[..255], 64));
     }
 
-    /// RFC 9497, Appendix A.1.1 (ristretto255-SHA512, OPRF mode): the blinded element is
-    /// `Blind * HashToGroup(Input)`.
-    #[test]
-    fn hash_to_group_matches_rfc9497_blinded_elements() {
-        let dst = b"HashToGroup-OPRFV1-\x00-ristretto255-SHA512";
-        let blind = ScalarNonZero::from_hex(
-            "64d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec4c1f6706",
-        )
-        .unwrap();
-        let cases = [
-            (
-                hex::decode("00").unwrap(),
-                "609a0ae68c15a3cf6903766461307e5c8bb2f95e7e6550e1ffa2dc99e412803c",
-            ),
-            (
-                hex::decode("5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a").unwrap(),
-                "da27ef466870f5f15296299850aa088629945a17d1f5b7f5ff043f76b3c06418",
-            ),
-        ];
-        for (input, blinded) in cases {
-            assert_eq!(
-                (blind * hash_to_group_with_dst(&input, dst)).to_hex(),
-                blinded
-            );
-        }
-    }
-
-    /// RFC 9497, Appendix A.1: the server key is `DeriveKeyPair(Seed, KeyInfo)`, one
-    /// `HashToScalar` call with counter 0 in both modes.
-    #[test]
-    fn hash_to_scalar_matches_rfc9497_derive_key_pair() {
-        let seed = [0xa3u8; 32];
-        let info = b"test key";
-        let mut derive_input = seed.to_vec();
-        derive_input.extend_from_slice(&(info.len() as u16).to_be_bytes());
-        derive_input.extend_from_slice(info);
-        derive_input.push(0);
-        let cases: [(&[u8], &str); 2] = [
-            (
-                b"DeriveKeyPairOPRFV1-\x00-ristretto255-SHA512",
-                "5ebcea5ee37023ccb9fc2d2019f9d7737be85591ae8652ffa9ef0f4d37063b0e",
-            ),
-            (
-                b"DeriveKeyPairOPRFV1-\x01-ristretto255-SHA512",
-                "e6f73f344b79b379f1a0dd37e07ff62e38d9f71345ce62ae3a9bc60b04ccd909",
-            ),
-        ];
-        for (dst, expected) in cases {
-            assert_eq!(
-                hash_to_scalar_with_dst(&derive_input, dst).to_hex(),
-                expected
-            );
-        }
-    }
-
-    #[test]
-    fn domain_separation() {
-        assert_ne!(
-            hash_to_group_with_dst(b"x", b"a"),
-            hash_to_group_with_dst(b"x", b"b")
-        );
-        assert_ne!(
-            hash_to_scalar_with_dst(b"x", b"a"),
-            hash_to_scalar_with_dst(b"x", b"b")
-        );
-        assert_eq!(
-            hash_to_group_with_dst(b"x", b"a"),
-            hash_to_group_with_dst(b"x", b"a")
-        );
-    }
-
     #[test]
     fn hash_to_group_is_deterministic_and_input_specific() {
         assert_eq!(
@@ -426,8 +307,8 @@ mod tests {
     }
 
     /// The tag carries the ciphersuite identifier, so a group whose identifier differed would
-    /// hash the same input to a different element. There is only one ciphersuite to instantiate
-    /// here, so this pins the tag the identifier produces rather than comparing two groups.
+    /// hash the same input to a different element. This pins the tag the identifier produces
+    /// rather than comparing two groups.
     #[test]
     fn hash_to_group_is_separated_by_the_ciphersuite_identifier() {
         let suite = Ristretto255::CIPHERSUITE;
@@ -437,7 +318,7 @@ mod tests {
         );
         assert_ne!(
             hash_to_group::<Ristretto255>(b"alice"),
-            hash_to_group_with_dst(b"alice", b"HashToGroup-coPRFV1-another-suite")
+            hash_to_group_with_dst(b"alice", b"HashToGroup-nPEPV1-another-suite")
         );
     }
 
@@ -445,7 +326,7 @@ mod tests {
     fn hash_to_group_uses_the_ciphersuite_dst() {
         assert_eq!(
             hash_to_group::<Ristretto255>(b"alice"),
-            hash_to_group_with_dst(b"alice", b"HashToGroup-coPRFV1-ristretto255-SHA512")
+            hash_to_group_with_dst(b"alice", b"HashToGroup-nPEPV1-ristretto255-SHA512")
         );
     }
 

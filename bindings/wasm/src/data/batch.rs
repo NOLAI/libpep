@@ -1,8 +1,7 @@
-//! WASM wrappers around [`EncryptedBatch<E>`] — one concrete struct per encrypted shape.
+//! WASM wrappers around [`EncryptedBatch<E>`], with one concrete struct per encrypted shape.
 //!
-//! `wasm_bindgen` cannot expose generic Rust types to JavaScript, so we materialize
-//! a dedicated `#[wasm_bindgen]` wrapper for each concrete `E` that participates in
-//! batch operations. Each wrapper holds an `EncryptedBatch<E>` and mirrors the Rust
+//! `wasm_bindgen` cannot expose generic Rust types to JavaScript, so each concrete `E` that
+//! participates in batch operations gets its own `#[wasm_bindgen]` wrapper. Each wrapper holds an `EncryptedBatch<E>` and mirrors the Rust
 //! API 1:1: `new`, `len`, `is_empty`, `items` (clone of the inner items), `publicKey`
 //! (under `batch-pk` only), and the batch operations (`pseudonymize`, `rekey`,
 //! `transcrypt`) as appropriate per shape.
@@ -11,6 +10,13 @@
 //! these wrappers are an additive layer letting JS callers hold a batch across
 //! operations instead of round-tripping through `Vec<E>` between every step.
 
+use crate::aliases::EncryptedAttribute;
+use crate::aliases::EncryptedPseudonym;
+use crate::aliases::EncryptedRecord;
+use crate::aliases::LongEncryptedAttribute;
+use crate::aliases::LongEncryptedPseudonym;
+#[cfg(feature = "long")]
+use crate::aliases::LongEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::records::WASMEncryptedRecord;
@@ -29,13 +35,6 @@ use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
 use libpep::data::batch::EncryptedBatch;
-use libpep::data::long::LongEncryptedAttribute;
-use libpep::data::long::LongEncryptedPseudonym;
-use libpep::data::records::EncryptedRecord;
-#[cfg(feature = "long")]
-use libpep::data::records::LongEncryptedRecord;
-use libpep::data::simple::EncryptedAttribute;
-use libpep::data::simple::EncryptedPseudonym;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;
@@ -541,7 +540,7 @@ impl WASMEncryptedRecordBatch {
         session_keys: &WASMSessionPublicKeys,
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
         let items: Vec<EncryptedRecord> = items.into_iter().map(EncryptedRecord::from).collect();
-        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
+        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
         let inner = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
@@ -595,7 +594,7 @@ impl WASMEncryptedRecordBatch {
         session_keys: &WASMSessionPublicKeys,
     ) {
         let mut rng = rand::rng();
-        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
+        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
         self.inner.transcrypt(&info.0, &keys, &mut rng)
     }
 
@@ -630,7 +629,7 @@ impl WASMLongEncryptedRecordBatch {
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
         let items: Vec<LongEncryptedRecord> =
             items.into_iter().map(LongEncryptedRecord::from).collect();
-        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
+        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
         let inner = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         Ok(Self { inner })
     }
@@ -687,7 +686,7 @@ impl WASMLongEncryptedRecordBatch {
         session_keys: &WASMSessionPublicKeys,
     ) {
         let mut rng = rand::rng();
-        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
+        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
         self.inner.transcrypt(&info.0, &keys, &mut rng)
     }
 

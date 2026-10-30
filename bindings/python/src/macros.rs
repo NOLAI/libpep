@@ -1,8 +1,8 @@
 //! Macros generating the repetitive wrapper-type boilerplate.
 //!
-//! Every macro reproduces the exposed Python API of the previously hand-written wrappers
-//! exactly (method names, signatures, error behavior); a type whose surface deviates from
-//! these shapes stays hand-written instead of growing macro parameters.
+//! Each macro generates the Python API of one wrapper shape (method names, signatures,
+//! error behavior). A type whose surface deviates from these shapes is written by hand
+//! instead of adding macro parameters.
 
 /// Methods of a plaintext value wrapper (a [`libpep::data::simple::Pseudonym`]-shaped type):
 /// point conversions, random generation, byte/hex/hash/lizard/padded encodings, repr and
@@ -73,8 +73,8 @@ macro_rules! py_plaintext_impl {
             }
 
             /// Decode from a byte array of length 16 using lizard encoding.
-            /// This is useful for creating a value from an existing identifier,
-            /// as it accepts any 16-byte value.
+            /// Any 16-byte value is accepted, so this can create a value from an existing
+            /// identifier.
             #[staticmethod]
             #[pyo3(name = "from_lizard")]
             fn from_lizard(data: &[u8]) -> PyResult<Self> {
@@ -158,7 +158,7 @@ macro_rules! py_encrypted_impl {
             /// Create from an [`PyElGamal`].
             #[new]
             fn new(x: PyElGamal) -> Self {
-                Self($core::from(x.0))
+                Self($core { value: x.0 })
             }
 
             /// Encode as a byte array.
@@ -171,8 +171,8 @@ macro_rules! py_encrypted_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(v: &[u8]) -> Option<Self> {
-                use libpep::elgamal::ElGamal;
-                ElGamal::from_slice(v).map(|eg| Self($core::from(eg)))
+                type ElGamal = libpep::elgamal::ElGamal<libpep::elgamal::arithmetic::Ristretto255>;
+                ElGamal::from_slice(v).map(|eg| Self($core { value: eg }))
             }
 
             /// Encode as a base64 string.
@@ -312,7 +312,7 @@ macro_rules! py_long_plaintext_impl {
             #[new]
             fn new($arg: Vec<$item_w>) -> Self {
                 let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
-                Self($core(rust_items))
+                Self(rust_items.into())
             }
 
             #[doc = concat!("Encodes an arbitrary-length string into a `", stringify!($core), "` using PKCS#7 padding.")]
@@ -396,7 +396,7 @@ macro_rules! py_long_encrypted_impl {
             #[new]
             fn new($arg: Vec<$item_w>) -> Self {
                 let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
-                Self($core(rust_items))
+                Self(rust_items.into())
             }
 
             /// Serializes to a pipe-delimited base64 string.

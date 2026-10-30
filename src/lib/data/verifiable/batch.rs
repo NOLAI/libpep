@@ -19,21 +19,19 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizationProof, VerifiableRekeyProof, VerifiableTranscryptionProof,
 };
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::verifiable::generic::{VerifiableRRSKBatch, VerifiableRekeyBatch};
-use crate::factors::commitments::generic::{
+use crate::elgamal::verifiable::{VerifiableRRSKBatch, VerifiableRekeyBatch};
+use crate::elgamal::ElGamal;
+use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
-use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
+use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
 use crate::factors::RekeyPublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]
-use crate::keys::types::generic::{
-    AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys,
-};
+use crate::keys::types::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -156,7 +154,7 @@ fn rebuild_own<E: VerifiableBatchItem>(
 }
 
 #[cfg(feature = "elgamal3")]
-use super::common_gy as batch_gy;
+use super::common::common_gy as batch_gy;
 
 /// Proof of a verifiable pseudonymization of a batch of `E`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -571,13 +569,13 @@ pub trait RekeyFactorOf<G: Group> {
     fn rekey_factor(&self) -> G::Scalar;
 }
 
-impl<G: Group> RekeyFactorOf<G> for crate::factors::types::generic::PseudonymRekeyInfo<G> {
+impl<G: Group> RekeyFactorOf<G> for crate::factors::types::PseudonymRekeyInfo<G> {
     fn rekey_factor(&self) -> G::Scalar {
         self.k.0
     }
 }
 
-impl<G: Group> RekeyFactorOf<G> for crate::factors::types::generic::AttributeRekeyInfo<G> {
+impl<G: Group> RekeyFactorOf<G> for crate::factors::types::AttributeRekeyInfo<G> {
     fn rekey_factor(&self) -> G::Scalar {
         self.k.0
     }

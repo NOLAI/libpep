@@ -1,11 +1,10 @@
 //! Polymorphic batches of encrypted values that share a single recipient session.
 //!
 //! [`EncryptedBatch<E>`] is the central type for batch operations. It works
-//! uniformly across every encrypted type in the library — simple
+//! uniformly across every encrypted type in the library: simple
 //! ([`EncryptedPseudonym`](crate::data::simple::EncryptedPseudonym),
 //! [`EncryptedAttribute`](crate::data::simple::EncryptedAttribute)), long,
-//! records, and JSON — via the polymorphism already present in
-//! [`Encryptable::PublicKeyType`].
+//! records, and JSON. It does this through [`Encryptable::PublicKeyType`].
 //!
 //! With the `batch-pk` feature (and without `elgamal3`), the batch carries the
 //! public key its items are encrypted under, so that the transcryptor operations
@@ -14,22 +13,113 @@
 //! carries its own key.
 //!
 //! Construction validates that all items share the same
-//! [`HasStructure::structure`] so
-//! that subsequent batch operations can shuffle the items without enabling
-//! linkability through structural fingerprinting.
+//! [`HasStructure::structure`], so
+//! that later batch operations can shuffle the items without making them linkable
+//! through structural fingerprinting.
 
-#[cfg(any(
-    all(not(feature = "elgamal3"), feature = "batch-pk"),
-    feature = "serde"
-))]
+#[cfg(feature = "json")]
+use crate::data::json::{unify_structures, JsonError, PepJsonValue, UnifyError};
+#[cfg(feature = "long")]
+use crate::data::long::{LongAttribute, LongPseudonym};
+#[cfg(feature = "long")]
+use crate::data::records::LongRecord;
+use crate::data::records::Record;
+use crate::data::simple::{Attribute, Pseudonym};
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, HasStructure};
+use crate::elgamal::arithmetic::group::Group;
+#[cfg(feature = "json")]
+use crate::elgamal::arithmetic::group::InvertibleEncoding;
 use rand_core::{CryptoRng, Rng};
+use thiserror::Error;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub use crate::errors::BatchError;
+/// An error in a batch operation.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum BatchError {
+    /// Items in the batch have inconsistent structures.
+    ///
+    /// All items in a batch must have the same structure to prevent linkability. If items had
+    /// different structures (for example different numbers of blocks in long values, different
+    /// JSON shapes, or different numbers of pseudonyms or attributes in records), an attacker
+    /// could link items across batches by their structure, defeating the privacy protection of
+    /// shuffling.
+    #[error("Inconsistent structure in batch. Entry at index {index} has structure {actual_structure}, expected {expected_structure}.")]
+    InconsistentStructure {
+        /// The index of the first item whose structure differs.
+        index: usize,
+        /// The structure of the first item.
+        expected_structure: String,
+        /// The structure of the item at `index`.
+        actual_structure: String,
+    },
+    /// Decryption of an item in the batch failed because the secret key does not match.
+    ///
+    /// Only occurs with the `elgamal3` feature, where ciphertexts encode the public key they
+    /// were encrypted for and decryption with a mismatched key is detected.
+    #[error("Decryption failed for entry at index {index}.")]
+    DecryptionFailed {
+        /// The index of the item that failed to decrypt.
+        index: usize,
+    },
+    /// The JSON values in the batch cannot be brought to one structure.
+    #[cfg(feature = "json")]
+    #[error(transparent)]
+    UnifyError(#[from] UnifyError),
+    /// A JSON value in the batch is malformed.
+    #[cfg(feature = "json")]
+    #[error(transparent)]
+    JsonError(#[from] JsonError),
+}
+
+/// A value that can be encrypted as part of a batch.
+///
+/// The hook [`preprocess_for_batch`](Self::preprocess_for_batch) brings the items of a batch to
+/// a common shape before they are encrypted. The default passes them through; JSON values
+/// override it.
+pub trait Batchable: Encryptable + Clone {
+    /// Hook for batch-level preprocessing before encryption. Override it when the encrypted
+    /// batch needs items to share a uniform shape (for example JSON values padded to a unified
+    /// structure).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the items cannot be brought to one shape.
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        Ok(items.to_vec())
+    }
+}
+
+impl<G: Group> Batchable for Pseudonym<G> {}
+impl<G: Group> Batchable for Attribute<G> {}
+#[cfg(feature = "long")]
+impl<G: Group> Batchable for LongPseudonym<G> {}
+#[cfg(feature = "long")]
+impl<G: Group> Batchable for LongAttribute<G> {}
+impl<G: Group> Batchable for Record<G> {}
+#[cfg(feature = "long")]
+impl<G: Group> Batchable for LongRecord<G> {}
+
+/// JSON values must share one structure inside a batch, so they are padded to the unified
+/// structure before encryption; otherwise the batch would be rejected for an inconsistent
+/// shape, and the differing shapes would leak through the batch anyway.
+#[cfg(feature = "json")]
+impl<G: InvertibleEncoding> Batchable for PepJsonValue<G> {
+    fn preprocess_for_batch(items: &[Self]) -> Result<Vec<Self>, BatchError> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        let structures: Vec<_> = items.iter().map(|v| v.structure()).collect();
+        let unified = unify_structures(&structures)?;
+        Ok(items
+            .iter()
+            .map(|item| item.pad_to(&unified))
+            .collect::<Result<Vec<_>, _>>()?)
+    }
+}
 
 /// A polymorphic batch of ciphertexts that share a recipient session.
 ///
@@ -97,7 +187,7 @@ where
     }
 }
 
-// Manual Clone/Debug impls — `derive` adds spurious bounds we don't want.
+// Manual Clone/Debug impls: `derive` would add unwanted bounds.
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
 impl<E> Clone for EncryptedBatch<E>
 where
@@ -264,9 +354,13 @@ pub(crate) fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(),
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::data::simple::EncryptedPseudonym;
+    use crate::elgamal::arithmetic::Ristretto255;
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-    use crate::keys::{PseudonymSessionPublicKey, PublicKey};
+    use crate::keys::PublicKey;
+
+    type EncryptedPseudonym = crate::data::simple::EncryptedPseudonym<Ristretto255>;
+    #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+    type PseudonymSessionPublicKey = crate::keys::PseudonymSessionPublicKey<Ristretto255>;
 
     #[test]
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]

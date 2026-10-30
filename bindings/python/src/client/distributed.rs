@@ -1,5 +1,9 @@
 //! Python bindings for distributed client.
 
+use crate::aliases::Client;
+use crate::aliases::{
+    AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShares,
+};
 #[cfg(feature = "json")]
 use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 #[cfg(feature = "long")]
@@ -18,11 +22,7 @@ use crate::keys::{
 use crate::keys::{PySessionKeyShares, PySessionPublicKeys, PySessionSecretKeys};
 use derive_more::{Deref, From, Into};
 use libpep::client::distributed::make_session_keys_distributed;
-use libpep::client::Client;
 use libpep::keys::distribution::SessionKeyShare;
-use libpep::keys::distribution::{
-    AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShares,
-};
 use libpep::keys::*;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

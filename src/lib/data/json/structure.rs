@@ -1,6 +1,6 @@
 //! JSON structure descriptors and related operations.
 
-use super::data::generic::EncryptedPepJsonValue;
+use super::data::EncryptedPepJsonValue;
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 
 use serde::{Deserialize, Serialize};
@@ -51,10 +51,9 @@ pub enum JsonStructure {
 
 /// Unifies multiple JSON structures by taking the maximum block count for each field.
 ///
-/// This function is useful for batch operations where you need to normalize multiple
-/// values to have the same structure. It recursively unifies nested structures,
-/// taking the maximum block count for strings and pseudonyms, and ensuring that
-/// arrays and objects have compatible structures.
+/// Batch operations use this to normalize multiple values to the same structure. It recursively
+/// unifies nested structures, taking the maximum block count for strings and pseudonyms and
+/// requiring that arrays and objects have compatible structures.
 ///
 /// # Parameters
 ///
@@ -89,7 +88,7 @@ pub enum JsonStructure {
 /// assert_eq!(unified, JsonStructure::String(3));  // Maximum block count
 /// ```
 ///
-/// ## Object Example
+/// ## Object example
 ///
 /// ```no_run
 /// use libpep::data::json::structure::{JsonStructure, unify_structures};
@@ -185,7 +184,7 @@ fn unify_two_structures(
                 }
             }
 
-            // Sort fields to ensure consistent ordering
+            // Sort fields for a consistent order.
             unified_fields.sort_by(|a, b| a.0.cmp(&b.0));
 
             Ok(JsonStructure::Object(unified_fields))
@@ -227,6 +226,7 @@ mod tests {
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
     use crate::data::json::data::PepJsonValue;
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -234,7 +234,7 @@ mod tests {
     };
     use serde_json::json;
 
-    fn make_test_keys() -> SessionKeys {
+    fn make_test_keys() -> SessionKeys<Ristretto255> {
         let mut rng = rand::rng();
         let (_, attr_global_secret) = make_attribute_global_keys(&mut rng);
         let (_, pseudo_global_secret) = make_pseudonym_global_keys(&mut rng);

@@ -9,8 +9,8 @@
 //! confidentiality and pseudonym unlinkability hold as long as at least one of them remains
 //! uncompromised.
 //!
-//! The cryptographic background, a quick start and the relation to OPRFs and proxy re-encryption
-//! are described in the [README](https://github.com/NOLAI/libpep#readme). The scheme is described
+//! The cryptographic background and a quick start
+//! are in the [README](https://github.com/NOLAI/libpep#readme). The scheme is described
 //! in the paper by [Job Doesburg](https://jobdoesburg.nl),
 //! [Bernard van Gastel](https://sustainablesoftware.info) and
 //! [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
@@ -42,14 +42,14 @@
 //!
 //! ## Groups
 //!
-//! The library is generic over a prime-order group, abstracted as the
-//! [`Group`](elgamal::arithmetic::Group) trait (the group API of RFC 9497). Every type that holds
-//! group material has a generic version with a `G: Group` parameter in a `generic` submodule
-//! next to it ([`data::simple::generic::Pseudonym`], [`keys::types::generic::SessionKeys`],
-//! [`transcryptor::types::generic::Transcryptor`], [`elgamal::zkps::generic::Proof`], ...), and
-//! the name at the module level is an alias pinning
-//! [`Ristretto255`](elgamal::arithmetic::Ristretto255), the only group implemented so far. Code
-//! that uses ristretto255 never needs the generic names.
+//! The whole API ([`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
+//! [`verifier`]) is generic over the prime-order group, abstracted as the
+//! [`Group`](elgamal::arithmetic::Group) trait. Users instantiate it with a group, for example
+//! `Pseudonym<Ristretto255>` with [`Ristretto255`](elgamal::arithmetic::Ristretto255), the
+//! implemented group. The group is inferred wherever it follows from the arguments (a key, a
+//! ciphertext); functions that create keys from randomness alone take it as a type parameter,
+//! like `make_global_keys::<Ristretto255, _>(&mut rng)`. Another group can be used by
+//! implementing the trait.
 //!
 //! ## Feature flags
 //!
@@ -76,7 +76,7 @@
 //! - `global-pseudonyms`: allows pseudonyms in a *global* pseudonymization domain (reshuffle
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
-//! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman
+//! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman
 //!   hash (Section 3.3.1 of the paper), so that a verifier computes any commitment from the
 //!   master public keys instead of storing one per factor. The factors are then linear in two
 //!   public hashes: knowing one derived factor reveals nothing about another, but knowing two
@@ -88,14 +88,10 @@
 
 #![warn(missing_docs)]
 
-#[macro_use]
-mod secrecy;
-
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
-pub mod errors;
 pub mod factors;
 pub mod keys;
 pub mod prelude;

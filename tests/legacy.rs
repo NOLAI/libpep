@@ -1,11 +1,13 @@
+mod common;
+
 #[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
+    use crate::common::aliases::PseudonymRekeyFactor;
+    use crate::common::aliases::{BlindingFactor, Ristretto255};
     use libpep::contexts::PseudonymizationDomain;
     use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-    use libpep::factors::PseudonymRekeyFactor;
     use libpep::factors::{make_pseudonymization_factor, Factor, PseudonymizationSecret};
-    use libpep::keys::distribution::blinding::BlindingFactor;
     use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
     use libpep::keys::distribution::SessionKeyShare;
 
@@ -32,7 +34,8 @@ mod legacy_pep_repo_tests {
             let secret = hex::decode(secret_hex).unwrap();
             let pseudo_secret = PseudonymizationSecret::from(secret);
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
-            let pseudo_factor = make_pseudonymization_factor(&pseudo_secret, &context);
+            let pseudo_factor =
+                make_pseudonymization_factor::<Ristretto255>(&pseudo_secret, &context);
             assert_eq!(
                 pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor
@@ -41,7 +44,7 @@ mod legacy_pep_repo_tests {
             let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
             // Note: PEP repo uses the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
             // We wrap the scalar in a PseudonymRekeyFactor for API compatibility.
-            let rekey_factor = PseudonymRekeyFactor::from(pseudo_factor.scalar());
+            let rekey_factor = PseudonymRekeyFactor::from_scalar(pseudo_factor.scalar());
             let session_key_share =
                 make_pseudonym_session_key_share(&rekey_factor, &blinding_factor);
             assert_eq!(

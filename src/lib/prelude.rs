@@ -1,8 +1,8 @@
 //! Prelude module for convenient imports.
 //!
-//! This module provides two sub-preludes:
-//! - [`client`]: For encryption and decryption operations
-//! - [`transcryptor`]: For pseudonymization, rekeying, and transcryption operations
+//! This module has two sub-preludes:
+//! - [`client`]: encryption and decryption operations
+//! - [`transcryptor`]: pseudonymization, rekeying and transcryption operations
 //!
 //! # Examples
 //!

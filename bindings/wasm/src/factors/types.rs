@@ -1,5 +1,7 @@
 //! WASM bindings for factor types and the transcryption info types that bundle them.
 
+use crate::aliases::*;
+use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
@@ -8,9 +10,8 @@ use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
 use derive_more::{Deref, From, Into};
-use libpep::factors::types::*;
 use libpep::factors::{Factor, RekeyPublicKey};
-use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
+use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -22,7 +23,7 @@ pub struct WASMRerandomizeFactor(pub(crate) RerandomizeFactor);
 impl WASMRerandomizeFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(scalar: &WASMScalarNonZero) -> Self {
-        Self(RerandomizeFactor::from(scalar.0))
+        Self(RerandomizeFactor::from_scalar(scalar.0))
     }
 
     #[wasm_bindgen(js_name = scalar)]
@@ -40,7 +41,7 @@ pub struct WASMReshuffleFactor(pub(crate) ReshuffleFactor);
 impl WASMReshuffleFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(scalar: &WASMScalarNonZero) -> Self {
-        Self(ReshuffleFactor::from(scalar.0))
+        Self(ReshuffleFactor::from_scalar(scalar.0))
     }
 
     #[wasm_bindgen(js_name = scalar)]
@@ -58,7 +59,7 @@ pub struct WASMPseudonymRekeyFactor(pub(crate) PseudonymRekeyFactor);
 impl WASMPseudonymRekeyFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(scalar: &WASMScalarNonZero) -> Self {
-        Self(PseudonymRekeyFactor::from(scalar.0))
+        Self(PseudonymRekeyFactor::from_scalar(scalar.0))
     }
 
     #[wasm_bindgen(js_name = scalar)]
@@ -76,7 +77,7 @@ pub struct WASMAttributeRekeyFactor(pub(crate) AttributeRekeyFactor);
 impl WASMAttributeRekeyFactor {
     #[wasm_bindgen(constructor)]
     pub fn new(scalar: &WASMScalarNonZero) -> Self {
-        Self(AttributeRekeyFactor::from(scalar.0))
+        Self(AttributeRekeyFactor::from_scalar(scalar.0))
     }
 
     #[wasm_bindgen(js_name = scalar)]
@@ -303,7 +304,7 @@ impl WASMTranscryptionInfo {
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
     #[wasm_bindgen(js_name = rekeyPublicKey)]
     pub fn rekey_public_key(&self, before: &WASMSessionPublicKeys) -> WASMSessionPublicKeys {
-        let before: libpep::keys::SessionPublicKeys = (*before).into();
+        let before: crate::aliases::SessionPublicKeys = (*before).into();
         self.0.rekey_public_key(&before).into()
     }
 }
