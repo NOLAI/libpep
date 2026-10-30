@@ -1,8 +1,7 @@
 //! Macros generating the repetitive wrapper-type boilerplate.
 //!
-//! Every macro reproduces the exposed JavaScript API of the previously hand-written
-//! wrappers byte-exactly; a type whose surface deviates from these shapes stays
-//! hand-written instead of growing macro parameters.
+//! Each macro generates the JavaScript API of one wrapper shape. A type whose API deviates
+//! from these shapes is written by hand instead of adding macro parameters.
 
 /// Methods of a plaintext value wrapper (a [`libpep::data::simple::Pseudonym`]-shaped type):
 /// point conversions, random generation, byte/hex/hash/lizard/padded encodings.
@@ -98,7 +97,7 @@ macro_rules! wasm_encrypted_impl {
         impl $w {
             #[wasm_bindgen(constructor)]
             pub fn new(x: WASMElGamal) -> Self {
-                Self(<$core>::from(x.0))
+                Self(<$core>::from_value(x.0))
             }
 
             #[wasm_bindgen(js_name = toBytes)]
@@ -216,7 +215,7 @@ macro_rules! wasm_long_plaintext_impl {
             #[wasm_bindgen(constructor)]
             pub fn new($arg: Vec<$item_w>) -> Self {
                 let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
-                Self($core(rust_items))
+                Self($core { 0: rust_items })
             }
 
             #[doc = concat!("Encodes an arbitrary-length string into a `", stringify!($core), "` using PKCS#7 padding.")]
@@ -293,7 +292,7 @@ macro_rules! wasm_long_encrypted_impl {
             #[wasm_bindgen(constructor)]
             pub fn new($arg: Vec<$item_w>) -> Self {
                 let rust_items: Vec<$item_core> = $arg.into_iter().map(|p| p.0).collect();
-                Self($core(rust_items))
+                Self($core { 0: rust_items })
             }
 
             /// Serializes to a pipe-delimited base64 string.

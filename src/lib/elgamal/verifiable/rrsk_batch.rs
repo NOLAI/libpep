@@ -4,7 +4,7 @@ use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment
 use super::rerandomize_batch::VerifiableRerandomizeBatch;
 use super::rsk_batch::{VerifiableRSK2Batch, VerifiableRSKBatch};
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ impl<G: Group> VerifiableRRSKBatch<G> {
     }
 
     /// Reconstruct the RRSK'd ciphertexts from this batch proof,
-    /// **without verifying** it. Internal prover-side use only —
+    /// without verifying it. Internal prover-side use only;
     /// public callers should use
     /// [`verified_reconstruct`](Self::verified_reconstruct).
     pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
@@ -133,7 +133,7 @@ impl<G: Group> VerifiableRRSK2Batch<G> {
     }
 
     /// Reconstruct the RRSK-2'd ciphertexts from this batch proof,
-    /// **without verifying** it. Internal prover-side use only.
+    /// without verifying it. Internal prover-side use only.
     pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
         self.rsk2.inner.result()
     }
@@ -195,12 +195,12 @@ impl<G: Group> VerifiableRRSK2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK2Batch,
         VerifiableRRSKBatch,
     };
-    use crate::elgamal::ElGamal;
 
     fn make_pk_ct() -> (GroupElement, ElGamal) {
         let mut rng = rand::rng();

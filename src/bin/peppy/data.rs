@@ -8,38 +8,34 @@
 //! The transcryption commands take `--prove` to also produce a proof of the operation; the
 //! `verify-*` commands check such a proof, see [`crate::verifiable`].
 
+use crate::aliases::{
+    Attribute, AttributeGlobalPublicKey, AttributeRekeyFactor, AttributeRekeyInfo,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, EncryptedAttribute, EncryptedPseudonym,
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Pseudonym,
+    PseudonymGlobalPublicKey, PseudonymRekeyFactor, PseudonymRekeyInfo, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, PseudonymizationInfo, ReshuffleFactor, VerifiableRekeyCommitment,
+};
+#[cfg(feature = "insecure")]
+use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::factors::{AttributeTransitionArgs, TransitionArgs};
 use crate::io::{self, Output, Result};
 use crate::verifiable::{self, VerifyPseudonymizeArgs, VerifyRekeyArgs};
 use clap::{Args, Subcommand};
-use libpep::data::long::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
-};
+use libpep::data::errors::ParseError;
 use libpep::data::padding::{Padded, PaddingError};
-use libpep::data::simple::{
-    Attribute, ElGamalEncryptable, ElGamalEncrypted, EncryptedAttribute, EncryptedPseudonym,
-    Pseudonym,
-};
+use libpep::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
 use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use libpep::data::verifiable::traits::{VerifiableRekeyProof, VerifiableRekeyable};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::errors::ParseError;
-use libpep::factors::commitments::VerifiableRekeyCommitment;
-use libpep::factors::{
-    AttributeRekeyFactor, AttributeRekeyInfo, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, RekeyPublicKey, ReshuffleFactor,
-};
-use libpep::keys::{
-    AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
-    PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
-    SecretKey,
-};
-#[cfg(feature = "insecure")]
-use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::factors::{Factor, RekeyPublicKey};
+use libpep::keys::{PublicKey, SecretKey};
 use rand_core::{CryptoRng, Rng};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+
+/// The group the command line tool works over.
+type Curve = Ristretto255;
 
 /// The length of one block (a group element) in hex digits.
 const HEX_BLOCK: usize = 64;
@@ -227,40 +223,35 @@ pub trait Kind {
     type Plain: ElGamalEncryptable
         + Padded
         + Encryptable<
-            Group = Ristretto255,
+            Group = Curve,
             EncryptedType = Self::Enc,
             PublicKeyType = Self::SessionPk,
             GlobalPublicKeyType = Self::GlobalPk,
         >;
     type Enc: ElGamalEncrypted
-        + Encrypted<
-            Group = Ristretto255,
-            UnencryptedType = Self::Plain,
-            SecretKeyType = Self::SessionSk,
-        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
+        + Encrypted<Group = Curve, UnencryptedType = Self::Plain, SecretKeyType = Self::SessionSk>
+        + Rekeyable<RekeyInfo = Self::RekeyInfo>
         + Transcryptable
         + VerifiableRekeyable<
             RekeyProof: VerifiableRekeyProof<Output = Self::Enc> + Serialize + DeserializeOwned,
         >;
     type Long: Encryptable<
+        Group = Curve,
         EncryptedType = Self::LongEnc,
         PublicKeyType = Self::SessionPk,
         GlobalPublicKeyType = Self::GlobalPk,
     >;
-    type LongEnc: Encrypted<
-            Group = Ristretto255,
-            UnencryptedType = Self::Long,
-            SecretKeyType = Self::SessionSk,
-        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
+    type LongEnc: Encrypted<Group = Curve, UnencryptedType = Self::Long, SecretKeyType = Self::SessionSk>
+        + Rekeyable<RekeyInfo = Self::RekeyInfo>
         + Transcryptable
         + VerifiableRekeyable<
             RekeyProof: VerifiableRekeyProof<Output = Self::LongEnc> + Serialize + DeserializeOwned,
         >;
-    type SessionPk: PublicKey<Group = Ristretto255>;
-    type SessionSk: SecretKey<Group = Ristretto255>;
-    type GlobalPk: PublicKey<Group = Ristretto255>;
+    type SessionPk: PublicKey;
+    type SessionSk: SecretKey<Group = Curve>;
+    type GlobalPk: PublicKey;
     #[cfg(feature = "insecure")]
-    type GlobalSk: SecretKey<Group = Ristretto255>;
+    type GlobalSk: SecretKey<Group = Curve>;
     /// The info of a rekeying, which also gives the commitment to its factor.
     type RekeyInfo: Copy + Into<VerifiableRekeyCommitment>;
 
@@ -302,7 +293,7 @@ macro_rules! impl_kind {
             type RekeyInfo = $info;
 
             fn rekey_info(k: ScalarNonZero) -> Self::RekeyInfo {
-                <$info>::from(<$factor>::from(k))
+                <$info>::from(<$factor>::from_scalar(k))
             }
             fn rekey_public_key(
                 info: &Self::RekeyInfo,
@@ -311,7 +302,7 @@ macro_rules! impl_kind {
                 info.rekey_public_key(before)
             }
             fn long_from_blocks(blocks: Vec<Self::Plain>) -> Self::Long {
-                $long(blocks)
+                libpep::data::long::$long(blocks)
             }
             fn long_from_text(text: &str) -> Self::Long {
                 $long::from_string_padded(text)
@@ -631,8 +622,8 @@ fn pseudonymize<R: Rng + CryptoRng>(
     out: &mut Output,
 ) -> Result<()> {
     let info = PseudonymizationInfo {
-        s: ReshuffleFactor::from(io::scalar(&args.s, "s")?),
-        k: PseudonymRekeyFactor::from(io::scalar(&args.k, "k")?),
+        s: ReshuffleFactor::from_scalar(io::scalar(&args.s, "s")?),
+        k: PseudonymRekeyFactor::from_scalar(io::scalar(&args.k, "k")?),
     };
     pseudonymize_with(
         &info,

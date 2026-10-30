@@ -1,11 +1,13 @@
 #![cfg(feature = "long")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use common::aliases::LongPseudonym;
+use common::aliases::PseudonymizationInfo;
+use common::aliases::Ristretto255;
+use common::aliases::{EncryptedPseudonym, Pseudonym};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::long::LongPseudonym;
-use libpep::data::simple::{EncryptedPseudonym, Pseudonym};
 use libpep::data::traits::{Encryptable, Encrypted};
-use libpep::factors::{EncryptionSecret, PseudonymizationInfo, PseudonymizationSecret};
+use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
 use libpep::transcryptor::pseudonymize;
 use std::error::Error;
@@ -17,7 +19,7 @@ mod common;
 fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
     // Initialize test environment
     let mut rng = rand::rng();
-    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("test-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
 
@@ -116,7 +118,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         })
         .collect();
 
-    let reverse_long = LongPseudonym(reverse_decrypted);
+    let reverse_long = libpep::data::long::LongPseudonym(reverse_decrypted);
     let reverse_string = reverse_long.to_string_padded()?;
 
     // After reversing the pseudonymization, we should get back the original string

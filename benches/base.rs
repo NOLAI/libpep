@@ -1,6 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
@@ -23,7 +24,9 @@ fn bench_encrypt(c: &mut Criterion) {
                 let message = GroupElement::random(&mut rng);
                 (message, public_key, rng)
             },
-            |(message, public_key, mut rng)| encrypt(&message, &public_key, &mut rng),
+            |(message, public_key, mut rng)| {
+                encrypt::<Ristretto255, _>(&message, &public_key, &mut rng)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -36,7 +39,7 @@ fn bench_decrypt(c: &mut Criterion) {
                 let (secret_key, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 (encrypted, secret_key)
             },
             |(encrypted, secret_key)| decrypt(&encrypted, &secret_key),
@@ -52,7 +55,7 @@ fn bench_rerandomize(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 (encrypted, public_key, r)
             },
@@ -78,7 +81,7 @@ fn bench_reshuffle(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 (encrypted, s)
             },
@@ -95,7 +98,7 @@ fn bench_rekey(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, k)
             },
@@ -112,7 +115,7 @@ fn bench_rsk(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, s, k)
@@ -130,7 +133,7 @@ fn bench_rrsk(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
@@ -158,7 +161,7 @@ fn bench_reshuffle2(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 (encrypted, s_from, s_to)
@@ -176,7 +179,7 @@ fn bench_rekey2(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
                 (encrypted, k_from, k_to)
@@ -194,7 +197,7 @@ fn bench_rsk2(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
@@ -216,7 +219,7 @@ fn bench_rrsk2(c: &mut Criterion) {
                 let (_, public_key) = setup_keys();
                 let mut rng = rand::rng();
                 let message = GroupElement::random(&mut rng);
-                let encrypted = encrypt(&message, &public_key, &mut rng);
+                let encrypted = encrypt::<Ristretto255, _>(&message, &public_key, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);

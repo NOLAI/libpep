@@ -6,22 +6,22 @@
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::data::traits::Encrypted;
 use crate::elgamal::arithmetic::group::Group;
-use crate::factors::commitments::generic::{
+use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
-use crate::factors::types::generic::{PseudonymizationInfo, TranscryptionInfo};
+use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
 use rand_core::{CryptoRng, Rng};
 
-use super::types::generic::Transcryptor;
+use super::types::Transcryptor;
 
 impl<G: Group> Transcryptor<G> {
     /// Build the public commitments for a pseudonymization transition:
     /// forward commitments `S = s·G` and `K = k·G` to the reshuffle and rekey
     /// factors. The commitments are bound to the same `(domain_from,
     /// domain_to, session_from, session_to)` tuple the prover passes to
-    /// [`pseudonymization_info`](Self::pseudonymization_info), guaranteeing
-    /// that the verifier and prover commit to the same secrets.
+    /// [`pseudonymization_info`](Self::pseudonymization_info), so the verifier
+    /// and prover commit to the same secrets.
     pub fn pseudonymization_commitment(
         &self,
         domain_from: &PseudonymizationDomain,
@@ -78,7 +78,8 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E::PseudonymizationProof
     where
-        E: crate::data::verifiable::traits::VerifiablePseudonymizable + Encrypted<Group = G>,
+        E: crate::data::verifiable::traits::VerifiablePseudonymizable<Group = G>
+            + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, rng)
@@ -95,7 +96,8 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E::PseudonymizationProof
     where
-        E: crate::data::verifiable::traits::VerifiablePseudonymizable + Encrypted<Group = G>,
+        E: crate::data::verifiable::traits::VerifiablePseudonymizable<Group = G>
+            + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_pseudonymize(info, public_key, rng)
@@ -114,7 +116,7 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E::RekeyProof
     where
-        E: crate::data::verifiable::traits::VerifiableRekeyable + Encrypted<Group = G>,
+        E: crate::data::verifiable::traits::VerifiableRekeyable<Group = G> + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_rekey(info, rng)
@@ -131,7 +133,8 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E::TranscryptionProof
     where
-        E: crate::data::verifiable::traits::VerifiableTranscryptable + Encrypted<Group = G>,
+        E: crate::data::verifiable::traits::VerifiableTranscryptable<Group = G>
+            + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_transcrypt(info, rng)
@@ -149,7 +152,8 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E::TranscryptionProof
     where
-        E: crate::data::verifiable::traits::VerifiableTranscryptable + Encrypted<Group = G>,
+        E: crate::data::verifiable::traits::VerifiableTranscryptable<Group = G>
+            + Encrypted<Group = G>,
         R: Rng + CryptoRng,
     {
         encrypted.verifiable_transcrypt(info, public_key, rng)

@@ -25,7 +25,7 @@ use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment
 use super::rerandomize::VerifiableRerandomize;
 use super::rsk::{VerifiableRSK, VerifiableRSK2};
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -70,8 +70,8 @@ impl<G: Group> VerifiableRRSK<G> {
         Self { rerandomize, rsk }
     }
 
-    /// Reconstruct the RRSK'd ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only — public callers should
+    /// Reconstruct the RRSK'd ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only; public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
     pub(crate) fn result(&self) -> ElGamal<G> {
         self.rsk.result()
@@ -139,8 +139,8 @@ impl<G: Group> VerifiableRRSK2<G> {
         Self { rerandomize, rsk2 }
     }
 
-    /// Reconstruct the RRSK-2'd ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only.
+    /// Reconstruct the RRSK-2'd ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only.
     pub(crate) fn result(&self) -> ElGamal<G> {
         self.rsk2.result()
     }
@@ -181,12 +181,12 @@ impl<G: Group> VerifiableRRSK2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rrsk, rrsk2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
     };
-    use crate::elgamal::ElGamal;
 
     fn make_pk_ct() -> (GroupElement, ElGamal) {
         let mut rng = rand::rng();

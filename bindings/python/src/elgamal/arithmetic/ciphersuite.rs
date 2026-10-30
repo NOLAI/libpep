@@ -4,14 +4,14 @@ use libpep::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
-/// The ciphersuite identifier, from which the context string `"coPRFV1-" || identifier` is built.
+/// The ciphersuite identifier, from which the context string `"nPEPV1-" || identifier` is built.
 ///
 /// Hashes that take no secret, in particular `hashing.hash_to_group`, are domain-separated with
-/// it. An identifier names a group *and* a hash, so it belongs to the group rather than being
-/// chosen per call; `ristretto255-SHA512` is the only suite this build implements.
+/// it. An identifier names a group and a hash together, so it belongs to the group and is not
+/// chosen per call. `ristretto255-SHA512` is the only suite this build implements.
 ///
-/// This is not an `EncryptionContext` or a `PseudonymizationDomain`: those name a session and a
-/// domain within a deployment.
+/// A ciphersuite is unrelated to an `EncryptionContext` or a `PseudonymizationDomain`, which
+/// name a session and a domain within a deployment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[pyclass(name = "Ciphersuite", from_py_object)]
 pub struct PyCiphersuite(pub(crate) Ciphersuite);
@@ -20,7 +20,7 @@ pub struct PyCiphersuite(pub(crate) Ciphersuite);
 impl PyCiphersuite {
     /// The ciphersuite of the group this build implements: `ristretto255-SHA512`.
     ///
-    /// A ciphersuite cannot be constructed from an arbitrary identifier: it names a group and a
+    /// A ciphersuite cannot be constructed from an arbitrary identifier. It names a group and a
     /// hash together, and pairing one group's identifier with another group's operations would
     /// produce hashes tagged for the wrong curve.
     #[new]
@@ -40,10 +40,9 @@ impl PyCiphersuite {
         PyBytes::new(py, self.0.identifier().as_bytes()).into()
     }
 
-    /// The context string `"coPRFV1-" || identifier`.
+    /// The context string `"nPEPV1-" || identifier`.
     ///
-    /// The name is the spec's: RFC 9497 and draft-doesburg-cfrg-coprf both call this value
-    /// `contextString`.
+    /// Other protocols call this value `contextString`.
     fn context_string(&self, py: Python) -> Py<PyAny> {
         PyBytes::new(py, self.0.context_string()).into()
     }

@@ -1,5 +1,9 @@
 //! WASM bindings for batch client operations.
 
+use crate::aliases::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+};
 #[cfg(feature = "long")]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
@@ -14,10 +18,6 @@ use crate::keys::types::{
 use libpep::client::{decrypt_batch, encrypt_batch};
 use libpep::keys::PublicKey;
 use libpep::keys::SecretKey;
-use libpep::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
 use wasm_bindgen::prelude::*;
 
 /// Batch encrypt pseudonyms using a session public key.

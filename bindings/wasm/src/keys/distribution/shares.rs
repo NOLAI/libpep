@@ -2,6 +2,9 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
+use crate::aliases::{AttributeRekeyFactor, PseudonymRekeyFactor};
+use crate::aliases::{AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares};
+use crate::aliases::{AttributeSessionSecretKey, PseudonymSessionSecretKey};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{
@@ -15,13 +18,12 @@ use libpep::client::distributed::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
-use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
+use libpep::factors::Factor;
 use libpep::keys::distribution::SessionKeyShare;
 use libpep::keys::distribution::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_shares,
-    AttributeSessionKeyShare, PseudonymSessionKeyShare, SessionKeyShares,
 };
-use libpep::keys::{AttributeSessionSecretKey, PseudonymSessionSecretKey, SecretKey};
+use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym session key share.
@@ -162,7 +164,7 @@ pub fn wasm_make_pseudonym_session_key_share(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMPseudonymSessionKeyShare {
     WASMPseudonymSessionKeyShare(make_pseudonym_session_key_share(
-        &PseudonymRekeyFactor::from(rekey_factor.0),
+        &PseudonymRekeyFactor::from_scalar(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -174,7 +176,7 @@ pub fn wasm_make_attribute_session_key_share(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMAttributeSessionKeyShare {
     WASMAttributeSessionKeyShare(make_attribute_session_key_share(
-        &AttributeRekeyFactor::from(rekey_factor.0),
+        &AttributeRekeyFactor::from_scalar(rekey_factor.0),
         &blinding_factor.0,
     ))
 }
@@ -187,8 +189,8 @@ pub fn wasm_make_session_key_shares(
     blinding_factor: &WASMBlindingFactor,
 ) -> WASMSessionKeyShares {
     WASMSessionKeyShares(make_session_key_shares(
-        &PseudonymRekeyFactor::from(pseudonym_rekey_factor.0),
-        &AttributeRekeyFactor::from(attribute_rekey_factor.0),
+        &PseudonymRekeyFactor::from_scalar(pseudonym_rekey_factor.0),
+        &AttributeRekeyFactor::from_scalar(attribute_rekey_factor.0),
         &blinding_factor.0,
     ))
 }

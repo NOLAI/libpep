@@ -1,19 +1,17 @@
+use crate::aliases::*;
+use crate::aliases::{AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::PyElGamal;
 use crate::macros::{py_encrypted_impl, py_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;
-use libpep::data::simple::*;
-#[cfg(feature = "verifiable")]
-use libpep::data::verifiable::simple::{
-    AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof,
-};
+use libpep::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
 
-/// A pseudonym that can be used to identify a user
-/// within a specific domain, which can be encrypted, rekeyed and reshuffled.
+/// A pseudonym identifies a user within a specific domain. It can be encrypted, rekeyed
+/// and reshuffled.
 #[pyclass(name = "Pseudonym", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyPseudonym(pub(crate) Pseudonym);

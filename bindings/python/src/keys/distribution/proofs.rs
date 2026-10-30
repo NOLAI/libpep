@@ -4,10 +4,10 @@
 
 #![cfg(feature = "verifiable")]
 
+use crate::aliases::{BlindingCommitment, SessionKeyShareProof};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
-use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -36,7 +36,7 @@ impl PyBlindingCommitment {
     #[staticmethod]
     fn from_point(point: PyGroupElement) -> Self {
         Self {
-            inner: libpep::keys::distribution::proofs::generic::BlindingCommitment(point.0),
+            inner: libpep::keys::distribution::BlindingCommitment(point.0),
         }
     }
 

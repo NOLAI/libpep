@@ -13,5 +13,5 @@ def hash_to_group_with_dst(msg, dst):
     ...
 
 def hash_to_scalar_with_dst(msg, dst):
-    """`HashToScalar` of the ristretto255-SHA512 ciphersuite of RFC 9497 under the complete domain"""
+    """`HashToScalar` of the ristretto255-SHA512 ciphersuite under the complete domain"""
     ...

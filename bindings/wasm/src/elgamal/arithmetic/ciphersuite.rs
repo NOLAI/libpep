@@ -3,7 +3,7 @@
 use libpep::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255};
 use wasm_bindgen::prelude::*;
 
-/// The ciphersuite identifier, from which the context string `"coPRFV1-" || identifier` is built.
+/// The ciphersuite identifier, from which the context string `"nPEPV1-" || identifier` is built.
 ///
 /// Hashes that take no secret, in particular `hashToGroup`, are domain-separated with it. An
 /// identifier names a group *and* a hash, so it belongs to the group rather than being chosen per
@@ -39,9 +39,9 @@ impl WASMCiphersuite {
         self.0.identifier().as_bytes().to_vec()
     }
 
-    /// The context string `"coPRFV1-" || identifier`.
+    /// The context string `"nPEPV1-" || identifier`.
     ///
-    /// The name is the spec's: RFC 9497 and draft-doesburg-cfrg-coprf both call this value
+    /// The name is the spec's: Other protocols call this value
     /// `contextString`.
     #[wasm_bindgen(js_name = contextString)]
     pub fn context_string(&self) -> Vec<u8> {

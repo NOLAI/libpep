@@ -5,8 +5,8 @@ use super::commitments::{
 };
 use super::rsk::VerifiableRSKInner;
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 /// `gt = (s·k⁻¹)·G` and the `ZKP{S = k·T}` ([`Self::p_gs`]) depend only on
 /// `(s, k)` and not on any individual ciphertext, so they are hoisted into
 /// the batch header. Each per-message [`VerifiableRSKInner`] carries only
-/// the genuinely ciphertext-dependent sub-proofs.
+/// the ciphertext-dependent sub-proofs.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 pub struct VerifiableRSKBatch<G: Group> {
@@ -72,7 +72,7 @@ impl<G: Group> VerifiableRSKBatch<G> {
     }
 
     /// Reconstruct the RSK'd ciphertexts from this batch proof,
-    /// **without verifying** it. Internal prover-side use only.
+    /// without verifying it. Internal prover-side use only.
     pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
         self.inners.iter().map(|inner| inner.result()).collect()
     }
@@ -253,7 +253,7 @@ impl<G: Group> VerifiableRSK2Batch<G> {
         )
     }
 
-    /// The RSK-2'd ciphertexts, **without verifying** the proof. Internal prover-side use only.
+    /// The RSK-2'd ciphertexts, without verifying the proof. Internal prover-side use only.
     pub(crate) fn result(&self) -> Vec<ElGamal<G>> {
         self.inner.result()
     }
@@ -269,13 +269,13 @@ impl<G: Group> VerifiableRSK2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rsk, rsk2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK2Batch,
         VerifiableRSKBatch,
     };
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

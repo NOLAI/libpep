@@ -1,11 +1,12 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use common::aliases::PepJsonBuilder;
+use common::aliases::Ristretto255;
+use common::aliases::TranscryptionInfo;
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::json::builder::PepJsonBuilder;
 use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
 use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::factors::TranscryptionInfo;
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
 #[cfg(feature = "batch")]
@@ -20,7 +21,7 @@ fn test_json_transcryption_with_macro() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -84,7 +85,7 @@ fn test_json_transcryption_with_builder() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -167,7 +168,7 @@ fn test_json_batch_transcryption_same_structure() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -281,7 +282,7 @@ fn test_json_batch_transcryption_different_structures() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -349,7 +350,7 @@ fn test_json_batch_transcryption_different_structures() {
     // Verify that it returns an error due to inconsistent structure
     assert!(result.is_err(), "Should fail with inconsistent structures");
     match result {
-        Err(libpep::errors::BatchError::InconsistentStructure { .. }) => {
+        Err(libpep::data::batch::BatchError::InconsistentStructure { .. }) => {
             // Expected error
         }
         _ => panic!("Expected InconsistentStructure error"),
@@ -361,7 +362,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -454,7 +455,7 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -568,7 +569,7 @@ fn test_pseudonym_roundtrip_with_builder() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -702,7 +703,7 @@ fn test_unicode_pseudonyms_and_attributes() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys(&mut rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 

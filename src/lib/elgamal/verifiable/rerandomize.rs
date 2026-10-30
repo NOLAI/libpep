@@ -6,14 +6,14 @@
 //!
 //! The verifier checks the proof `ZKP{Y_r = r * Y}`: its first component is
 //! `Y_r = r·Y`, base is `Y`, commitment is `R = r·G`. No separate factor
-//! commitment is needed — the proof itself is its own factor commitment.
+//! commitment is needed: the proof itself is its own factor commitment.
 //!
 //! In `elgamal3` mode `Y` is carried by the ciphertext; in the default mode
 //! the caller supplies it explicitly to the constructor and verifier.
 
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -47,8 +47,8 @@ impl<G: Group> VerifiableRerandomize<G> {
         Self { gr, p_gy_r }
     }
 
-    /// Reconstruct the rerandomized ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only — public callers should
+    /// Reconstruct the rerandomized ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only; public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
     ///
     /// `B_r = R + B`, `C_r = Y_r + C`, `Y_r = Y` (elgamal3).
@@ -64,7 +64,7 @@ impl<G: Group> VerifiableRerandomize<G> {
     /// Verify the rerandomize proof against the recipient public key `gy`
     /// the original ciphertext was encrypted under.
     ///
-    /// Note: rerandomize proofs are independent of the original ciphertext
+    /// Rerandomize proofs are independent of the original ciphertext
     /// (the proof binds `R = r·G` to `gy` only), so no `original` argument
     /// is needed for verification.
     #[must_use]
@@ -78,11 +78,9 @@ impl<G: Group> VerifiableRerandomize<G> {
     }
 }
 
-// NOTE: `verifiable_rerandomize` is intentionally kept (not removed with the
-// rest of the snake-case free wrappers) because it does extra work beyond
-// `VerifiableRerandomize::new` — it also computes and returns the
-// rerandomized ciphertext via the `pub(crate)` `result` helper, which is
-// not otherwise accessible to external callers.
+// Unlike the other snake-case free wrappers, `verifiable_rerandomize` does extra work beyond
+// `VerifiableRerandomize::new`: it also computes and returns the rerandomized ciphertext via
+// the `pub(crate)` `result` helper, which external callers cannot reach.
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
 /// Rerandomize `original` with a fresh factor and return the result with its proof.
 pub fn verifiable_rerandomize<G: Group, R: Rng + CryptoRng>(
@@ -114,10 +112,12 @@ pub fn verifiable_rerandomize<G: Group, R: Rng + CryptoRng>(
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::elgamal::primitives::rerandomize;
-    use crate::elgamal::verifiable::VerifiableRerandomize;
-    use crate::elgamal::ElGamal;
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
+
+    type VerifiableRerandomize = crate::elgamal::verifiable::VerifiableRerandomize<Ristretto255>;
 
     fn setup_ct_and_pk() -> (ElGamal, GroupElement) {
         let mut rng = rand::rng();

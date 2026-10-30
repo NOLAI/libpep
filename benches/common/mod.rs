@@ -6,26 +6,28 @@
 //! benchmarks measure a correct end-to-end flow in both ciphertext encodings.
 #![allow(dead_code, clippy::expect_used)]
 
+pub mod aliases;
+
 use libpep::data::traits::{Encryptable, Encrypted, HasStructure, Rekeyable, Transcryptable};
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::factors::TranscryptionInfo;
-use libpep::transcryptor::DistributedTranscryptor;
+use libpep::elgamal::arithmetic::group::Group;
+use libpep::factors::types::TranscryptionInfo;
+use libpep::transcryptor::distributed::DistributedTranscryptor;
 use rand_core::{CryptoRng, Rng};
 
 type PublicKeyOf<E> = <<E as Encrypted>::UnencryptedType as Encryptable>::PublicKeyType;
 
 /// Transcrypt `enc` through every transcryptor in turn.
 #[allow(clippy::too_many_arguments)]
-pub fn transcrypt_chain<E, R>(
-    systems: &[DistributedTranscryptor],
+pub fn transcrypt_chain<G: Group, E, R>(
+    systems: &[DistributedTranscryptor<G>],
     enc: E,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor) -> TranscryptionInfo,
-    next_key: impl Fn(&TranscryptionInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
+    info: impl Fn(&DistributedTranscryptor<G>) -> TranscryptionInfo<G>,
+    next_key: impl Fn(&TranscryptionInfo<G>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> E
 where
-    E: Transcryptable<Group = Ristretto255>,
+    E: Transcryptable<Group = G>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -51,16 +53,16 @@ where
 }
 
 /// Rekey `enc` through every transcryptor in turn.
-pub fn rekey_chain<E, R>(
-    systems: &[DistributedTranscryptor],
+pub fn rekey_chain<G: Group, E, R>(
+    systems: &[DistributedTranscryptor<G>],
     enc: E,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor) -> E::RekeyInfo,
+    info: impl Fn(&DistributedTranscryptor<G>) -> E::RekeyInfo,
     next_key: impl Fn(&E::RekeyInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> E
 where
-    E: Rekeyable<Group = Ristretto255>,
+    E: Rekeyable<Group = G>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -84,16 +86,16 @@ where
 
 /// Transcrypt a batch through every transcryptor in turn.
 #[cfg(feature = "batch")]
-pub fn transcrypt_batch_chain<E, R>(
-    systems: &[DistributedTranscryptor],
+pub fn transcrypt_batch_chain<G: Group, E, R>(
+    systems: &[DistributedTranscryptor<G>],
     mut batch: Vec<E>,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor) -> TranscryptionInfo,
-    next_key: impl Fn(&TranscryptionInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
+    info: impl Fn(&DistributedTranscryptor<G>) -> TranscryptionInfo<G>,
+    next_key: impl Fn(&TranscryptionInfo<G>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Transcryptable<Group = Ristretto255> + HasStructure + Clone,
+    E: Transcryptable<Group = G> + HasStructure + Clone,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -123,16 +125,16 @@ where
 
 /// Rekey a batch through every transcryptor in turn.
 #[cfg(feature = "batch")]
-pub fn rekey_batch_chain<E, R>(
-    systems: &[DistributedTranscryptor],
+pub fn rekey_batch_chain<G: Group, E, R>(
+    systems: &[DistributedTranscryptor<G>],
     mut batch: Vec<E>,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor) -> E::RekeyInfo,
+    info: impl Fn(&DistributedTranscryptor<G>) -> E::RekeyInfo,
     next_key: impl Fn(&E::RekeyInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Rekeyable<Group = Ristretto255> + HasStructure + Clone,
+    E: Rekeyable<Group = G> + HasStructure + Clone,
     E::RekeyInfo: Copy,
     R: Rng + CryptoRng,
 {

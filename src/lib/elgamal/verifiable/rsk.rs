@@ -1,6 +1,6 @@
 //! Verifiable RSK and verifiable RSK-2.
 //!
-//! Implements the constructions exactly as specified in the paper:
+//! Implements the constructions as specified in the paper:
 //!
 //! ```text
 //!  VRSK(⟨B, C, Y⟩, s, k)
@@ -32,8 +32,8 @@ use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -88,8 +88,8 @@ impl<G: Group> VerifiableRSK<G> {
         Self { gt, p_gs, inner }
     }
 
-    /// Reconstruct the RSK'd ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only — public callers should
+    /// Reconstruct the RSK'd ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only; public callers should
     /// use [`verified_reconstruct`](Self::verified_reconstruct).
     pub(crate) fn result(&self) -> ElGamal<G> {
         self.inner.result()
@@ -122,11 +122,11 @@ impl<G: Group> VerifiableRSK<G> {
 }
 
 /// The per-message body of a VRSK proof once the `(gt, p_gs)` header has
-/// been hoisted out — used by both [`VerifiableRSK2`] (per-message) and
+/// been hoisted out, used by both [`VerifiableRSK2`] (per-message) and
 /// the batched VRSK, which share this body type.
 ///
-/// Carries only the genuinely per-ciphertext sub-proofs. Cannot stand
-/// alone — it must be verified against an external `gt` plus the published
+/// Carries only the per-ciphertext sub-proofs. It cannot stand
+/// alone: it must be verified against an external `gt` plus the published
 /// `(S, K)` commitments.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
@@ -176,7 +176,7 @@ impl<G: Group> VerifiableRSKInner<G> {
         }
     }
 
-    /// Reconstruct the RSK'd ciphertext, **without verifying** the proof.
+    /// Reconstruct the RSK'd ciphertext, without verifying the proof.
     /// Internal use only.
     pub(crate) fn result(&self) -> ElGamal<G> {
         ElGamal {
@@ -285,15 +285,15 @@ impl<G: Group> VerifiableRSK2<G> {
         }
     }
 
-    /// Reconstruct the RSK'd ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only.
+    /// Reconstruct the RSK'd ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only.
     pub(crate) fn result(&self) -> ElGamal<G> {
         self.inner.result()
     }
 
     /// Verify the per-factor sub-proofs (`p_gs_to`, `p_gk_to`) tying the
     /// combined commitments to the published factor commitments. Does not
-    /// verify the inner VRSK's per-message body — use [`Self::verify`] or
+    /// verify the inner VRSK's per-message body; use [`Self::verify`] or
     /// [`Self::verified_reconstruct`] for that.
     #[must_use]
     pub fn verify_factor(
@@ -356,12 +356,12 @@ impl<G: Group> VerifiableRSK2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{rsk, rsk2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK, VerifiableRSK2,
     };
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

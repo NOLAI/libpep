@@ -1,32 +1,15 @@
 //! Verifiable data-layer types.
 //!
 //! Mirrors the structure of [`crate::data`]: per data module (`simple`, `long`, `records`,
-//! `json`) there is a matching module here with the proof types and the verifiable operations,
-//! generic over the group in a `generic` submodule. The prover-side and verifier-side traits
-//! live in [`traits`], and [`batch`] holds the batch proofs, which are generic over the item
-//! type.
-
-pub mod traits;
-
-/// The public key carried by every one of `ciphertexts`, which a proof over all of them folds
-/// into its transcript, or `None` if they carry different keys. Picking the first one's key
-/// would let a prover mix ciphertexts under different keys and have only the first one
-/// checked. Without ciphertexts there is no key to bind, and the generator stands in.
-#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
-pub(crate) fn common_gy<G: crate::elgamal::arithmetic::group::Group>(
-    ciphertexts: &[crate::elgamal::generic::ElGamal<G>],
-) -> Option<G::Element> {
-    let Some(first) = ciphertexts.first() else {
-        return Some(G::generator());
-    };
-    ciphertexts
-        .iter()
-        .all(|c| c.gy == first.gy)
-        .then_some(first.gy)
-}
+//! `json`) there is a matching module here with the proof types and the verifiable operations.
+//! The prover-side and verifier-side traits live in [`traits`], and [`batch`] holds the batch
+//! proofs, which are generic over the item type.
 
 #[cfg(feature = "batch")]
 pub mod batch;
+#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
+mod common;
+pub mod traits;
 
 pub mod simple;
 

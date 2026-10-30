@@ -23,8 +23,8 @@ const concat = (a, b) => new Uint8Array([...a, ...b]);
 test('Context string', () => {
     const ctx = Ciphersuite.current();
     expect(Buffer.from(ctx.identifier).toString()).toBe("ristretto255-SHA512");
-    expect(Buffer.from(ctx.contextString())).toEqual(Buffer.from("coPRFV1-ristretto255-SHA512", "latin1"));
-    expect(ctx.toString()).toBe("coPRFV1-ristretto255-SHA512");
+    expect(Buffer.from(ctx.contextString())).toEqual(Buffer.from("nPEPV1-ristretto255-SHA512", "latin1"));
+    expect(ctx.toString()).toBe("nPEPV1-ristretto255-SHA512");
 
     // An identifier names a group and a hash together, so it comes from the group: the
     // constructor takes nothing and yields the suite this build implements.
@@ -54,7 +54,7 @@ test('hashToGroup uses the ciphersuite DST', () => {
     const dst = concat(utf8("HashToGroup-"), Ciphersuite.current().contextString());
     expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroupWithDst(utf8("patient-1"), dst).toHex());
     expect(hashToGroup(utf8("patient-1")).toHex()).toBe(hashToGroup(utf8("patient-1")).toHex());
-    const otherDst = utf8("HashToGroup-coPRFV1-another-suite");
+    const otherDst = utf8("HashToGroup-nPEPV1-another-suite");
     expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroupWithDst(utf8("patient-1"), otherDst).toHex());
     expect(hashToGroup(utf8("patient-1")).toHex()).not.toBe(hashToGroup(utf8("patient-2")).toHex());
 

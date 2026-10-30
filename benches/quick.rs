@@ -2,19 +2,21 @@
 
 #![allow(clippy::expect_used)]
 
+use common::aliases::Client;
+use common::aliases::{Attribute, Pseudonym};
 use criterion::{criterion_group, criterion_main, Criterion};
-use libpep::client::{Client, Distributed};
+use libpep::client::Distributed;
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+use libpep::data::simple::ElGamalEncryptable;
 use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 mod common;
-use libpep::transcryptor::DistributedTranscryptor;
+use common::aliases::DistributedTranscryptor;
 use rand::rng;
 use std::hint::black_box;
 
 #[cfg(feature = "long")]
-use libpep::data::long::{LongAttribute, LongPseudonym};
+use common::aliases::{LongAttribute, LongPseudonym};
 
 #[cfg(feature = "json")]
 use libpep::data::json::PepJsonValue;

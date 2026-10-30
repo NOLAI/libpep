@@ -3,7 +3,7 @@
 //!
 //! All primitives are generic over the [`Group`]; the group is inferred from the ciphertext.
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
+use crate::elgamal::ElGamal;
 
 /// Change the representation of a ciphertext without changing the contents.
 /// Used to make multiple unlinkable copies of the same ciphertext (when disclosing a single
@@ -31,10 +31,10 @@ pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, gy: &G::Element, r: &G::Sca
 /// Change the contents of a ciphertext with factor `s`, i.e. message `M` becomes `s * M`.
 /// Can be used to blindly and pseudo-randomly pseudonymize identifiers.
 ///
-/// This is an encryption-based oblivious evaluation of the Diffie–Hellman PRF
+/// This is an encryption-based oblivious evaluation of the Diffie-Hellman PRF
 /// `F_s(M) = s * M`, which is pseudorandom under the DDH assumption while `s` stays secret:
 /// the performing party evaluates the PRF homomorphically without learning `M` or `s * M`,
-/// which is what makes the resulting pseudonyms unlinkable across domains.
+/// which makes the resulting pseudonyms unlinkable across domains.
 pub fn reshuffle<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar) -> ElGamal<G> {
     ElGamal {
         gb: *s * encrypted.gb,
@@ -57,7 +57,7 @@ pub fn rekey<G: Group>(encrypted: &ElGamal<G>, k: &G::Scalar) -> ElGamal<G> {
 
 /// Variant of [`rekey`] that takes the precomputed inverse of `k`.
 ///
-/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// Scalar inversion is much more expensive than scalar multiplication. When the same
 /// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
 /// once and use this function per ciphertext.
 #[cfg(feature = "elgamal3")]
@@ -75,7 +75,7 @@ pub fn rekey_precomputed<G: Group>(
 
 /// Variant of [`rekey`] that takes the precomputed inverse of `k`.
 ///
-/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// Scalar inversion is much more expensive than scalar multiplication. When the same
 /// rekey factor is applied to many ciphertexts (e.g. all blocks of a long value), invert `k`
 /// once and use this function per ciphertext.
 #[cfg(not(feature = "elgamal3"))]
@@ -98,7 +98,7 @@ pub fn rsk<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar, k: &G::Scalar) -> El
 
 /// Variant of [`rsk`] that takes the precomputed product `ski = s * k^-1`.
 ///
-/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// Scalar inversion is much more expensive than scalar multiplication. When the same
 /// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
 /// value), compute `ski` once and use this function per ciphertext.
 #[cfg(feature = "elgamal3")]
@@ -117,7 +117,7 @@ pub fn rsk_precomputed<G: Group>(
 
 /// Variant of [`rsk`] that takes the precomputed product `ski = s * k^-1`.
 ///
-/// Scalar inversion is significantly more expensive than scalar multiplication. When the same
+/// Scalar inversion is much more expensive than scalar multiplication. When the same
 /// reshuffle and rekey factors are applied to many ciphertexts (e.g. all blocks of a long
 /// value), compute `ski` once and use this function per ciphertext.
 #[cfg(not(feature = "elgamal3"))]
@@ -223,7 +223,7 @@ mod tests {
     use super::*;
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::{decrypt, encrypt};
+    use crate::elgamal::test_util::{decrypt, encrypt};
 
     #[test]
     fn rekey() {

@@ -5,12 +5,12 @@
 
 #![cfg(feature = "verifiable-derivation")]
 
-use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use libpep::factors::verifiable::{
+use crate::aliases::{
     MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,
     MasterRekeyingSecret,
 };
+use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
+use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]

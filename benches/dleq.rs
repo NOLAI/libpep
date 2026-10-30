@@ -1,7 +1,7 @@
 //! Benchmarks comparing the two proof encodings at batch sizes m = 1, 10 and 100.
 //!
 //! The paper's encoding ([`libpep::elgamal::zkps`]) proves one statement per ciphertext: a
-//! batch of m needs m proofs of 128 bytes each. The RFC 9497 encoding
+//! batch of m needs m proofs of 128 bytes each. The two-scalar encoding
 //! ([`libpep::elgamal::dleq`]) batches through `ComputeComposites`, so one 64-byte proof covers
 //! the whole batch, at the cost of hashing each pair into the composite.
 //!
@@ -13,6 +13,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::dleq;
 use libpep::elgamal::zkps;
 
@@ -33,10 +34,11 @@ fn bench_generate(c: &mut Criterion) {
     for m in SIZES {
         let (k, cs, ds) = setup(m);
 
-        group.bench_with_input(BenchmarkId::new("rfc9497_batched", m), &m, |b, _| {
+        group.bench_with_input(BenchmarkId::new("two_scalar_batched", m), &m, |b, _| {
             let rng = &mut rand::rng();
             b.iter(|| {
-                dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, rng).expect("well-formed lists")
+                dleq::generate_proof::<Ristretto255, _>(&k, &G, &(k * G), &cs, &ds, rng)
+                    .expect("well-formed lists")
             });
         });
 
@@ -45,7 +47,7 @@ fn bench_generate(c: &mut Criterion) {
             let rng = &mut rand::rng();
             b.iter(|| {
                 for c_i in &cs {
-                    let _ = zkps::create_proof(&k, c_i, rng);
+                    let _ = zkps::create_proof::<Ristretto255, _>(&k, c_i, rng);
                 }
             });
         });
@@ -59,21 +61,21 @@ fn bench_verify(c: &mut Criterion) {
     for m in SIZES {
         let (k, cs, ds) = setup(m);
         let rng = &mut rand::rng();
-        let batched =
-            dleq::generate_proof(&k, &G, &(k * G), &cs, &ds, rng).expect("well-formed lists");
+        let batched = dleq::generate_proof::<Ristretto255, _>(&k, &G, &(k * G), &cs, &ds, rng)
+            .expect("well-formed lists");
         let per_ciphertext: Vec<_> = cs
             .iter()
-            .map(|c_i| zkps::create_proof(&k, c_i, rng))
+            .map(|c_i| zkps::create_proof::<Ristretto255, _>(&k, c_i, rng))
             .collect();
 
-        group.bench_with_input(BenchmarkId::new("rfc9497_batched", m), &m, |b, _| {
-            b.iter(|| dleq::verify_proof(&G, &(k * G), &cs, &ds, &batched));
+        group.bench_with_input(BenchmarkId::new("two_scalar_batched", m), &m, |b, _| {
+            b.iter(|| dleq::verify_proof::<Ristretto255>(&G, &(k * G), &cs, &ds, &batched));
         });
 
         group.bench_with_input(BenchmarkId::new("paper_per_ciphertext", m), &m, |b, _| {
             b.iter(|| {
                 for ((pk, proof), c_i) in per_ciphertext.iter().zip(cs.iter()) {
-                    let _ = zkps::verify_proof(pk, c_i, proof);
+                    let _ = zkps::verify_proof::<Ristretto255>(pk, c_i, proof);
                 }
             });
         });
@@ -87,11 +89,11 @@ fn bench_verify(c: &mut Criterion) {
 fn bench_proof_size(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_size_bytes");
     for m in SIZES {
-        let batched = dleq::PROOF_SIZE;
+        let batched = dleq::Proof::<Ristretto255>::LENGTH;
         // The paper's proof carries three elements and a scalar, per ciphertext.
         let per_ciphertext = m * 128;
         println!(
-            "m = {m:>3}: rfc9497 batched = {batched:>5} bytes, paper per-ciphertext = {per_ciphertext:>5} bytes"
+            "m = {m:>3}: two-scalar batched = {batched:>5} bytes, paper per-ciphertext = {per_ciphertext:>5} bytes"
         );
         group.bench_with_input(BenchmarkId::new("noop", m), &m, |b, _| b.iter(|| m));
     }

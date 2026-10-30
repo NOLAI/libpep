@@ -1,4 +1,5 @@
 pub mod ciphersuite;
-pub mod group_elements;
 pub mod hashing;
-pub mod scalars;
+pub mod ristretto255;
+
+pub use ristretto255::{group_elements, scalars};

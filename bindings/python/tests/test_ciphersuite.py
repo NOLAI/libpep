@@ -24,7 +24,7 @@ class TestCiphersuite(unittest.TestCase):
         ctx = Ciphersuite()
         self.assertEqual(ctx, Ciphersuite.current())
         self.assertEqual(ctx.identifier, b"ristretto255-SHA512")
-        self.assertEqual(ctx.context_string(), b"coPRFV1-ristretto255-SHA512")
+        self.assertEqual(ctx.context_string(), b"nPEPV1-ristretto255-SHA512")
 
     def test_ciphersuite_is_not_constructible_from_an_identifier(self):
         # An identifier names a group and a hash together, so it comes from the group rather
@@ -66,7 +66,7 @@ class TestHashing(unittest.TestCase):
         self.assertEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-1"))
         self.assertNotEqual(
             hash_to_group(b"patient-1"),
-            hash_to_group_with_dst(b"patient-1", b"HashToGroup-coPRFV1-another-suite"),
+            hash_to_group_with_dst(b"patient-1", b"HashToGroup-nPEPV1-another-suite"),
         )
         self.assertNotEqual(hash_to_group(b"patient-1"), hash_to_group(b"patient-2"))
         self.assertIsInstance(hash_to_group(b"patient-1"), GroupElement)

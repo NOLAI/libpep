@@ -1,9 +1,8 @@
 //! Typed-prefix error helpers for WASM bindings.
 //!
-//! JS doesn't have a great built-in way for wasm-bindgen code to throw typed
-//! `Error` subclasses that JS can `instanceof`-check, so instead we throw a
-//! `JsError` whose `.message` always starts with a known typed *prefix*.
-//! JS callers can then do:
+//! wasm-bindgen code cannot easily throw typed `Error` subclasses that JS can check with
+//! `instanceof`. Instead, these helpers throw a `JsError` whose `.message` starts with a
+//! known typed *prefix*. JS callers can then do:
 //!
 //! ```js
 //! try {
@@ -68,9 +67,9 @@ pub(crate) trait RegisterCommitmentsErrorExt {
 }
 
 #[cfg(feature = "batch")]
-impl BatchErrorExt for libpep::errors::BatchError {
+impl BatchErrorExt for libpep::data::batch::BatchError {
     fn display_prefix(&self) -> &'static str {
-        use libpep::errors::BatchError;
+        use libpep::data::batch::BatchError;
         match self {
             BatchError::InconsistentStructure { .. } => "BatchError",
             #[cfg(feature = "json")]
@@ -124,7 +123,7 @@ impl RegisterCommitmentsErrorExt for libpep::verifier::RegisterCommitmentsError 
 
 #[cfg(feature = "batch")]
 #[allow(dead_code)]
-pub(crate) fn batch_err_to_js(e: libpep::errors::BatchError) -> JsValue {
+pub(crate) fn batch_err_to_js(e: libpep::data::batch::BatchError) -> JsValue {
     js_err(e.display_prefix(), &e)
 }
 

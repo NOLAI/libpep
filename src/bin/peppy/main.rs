@@ -8,6 +8,7 @@
 // serialization and on verifying a proof the command itself just made.
 #![allow(clippy::expect_used)]
 
+mod aliases;
 mod arith;
 mod data;
 mod elgamal;

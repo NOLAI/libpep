@@ -1,68 +1,499 @@
 //! Long (multi-block) data types for pseudonyms and attributes.
 //!
-//! This module provides support for multi-block pseudonyms and attributes that can hold
-//! more than one block (16 bytes on ristretto255) of data.
+//! This module has pseudonyms and attributes that hold more than one block (16 bytes on
+//! ristretto255) of data.
 //!
 //! # Padding
 //!
-//! Long data types use PKCS#7 padding (internal padding) automatically for the last block.
-//! They also support optional external padding via the `pad_to()` method for batch unlinkability.
+//! Long values use PKCS#7 padding (internal padding) in their last block, and can be brought
+//! to a fixed number of blocks with external padding ([`pad_to`](LongPseudonym::pad_to)) for
+//! batch unlinkability. See the [`padding`](crate::data::padding) module.
 //!
-//! For detailed information about the two types of padding, see the [`padding`](crate::data::padding) module.
-//!
-//! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group) in [`generic`];
-//! the names in this module are their ristretto255 instances, with same-named functions as
-//! their tuple constructors.
+//! The types are generic over the [`Group`].
 
-pub mod generic;
-
+use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
+pub use crate::data::errors::ParseError;
+use crate::data::padding::external::{create_external_padding_block, is_external_padding_block};
+use crate::data::padding::internal::unpad_block;
+use crate::data::padding::PaddingError;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
+use crate::elgamal::arithmetic::group::{Bytes, Group, InvertibleEncoding};
+use crate::factors::types::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
+    TranscryptionInfo,
+};
+#[cfg(feature = "offline")]
+use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::keys::types::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+};
+use derive_more::{Deref, From};
+use rand_core::{CryptoRng, Rng};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// The [`LongPseudonym`](generic::LongPseudonym) over ristretto255.
-pub type LongPseudonym = generic::LongPseudonym<Ristretto255>;
-/// The [`LongAttribute`](generic::LongAttribute) over ristretto255.
-pub type LongAttribute = generic::LongAttribute<Ristretto255>;
-/// The [`LongEncryptedPseudonym`](generic::LongEncryptedPseudonym) over ristretto255.
-pub type LongEncryptedPseudonym = generic::LongEncryptedPseudonym<Ristretto255>;
-/// The [`LongEncryptedAttribute`](generic::LongEncryptedAttribute) over ristretto255.
-pub type LongEncryptedAttribute = generic::LongEncryptedAttribute<Ristretto255>;
+/// A pseudonym of more than one block: a sequence of [`Pseudonym`]s that together hold a longer
+/// identifier, PKCS#7-padded in the last block.
+///
+/// # Privacy warning
+///
+/// The number of blocks of a `LongPseudonym` is visible and may reveal the length of the
+/// identifier. Consider padding identifiers to a fixed size, or use [`pad_to`](Self::pad_to)
+/// for batches.
+///
+/// Reshuffling applies to every block separately, so pseudonyms that share a block are
+/// linkable: in
+///
+/// ```no_run
+/// use libpep::data::long::LongPseudonym;
+/// use libpep::elgamal::arithmetic::Ristretto255;
+///
+/// let long_pseudo = LongPseudonym::<Ristretto255>::from_string_padded("some-long-identifier1@example.com");
+/// ```
+///
+/// the second block is `"@example.com"` plus padding, and every other identifier ending in
+/// `"@example.com"` shares it in every domain.
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
+pub struct LongPseudonym<G: Group>(pub Vec<Pseudonym<G>>);
 
-/// Construct a [`LongPseudonym`](type@LongPseudonym) from its blocks.
-#[allow(non_snake_case)]
-pub fn LongPseudonym(blocks: Vec<Pseudonym>) -> LongPseudonym {
-    generic::LongPseudonym(blocks)
+/// An attribute of more than one block: a sequence of [`Attribute`]s that together hold a longer
+/// value, PKCS#7-padded in the last block.
+///
+/// # Privacy warning
+///
+/// The number of blocks of a `LongAttribute` is visible and may reveal the length of the
+/// value. Consider padding values to a fixed size, or use [`pad_to`](Self::pad_to) for
+/// batches.
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
+pub struct LongAttribute<G: Group>(pub Vec<Attribute<G>>);
+
+/// An encrypted [`LongPseudonym`]: one [`EncryptedPseudonym`] per block.
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
+pub struct LongEncryptedPseudonym<G: Group>(pub Vec<EncryptedPseudonym<G>>);
+
+/// An encrypted [`LongAttribute`]: one [`EncryptedAttribute`] per block.
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
+pub struct LongEncryptedAttribute<G: Group>(pub Vec<EncryptedAttribute<G>>);
+
+/// The encodings, encryption, decryption and rerandomization of a long plaintext/ciphertext
+/// pair, block by block, under the given key types.
+macro_rules! impl_long_pair {
+    ($plain:ident / $enc:ident, $block:ident / $enc_block:ident, $pk:ident / $sk:ident, $gpk:ident / $gsk:ident) => {
+        impl<G: InvertibleEncoding> $plain<G> {
+            /// Encode bytes of any length, PKCS#7-padded in the last block.
+            ///
+            /// # Privacy warning
+            ///
+            /// The number of blocks follows the length of the data and may reveal it.
+            pub fn from_bytes_padded(data: &[u8]) -> Self {
+                Self(from_bytes_padded_impl::<$block<G>>(data))
+            }
+
+            /// Encode a string of any length, PKCS#7-padded in the last block.
+            ///
+            /// # Privacy warning
+            ///
+            /// The number of blocks follows the length of the string and may reveal it.
+            pub fn from_string_padded(text: &str) -> Self {
+                Self::from_bytes_padded(text.as_bytes())
+            }
+
+            /// Decode to the original string.
+            ///
+            /// # Errors
+            ///
+            /// Returns an error if the value has no blocks, is not padded, or is not UTF-8.
+            pub fn to_string_padded(&self) -> Result<String, PaddingError> {
+                Ok(String::from_utf8(self.to_bytes_padded()?)?)
+            }
+
+            /// Decode to the original bytes, removing external and PKCS#7 padding.
+            ///
+            /// # Errors
+            ///
+            /// Returns an error if the value has no blocks or is not padded.
+            pub fn to_bytes_padded(&self) -> Result<Vec<u8>, PaddingError> {
+                to_bytes_padded_impl(&self.0)
+            }
+
+            /// The hexadecimal encoding of all blocks, for values that are not valid UTF-8
+            /// (such as pseudonyms transcrypted to another domain).
+            pub fn to_hex(&self) -> String {
+                self.0.iter().map(|block| block.to_hex()).collect()
+            }
+
+            /// Pad with all-zero external padding blocks to `target_blocks` blocks, so that
+            /// values in a batch share one structure. The padding is removed on decoding.
+            ///
+            /// # Errors
+            ///
+            /// Returns an error if the value already has more than `target_blocks` blocks.
+            pub fn pad_to(&self, target_blocks: usize) -> Result<Self, PaddingError> {
+                let current = self.0.len();
+                if current > target_blocks {
+                    return Err(PaddingError::TooManyBlocks {
+                        current,
+                        target: target_blocks,
+                    });
+                }
+                let padding_block =
+                    $block::from_lizard(&create_external_padding_block::<G::Block>());
+                let mut blocks = self.0.clone();
+                blocks.resize(target_blocks, padding_block);
+                Ok(Self(blocks))
+            }
+        }
+
+        impl<G: Group> $enc<G> {
+            /// Encode as the base64 encodings of the blocks, joined with `|`.
+            pub fn serialize(&self) -> String {
+                self.0
+                    .iter()
+                    .map(|item| item.to_base64())
+                    .collect::<Vec<_>>()
+                    .join("|")
+            }
+
+            /// Decode the format of [`serialize`](Self::serialize); the empty string is the
+            /// value without blocks.
+            ///
+            /// # Errors
+            ///
+            /// Returns an error if a part is not a base64-encoded ciphertext.
+            pub fn deserialize(s: &str) -> Result<Self, ParseError> {
+                if s.is_empty() {
+                    return Ok(Self(vec![]));
+                }
+                s.split('|')
+                    .map(|part| {
+                        $enc_block::from_base64(part)
+                            .ok_or_else(|| ParseError::InvalidCiphertext(part.to_string()))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map(Self)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<G: Group> Serialize for $enc<G> {
+            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+                serializer.serialize_str(&self.serialize())
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'de, G: Group> Deserialize<'de> for $enc<G> {
+            fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+                let s = String::deserialize(deserializer)?;
+                Self::deserialize(&s).map_err(serde::de::Error::custom)
+            }
+        }
+
+        impl<G: Group> Encryptable for $plain<G> {
+            type Group = G;
+            type EncryptedType = $enc<G>;
+            type PublicKeyType = $pk<G>;
+            #[cfg(feature = "offline")]
+            type GlobalPublicKeyType = $gpk<G>;
+
+            fn encrypt<R>(&self, public_key: &$pk<G>, rng: &mut R) -> $enc<G>
+            where
+                R: Rng + CryptoRng,
+            {
+                $enc(
+                    self.0
+                        .iter()
+                        .map(|block| block.encrypt(public_key, rng))
+                        .collect(),
+                )
+            }
+
+            #[cfg(feature = "offline")]
+            fn encrypt_global<R>(&self, public_key: &$gpk<G>, rng: &mut R) -> $enc<G>
+            where
+                R: Rng + CryptoRng,
+            {
+                $enc(
+                    self.0
+                        .iter()
+                        .map(|block| block.encrypt_global(public_key, rng))
+                        .collect(),
+                )
+            }
+        }
+
+        impl<G: Group> Encrypted for $enc<G> {
+            type Group = G;
+            type UnencryptedType = $plain<G>;
+            type SecretKeyType = $sk<G>;
+            #[cfg(all(feature = "offline", feature = "insecure"))]
+            type GlobalSecretKeyType = $gsk<G>;
+
+            #[cfg(feature = "elgamal3")]
+            fn decrypt(&self, secret_key: &$sk<G>) -> Option<$plain<G>> {
+                self.0
+                    .iter()
+                    .map(|block| block.decrypt(secret_key))
+                    .collect::<Option<Vec<_>>>()
+                    .map($plain)
+            }
+
+            #[cfg(not(feature = "elgamal3"))]
+            fn decrypt(&self, secret_key: &$sk<G>) -> $plain<G> {
+                $plain(
+                    self.0
+                        .iter()
+                        .map(|block| block.decrypt(secret_key))
+                        .collect(),
+                )
+            }
+
+            #[cfg(all(feature = "offline", feature = "insecure", feature = "elgamal3"))]
+            fn decrypt_global(&self, secret_key: &$gsk<G>) -> Option<$plain<G>> {
+                self.0
+                    .iter()
+                    .map(|block| block.decrypt_global(secret_key))
+                    .collect::<Option<Vec<_>>>()
+                    .map($plain)
+            }
+
+            #[cfg(all(feature = "offline", feature = "insecure", not(feature = "elgamal3")))]
+            fn decrypt_global(&self, secret_key: &$gsk<G>) -> $plain<G> {
+                $plain(
+                    self.0
+                        .iter()
+                        .map(|block| block.decrypt_global(secret_key))
+                        .collect(),
+                )
+            }
+
+            /// Every block gets its own factor: with one factor the differences between the
+            /// blocks would survive transcryption and link the value to its input.
+            #[cfg(feature = "elgamal3")]
+            fn rerandomize<R>(&self, rng: &mut R) -> Self
+            where
+                R: Rng + CryptoRng,
+            {
+                Self(self.0.iter().map(|block| block.rerandomize(rng)).collect())
+            }
+
+            /// Every block gets its own factor: with one factor the differences between the
+            /// blocks would survive transcryption and link the value to its input.
+            #[cfg(not(feature = "elgamal3"))]
+            fn rerandomize<R>(&self, public_key: &$pk<G>, rng: &mut R) -> Self
+            where
+                R: Rng + CryptoRng,
+            {
+                Self(
+                    self.0
+                        .iter()
+                        .map(|block| block.rerandomize(public_key, rng))
+                        .collect(),
+                )
+            }
+
+            #[cfg(feature = "elgamal3")]
+            fn rerandomize_known(&self, factor: &RerandomizeFactor<G>) -> Self {
+                Self(
+                    self.0
+                        .iter()
+                        .map(|block| block.rerandomize_known(factor))
+                        .collect(),
+                )
+            }
+
+            #[cfg(not(feature = "elgamal3"))]
+            fn rerandomize_known(
+                &self,
+                public_key: &$pk<G>,
+                factor: &RerandomizeFactor<G>,
+            ) -> Self {
+                Self(
+                    self.0
+                        .iter()
+                        .map(|block| block.rerandomize_known(public_key, factor))
+                        .collect(),
+                )
+            }
+        }
+
+        #[cfg(feature = "batch")]
+        impl<G: Group> crate::data::traits::HasStructure for $enc<G> {
+            type Structure = usize;
+
+            fn structure(&self) -> Self::Structure {
+                self.0.len()
+            }
+        }
+    };
 }
 
-/// Construct a [`LongAttribute`](type@LongAttribute) from its blocks.
-#[allow(non_snake_case)]
-pub fn LongAttribute(blocks: Vec<Attribute>) -> LongAttribute {
-    generic::LongAttribute(blocks)
+impl_long_pair!(
+    LongPseudonym / LongEncryptedPseudonym,
+    Pseudonym / EncryptedPseudonym,
+    PseudonymSessionPublicKey / PseudonymSessionSecretKey,
+    PseudonymGlobalPublicKey / PseudonymGlobalSecretKey
+);
+impl_long_pair!(
+    LongAttribute / LongEncryptedAttribute,
+    Attribute / EncryptedAttribute,
+    AttributeSessionPublicKey / AttributeSessionSecretKey,
+    AttributeGlobalPublicKey / AttributeGlobalSecretKey
+);
+
+// Transcryption applies the same factors to every block, so the scalar inversions are done
+// once per value rather than once per block.
+
+impl<G: Group> Pseudonymizable for LongEncryptedPseudonym<G> {
+    fn pseudonymize_raw(&self, info: &PseudonymizationInfo<G>) -> Self {
+        let ski = info.s.0 * G::scalar_inverse(&info.k.0);
+        Self(
+            self.0
+                .iter()
+                .map(|block| {
+                    #[cfg(feature = "elgamal3")]
+                    let value = crate::elgamal::primitives::rsk_precomputed(
+                        block.value(),
+                        &info.s.0,
+                        &info.k.0,
+                        &ski,
+                    );
+                    #[cfg(not(feature = "elgamal3"))]
+                    let value =
+                        crate::elgamal::primitives::rsk_precomputed(block.value(), &info.s.0, &ski);
+                    EncryptedPseudonym::from_value(value)
+                })
+                .collect(),
+        )
+    }
 }
 
-/// Construct a [`LongEncryptedPseudonym`](type@LongEncryptedPseudonym) from its encrypted blocks.
-#[allow(non_snake_case)]
-pub fn LongEncryptedPseudonym(blocks: Vec<EncryptedPseudonym>) -> LongEncryptedPseudonym {
-    generic::LongEncryptedPseudonym(blocks)
+/// Rekey every block with the inverse computed once.
+fn rekey_blocks<G: Group, E: ElGamalEncrypted<Group = G>>(blocks: &[E], k: &G::Scalar) -> Vec<E> {
+    let k_inv = G::scalar_inverse(k);
+    blocks
+        .iter()
+        .map(|block| {
+            #[cfg(feature = "elgamal3")]
+            let value = crate::elgamal::primitives::rekey_precomputed(block.value(), k, &k_inv);
+            #[cfg(not(feature = "elgamal3"))]
+            let value = crate::elgamal::primitives::rekey_precomputed(block.value(), &k_inv);
+            E::from_value(value)
+        })
+        .collect()
 }
 
-/// Construct a [`LongEncryptedAttribute`](type@LongEncryptedAttribute) from its encrypted blocks.
-#[allow(non_snake_case)]
-pub fn LongEncryptedAttribute(blocks: Vec<EncryptedAttribute>) -> LongEncryptedAttribute {
-    generic::LongEncryptedAttribute(blocks)
+impl<G: Group> Rekeyable for LongEncryptedPseudonym<G> {
+    type RekeyInfo = PseudonymRekeyInfo<G>;
+
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
+        Self(rekey_blocks(&self.0, &info.k.0))
+    }
+}
+
+impl<G: Group> Rekeyable for LongEncryptedAttribute<G> {
+    type RekeyInfo = AttributeRekeyInfo<G>;
+
+    fn rekey_raw(&self, info: &Self::RekeyInfo) -> Self {
+        Self(rekey_blocks(&self.0, &info.k.0))
+    }
+}
+
+impl<G: Group> Transcryptable for LongEncryptedPseudonym<G> {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo<G>) -> Self {
+        self.pseudonymize_raw(&info.pseudonym)
+    }
+}
+
+impl<G: Group> Transcryptable for LongEncryptedAttribute<G> {
+    fn transcrypt_raw(&self, info: &TranscryptionInfo<G>) -> Self {
+        self.rekey_raw(&info.attribute)
+    }
+}
+
+/// Split `data` into blocks, PKCS#7-padding the last one; empty data is one block of padding.
+fn from_bytes_padded_impl<T: ElGamalEncryptable>(data: &[u8]) -> Vec<T>
+where
+    T::Group: InvertibleEncoding,
+{
+    let block_length = <T::Group as InvertibleEncoding>::BLOCK_LENGTH;
+    let full_blocks = data.len() / block_length;
+    let remaining = data.len() % block_length;
+
+    let mut result = Vec::with_capacity(full_blocks + 1);
+    for chunk in data[..full_blocks * block_length].chunks(block_length) {
+        let mut block = <T::Group as InvertibleEncoding>::Block::zeroed();
+        block.as_mut().copy_from_slice(chunk);
+        result.push(T::from_lizard(&block));
+    }
+
+    let mut last_block = <T::Group as InvertibleEncoding>::Block::zeroed();
+    last_block.as_mut().fill((block_length - remaining) as u8);
+    last_block.as_mut()[..remaining].copy_from_slice(&data[full_blocks * block_length..]);
+    result.push(T::from_lizard(&last_block));
+
+    result
+}
+
+/// Join the blocks, dropping trailing external (all-zero) padding blocks and the PKCS#7 padding
+/// of the last data block.
+fn to_bytes_padded_impl<T: ElGamalEncryptable>(items: &[T]) -> Result<Vec<u8>, PaddingError>
+where
+    T::Group: InvertibleEncoding,
+{
+    if items.is_empty() {
+        return Err(PaddingError::Empty);
+    }
+    let blocks = items
+        .iter()
+        .map(|item| item.to_lizard().ok_or(PaddingError::NotEncoded))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // External padding is never the first block: an all-zero first block is data.
+    let mut last = blocks.len() - 1;
+    while last > 0
+        && is_external_padding_block::<<T::Group as InvertibleEncoding>::Block>(
+            blocks[last].as_ref(),
+        )
+    {
+        last -= 1;
+    }
+
+    let mut result =
+        Vec::with_capacity((last + 1) * <T::Group as InvertibleEncoding>::BLOCK_LENGTH);
+    for block in &blocks[..last] {
+        result.extend_from_slice(block.as_ref());
+    }
+    result.extend_from_slice(&unpad_block(blocks[last].as_ref())?);
+    Ok(result)
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
+    use crate::data::elgamal::ElGamalEncryptable;
+    use crate::data::errors::ParseError;
     use crate::data::padding::PaddingError;
-    use crate::data::simple::ElGamalEncryptable;
-    use crate::errors::ParseError;
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::EncryptionSecret;
-    use crate::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
+    use crate::keys::{
+        make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
+        make_pseudonym_session_keys,
+    };
+
+    type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;
+    type Attribute = crate::data::simple::Attribute<Ristretto255>;
+    type EncryptedPseudonym = crate::data::simple::EncryptedPseudonym<Ristretto255>;
+    type LongPseudonym = crate::data::long::LongPseudonym<Ristretto255>;
+    type LongAttribute = crate::data::long::LongAttribute<Ristretto255>;
+    type LongEncryptedPseudonym = crate::data::long::LongEncryptedPseudonym<Ristretto255>;
+    type LongEncryptedAttribute = crate::data::long::LongEncryptedAttribute<Ristretto255>;
 
     #[test]
     fn long_attribute_from_bytes_padded_empty() {
@@ -95,7 +526,7 @@ mod tests {
         // Should have 2 blocks: the 16 bytes of data and one full block of padding
         assert_eq!(2, result.len());
 
-        // First block should be exactly our input
+        // The first block is the input itself.
         assert_eq!(b"0123456789ABCDEF", &result[0].to_lizard().unwrap());
 
         // Second block should be all padding bytes with value 16
@@ -236,7 +667,7 @@ mod tests {
     fn long_encrypted_pseudonym_serialize_deserialize() {
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_pseudonym_session_keys(
-            &crate::keys::make_pseudonym_global_keys(&mut rng).1,
+            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -263,7 +694,7 @@ mod tests {
     fn long_encrypted_attribute_serialize_deserialize() {
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_attribute_session_keys(
-            &crate::keys::make_attribute_global_keys(&mut rng).1,
+            &make_attribute_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -288,14 +719,14 @@ mod tests {
 
     #[test]
     fn long_encrypted_empty_roundtrip() {
-        let empty_pseudo = LongEncryptedPseudonym(vec![]);
+        let empty_pseudo = super::LongEncryptedPseudonym::<Ristretto255>(vec![]);
         let serialized = empty_pseudo.serialize();
         assert_eq!(serialized, "");
 
         let deserialized = LongEncryptedPseudonym::deserialize(&serialized).unwrap();
         assert_eq!(deserialized.len(), 0);
 
-        let empty_attr = LongEncryptedAttribute(vec![]);
+        let empty_attr = super::LongEncryptedAttribute::<Ristretto255>(vec![]);
         let serialized = empty_attr.serialize();
         assert_eq!(serialized, "");
 
@@ -323,7 +754,7 @@ mod tests {
     fn long_encrypted_serde_json() {
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_pseudonym_session_keys(
-            &crate::keys::make_pseudonym_global_keys(&mut rng).1,
+            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -351,7 +782,7 @@ mod tests {
 
         let mut rng = rand::rng();
         let (session_public, _session_secret) = make_pseudonym_session_keys(
-            &crate::keys::make_pseudonym_global_keys(&mut rng).1,
+            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -429,7 +860,7 @@ mod tests {
 
     #[test]
     fn long_attribute_edge_case_15_and_16_null_bytes() {
-        // 15 null bytes - exactly fits in one block with 1 byte padding
+        // 15 null bytes fit in one block with 1 byte padding
         let str_15 = "\0".repeat(15);
         let attr_15 = LongAttribute::from_string_padded(&str_15);
         let decoded_15 = attr_15.to_string_padded().unwrap();
@@ -529,8 +960,8 @@ mod tests {
 
     #[test]
     fn long_attribute_ascending_sequence_data() {
-        // Regression test: ensure data containing ascending sequence [0,1,2,...,15]
-        // can be encoded and decoded correctly even though it looks like a pattern.
+        // Regression test: data containing ascending sequence [0,1,2,...,15]
+        // must encode and decode correctly even though it looks like a pattern.
         let data: Vec<u8> = (0..16).collect();
         let attr = LongAttribute::from_bytes_padded(&data);
         let decoded = attr.to_bytes_padded().unwrap();
@@ -645,7 +1076,7 @@ mod tests {
 
     #[test]
     fn verify_no_ambiguous_edge_cases() {
-        // Comprehensive verification that ALL data can be encoded without ambiguity
+        // Verify that all data can be encoded without ambiguity.
         // External padding is all-zero blocks, and PKCS#7 ensures the last byte is never 0x00.
 
         // Test 1: Arbitrary data

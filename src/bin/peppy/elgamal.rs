@@ -7,6 +7,7 @@
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
 use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives;
 use libpep::elgamal::{decrypt, encrypt};
 use rand_core::{CryptoRng, Rng};
@@ -149,7 +150,7 @@ fn factor<R: Rng + CryptoRng>(
 
 pub fn run<R: Rng + CryptoRng>(cmd: Elgamal, rng: &mut R, out: &mut Output) -> Result<()> {
     let result = match cmd {
-        Elgamal::Encrypt { key, message } => encrypt(
+        Elgamal::Encrypt { key, message } => encrypt::<Ristretto255, _>(
             &io::point(&message, "message")?,
             &io::point(&key, "public key")?,
             rng,

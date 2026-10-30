@@ -46,14 +46,16 @@ Every party works in its own *pseudonymization domain* (typically its role or us
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::transcryptor::Transcryptor;
 
 let rng = &mut rand::rng();
 
-// System setup: global keys, and the secrets of the transcryptor.
-let (_global_public, global_secret) = make_global_keys(rng);
+// System setup: global keys, and the secrets of the transcryptor. The high-level API is generic
+// over the group; the group is named once here and inferred from there on.
+let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
 let transcryptor = Transcryptor::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
     EncryptionSecret::from(b"encryption secret".to_vec()),
@@ -84,7 +86,7 @@ let back = transcryptor.transcrypt(&transcrypted, &info.reverse(), &keys_b.publi
 assert_eq!(pseudonym_a, decrypt(&back, &keys_a));
 ```
 
-Every key operation takes either the one key it needs or a bundle to take it from: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The *data's* type selects the half, so a pseudonym is always encrypted and decrypted under the pseudonym key and never the attribute one; `&keys_a.pseudonym.public` remains available where naming the exact key is clearer.
+Every key operation takes either the one key it needs or a bundle to take it from: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The *data's* type selects the half, so a pseudonym is always encrypted and decrypted under the pseudonym key and never the attribute one; `&keys_a.pseudonym.public` also works where naming the exact key is clearer.
 
 Attributes (`Attribute`, `LongAttribute`) are encrypted and transcrypted the same way, but only rekeyed, never converted between domains.
 With the `json` feature, whole JSON documents with nested pseudonyms and attributes are encrypted and transcrypted as one value.
@@ -200,7 +202,7 @@ With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and
 The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat–Shamir transform, and can be verified in batch.
 Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so a party that sees both sides of a verifiable transcryption can match attribute ciphertexts.
 Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well (Section 3.5).
-This closes the gap noted under [As a three-party OPRF](#as-a-three-party-oprf): a transcryptor that applies a wrong factor is now detected.
+This addresses the gap noted under [As a three-party OPRF](#as-a-three-party-oprf): a transcryptor that applies a wrong factor is detected.
 The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
 
 ## Relation to other primitives
@@ -216,7 +218,7 @@ ElGamal encryption takes the place of blinding: the sender's encryption randomne
 The transcryptor learns neither `M` nor `s*M`, and neither sender nor recipient learns `s`.
 Because blinding and unblinding are performed by different parties, evaluation is non-interactive and asynchronous: the sender can encrypt before the recipient is known, and the PRF output appears only in the recipient's domain.
 
-Two differences with the RFC are worth noting.
+Two differences with the RFC:
 RFC 9497 hashes the input into the group first; `libpep` omits that hash and relies on origin identifiers being uniformly random group elements, as described above.
 And the RFC's VOPRF and POPRF modes provide verifiability, whereas plain PEP transcryption does not: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
 
@@ -241,8 +243,8 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `elgamal` | The ElGamal ciphertext, the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`, and in `elgamal::arithmetic` the `Group` trait (the prime-order group API of RFC 9497) with its ristretto255 instance, the Ristretto scalar and group element arithmetic, and in `elgamal::arithmetic::hashing` the hashing of RFC 9380 and RFC 9497 (`expand_message_xmd`, `hash_to_group_with_dst`, `hash_to_scalar_with_dst`) together with `hash_to_group`, the `hash_to_group` encoding of an identifier under the group's `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`, reached as `Group::CIPHERSUITE`, which supplies the domain separation tags of the protocol's hashes); the verifiable variants of the primitives with their proofs are in `elgamal::verifiable` (`verifiable` feature) |
 | `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
-The library is generic over the group: every type that holds group material has a generic version with a `G: Group` parameter in a `generic` submodule next to it (`data::simple::generic::Pseudonym<G>`, `keys::types::generic::SessionKeys<G>`, ...), and the names at the module level are aliases pinning `Ristretto255`.
-Code that uses ristretto255 never needs the generic names.
+The whole API is generic over the group: every type and function of `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier` and `elgamal` takes a `G: Group` parameter (`elgamal::arithmetic::Group`), so another group can be used by implementing the trait.
+The library ships one instance, `elgamal::arithmetic::Ristretto255`; the group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255.
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
@@ -275,13 +277,13 @@ The two derivations (default and `legacy`) produce different factors and session
 - `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
 
 > [!WARNING]
-> In the intended security model the global secret key is discarded after distributed setup and never exists in one place; `insecure` retains it, which gives its holder the ability to decrypt everything.
+> In the intended security model the global secret key is discarded after distributed setup and never exists in one place; `insecure` retains it, so its holder can decrypt everything.
 > Global pseudonyms are linkable across all domains, which defeats the purpose of domain-specific pseudonymization.
 > Use `insecure` only for testing, `global-pseudonyms` only when that linkability is an explicit requirement, and `legacy` only for interoperability with existing legacy PEP deployments.
 
 ## Security
 
-The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be added by implementing the `Group` trait.
+The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used with the low-level `elgamal` API by implementing the `Group` trait.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, secrets and factors are plain values: they implement `Debug` and are not zeroized when dropped, so an application that logs or dumps them, or that needs secrets wiped from memory, has to take care of that itself.

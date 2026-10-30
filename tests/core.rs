@@ -1,16 +1,17 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
+use common::aliases::{Attribute, EncryptedPseudonym, Pseudonym, Ristretto255};
+use common::aliases::{
+    AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
+};
+#[cfg(all(feature = "batch", feature = "long"))]
+use common::aliases::{LongAttribute, LongPseudonym};
+#[cfg(all(feature = "batch", feature = "long"))]
+use common::aliases::{LongEncryptedRecord, SessionPublicKeys};
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
-#[cfg(all(feature = "batch", feature = "long"))]
-use libpep::data::long::{LongAttribute, LongPseudonym};
-#[cfg(all(feature = "batch", feature = "long"))]
-use libpep::data::records::LongEncryptedRecord;
 use libpep::data::simple::*;
-use libpep::factors::{
-    AttributeRekeyInfo, EncryptionSecret, Factor, PseudonymRekeyInfo, PseudonymizationInfo,
-    PseudonymizationSecret, TranscryptionInfo,
-};
+use libpep::factors::{EncryptionSecret, Factor, PseudonymizationSecret};
 use libpep::keys::*;
 #[cfg(feature = "elgamal3")]
 use libpep::transcryptor::rerandomize;
@@ -28,8 +29,10 @@ mod common;
 #[test]
 fn test_core_flow() {
     let rng = &mut rand::rng();
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_attribute_global_public, attribute_global_secret) =
+        make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -143,8 +146,10 @@ fn test_core_flow() {
 #[cfg(feature = "batch")]
 fn test_batch() {
     let rng = &mut rand::rng();
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_attribute_global_public, attribute_global_secret) =
+        make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -245,8 +250,10 @@ fn test_batch() {
 #[cfg(all(feature = "batch", feature = "long"))]
 fn test_batch_long() {
     let rng = &mut rand::rng();
-    let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
-    let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
+    let (_pseudonym_global_public, pseudonym_global_secret) =
+        make_pseudonym_global_keys::<Ristretto255, _>(rng);
+    let (_attribute_global_public, attribute_global_secret) =
+        make_attribute_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
     let enc_secret = EncryptionSecret::from("secret".as_bytes());
 
@@ -408,7 +415,7 @@ fn test_batch_long() {
 #[test]
 fn test_pseudonymize_changes_encryption_context() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -448,7 +455,7 @@ fn test_pseudonymize_changes_encryption_context() {
 #[test]
 fn test_rekey_pseudonym_preserves_plaintext() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -478,7 +485,7 @@ fn test_rekey_pseudonym_preserves_plaintext() {
 #[test]
 fn test_rekey_attribute_preserves_plaintext() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -508,7 +515,7 @@ fn test_rekey_attribute_preserves_plaintext() {
 #[test]
 fn test_transcrypt_pseudonym_applies_pseudonymization() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -548,7 +555,7 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
 #[test]
 fn test_transcrypt_attribute_rekeys_only() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -588,7 +595,7 @@ fn test_transcrypt_attribute_rekeys_only() {
 #[test]
 fn test_polymorphic_rekey_works_for_both_types() {
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
@@ -640,7 +647,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     #[cfg(feature = "elgamal3")]
     use libpep::keys::PublicKey;
     let mut rng = rand::rng();
-    let (_, global_sk) = make_global_keys(&mut rng);
+    let (_, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
     let enc_secret = EncryptionSecret::from(b"enc".to_vec());
     let pseudo_secret = PseudonymizationSecret::from(b"pseudo".to_vec());
     let from_ctx = EncryptionContext::from("from");
@@ -675,18 +682,17 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     assert_ne!(protected.value().gc, leaked);
 }
 
-/// The ciphersuite separates *protocols*, not deployments: it is the domain separation tag of
-/// hashes that take no secret, which is why `hash_to_group` derives its tag from the group's
-/// ciphersuite. Factor derivation needs no tag of its own, because the transcryptor secret is
-/// already part of its hash input. What separates deployments is the secrets; what separates
-/// within a deployment is the domain and the session.
+/// The ciphersuite is the domain separation tag of hashes that take no secret, so
+/// `hash_to_group` derives its tag from the group's ciphersuite. Factor derivation needs no tag,
+/// because the transcryptor secret is already part of its hash input. Deployments are separated
+/// by their secrets, and domains and sessions within a deployment by the domain and session.
 #[test]
 fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
     use libpep::elgamal::arithmetic::hashing::{hash_to_group, hash_to_group_with_dst};
     use libpep::elgamal::arithmetic::{Group, Ristretto255};
 
     let rng = &mut rand::rng();
-    let (_global_public, global_secret) = make_global_keys(rng);
+    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
     let pseudo_secret = PseudonymizationSecret::from(b"pseudonymization secret".to_vec());
     let enc_secret = EncryptionSecret::from(b"encryption secret".to_vec());
     let (domain_a, domain_b) = (
@@ -705,17 +711,17 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
         origin,
         Pseudonym::from_point(hash_to_group::<Ristretto255>(b"patient-1"))
     );
-    // A protocol hashing the same identifier on the same group under its own tag gets an
-    // unrelated element; the ciphersuite identifier is what puts the two in different domains.
+    // Another protocol hashing the same identifier on the same group under its own tag gets an
+    // unrelated element, because the ciphersuite identifier differs.
     assert_eq!(
         Ristretto255::CIPHERSUITE.context_string(),
-        b"coPRFV1-ristretto255-SHA512"
+        b"nPEPV1-ristretto255-SHA512"
     );
     assert_ne!(
         origin,
         Pseudonym::from_point(hash_to_group_with_dst(
             b"patient-1",
-            b"HashToGroup-coPRFV1-another-ciphersuite"
+            b"HashToGroup-nPEPV1-another-ciphersuite"
         ))
     );
 
@@ -765,7 +771,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
         make_session_keys(&global_secret, &session_a, &other_enc)
     );
 
-    // Within a deployment, the domain and the session separate.
+    // Within a deployment, the domain and the session separate the factors.
     assert_ne!(
         info,
         TranscryptionInfo::new(
@@ -788,12 +794,12 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
 #[cfg(feature = "long")]
 #[test]
 fn long_values_rerandomize_every_block_independently() {
-    use libpep::data::long::LongPseudonym;
+    use crate::common::aliases::LongPseudonym;
     use libpep::data::simple::ElGamalEncrypted;
     use libpep::data::traits::Encrypted;
     use std::collections::HashSet;
     let rng = &mut rand::rng();
-    let (_, global_secret) = make_pseudonym_global_keys(rng);
+    let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let secret = EncryptionSecret::from("secret".as_bytes());
     let (pk, _) =
         make_pseudonym_session_keys(&global_secret, &EncryptionContext::from("s"), &secret);

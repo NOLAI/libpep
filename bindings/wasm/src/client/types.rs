@@ -1,5 +1,9 @@
 //! WASM bindings for client types.
 
+#[cfg(feature = "offline")]
+use crate::aliases::OfflineClient;
+#[cfg(feature = "offline")]
+use crate::aliases::*;
 #[cfg(all(feature = "offline", feature = "json"))]
 use crate::data::json::{WASMEncryptedPepJsonValue, WASMPepJsonValue};
 #[cfg(all(feature = "offline", feature = "long"))]
@@ -18,11 +22,9 @@ use crate::data::simple::{
 use crate::keys::types::WASMGlobalPublicKeys;
 #[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
-#[cfg(feature = "offline")]
-use libpep::client::OfflineClient;
 use libpep::data::traits::Encryptable;
 #[cfg(feature = "offline")]
-use libpep::keys::*;
+use libpep::keys::PublicKey;
 #[cfg(feature = "offline")]
 use wasm_bindgen::prelude::*;
 
@@ -156,7 +158,7 @@ impl WASMOfflinePEPClient {
     /// Encrypt a Record using global public keys (offline mode).
     #[wasm_bindgen(js_name = encryptRecord)]
     pub fn wasm_encrypt_record(&self, record: WASMRecord) -> WASMEncryptedRecord {
-        use libpep::data::records::Record;
+        use crate::aliases::Record;
         let mut rng = rand::rng();
         let rust_record: Record = record.into();
         let encrypted = rust_record.encrypt_global(&self.0.global_public_keys, &mut rng);
@@ -167,7 +169,7 @@ impl WASMOfflinePEPClient {
     #[cfg(feature = "long")]
     #[wasm_bindgen(js_name = encryptLongRecord)]
     pub fn wasm_encrypt_long_record(&self, record: WASMLongRecord) -> WASMLongEncryptedRecord {
-        use libpep::data::records::LongRecord;
+        use crate::aliases::LongRecord;
         let mut rng = rand::rng();
         let rust_record: LongRecord = record.into();
         let encrypted = rust_record.encrypt_global(&self.0.global_public_keys, &mut rng);

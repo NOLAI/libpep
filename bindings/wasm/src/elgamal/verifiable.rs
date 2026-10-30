@@ -6,6 +6,13 @@
 //! combined commitments. Without `elgamal3` the rerandomizing proofs take the public key `gy`
 //! the ciphertexts are encrypted under; with `elgamal3` it is read from the ciphertexts.
 
+use crate::aliases::{
+    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK,
+    VerifiableRRSK2, VerifiableRRSK2Batch, VerifiableRRSKBatch, VerifiableRSK, VerifiableRSK2,
+    VerifiableRSK2Batch, VerifiableRSKBatch, VerifiableRSKInner, VerifiableRekey, VerifiableRekey2,
+    VerifiableRekey2Batch, VerifiableRekeyBatch, VerifiableRerandomize, VerifiableRerandomizeBatch,
+    VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
+};
 #[cfg(not(feature = "elgamal3"))]
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
@@ -14,14 +21,9 @@ use crate::errors::malformed_proof_err;
 use derive_more::{Deref, From, Into};
 #[cfg(feature = "elgamal3")]
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::verifiable::{
-    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK,
-    VerifiableRRSK2, VerifiableRRSK2Batch, VerifiableRRSKBatch, VerifiableRSK, VerifiableRSK2,
-    VerifiableRSK2Batch, VerifiableRSKBatch, VerifiableRSKInner, VerifiableRekey, VerifiableRekey2,
-    VerifiableRekey2Batch, VerifiableRekeyBatch, VerifiableRerandomize, VerifiableRerandomizeBatch,
-    VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
-};
-use libpep::elgamal::ElGamal;
+use libpep::elgamal::arithmetic::Ristretto255;
+
+type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 use wasm_bindgen::prelude::*;
 
 /// The library ciphertexts of a list of binding ciphertexts.

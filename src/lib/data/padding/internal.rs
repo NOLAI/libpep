@@ -1,22 +1,19 @@
 //! Internal PKCS#7 padding for single-block (16 byte) encoding.
 //!
 //! This module provides the [`Padded`] trait for encoding data up to 15 bytes using PKCS#7 padding.
+//! PKCS#7 padding fills the data up to a complete 16-byte block before encryption.
 //!
-//! # Purpose
+//! # Usage
 //!
-//! PKCS#7 padding ensures data fills complete 16-byte blocks during encryption.
+//! - It is applied automatically during encoding and decoding.
+//! - For single-block data (up to 15 bytes), use the [`Padded`] trait.
+//! - For multi-block data, it is applied to the last block (see the [`long`](crate::data::long) module).
 //!
-//! # When Used
+//! # Format
 //!
-//! - Automatically applied during encoding/decoding
-//! - For single-block data (up to 15 bytes) via the [`Padded`] trait
-//! - For multi-block data within the last block (see [`long`](crate::data::long) module)
-//!
-//! # How It Works
-//!
-//! - The padding byte value indicates the number of padding bytes
-//! - Valid padding bytes are `0x01`-`0x10`
-//! - Always applied, even if data is exactly a multiple of 16 bytes
+//! - The value of each padding byte is the number of padding bytes.
+//! - Valid padding bytes are `0x01`-`0x10`.
+//! - Padding is always applied, even if the data is an exact multiple of 16 bytes.
 //!
 //! # Example
 //!
@@ -28,21 +25,20 @@
 //!
 //! # Order of Operations
 //!
-//! PKCS#7 padding is always applied **before** external padding (see [`external`](crate::data::padding::external))
-//! and removed **after** external padding is removed during decoding. This ordering is critical for
-//! disambiguation - even if data matches the external padding pattern, PKCS#7 will change the last
-//! byte to `0x01`-`0x10`, guaranteeing correct detection.
+//! PKCS#7 padding is applied before external padding (see [`external`](crate::data::padding::external))
+//! and removed after the external padding is removed during decoding. The order matters for
+//! disambiguation: even if the data matches the external padding pattern, PKCS#7 changes the last
+//! byte to `0x01`-`0x10`, so it is detected correctly.
 //!
-//! # Disambiguation Guarantee
+//! # Disambiguation
 //!
-//! PKCS#7 padding uses bytes `0x01`-`0x10`, so the last byte is **never** `0x00`.
-//! This makes it completely unambiguous from external padding blocks, which are **all zeros**.
-//!
-//! This means **ALL possible byte sequences can be encoded without ambiguity**.
+//! PKCS#7 padding uses bytes `0x01`-`0x10`, so the last byte is never `0x00`.
+//! A padded data block is therefore never mistaken for an external padding block, which is all
+//! zeros. Every possible byte sequence can be encoded without ambiguity.
 
 use super::PaddingError;
-use crate::data::simple::generic::{Attribute, Pseudonym};
-use crate::data::simple::ElGamalEncryptable;
+use crate::data::elgamal::ElGamalEncryptable;
+use crate::data::simple::{Attribute, Pseudonym};
 use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
@@ -50,11 +46,11 @@ use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 /// This trait provides methods to encode data up to 15 bytes using PKCS#7 padding,
 /// which fills the remaining bytes of a 16-byte block with padding bytes.
 ///
-/// # Padding Format
+/// # Padding format
 ///
 /// - For `n` bytes of data (0 ≤ n ≤ 15), add `16 - n` padding bytes
 /// - Each padding byte has the value `16 - n`
-/// - This allows unambiguous removal of padding during decoding
+/// - This allows padding to be removed unambiguously during decoding
 ///
 /// # Examples
 ///
@@ -175,8 +171,10 @@ impl<G: InvertibleEncoding> Padded for Attribute<G> {}
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::data::simple::{Attribute, Pseudonym};
     use crate::elgamal::arithmetic::Ristretto255;
+
+    type Attribute = crate::data::simple::Attribute<Ristretto255>;
+    type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;
 
     // Generic test helper functions
 

@@ -1,5 +1,12 @@
 //! Python bindings for PEP JSON encryption.
 
+#[cfg(feature = "offline")]
+use crate::aliases::GlobalPublicKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use crate::aliases::GlobalSecretKeys;
+use crate::aliases::PepJsonBuilder;
+use crate::aliases::TranscryptionInfo;
+use crate::aliases::{EncryptedPepJsonValue, PepJsonValue};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 #[cfg(feature = "batch")]
@@ -12,16 +19,9 @@ use crate::keys::types::PyGlobalSecretKeys;
 use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
 use libpep::client::encrypt_global;
-use libpep::data::json::builder::PepJsonBuilder;
-use libpep::data::json::data::{EncryptedPepJsonValue, PepJsonValue};
 use libpep::data::json::structure::JsonStructure;
 use libpep::data::json::utils;
 use libpep::data::traits::Transcryptable;
-use libpep::factors::TranscryptionInfo;
-#[cfg(feature = "offline")]
-use libpep::keys::GlobalPublicKeys;
-#[cfg(all(feature = "insecure", feature = "offline"))]
-use libpep::keys::GlobalSecretKeys;
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
@@ -77,9 +77,9 @@ impl PyPepJsonValue {
     /// Pads this PepJsonValue to match a target structure by adding external padding blocks.
     ///
     /// This method adds external padding blocks (separate from PKCS#7 padding) to
-    /// LongString and LongPseudonym variants to ensure all instances have the same
-    /// number of blocks when encrypted. This is necessary for batch transcryption where
-    /// all values must have identical structure.
+    /// LongString and LongPseudonym variants so that all instances have the same
+    /// number of blocks when encrypted. Batch transcryption needs this: all values must
+    /// have identical structure.
     ///
     /// Args:
     ///     structure: The target structure specifying the number of blocks for each field
@@ -324,7 +324,7 @@ pub fn py_transcrypt_batch(
 
 /// Transcrypt a batch of EncryptedPepJsonValues using a TranscryptionInfo object.
 ///
-/// This is a simpler version that accepts a PyTranscryptionInfo.
+/// This variant accepts a PyTranscryptionInfo.
 #[cfg(feature = "batch")]
 #[pyfunction]
 #[pyo3(name = "transcrypt_json_batch", signature = (values, transcryption_info, public_key=None))]
@@ -438,7 +438,7 @@ pub fn py_encrypt_global(
 }
 
 /// Decrypt an EncryptedPepJsonValue using global secret keys.
-/// Note: For most applications, the global secret key should be discarded and thus never exist.
+/// For most applications, the global secret key should be discarded and thus never exist.
 #[cfg(all(feature = "insecure", feature = "offline"))]
 #[pyfunction]
 #[pyo3(name = "decrypt_global")]

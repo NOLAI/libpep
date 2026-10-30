@@ -1,5 +1,12 @@
 //! Python bindings for batch transcryption operations.
 
+use crate::aliases::EncryptedRecord;
+use crate::aliases::TranscryptionInfo;
+use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo};
+use crate::aliases::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+};
 use crate::data::records::PyEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::records::PyLongEncryptedRecord;
@@ -11,18 +18,17 @@ use crate::keys::types::{
 };
 use crate::macros::py_dispatch;
 use libpep::client::{decrypt_batch, encrypt_batch};
-use libpep::data::records::EncryptedRecord;
-use libpep::factors::TranscryptionInfo;
-use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use libpep::keys::types::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::IntoPyObjectExt;
 
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use crate::aliases::GlobalSecretKeys;
+#[cfg(feature = "offline")]
+use crate::aliases::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 #[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
 use crate::keys::types::PyGlobalSecretKeys;
 #[cfg(feature = "offline")]
@@ -33,27 +39,21 @@ use crate::keys::types::{PyAttributeGlobalSecretKey, PyPseudonymGlobalSecretKey}
 use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
 use libpep::client::encrypt_global;
-#[cfg(feature = "offline")]
-use libpep::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use libpep::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use libpep::keys::GlobalSecretKeys;
 
+#[cfg(feature = "long")]
+use crate::aliases::LongEncryptedRecord;
+#[cfg(feature = "long")]
+use crate::aliases::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "long")]
 use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
 };
-#[cfg(feature = "long")]
-use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
-#[cfg(feature = "long")]
-use libpep::data::records::LongEncryptedRecord;
 
+use crate::aliases::{GlobalPublicKeys, SessionKeys};
 #[cfg(feature = "json")]
 use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 use libpep::keys::PublicKey;
 use libpep::keys::SecretKey;
-use libpep::keys::{GlobalPublicKeys, SessionKeys};
 
 /// Polymorphic batch pseudonymization of a list of encrypted pseudonyms.
 /// Works with both EncryptedPseudonym and LongEncryptedPseudonym.

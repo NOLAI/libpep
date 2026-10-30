@@ -2,16 +2,14 @@
 
 use super::rerandomize::VerifiableRerandomize;
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-// NOTE: `verifiable_rerandomize_batch` is intentionally kept (not removed
-// with the rest of the snake-case free wrappers) because it does extra
-// work beyond `VerifiableRerandomizeBatch::new` — it also returns the
-// rerandomized ciphertexts via the `pub(crate)` `result` helper, which is
-// not otherwise accessible to external callers.
+// Unlike the other snake-case free wrappers, `verifiable_rerandomize_batch` does extra work
+// beyond `VerifiableRerandomizeBatch::new`: it also returns the rerandomized ciphertexts via the
+// `pub(crate)` `result` helper, which external callers cannot reach.
 #[cfg(feature = "insecure")]
 /// Rerandomize every ciphertext with its own fresh factor and return the results with their batch
 /// proof.
@@ -28,8 +26,8 @@ pub fn verifiable_rerandomize_batch<G: Group, R: Rng + CryptoRng>(
 /// A batch of [`VerifiableRerandomize`] proofs sharing one recipient
 /// public key `Y`.
 ///
-/// Each entry uses a freshly sampled `r` for per-message unlinkability —
-/// there is no per-batch header to hoist beyond `Y`, which lives at the
+/// Each entry uses a freshly sampled `r` for per-message unlinkability.
+/// There is no per-batch header to hoist beyond `Y`, which lives at the
 /// batch level (or in each ciphertext under `elgamal3`).
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
@@ -57,7 +55,7 @@ impl<G: Group> VerifiableRerandomizeBatch<G> {
     }
 
     /// Apply each entry's rerandomize to the corresponding ciphertext,
-    /// **without verifying** any proofs. Internal prover-side use only.
+    /// without verifying any proofs. Internal prover-side use only.
     pub(crate) fn result(&self, originals: &[ElGamal<G>]) -> Vec<ElGamal<G>> {
         self.inners
             .iter()

@@ -1,5 +1,7 @@
 //! Python bindings for factor types and the transcryption info types that bundle them.
 
+use crate::aliases::*;
+use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::PyScalarNonZero;
@@ -7,9 +9,8 @@ use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
-use libpep::factors::types::*;
 use libpep::factors::{Factor, RekeyPublicKey};
-use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey};
+use libpep::keys::PublicKey;
 use pyo3::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -21,7 +22,7 @@ pub struct PyRerandomizeFactor(pub(crate) RerandomizeFactor);
 impl PyRerandomizeFactor {
     #[new]
     pub fn new(scalar: &PyScalarNonZero) -> Self {
-        Self(RerandomizeFactor::from(scalar.0))
+        Self(RerandomizeFactor::from_scalar(scalar.0))
     }
 
     #[pyo3(name = "scalar")]
@@ -39,7 +40,7 @@ pub struct PyReshuffleFactor(pub(crate) ReshuffleFactor);
 impl PyReshuffleFactor {
     #[new]
     pub fn new(scalar: &PyScalarNonZero) -> Self {
-        Self(ReshuffleFactor::from(scalar.0))
+        Self(ReshuffleFactor::from_scalar(scalar.0))
     }
 
     #[pyo3(name = "scalar")]
@@ -57,7 +58,7 @@ pub struct PyPseudonymRekeyFactor(pub(crate) PseudonymRekeyFactor);
 impl PyPseudonymRekeyFactor {
     #[new]
     pub fn new(scalar: &PyScalarNonZero) -> Self {
-        Self(PseudonymRekeyFactor::from(scalar.0))
+        Self(PseudonymRekeyFactor::from_scalar(scalar.0))
     }
 
     #[pyo3(name = "scalar")]
@@ -75,7 +76,7 @@ pub struct PyAttributeRekeyFactor(pub(crate) AttributeRekeyFactor);
 impl PyAttributeRekeyFactor {
     #[new]
     pub fn new(scalar: &PyScalarNonZero) -> Self {
-        Self(AttributeRekeyFactor::from(scalar.0))
+        Self(AttributeRekeyFactor::from_scalar(scalar.0))
     }
 
     #[pyo3(name = "scalar")]
@@ -298,7 +299,7 @@ impl PyTranscryptionInfo {
     /// The public keys that data transcrypted with this info is encrypted under, given the keys it
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
     fn rekey_public_key(&self, before: &PySessionPublicKeys) -> PySessionPublicKeys {
-        let before: libpep::keys::SessionPublicKeys = (*before).into();
+        let before: crate::aliases::SessionPublicKeys = (*before).into();
         self.0.rekey_public_key(&before).into()
     }
 }

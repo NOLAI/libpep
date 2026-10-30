@@ -1,11 +1,11 @@
 //! WASM bindings for commitment types.
 
-use crate::errors::malformed_proof_err;
-use derive_more::{Deref, From, Into};
-use libpep::factors::{
+use crate::aliases::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
+use crate::errors::malformed_proof_err;
+use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
 /// Pseudonymization factor commitment for a single transition (WASM).
@@ -58,8 +58,8 @@ impl WASMVerifiableRekeyCommitment {
     }
 }
 
-/// Combined transcryption commitments — pseudonymization (reshuffle + rekey)
-/// plus attribute rekey — for a transition (WASM).
+/// Combined transcryption commitments for a transition: pseudonymization (reshuffle and rekey)
+/// plus attribute rekey (WASM).
 #[derive(Clone, From, Into, Deref)]
 #[wasm_bindgen(js_name = VerifiableTranscryptionCommitment)]
 pub struct WASMVerifiableTranscryptionCommitment(pub(crate) VerifiableTranscryptionCommitment);

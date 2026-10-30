@@ -1,3 +1,12 @@
+use crate::aliases::TranscryptionInfo;
+#[cfg(feature = "offline")]
+use crate::aliases::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::aliases::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, SessionKeys,
+};
 use crate::data::json::WASMEncryptedPepJsonValue;
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -28,17 +37,8 @@ use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
 use libpep::client::encrypt_global;
 use libpep::client::{decrypt, encrypt};
-use libpep::factors::TranscryptionInfo;
 use libpep::keys::PublicKey;
 use libpep::keys::SecretKey;
-#[cfg(feature = "offline")]
-use libpep::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use libpep::keys::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, SessionKeys,
-};
 use libpep::transcryptor::transcrypt;
 use wasm_bindgen::prelude::*;
 
@@ -67,7 +67,7 @@ wasm_session_crypt_fns!(
 #[wasm_bindgen(js_name = encryptRecord)]
 pub fn wasm_encrypt_record(record: WASMRecord, keys: &WASMSessionKeys) -> WASMEncryptedRecord {
     let mut rng = rand::rng();
-    use libpep::data::records::Record;
+    use crate::aliases::Record;
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: Record = record.into();
@@ -81,7 +81,7 @@ pub fn wasm_decrypt_record(
     encrypted: WASMEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> Option<WASMRecord> {
-    use libpep::data::records::EncryptedRecord;
+    use crate::aliases::EncryptedRecord;
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -92,7 +92,7 @@ pub fn wasm_decrypt_record(
 #[cfg(not(feature = "elgamal3"))]
 #[wasm_bindgen(js_name = decryptRecord)]
 pub fn wasm_decrypt_record(encrypted: WASMEncryptedRecord, keys: &WASMSessionKeys) -> WASMRecord {
-    use libpep::data::records::EncryptedRecord;
+    use crate::aliases::EncryptedRecord;
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: EncryptedRecord = encrypted.into();
@@ -107,7 +107,7 @@ pub fn wasm_transcrypt_record(
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMEncryptedRecord {
     let mut rng = rand::rng();
-    use libpep::data::records::EncryptedRecord;
+    use crate::aliases::EncryptedRecord;
     let rust_encrypted: EncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -126,8 +126,8 @@ pub fn wasm_transcrypt_record(
     public_key: &WASMSessionPublicKeys,
 ) -> WASMEncryptedRecord {
     let mut rng = rand::rng();
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
-    use libpep::data::records::EncryptedRecord;
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
+    use crate::aliases::EncryptedRecord;
     let rust_encrypted: EncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -146,7 +146,7 @@ pub fn wasm_encrypt_long_record(
     keys: &WASMSessionKeys,
 ) -> WASMLongEncryptedRecord {
     let mut rng = rand::rng();
-    use libpep::data::records::LongRecord;
+    use crate::aliases::LongRecord;
     use libpep::data::traits::Encryptable;
     let session_keys: SessionKeys = (*keys).into();
     let rust_record: LongRecord = record.into();
@@ -160,7 +160,7 @@ pub fn wasm_decrypt_long_record(
     encrypted: WASMLongEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> Option<WASMLongRecord> {
-    use libpep::data::records::LongEncryptedRecord;
+    use crate::aliases::LongEncryptedRecord;
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
@@ -174,7 +174,7 @@ pub fn wasm_decrypt_long_record(
     encrypted: WASMLongEncryptedRecord,
     keys: &WASMSessionKeys,
 ) -> WASMLongRecord {
-    use libpep::data::records::LongEncryptedRecord;
+    use crate::aliases::LongEncryptedRecord;
     use libpep::data::traits::Encrypted;
     let session_keys: SessionKeys = (*keys).into();
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
@@ -190,7 +190,7 @@ pub fn wasm_transcrypt_long_record(
     transcryption_info: &WASMTranscryptionInfo,
 ) -> WASMLongEncryptedRecord {
     let mut rng = rand::rng();
-    use libpep::data::records::LongEncryptedRecord;
+    use crate::aliases::LongEncryptedRecord;
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -210,8 +210,8 @@ pub fn wasm_transcrypt_long_record(
     public_key: &WASMSessionPublicKeys,
 ) -> WASMLongEncryptedRecord {
     let mut rng = rand::rng();
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
-    use libpep::data::records::LongEncryptedRecord;
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
+    use crate::aliases::LongEncryptedRecord;
     let rust_encrypted: LongEncryptedRecord = encrypted.into();
     transcrypt(
         &rust_encrypted,
@@ -252,7 +252,7 @@ pub fn wasm_transcrypt_json(
     public_key: &WASMSessionPublicKeys,
 ) -> WASMEncryptedPepJsonValue {
     let mut rng = rand::rng();
-    let pk = libpep::keys::SessionPublicKeys::from(public_key);
+    let pk = crate::aliases::SessionPublicKeys::from(public_key);
     WASMEncryptedPepJsonValue(transcrypt(
         &encrypted.0,
         &TranscryptionInfo::from(transcryption_info),

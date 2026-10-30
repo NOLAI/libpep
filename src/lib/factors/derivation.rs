@@ -1,19 +1,17 @@
 //! Derivation of factors from secrets and contexts, and of the info for a transcryption between
 //! two contexts.
 //!
-//! The derivation is generic over the [`Group`](crate::elgamal::arithmetic::Group) in
-//! [`generic`]; the functions in this module derive ristretto255 factors.
+//! The derivation is generic over the [`Group`].
 //!
 //! Two derivations exist, selected by feature:
 //!
-//! - The default is `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar` (RFC 9497,
-//!   ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
-//!   identifier, domain-separated with `"DeriveFactor-" || contextString` of the
+//! - The default is `DeriveFactor`: `HashToScalar` (ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
+//!   identifier, domain-separated with `"DeriveFactor-" || contextString` of
 //!   the group's [ciphersuite](crate::elgamal::arithmetic::Group::CIPHERSUITE). A factor that is 0 or 1 is rejected
 //!   and the derivation retried with the next counter.
 //! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
-//! The labels differ: the draft uses `0x01` for a pseudonym rekey factor, `0x02` for an
+//! The labels differ: the default uses `0x01` for a pseudonym rekey factor, `0x02` for an
 //! attribute rekey factor and `0x03` for a reshuffle factor; the legacy derivation uses `0x02`
 //! for a pseudonym rekey factor and `0x01` for the other two, with the audience type.
 //!
@@ -22,52 +20,284 @@
 //! domain or session identifier separates within a deployment. See the
 //! [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite) module docs.
 
-pub mod generic;
+use crate::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::elgamal::arithmetic::group::Group;
+use crate::factors::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
+use crate::factors::types::*;
+#[cfg(feature = "legacy")]
+use hmac::{Hmac, KeyInit, Mac};
+#[cfg(feature = "legacy")]
+use sha2::Sha512;
+#[cfg(feature = "legacy")]
+use sha2::{Digest, Sha256};
 
 /// Secrets, domains and contexts must be shorter than this many bytes: the derivation
 /// length-prefixes them with two bytes. Callers that take them from untrusted input check the
 /// length first; the derivation panics past it.
 pub const MAX_INPUT_LENGTH: usize = 1 << 16;
 
-use super::secrets::{EncryptionSecret, PseudonymizationSecret};
-use super::types::*;
-use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::Ristretto255;
+/// Label of the pseudonym rekey factor `k_c` (`labelRekeyPseudonym`).
+pub const LABEL_REKEY_PSEUDONYM: u8 = 0x01;
+/// Label of the attribute rekey factor `k'_c` (`labelRekeyAttribute`).
+pub const LABEL_REKEY_ATTRIBUTE: u8 = 0x02;
+/// Label of the reshuffle factor `s_d` (`labelReshuffle`).
+pub const LABEL_RESHUFFLE: u8 = 0x03;
 
+/// Derive a pseudonym rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
-pub use generic::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
-
-/// Derive a pseudonym rekey factor from a secret and a session.
-pub fn make_pseudonym_rekey_factor(
+pub fn make_pseudonym_rekey_factor<G: Group>(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-) -> PseudonymRekeyFactor {
-    generic::make_pseudonym_rekey_factor::<Ristretto255>(secret, session)
+) -> PseudonymRekeyFactor<G> {
+    match session {
+        EncryptionContext::Specific(payload) => PseudonymRekeyFactor(make_factor::<G>(
+            LABEL_REKEY_PSEUDONYM,
+            &secret.0,
+            payload.as_bytes(),
+        )),
+        #[cfg(feature = "offline")]
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            PseudonymRekeyFactor(G::scalar_one())
+        }
+    }
 }
 
-/// Derive an attribute rekey factor from a secret and a session.
-pub fn make_attribute_rekey_factor(
+/// Derive an attribute rekey factor from a secret and a context.
+#[cfg(not(feature = "legacy"))]
+pub fn make_attribute_rekey_factor<G: Group>(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
-) -> AttributeRekeyFactor {
-    generic::make_attribute_rekey_factor::<Ristretto255>(secret, session)
+) -> AttributeRekeyFactor<G> {
+    match session {
+        EncryptionContext::Specific(payload) => AttributeRekeyFactor(make_factor::<G>(
+            LABEL_REKEY_ATTRIBUTE,
+            &secret.0,
+            payload.as_bytes(),
+        )),
+        #[cfg(feature = "offline")]
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            AttributeRekeyFactor(G::scalar_one())
+        }
+    }
 }
 
-/// Derive a pseudonymization factor from a secret and a domain.
-pub fn make_pseudonymization_factor(
+/// Derive a pseudonymization factor from a secret and a context.
+#[cfg(not(feature = "legacy"))]
+pub fn make_pseudonymization_factor<G: Group>(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
-) -> ReshuffleFactor {
-    generic::make_pseudonymization_factor::<Ristretto255>(secret, domain)
+) -> ReshuffleFactor<G> {
+    match domain {
+        PseudonymizationDomain::Specific(payload) => ReshuffleFactor(make_factor::<G>(
+            LABEL_RESHUFFLE,
+            &secret.0,
+            payload.as_bytes(),
+        )),
+        #[cfg(feature = "global-pseudonyms")]
+        PseudonymizationDomain::Global => {
+            // Global domain - return identity factor
+            ReshuffleFactor(G::scalar_one())
+        }
+    }
+}
+
+/// `DeriveFactor(secret, label, id)` .
+///
+/// # Panics
+///
+/// Panics if `secret` or `id` is [`MAX_INPUT_LENGTH`] bytes or
+/// longer; the derivation input length-prefixes both with two bytes.
+#[cfg(not(feature = "legacy"))]
+pub(crate) fn make_factor<G: Group>(label: u8, secret: &Secret, id: &[u8]) -> G::Scalar {
+    let secret_len = u16::try_from(secret.len()).ok();
+    let id_len = u16::try_from(id.len()).ok();
+    let (Some(secret_len), Some(id_len)) = (secret_len, id_len) else {
+        panic!("DeriveFactor: secrets and identifiers must be shorter than 2^16 bytes");
+    };
+    let dst = G::CIPHERSUITE.dst(b"DeriveFactor-");
+    let mut input = Vec::with_capacity(secret.len() + id.len() + 6);
+    input.extend_from_slice(&secret_len.to_be_bytes());
+    input.extend_from_slice(secret);
+    input.push(label);
+    input.extend_from_slice(&id_len.to_be_bytes());
+    input.extend_from_slice(id);
+    // A factor must be neither 0 (which would destroy the ciphertext) nor 1 (which would apply no
+    // transformation). Both occur with probability about 2^-252; if they do, the derivation is
+    // retried with the next counter, so that it stays total and deterministic.
+    for counter in 0u8..=255 {
+        input.push(counter);
+        let scalar = G::hash_to_scalar(&input, &dst).filter(|s| *s != G::scalar_one());
+        input.pop();
+        if let Some(factor) = scalar {
+            return factor;
+        }
+    }
+    unreachable!("256 consecutive degenerate factor derivations")
+}
+
+/// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).
+#[cfg(feature = "legacy")]
+pub fn make_pseudonym_rekey_factor<G: Group>(
+    secret: &EncryptionSecret,
+    context: &EncryptionContext,
+) -> PseudonymRekeyFactor<G> {
+    match context {
+        EncryptionContext::Specific {
+            payload,
+            audience_type,
+        } => PseudonymRekeyFactor(make_factor::<G>(&secret.0, 0x02, *audience_type, payload)),
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            PseudonymRekeyFactor(G::scalar_one())
+        }
+    }
+}
+
+/// Derive an attribute rekey factor from a secret and a context (using the legacy PEP repo method).
+#[cfg(feature = "legacy")]
+pub fn make_attribute_rekey_factor<G: Group>(
+    secret: &EncryptionSecret,
+    context: &EncryptionContext,
+) -> AttributeRekeyFactor<G> {
+    match context {
+        EncryptionContext::Specific {
+            payload,
+            audience_type,
+        } => AttributeRekeyFactor(make_factor::<G>(&secret.0, 0x01, *audience_type, payload)),
+        EncryptionContext::Global => {
+            // Global context - return identity factor
+            AttributeRekeyFactor(G::scalar_one())
+        }
+    }
+}
+
+/// Derive a pseudonymization factor from a secret and a context (using the legacy PEP repo method).
+#[cfg(feature = "legacy")]
+pub fn make_pseudonymization_factor<G: Group>(
+    secret: &PseudonymizationSecret,
+    domain: &PseudonymizationDomain,
+) -> ReshuffleFactor<G> {
+    match domain {
+        PseudonymizationDomain::Specific {
+            payload,
+            audience_type,
+        } => ReshuffleFactor(make_factor::<G>(&secret.0, 0x01, *audience_type, payload)),
+        PseudonymizationDomain::Global => {
+            // Global domain - return identity factor
+            ReshuffleFactor(G::scalar_one())
+        }
+    }
+}
+
+/// Derive a factor from a secret and a context (using the legacy PEP repo method).
+///
+/// As in the legacy implementation, a zero result is mapped to one.
+#[cfg(feature = "legacy")]
+fn make_factor<G: Group>(
+    secret: &Secret,
+    typ: u32,
+    audience_type: u32,
+    payload: &String,
+) -> G::Scalar {
+    let mut hasher_inner = Sha256::default();
+    hasher_inner.update(typ.to_be_bytes());
+    hasher_inner.update(audience_type.to_be_bytes());
+    hasher_inner.update(payload.as_bytes());
+    let result_inner = hasher_inner.finalize();
+
+    // Unwrap is safe: HMAC-SHA512 accepts keys of any length
+    #[allow(clippy::unwrap_used)]
+    let mut hmac = Hmac::<Sha512>::new_from_slice(secret).unwrap();
+    hmac.update(&result_inner);
+    let result_outer = hmac.finalize().into_bytes();
+
+    let mut bytes = [0u8; 64];
+    bytes.copy_from_slice(&result_outer);
+    G::scalar_from_uniform_bytes(&bytes).unwrap_or_else(G::scalar_one)
+}
+
+impl<G: Group> PseudonymizationInfo<G> {
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let s_from = make_pseudonymization_factor::<G>(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymization_factor::<G>(pseudonymization_secret, domain_to);
+        Self {
+            s: ReshuffleFactor(G::scalar_inverse(&s_from.0) * s_to.0),
+            k: PseudonymRekeyInfo::<G>::new(session_from, session_to, encryption_secret).k,
+        }
+    }
+}
+
+impl<G: Group> PseudonymRekeyInfo<G> {
+    /// Compute the rekey info for pseudonyms given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_pseudonym_rekey_factor::<G>(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor::<G>(encryption_secret, session_to);
+        Self {
+            k: PseudonymRekeyFactor(G::scalar_inverse(&k_from.0) * k_to.0),
+        }
+    }
+}
+
+impl<G: Group> AttributeRekeyInfo<G> {
+    /// Compute the rekey info for attributes given sessions and secrets.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_attribute_rekey_factor::<G>(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor::<G>(encryption_secret, session_to);
+        Self {
+            k: AttributeRekeyFactor(G::scalar_inverse(&k_from.0) * k_to.0),
+        }
+    }
+}
+
+impl<G: Group> TranscryptionInfo<G> {
+    /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        Self {
+            pseudonym: PseudonymizationInfo::<G>::new(
+                domain_from,
+                domain_to,
+                session_from,
+                session_to,
+                pseudonymization_secret,
+                encryption_secret,
+            ),
+            attribute: AttributeRekeyInfo::<G>::new(session_from, session_to, encryption_secret),
+        }
+    }
 }
 
 #[cfg(all(test, not(feature = "legacy")))]
 mod tests {
-    use super::generic::make_factor;
     use super::*;
     use crate::elgamal::arithmetic::hashing::hash_to_scalar_with_dst;
     use crate::elgamal::arithmetic::scalars::ScalarTraits;
     use crate::elgamal::arithmetic::Group;
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::secrets::Secret;
     use crate::factors::Factor;
 
@@ -87,7 +317,7 @@ mod tests {
         );
     }
 
-    /// The exact domain separation tag and input encoding of `DeriveFactor`, so that neither can
+    /// The domain separation tag and input encoding of `DeriveFactor`, so that neither can
     /// drift unnoticed: the DST is `"DeriveFactor-" || contextString` of the ciphersuite, and the
     /// input is the length-prefixed secret, the label, the length-prefixed identifier and the
     /// counter.
@@ -103,7 +333,7 @@ mod tests {
         input.extend_from_slice(id);
         input.push(0u8);
         let dst = Ristretto255::CIPHERSUITE.dst(b"DeriveFactor-");
-        assert_eq!(dst, b"DeriveFactor-coPRFV1-ristretto255-SHA512");
+        assert_eq!(dst, b"DeriveFactor-nPEPV1-ristretto255-SHA512");
         let expected = hash_to_scalar_with_dst(&input, &dst);
         assert_eq!(
             make_factor::<Ristretto255>(LABEL_REKEY_PSEUDONYM, &secret, id).to_bytes(),
@@ -116,9 +346,9 @@ mod tests {
         let secret = EncryptionSecret::from(b"secret".to_vec());
         let from = EncryptionContext::from("from");
         let to = EncryptionContext::from("to");
-        let info = PseudonymRekeyInfo::new(&from, &to, &secret);
-        let k_from = make_pseudonym_rekey_factor(&secret, &from);
-        let k_to = make_pseudonym_rekey_factor(&secret, &to);
+        let info = PseudonymRekeyInfo::<Ristretto255>::new(&from, &to, &secret);
+        let k_from = make_pseudonym_rekey_factor::<Ristretto255>(&secret, &from);
+        let k_to = make_pseudonym_rekey_factor::<Ristretto255>(&secret, &to);
         assert_eq!(k_from.scalar() * info.k.scalar(), k_to.scalar());
         assert_eq!(info.reverse().reverse(), info);
     }

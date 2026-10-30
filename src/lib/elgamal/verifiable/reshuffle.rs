@@ -1,6 +1,6 @@
 //! Verifiable reshuffle and verifiable reshuffle-2.
 //!
-//! Implements the constructions exactly as specified in the paper:
+//! Implements the constructions as specified in the paper:
 //!
 //! ```text
 //!  VReshuffle(⟨B, C, Y⟩, s)
@@ -19,8 +19,8 @@
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::generic::ElGamal;
-use crate::elgamal::zkps::generic::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
+use crate::elgamal::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
+use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -56,8 +56,8 @@ impl<G: Group> VerifiableReshuffle<G> {
         }
     }
 
-    /// Reconstruct the reshuffled ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only.
+    /// Reconstruct the reshuffled ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only.
     pub(crate) fn result(&self, _original: &ElGamal<G>) -> ElGamal<G> {
         ElGamal {
             gb: *self.p_gb_prime,
@@ -129,8 +129,8 @@ impl<G: Group> VerifiableReshuffle2<G> {
         Self { gs, p_gs_to, inner }
     }
 
-    /// Reconstruct the reshuffled ciphertext from this proof, **without
-    /// verifying** it. Internal prover-side use only.
+    /// Reconstruct the reshuffled ciphertext from this proof, without
+    /// verifying it. Internal prover-side use only.
     pub(crate) fn result(&self, original: &ElGamal<G>) -> ElGamal<G> {
         self.inner.result(original)
     }
@@ -178,12 +178,12 @@ impl<G: Group> VerifiableReshuffle2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::encrypt;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
+    use crate::elgamal::test_util::encrypt;
+    use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle, VerifiableReshuffle2,
     };
-    use crate::elgamal::ElGamal;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();

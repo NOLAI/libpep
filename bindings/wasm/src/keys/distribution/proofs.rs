@@ -4,6 +4,7 @@
 
 #![cfg(feature = "verifiable")]
 
+use crate::aliases::{BlindingCommitment, SessionKeyShareProof};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::errors::malformed_proof_err;
@@ -11,7 +12,6 @@ use crate::keys::distribution::shares::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
 };
 use derive_more::{From, Into};
-use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use wasm_bindgen::prelude::*;
 
 /// Public commitment `B_i = b_i · G` to a per-transcryptor blinding factor.
@@ -30,7 +30,9 @@ impl WASMBlindingCommitment {
     /// Construct from a preexisting group element.
     #[wasm_bindgen(js_name = fromPoint)]
     pub fn from_point(point: &WASMGroupElement) -> Self {
-        Self(libpep::keys::distribution::proofs::generic::BlindingCommitment(point.0))
+        Self(libpep::keys::distribution::proofs::BlindingCommitment(
+            point.0,
+        ))
     }
 
     /// Get the commitment value as a group element.

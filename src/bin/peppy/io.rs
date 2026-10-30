@@ -5,18 +5,16 @@
 //! label when standard output is a terminal and bare when it is piped; with `--json` all values
 //! of a command are printed as one JSON object instead.
 
+#[cfg(feature = "json")]
+use crate::aliases::VerifiableTranscryptionCommitment;
+use crate::aliases::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
+use libpep::elgamal::arithmetic::group::Group;
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::elgamal::verifiable::generic::{
+use libpep::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
-};
-use libpep::elgamal::ElGamal;
-#[cfg(feature = "json")]
-use libpep::factors::commitments::VerifiableTranscryptionCommitment;
-use libpep::factors::commitments::{
-    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
@@ -126,6 +124,8 @@ pub fn point(raw: &str, what: &str) -> Result<GroupElement> {
         .ok_or_else(|| Error::input(format!("{what}: expected a group element as 64 hex digits")))
 }
 
+pub type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
+
 pub fn ciphertext(raw: &str) -> Result<ElGamal> {
     let s = read_arg(raw)?;
     ElGamal::from_base64(&s)
@@ -138,7 +138,10 @@ pub fn public_key<K: PublicKey>(raw: &str, what: &str) -> Result<K> {
         .ok_or_else(|| Error::input(format!("{what}: expected a public key as 64 hex digits")))
 }
 
-pub fn secret_key<K: SecretKey<Group = Ristretto255>>(raw: &str, what: &str) -> Result<K> {
+pub fn secret_key<K: SecretKey<Group: Group<Scalar = ScalarNonZero>>>(
+    raw: &str,
+    what: &str,
+) -> Result<K> {
     Ok(K::from_scalar(scalar(raw, what)?))
 }
 
