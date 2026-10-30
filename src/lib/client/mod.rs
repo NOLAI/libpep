@@ -1,4 +1,9 @@
 //! PEP client for encrypting and decrypting data using session keys or global public keys.
+//!
+//! [`Client`] and `OfflineClient` (with the `offline` feature) are generic over the
+//! [`Group`](crate::elgamal::arithmetic::Group), for example `Client<Ristretto255>`, as are the
+//! polymorphic [`encrypt`] and [`decrypt`] functions, which work for every type of
+//! [`data`](crate::data).
 
 // Module declarations
 #[cfg(feature = "batch")]

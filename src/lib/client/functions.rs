@@ -11,13 +11,25 @@ use rand_core::{CryptoRng, Rng};
 /// (see [`KeyProvider`]); the message type decides which key is used.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let encrypted_pseudonym = encrypt(&pseudonym, &pseudonym_key, &mut rng);
-/// let encrypted_attribute = encrypt(&attribute, &attribute_key, &mut rng);
-/// let encrypted_long = encrypt(&long_pseudonym, &pseudonym_key, &mut rng);
+/// ```
+/// # use libpep::client::encrypt;
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::factors::EncryptionSecret;
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
+/// let attribute = Attribute::<Ristretto255>::random(rng);
 ///
-/// // Or from the session's public keys, which selects the pseudonym half here:
-/// let encrypted_pseudonym = encrypt(&pseudonym, &session_public_keys, &mut rng);
+/// // The data's type selects the half of the bundle: pseudonym key here.
+/// let encrypted_pseudonym = encrypt(&pseudonym, &keys.pseudonym.public, rng);
+/// // Or from the session's public keys, which selects the half itself.
+/// let encrypted_pseudonym = encrypt(&pseudonym, &keys.public(), rng);
+/// let encrypted_attribute = encrypt(&attribute, &keys.public(), rng);
 /// ```
 pub fn encrypt<G: Group, M, R>(
     message: &M,
@@ -35,9 +47,20 @@ where
 /// With the `elgamal3` feature, returns `None` if the secret key doesn't match.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let pseudonym = decrypt(&encrypted_pseudonym, &pseudonym_key);
-/// let attribute = decrypt(&encrypted_attribute, &attribute_key);
+/// ```
+/// # use libpep::client::{decrypt, encrypt};
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::factors::EncryptionSecret;
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
+/// let encrypted = encrypt(&pseudonym, &keys.public(), rng);
+/// assert_eq!(decrypt(&encrypted, &keys), Some(pseudonym));
 /// ```
 #[cfg(feature = "elgamal3")]
 pub fn decrypt<G: Group, E>(
@@ -53,10 +76,20 @@ where
 /// Polymorphic decrypt function that works for any encrypted type.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let pseudonym = decrypt(&encrypted_pseudonym, &pseudonym_key);
-/// let attribute = decrypt(&encrypted_attribute,
-/// &attribute_key);
+/// ```
+/// # use libpep::client::{decrypt, encrypt};
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::factors::EncryptionSecret;
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
+/// let encrypted = encrypt(&pseudonym, &keys.public(), rng);
+/// assert_eq!(decrypt(&encrypted, &keys), pseudonym);
 /// ```
 #[cfg(not(feature = "elgamal3"))]
 pub fn decrypt<G: Group, E>(
@@ -72,8 +105,15 @@ where
 /// Polymorphic encrypt_global function for offline encryption.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let encrypted = encrypt_global(&pseudonym, &global_key, &mut rng);
+/// ```
+/// # use libpep::client::encrypt_global;
+/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::keys::make_global_keys;
+/// # let rng = &mut rand::rng();
+/// # let (global_public, _global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
+/// let encrypted = encrypt_global(&pseudonym, &global_public, rng);
 /// ```
 #[cfg(feature = "offline")]
 pub fn encrypt_global<G: Group, M, R>(

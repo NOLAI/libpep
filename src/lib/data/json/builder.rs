@@ -13,8 +13,21 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 ///
 /// # Example
 ///
-/// ```ignore
-/// let pep_value = PepJsonBuilder::new()
+/// ```
+/// use libpep::client::{decrypt, encrypt};
+/// use libpep::contexts::EncryptionContext;
+/// use libpep::data::json::builder::PepJsonBuilder;
+/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::factors::EncryptionSecret;
+/// use libpep::keys::{make_global_keys, make_session_keys};
+/// use serde_json::json;
+///
+/// let rng = &mut rand::rng();
+/// let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+///
+/// let pep_value = PepJsonBuilder::<Ristretto255>::new()
 ///     .pseudonym("id", "user1@example.com")
 ///     .attribute("age", json!(16))
 ///     .attribute("verified", json!(true))
@@ -22,7 +35,12 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 ///     .build();
 ///
 /// // Then encrypt it
-/// let encrypted = encrypt(&pep_value, &keys, &mut rng);
+/// let encrypted = encrypt(&pep_value, &keys.public(), rng);
+/// # #[cfg(not(feature = "elgamal3"))]
+/// # let decrypted = decrypt(&encrypted, &keys);
+/// # #[cfg(feature = "elgamal3")]
+/// # let decrypted = decrypt(&encrypted, &keys).unwrap();
+/// # assert_eq!(decrypted, pep_value);
 /// ```
 pub struct PepJsonBuilder<G: InvertibleEncoding> {
     fields: BTreeMap<String, PepJsonValue<G>>,
@@ -53,7 +71,10 @@ impl<G: InvertibleEncoding> PepJsonBuilder<G> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
+    /// use libpep::data::json::builder::PepJsonBuilder;
+    /// use libpep::data::json::structure::JsonStructure;
+    /// use libpep::elgamal::arithmetic::Ristretto255;
     /// use serde_json::json;
     ///
     /// let data = json!({
@@ -62,8 +83,9 @@ impl<G: InvertibleEncoding> PepJsonBuilder<G> {
     ///     "age": 30
     /// });
     ///
-    /// let builder = PepJsonBuilder::from_json(&data, &["id"]).unwrap();
+    /// let builder = PepJsonBuilder::<Ristretto255>::from_json(&data, &["id"]).unwrap();
     /// let pep_value = builder.build();
+    /// assert!(matches!(pep_value.structure(), JsonStructure::Object(_)));
     /// ```
     pub fn from_json(json: &Value, pseudonyms: &[&str]) -> Option<Self> {
         let obj = json.as_object()?;

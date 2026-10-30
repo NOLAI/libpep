@@ -1,4 +1,5 @@
-//! Verifier for verifiable transcryption operations.
+//! Verifier for verifiable transcryption operations, generic over the
+//! [`Group`](crate::elgamal::arithmetic::Group) (`Verifier<Ristretto255>`).
 //!
 //! The verifier checks that operations were performed against published
 //! forward commitments:
@@ -25,7 +26,7 @@
 //! implementing the matching `Verifiable*` trait (simple values, long
 //! values, records, JSON).
 //!
-//! Batch proofs ([`BatchPseudonymizationProof`](crate::data::verifiable::batch::BatchPseudonymizationProof)
+//! Batch proofs (`BatchPseudonymizationProof`
 //! and its rekey and transcryption counterparts) implement the same traits and go through the
 //! same methods. To verify a batch against cached commitments, fetch them with
 //! [`pseudonymization_commitments`](Verifier::pseudonymization_commitments),

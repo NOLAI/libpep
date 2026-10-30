@@ -90,6 +90,24 @@ where
 #[cfg(feature = "elgamal3")]
 /// Rerandomize an encrypted value with a fresh factor; with `elgamal3` the ciphertext carries its
 /// public key.
+///
+/// # Examples
+/// ```
+/// # use libpep::transcryptor::rerandomize;
+/// # use libpep::client::encrypt;
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
+/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// let rerandomized = rerandomize(&encrypted_pseudonym, rng);
+/// assert_ne!(rerandomized, encrypted_pseudonym);
+/// ```
 pub fn rerandomize<G: Group, R, E>(encrypted: &E, rng: &mut R) -> E
 where
     E: Encrypted<Group = G>,
@@ -101,8 +119,21 @@ where
 /// Rerandomize an encrypted message, creating a binary unlinkable copy of the same message.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let rerandomized = rerandomize(&encrypted_pseudonym, &public_key, &mut rng);
+/// ```
+/// # use libpep::transcryptor::rerandomize;
+/// # use libpep::client::encrypt;
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
+/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// let rerandomized = rerandomize(&encrypted_pseudonym, &keys.public(), rng);
+/// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
 #[cfg(not(feature = "elgamal3"))]
 pub fn rerandomize<G: Group, R, E>(
@@ -120,8 +151,22 @@ where
 /// Rerandomize an encrypted message using a known rerandomization factor.
 ///
 /// # Examples
-/// ```rust,ignore
+/// ```
+/// # use libpep::transcryptor::rerandomize_known;
+/// # use libpep::client::encrypt;
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
+/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// let factor = RerandomizeFactor::<Ristretto255>::from_scalar(Ristretto255::random_scalar(rng));
 /// let rerandomized = rerandomize_known(&encrypted_pseudonym, &factor);
+/// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
 #[cfg(feature = "elgamal3")]
 pub fn rerandomize_known<G: Group, E>(encrypted: &E, factor: &RerandomizeFactor<G>) -> E
@@ -134,8 +179,22 @@ where
 /// Rerandomize an encrypted message using a known rerandomization factor.
 ///
 /// # Examples
-/// ```rust,ignore
-/// let rerandomized = rerandomize_known(&encrypted_pseudonym, &public_key, &factor);
+/// ```
+/// # use libpep::transcryptor::rerandomize_known;
+/// # use libpep::client::encrypt;
+/// # use libpep::contexts::EncryptionContext;
+/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
+/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
+/// # use libpep::keys::{make_global_keys, make_session_keys};
+/// # let rng = &mut rand::rng();
+/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// let factor = RerandomizeFactor::<Ristretto255>::from_scalar(Ristretto255::random_scalar(rng));
+/// let rerandomized = rerandomize_known(&encrypted_pseudonym, &keys.public(), &factor);
+/// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
 #[cfg(not(feature = "elgamal3"))]
 pub fn rerandomize_known<G: Group, E>(

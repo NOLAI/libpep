@@ -5,7 +5,7 @@
 //! - **Internal padding** ([`internal`]): PKCS#7 padding inside a block, so that any byte string
 //!   up to one byte short of a block fits in a block, and the last block of a long value marks
 //!   where the data ends.
-//! - **External padding** ([`external`], `long` feature): all-zero blocks appended to a long
+//! - **External padding** (`external`, `long` feature): all-zero blocks appended to a long
 //!   value to bring it to a given number of blocks, so that values in a batch share one
 //!   structure.
 //!

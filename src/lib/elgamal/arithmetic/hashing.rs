@@ -25,7 +25,7 @@ const MAX_DST_LENGTH: usize = 255;
 /// Hash `parts` with the group's hash and reduce the digest to a non-zero scalar, with zero
 /// mapped to one.
 ///
-/// This is the Fiat-Shamir challenge of the proofs in [`zkps`](crate::elgamal::zkps) and the
+/// This is the Fiat-Shamir challenge of the proofs in `elgamal::zkps` and the
 /// hash of the Carter-Wegman derivation (`factors::verifiable`). On ristretto255-SHA512
 /// it is the SHA-512 digest reduced modulo the group order. A digest of any other length is
 /// zero-padded or truncated to the 64 bytes the reduction takes.

@@ -6,7 +6,7 @@
 //!
 //! # Examples
 //!
-//! ```rust,ignore
+//! ```
 //! use libpep::prelude::client::*;
 //! use libpep::prelude::transcryptor::*;
 //! ```

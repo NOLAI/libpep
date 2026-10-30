@@ -2,9 +2,8 @@
 //!
 //! A [`Group`] is a marker type: it carries no data, and names a ciphersuite (a group together
 //! with its scalar type, encodings and hash functions). The library's generic types take it as
-//! a type parameter; the `ristretto255` instance is [`Ristretto255`](super::Ristretto255), and
-//! the non-generic names at the crate's module level (`Pseudonym`, `SessionKeys`, `Transcryptor`,
-//! ...) are aliases that pin it.
+//! a type parameter (`Pseudonym<G>`, `SessionKeys<G>`, `Transcryptor<G>`, ...), instantiated with
+//! [`Ristretto255`](super::Ristretto255).
 //!
 //! Beyond a bare prime-order group API, [`Group`] has what the PEP operations need:
 //! a multiplicative identity for identity factors, random elements for pseudonyms, and the

@@ -2,7 +2,7 @@
 //!
 //! Mirrors the structure of [`crate::data`]: per data module (`simple`, `long`, `records`,
 //! `json`) there is a matching module here with the proof types and the verifiable operations.
-//! The prover-side and verifier-side traits live in [`traits`], and [`batch`] holds the batch
+//! The prover-side and verifier-side traits live in [`traits`], and `batch` (with the `batch` feature) holds the batch
 //! proofs, which are generic over the item type.
 
 #[cfg(feature = "batch")]
