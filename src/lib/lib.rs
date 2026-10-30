@@ -35,15 +35,15 @@
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars together with the
 //!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built
 //!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
-//! - With the `verifiable` feature, [`elgamal::verifiable`] holds the primitives that emit
-//!   zero-knowledge proofs, [`verifier`] checks such proofs against factor commitments, and the
+//! - With the `verifiable` feature, `elgamal::verifiable` holds the primitives that emit
+//!   zero-knowledge proofs, `verifier` checks such proofs against factor commitments, and the
 //!   high-level layers gain verifiable counterparts of their operations
-//!   ([`data::verifiable`]).
+//!   (`data::verifiable`).
 //!
 //! ## Groups
 //!
 //! The whole API ([`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
-//! [`verifier`]) is generic over the prime-order group, abstracted as the
+//! `verifier`) is generic over the prime-order group, abstracted as the
 //! [`Group`](elgamal::arithmetic::Group) trait. Users instantiate it with a group, for example
 //! `Pseudonym<Ristretto255>` with [`Ristretto255`](elgamal::arithmetic::Ristretto255), the
 //! implemented group. The group is inferred wherever it follows from the arguments (a key, a

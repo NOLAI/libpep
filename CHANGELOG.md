@@ -12,7 +12,10 @@ a major change against the published 0.13.0.
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
   inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.
 - The four factor types implement one `factors::Factor` trait (`from_scalar`, `scalar`); the
-  `RekeyFactor` trait is gone. The public key a ciphertext is encrypted under after a
+  `RekeyFactor` trait is gone. The factor types and the key types keep their scalar or element
+  private: there are no public tuple constructors and no `From<ScalarNonZero>` or
+  `From<GroupElement>` impls on them, so a value is made with `from_scalar` or `from_point`, or
+  derived or generated. The public key a ciphertext is encrypted under after a
   transcryption is given by the `factors::RekeyPublicKey` trait, implemented by every info for the
   key of the data it transcrypts; `TranscryptionInfo::rekey_public_keys` is now `rekey_public_key`,
   and the `convert` methods on session public keys are gone.
@@ -60,6 +63,20 @@ a major change against the published 0.13.0.
 - `elgamal::zkps` no longer carries the unused signature functions (`sign`, `verify`,
   `sign_unlinkable`, `create_proof_unlinkable`).
 - The `verifier::verifier` module is merged into `verifier`.
+- Module layout: `elgamal` is the generic low-level API, with the ciphertext in
+  `elgamal::ciphertext` (re-exported as `elgamal::ElGamal`, `encrypt` and `decrypt`), and the
+  ristretto255 group, its scalars (`ScalarNonZero`, `ScalarCanBeZero`), group elements and raw-tag
+  hash functions in `elgamal::arithmetic::ristretto255` (`group_elements` and `scalars` are still
+  re-exported from `elgamal::arithmetic`; `hash_to_group_with_dst` and `hash_to_scalar_with_dst`
+  are in `elgamal::arithmetic::ristretto255::hashing`, re-exported from `elgamal::arithmetic::hashing`). The high level has no ristretto255 alias
+  layer and no `generic` submodules; each module is one file, or a module whose `mod.rs` only
+  declares and re-exports. `TranscryptorId` lives in `contexts` (still re-exported from
+  `transcryptor`), `Batchable` in `data::batch`, `SessionKeyShareProof::verify_share` in
+  `keys::distribution::shares`, and the ElGamal-specific data traits (`ElGamalEncryptable`,
+  `ElGamalEncrypted`) in `data::elgamal`, so `data::traits` does not name the scheme.
+- The ciphertext is `ElGamal<G>`, and `elgamal::encrypt` and `decrypt` are generic over the group
+  (inferred from their arguments). `ElGamal::<G>::LENGTH` replaces the constant `ELGAMAL_LENGTH`;
+  it is `2 * G::NE` bytes, or `3 * G::NE` with `elgamal3`.
 - Every public item is documented (`missing_docs` warns).
 - In the JavaScript bindings, `fromHash` returns `undefined` for input that is not 64 bytes
   instead of aborting.
@@ -149,9 +166,6 @@ a major change against the published 0.13.0.
   are gone; `SessionKeyShareError` lives in `keys::distribution`. The bindings follow
   (`DistributedTranscryptor.session_key_shares_with_proof` and friends), and
   `peppy keys distributed share --prove` prints the proofs.
-- `elgamal::verifiable::rfc`, the wire layouts of the draft's verifiable mode, is gone until
-  that mode is implemented end to end; `elgamal::dleq` stays as the RFC 9497 primitive, and the
-  verifiable operations use the paper's proof encoding of `elgamal::zkps`.
 - Python `make_pseudonym_rekey_factor`, `make_attribute_rekey_factor` and
   `make_pseudonymization_factor` take an `EncryptionContext` or `PseudonymizationDomain`
   instead of a string, like every other function; JavaScript likewise.
@@ -204,8 +218,8 @@ a major change against the published 0.13.0.
   JavaScript the `EncryptedBatch` constructors, their `publicKey()` getter and `transcrypt()`
   now use `SessionPublicKeys`; call `SessionKeys.public()` to obtain one.
 
-- Factor derivation follows `DeriveFactor` of draft-doesburg-cfrg-coprf: `HashToScalar`
-  (RFC 9497, ristretto255-SHA512: `expand_message_xmd` with SHA-512, RFC 9380) over the
+- Factor derivation is `DeriveFactor`: `HashToScalar`
+  (ristretto255-SHA512: `expand_message_xmd` with SHA-512, RFC 9380) over the
   length-prefixed secret, the label and the length-prefixed identifier, with domain separation tag
   `"DeriveFactor-" || contextString`, rejecting 0 and 1 with a counter. **Derived factors and
   session keys change**, and the HMAC-SHA512 derivation of 0.13 is gone: `DeriveFactor` is the
@@ -214,7 +228,7 @@ a major change against the published 0.13.0.
 - A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
   `"nPEPV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
   *and* a hash (`ristretto255-SHA512`), so it belongs to the group: it is the associated constant
-  `Group::CIPHERSUITE`, taken verbatim from the draft's ciphersuite table, and cannot be
+  `Group::CIPHERSUITE`, and cannot be
   constructed from an arbitrary string. One group's identifier therefore cannot be paired with
   another group's operations. The type is `Copy` and const-constructible, and its context string
   is a `&'static [u8]`, so neither factor derivation nor hashing allocates to build it. `Transcryptor::new`,
@@ -223,8 +237,7 @@ a major change against the published 0.13.0.
   already part of the derivation's hash input, so deployments with different secrets derive
   unrelated factors, and the domain and session separate within a deployment.
 
-  There is no mode byte. RFC 9497 separates its OPRF, VOPRF and POPRF variants that way, but
-  verifiable transcryption here derives the *same* factors as plain transcryption and adds
+  There is no mode byte: verifiable transcryption here derives the *same* factors as plain transcryption and adds
   commitments and proofs on top, so a mode would stop a verifiable and a plain transcryptor from
   interoperating on one session. The hashes are separated by the label of each tag
   (`"DeriveFactor-"`, `"HashToGroup-"`, `"HashToScalar-"`, and the proof transcript's own labels).
@@ -252,12 +265,12 @@ a major change against the published 0.13.0.
   `Ristretto255` (`Pseudonym<Ristretto255>`). The group is inferred wherever it follows from the
   arguments; functions that create keys from randomness alone take it explicitly
   (`make_global_keys::<Ristretto255, _>`). The bindings, `peppy` and the tests name the group once
-  in a small aliases file. Other changes: `ElGamal<G>` is generic and
-  `encrypt` takes the group explicitly (`encrypt::<Ristretto255, _>`); `ElGamal::to_bytes` returns a
+  in a small aliases file. Other changes: `ElGamal<G>` is generic; `ElGamal::to_bytes` returns a
   `Vec<u8>` and `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes`
-  and `from_bytes` likewise; `elgamal::zkps` and `elgamal::dleq` are generic, so their functions
-  take the group explicitly; `BatchError` is `data::batch::BatchError` and exists only with the
-  `batch` feature, and `ParseError` is `data::records::ParseError`.
+  and `from_bytes` likewise; `elgamal::zkps` and `elgamal::dleq` are generic over the group;
+  `BatchError` is `data::batch::BatchError` and exists only with the `batch` feature, and
+  `ParseError` is `data::errors::ParseError`. The error variants that only the `long` feature
+  can produce exist only with it.
 
 ### Added
 
@@ -275,12 +288,12 @@ a major change against the published 0.13.0.
   reflexively for every key type. The same widening is in the Python bindings; the JavaScript
   bindings keep their typed parameters, as wasm-bindgen cannot discriminate between exported
   types at runtime.
-- The group abstraction of RFC 9497, Section 2.1, as `elgamal::arithmetic::Group`: a marker type
+- The group abstraction `elgamal::arithmetic::Group`: a marker type
   with the scalar and element types, serialization, hashing to the group and to scalars, random
   scalars and elements, and the generator, with `Ristretto255` (`ristretto255-SHA512`) as its
   instance. `Ristretto255::hash_to_group` and `hash_to_scalar` hash with the shared
   `expand_message_xmd` (RFC 9380) of `elgamal::arithmetic::hashing` under SHA-512 and match the
-  RFC 9497 test vectors. Optional encodings:
+  published ristretto255-SHA512 test vectors. Optional encodings:
   `InvertibleEncoding` (the lizard encoding, implemented for ristretto255) and `OaepEncoding` (for
   Weierstrass curves, to be implemented).
 - The whole API (`elgamal`, `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) is
@@ -298,23 +311,19 @@ a major change against the published 0.13.0.
   naming the label that changed; update them deliberately with
   `cargo test --features batch,verifiable --test vectors -- --ignored --nocapture`, which prints
   the current values in the layout of the constants.
-- `elgamal::dleq`: the DLEQ proofs of RFC 9497 Section 2.2 as a second, additive proof encoding.
+- `elgamal::dleq`: DLEQ proofs, generic over the group, as a second, additive proof encoding.
   A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
-  against the ristretto255-SHA512 VOPRF test vectors of RFC 9497 Appendix A.1.2, for a single
+  against the published ristretto255-SHA512 VOPRF test vectors, for a single
   pair and for a batch of two. The paper's four-element encoding in `elgamal::zkps` is unchanged
   and remains the default; proofs in the two encodings are not interchangeable.
-- `elgamal::verifiable::rfc`: the wire layouts of the draft's "Wire Encodings" section for
-  the verifiable operations: `RerandomizeMaterial` (128 bytes), `PseudonymBatchHeader` (448),
-  `AttributeBatchHeader` (192) and `SessionKeyShareMaterial` (128). Every `from_slice` rejects a
-  wrong length, trailing bytes, a non-canonical scalar and the identity element.
 - `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.
 - `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
-  SHA-512 test vectors), and the raw-tag `hash_to_group_with_dst` (`hash_to_ristretto255` with
-  SHA-512) and `hash_to_scalar_with_dst` (RFC 9497 `HashToScalar`), cross-checked against the
-  RFC 9497 ristretto255-SHA512 test vectors.
+  SHA-512 test vectors), and in `elgamal::arithmetic::ristretto255::hashing` (re-exported here) the raw-tag
+  `hash_to_group_with_dst` (`hash_to_ristretto255` with SHA-512) and `hash_to_scalar_with_dst`
+  (`HashToScalar`), cross-checked against the published ristretto255-SHA512 test vectors.
 - `elgamal::arithmetic::hashing::hash_to_group::<G>(x)`: the `hash_to_group` encoding of
-  draft-doesburg-cfrg-coprf, with DST `"HashToGroup-" || contextString` derived from
+  an identifier, with DST `"HashToGroup-" || contextString` derived from
   `G::CIPHERSUITE`. Its docs state the property every encoding must have (no known discrete-log
   relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret
   enters this hash. The invertible lizard encoding stays on
@@ -328,7 +337,7 @@ a major change against the published 0.13.0.
 - `Group::Hash`, the hash a ciphersuite identifier names, declared beside `Group::CIPHERSUITE` so
   that a group whose identifier says `-SHA256` cannot hash with SHA-512. Code generic over a
   `Group` reaches the ciphersuite's hash through it; the ristretto255 primitives that the RFC 9380
-  and RFC 9497 vectors pin keep hashing with SHA-512 by definition.
+  and published OPRF vectors pin keep hashing with SHA-512 by definition.
 - `elgamal::arithmetic::Ciphersuite`, with `identifier()`, `context_string()` (the spec's name for
   the value) and `dst()`, reached through `Group::CIPHERSUITE` and built with the `ciphersuite!`
   macro so that the identifier appears once.

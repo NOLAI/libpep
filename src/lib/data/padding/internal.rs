@@ -7,7 +7,7 @@
 //!
 //! - It is applied automatically during encoding and decoding.
 //! - For single-block data (up to 15 bytes), use the [`Padded`] trait.
-//! - For multi-block data, it is applied to the last block (see the [`long`](crate::data::long) module).
+//! - For multi-block data, it is applied to the last block (see the `data::long` module).
 //!
 //! # Format
 //!
@@ -25,7 +25,7 @@
 //!
 //! # Order of Operations
 //!
-//! PKCS#7 padding is applied before external padding (see [`external`](crate::data::padding::external))
+//! PKCS#7 padding is applied before external padding (see `data::padding::external`)
 //! and removed after the external padding is removed during decoding. The order matters for
 //! disambiguation: even if the data matches the external padding pattern, PKCS#7 changes the last
 //! byte to `0x01`-`0x10`, so it is detected correctly.
@@ -54,19 +54,21 @@ use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 ///
 /// # Examples
 ///
-/// ```ignore
+/// ```
 /// use libpep::data::padding::Padded;
 /// use libpep::data::simple::Attribute;
+/// use libpep::elgamal::arithmetic::Ristretto255;
 ///
 /// // Encode a string
-/// let attr = Attribute::from_string_padded("hello")?;
+/// let attr = Attribute::<Ristretto255>::from_string_padded("hello")?;
 /// let decoded = attr.to_string_padded()?;
 /// assert_eq!(decoded, "hello");
 ///
 /// // Encode bytes
-/// let attr = Attribute::from_bytes_padded(b"data")?;
+/// let attr = Attribute::<Ristretto255>::from_bytes_padded(b"data")?;
 /// let decoded = attr.to_bytes_padded()?;
 /// assert_eq!(decoded, b"data");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub trait Padded: ElGamalEncryptable
 where

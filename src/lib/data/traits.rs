@@ -19,18 +19,29 @@ use rand_core::{CryptoRng, Rng};
 ///
 /// # Examples
 ///
-/// ```rust,ignore
-/// // Pseudonym uses PseudonymSessionPublicKey
-/// encrypt(&pseudonym, &pseudonym_session_key, rng);
+/// ```
+/// use libpep::client::encrypt;
+/// use libpep::contexts::EncryptionContext;
+/// use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
+/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::factors::EncryptionSecret;
+/// use libpep::keys::{make_global_keys, make_session_keys};
 ///
-/// // LongPseudonym also uses PseudonymSessionPublicKey (encrypts each block)
-/// encrypt(&long_pseudonym, &pseudonym_session_key, rng);
+/// let rng = &mut rand::rng();
+/// let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 ///
-/// // PepJsonValue needs SessionPublicKeys (contains both pseudonyms and attributes)
-/// encrypt(&json_value, &session_public_keys, rng);
+/// // Pseudonym uses PseudonymSessionPublicKey.
+/// encrypt(&pseudonym, &keys.pseudonym.public, rng);
 ///
 /// // Or let the session's public keys select the right half:
-/// encrypt(&pseudonym, &session_keys.public(), rng);
+/// encrypt(&pseudonym, &keys.public(), rng);
+///
+/// // LongPseudonym uses the same key (it encrypts each block), and PepJsonValue and
+/// // EncryptedRecord need the SessionPublicKeys bundle, as they contain both
+/// // pseudonyms and attributes.
 /// ```
 pub trait Encryptable: Sized {
     /// The group the data is encrypted over.
@@ -157,7 +168,7 @@ pub trait Encrypted: Sized {
 /// Pseudonymization applies both a reshuffle operation (to change the pseudonymization domain)
 /// and a rekey operation (to change the encryption context), after rerandomizing the input.
 ///
-/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and [`LongEncryptedPseudonym`](type@super::long::LongEncryptedPseudonym),
+/// This trait is only implemented by [`EncryptedPseudonym`](super::simple::EncryptedPseudonym) and `LongEncryptedPseudonym` (with the `long` feature),
 /// as attributes cannot be reshuffled (they have no pseudonymization domain).
 pub trait Pseudonymizable: Encrypted {
     /// Reshuffle and rekey without rerandomization (RSK). Not for untrusted input.

@@ -1,6 +1,6 @@
 //! Python bindings for verifiable JSON transcryption.
 //!
-//! Wraps [`JsonTranscryptionProof`] and [`JsonTranscryptionBatchProof`], and adds a
+//! Wraps `JsonTranscryptionProof` and `JsonTranscryptionBatchProof`, and adds a
 //! `verifiable_transcrypt` producer on the existing
 //! [`PyEncryptedPepJsonValue`].
 //!

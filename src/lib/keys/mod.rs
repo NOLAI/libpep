@@ -3,6 +3,11 @@
 //! This module provides types and functions for managing global keys (used for system configuration),
 //! session keys (used for encryption/decryption), and distributed transcryptor key management.
 //!
+//! The key types are generic over the [`Group`](crate::elgamal::arithmetic::Group), for example
+//! `SessionKeys<Ristretto255>`; the group is inferred from the keys wherever they are passed
+//! on, and named once where keys are made from randomness alone
+//! (`make_global_keys::<Ristretto255, _>(rng)`).
+//!
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
 //!

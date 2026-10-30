@@ -34,9 +34,6 @@ use rand_core::{CryptoRng, Rng};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-/// The group the command line tool works over.
-type Curve = Ristretto255;
-
 /// The length of one block (a group element) in hex digits.
 const HEX_BLOCK: usize = 64;
 
@@ -223,35 +220,41 @@ pub trait Kind {
     type Plain: ElGamalEncryptable
         + Padded
         + Encryptable<
-            Group = Curve,
+            Group = Ristretto255,
             EncryptedType = Self::Enc,
             PublicKeyType = Self::SessionPk,
             GlobalPublicKeyType = Self::GlobalPk,
         >;
     type Enc: ElGamalEncrypted
-        + Encrypted<Group = Curve, UnencryptedType = Self::Plain, SecretKeyType = Self::SessionSk>
-        + Rekeyable<RekeyInfo = Self::RekeyInfo>
+        + Encrypted<
+            Group = Ristretto255,
+            UnencryptedType = Self::Plain,
+            SecretKeyType = Self::SessionSk,
+        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
         + Transcryptable
         + VerifiableRekeyable<
             RekeyProof: VerifiableRekeyProof<Output = Self::Enc> + Serialize + DeserializeOwned,
         >;
     type Long: Encryptable<
-        Group = Curve,
+        Group = Ristretto255,
         EncryptedType = Self::LongEnc,
         PublicKeyType = Self::SessionPk,
         GlobalPublicKeyType = Self::GlobalPk,
     >;
-    type LongEnc: Encrypted<Group = Curve, UnencryptedType = Self::Long, SecretKeyType = Self::SessionSk>
-        + Rekeyable<RekeyInfo = Self::RekeyInfo>
+    type LongEnc: Encrypted<
+            Group = Ristretto255,
+            UnencryptedType = Self::Long,
+            SecretKeyType = Self::SessionSk,
+        > + Rekeyable<RekeyInfo = Self::RekeyInfo>
         + Transcryptable
         + VerifiableRekeyable<
             RekeyProof: VerifiableRekeyProof<Output = Self::LongEnc> + Serialize + DeserializeOwned,
         >;
     type SessionPk: PublicKey;
-    type SessionSk: SecretKey<Group = Curve>;
+    type SessionSk: SecretKey<Group = Ristretto255>;
     type GlobalPk: PublicKey;
     #[cfg(feature = "insecure")]
-    type GlobalSk: SecretKey<Group = Curve>;
+    type GlobalSk: SecretKey<Group = Ristretto255>;
     /// The info of a rekeying, which also gives the commitment to its factor.
     type RekeyInfo: Copy + Into<VerifiableRekeyCommitment>;
 

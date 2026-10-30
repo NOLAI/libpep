@@ -7,9 +7,19 @@
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use libpep::client::{decrypt, encrypt};
+/// use libpep::contexts::EncryptionContext;
+/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::factors::EncryptionSecret;
+/// use libpep::keys::{make_global_keys, make_session_keys};
 /// use libpep::pep_json;
 /// use serde_json::json;
+///
+/// let rng = &mut rand::rng();
+/// let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 ///
 /// let pep_value = pep_json!({
 ///     "id": pseudonym("user1@example.com"),
@@ -19,9 +29,12 @@
 /// });
 ///
 /// // Then encrypt it
-/// let encrypted = encrypt(&pep_value, &keys, &mut rng);
-/// let decrypted = decrypt(&encrypted, &keys)?;
-/// assert_eq!(decrypted, json!({
+/// let encrypted = encrypt(&pep_value, &keys.public(), rng);
+/// # #[cfg(not(feature = "elgamal3"))]
+/// let decrypted = decrypt(&encrypted, &keys);
+/// # #[cfg(feature = "elgamal3")]
+/// # let decrypted = decrypt(&encrypted, &keys).unwrap();
+/// assert_eq!(decrypted.to_value().unwrap(), json!({
 ///     "id": "user1@example.com",
 ///     "age": 16,
 ///     "verified": true,

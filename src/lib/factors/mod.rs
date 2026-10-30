@@ -1,6 +1,9 @@
 //! Cryptographic factors for pseudonymization, rekeying and rerandomization, and their derivation
 //! from secrets and [contexts](crate::contexts).
 //!
+//! The factor, secret-derived and info types are generic over the
+//! [`Group`](crate::elgamal::arithmetic::Group), for example `TranscryptionInfo<Ristretto255>`.
+//!
 //! # Organization
 //!
 //! - [`types`]: Factor types (`ReshuffleFactor`, `PseudonymRekeyFactor`, `AttributeRekeyFactor`,

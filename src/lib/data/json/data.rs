@@ -271,7 +271,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```
     /// use libpep::data::json::data::PepJsonValue;
     /// use libpep::data::json::structure::JsonStructure;
     /// use libpep::elgamal::arithmetic::Ristretto255;
@@ -284,6 +284,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     /// // Pad value1 to match value2's structure
     /// let target = JsonStructure::String(2);
     /// let padded = value1.pad_to(&target).unwrap();
+    /// assert_eq!(padded.structure(), target);
     /// ```
     pub fn pad_to(
         &self,
@@ -394,7 +395,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```
     /// use libpep::data::json::data::PepJsonValue;
     /// use libpep::data::json::structure::JsonStructure;
     /// use libpep::elgamal::arithmetic::Ristretto255;
@@ -406,7 +407,8 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     /// }));
     ///
     /// let structure = value.structure();
-    /// // structure describes the shape: Object with String(1) and Number fields
+    /// // The structure describes the shape: an object with a one-block string and a number.
+    /// assert!(matches!(structure, JsonStructure::Object(_)));
     /// ```
     pub fn structure(&self) -> crate::data::json::structure::JsonStructure {
         use crate::data::json::structure::JsonStructure;

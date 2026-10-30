@@ -48,11 +48,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// Reshuffling applies to every block separately, so pseudonyms that share a block are
 /// linkable: in
 ///
-/// ```no_run
+/// ```
 /// use libpep::data::long::LongPseudonym;
 /// use libpep::elgamal::arithmetic::Ristretto255;
 ///
-/// let long_pseudo = LongPseudonym::<Ristretto255>::from_string_padded("some-long-identifier1@example.com");
+/// let long_pseudo = LongPseudonym::<Ristretto255>::from_string_padded("some-identifier1@example.com");
+/// assert_eq!(long_pseudo.len(), 2);
 /// ```
 ///
 /// the second block is `"@example.com"` plus padding, and every other identifier ending in

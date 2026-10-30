@@ -77,7 +77,7 @@ pub enum JsonStructure {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```
 /// use libpep::data::json::structure::{JsonStructure, unify_structures};
 ///
 /// let struct1 = JsonStructure::String(1);  // "hi"
@@ -90,7 +90,7 @@ pub enum JsonStructure {
 ///
 /// ## Object example
 ///
-/// ```no_run
+/// ```
 /// use libpep::data::json::structure::{JsonStructure, unify_structures};
 ///
 /// let obj1 = JsonStructure::Object(vec![
@@ -104,7 +104,14 @@ pub enum JsonStructure {
 /// ]);
 ///
 /// let unified = unify_structures(&[obj1, obj2]).unwrap();
-/// // Result: email field has 3 blocks (max of 1 and 3)
+/// // Result: email field has 3 blocks (max of 1 and 3); fields are sorted by name
+/// assert_eq!(
+///     unified,
+///     JsonStructure::Object(vec![
+///         ("email".to_string(), JsonStructure::String(3)),
+///         ("name".to_string(), JsonStructure::String(1)),
+///     ])
+/// );
 /// ```
 pub fn unify_structures(structures: &[JsonStructure]) -> Result<JsonStructure, UnifyError> {
     if structures.is_empty() {

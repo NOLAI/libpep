@@ -5,29 +5,24 @@
 
 mod common;
 
+#[cfg(all(
+    feature = "batch",
+    any(feature = "elgamal3", feature = "batch-pk"),
+    feature = "serde"
+))]
+use common::aliases::PseudonymSessionPublicKey;
 use common::aliases::Transcryptor;
 use common::aliases::Verifier;
 use common::aliases::{
     Attribute, AttributeSessionKeys, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
     PseudonymSessionKeys, Ristretto255, SessionKeys,
 };
-#[cfg(all(
-    feature = "batch",
-    any(feature = "elgamal3", feature = "batch-pk"),
-    feature = "serde"
-))]
-use common::aliases::{
-    PseudonymPseudonymizationBatchProof, PseudonymSessionPublicKey,
-    VerifiablePseudonymizationCommitment,
-};
+#[cfg(all(feature = "batch", any(feature = "elgamal3", feature = "batch-pk")))]
+use common::aliases::{PseudonymPseudonymizationBatchProof, VerifiablePseudonymizationCommitment};
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
 use libpep::data::simple::*;
-#[cfg(all(
-    feature = "batch",
-    any(feature = "elgamal3", feature = "batch-pk"),
-    feature = "serde"
-))]
+#[cfg(all(feature = "batch", any(feature = "elgamal3", feature = "batch-pk")))]
 use libpep::data::verifiable::traits::VerifiablePseudonymizationProof;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
