@@ -8,6 +8,7 @@ a major change against the published 0.13.0.
 
 ### API changes
 
+- `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets.
 - `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
   inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.
