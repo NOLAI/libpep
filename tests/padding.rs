@@ -1,25 +1,18 @@
 #![cfg(feature = "long")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use common::aliases::LongPseudonym;
-use common::aliases::PseudonymizationInfo;
-use common::aliases::{EncryptedPseudonym, Pseudonym};
-use common::aliases::{Ristretto255, Ristretto255Sha512};
-use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::traits::{Encryptable, Encrypted};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::{make_pseudonym_global_keys, make_pseudonym_session_keys};
-use libpep::transcryptor::pseudonymize;
 use std::error::Error;
 
 #[macro_use]
 mod common;
 
+use common::aliases::*;
+
 #[test]
 fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
     // Initialize test environment
     let mut rng = rand::rng();
-    let (_global_public, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("test-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
 
@@ -30,7 +23,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
 
     // Create session keys
     let (session_public, session_secret) =
-        make_pseudonym_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
     // Original string to encrypt and pseudonymize
     let original_string = "This is a very long id that will be pseudonymized";

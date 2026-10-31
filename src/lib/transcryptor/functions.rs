@@ -93,19 +93,12 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::transcryptor::rerandomize;
-/// # use libpep::client::encrypt;
-/// # use libpep::contexts::EncryptionContext;
-/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
-/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
-/// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ristretto255::*;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
-/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let rerandomized = rerandomize(&encrypted_pseudonym, rng);
 /// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
@@ -121,19 +114,12 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::transcryptor::rerandomize;
-/// # use libpep::client::encrypt;
-/// # use libpep::contexts::EncryptionContext;
-/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
-/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
-/// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ristretto255::*;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
-/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let rerandomized = rerandomize(&encrypted_pseudonym, &keys.public(), rng);
 /// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
@@ -154,20 +140,14 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::transcryptor::rerandomize_known;
-/// # use libpep::client::encrypt;
-/// # use libpep::contexts::EncryptionContext;
-/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
-/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
-/// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ristretto255::*;
+/// # use libpep::elgamal::arithmetic::Group;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
-/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
-/// let factor = RerandomizeFactor::<Ristretto255>::from_scalar(Ristretto255::random_scalar(rng));
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
+/// let factor = RerandomizeFactor::from_scalar(Ristretto255::random_scalar(rng));
 /// let rerandomized = rerandomize_known(&encrypted_pseudonym, &factor);
 /// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```
@@ -183,20 +163,14 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::transcryptor::rerandomize_known;
-/// # use libpep::client::encrypt;
-/// # use libpep::contexts::EncryptionContext;
-/// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::{Group, Ristretto255};
-/// # use libpep::factors::{EncryptionSecret, Factor, RerandomizeFactor};
-/// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ristretto255::*;
+/// # use libpep::elgamal::arithmetic::Group;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
-/// # let encrypted_pseudonym = encrypt(&Pseudonym::<Ristretto255>::random(rng), &keys.public(), rng);
-/// let factor = RerandomizeFactor::<Ristretto255>::from_scalar(Ristretto255::random_scalar(rng));
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
+/// let factor = RerandomizeFactor::from_scalar(Ristretto255::random_scalar(rng));
 /// let rerandomized = rerandomize_known(&encrypted_pseudonym, &keys.public(), &factor);
 /// assert_ne!(rerandomized, encrypted_pseudonym);
 /// ```

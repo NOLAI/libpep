@@ -5,20 +5,13 @@
 //! label when standard output is a terminal and bare when it is piped; with `--json` all values
 //! of a command are printed as one JSON object instead.
 
-#[cfg(feature = "json")]
-use crate::aliases::VerifiableTranscryptionCommitment;
-use crate::aliases::{VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment};
-use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::aliases::*;
 use libpep::elgamal::arithmetic::group::Group;
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::Ristretto255;
+// The commitments are built with their tuple constructors, which an alias does not provide.
 use libpep::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::{PublicKey, SecretKey};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt;
@@ -124,7 +117,7 @@ pub fn point(raw: &str, what: &str) -> Result<GroupElement> {
         .ok_or_else(|| Error::input(format!("{what}: expected a group element as 64 hex digits")))
 }
 
-pub type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
+pub use crate::aliases::ElGamal;
 
 pub fn ciphertext(raw: &str) -> Result<ElGamal> {
     let s = read_arg(raw)?;

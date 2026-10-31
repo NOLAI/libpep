@@ -1,31 +1,10 @@
 //! `peppy keys`: global, session and distributed key material.
 
-#[cfg(feature = "json")]
-use crate::aliases::SessionKeys;
-use crate::aliases::{
-    AttributeGlobalSecretKey, AttributeSessionKeyShare, AttributeSessionKeys,
-    AttributeSessionSecretKey, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKeys,
-    BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymGlobalSecretKey,
-    PseudonymSessionKeyShare, PseudonymSessionKeys, PseudonymSessionSecretKey, Ristretto255,
-    Ristretto255Sha512, SessionKeyShares,
-};
+use crate::aliases::*;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::client::distributed::{
-    make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
-};
 use libpep::elgamal::arithmetic::group::Group;
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
-use libpep::keys::distribution::{
-    make_distributed_global_keys, make_session_key_shares, make_session_key_shares_with_proof,
-    BlindedGlobalSecretKey, SessionKeyShare,
-};
-use libpep::keys::{
-    make_attribute_session_keys, make_global_keys, make_pseudonym_session_keys, PublicKey,
-    SecretKey,
-};
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -126,7 +105,7 @@ pub enum Distributed {
 pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Result<()> {
     match cmd {
         Keys::Global(Global::Generate) => {
-            let (public, secret) = make_global_keys::<Ristretto255, _>(rng);
+            let (public, secret) = make_global_keys(rng);
             out.value("pseudonym_public_key", public.pseudonym.to_hex());
             out.value("pseudonym_secret_key", secret.pseudonym.value().to_hex());
             out.value("attribute_public_key", public.attribute.to_hex());
@@ -153,8 +132,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let Some(global) = pseudonym_global_secret {
                 let global: PseudonymGlobalSecretKey =
                     io::secret_key(&global, "pseudonym global secret key")?;
-                let (public, secret) =
-                    make_pseudonym_session_keys::<Ristretto255Sha512>(&global, &context, &secret);
+                let (public, secret) = make_pseudonym_session_keys(&global, &context, &secret);
                 out.value("pseudonym_public_key", public.to_hex());
                 out.value("pseudonym_secret_key", secret.value().to_hex());
                 pseudonym = Some(PseudonymSessionKeys { public, secret });
@@ -163,8 +141,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let Some(global) = attribute_global_secret {
                 let global: AttributeGlobalSecretKey =
                     io::secret_key(&global, "attribute global secret key")?;
-                let (public, secret) =
-                    make_attribute_session_keys::<Ristretto255Sha512>(&global, &context, &secret);
+                let (public, secret) = make_attribute_session_keys(&global, &context, &secret);
                 out.value("attribute_public_key", public.to_hex());
                 out.value("attribute_secret_key", secret.value().to_hex());
                 attribute = Some(AttributeSessionKeys { public, secret });
@@ -188,8 +165,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                     "a distributed system needs at least one transcryptor",
                 ));
             }
-            let (public, blinded, factors) =
-                make_distributed_global_keys::<Ristretto255, _>(n, rng);
+            let (public, blinded, factors) = make_distributed_global_keys(n, rng);
             out.value("pseudonym_public_key", public.pseudonym.to_hex());
             out.value("attribute_public_key", public.attribute.to_hex());
             out.value("blinded_pseudonym_secret_key", blinded.pseudonym.to_hex());
@@ -209,12 +185,10 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
             let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
-            let pseudonym_rekey_factor =
-                make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret, &context);
-            let attribute_rekey_factor =
-                make_attribute_rekey_factor::<Ristretto255Sha512>(&secret, &context);
+            let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&secret, &context);
+            let attribute_rekey_factor = make_attribute_rekey_factor(&secret, &context);
             if prove {
-                let (shares, proofs) = make_session_key_shares_with_proof::<Ristretto255Sha512, _>(
+                let (shares, proofs) = make_session_key_shares_with_proof(
                     &pseudonym_rekey_factor,
                     &attribute_rekey_factor,
                     &blinding,

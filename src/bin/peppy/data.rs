@@ -8,28 +8,11 @@
 //! The transcryption commands take `--prove` to also produce a proof of the operation; the
 //! `verify-*` commands check such a proof, see [`crate::verifiable`].
 
-use crate::aliases::{
-    Attribute, AttributeGlobalPublicKey, AttributeRekeyFactor, AttributeRekeyInfo,
-    AttributeSessionPublicKey, AttributeSessionSecretKey, EncryptedAttribute, EncryptedPseudonym,
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym, Pseudonym,
-    PseudonymGlobalPublicKey, PseudonymRekeyFactor, PseudonymRekeyInfo, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, PseudonymizationInfo, ReshuffleFactor, VerifiableRekeyCommitment,
-};
-#[cfg(feature = "insecure")]
-use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use crate::aliases::*;
 use crate::factors::{AttributeTransitionArgs, TransitionArgs};
 use crate::io::{self, Output, Result};
 use crate::verifiable::{self, VerifyPseudonymizeArgs, VerifyRekeyArgs};
 use clap::{Args, Subcommand};
-use libpep::data::errors::ParseError;
-use libpep::data::padding::{Padded, PaddingError};
-use libpep::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
-use libpep::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
-use libpep::data::verifiable::traits::{VerifiableRekeyProof, VerifiableRekeyable};
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::factors::{Factor, RekeyPublicKey};
-use libpep::keys::{PublicKey, SecretKey};
 use rand_core::{CryptoRng, Rng};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
