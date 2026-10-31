@@ -17,6 +17,7 @@ use crate::factors::commitments::{
 use crate::factors::types::{WASMAttributeRekeyInfo, WASMPseudonymizationInfo};
 use crate::transcryptor::types::WASMTranscryptor;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;
@@ -77,7 +78,7 @@ impl WASMTranscryptor {
     ) -> WASMPseudonymPseudonymizationProof {
         encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&pseudo_info.0, &mut rand::rng())
             .into()
     }
 
@@ -92,7 +93,7 @@ impl WASMTranscryptor {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&pseudo_info.0, &pk, &mut rand::rng())
             .into()
     }
 
@@ -105,7 +106,7 @@ impl WASMTranscryptor {
     ) -> WASMAttributeRekeyProof {
         encrypted
             .0
-            .verifiable_rekey(&rekey_info.0, &mut rand::rng())
+            .verifiable_rekey::<Ristretto255Sha512, _>(&rekey_info.0, &mut rand::rng())
             .into()
     }
 
@@ -118,7 +119,10 @@ impl WASMTranscryptor {
         session_to: &WASMEncryptionContext,
     ) -> WASMPseudonymRekeyProof {
         let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+        encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rand::rng())
+            .into()
     }
 
     /// Verifiable pseudonymization of a long pseudonym: one batch proof over its blocks.
@@ -131,7 +135,7 @@ impl WASMTranscryptor {
     ) -> WASMLongPseudonymPseudonymizationProof {
         encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&pseudo_info.0, &mut rand::rng())
             .into()
     }
 
@@ -148,7 +152,7 @@ impl WASMTranscryptor {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         encrypted
             .0
-            .verifiable_pseudonymize(&pseudo_info.0, &pk, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&pseudo_info.0, &pk, &mut rand::rng())
             .into()
     }
 
@@ -162,7 +166,7 @@ impl WASMTranscryptor {
     ) -> WASMLongAttributeRekeyProof {
         encrypted
             .0
-            .verifiable_rekey(&rekey_info.0, &mut rand::rng())
+            .verifiable_rekey::<Ristretto255Sha512, _>(&rekey_info.0, &mut rand::rng())
             .into()
     }
 
@@ -176,7 +180,10 @@ impl WASMTranscryptor {
         session_to: &WASMEncryptionContext,
     ) -> WASMLongPseudonymRekeyProof {
         let info = self.0.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+        encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rand::rng())
+            .into()
     }
 
     /// Build the combined public commitments for a transcryption transition

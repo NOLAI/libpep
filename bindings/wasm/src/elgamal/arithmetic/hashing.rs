@@ -3,7 +3,7 @@
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
-use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use sha2::Sha512;
 use wasm_bindgen::prelude::*;
 
@@ -33,7 +33,7 @@ pub fn wasm_expand_message_xmd_sha512(
 /// `Attribute.fromLizard` for an invertible encoding.
 #[wasm_bindgen(js_name = hashToGroup)]
 pub fn wasm_hash_to_group(x: &[u8]) -> WASMGroupElement {
-    hashing::hash_to_group::<Ristretto255>(x).into()
+    hashing::hash_to_group::<Ristretto255Sha512>(x).into()
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag

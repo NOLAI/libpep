@@ -1,16 +1,14 @@
-//! The `Group` instance of ristretto255 with SHA-512.
+//! The `Group` instance of ristretto255.
 
 use super::group_elements::{GroupElement, G};
 use super::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
-use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
 use crate::elgamal::arithmetic::group::{Group, InvertibleEncoding};
 use rand_core::{CryptoRng, Rng};
 
-/// The ristretto255 group with SHA-512, ciphersuite `ristretto255-SHA512`.
+/// The ristretto255 group.
 ///
-/// Elements are 32 bytes, scalars 32 bytes. Hashing to the group is `hash_to_ristretto255`
-/// (RFC 9380, Appendix B) and hashing to a scalar reduces 64 bytes of `expand_message_xmd`
-/// output modulo the group order, both with SHA-512.
+/// Elements are 32 bytes, scalars 32 bytes. The hashing that protocols build on it is in the
+/// ciphersuite [`Ristretto255Sha512`](super::Ristretto255Sha512).
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct Ristretto255;
 
@@ -27,12 +25,9 @@ impl Group for Ristretto255 {
     type Element = GroupElement;
     type ElementBytes = [u8; 32];
     type ScalarBytes = [u8; 32];
-    type Hash = sha2::Sha512;
 
     const NE: usize = 32;
     const NS: usize = 32;
-
-    const CIPHERSUITE: Ciphersuite = crate::ciphersuite!("ristretto255-SHA512");
 
     fn order() -> &'static [u8] {
         &ORDER
@@ -44,15 +39,6 @@ impl Group for Ristretto255 {
 
     fn generator() -> GroupElement {
         G
-    }
-
-    fn hash_to_group(msg: &[u8], dst: &[u8]) -> GroupElement {
-        super::hashing::hash_to_group_with_dst(msg, dst)
-    }
-
-    fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> Option<ScalarNonZero> {
-        let uniform = super::hashing::expand_64(msg, dst);
-        Self::scalar_from_uniform_bytes(&uniform)
     }
 
     fn element_from_uniform_bytes(bytes: &[u8; 64]) -> GroupElement {
@@ -145,46 +131,6 @@ mod tests {
         assert_eq!(
             hex::encode(expand_message_xmd::<Sha512>(b"", dst, 128)),
             "41b037d1734a5f8df225dd8c7de38f851efdb45c372887be655212d07251b921b052b62eaed99b46f72f2ef4cc96bfaf254ebbbec091e1a3b9e4fb5e5b619d2e0c5414800a1d882b62bb5cd1778f098b8eb6cb399d5d9d18f5d5842cf5d13d7eb00a7cff859b605da678b318bd0e65ebff70bec88c753b159a805d2c89c55961"
-        );
-    }
-
-    /// The context string of the `ristretto255-SHA512` OPRF test vectors.
-    const OPRF_CONTEXT: &[u8] = b"OPRFV1-\x00-ristretto255-SHA512";
-
-    /// OPRF test vector A.1.1: `DeriveKeyPair` is one `HashToScalar` call.
-    #[test]
-    fn hash_to_scalar_matches_oprf() {
-        let seed = [0xa3u8; 32];
-        let info = b"test key";
-        let mut input = seed.to_vec();
-        input.extend_from_slice(&(info.len() as u16).to_be_bytes());
-        input.extend_from_slice(info);
-        input.push(0); // counter
-        let dst = [b"DeriveKeyPair".as_slice(), OPRF_CONTEXT].concat();
-        let sk = Ristretto255::hash_to_scalar(&input, &dst).unwrap();
-        assert_eq!(
-            sk.to_hex(),
-            "5ebcea5ee37023ccb9fc2d2019f9d7737be85591ae8652ffa9ef0f4d37063b0e"
-        );
-    }
-
-    /// OPRF test vector A.1.1.1: `BlindedElement = blind * HashToGroup(input)`.
-    #[test]
-    fn hash_to_group_matches_oprf() {
-        let dst = [b"HashToGroup-".as_slice(), OPRF_CONTEXT].concat();
-        let blind = ScalarNonZero::from_hex(
-            "64d37aed22a27f5191de1c1d69fadb899d8862b58eb4220029e036ec4c1f6706",
-        )
-        .unwrap();
-        let blinded = blind * Ristretto255::hash_to_group(&[0x00], &dst);
-        assert_eq!(
-            blinded.to_hex(),
-            "609a0ae68c15a3cf6903766461307e5c8bb2f95e7e6550e1ffa2dc99e412803c"
-        );
-        let blinded = blind * Ristretto255::hash_to_group(&[0x5a; 17], &dst);
-        assert_eq!(
-            blinded.to_hex(),
-            "da27ef466870f5f15296299850aa088629945a17d1f5b7f5ff043f76b3c06418"
         );
     }
 

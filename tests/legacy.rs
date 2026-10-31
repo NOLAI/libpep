@@ -4,7 +4,7 @@ mod common;
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
     use crate::common::aliases::PseudonymRekeyFactor;
-    use crate::common::aliases::{BlindingFactor, Ristretto255};
+    use crate::common::aliases::{BlindingFactor, Ristretto255Sha512};
     use libpep::contexts::PseudonymizationDomain;
     use libpep::elgamal::arithmetic::scalars::ScalarTraits;
     use libpep::factors::{make_pseudonymization_factor, Factor, PseudonymizationSecret};
@@ -35,7 +35,7 @@ mod legacy_pep_repo_tests {
             let pseudo_secret = PseudonymizationSecret::from(secret);
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
             let pseudo_factor =
-                make_pseudonymization_factor::<Ristretto255>(&pseudo_secret, &context);
+                make_pseudonymization_factor::<Ristretto255Sha512>(&pseudo_secret, &context);
             assert_eq!(
                 pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor

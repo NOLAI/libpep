@@ -11,6 +11,7 @@ mod common;
     feature = "serde"
 ))]
 use common::aliases::PseudonymSessionPublicKey;
+use common::aliases::Ristretto255Sha512;
 use common::aliases::Transcryptor;
 use common::aliases::Verifier;
 use common::aliases::{
@@ -105,10 +106,16 @@ fn test_verifiable_pseudonymization_simple() {
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
+    let (_, pseudonym_session2_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session2,
+        &enc_secret,
+    );
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
@@ -119,10 +126,13 @@ fn test_verifiable_pseudonymization_simple() {
         transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
 
     #[cfg(feature = "elgamal3")]
-    let operation_proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    let operation_proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let operation_proof =
-        enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let operation_proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     let verifier = Verifier::new();
     #[cfg(feature = "elgamal3")]
@@ -158,9 +168,16 @@ fn test_verifiable_pseudonym_rekey() {
     let session2 = EncryptionContext::from("session2");
 
     let (pseudonym_session1_public, pseudonym_session1_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
-    let (_, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
+        make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &pseudonym_global_secret,
+            &session1,
+            &enc_secret,
+        );
+    let (_, pseudonym_session2_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session2,
+        &enc_secret,
+    );
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
@@ -169,7 +186,7 @@ fn test_verifiable_pseudonym_rekey() {
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
-    let operation_proof = enc_pseudo.verifiable_rekey(&info, rng);
+    let operation_proof = enc_pseudo.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let verifier = Verifier::new();
     let result: EncryptedPseudonym = verifier
@@ -202,9 +219,16 @@ fn test_verifiable_attribute_rekey() {
     let session2 = EncryptionContext::from("session2");
 
     let (attribute_session1_public, attribute_session1_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
-    let (_, attribute_session2_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
+        make_attribute_session_keys::<Ristretto255Sha512>(
+            &attribute_global_secret,
+            &session1,
+            &enc_secret,
+        );
+    let (_, attribute_session2_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
+        &attribute_global_secret,
+        &session2,
+        &enc_secret,
+    );
 
     let attr = Attribute::random(rng);
     let enc_attr = encrypt(&attr, &attribute_session1_public, rng);
@@ -213,7 +237,7 @@ fn test_verifiable_attribute_rekey() {
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
-    let operation_proof = enc_attr.verifiable_rekey(&info, rng);
+    let operation_proof = enc_attr.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let verifier = Verifier::new();
     let result: EncryptedAttribute = verifier
@@ -248,8 +272,11 @@ fn test_verifier_cache_pseudonymization() {
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
@@ -272,10 +299,13 @@ fn test_verifier_cache_pseudonymization() {
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
     #[cfg(feature = "elgamal3")]
-    let operation_proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    let operation_proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let operation_proof =
-        enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let operation_proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     use libpep::verifier::VerifyError;
     #[cfg(feature = "elgamal3")]
@@ -400,11 +430,15 @@ fn n_pep_batch_distributed_verifiable() {
         if let Some((pre, proof, commitments)) = prev.as_ref() {
             #[cfg(not(feature = "elgamal3"))]
             let reconstructed = proof
-                .verified_reconstruct_batch(pre, current.public_key(), commitments)
+                .verified_reconstruct_batch::<Ristretto255Sha512>(
+                    pre,
+                    current.public_key(),
+                    commitments,
+                )
                 .expect("verification of previous step should succeed");
             #[cfg(feature = "elgamal3")]
             let reconstructed = proof
-                .verified_reconstruct_batch(pre, commitments)
+                .verified_reconstruct_batch::<Ristretto255Sha512>(pre, commitments)
                 .expect("verification of previous step should succeed");
 
             // The reconstructed items must match the actually-received items.
@@ -418,7 +452,7 @@ fn n_pep_batch_distributed_verifiable() {
         let info = system.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
         let commitments =
             system.pseudonymization_commitment(&domain_a, &domain_b, &session_a, &session_b);
-        let proof = current.verifiable_pseudonymize(&info.pseudonym, rng);
+        let proof = current.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.pseudonym, rng);
 
         prev = Some((pre_batch, proof, commitments));
     }
@@ -427,11 +461,11 @@ fn n_pep_batch_distributed_verifiable() {
     let (pre, proof, commitments) = prev.expect("at least one transcryption step");
     #[cfg(not(feature = "elgamal3"))]
     let verified_batch = proof
-        .verified_reconstruct_batch(&pre, current.public_key(), &commitments)
+        .verified_reconstruct_batch::<Ristretto255Sha512>(&pre, current.public_key(), &commitments)
         .expect("final verification should succeed");
     #[cfg(feature = "elgamal3")]
     let verified_batch = proof
-        .verified_reconstruct_batch(&pre, &commitments)
+        .verified_reconstruct_batch::<Ristretto255Sha512>(&pre, &commitments)
         .expect("final verification should succeed");
     assert_eq!(verified_batch.as_items(), current.as_items());
 
@@ -465,9 +499,17 @@ fn test_verifiable_record_transcryption() {
     let session_b = EncryptionContext::from("sb");
 
     let (pseudonym_session_a_pk, pseudonym_session_a_sk) =
-        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &enc_secret);
+        make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &global_pseudonym_sk,
+            &session_a,
+            &enc_secret,
+        );
     let (attribute_session_a_pk, attribute_session_a_sk) =
-        make_attribute_session_keys(&global_attribute_sk, &session_a, &enc_secret);
+        make_attribute_session_keys::<Ristretto255Sha512>(
+            &global_attribute_sk,
+            &session_a,
+            &enc_secret,
+        );
     let session_a_keys = SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_session_a_pk,
@@ -551,8 +593,11 @@ fn tampered_proof_rejected_pseudonymization() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
@@ -561,16 +606,24 @@ fn tampered_proof_rejected_pseudonymization() {
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
     #[cfg(feature = "elgamal3")]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     // Build a second valid proof to donate one of its components.
     let donor_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
     #[cfg(feature = "elgamal3")]
-    let donor_proof = donor_enc.verifiable_pseudonymize(&info, rng);
+    let donor_proof = donor_enc.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let donor_proof = donor_enc.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let donor_proof = donor_enc.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     let tampered = swap_first_string(&proof, &donor_proof);
 
@@ -601,8 +654,11 @@ fn wrong_original_rejected_pseudonymization() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
@@ -611,9 +667,13 @@ fn wrong_original_rejected_pseudonymization() {
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
     #[cfg(feature = "elgamal3")]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     // Verify the proof against a *different* ciphertext.
     let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
@@ -646,8 +706,11 @@ fn wrong_commitments_rejected_pseudonymization() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
@@ -657,9 +720,13 @@ fn wrong_commitments_rejected_pseudonymization() {
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
     #[cfg(feature = "elgamal3")]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
     #[cfg(not(feature = "elgamal3"))]
-    let proof = enc_pseudo.verifiable_pseudonymize(&info, &pseudonym_session1_public, rng);
+    let proof = enc_pseudo.verifiable_pseudonymize::<Ristretto255Sha512, _>(
+        &info,
+        &pseudonym_session1_public,
+        rng,
+    );
 
     let verifier = Verifier::new();
     #[cfg(feature = "elgamal3")]
@@ -687,18 +754,21 @@ fn tampered_proof_rejected_pseudonym_rekey() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
-    let proof = enc_pseudo.verifiable_rekey(&info, rng);
+    let proof = enc_pseudo.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let donor_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
-    let donor_proof = donor_enc.verifiable_rekey(&info, rng);
+    let donor_proof = donor_enc.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let tampered = swap_first_string(&proof, &donor_proof);
 
@@ -719,15 +789,18 @@ fn wrong_original_rejected_pseudonym_rekey() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+    let (pseudonym_session1_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+        &pseudonym_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
-    let proof = enc_pseudo.verifiable_rekey(&info, rng);
+    let proof = enc_pseudo.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
 
@@ -749,18 +822,21 @@ fn tampered_proof_rejected_attribute_rekey() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (attribute_session1_public, _) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+    let (attribute_session1_public, _) = make_attribute_session_keys::<Ristretto255Sha512>(
+        &attribute_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
     let enc_attr = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
-    let proof = enc_attr.verifiable_rekey(&info, rng);
+    let proof = enc_attr.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let donor_enc = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
-    let donor_proof = donor_enc.verifiable_rekey(&info, rng);
+    let donor_proof = donor_enc.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let tampered = swap_first_string(&proof, &donor_proof);
 
@@ -781,15 +857,18 @@ fn wrong_original_rejected_attribute_rekey() {
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
-    let (attribute_session1_public, _) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+    let (attribute_session1_public, _) = make_attribute_session_keys::<Ristretto255Sha512>(
+        &attribute_global_secret,
+        &session1,
+        &enc_secret,
+    );
 
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
     let enc_attr = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
-    let proof = enc_attr.verifiable_rekey(&info, rng);
+    let proof = enc_attr.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
     let other_enc = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
 
@@ -816,9 +895,17 @@ fn tampered_proof_rejected_record_transcryption() {
     let session_b = EncryptionContext::from("sb");
 
     let (pseudonym_session_a_pk, pseudonym_session_a_sk) =
-        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &enc_secret);
+        make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &global_pseudonym_sk,
+            &session_a,
+            &enc_secret,
+        );
     let (attribute_session_a_pk, attribute_session_a_sk) =
-        make_attribute_session_keys(&global_attribute_sk, &session_a, &enc_secret);
+        make_attribute_session_keys::<Ristretto255Sha512>(
+            &global_attribute_sk,
+            &session_a,
+            &enc_secret,
+        );
     let session_a_keys = SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_session_a_pk,
@@ -925,7 +1012,7 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(&gsk, &s1, &enc_secret);
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
@@ -940,7 +1027,7 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
     let pre = libpep::data::batch::EncryptedBatch::new(items).expect("new batch");
 
     let mut post = pre.clone();
-    let proof = post.verifiable_pseudonymize(&info, rng);
+    let proof = post.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
 
     (pre, post, proof, commitments, pk1)
 }
@@ -961,11 +1048,11 @@ fn tampered_proof_rejected_pseudonymization_batch() {
     let tampered = swap_first_string(&proof, &donor_proof);
 
     #[cfg(not(feature = "elgamal3"))]
-    let result = tampered.verified_reconstruct(&pre, &pk1, &commitments);
+    let result = tampered.verified_reconstruct::<Ristretto255Sha512>(&pre, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
     let result = {
         let _ = &pk1; // unused under elgamal3
-        tampered.verified_reconstruct(&pre, &commitments)
+        tampered.verified_reconstruct::<Ristretto255Sha512>(&pre, &commitments)
     };
     assert!(result.is_none(), "tampered batch proof must not verify");
 }
@@ -986,11 +1073,11 @@ fn wrong_original_rejected_pseudonymization_batch() {
     let (other_pre, _, _, _, _) = batch_pseudonymize_fixture(rng);
 
     #[cfg(not(feature = "elgamal3"))]
-    let result = proof.verified_reconstruct(&other_pre, &pk1, &commitments);
+    let result = proof.verified_reconstruct::<Ristretto255Sha512>(&other_pre, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
     let result = {
         let _ = &pk1;
-        proof.verified_reconstruct(&other_pre, &commitments)
+        proof.verified_reconstruct::<Ristretto255Sha512>(&other_pre, &commitments)
     };
     assert!(
         result.is_none(),
@@ -1020,11 +1107,11 @@ fn reordered_originals_rejected_pseudonymization_batch() {
     let reordered = libpep::data::batch::EncryptedBatch::new(items).expect("reordered batch");
 
     #[cfg(not(feature = "elgamal3"))]
-    let result = proof.verified_reconstruct(&reordered, &pk1, &commitments);
+    let result = proof.verified_reconstruct::<Ristretto255Sha512>(&reordered, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
     let result = {
         let _ = &pk1;
-        proof.verified_reconstruct(&reordered, &commitments)
+        proof.verified_reconstruct::<Ristretto255Sha512>(&reordered, &commitments)
     };
     assert!(
         result.is_none(),
@@ -1049,7 +1136,8 @@ fn wrong_recipient_pk_rejected_pseudonymization_batch() {
     let (other_pk, _) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let other_session_pk = PseudonymSessionPublicKey::from_point(*other_pk);
 
-    let result = proof.verified_reconstruct(&pre, &other_session_pk, &commitments);
+    let result =
+        proof.verified_reconstruct::<Ristretto255Sha512>(&pre, &other_session_pk, &commitments);
     assert!(
         result.is_none(),
         "batch proof must not verify under a wrong recipient public key"
@@ -1071,7 +1159,7 @@ fn single_element_batch_verified_pseudonymization() {
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(&gsk, &s1, &enc_secret);
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
@@ -1083,12 +1171,12 @@ fn single_element_batch_verified_pseudonymization() {
     let pre = libpep::data::batch::EncryptedBatch::new(vec![item]).expect("new batch");
 
     let mut post = pre.clone();
-    let proof = post.verifiable_pseudonymize(&info, rng);
+    let proof = post.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
 
     #[cfg(not(feature = "elgamal3"))]
-    let result = proof.verified_reconstruct(&pre, &pk1, &commitments);
+    let result = proof.verified_reconstruct::<Ristretto255Sha512>(&pre, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
-    let result = proof.verified_reconstruct(&pre, &commitments);
+    let result = proof.verified_reconstruct::<Ristretto255Sha512>(&pre, &commitments);
     let news = result.expect("single-element batch must verify");
     assert_eq!(news.len(), 1);
 }
@@ -1109,7 +1197,7 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(&gsk, &s1, &enc_secret);
     let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
@@ -1122,14 +1210,15 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
         libpep::data::batch::EncryptedBatch::new(vec![]).expect("empty batch");
 
     let mut post = pre_empty.clone();
-    let empty_proof = post.verifiable_pseudonymize(&info, rng);
+    let empty_proof = post.verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, rng);
 
     // Verifying the empty proof against the empty batch reconstructs to an empty Vec: nothing
     // was claimed, so there is nothing to reject (under elgamal3 there is no key to bind).
     #[cfg(not(feature = "elgamal3"))]
-    let result = empty_proof.verified_reconstruct(&pre_empty, &pk1, &commitments);
+    let result =
+        empty_proof.verified_reconstruct::<Ristretto255Sha512>(&pre_empty, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
-    let result = empty_proof.verified_reconstruct(&pre_empty, &commitments);
+    let result = empty_proof.verified_reconstruct::<Ristretto255Sha512>(&pre_empty, &commitments);
     assert_eq!(result.map(|v| v.len()), Some(0));
 
     // Verifying the empty proof against a non-empty batch must fail
@@ -1143,9 +1232,10 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
         libpep::data::batch::EncryptedBatch::new(vec![item]).expect("non-empty batch");
 
     #[cfg(not(feature = "elgamal3"))]
-    let bad = empty_proof.verified_reconstruct(&pre_nonempty, &pk1, &commitments);
+    let bad =
+        empty_proof.verified_reconstruct::<Ristretto255Sha512>(&pre_nonempty, &pk1, &commitments);
     #[cfg(feature = "elgamal3")]
-    let bad = empty_proof.verified_reconstruct(&pre_nonempty, &commitments);
+    let bad = empty_proof.verified_reconstruct::<Ristretto255Sha512>(&pre_nonempty, &commitments);
     assert!(bad.is_none(), "length mismatch must reject verification");
 }
 
@@ -1161,7 +1251,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     // `gy` differs from the rest of the batch.
     let (_, gsk2) = make_pseudonym_global_keys::<Ristretto255, _>(rng);
     let enc_secret2 = EncryptionSecret::from("other-secret".as_bytes());
-    let (other_session_pk, _) = make_pseudonym_session_keys(
+    let (other_session_pk, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
         &gsk2,
         &EncryptionContext::from("other-session"),
         &enc_secret2,
@@ -1173,7 +1263,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     items[0] = foreign_item;
     let mixed = libpep::data::batch::EncryptedBatch::new(items).expect("mixed batch");
 
-    let result = proof.verified_reconstruct(&mixed, &commitments);
+    let result = proof.verified_reconstruct::<Ristretto255Sha512>(&mixed, &commitments);
     assert!(
         result.is_none(),
         "mixed-gy batch must be rejected by the shared_gy guard"
@@ -1251,7 +1341,7 @@ fn factors_derived_from_master_keys_verify_against_computed_commitments() {
     let message = GroupElement::random(rng);
     let original = libpep::elgamal::encrypt(&message, &(y * G), rng);
     let r = ScalarNonZero::random(rng);
-    let proof = VerifiableRRSK2::new(
+    let proof = VerifiableRRSK2::new::<Ristretto255Sha512, _>(
         &original,
         &(y * G),
         &r,
@@ -1262,7 +1352,14 @@ fn factors_derived_from_master_keys_verify_against_computed_commitments() {
         rng,
     );
     let result = proof
-        .verified_reconstruct(&original, &(y * G), &s_from_c, &s_to_c, &k_from_c, &k_to_c)
+        .verified_reconstruct::<Ristretto255Sha512>(
+            &original,
+            &(y * G),
+            &s_from_c,
+            &s_to_c,
+            &k_from_c,
+            &k_to_c,
+        )
         .expect("the proof verifies against the computed commitments");
     let y_to = y * k_from.scalar().invert() * k_to.scalar();
     #[cfg(not(feature = "elgamal3"))]
@@ -1277,5 +1374,12 @@ fn factors_derived_from_master_keys_verify_against_computed_commitments() {
     // The commitment of another domain does not verify the proof.
     let other =
         pseudonymization_public.compute_reshuffle_commitment(&PseudonymizationDomain::from("x"));
-    assert!(!proof.verify(&original, &(y * G), &s_from_c, &other, &k_from_c, &k_to_c));
+    assert!(!proof.verify::<Ristretto255Sha512>(
+        &original,
+        &(y * G),
+        &s_from_c,
+        &other,
+        &k_from_c,
+        &k_to_c
+    ));
 }

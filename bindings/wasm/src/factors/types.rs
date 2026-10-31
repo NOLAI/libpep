@@ -10,6 +10,7 @@ use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
 use derive_more::{Deref, From, Into};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::factors::{Factor, RekeyPublicKey};
 use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;
@@ -107,7 +108,7 @@ impl WASMPseudonymizationInfo {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(PseudonymizationInfo::new(
+        Self(PseudonymizationInfo::new::<Ristretto255Sha512>(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -170,7 +171,7 @@ impl WASMPseudonymRekeyInfo {
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(PseudonymRekeyInfo::new(
+        Self(PseudonymRekeyInfo::new::<Ristretto255Sha512>(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -218,7 +219,7 @@ impl WASMAttributeRekeyInfo {
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(AttributeRekeyInfo::new(
+        Self(AttributeRekeyInfo::new::<Ristretto255Sha512>(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -272,7 +273,7 @@ impl WASMTranscryptionInfo {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(TranscryptionInfo::new(
+        Self(TranscryptionInfo::new::<Ristretto255Sha512>(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,

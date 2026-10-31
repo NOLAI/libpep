@@ -32,9 +32,9 @@
 //!   two roles exchange.
 //! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
 //!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic), and
-//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars together with the
-//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite) its domain separation tags are built
-//!   from, reached as [`Group::CIPHERSUITE`](elgamal::arithmetic::Group::CIPHERSUITE).
+//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars, which runs under a
+//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite): a group together with the hash and the
+//!   identifier its domain separation tags are built from.
 //! - With the `verifiable` feature, `elgamal::verifiable` holds the primitives that emit
 //!   zero-knowledge proofs, `verifier` checks such proofs against factor commitments, and the
 //!   high-level layers gain verifiable counterparts of their operations
@@ -43,13 +43,23 @@
 //! ## Groups
 //!
 //! The whole API ([`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
-//! `verifier`) is generic over the prime-order group, abstracted as the
-//! [`Group`](elgamal::arithmetic::Group) trait. Users instantiate it with a group, for example
-//! `Pseudonym<Ristretto255>` with [`Ristretto255`](elgamal::arithmetic::Ristretto255), the
-//! implemented group. The group is inferred wherever it follows from the arguments (a key, a
-//! ciphertext); functions that create keys from randomness alone take it as a type parameter,
-//! like `make_global_keys::<Ristretto255, _>(&mut rng)`. Another group can be used by
-//! implementing the trait.
+//! `verifier`) is generic, in two layers.
+//!
+//! The data types (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) and the group
+//! arithmetic are generic over the prime-order group, abstracted as the
+//! [`Group`](elgamal::arithmetic::Group) trait, for example `Pseudonym<Ristretto255>` with
+//! [`Ristretto255`](elgamal::arithmetic::Ristretto255). The group is inferred wherever it follows
+//! from the arguments (a key, a ciphertext); functions that create keys from randomness alone
+//! take it as a type parameter, like `make_global_keys::<Ristretto255, _>(&mut rng)`.
+//!
+//! Whatever hashes is generic over a [`Ciphersuite`](elgamal::arithmetic::Ciphersuite), which
+//! pairs a group with a hash: deriving factors, hashing an identifier to the group, creating
+//! and verifying proofs, and the roles built on them (`Transcryptor<C>`, `Verifier<C>`). The
+//! ciphersuite of ristretto255 with SHA-512 is
+//! [`Ristretto255Sha512`](elgamal::arithmetic::Ristretto255Sha512), and its group is
+//! `Ristretto255`; for example `Transcryptor::<Ristretto255Sha512>::new(..)` and
+//! `make_session_keys::<Ristretto255Sha512>(..)`. Another group and hash can be used by
+//! implementing the two traits.
 //!
 //! ## Feature flags
 //!

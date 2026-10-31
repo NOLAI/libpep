@@ -24,7 +24,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::VerifiableRRSKBatch;
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::{
@@ -66,14 +66,14 @@ fn from_blocks<G: Group>(blocks: Vec<ElGamal<G>>) -> LongEncryptedPseudonym<G> {
 }
 
 impl<G: Group> LongPseudonymPseudonymizationProof<G> {
-    fn reconstruct_under(
+    fn reconstruct_under<C: Ciphersuite<Group = G>>(
         &self,
         original: &LongEncryptedPseudonym<G>,
         gy: &G::Element,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<LongEncryptedPseudonym<G>> {
         self.0
-            .verified_reconstruct(
+            .verified_reconstruct::<C>(
                 &blocks(original),
                 gy,
                 &commitments.reshuffle_commitment,
@@ -89,23 +89,23 @@ impl<G: Group> VerifiablePseudonymizationProof for LongPseudonymPseudonymization
     type Output = LongEncryptedPseudonym<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
         let gy = common_gy(&blocks(original))?;
-        self.reconstruct_under(original, &gy, commitments)
+        self.reconstruct_under::<C>(original, &gy, commitments)
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &PseudonymSessionPublicKey<G>,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
-        self.reconstruct_under(original, public_key.value(), commitments)
+        self.reconstruct_under::<C>(original, public_key.value(), commitments)
     }
 
     #[cfg(feature = "insecure")]
@@ -118,7 +118,7 @@ impl<G: Group> VerifiablePseudonymizable for LongEncryptedPseudonym<G> {
     type PseudonymizationProof = LongPseudonymPseudonymizationProof<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verifiable_pseudonymize<R: Rng + CryptoRng>(
+    fn verifiable_pseudonymize<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
         &self,
         info: &PseudonymizationInfo<G>,
         rng: &mut R,
@@ -126,19 +126,19 @@ impl<G: Group> VerifiablePseudonymizable for LongEncryptedPseudonym<G> {
         let blocks = blocks(self);
         // The blocks of one value carry one key; with mixed keys the proof does not verify.
         let gy = common_gy(&blocks).unwrap_or_else(G::generator);
-        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new(
+        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new::<C, _>(
             &blocks, &gy, &info.s.0, &info.k.0, rng,
         ))
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_pseudonymize<R: Rng + CryptoRng>(
+    fn verifiable_pseudonymize<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
         &self,
         info: &PseudonymizationInfo<G>,
         public_key: &PseudonymSessionPublicKey<G>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof {
-        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new(
+        LongPseudonymPseudonymizationProof(VerifiableRRSKBatch::new::<C, _>(
             &blocks(self),
             public_key.value(),
             &info.s.0,
@@ -165,7 +165,7 @@ macro_rules! long_rekey_proof {
             type DataType = $data<G>;
             type Output = $data<G>;
 
-            fn verified_reconstruct(
+            fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
                 &self,
                 original: &Self::DataType,
                 commitments: &VerifiableRekeyCommitment<G>,
@@ -176,7 +176,7 @@ macro_rules! long_rekey_proof {
                 self.0
                     .iter()
                     .zip(&original.0)
-                    .map(|(p, block)| p.verified_reconstruct(block, commitments))
+                    .map(|(p, block)| p.verified_reconstruct::<C>(block, commitments))
                     .collect::<Option<_>>()
                     .map($data)
             }
@@ -196,7 +196,7 @@ macro_rules! long_rekey_proof {
         impl<G: Group> VerifiableRekeyable for $data<G> {
             type RekeyProof = $proof<G>;
 
-            fn verifiable_rekey<R: Rng + CryptoRng>(
+            fn verifiable_rekey<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
                 &self,
                 info: &Self::RekeyInfo,
                 rng: &mut R,
@@ -204,7 +204,7 @@ macro_rules! long_rekey_proof {
                 $proof(
                     self.0
                         .iter()
-                        .map(|block| block.verifiable_rekey(info, rng))
+                        .map(|block| block.verifiable_rekey::<C, _>(info, rng))
                         .collect(),
                 )
             }

@@ -10,7 +10,7 @@
 use crate::aliases::PseudonymSessionPublicKey;
 use crate::aliases::{
     LongPseudonymPseudonymizationProof, PseudonymPseudonymizationProof, PseudonymizationInfo,
-    VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
+    Ristretto255Sha512, VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use crate::data::{Cipher, Kind, PseudonymKind};
 use crate::io::{self, Output, Result};
@@ -66,8 +66,8 @@ enum RekeyProof<K: Kind> {
 impl<K: Kind> RekeyProof<K> {
     fn prove<R: Rng + CryptoRng>(cipher: &Cipher<K>, info: &K::RekeyInfo, rng: &mut R) -> Self {
         match cipher {
-            Cipher::Short(c) => Self::Short(c.verifiable_rekey(info, rng)),
-            Cipher::Long(c) => Self::Long(c.verifiable_rekey(info, rng)),
+            Cipher::Short(c) => Self::Short(c.verifiable_rekey::<Ristretto255Sha512, _>(info, rng)),
+            Cipher::Long(c) => Self::Long(c.verifiable_rekey::<Ristretto255Sha512, _>(info, rng)),
         }
     }
 
@@ -92,12 +92,12 @@ impl<K: Kind> RekeyProof<K> {
         commitment: &VerifiableRekeyCommitment,
     ) -> Option<Cipher<K>> {
         match (self, original) {
-            (Self::Short(p), Cipher::Short(c)) => {
-                p.verified_reconstruct(c, commitment).map(Cipher::Short)
-            }
-            (Self::Long(p), Cipher::Long(c)) => {
-                p.verified_reconstruct(c, commitment).map(Cipher::Long)
-            }
+            (Self::Short(p), Cipher::Short(c)) => p
+                .verified_reconstruct::<Ristretto255Sha512>(c, commitment)
+                .map(Cipher::Short),
+            (Self::Long(p), Cipher::Long(c)) => p
+                .verified_reconstruct::<Ristretto255Sha512>(c, commitment)
+                .map(Cipher::Long),
             _ => None,
         }
     }
@@ -117,8 +117,12 @@ impl PseudonymizationProof {
         rng: &mut R,
     ) -> Self {
         match cipher {
-            Cipher::Short(c) => Self::Short(Box::new(c.verifiable_pseudonymize(info, rng))),
-            Cipher::Long(c) => Self::Long(Box::new(c.verifiable_pseudonymize(info, rng))),
+            Cipher::Short(c) => Self::Short(Box::new(
+                c.verifiable_pseudonymize::<Ristretto255Sha512, _>(info, rng),
+            )),
+            Cipher::Long(c) => Self::Long(Box::new(
+                c.verifiable_pseudonymize::<Ristretto255Sha512, _>(info, rng),
+            )),
         }
     }
 
@@ -130,8 +134,12 @@ impl PseudonymizationProof {
         rng: &mut R,
     ) -> Self {
         match cipher {
-            Cipher::Short(c) => Self::Short(Box::new(c.verifiable_pseudonymize(info, key, rng))),
-            Cipher::Long(c) => Self::Long(Box::new(c.verifiable_pseudonymize(info, key, rng))),
+            Cipher::Short(c) => Self::Short(Box::new(
+                c.verifiable_pseudonymize::<Ristretto255Sha512, _>(info, key, rng),
+            )),
+            Cipher::Long(c) => Self::Long(Box::new(
+                c.verifiable_pseudonymize::<Ristretto255Sha512, _>(info, key, rng),
+            )),
         }
     }
 
@@ -157,12 +165,12 @@ impl PseudonymizationProof {
         commitments: &VerifiablePseudonymizationCommitment,
     ) -> Option<Cipher<PseudonymKind>> {
         match (self, original) {
-            (Self::Short(p), Cipher::Short(c)) => {
-                p.verified_reconstruct(c, commitments).map(Cipher::Short)
-            }
-            (Self::Long(p), Cipher::Long(c)) => {
-                p.verified_reconstruct(c, commitments).map(Cipher::Long)
-            }
+            (Self::Short(p), Cipher::Short(c)) => p
+                .verified_reconstruct::<Ristretto255Sha512>(c, commitments)
+                .map(Cipher::Short),
+            (Self::Long(p), Cipher::Long(c)) => p
+                .verified_reconstruct::<Ristretto255Sha512>(c, commitments)
+                .map(Cipher::Long),
             _ => None,
         }
     }
@@ -176,10 +184,10 @@ impl PseudonymizationProof {
     ) -> Option<Cipher<PseudonymKind>> {
         match (self, original) {
             (Self::Short(p), Cipher::Short(c)) => p
-                .verified_reconstruct(c, key, commitments)
+                .verified_reconstruct::<Ristretto255Sha512>(c, key, commitments)
                 .map(Cipher::Short),
             (Self::Long(p), Cipher::Long(c)) => p
-                .verified_reconstruct(c, key, commitments)
+                .verified_reconstruct::<Ristretto255Sha512>(c, key, commitments)
                 .map(Cipher::Long),
             _ => None,
         }

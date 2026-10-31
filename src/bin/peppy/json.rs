@@ -6,8 +6,8 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::aliases::SessionPublicKeys;
 use crate::aliases::{
-    GlobalPublicKeys, JsonTranscryptionProof, PepJsonBuilder, Ristretto255, SessionKeys,
-    VerifiableTranscryptionCommitment,
+    GlobalPublicKeys, JsonTranscryptionProof, PepJsonBuilder, Ristretto255, Ristretto255Sha512,
+    SessionKeys, VerifiableTranscryptionCommitment,
 };
 use crate::factors::TransitionArgs;
 use crate::io::{self, Output, Result};
@@ -171,14 +171,20 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             let keys: SessionPublicKeys = public_keys_json(&keys)?;
             if prove {
                 #[cfg(feature = "elgamal3")]
-                let proof = encrypted.verifiable_transcrypt(&info, rng);
+                let proof = encrypted.verifiable_transcrypt::<Ristretto255Sha512, _>(&info, rng);
                 #[cfg(not(feature = "elgamal3"))]
-                let proof = encrypted.verifiable_transcrypt(&info, &keys, rng);
+                let proof =
+                    encrypted.verifiable_transcrypt::<Ristretto255Sha512, _>(&info, &keys, rng);
                 let commitment = VerifiableTranscryptionCommitment::from(info);
                 #[cfg(feature = "elgamal3")]
-                let transcrypted = proof.verified_reconstruct(&encrypted, &commitment);
+                let transcrypted =
+                    proof.verified_reconstruct::<Ristretto255Sha512>(&encrypted, &commitment);
                 #[cfg(not(feature = "elgamal3"))]
-                let transcrypted = proof.verified_reconstruct(&encrypted, &keys, &commitment);
+                let transcrypted = proof.verified_reconstruct::<Ristretto255Sha512>(
+                    &encrypted,
+                    &keys,
+                    &commitment,
+                );
                 let transcrypted =
                     transcrypted.expect("a fresh proof verifies against its own commitments");
                 out.value("encrypted", io::to_json(&transcrypted));
@@ -210,11 +216,12 @@ pub fn run<R: Rng + CryptoRng>(cmd: Json, rng: &mut R, out: &mut Output) -> Resu
             let original = encrypted_document(&value)?;
             let proof: JsonTranscryptionProof = io::json(&proof, "proof")?;
             #[cfg(feature = "elgamal3")]
-            let transcrypted = proof.verified_reconstruct(&original, &commitment);
+            let transcrypted =
+                proof.verified_reconstruct::<Ristretto255Sha512>(&original, &commitment);
             #[cfg(not(feature = "elgamal3"))]
             let transcrypted = {
                 let keys: SessionPublicKeys = public_keys_json(&keys)?;
-                proof.verified_reconstruct(&original, &keys, &commitment)
+                proof.verified_reconstruct::<Ristretto255Sha512>(&original, &keys, &commitment)
             };
             out.value(
                 "encrypted",

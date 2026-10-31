@@ -40,6 +40,20 @@ a major change against the published 0.13.0.
   `PepJsonValue`, `EncryptedPepJsonValue`, `PepJsonBuilder` and `JsonStructure`; the Python and
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
+- `Group` is the group arithmetic only; hashing moved to a new `Ciphersuite` trait
+  (`elgamal::arithmetic::Ciphersuite`) with a `Group`, a `Hash`, a `CiphersuiteId` and the
+  `hash_to_group` and `hash_to_scalar` maps. `Group` lost `Hash`, `CIPHERSUITE`, `hash_to_group`
+  and `hash_to_scalar`, and keeps `element_from_uniform_bytes` and `scalar_from_uniform_bytes`.
+  The former `Ciphersuite` struct is `CiphersuiteId`, and `Ristretto255Sha512` is the ciphersuite
+  of ristretto255 with SHA-512 (its group is `Ristretto255`). Data types, keys, factors and
+  proofs stay generic over the group (`Pseudonym<G>`, `Proof<G>`); what hashes is generic over a
+  ciphersuite `C`: `hash_to_group::<C>`, `hash_to_nonzero_scalar::<C>`, `make_*_factor::<C>`,
+  `make_*session_keys::<C>`, the `*Info::new::<C>` constructors, creating and verifying proofs
+  (`create_proof::<C, _>`, `VerifiableRekey::new::<C, _>`, `proof.verify::<C>(..)`, the
+  `Verifiable*` traits of the data layer), and the types `Transcryptor<C>`,
+  `DistributedTranscryptor<C>`, `Verifier<C>` and the four `Master*` types of
+  `verifiable-derivation`. Proof bytes, derived factors and hashed pseudonyms are unchanged. The
+  Python and JavaScript bindings are unchanged.
 - The verifiable commitments expose their group element through `point()` and are built from
   the transcryption infos with `From` (`VerifiablePseudonymizationCommitment::from(info)` and
   so on).
@@ -83,10 +97,10 @@ a major change against the published 0.13.0.
 
 - The data-layer proof traits provide `verify` as `verified_reconstruct(..).is_some()`, so an
   implementation only supplies `verified_reconstruct`.
-- `elgamal::dleq::generate_proof` and `verify_proof` take the ciphersuite from the group
-  (`G::CIPHERSUITE`) instead of an argument; `generate_proof_with` and `verify_proof_with` keep
-  explicit tags. `Ciphersuite` no longer implements serde, and `Ciphersuite::new` is hidden: it
-  exists for the `ciphersuite!` macro.
+- `elgamal::dleq::generate_proof` and `verify_proof` take the ciphersuite from their type
+  parameter (`C::ID`) instead of an argument; `generate_proof_with` and `verify_proof_with` keep
+  explicit tags. `CiphersuiteId` (the identifier) does not implement serde, and
+  `CiphersuiteId::new` is hidden: it exists for the `ciphersuite!` macro.
 - `unverified_reconstruct` on the RSK and RRSK proofs and their batches (`insecure`) takes no
   originals, which it never used. `VerifiableRerandomizeBatch::verify` checks the number of
   originals.
@@ -225,17 +239,16 @@ a major change against the published 0.13.0.
   session keys change**, and the HMAC-SHA512 derivation of 0.13 is gone: `DeriveFactor` is the
   only derivation outside `legacy`, which is unchanged and still reproduces the PEP repository
   implementation bit for bit.
-- A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`: the ciphersuite identifier, context string
-  `"nPEPV1-" || identifier`) domain-separates the protocol's hashes. An identifier names a group
-  *and* a hash (`ristretto255-SHA512`), so it belongs to the group: it is the associated constant
-  `Group::CIPHERSUITE`, and cannot be
-  constructed from an arbitrary string. One group's identifier therefore cannot be paired with
-  another group's operations. The type is `Copy` and const-constructible, and its context string
-  is a `&'static [u8]`, so neither factor derivation nor hashing allocates to build it. `Transcryptor::new`,
-  `DistributedTranscryptor::new`, the `*Info::new` constructors, `make_*_factor` and
-  `make_*session_keys` take no ciphersuite, in Rust or in the bindings: the transcryptor secret is
-  already part of the derivation's hash input, so deployments with different secrets derive
-  unrelated factors, and the domain and session separate within a deployment.
+- A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`, a trait) pairs a `Group` with the hash its
+  protocol hashes with, and names itself with a `CiphersuiteId` (the identifier, context string
+  `"nPEPV1-" || identifier`) that domain-separates the protocol's hashes. An identifier names a
+  group *and* a hash (`ristretto255-SHA512`), so it is the associated constant `Ciphersuite::ID`
+  of one implementation and cannot be constructed from an arbitrary string. The identifier is
+  `Copy` and const-constructible, and its context string is a `&'static [u8]`, so neither factor
+  derivation nor hashing allocates to build it. The bindings take no ciphersuite argument: the
+  transcryptor secret is already part of the derivation's hash input, so deployments with
+  different secrets derive unrelated factors, and the domain and session separate within a
+  deployment.
 
   There is no mode byte: verifiable transcryption here derives the *same* factors as plain transcryption and adds
   commitments and proofs on top, so a mode would stop a verifiable and a plain transcryptor from
@@ -324,7 +337,7 @@ a major change against the published 0.13.0.
   (`HashToScalar`), cross-checked against the published ristretto255-SHA512 test vectors.
 - `elgamal::arithmetic::hashing::hash_to_group::<G>(x)`: the `hash_to_group` encoding of
   an identifier, with DST `"HashToGroup-" || contextString` derived from
-  `G::CIPHERSUITE`. Its docs state the property every encoding must have (no known discrete-log
+  `C::ID`, where `C` is the `Ciphersuite`. Its docs state the property every encoding must have (no known discrete-log
   relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret
   enters this hash. The invertible lizard encoding stays on
   `GroupElement::from_lizard`/`to_lizard`, reachable generically through `InvertibleEncoding`.
@@ -334,13 +347,13 @@ a major change against the published 0.13.0.
   encoding from the obvious primitive, and makes the hash choice load-bearing in two places
   instead of one. An input of 2^16 bytes or more is still reduced with the ciphersuite's hash
   first, which is the one thing a pre-hash does legitimately. **Hashed pseudonyms change.**
-- `Group::Hash`, the hash a ciphersuite identifier names, declared beside `Group::CIPHERSUITE` so
-  that a group whose identifier says `-SHA256` cannot hash with SHA-512. Code generic over a
-  `Group` reaches the ciphersuite's hash through it; the ristretto255 primitives that the RFC 9380
-  and published OPRF vectors pin keep hashing with SHA-512 by definition.
-- `elgamal::arithmetic::Ciphersuite`, with `identifier()`, `context_string()` (the spec's name for
-  the value) and `dst()`, reached through `Group::CIPHERSUITE` and built with the `ciphersuite!`
-  macro so that the identifier appears once.
+- `Ciphersuite::Hash`, the hash a ciphersuite identifier names, declared beside `Ciphersuite::ID`
+  so that a ciphersuite whose identifier says `-SHA256` cannot hash with SHA-512. Code generic
+  over a `Ciphersuite` reaches its hash through it; the ristretto255 primitives that the RFC 9380
+  and published test vectors pin keep hashing with SHA-512 by definition.
+- `elgamal::arithmetic::CiphersuiteId`, with `identifier()`, `context_string()` and `dst()`,
+  reached through `Ciphersuite::ID` and built with the `ciphersuite!` macro so that the
+  identifier appears once.
 - Python: `libpep.elgamal.arithmetic.ciphersuite` (`Ciphersuite`) and
   `libpep.elgamal.arithmetic.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
   `hash_to_group_with_dst`, `hash_to_scalar_with_dst`). JavaScript: `Ciphersuite`, `hashToGroup`,

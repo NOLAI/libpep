@@ -11,8 +11,11 @@ macro_rules! reconstruct {
         /// Verify the proof and return the result of the operation, or `None` if it does not
         /// verify.
         #[must_use]
-        pub fn verified_reconstruct(&self, $($va: $vt),*) -> Option<$out> {
-            self.verify($($vv),*).then(|| self.result($($rv),*))
+        pub fn verified_reconstruct<C: $crate::elgamal::arithmetic::Ciphersuite<Group = G>>(
+            &self,
+            $($va: $vt),*
+        ) -> Option<$out> {
+            self.verify::<C>($($vv),*).then(|| self.result($($rv),*))
         }
 
         /// The result of the operation, without verifying the proof.

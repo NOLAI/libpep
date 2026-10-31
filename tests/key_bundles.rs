@@ -10,7 +10,7 @@ mod common;
 
 use common::aliases::Transcryptor;
 use common::aliases::{Attribute, Pseudonym};
-use common::aliases::{Ristretto255, SessionKeys};
+use common::aliases::{Ristretto255, Ristretto255Sha512, SessionKeys};
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::*;
 use libpep::data::simple::ElGamalEncryptable;
@@ -29,7 +29,11 @@ fn setup() -> (Transcryptor, SessionKeys, EncryptionContext) {
         EncryptionSecret::from(b"encryption secret".to_vec()),
     );
     let session = EncryptionContext::from("session-a");
-    let keys = make_session_keys(&global_secret, &session, transcryptor.rekeying_secret());
+    let keys = make_session_keys::<Ristretto255Sha512>(
+        &global_secret,
+        &session,
+        transcryptor.rekeying_secret(),
+    );
     (transcryptor, keys, session)
 }
 

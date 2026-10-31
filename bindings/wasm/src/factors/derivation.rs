@@ -6,6 +6,7 @@ use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use crate::factors::types::{
     WASMAttributeRekeyFactor, WASMPseudonymRekeyFactor, WASMReshuffleFactor,
 };
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
@@ -17,7 +18,7 @@ pub fn wasm_make_pseudonym_rekey_factor(
     secret: &WASMEncryptionSecret,
     session: &WASMEncryptionContext,
 ) -> WASMPseudonymRekeyFactor {
-    make_pseudonym_rekey_factor(&secret.0, &session.0).into()
+    make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret.0, &session.0).into()
 }
 
 /// Derive the attribute rekey factor of a session from an encryption secret.
@@ -26,7 +27,7 @@ pub fn wasm_make_attribute_rekey_factor(
     secret: &WASMEncryptionSecret,
     session: &WASMEncryptionContext,
 ) -> WASMAttributeRekeyFactor {
-    make_attribute_rekey_factor(&secret.0, &session.0).into()
+    make_attribute_rekey_factor::<Ristretto255Sha512>(&secret.0, &session.0).into()
 }
 
 /// Derive the reshuffle factor of a domain from a pseudonymization secret.
@@ -35,5 +36,5 @@ pub fn wasm_make_pseudonymization_factor(
     secret: &WASMPseudonymizationSecret,
     domain: &WASMPseudonymizationDomain,
 ) -> WASMReshuffleFactor {
-    make_pseudonymization_factor(&secret.0, &domain.0).into()
+    make_pseudonymization_factor::<Ristretto255Sha512>(&secret.0, &domain.0).into()
 }

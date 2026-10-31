@@ -16,6 +16,7 @@ use crate::factors::types::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTran
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::PyPseudonymSessionPublicKey;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use pyo3::prelude::*;
@@ -101,7 +102,9 @@ impl PyTranscryptor {
     ) -> crate::data::simple::PyPseudonymPseudonymizationProof {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(pseudo_info);
-        let operation_proof = encrypted.0.verifiable_pseudonymize(&info, &mut rng);
+        let operation_proof = encrypted
+            .0
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &mut rng);
 
         operation_proof.into()
     }
@@ -116,7 +119,9 @@ impl PyTranscryptor {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(pseudo_info);
         let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
-        let operation_proof = encrypted.0.verifiable_pseudonymize(&info, &pk, &mut rng);
+        let operation_proof = encrypted
+            .0
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rng);
 
         operation_proof.into()
     }
@@ -132,7 +137,9 @@ impl PyTranscryptor {
     ) -> crate::data::simple::PyAttributeRekeyProof {
         let mut rng = rand::rng();
         let info = AttributeRekeyInfo::from(rekey_info);
-        let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
+        let operation_proof = encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rng);
 
         operation_proof.into()
     }
@@ -149,7 +156,9 @@ impl PyTranscryptor {
     ) -> crate::data::simple::PyPseudonymRekeyProof {
         let mut rng = rand::rng();
         let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        let operation_proof = encrypted.0.verifiable_rekey(&info, &mut rng);
+        let operation_proof = encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rng);
 
         operation_proof.into()
     }
@@ -164,7 +173,7 @@ impl PyTranscryptor {
         let info = PseudonymizationInfo::from(pseudo_info);
         encrypted
             .0
-            .verifiable_pseudonymize(&info, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &mut rand::rng())
             .into()
     }
 
@@ -181,7 +190,7 @@ impl PyTranscryptor {
         let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         encrypted
             .0
-            .verifiable_pseudonymize(&info, &pk, &mut rand::rng())
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rand::rng())
             .into()
     }
 
@@ -193,7 +202,10 @@ impl PyTranscryptor {
         rekey_info: &PyAttributeRekeyInfo,
     ) -> PyLongAttributeRekeyProof {
         let info = AttributeRekeyInfo::from(rekey_info);
-        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+        encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rand::rng())
+            .into()
     }
 
     /// Verifiable rekeying of a long pseudonym: one proof per block.
@@ -205,7 +217,10 @@ impl PyTranscryptor {
         session_to: &PyEncryptionContext,
     ) -> PyLongPseudonymRekeyProof {
         let info = self.pseudonym_rekey_info(&session_from.0, &session_to.0);
-        encrypted.0.verifiable_rekey(&info, &mut rand::rng()).into()
+        encrypted
+            .0
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info, &mut rand::rng())
+            .into()
     }
 
     /// Perform verifiable transcryption of a simple record (pseudonyms +

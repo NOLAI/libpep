@@ -16,6 +16,8 @@ use super::blinding::{
 use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
 #[cfg(feature = "verifiable")]
+use crate::elgamal::arithmetic::Ciphersuite;
+#[cfg(feature = "verifiable")]
 use crate::elgamal::verifiable::RekeyFactorCommitment;
 use crate::factors::types::{AttributeRekeyFactor, Factor, PseudonymRekeyFactor};
 #[cfg(feature = "verifiable")]
@@ -210,7 +212,11 @@ pub struct SessionKeyShareProofs<G: Group> {
 /// receiving the share checks it with
 /// [`SessionKeyShareProof::verify_share`].
 #[cfg(feature = "verifiable")]
-pub fn make_session_key_share_with_proof<S: SessionKeyShare, R: Rng + CryptoRng>(
+pub fn make_session_key_share_with_proof<
+    S: SessionKeyShare,
+    C: Ciphersuite<Group = S::Group>,
+    R: Rng + CryptoRng,
+>(
     rekey_factor: &S::Factor,
     blinding_factor: &BlindingFactor<S::Group>,
     rng: &mut R,
@@ -220,42 +226,64 @@ pub fn make_session_key_share_with_proof<S: SessionKeyShare, R: Rng + CryptoRng>
     }
     let share = S::from_rekey_factor(rekey_factor, blinding_factor);
     let rekey_commitment = RekeyFactorCommitment::<S::Group>::new(&rekey_factor.scalar());
-    let proof = SessionKeyShareProof::new(blinding_factor.value(), &rekey_commitment.point(), rng);
+    let proof =
+        SessionKeyShareProof::new::<C, R>(blinding_factor.value(), &rekey_commitment.point(), rng);
     Ok((share, proof))
 }
 
 /// A [`PseudonymSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
-pub fn make_pseudonym_session_key_share_with_proof<G: Group, R: Rng + CryptoRng>(
-    rekey_factor: &PseudonymRekeyFactor<G>,
-    blinding_factor: &BlindingFactor<G>,
+#[allow(clippy::type_complexity)]
+pub fn make_pseudonym_session_key_share_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+    rekey_factor: &PseudonymRekeyFactor<C::Group>,
+    blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
-) -> Result<(PseudonymSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
-    make_session_key_share_with_proof(rekey_factor, blinding_factor, rng)
+) -> Result<
+    (
+        PseudonymSessionKeyShare<C::Group>,
+        SessionKeyShareProof<C::Group>,
+    ),
+    SessionKeyShareError,
+> {
+    make_session_key_share_with_proof::<_, C, R>(rekey_factor, blinding_factor, rng)
 }
 
 /// An [`AttributeSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
-pub fn make_attribute_session_key_share_with_proof<G: Group, R: Rng + CryptoRng>(
-    rekey_factor: &AttributeRekeyFactor<G>,
-    blinding_factor: &BlindingFactor<G>,
+#[allow(clippy::type_complexity)]
+pub fn make_attribute_session_key_share_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+    rekey_factor: &AttributeRekeyFactor<C::Group>,
+    blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
-) -> Result<(AttributeSessionKeyShare<G>, SessionKeyShareProof<G>), SessionKeyShareError> {
-    make_session_key_share_with_proof(rekey_factor, blinding_factor, rng)
+) -> Result<
+    (
+        AttributeSessionKeyShare<C::Group>,
+        SessionKeyShareProof<C::Group>,
+    ),
+    SessionKeyShareError,
+> {
+    make_session_key_share_with_proof::<_, C, R>(rekey_factor, blinding_factor, rng)
 }
 
 /// Both session key shares with their proofs; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
-pub fn make_session_key_shares_with_proof<G: Group, R: Rng + CryptoRng>(
-    pseudonym_rekey_factor: &PseudonymRekeyFactor<G>,
-    attribute_rekey_factor: &AttributeRekeyFactor<G>,
-    blinding_factor: &BlindingFactor<G>,
+#[allow(clippy::type_complexity)]
+pub fn make_session_key_shares_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+    pseudonym_rekey_factor: &PseudonymRekeyFactor<C::Group>,
+    attribute_rekey_factor: &AttributeRekeyFactor<C::Group>,
+    blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
-) -> Result<(SessionKeyShares<G>, SessionKeyShareProofs<G>), SessionKeyShareError> {
-    let (pseudonym, pseudonym_proof) =
-        make_pseudonym_session_key_share_with_proof(pseudonym_rekey_factor, blinding_factor, rng)?;
-    let (attribute, attribute_proof) =
-        make_attribute_session_key_share_with_proof(attribute_rekey_factor, blinding_factor, rng)?;
+) -> Result<(SessionKeyShares<C::Group>, SessionKeyShareProofs<C::Group>), SessionKeyShareError> {
+    let (pseudonym, pseudonym_proof) = make_pseudonym_session_key_share_with_proof::<C, R>(
+        pseudonym_rekey_factor,
+        blinding_factor,
+        rng,
+    )?;
+    let (attribute, attribute_proof) = make_attribute_session_key_share_with_proof::<C, R>(
+        attribute_rekey_factor,
+        blinding_factor,
+        rng,
+    )?;
     Ok((
         SessionKeyShares {
             pseudonym,
@@ -296,13 +324,13 @@ impl<G: Group> SessionKeyShareProof<G> {
     /// # Returns
     ///
     /// `true` only if the proof verifies and the share matches it.
-    pub fn verify_share<S: SessionKeyShare<Group = G>>(
+    pub fn verify_share<C: Ciphersuite<Group = G>, S: SessionKeyShare<Group = G>>(
         &self,
         share: &S,
         blinding_commitment: &BlindingCommitment<G>,
         rekey_commitment: &G::Element,
     ) -> bool {
-        self.verify(blinding_commitment, rekey_commitment) && self.matches_share(share)
+        self.verify::<C>(blinding_commitment, rekey_commitment) && self.matches_share(share)
     }
 
     /// Whether `U_i == u_i · G` for the given share scalar.
@@ -327,12 +355,13 @@ mod proof_tests {
     use crate::contexts::EncryptionContext;
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::factors::{
         make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret, Factor,
     };
     use crate::keys::distribution::BlindingFactor;
 
+    type C = Ristretto255Sha512;
     type BlindingCommitment = crate::keys::distribution::BlindingCommitment<Ristretto255>;
     type SessionKeyShareProof = super::SessionKeyShareProof<Ristretto255>;
     type PseudonymSessionKeyShare = super::PseudonymSessionKeyShare<Ristretto255>;
@@ -347,29 +376,29 @@ mod proof_tests {
         let commitment = BlindingCommitment::new(blinding.value());
         assert_eq!(*commitment.value(), *blinding.value() * G);
 
-        let k = make_pseudonym_rekey_factor::<Ristretto255>(&secret, &session);
+        let k = make_pseudonym_rekey_factor::<C>(&secret, &session);
         let (share, proof) =
-            make_pseudonym_session_key_share_with_proof(&k, &blinding, &mut rng).unwrap();
+            make_pseudonym_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).unwrap();
         let k_commitment = RekeyFactorCommitment::<Ristretto255>::new(&k.scalar()).point();
-        assert!(proof.verify_share(&share, &commitment, &k_commitment));
+        assert!(proof.verify_share::<C, _>(&share, &commitment, &k_commitment));
 
-        let k = make_attribute_rekey_factor::<Ristretto255>(&secret, &session);
+        let k = make_attribute_rekey_factor::<C>(&secret, &session);
         let (share, proof) =
-            make_attribute_session_key_share_with_proof(&k, &blinding, &mut rng).unwrap();
+            make_attribute_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).unwrap();
         let k_commitment = RekeyFactorCommitment::<Ristretto255>::new(&k.scalar()).point();
-        assert!(proof.verify_share(&share, &commitment, &k_commitment));
+        assert!(proof.verify_share::<C, _>(&share, &commitment, &k_commitment));
     }
 
     #[test]
     fn shares_with_proof_reject_unit_blinding() {
         let mut rng = rand::rng();
-        let k = make_pseudonym_rekey_factor::<Ristretto255>(
+        let k = make_pseudonym_rekey_factor::<C>(
             &EncryptionSecret::from(b"test-secret".to_vec()),
             &EncryptionContext::from("test-context"),
         );
         let blinding = BlindingFactor::<Ristretto255>::from_scalar(ScalarNonZero::one());
         assert_eq!(
-            make_pseudonym_session_key_share_with_proof(&k, &blinding, &mut rng).err(),
+            make_pseudonym_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).err(),
             Some(SessionKeyShareError::WeakBlinding)
         );
     }
@@ -382,12 +411,12 @@ mod proof_tests {
 
         let blinding_commitment = BlindingCommitment::new(&blinding);
         let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         // The honest share: u_i = b_i * k_i.
         let share = PseudonymSessionKeyShare::from_scalar(blinding * rekey_factor);
 
-        assert!(proof.verify_share(&share, &blinding_commitment, &rekey_commitment));
+        assert!(proof.verify_share::<C, _>(&share, &blinding_commitment, &rekey_commitment));
     }
 
     #[test]
@@ -401,16 +430,16 @@ mod proof_tests {
 
         let blinding_commitment = BlindingCommitment::new(&blinding);
         let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         // The proof itself is sound...
-        assert!(proof.verify(&blinding_commitment, &rekey_commitment));
+        assert!(proof.verify::<C>(&blinding_commitment, &rekey_commitment));
 
         // ...but the share does not correspond to it.
         let wrong_share = PseudonymSessionKeyShare::from_scalar(ScalarNonZero::random(&mut rng));
 
         assert!(!proof.matches_share(&wrong_share));
-        assert!(!proof.verify_share(&wrong_share, &blinding_commitment, &rekey_commitment));
+        assert!(!proof.verify_share::<C, _>(&wrong_share, &blinding_commitment, &rekey_commitment));
     }
 
     #[test]
@@ -424,12 +453,12 @@ mod proof_tests {
 
         let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
         let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         let share = PseudonymSessionKeyShare::from_scalar(blinding * rekey_factor);
 
         assert!(proof.matches_share(&share));
-        assert!(!proof.verify_share(&share, &wrong_commitment, &rekey_commitment));
+        assert!(!proof.verify_share::<C, _>(&share, &wrong_commitment, &rekey_commitment));
     }
 
     #[test]
@@ -440,13 +469,13 @@ mod proof_tests {
 
         let blinding_commitment = BlindingCommitment::new(&blinding);
         let rekey_commitment = rekey_factor * G;
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         let share = AttributeSessionKeyShare::from_scalar(blinding * rekey_factor);
         let wrong = AttributeSessionKeyShare::from_scalar(ScalarNonZero::random(&mut rng));
 
-        assert!(proof.verify_share(&share, &blinding_commitment, &rekey_commitment));
-        assert!(!proof.verify_share(&wrong, &blinding_commitment, &rekey_commitment));
+        assert!(proof.verify_share::<C, _>(&share, &blinding_commitment, &rekey_commitment));
+        assert!(!proof.verify_share::<C, _>(&wrong, &blinding_commitment, &rekey_commitment));
     }
 
     #[test]
@@ -460,10 +489,10 @@ mod proof_tests {
         let wrong_commitment = BlindingCommitment::new(&wrong_blinding);
         let rekey_commitment = rekey_factor * G;
 
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         // Should fail with wrong blinding commitment
-        assert!(!proof.verify(&wrong_commitment, &rekey_commitment));
+        assert!(!proof.verify::<C>(&wrong_commitment, &rekey_commitment));
     }
 
     #[test]
@@ -478,9 +507,9 @@ mod proof_tests {
         let rekey_commitment = rekey_factor * G;
         let wrong_rekey_commitment = wrong_rekey_factor * G;
 
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         // Should fail with wrong rekey commitment
-        assert!(!proof.verify(&blinding_commitment, &wrong_rekey_commitment));
+        assert!(!proof.verify::<C>(&blinding_commitment, &wrong_rekey_commitment));
     }
 }

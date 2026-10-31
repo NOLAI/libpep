@@ -46,7 +46,7 @@ Every party works in its own *pseudonymization domain* (typically its role or us
 use libpep::client::{decrypt, encrypt};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::transcryptor::Transcryptor;
@@ -54,9 +54,10 @@ use libpep::transcryptor::Transcryptor;
 let rng = &mut rand::rng();
 
 // System setup: global keys, and the secrets of the transcryptor. The high-level API is generic
-// over the group; the group is named once here and inferred from there on.
+// over the group and, where it hashes, over the ciphersuite (a group together with a hash); each is
+// named once here and inferred from there on.
 let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
-let transcryptor = Transcryptor::new(
+let transcryptor = Transcryptor::<Ristretto255Sha512>::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
     EncryptionSecret::from(b"encryption secret".to_vec()),
 );
@@ -64,8 +65,8 @@ let transcryptor = Transcryptor::new(
 // Party A and party B each have a pseudonymization domain, an encryption context and session keys.
 let (domain_a, session_a) = (PseudonymizationDomain::from("hospital"), EncryptionContext::from("session-a"));
 let (domain_b, session_b) = (PseudonymizationDomain::from("research"), EncryptionContext::from("session-b"));
-let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret());
-let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret());
+let keys_a = make_session_keys::<Ristretto255Sha512>(&global_secret, &session_a, transcryptor.rekeying_secret());
+let keys_b = make_session_keys::<Ristretto255Sha512>(&global_secret, &session_b, transcryptor.rekeying_secret());
 
 // A encrypts one of its pseudonyms for its own session.
 let pseudonym_a = Pseudonym::random(rng);
@@ -240,11 +241,11 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext with `encrypt` and `decrypt`; the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`; in `elgamal::arithmetic` the `Group` trait (the prime-order group API) with its `Ristretto255` instance and its scalar and group element arithmetic, the hashing to the group and to scalars (`elgamal::arithmetic::hashing`: `expand_message_xmd`, `hash_to_group`, `hash_to_nonzero_scalar`), and the `Ciphersuite` (reached as `Group::CIPHERSUITE`) that supplies the domain separation tags of the protocol's hashes; with the `verifiable` feature the primitives that emit proofs in `elgamal::verifiable`, and the underlying `elgamal::zkps` and `elgamal::dleq` |
+| `elgamal` | The ElGamal ciphertext with `encrypt` and `decrypt`; the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`; in `elgamal::arithmetic` the `Group` trait (the prime-order group API) with its `Ristretto255` instance and its scalar and group element arithmetic, the `Ciphersuite` trait that pairs a group with a hash and supplies the domain separation tags of the protocol's hashes (`Ristretto255Sha512` for ristretto255 with SHA-512), and the hashing to the group and to scalars (`elgamal::arithmetic::hashing`: `expand_message_xmd`, `hash_to_group`, `hash_to_nonzero_scalar`); with the `verifiable` feature the primitives that emit proofs in `elgamal::verifiable`, and the underlying `elgamal::zkps` and `elgamal::dleq` |
 | `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
-The whole API is generic over the group: every type and function of `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier` and `elgamal` takes a `G: Group` parameter (`elgamal::arithmetic::Group`), so another group can be used by implementing the trait.
-The library ships one instance, `elgamal::arithmetic::Ristretto255`; the group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255.
+The API is generic in two layers. The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter (`elgamal::arithmetic::Group`). Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite` parameter (`elgamal::arithmetic::Ciphersuite`), which pairs a group with a hash. Another group and hash can be used by implementing the two traits.
+Ristretto255 comes as `elgamal::arithmetic::Ristretto255` (the group) and `elgamal::arithmetic::Ristretto255Sha512` (the ciphersuite `ristretto255-SHA512`). The group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the ciphersuite where something is derived or verified (for example `Transcryptor::<Ristretto255Sha512>::new(..)`); the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255 with SHA-512.
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
@@ -283,7 +284,7 @@ The two derivations (default and `legacy`) produce different factors and session
 
 ## Security
 
-The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used with the low-level `elgamal` API by implementing the `Group` trait.
+The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used by implementing the `Group` trait, and a hash for them by implementing the `Ciphersuite` trait.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `EncryptionSecret` are zeroized on drop.

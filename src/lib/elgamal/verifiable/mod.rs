@@ -2,8 +2,9 @@
 //! with a zero-knowledge proof of its correct application, and the commitments to the factors
 //! the proofs are verified against.
 //!
-//! The operations and proof types are generic over the [`Group`](crate::elgamal::arithmetic::Group),
-//! which is inferred from the ciphertext.
+//! The proof types are generic over the [`Group`](crate::elgamal::arithmetic::Group), which is
+//! inferred from the ciphertext. Creating a proof and verifying it hash, so those take the
+//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) as a type parameter.
 
 #[macro_use]
 mod macros;

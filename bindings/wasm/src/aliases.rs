@@ -1,6 +1,6 @@
 //! Ristretto255 instances of the generic libpep types, as used by these bindings.
 
-use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 
 pub type Client = libpep::client::types::Client<Ristretto255>;
 #[cfg(feature = "offline")]
@@ -110,15 +110,16 @@ pub type AttributeRekeyInfo = libpep::factors::types::AttributeRekeyInfo<Ristret
 pub type TranscryptionInfo = libpep::factors::types::TranscryptionInfo<Ristretto255>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterPseudonymizationSecret =
-    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255>;
+    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterPseudonymizationPublicKey =
-    libpep::factors::verifiable::MasterPseudonymizationPublicKey<Ristretto255>;
+    libpep::factors::verifiable::MasterPseudonymizationPublicKey<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
-pub type MasterRekeyingSecret = libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255>;
+pub type MasterRekeyingSecret =
+    libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterRekeyingPublicKey =
-    libpep::factors::verifiable::MasterRekeyingPublicKey<Ristretto255>;
+    libpep::factors::verifiable::MasterRekeyingPublicKey<Ristretto255Sha512>;
 pub type BlindingFactor = libpep::keys::distribution::blinding::BlindingFactor<Ristretto255>;
 pub type BlindedPseudonymGlobalSecretKey =
     libpep::keys::distribution::blinding::BlindedPseudonymGlobalSecretKey<Ristretto255>;
@@ -149,10 +150,10 @@ pub type PseudonymSessionSecretKey = libpep::keys::types::PseudonymSessionSecret
 pub type AttributeSessionPublicKey = libpep::keys::types::AttributeSessionPublicKey<Ristretto255>;
 pub type AttributeSessionSecretKey = libpep::keys::types::AttributeSessionSecretKey<Ristretto255>;
 pub type DistributedTranscryptor =
-    libpep::transcryptor::distributed::DistributedTranscryptor<Ristretto255>;
-pub type Transcryptor = libpep::transcryptor::types::Transcryptor<Ristretto255>;
+    libpep::transcryptor::distributed::DistributedTranscryptor<Ristretto255Sha512>;
+pub type Transcryptor = libpep::transcryptor::types::Transcryptor<Ristretto255Sha512>;
 #[cfg(feature = "verifiable")]
-pub type Verifier = libpep::verifier::Verifier<Ristretto255>;
+pub type Verifier = libpep::verifier::Verifier<Ristretto255Sha512>;
 #[cfg(feature = "verifiable")]
 pub type FactorCommitment = libpep::elgamal::verifiable::FactorCommitment<Ristretto255>;
 #[cfg(feature = "verifiable")]

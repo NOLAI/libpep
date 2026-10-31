@@ -8,7 +8,7 @@ WebAssembly bindings for [libpep](https://github.com/NOLAI/libpep), a library fo
 npm install @nolai/libpep-wasm
 ```
 
-The package ships both a Node.js and a browser build, selected automatically through the `exports` field. The API mirrors the Rust crate, instantiated for ristretto255, so there are no group type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
+The package ships both a Node.js and a browser build, selected automatically through the `exports` field. The API mirrors the Rust crate, instantiated for ristretto255 with SHA-512, so there are no group or ciphersuite type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
 
 ```javascript
 import {

@@ -31,7 +31,7 @@
 use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -68,7 +68,7 @@ impl<G: Group> VerifiableRSK<G> {
 
 impl<G: Group> VerifiableRSK<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         s: &G::Scalar,
         k: &G::Scalar,
@@ -76,8 +76,8 @@ impl<G: Group> VerifiableRSK<G> {
     ) -> Self {
         let s_k_inv = *s * G::scalar_inverse(k);
         let gt = s_k_inv * G::generator();
-        let (_gk, p_gs) = create_proof::<G, R>(k, &gt, rng);
-        let inner = VerifiableRSKInner::new(
+        let (_gk, p_gs) = create_proof::<C, R>(k, &gt, rng);
+        let inner = VerifiableRSKInner::new::<C, _>(
             v,
             &s_k_inv,
             s,
@@ -97,7 +97,7 @@ impl<G: Group> VerifiableRSK<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
@@ -108,11 +108,11 @@ impl<G: Group> VerifiableRSK<G> {
         if *self.p_gs != gs {
             return false;
         }
-        if !verify_proof::<G>(&gk, &self.gt, &self.p_gs) {
+        if !verify_proof::<C>(&gk, &self.gt, &self.p_gs) {
             return false;
         }
         self.inner
-            .verify(original, &self.gt, reshuffle_commitment, rekey_commitment)
+            .verify::<C>(original, &self.gt, reshuffle_commitment, rekey_commitment)
     }
 
     reconstruct! {
@@ -157,17 +157,17 @@ impl<G: Group> VerifiableRSKInner<G> {
 }
 
 impl<G: Group> VerifiableRSKInner<G> {
-    pub(super) fn new<R: Rng + CryptoRng>(
+    pub(super) fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         s_k_inv: &G::Scalar,
         s: &G::Scalar,
         #[cfg(feature = "elgamal3")] k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let (_t_again, p_gb_prime) = create_proof::<G, R>(s_k_inv, &v.gb, rng);
-        let (_gs, p_gc_prime) = create_proof::<G, R>(s, &v.gc, rng);
+        let (_t_again, p_gb_prime) = create_proof::<C, R>(s_k_inv, &v.gb, rng);
+        let (_gs, p_gc_prime) = create_proof::<C, R>(s, &v.gc, rng);
         #[cfg(feature = "elgamal3")]
-        let (_gk_again, p_gy_prime) = create_proof::<G, R>(k, &v.gy, rng);
+        let (_gk_again, p_gy_prime) = create_proof::<C, R>(k, &v.gy, rng);
         Self {
             p_gb_prime,
             p_gc_prime,
@@ -191,7 +191,7 @@ impl<G: Group> VerifiableRSKInner<G> {
     /// `(S, K)` commitments. Crate-private: a caller-chosen `gt` would let any `B' = t·B`
     /// verify, so the inner is only checked through the proof that carries its `gt`.
     #[must_use]
-    pub(crate) fn verify(
+    pub(crate) fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         gt: &G::Element,
@@ -200,14 +200,14 @@ impl<G: Group> VerifiableRSKInner<G> {
         rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gs = reshuffle_commitment.point();
-        if !verify_proof::<G>(gt, &original.gb, &self.p_gb_prime) {
+        if !verify_proof::<C>(gt, &original.gb, &self.p_gb_prime) {
             return false;
         }
-        if !verify_proof::<G>(&gs, &original.gc, &self.p_gc_prime) {
+        if !verify_proof::<C>(&gs, &original.gc, &self.p_gc_prime) {
             return false;
         }
         #[cfg(feature = "elgamal3")]
-        if !verify_proof::<G>(&rekey_commitment.point(), &original.gy, &self.p_gy_prime) {
+        if !verify_proof::<C>(&rekey_commitment.point(), &original.gy, &self.p_gy_prime) {
             return false;
         }
         true
@@ -261,7 +261,7 @@ impl<G: Group> VerifiableRSK2<G> {
 
 impl<G: Group> VerifiableRSK2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         s_from: &G::Scalar,
         s_to: &G::Scalar,
@@ -273,9 +273,9 @@ impl<G: Group> VerifiableRSK2<G> {
         let k = G::scalar_inverse(k_from) * *k_to;
         let gs = s * G::generator();
         let gk = k * G::generator();
-        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
-        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
-        let inner = VerifiableRSK::new(v, &s, &k, rng);
+        let (_gs_from, p_gs_to) = create_proof::<C, R>(s_from, &gs, rng);
+        let (_gk_from, p_gk_to) = create_proof::<C, R>(k_from, &gk, rng);
+        let inner = VerifiableRSK::new::<C, _>(v, &s, &k, rng);
         Self {
             gs,
             gk,
@@ -296,7 +296,7 @@ impl<G: Group> VerifiableRSK2<G> {
     /// verify the inner VRSK's per-message body; use [`Self::verify`] or
     /// [`Self::verified_reconstruct`] for that.
     #[must_use]
-    pub fn verify_factor(
+    pub fn verify_factor<C: Ciphersuite<Group = G>>(
         &self,
         s_from_commitments: &PseudonymizationFactorCommitment<G>,
         s_to_commitments: &PseudonymizationFactorCommitment<G>,
@@ -308,9 +308,9 @@ impl<G: Group> VerifiableRSK2<G> {
         let gk_from = k_from_commitments.point();
         let gk_to = k_to_commitments.point();
         *self.p_gs_to == gs_to
-            && verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to)
+            && verify_proof::<C>(&gs_from, &self.gs, &self.p_gs_to)
             && *self.p_gk_to == gk_to
-            && verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to)
+            && verify_proof::<C>(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     /// The combined reshuffle commitment `S = (s_from⁻¹·s_to)·G`.
@@ -325,7 +325,7 @@ impl<G: Group> VerifiableRSK2<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         s_from_commitments: &PseudonymizationFactorCommitment<G>,
@@ -333,12 +333,12 @@ impl<G: Group> VerifiableRSK2<G> {
         k_from_commitments: &RekeyFactorCommitment<G>,
         k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
-        self.verify_factor(
+        self.verify_factor::<C>(
             s_from_commitments,
             s_to_commitments,
             k_from_commitments,
             k_to_commitments,
-        ) && self.inner.verify(
+        ) && self.inner.verify::<C>(
             original,
             &self.combined_reshuffle_commitment(),
             &self.combined_rekey_commitment(),
@@ -356,12 +356,15 @@ impl<G: Group> VerifiableRSK2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{rsk, rsk2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK, VerifiableRSK2,
     };
+
+    type C = Ristretto255Sha512;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();
@@ -377,13 +380,13 @@ mod tests {
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRSK::new(&c, &s, &k, &mut rng);
+        let proof = VerifiableRSK::new::<C, _>(&c, &s, &k, &mut rng);
         let expected = rsk(&c, &s, &k);
         let s_com = PseudonymizationFactorCommitment::new(&s);
         let k_com = RekeyFactorCommitment::new(&k);
-        assert!(proof.verify(&c, &s_com, &k_com));
+        assert!(proof.verify::<C>(&c, &s_com, &k_com));
         assert_eq!(
-            proof.verified_reconstruct(&c, &s_com, &k_com),
+            proof.verified_reconstruct::<C>(&c, &s_com, &k_com),
             Some(expected)
         );
     }
@@ -394,11 +397,11 @@ mod tests {
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableRSK::new(&c, &s, &k, &mut rng);
+        let mut proof = VerifiableRSK::new::<C, _>(&c, &s, &k, &mut rng);
         let s_com = PseudonymizationFactorCommitment::new(&s);
         let k_com = RekeyFactorCommitment::new(&k);
         proof.inner.p_gb_prime.c1 = proof.inner.p_gb_prime.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &s_com, &k_com));
+        assert!(!proof.verify::<C>(&c, &s_com, &k_com));
     }
 
     #[test]
@@ -407,10 +410,10 @@ mod tests {
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRSK::new(&c, &s, &k, &mut rng);
+        let proof = VerifiableRSK::new::<C, _>(&c, &s, &k, &mut rng);
         let wrong_s = PseudonymizationFactorCommitment::new(&ScalarNonZero::random(&mut rng));
         let k_com = RekeyFactorCommitment::new(&k);
-        assert!(!proof.verify(&c, &wrong_s, &k_com));
+        assert!(!proof.verify::<C>(&c, &wrong_s, &k_com));
     }
 
     #[test]
@@ -421,15 +424,15 @@ mod tests {
         let s_to = ScalarNonZero::random(&mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRSK2::new(&c, &s_from, &s_to, &k_from, &k_to, &mut rng);
+        let proof = VerifiableRSK2::new::<C, _>(&c, &s_from, &s_to, &k_from, &k_to, &mut rng);
         let expected = rsk2(&c, &s_from, &s_to, &k_from, &k_to);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
-        assert!(proof.verify(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
+        assert!(proof.verify::<C>(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
         assert_eq!(
-            proof.verified_reconstruct(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_com),
+            proof.verified_reconstruct::<C>(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_com),
             Some(expected)
         );
     }
@@ -442,12 +445,12 @@ mod tests {
         let s_to = ScalarNonZero::random(&mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRSK2::new(&c, &s_from, &s_to, &k_from, &k_to, &mut rng);
+        let proof = VerifiableRSK2::new::<C, _>(&c, &s_from, &s_to, &k_from, &k_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_other = RekeyFactorCommitment::new(&ScalarNonZero::random(&mut rng));
-        assert!(!proof.verify(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_other));
+        assert!(!proof.verify::<C>(&c, &s_from_com, &s_to_com, &k_from_com, &k_to_other));
     }
 
     #[test]
@@ -459,16 +462,16 @@ mod tests {
         let k_to = ScalarNonZero::random(&mut rng);
         let c1 = setup_ct();
         let c2 = setup_ct();
-        let vrsk2 = VerifiableRSK2::new(&c1, &s_from, &s_to, &k_from, &k_to, &mut rng);
+        let vrsk2 = VerifiableRSK2::new::<C, _>(&c1, &s_from, &s_to, &k_from, &k_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
-        assert!(vrsk2.verify_factor(&s_from_com, &s_to_com, &k_from_com, &k_to_com));
+        assert!(vrsk2.verify_factor::<C>(&s_from_com, &s_to_com, &k_from_com, &k_to_com));
         let s = s_from.invert() * s_to;
         let k = k_from.invert() * k_to;
-        let inner2 = VerifiableRSK::new(&c2, &s, &k, &mut rng);
-        assert!(inner2.verify(
+        let inner2 = VerifiableRSK::new::<C, _>(&c2, &s, &k, &mut rng);
+        assert!(inner2.verify::<C>(
             &c2,
             &vrsk2.combined_reshuffle_commitment(),
             &vrsk2.combined_rekey_commitment(),

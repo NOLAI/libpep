@@ -9,6 +9,7 @@ use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::factors::{Factor, RekeyPublicKey};
 use libpep::keys::PublicKey;
 use pyo3::prelude::*;
@@ -107,7 +108,7 @@ impl PyPseudonymizationInfo {
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(PseudonymizationInfo::new(
+        Self(PseudonymizationInfo::new::<Ristretto255Sha512>(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -169,7 +170,7 @@ impl PyPseudonymRekeyInfo {
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(PseudonymRekeyInfo::new(
+        Self(PseudonymRekeyInfo::new::<Ristretto255Sha512>(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -216,7 +217,7 @@ impl PyAttributeRekeyInfo {
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(AttributeRekeyInfo::new(
+        Self(AttributeRekeyInfo::new::<Ristretto255Sha512>(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -269,7 +270,7 @@ impl PyTranscryptionInfo {
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(TranscryptionInfo::new(
+        Self(TranscryptionInfo::new::<Ristretto255Sha512>(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,

@@ -2,7 +2,7 @@
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
 use super::reshuffle::VerifiableReshuffle;
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -25,11 +25,15 @@ impl<G: Group> VerifiableReshuffleBatch<G> {
 
 impl<G: Group> VerifiableReshuffleBatch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(ciphertexts: &[ElGamal<G>], s: &G::Scalar, rng: &mut R) -> Self {
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
+        ciphertexts: &[ElGamal<G>],
+        s: &G::Scalar,
+        rng: &mut R,
+    ) -> Self {
         Self {
             inners: ciphertexts
                 .iter()
-                .map(|v| VerifiableReshuffle::new(v, s, rng))
+                .map(|v| VerifiableReshuffle::new::<C, _>(v, s, rng))
                 .collect(),
         }
     }
@@ -46,7 +50,7 @@ impl<G: Group> VerifiableReshuffleBatch<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         originals: &[ElGamal<G>],
         commitment: &PseudonymizationFactorCommitment<G>,
@@ -56,7 +60,7 @@ impl<G: Group> VerifiableReshuffleBatch<G> {
                 .inners
                 .iter()
                 .zip(originals.iter())
-                .all(|(inner, o)| inner.verify(o, commitment))
+                .all(|(inner, o)| inner.verify::<C>(o, commitment))
     }
 
     reconstruct! {
@@ -95,7 +99,7 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
 
 impl<G: Group> VerifiableReshuffle2Batch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal<G>],
         s_from: &G::Scalar,
         s_to: &G::Scalar,
@@ -103,10 +107,10 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
     ) -> Self {
         let s = G::scalar_inverse(s_from) * *s_to;
         let gs = s * G::generator();
-        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
+        let (_gs_from, p_gs_to) = create_proof::<C, R>(s_from, &gs, rng);
         let inners = ciphertexts
             .iter()
-            .map(|v| VerifiableReshuffle::new(v, &s, rng))
+            .map(|v| VerifiableReshuffle::new::<C, _>(v, &s, rng))
             .collect();
         Self {
             gs,
@@ -132,25 +136,25 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
 
     #[must_use]
     /// Verify the part of the proof that depends only on the factors, shared by every item.
-    pub fn verify_factor(
+    pub fn verify_factor<C: Ciphersuite<Group = G>>(
         &self,
         from_commitments: &PseudonymizationFactorCommitment<G>,
         to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         let gs_from = from_commitments.point();
         let gs_to = to_commitments.point();
-        *self.p_gs_to == gs_to && verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to)
+        *self.p_gs_to == gs_to && verify_proof::<C>(&gs_from, &self.gs, &self.p_gs_to)
     }
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         originals: &[ElGamal<G>],
         from_commitments: &PseudonymizationFactorCommitment<G>,
         to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
-        if !self.verify_factor(from_commitments, to_commitments) {
+        if !self.verify_factor::<C>(from_commitments, to_commitments) {
             return false;
         }
         if originals.len() != self.inners.len() {
@@ -160,7 +164,7 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
         self.inners
             .iter()
             .zip(originals.iter())
-            .all(|(inner, o)| inner.verify(o, &commitment))
+            .all(|(inner, o)| inner.verify::<C>(o, &commitment))
     }
 
     reconstruct! {
@@ -174,12 +178,15 @@ impl<G: Group> VerifiableReshuffle2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
     };
+
+    type C = Ristretto255Sha512;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();
@@ -198,12 +205,12 @@ mod tests {
         let mut rng = rand::rng();
         let cts = setup_pk_cts(4);
         let s = ScalarNonZero::random(&mut rng);
-        let batch = VerifiableReshuffleBatch::new(&cts, &s, &mut rng);
+        let batch = VerifiableReshuffleBatch::new::<C, _>(&cts, &s, &mut rng);
         let expected_news: Vec<_> = cts.iter().map(|c| reshuffle(c, &s)).collect();
         let com = PseudonymizationFactorCommitment::new(&s);
-        let news = batch.verified_reconstruct(&cts, &com).expect("verify");
+        let news = batch.verified_reconstruct::<C>(&cts, &com).expect("verify");
         assert_eq!(news, expected_news);
-        assert!(batch.verify(&cts, &com));
+        assert!(batch.verify::<C>(&cts, &com));
     }
 
     #[test]
@@ -212,14 +219,14 @@ mod tests {
         let cts = setup_pk_cts(3);
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
-        let batch = VerifiableReshuffle2Batch::new(&cts, &s_from, &s_to, &mut rng);
+        let batch = VerifiableReshuffle2Batch::new::<C, _>(&cts, &s_from, &s_to, &mut rng);
         let expected_news: Vec<_> = cts.iter().map(|c| reshuffle2(c, &s_from, &s_to)).collect();
         let from = PseudonymizationFactorCommitment::new(&s_from);
         let to = PseudonymizationFactorCommitment::new(&s_to);
         let news = batch
-            .verified_reconstruct(&cts, &from, &to)
+            .verified_reconstruct::<C>(&cts, &from, &to)
             .expect("verify");
         assert_eq!(news, expected_news);
-        assert!(batch.verify(&cts, &from, &to));
+        assert!(batch.verify::<C>(&cts, &from, &to));
     }
 }

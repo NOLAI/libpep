@@ -15,6 +15,7 @@ use crate::factors::commitments::{
     WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
     WASMVerifiableTranscryptionCommitment,
 };
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;
@@ -662,7 +663,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -681,7 +686,7 @@ impl WASMVerifier {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &pk, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -698,7 +703,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMEncryptedPseudonymBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -717,7 +722,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -734,7 +743,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMEncryptedPseudonymBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -753,7 +762,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMEncryptedAttributeBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -770,7 +783,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMEncryptedAttributeBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedAttributeBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -789,7 +802,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -808,7 +825,7 @@ impl WASMVerifier {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &pk, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -825,7 +842,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMLongEncryptedPseudonymBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -844,7 +861,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -861,7 +882,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMLongEncryptedPseudonymBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -880,7 +901,11 @@ impl WASMVerifier {
         let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMLongEncryptedAttributeBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -897,7 +922,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMLongEncryptedAttributeBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedAttributeBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -916,7 +941,11 @@ impl WASMVerifier {
         let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -935,7 +964,7 @@ impl WASMVerifier {
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -952,7 +981,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMEncryptedRecordBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -971,7 +1000,11 @@ impl WASMVerifier {
         let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.0,
+            )
             .map(|inner| crate::data::batch::WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -990,7 +1023,7 @@ impl WASMVerifier {
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)
@@ -1007,7 +1040,7 @@ impl WASMVerifier {
     ) -> Result<crate::data::batch::WASMLongEncryptedRecordBatch, JsValue> {
         proof
             .0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| crate::data::batch::WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(|| {
                 crate::errors::verify_err_to_js(libpep::verifier::VerifyError::ProofRejected)

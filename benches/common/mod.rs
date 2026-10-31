@@ -9,7 +9,7 @@
 pub mod aliases;
 
 use libpep::data::traits::{Encryptable, Encrypted, HasStructure, Rekeyable, Transcryptable};
-use libpep::elgamal::arithmetic::group::Group;
+use libpep::elgamal::arithmetic::Ciphersuite;
 use libpep::factors::types::TranscryptionInfo;
 use libpep::transcryptor::distributed::DistributedTranscryptor;
 use rand_core::{CryptoRng, Rng};
@@ -18,16 +18,16 @@ type PublicKeyOf<E> = <<E as Encrypted>::UnencryptedType as Encryptable>::Public
 
 /// Transcrypt `enc` through every transcryptor in turn.
 #[allow(clippy::too_many_arguments)]
-pub fn transcrypt_chain<G: Group, E, R>(
-    systems: &[DistributedTranscryptor<G>],
+pub fn transcrypt_chain<C: Ciphersuite, E, R>(
+    systems: &[DistributedTranscryptor<C>],
     enc: E,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor<G>) -> TranscryptionInfo<G>,
-    next_key: impl Fn(&TranscryptionInfo<G>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
+    info: impl Fn(&DistributedTranscryptor<C>) -> TranscryptionInfo<C::Group>,
+    next_key: impl Fn(&TranscryptionInfo<C::Group>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> E
 where
-    E: Transcryptable<Group = G>,
+    E: Transcryptable<Group = C::Group>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -53,16 +53,16 @@ where
 }
 
 /// Rekey `enc` through every transcryptor in turn.
-pub fn rekey_chain<G: Group, E, R>(
-    systems: &[DistributedTranscryptor<G>],
+pub fn rekey_chain<C: Ciphersuite, E, R>(
+    systems: &[DistributedTranscryptor<C>],
     enc: E,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor<G>) -> E::RekeyInfo,
+    info: impl Fn(&DistributedTranscryptor<C>) -> E::RekeyInfo,
     next_key: impl Fn(&E::RekeyInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> E
 where
-    E: Rekeyable<Group = G>,
+    E: Rekeyable<Group = C::Group>,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -86,16 +86,16 @@ where
 
 /// Transcrypt a batch through every transcryptor in turn.
 #[cfg(feature = "batch")]
-pub fn transcrypt_batch_chain<G: Group, E, R>(
-    systems: &[DistributedTranscryptor<G>],
+pub fn transcrypt_batch_chain<C: Ciphersuite, E, R>(
+    systems: &[DistributedTranscryptor<C>],
     mut batch: Vec<E>,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor<G>) -> TranscryptionInfo<G>,
-    next_key: impl Fn(&TranscryptionInfo<G>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
+    info: impl Fn(&DistributedTranscryptor<C>) -> TranscryptionInfo<C::Group>,
+    next_key: impl Fn(&TranscryptionInfo<C::Group>, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Transcryptable<Group = G> + HasStructure + Clone,
+    E: Transcryptable<Group = C::Group> + HasStructure + Clone,
     R: Rng + CryptoRng,
 {
     #[cfg(feature = "elgamal3")]
@@ -125,16 +125,16 @@ where
 
 /// Rekey a batch through every transcryptor in turn.
 #[cfg(feature = "batch")]
-pub fn rekey_batch_chain<G: Group, E, R>(
-    systems: &[DistributedTranscryptor<G>],
+pub fn rekey_batch_chain<C: Ciphersuite, E, R>(
+    systems: &[DistributedTranscryptor<C>],
     mut batch: Vec<E>,
     key: PublicKeyOf<E>,
-    info: impl Fn(&DistributedTranscryptor<G>) -> E::RekeyInfo,
+    info: impl Fn(&DistributedTranscryptor<C>) -> E::RekeyInfo,
     next_key: impl Fn(&E::RekeyInfo, &PublicKeyOf<E>) -> PublicKeyOf<E>,
     rng: &mut R,
 ) -> Vec<E>
 where
-    E: Rekeyable<Group = G> + HasStructure + Clone,
+    E: Rekeyable<Group = C::Group> + HasStructure + Clone,
     E::RekeyInfo: Copy,
     R: Rng + CryptoRng,
 {

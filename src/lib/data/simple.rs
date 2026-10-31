@@ -259,6 +259,7 @@ mod tests {
     use crate::contexts::EncryptionContext;
     use crate::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
     use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::*;
 
@@ -321,8 +322,11 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+        let (session_public, session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &global_secret,
+            &session,
+            &enc_secret,
+        );
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -340,8 +344,11 @@ mod tests {
         let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) =
-            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+        let (session_public, session_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
+            &global_secret,
+            &session,
+            &enc_secret,
+        );
 
         let original = Attribute::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -359,8 +366,11 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+        let (session_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &global_secret,
+            &session,
+            &enc_secret,
+        );
 
         let pseudonym = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
@@ -378,8 +388,11 @@ mod tests {
         let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) =
-            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+        let (session_public, _) = make_attribute_session_keys::<Ristretto255Sha512>(
+            &global_secret,
+            &session,
+            &enc_secret,
+        );
 
         let attribute = Attribute::random(&mut rng);
         let encrypted = encrypt(&attribute, &session_public, &mut rng);
@@ -396,8 +409,11 @@ mod tests {
         let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+        let (session_public, session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+            &global_secret,
+            &session,
+            &enc_secret,
+        );
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);

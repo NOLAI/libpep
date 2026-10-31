@@ -39,6 +39,7 @@ use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use libpep::verifier::VerifyError;
@@ -94,7 +95,11 @@ impl WASMPseudonymPseudonymizationBatchProof {
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -109,7 +114,7 @@ impl WASMPseudonymPseudonymizationBatchProof {
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &pk, &commitments.0)
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -122,7 +127,7 @@ impl WASMPseudonymPseudonymizationBatchProof {
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -174,7 +179,11 @@ impl WASMPseudonymRekeyBatchProof {
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -187,7 +196,7 @@ impl WASMPseudonymRekeyBatchProof {
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMEncryptedPseudonymBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -239,7 +248,11 @@ impl WASMAttributeRekeyBatchProof {
     ) -> Result<WASMEncryptedAttributeBatch, JsValue> {
         let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMEncryptedAttributeBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -252,7 +265,7 @@ impl WASMAttributeRekeyBatchProof {
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMEncryptedAttributeBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMEncryptedAttributeBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -310,7 +323,11 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -325,7 +342,7 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &pk, &commitments.0)
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -338,7 +355,7 @@ impl WASMLongPseudonymPseudonymizationBatchProof {
         commitments: &WASMVerifiablePseudonymizationCommitment,
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -394,7 +411,11 @@ impl WASMLongPseudonymRekeyBatchProof {
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -407,7 +428,7 @@ impl WASMLongPseudonymRekeyBatchProof {
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMLongEncryptedPseudonymBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMLongEncryptedPseudonymBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -463,7 +484,11 @@ impl WASMLongAttributeRekeyBatchProof {
     ) -> Result<WASMLongEncryptedAttributeBatch, JsValue> {
         let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.0,
+            )
             .map(|inner| WASMLongEncryptedAttributeBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -476,7 +501,7 @@ impl WASMLongAttributeRekeyBatchProof {
         commitments: &WASMVerifiableRekeyCommitment,
     ) -> Result<WASMLongEncryptedAttributeBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMLongEncryptedAttributeBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -528,7 +553,11 @@ impl WASMRecordTranscryptionBatchProof {
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
         let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.0,
+            )
             .map(|inner| WASMEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -543,7 +572,7 @@ impl WASMRecordTranscryptionBatchProof {
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         self.0
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| WASMEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -556,7 +585,7 @@ impl WASMRecordTranscryptionBatchProof {
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -612,7 +641,11 @@ impl WASMLongRecordTranscryptionBatchProof {
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
         let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
         self.0
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.0,
+            )
             .map(|inner| WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -627,7 +660,7 @@ impl WASMLongRecordTranscryptionBatchProof {
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         self.0
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -640,7 +673,7 @@ impl WASMLongRecordTranscryptionBatchProof {
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
         self.0
-            .verified_reconstruct_batch(&original.inner, &commitments.0)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.0)
             .map(|inner| WASMLongEncryptedRecordBatch { inner })
             .ok_or_else(verify_err)
     }
@@ -664,7 +697,9 @@ impl WASMEncryptedPseudonymBatch {
         info: &WASMPseudonymizationInfo,
     ) -> WASMPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_pseudonymize(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -677,7 +712,7 @@ impl WASMEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
-            .verifiable_pseudonymize(&info.0, &pk, &mut rng)
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &pk, &mut rng)
             .into()
     }
 
@@ -688,7 +723,9 @@ impl WASMEncryptedPseudonymBatch {
         info: &WASMPseudonymizationInfo,
     ) -> WASMPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_pseudonymize(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[wasm_bindgen(js_name = verifiableRekey)]
@@ -697,7 +734,9 @@ impl WASMEncryptedPseudonymBatch {
         info: &WASMPseudonymRekeyInfo,
     ) -> WASMPseudonymRekeyBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_rekey(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }
 
@@ -709,7 +748,9 @@ impl WASMEncryptedAttributeBatch {
         info: &WASMAttributeRekeyInfo,
     ) -> WASMAttributeRekeyBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_rekey(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }
 
@@ -723,7 +764,9 @@ impl WASMLongEncryptedPseudonymBatch {
         info: &WASMPseudonymizationInfo,
     ) -> WASMLongPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_pseudonymize(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -736,7 +779,7 @@ impl WASMLongEncryptedPseudonymBatch {
         let mut rng = rand::rng();
         let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
-            .verifiable_pseudonymize(&info.0, &pk, &mut rng)
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &pk, &mut rng)
             .into()
     }
 
@@ -747,7 +790,9 @@ impl WASMLongEncryptedPseudonymBatch {
         info: &WASMPseudonymizationInfo,
     ) -> WASMLongPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_pseudonymize(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[wasm_bindgen(js_name = verifiableRekey)]
@@ -756,7 +801,9 @@ impl WASMLongEncryptedPseudonymBatch {
         info: &WASMPseudonymRekeyInfo,
     ) -> WASMLongPseudonymRekeyBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_rekey(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }
 
@@ -769,7 +816,9 @@ impl WASMLongEncryptedAttributeBatch {
         info: &WASMAttributeRekeyInfo,
     ) -> WASMLongAttributeRekeyBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_rekey(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_rekey::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }
 
@@ -782,7 +831,9 @@ impl WASMEncryptedRecordBatch {
         info: &WASMTranscryptionInfo,
     ) -> WASMRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_transcrypt(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -795,7 +846,7 @@ impl WASMEncryptedRecordBatch {
         let mut rng = rand::rng();
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         self.inner
-            .verifiable_transcrypt(&info.0, &sk, &mut rng)
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &sk, &mut rng)
             .into()
     }
 
@@ -806,7 +857,9 @@ impl WASMEncryptedRecordBatch {
         info: &WASMTranscryptionInfo,
     ) -> WASMRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_transcrypt(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }
 
@@ -820,7 +873,9 @@ impl WASMLongEncryptedRecordBatch {
         info: &WASMTranscryptionInfo,
     ) -> WASMLongRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_transcrypt(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 
     #[cfg(all(not(feature = "elgamal3"), not(feature = "batch-pk")))]
@@ -833,7 +888,7 @@ impl WASMLongEncryptedRecordBatch {
         let mut rng = rand::rng();
         let sk: crate::aliases::SessionKeys = (*session_keys).into();
         self.inner
-            .verifiable_transcrypt(&info.0, &sk, &mut rng)
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &sk, &mut rng)
             .into()
     }
 
@@ -844,6 +899,8 @@ impl WASMLongEncryptedRecordBatch {
         info: &WASMTranscryptionInfo,
     ) -> WASMLongRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        self.inner.verifiable_transcrypt(&info.0, &mut rng).into()
+        self.inner
+            .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &mut rng)
+            .into()
     }
 }

@@ -23,7 +23,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::VerifiableTranscryptionCommitment;
@@ -57,7 +57,7 @@ macro_rules! record_proof {
             type Output = $data<G>;
 
             #[cfg(feature = "elgamal3")]
-            fn verified_reconstruct(
+            fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
                 &self,
                 original: &Self::DataType,
                 commitments: &VerifiableTranscryptionCommitment<G>,
@@ -71,19 +71,19 @@ macro_rules! record_proof {
                     .pseudonym_operation_proofs
                     .iter()
                     .zip(&original.pseudonyms)
-                    .map(|(p, orig)| p.verified_reconstruct(orig, &commitments.pseudonym))
+                    .map(|(p, orig)| p.verified_reconstruct::<C>(orig, &commitments.pseudonym))
                     .collect::<Option<_>>()?;
                 let attributes = self
                     .attribute_operation_proofs
                     .iter()
                     .zip(&original.attributes)
-                    .map(|(p, orig)| p.verified_reconstruct(orig, &commitments.attribute))
+                    .map(|(p, orig)| p.verified_reconstruct::<C>(orig, &commitments.attribute))
                     .collect::<Option<_>>()?;
                 Some($data::new(pseudonyms, attributes))
             }
 
             #[cfg(not(feature = "elgamal3"))]
-            fn verified_reconstruct(
+            fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
                 &self,
                 original: &Self::DataType,
                 keys: &SessionPublicKeys<G>,
@@ -99,14 +99,14 @@ macro_rules! record_proof {
                     .iter()
                     .zip(&original.pseudonyms)
                     .map(|(p, orig)| {
-                        p.verified_reconstruct(orig, &keys.pseudonym, &commitments.pseudonym)
+                        p.verified_reconstruct::<C>(orig, &keys.pseudonym, &commitments.pseudonym)
                     })
                     .collect::<Option<_>>()?;
                 let attributes = self
                     .attribute_operation_proofs
                     .iter()
                     .zip(&original.attributes)
-                    .map(|(p, orig)| p.verified_reconstruct(orig, &commitments.attribute))
+                    .map(|(p, orig)| p.verified_reconstruct::<C>(orig, &commitments.attribute))
                     .collect::<Option<_>>()?;
                 Some($data::new(pseudonyms, attributes))
             }
@@ -133,7 +133,7 @@ macro_rules! record_proof {
             type TranscryptionProof = $proof<G>;
 
             #[cfg(feature = "elgamal3")]
-            fn verifiable_transcrypt<R: Rng + CryptoRng>(
+            fn verifiable_transcrypt<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
                 &self,
                 info: &TranscryptionInfo<G>,
                 rng: &mut R,
@@ -142,18 +142,18 @@ macro_rules! record_proof {
                     pseudonym_operation_proofs: self
                         .pseudonyms
                         .iter()
-                        .map(|p| p.verifiable_pseudonymize(&info.pseudonym, rng))
+                        .map(|p| p.verifiable_pseudonymize::<C, _>(&info.pseudonym, rng))
                         .collect(),
                     attribute_operation_proofs: self
                         .attributes
                         .iter()
-                        .map(|a| a.verifiable_rekey(&info.attribute, rng))
+                        .map(|a| a.verifiable_rekey::<C, _>(&info.attribute, rng))
                         .collect(),
                 }
             }
 
             #[cfg(not(feature = "elgamal3"))]
-            fn verifiable_transcrypt<R: Rng + CryptoRng>(
+            fn verifiable_transcrypt<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
                 &self,
                 info: &TranscryptionInfo<G>,
                 keys: &SessionPublicKeys<G>,
@@ -163,12 +163,12 @@ macro_rules! record_proof {
                     pseudonym_operation_proofs: self
                         .pseudonyms
                         .iter()
-                        .map(|p| p.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym, rng))
+                        .map(|p| p.verifiable_pseudonymize::<C, _>(&info.pseudonym, &keys.pseudonym, rng))
                         .collect(),
                     attribute_operation_proofs: self
                         .attributes
                         .iter()
-                        .map(|a| a.verifiable_rekey(&info.attribute, rng))
+                        .map(|a| a.verifiable_rekey::<C, _>(&info.attribute, rng))
                         .collect(),
                 }
             }

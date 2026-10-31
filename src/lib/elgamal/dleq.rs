@@ -1,6 +1,6 @@
 //! Discrete-logarithm-equivalence (DLEQ) proofs in the two-scalar `(c, s)` encoding.
 //!
-//! The proofs are generic over the [`Group`].
+//! The proofs are stored over a [`Group`], and created and verified under a [`Ciphersuite`].
 //!
 //! A DLEQ proof shows that the same secret scalar `k` relates two pairs of group elements,
 //! `B = k * A` and `D_i = k * C_i`, without revealing `k`. This module implements the
@@ -18,8 +18,8 @@
 //!
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
-//! the seed (`"Seed-" || contextString`). The context string comes from the group's ciphersuite,
-//! [`Group::CIPHERSUITE`], so two deployments
+//! the seed (`"Seed-" || contextString`). The context string comes from the ciphersuite,
+//! [`Ciphersuite::ID`], so two ciphersuites
 //! with different context strings produce proofs that never verify against one another.
 //!
 //! The implementation is checked against published ristretto255-SHA512 test vectors, for both a single pair and a batch of two.
@@ -29,7 +29,7 @@
 //! ```
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-//! # use libpep::elgamal::arithmetic::Ristretto255;
+//! # use libpep::elgamal::arithmetic::Ristretto255Sha512;
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
 //! let mut rng = rand::rng();
 //!
@@ -39,11 +39,13 @@
 //! let cs = [GroupElement::random(&mut rng), GroupElement::random(&mut rng)];
 //! let ds = [k * cs[0], k * cs[1]];
 //!
-//! let proof = generate_proof::<Ristretto255, _>(&k, &a, &b, &cs, &ds, &mut rng).unwrap();
-//! assert!(verify_proof::<Ristretto255>(&a, &b, &cs, &ds, &proof));
+//! let proof = generate_proof::<Ristretto255Sha512, _>(&k, &a, &b, &cs, &ds, &mut rng).unwrap();
+//! assert!(verify_proof::<Ristretto255Sha512>(&a, &b, &cs, &ds, &proof));
 //! ```
 
-use crate::elgamal::arithmetic::ciphersuite::Ciphersuite;
+use crate::elgamal::arithmetic::ciphersuite::{
+    Ciphersuite, CiphersuiteId, ElementOf, ScalarCanBeZeroOf, ScalarOf,
+};
 use crate::elgamal::arithmetic::group::Group;
 use rand_core::{CryptoRng, Rng};
 use sha2::Digest;
@@ -109,7 +111,7 @@ pub enum ProofError {
 /// with the context string entering only through `HashToScalar`'s own DST
 /// (`"HashToScalar-" || contextString`).
 ///
-/// Normally built from the [`Ciphersuite`], whose context string is prefixed `"nPEPV1-"`.
+/// Normally built from the [`CiphersuiteId`], whose context string is prefixed `"nPEPV1-"`.
 /// The published test vectors use a different prefix, so the test module builds these
 /// directly to cross-check the transcript against them.
 #[derive(Clone)]
@@ -121,7 +123,7 @@ pub(crate) struct Dsts {
 }
 
 impl Dsts {
-    pub(crate) fn from_ciphersuite(ciphersuite: &Ciphersuite) -> Self {
+    pub(crate) fn from_ciphersuite(ciphersuite: &CiphersuiteId) -> Self {
         Self {
             seed: ciphersuite.dst(b"Seed-"),
             hash_to_scalar: ciphersuite.dst(b"HashToScalar-"),
@@ -130,8 +132,8 @@ impl Dsts {
 }
 
 /// `HashToScalar` in the full scalar field: zero is zero.
-fn hash_to_scalar<G: Group>(msg: &[u8], dst: &[u8]) -> G::ScalarCanBeZero {
-    G::hash_to_scalar(msg, dst).map_or_else(Default::default, Into::into)
+fn hash_to_scalar<C: Ciphersuite>(msg: &[u8], dst: &[u8]) -> ScalarCanBeZeroOf<C> {
+    C::hash_to_scalar(msg, dst).map_or_else(Default::default, Into::into)
 }
 
 /// `I2OSP(len(bytes), 2) || bytes`, the length-prefixed encoding used in transcripts.
@@ -143,12 +145,12 @@ fn push_len_prefixed(out: &mut Vec<u8>, bytes: &[u8]) {
 
 /// The seed transcript of `ComputeComposites`:
 /// `I2OSP(len(Bm),2) || Bm || I2OSP(len("Seed-"||ctx),2) || "Seed-"||ctx`.
-fn compute_seed<G: Group>(b: &G::Element, dsts: &Dsts) -> Vec<u8> {
+fn compute_seed<C: Ciphersuite>(b: &ElementOf<C>, dsts: &Dsts) -> Vec<u8> {
     let mut transcript = Vec::new();
-    push_len_prefixed(&mut transcript, G::serialize_element(b).as_ref());
+    push_len_prefixed(&mut transcript, C::Group::serialize_element(b).as_ref());
     push_len_prefixed(&mut transcript, &dsts.seed);
     // The ciphersuite's plain hash is used here, not expand_message_xmd.
-    G::Hash::digest(&transcript).to_vec()
+    C::Hash::digest(&transcript).to_vec()
 }
 
 /// `ComputeComposites`.
@@ -156,27 +158,27 @@ fn compute_seed<G: Group>(b: &G::Element, dsts: &Dsts) -> Vec<u8> {
 /// Folds the `(C_i, D_i)` pairs into a single pair `(M, Z)` with per-index weights derived from
 /// the seed, so that one proof covers the whole list. When the prover's scalar `k` is known the
 /// fast path computes `Z = k * M` directly; otherwise `Z` is accumulated from the `ds`.
-fn compute_composites<G: Group>(
-    k: Option<&G::Scalar>,
-    b: &G::Element,
-    cs: &[G::Element],
-    ds: &[G::Element],
+fn compute_composites<C: Ciphersuite>(
+    k: Option<&ScalarOf<C>>,
+    b: &ElementOf<C>,
+    cs: &[ElementOf<C>],
+    ds: &[ElementOf<C>],
     dsts: &Dsts,
-) -> (G::Element, G::Element) {
-    let seed = compute_seed::<G>(b, dsts);
+) -> (ElementOf<C>, ElementOf<C>) {
+    let seed = compute_seed::<C>(b, dsts);
 
-    let mut m = G::identity();
-    let mut z = G::identity();
+    let mut m = C::Group::identity();
+    let mut z = C::Group::identity();
 
     for (i, (c_i, d_i)) in cs.iter().zip(ds.iter()).enumerate() {
         let mut transcript = Vec::new();
         push_len_prefixed(&mut transcript, &seed);
         transcript.extend_from_slice(&(i as u16).to_be_bytes());
-        push_len_prefixed(&mut transcript, G::serialize_element(c_i).as_ref());
-        push_len_prefixed(&mut transcript, G::serialize_element(d_i).as_ref());
+        push_len_prefixed(&mut transcript, C::Group::serialize_element(c_i).as_ref());
+        push_len_prefixed(&mut transcript, C::Group::serialize_element(d_i).as_ref());
         transcript.extend_from_slice(b"Composite");
 
-        let d_i_scalar = hash_to_scalar::<G>(&transcript, &dsts.hash_to_scalar);
+        let d_i_scalar = hash_to_scalar::<C>(&transcript, &dsts.hash_to_scalar);
         m = m + d_i_scalar * *c_i;
         if k.is_none() {
             z = z + d_i_scalar * *d_i;
@@ -191,38 +193,41 @@ fn compute_composites<G: Group>(
 
 /// The challenge transcript:
 /// the length-prefixed elements `B, M, Z, t2, t3` followed by the bare label `"Challenge"`.
-fn challenge<G: Group>(
-    b: &G::Element,
-    m: &G::Element,
-    z: &G::Element,
-    t2: &G::Element,
-    t3: &G::Element,
+fn challenge<C: Ciphersuite>(
+    b: &ElementOf<C>,
+    m: &ElementOf<C>,
+    z: &ElementOf<C>,
+    t2: &ElementOf<C>,
+    t3: &ElementOf<C>,
     dsts: &Dsts,
-) -> G::ScalarCanBeZero {
+) -> ScalarCanBeZeroOf<C> {
     let mut transcript = Vec::new();
     for element in [b, m, z, t2, t3] {
-        push_len_prefixed(&mut transcript, G::serialize_element(element).as_ref());
+        push_len_prefixed(
+            &mut transcript,
+            C::Group::serialize_element(element).as_ref(),
+        );
     }
     transcript.extend_from_slice(b"Challenge");
-    hash_to_scalar::<G>(&transcript, &dsts.hash_to_scalar)
+    hash_to_scalar::<C>(&transcript, &dsts.hash_to_scalar)
 }
 
-/// `GenerateProof`, domain separated by the group's
-/// [`CIPHERSUITE`](Group::CIPHERSUITE).
+/// `GenerateProof`, domain separated by the ciphersuite's
+/// [`ID`](Ciphersuite::ID).
 ///
 /// Proves that `b = k * a` and `ds[i] = k * cs[i]` for every `i`, without revealing `k`.
 ///
 /// # Errors
 ///
 /// Returns [`ProofError::MismatchedLists`] if `cs` and `ds` differ in length or are empty.
-pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
-    k: &G::Scalar,
-    a: &G::Element,
-    b: &G::Element,
-    cs: &[G::Element],
-    ds: &[G::Element],
+pub fn generate_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+    k: &ScalarOf<C>,
+    a: &ElementOf<C>,
+    b: &ElementOf<C>,
+    cs: &[ElementOf<C>],
+    ds: &[ElementOf<C>],
     rng: &mut R,
-) -> Result<Proof<G>, ProofError> {
+) -> Result<Proof<C::Group>, ProofError> {
     if cs.is_empty() || cs.len() != ds.len() {
         return Err(ProofError::MismatchedLists {
             cs: cs.len(),
@@ -230,15 +235,15 @@ pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
         });
     }
 
-    let dsts = Dsts::from_ciphersuite(&G::CIPHERSUITE);
-    Ok(generate_proof_with::<G>(
+    let dsts = Dsts::from_ciphersuite(&C::ID);
+    Ok(generate_proof_with::<C>(
         k,
         a,
         b,
         cs,
         ds,
         &dsts,
-        &G::random_scalar(rng),
+        &C::Group::random_scalar(rng),
     ))
 }
 
@@ -247,70 +252,63 @@ pub fn generate_proof<G: Group, R: Rng + CryptoRng>(
 /// Separated so that published test vectors, which fix `ProofRandomScalar`, can be
 /// reproduced exactly. Callers outside the tests must use [`generate_proof`], which samples
 /// the scalar freshly: reusing one across proofs leaks the secret.
-pub(crate) fn generate_proof_with<G: Group>(
-    k: &G::Scalar,
-    a: &G::Element,
-    b: &G::Element,
-    cs: &[G::Element],
-    ds: &[G::Element],
+pub(crate) fn generate_proof_with<C: Ciphersuite>(
+    k: &ScalarOf<C>,
+    a: &ElementOf<C>,
+    b: &ElementOf<C>,
+    cs: &[ElementOf<C>],
+    ds: &[ElementOf<C>],
     dsts: &Dsts,
-    r: &G::Scalar,
-) -> Proof<G> {
-    let (m, z) = compute_composites::<G>(Some(k), b, cs, ds, dsts);
+    r: &ScalarOf<C>,
+) -> Proof<C::Group> {
+    let (m, z) = compute_composites::<C>(Some(k), b, cs, ds, dsts);
 
     let t2 = *r * *a;
     let t3 = *r * m;
 
-    let c = challenge::<G>(b, &m, &z, &t2, &t3, dsts);
+    let c = challenge::<C>(b, &m, &z, &t2, &t3, dsts);
     // s = r - c * k, in the full scalar field (c and s may be zero).
-    let s = G::ScalarCanBeZero::from(*r) - c * G::ScalarCanBeZero::from(*k);
+    let s = ScalarCanBeZeroOf::<C>::from(*r) - c * ScalarCanBeZeroOf::<C>::from(*k);
 
     Proof { c, s }
 }
 
-/// `VerifyProof`, domain separated by the group's
-/// [`CIPHERSUITE`](Group::CIPHERSUITE).
+/// `VerifyProof`, domain separated by the ciphersuite's
+/// [`ID`](Ciphersuite::ID).
 ///
 /// Checks that the same scalar relates `a` to `b` and every `cs[i]` to `ds[i]`. Returns `false`
 /// on any mismatch, and also when the lists are empty or of different lengths.
 #[must_use]
-pub fn verify_proof<G: Group>(
-    a: &G::Element,
-    b: &G::Element,
-    cs: &[G::Element],
-    ds: &[G::Element],
-    proof: &Proof<G>,
+pub fn verify_proof<C: Ciphersuite>(
+    a: &ElementOf<C>,
+    b: &ElementOf<C>,
+    cs: &[ElementOf<C>],
+    ds: &[ElementOf<C>],
+    proof: &Proof<C::Group>,
 ) -> bool {
-    verify_proof_with::<G>(
-        a,
-        b,
-        cs,
-        ds,
-        proof,
-        &Dsts::from_ciphersuite(&G::CIPHERSUITE),
-    )
+    verify_proof_with::<C>(a, b, cs, ds, proof, &Dsts::from_ciphersuite(&C::ID))
 }
 
 /// The DST-parameterised core of [`verify_proof`].
-pub(crate) fn verify_proof_with<G: Group>(
-    a: &G::Element,
-    b: &G::Element,
-    cs: &[G::Element],
-    ds: &[G::Element],
-    proof: &Proof<G>,
+pub(crate) fn verify_proof_with<C: Ciphersuite>(
+    a: &ElementOf<C>,
+    b: &ElementOf<C>,
+    cs: &[ElementOf<C>],
+    ds: &[ElementOf<C>],
+    proof: &Proof<C::Group>,
     dsts: &Dsts,
 ) -> bool {
     if cs.is_empty() || cs.len() != ds.len() {
         return false;
     }
 
-    let (m, z) = compute_composites::<G>(None, b, cs, ds, dsts);
+    let (m, z) = compute_composites::<C>(None, b, cs, ds, dsts);
 
     // t2 = s * A + c * B, t3 = s * M + c * Z
     let t2 = proof.s * *a + proof.c * *b;
     let t3 = proof.s * m + proof.c * z;
 
-    let expected = challenge::<G>(b, &m, &z, &t2, &t3, dsts);
+    let expected = challenge::<C>(b, &m, &z, &t2, &t3, dsts);
     expected == proof.c
 }
 
@@ -320,7 +318,10 @@ mod tests {
     use super::*;
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::{Group, Ristretto255};
+    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
+
+    type C = Ristretto255Sha512;
 
     type Proof = super::Proof<Ristretto255>;
     const PROOF_SIZE: usize = Proof::LENGTH;
@@ -333,7 +334,7 @@ mod tests {
         ds: &[GroupElement],
         rng: &mut R,
     ) -> Result<Proof, ProofError> {
-        super::generate_proof::<Ristretto255, R>(k, a, b, cs, ds, rng)
+        super::generate_proof::<C, R>(k, a, b, cs, ds, rng)
     }
 
     fn verify_proof(
@@ -343,7 +344,7 @@ mod tests {
         ds: &[GroupElement],
         proof: &Proof,
     ) -> bool {
-        super::verify_proof::<Ristretto255>(a, b, cs, ds, proof)
+        super::verify_proof::<C>(a, b, cs, ds, proof)
     }
 
     #[test]
@@ -402,13 +403,12 @@ mod tests {
         let c = GroupElement::random(rng);
         // A different ciphersuite identifier gives a different context string, so the challenge
         // differs and a proof made under one does not verify under the other.
-        let ours = Dsts::from_ciphersuite(&Ristretto255::CIPHERSUITE);
+        let ours = Dsts::from_ciphersuite(&C::ID);
         let other = Dsts::from_ciphersuite(&crate::ciphersuite!("other-suite"));
         let r = ScalarNonZero::random(rng);
-        let proof =
-            generate_proof_with::<Ristretto255>(&k, &G, &(k * G), &[c], &[k * c], &ours, &r);
+        let proof = generate_proof_with::<C>(&k, &G, &(k * G), &[c], &[k * c], &ours, &r);
         assert!(verify_proof(&G, &(k * G), &[c], &[k * c], &proof));
-        assert!(!verify_proof_with::<Ristretto255>(
+        assert!(!verify_proof_with::<C>(
             &G,
             &(k * G),
             &[c],
@@ -485,10 +485,9 @@ mod tests {
             "EvaluationElement is not skSm * BlindedElement"
         );
 
-        let proof =
-            generate_proof_with::<Ristretto255>(&sk, &G, &pk, &[blinded], &[evaluated], &dsts, &r);
+        let proof = generate_proof_with::<C>(&sk, &G, &pk, &[blinded], &[evaluated], &dsts, &r);
         assert_eq!(hex::encode(proof.to_bytes()), expected);
-        assert!(verify_proof_with::<Ristretto255>(
+        assert!(verify_proof_with::<C>(
             &G,
             &pk,
             &[blinded],
@@ -517,10 +516,9 @@ mod tests {
         let expected = "cc203910175d786927eeb44ea847328047892ddf8590e723c37205cb74600b0a\
                         5ab5337c8eb4ceae0494c2cf89529dcf94572ed267473d567aeed6ab873dee08";
 
-        let proof =
-            generate_proof_with::<Ristretto255>(&sk, &G, &pk, &blinded, &evaluated, &dsts, &r);
+        let proof = generate_proof_with::<C>(&sk, &G, &pk, &blinded, &evaluated, &dsts, &r);
         assert_eq!(hex::encode(proof.to_bytes()), expected);
-        assert!(verify_proof_with::<Ristretto255>(
+        assert!(verify_proof_with::<C>(
             &G, &pk, &blinded, &evaluated, &proof, &dsts
         ));
 
@@ -528,7 +526,7 @@ mod tests {
         for i in 0..evaluated.len() {
             let mut tampered = evaluated;
             tampered[i] = G;
-            assert!(!verify_proof_with::<Ristretto255>(
+            assert!(!verify_proof_with::<C>(
                 &G, &pk, &blinded, &tampered, &proof, &dsts
             ));
         }
