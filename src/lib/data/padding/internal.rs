@@ -1,6 +1,6 @@
 //! Internal PKCS#7 padding for single-block (16 byte) encoding.
 //!
-//! This module provides the [`Padded`] trait for encoding data up to 15 bytes using PKCS#7 padding.
+//! The [`Padded`] trait encodes data up to 15 bytes using PKCS#7 padding.
 //! PKCS#7 padding fills the data up to a complete 16-byte block before encryption.
 //!
 //! # Usage
@@ -23,7 +23,7 @@
 //!  └─ data ─┘ └──────────────── 11 padding bytes ────────────────────┘
 //! ```
 //!
-//! # Order of Operations
+//! # Order of operations
 //!
 //! PKCS#7 padding is applied before external padding (see `data::padding::external`)
 //! and removed after the external padding is removed during decoding. The order matters for
@@ -43,7 +43,7 @@ use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
 ///
-/// This trait provides methods to encode data up to 15 bytes using PKCS#7 padding,
+/// Its methods encode data up to 15 bytes using PKCS#7 padding,
 /// which fills the remaining bytes of a 16-byte block with padding bytes.
 ///
 /// # Padding format

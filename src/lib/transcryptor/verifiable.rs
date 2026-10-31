@@ -1,7 +1,7 @@
 //! Verifiable transcryptor operations.
 //!
-//! This module provides methods for the transcryptor to perform verifiable
-//! transcryption operations that generate zero-knowledge proofs.
+//! The methods of the [`Transcryptor`] that perform transcryption operations and generate
+//! zero-knowledge proofs of them.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::data::traits::Encrypted;

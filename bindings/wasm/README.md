@@ -54,7 +54,7 @@ const back = transcryptPseudonym(transcrypted, info.reverse(), keysB.pseudonym.p
 if (decryptPseudonym(back, keysA.pseudonym.secret).toHex() !== pseudonymA.toHex()) throw new Error("not reversible");
 ```
 
-See the [repository README](https://github.com/NOLAI/libpep) for the full documentation, the cryptographic background, and the papers describing the scheme.
+See the [repository README](https://github.com/NOLAI/libpep) for the cryptographic background and the papers describing the scheme.
 
 ## Development
 

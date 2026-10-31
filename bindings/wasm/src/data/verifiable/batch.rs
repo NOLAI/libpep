@@ -8,7 +8,7 @@
 //!
 //! This module also adds `verifiable_pseudonymize` / `verifiable_rekey` /
 //! `verifiable_transcrypt` to the existing `WASM*Batch` types from
-//! `data/wasm/batch.rs`. wasm-bindgen accepts multiple
+//! `data/batch.rs`. wasm-bindgen accepts multiple
 //! `#[wasm_bindgen(js_class = "...")] impl X { ... }` blocks for the same
 //! type as long as the `js_class` matches the original `js_name`.
 

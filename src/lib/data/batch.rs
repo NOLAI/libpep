@@ -1,7 +1,7 @@
 //! Polymorphic batches of encrypted values that share a single recipient session.
 //!
-//! [`EncryptedBatch<E>`] is the central type for batch operations. It works
-//! uniformly across every encrypted type in the library: simple
+//! [`EncryptedBatch<E>`] is the type for batch operations. It works
+//! for every encrypted type in the library: simple
 //! ([`EncryptedPseudonym`](crate::data::simple::EncryptedPseudonym),
 //! [`EncryptedAttribute`](crate::data::simple::EncryptedAttribute)), long,
 //! records, and JSON. It does this through [`Encryptable::PublicKeyType`].
@@ -408,10 +408,8 @@ mod tests {
     /// high ones. That bias is invisible in a permutation check, so it has silently
     /// returned before through an unrelated merge. This test pins the uniformity down.
     ///
-    /// The bias is tiny for small `n`, so we amplify it: with `n = 3 * 2^62 / 4`-ish
-    /// values the rejection zone is large. Instead of relying on that, we test the
-    /// property directly on a modulus chosen so that a biased implementation puts
-    /// roughly 1.5x the expected mass on the first residue class.
+    /// The bias is tiny for small `n`, so the test uses a modulus chosen so that a biased
+    /// implementation puts roughly 1.5x the expected mass on the first residue class.
     #[test]
     fn random_index_is_not_modulo_biased() {
         // For this n, floor(2^64 / n) leaves a remainder covering half the range, so a

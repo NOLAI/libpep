@@ -104,7 +104,7 @@ impl PySessionKeyShareProof {
         }
     }
 
-    /// Verify the proof *and* bind it to the share scalar actually received.
+    /// Verify the proof and bind it to the share scalar actually received.
     ///
     /// This is the check a user accepting a session-key share must perform: it
     /// verifies the proof and additionally checks `U_i == u_i · G` for the

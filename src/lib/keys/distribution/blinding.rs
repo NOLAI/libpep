@@ -200,7 +200,7 @@ impl<G: Group> BlindableGlobalSecretKey for AttributeGlobalSecretKey<G> {
 }
 
 /// Create a blinded global secret key from a global secret key and blinding factors.
-/// Automatically works for both pseudonym and attribute keys based on the types.
+/// Works for both pseudonym and attribute keys, depending on the types.
 /// Returns `None` if the product of all blinding factors accidentally turns out to be 1.
 pub fn make_blinded_global_key<K>(
     global_secret_key: &K,

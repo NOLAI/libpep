@@ -1,5 +1,5 @@
 //! Verifier for verifiable transcryption operations, generic over the
-//! [`Group`](crate::elgamal::arithmetic::Group) (`Verifier<Ristretto255>`).
+//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) (`Verifier<Ristretto255Sha512>`).
 //!
 //! The verifier checks that operations were performed against published
 //! forward commitments:

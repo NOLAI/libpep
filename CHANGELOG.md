@@ -124,7 +124,7 @@ a major change against the published 0.13.0.
   check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
   only public values and now documents what it does not establish. Exposed in Python as
   `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
-- The Fiat–Shamir challenge of the Schnorr proofs (`elgamal::zkps`) is domain separated: it is
+- The Fiat-Shamir challenge of the Schnorr proofs (`elgamal::zkps`) is domain separated: it is
   the ciphersuite's `HashToScalar` of `A || M || N || c1 || c2` under the tag
   `"ZKPChallenge-" || contextString`, as the DLEQ proofs already were, so a proof of one
   deployment or proof type never verifies as another. Proofs made by earlier versions do not
@@ -143,7 +143,7 @@ a major change against the published 0.13.0.
   non-degenerate case).
 
 - Secrets are wiped from memory: the byte secrets (`PseudonymizationSecret`, `EncryptionSecret`)
-  and the Carter–Wegman master secrets zeroize on drop, and the secret keys, factors, blinding
+  and the Carter-Wegman master secrets zeroize on drop, and the secret keys, factors, blinding
   factors and shares implement `zeroize::Zeroize` (they are `Copy`, so wiping them is the
   caller's call).
 
@@ -242,7 +242,7 @@ a major change against the published 0.13.0.
 - A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`, a trait) pairs a `Group` with the hash its
   protocol hashes with, and names itself with a `CiphersuiteId` (the identifier, context string
   `"nPEPV1-" || identifier`) that domain-separates the protocol's hashes. An identifier names a
-  group *and* a hash (`ristretto255-SHA512`), so it is the associated constant `Ciphersuite::ID`
+  group and a hash together (`ristretto255-SHA512`), so it is the associated constant `Ciphersuite::ID`
   of one implementation and cannot be constructed from an arbitrary string. The identifier is
   `Copy` and const-constructible, and its context string is a `&'static [u8]`, so neither factor
   derivation nor hashing allocates to build it. The bindings take no ciphersuite argument: the
@@ -272,13 +272,14 @@ a major change against the published 0.13.0.
   `SessionPublicKeys`; `SessionKeys.public()`).
 - `peppy`: `pseudonym|attribute rekey|pseudonymize|transcrypt` take `--key`, `json transcrypt`
   takes `--keys` (without `elgamal3`).
-- The whole API is generic over the prime-order group (see *Added*): the `elgamal` module and the
-  high-level API (`data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) take a
-  `G: Group` parameter (`elgamal::arithmetic::Group`), which users instantiate with
-  `Ristretto255` (`Pseudonym<Ristretto255>`). The group is inferred wherever it follows from the
-  arguments; functions that create keys from randomness alone take it explicitly
-  (`make_global_keys::<Ristretto255, _>`). The bindings, `peppy` and the tests name the group once
-  in a small aliases file. Other changes: `ElGamal<G>` is generic; `ElGamal::to_bytes` returns a
+- The whole API is generic over the prime-order group and, where it hashes, over the ciphersuite
+  (see *Added*): the `elgamal` module and the high-level API (`data`, `keys`, `factors`, `client`,
+  `transcryptor`, `verifier`) take a `G: Group` parameter (`elgamal::arithmetic::Group`) or a
+  `C: Ciphersuite` parameter, which users instantiate with `Ristretto255`
+  (`Pseudonym<Ristretto255>`) or `Ristretto255Sha512` (`Transcryptor<Ristretto255Sha512>`). The
+  group is inferred wherever it follows from the arguments; functions that create keys from
+  randomness alone take it explicitly (`make_global_keys::<Ristretto255, _>`). The bindings,
+  `peppy` and the tests name the group and the ciphersuite once in a small aliases file. Other changes: `ElGamal<G>` is generic; `ElGamal::to_bytes` returns a
   `Vec<u8>` and `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes`
   and `from_bytes` likewise; `elgamal::zkps` and `elgamal::dleq` are generic over the group;
   `BatchError` is `data::batch::BatchError` and exists only with the `batch` feature, and
@@ -302,16 +303,16 @@ a major change against the published 0.13.0.
   bindings keep their typed parameters, as wasm-bindgen cannot discriminate between exported
   types at runtime.
 - The group abstraction `elgamal::arithmetic::Group`: a marker type
-  with the scalar and element types, serialization, hashing to the group and to scalars, random
-  scalars and elements, and the generator, with `Ristretto255` (`ristretto255-SHA512`) as its
-  instance. `Ristretto255::hash_to_group` and `hash_to_scalar` hash with the shared
+  with the scalar and element types, serialization, the maps from uniform bytes to scalars and
+  elements, random scalars and elements, and the generator, with `Ristretto255` as its instance.
+  `Ristretto255Sha512::hash_to_group` and `hash_to_scalar` hash with the shared
   `expand_message_xmd` (RFC 9380) of `elgamal::arithmetic::hashing` under SHA-512 and match the
   published ristretto255-SHA512 test vectors. Optional encodings:
   `InvertibleEncoding` (the lizard encoding, implemented for ristretto255) and `OaepEncoding` (for
   Weierstrass curves, to be implemented).
 - The whole API (`elgamal`, `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) is
-  generic over the group, so other groups can be built on it. The bindings and the CLI use
-  ristretto255.
+  generic over the group and the ciphersuite, so other groups and hashes can be built on it. The
+  bindings and the CLI use ristretto255 with SHA-512.
 
 - `tests/vectors.rs`: test vectors for the ristretto255-SHA512 ciphersuite, as Rust
   constants with one value per line. They pin the protocol's derived values byte for byte, so that
@@ -335,7 +336,7 @@ a major change against the published 0.13.0.
   SHA-512 test vectors), and in `elgamal::arithmetic::ristretto255::hashing` (re-exported here) the raw-tag
   `hash_to_group_with_dst` (`hash_to_ristretto255` with SHA-512) and `hash_to_scalar_with_dst`
   (`HashToScalar`), cross-checked against the published ristretto255-SHA512 test vectors.
-- `elgamal::arithmetic::hashing::hash_to_group::<G>(x)`: the `hash_to_group` encoding of
+- `elgamal::arithmetic::hashing::hash_to_group::<C>(x)`: the `hash_to_group` encoding of
   an identifier, with DST `"HashToGroup-" || contextString` derived from
   `C::ID`, where `C` is the `Ciphersuite`. Its docs state the property every encoding must have (no known discrete-log
   relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret

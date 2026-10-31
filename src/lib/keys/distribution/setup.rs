@@ -1,6 +1,6 @@
 //! System setup for distributed transcryptors: blinding factors and blinded global secret keys.
 //!
-//! This module provides functions to set up a distributed system with multiple transcryptors.
+//! The functions set up a distributed system with multiple transcryptors.
 //!
 //! The functions take the group as a type parameter, as there is nothing to infer it from.
 
@@ -83,7 +83,7 @@ pub fn make_distributed_attribute_global_keys<G: Group, R: Rng + CryptoRng>(
 }
 
 /// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
-/// and a list of blinding factors. This is a convenience method that combines
+/// and a list of blinding factors. This combines
 /// [`make_distributed_pseudonym_global_keys`] and [`make_distributed_attribute_global_keys`].
 ///
 /// The blinding factors should securely be transferred to the transcryptors ([`DistributedTranscryptor`](crate::transcryptor::DistributedTranscryptor)s),

@@ -147,7 +147,7 @@ pub struct SessionKeyShares<G: Group> {
 }
 
 /// Create a session key share from a rekey factor and blinding factor.
-/// Automatically works for both pseudonym and attribute key shares based on the types.
+/// Works for both pseudonym and attribute key shares, depending on the types.
 pub fn make_session_key_share<S: SessionKeyShare>(
     rekey_factor: &S::Factor,
     blinding_factor: &BlindingFactor<S::Group>,

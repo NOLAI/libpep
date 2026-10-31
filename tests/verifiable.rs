@@ -29,15 +29,6 @@ use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableReke
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
 use libpep::keys::*;
 
-/// Serde-roundtrip a verifiable proof, flipping a single character inside the
-/// JSON encoding to produce a syntactically valid but semantically different
-/// proof. Used by tampered-proof tests below.
-///
-/// The mutation targets hex/base64 string literals in the JSON: it walks the
-/// JSON character by character, finds the first character inside a string
-/// literal that is a hex/base64 digit, and replaces it with a different valid
-/// digit. This keeps deserialization happy (the string still decodes) while
-/// changing the underlying group element / scalar.
 /// Swap the proof's first base64 / hex-encoded string value with the
 /// corresponding value from a *different but valid* proof, producing a
 /// well-formed but semantically wrong proof for verification testing.
@@ -361,12 +352,11 @@ fn test_verifier_cache_pseudonymization() {
     assert!(verifier.cache().is_empty());
 }
 
-/// Distributed verifiable batch transcryption: client A → 3 transcryptors → client B.
+/// Distributed verifiable batch transcryption: client A, three transcryptors, client B.
 ///
-/// Mirrors the non-verifiable `n_pep_batch_distributed` scenario in
-/// `tests/distributed.rs`, but every transcryptor produces a hoisted
-/// [`VerifiableRRSKBatch`] proof and *the next transcryptor verifies the
-/// previous one's proof* before applying its own transcryption.
+/// Like the distributed scenario in `tests/distributed.rs`, but every transcryptor produces a
+/// batch proof and the next transcryptor verifies the previous one's proof before applying its
+/// own transcryption.
 #[cfg(all(feature = "batch", feature = "batch-pk", not(feature = "elgamal3")))]
 #[test]
 fn n_pep_batch_distributed_verifiable() {

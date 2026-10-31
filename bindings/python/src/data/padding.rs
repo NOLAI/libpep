@@ -1,7 +1,7 @@
 //! Python bindings for PKCS#7 padding operations on Pseudonym and Attribute types.
 //!
-//! These are also exposed as methods on PyPseudonym and PyAttribute in core.rs. This module
-//! provides standalone function versions.
+//! These are also exposed as methods on `PyPseudonym` and `PyAttribute`. This module has the
+//! standalone function versions.
 
 use crate::aliases::{Attribute, Pseudonym};
 use crate::data::simple::{PyAttribute, PyPseudonym};

@@ -81,9 +81,9 @@ pub enum PepJsonValue<G: InvertibleEncoding> {
     Bool(Attribute<G>),
     /// A number, as one attribute.
     Number(Attribute<G>),
-    /// Short string that fits in a single block (≤15 bytes)
+    /// A short string that fits in one block (at most 15 bytes).
     String(Attribute<G>),
-    /// Long string that requires multiple blocks
+    /// A long string of several blocks.
     LongString(LongAttribute<G>),
     /// A pseudonym of one block.
     Pseudonym(Pseudonym<G>),
@@ -117,13 +117,13 @@ pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
     Bool(EncryptedAttribute<G>),
     /// A number, as one encrypted attribute.
     Number(EncryptedAttribute<G>),
-    /// Short string that fits in a single block (≤15 bytes)
+    /// A short string that fits in one block (at most 15 bytes).
     String(EncryptedAttribute<G>),
-    /// Long string that requires multiple blocks
+    /// A long string of several blocks.
     LongString(LongEncryptedAttribute<G>),
-    /// Short pseudonym from 32-byte value
+    /// A pseudonym of one block.
     Pseudonym(EncryptedPseudonym<G>),
-    /// Long pseudonym (multiple 32-byte values or lizard-encoded)
+    /// A pseudonym of several blocks.
     LongPseudonym(LongEncryptedPseudonym<G>),
     /// An array of encrypted values.
     Array(Vec<EncryptedPepJsonValue<G>>),

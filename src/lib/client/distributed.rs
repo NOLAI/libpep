@@ -213,14 +213,14 @@ pub trait Distributed {
     ) -> Self;
 
     /// Update a session key share from one session to another.
-    /// Automatically selects the correct key (pseudonym or attribute) based on the share type.
+    /// Selects the key (pseudonym or attribute) from the share type.
     fn update_session_secret_key<S>(&mut self, old_key_share: S, new_key_share: S)
     where
         S: SessionKeyShare<Group = Self::Group>,
         SessionKeys<Self::Group>: SessionKeyUpdater<S>;
 
     /// Update both pseudonym and attribute session key shares from one session to another.
-    /// This is a convenience method that updates both shares together.
+    /// This updates both shares together.
     fn update_session_secret_keys(
         &mut self,
         old_key_shares: SessionKeyShares<Self::Group>,

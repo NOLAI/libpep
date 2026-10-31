@@ -9,8 +9,8 @@
 //! The proofs are stored over a [`Group`] and created and verified under a [`Ciphersuite`]. The proof encoding
 //! is the four-element one of the published paper (Definition 8); the challenge hash is domain
 //! separated by the ciphersuite's context string under the label `"ZKPChallenge-"`.
-//! [`dleq`](crate::elgamal::dleq) has the two-scalar encoding, for interoperability
-//! with the two-party protocol; the verifiable operations use the encoding of this module.
+//! [`dleq`](crate::elgamal::dleq) has the two-scalar encoding; the verifiable operations use the
+//! encoding of this module.
 //!
 //! # Security properties
 //!

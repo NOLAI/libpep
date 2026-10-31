@@ -1,7 +1,7 @@
 //! Typed Python exception classes for libpep errors.
 //!
 //! This module defines a hierarchy of Python exception types that mirror the
-//! various Rust error enums. Each variant of an error enum maps to its own
+//! Rust error enums. Each variant of an error enum maps to its own
 //! exception subclass so Python callers can write:
 //!
 //! ```python
@@ -15,8 +15,8 @@
 //!
 //! All exceptions inherit from a common base `PEPError(Exception)`.
 //!
-//! The `From<RustError> for PyErr` impls in this module enable the `?` operator
-//! to convert directly into the right Python exception.
+//! The `From<RustError> for PyErr` impls in this module let the `?` operator
+//! convert directly into the right Python exception.
 
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;

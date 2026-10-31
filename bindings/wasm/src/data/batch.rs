@@ -6,9 +6,9 @@
 //! (under `batch-pk` only), and the batch operations (`pseudonymize`, `rekey`,
 //! `transcrypt`) as appropriate per shape.
 //!
-//! The flat `*Batch` free functions in `transcryptor/wasm/batch.rs` are retained;
-//! these wrappers are an additive layer letting JS callers hold a batch across
-//! operations instead of round-tripping through `Vec<E>` between every step.
+//! The flat `*Batch` free functions in `transcryptor/batch.rs` remain. These wrappers let JS
+//! callers hold a batch across operations instead of round-tripping through `Vec<E>` between
+//! steps.
 
 use crate::aliases::EncryptedAttribute;
 use crate::aliases::EncryptedPseudonym;
