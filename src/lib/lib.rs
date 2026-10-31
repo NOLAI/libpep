@@ -35,6 +35,7 @@
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars, which runs under a
 //!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite): a group together with the hash and the
 //!   identifier its domain separation tags are built from.
+//! - [`prelude`] imports what a typical application needs, with subsets for each role.
 //! - With the `verifiable` feature, `elgamal::verifiable` holds the primitives that emit
 //!   zero-knowledge proofs, `verifier` checks such proofs against factor commitments, and the
 //!   high-level layers gain verifiable counterparts of their operations

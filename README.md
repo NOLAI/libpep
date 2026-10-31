@@ -43,19 +43,13 @@ A transcryptor holds two secrets from which all its factors derive.
 Every party works in its own *pseudonymization domain* (typically its role or user group) and *encryption context* (typically a session), and holds session keys for that context.
 
 ```rust
-use libpep::client::{decrypt, encrypt};
-use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::{make_global_keys, make_session_keys};
-use libpep::transcryptor::Transcryptor;
+use libpep::prelude::*;
 
 let rng = &mut rand::rng();
 
 // System setup: global keys, and the secrets of the transcryptor. The high-level API is generic
 // over the group and, where it hashes, over the ciphersuite (a group together with a hash); each is
-// named once here and inferred from there on.
+// named once here and inferred from there on. The prelude exports the ristretto255 ones.
 let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
 let transcryptor = Transcryptor::<Ristretto255Sha512>::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
@@ -246,7 +240,7 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 
 The API is generic in two layers. The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter (`elgamal::arithmetic::Group`). Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite` parameter (`elgamal::arithmetic::Ciphersuite`), which pairs a group with a hash. Another group and hash can be used by implementing the two traits.
 ristretto255 is `elgamal::arithmetic::Ristretto255` (the group) and `elgamal::arithmetic::Ristretto255Sha512` (the ciphersuite `ristretto255-SHA512`). The group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the ciphersuite where something is derived or verified (for example `Transcryptor::<Ristretto255Sha512>::new(..)`); the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255 with SHA-512.
-The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
+`libpep::prelude::*` imports what a typical application needs, including the ristretto255 group and ciphersuite; `prelude::client` and `prelude::transcryptor` are the subsets for each role.
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
 
