@@ -17,7 +17,7 @@
 //!
 //! This module also adds `verifiable_pseudonymize`, `verifiable_rekey` and
 //! `verifiable_transcrypt` methods to the existing `Py*Batch` wrappers from
-//! `data/py/batch.rs`. A second `#[pymethods]` block per `Py*Batch` is allowed
+//! `data/batch.rs`. A second `#[pymethods]` block per `Py*Batch` is allowed
 //! because Cargo.toml enables PyO3's `multiple-pymethods` feature.
 
 use crate::errors::{JsonFormatError, ProofRejectedError};
@@ -704,7 +704,7 @@ impl PyLongRecordTranscryptionBatchProof {
 //
 // `pyo3` with `multiple-pymethods` enabled (see Cargo.toml) accepts a second
 // `#[pymethods] impl PyType { ... }` block, which is merged with the primary
-// block in `data/py/batch.rs`. The verifiable-batch surface lives entirely in
+// block in `data/batch.rs`. The verifiable-batch surface lives entirely in
 // this module so the non-verifiable build is unaffected.
 // ---------------------------------------------------------------------------
 

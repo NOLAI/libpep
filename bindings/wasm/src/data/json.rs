@@ -542,7 +542,7 @@ pub fn wasm_encrypt_json_global(
 }
 
 /// Decrypt an EncryptedPepJsonValue using global secret keys.
-/// Note: For most applications, the global secret key should be discarded and thus never exist.
+/// For most applications, the global secret key should be discarded and thus never exist.
 #[cfg(all(feature = "insecure", feature = "offline"))]
 #[wasm_bindgen(js_name = decryptJsonGlobal)]
 pub fn wasm_decrypt_json_global(

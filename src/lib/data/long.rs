@@ -1,7 +1,7 @@
 //! Long (multi-block) data types for pseudonyms and attributes.
 //!
-//! This module has pseudonyms and attributes that hold more than one block (16 bytes on
-//! ristretto255) of data.
+//! A long value is a sequence of blocks, one group element each (16 bytes of data per block on
+//! ristretto255).
 //!
 //! # Padding
 //!

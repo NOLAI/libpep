@@ -1,4 +1,4 @@
-//! WASM bindings for Record types - standalone encrypt/decrypt operations.
+//! WASM bindings for record types: standalone encrypt and decrypt operations.
 
 use crate::aliases::{EncryptedRecord, Record};
 use crate::data::simple::{

@@ -1,4 +1,4 @@
-//! The prime-order group API over which the data types of the library are generic.
+//! The prime-order group API the library is built on.
 //!
 //! A [`Group`] is a marker type: it carries no data, and names a prime-order group together with
 //! its scalar type and encodings. The data types take it as a type parameter (`Pseudonym<G>`,

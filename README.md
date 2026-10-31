@@ -110,7 +110,7 @@ The `peppy` tool exposes the library on the command line. The first word names w
 | `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
 | `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `mul`, `from-hash`, `hash-to-group` |
 
-`point hash-to-group` domain-separates its hash with the ciphersuite this build implements (`ristretto255-SHA512`); there is one, so there is nothing to select. Factor derivation is separated by the transcryptor secrets, the domain and the session.
+`point hash-to-group` domain-separates its hash with the ciphersuite `ristretto255-SHA512`, the only one this build has. Factor derivation is separated by the transcryptor secrets, the domain and the session.
 
 Values print one per line on standard output, labelled when that is a terminal and bare when piped; `--json` prints all values of a command as one object, which is the form to use when a command prints several values.
 Any value argument may be `-` to read standard input or `@path` to read a file.
@@ -180,7 +180,7 @@ Data is encrypted once and later rekeyed, and reshuffled if it is an identifier,
 Every party knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one party's domain to another's, applying `s = s_from^-1 * s_to`, without a global pseudonym existing in between.
 The factor `s` is tied to the *pseudonymization domain* of a party.
 
-Pseudonym unlinkability rests on the fact that `F_s(M) = s*M` is the Diffie–Hellman pseudorandom function (DH-PRF): as long as `s` stays secret, `s*M` is indistinguishable from a random group element under the Decisional Diffie–Hellman (DDH) assumption, so pseudonyms in different domains cannot be linked without knowing the ratio of their domain factors.
+Pseudonym unlinkability rests on the fact that `F_s(M) = s*M` is the Diffie-Hellman pseudorandom function (DH-PRF): as long as `s` stays secret, `s*M` is indistinguishable from a random group element under the Decisional Diffie-Hellman (DDH) assumption, so pseudonyms in different domains cannot be linked without knowing the ratio of their domain factors.
 Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and recipient never learn `s`.
 
 > [!NOTE]
@@ -200,28 +200,28 @@ Mixing fresh randomness into a ciphertext before reshuffling also protects again
 ### Verifiable transcryption
 
 With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and `k·G` to each factor, and every transcryption can produce a zero-knowledge proof that exactly the committed factors were applied.
-The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat–Shamir transform, and can be verified in batch.
+The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat-Shamir transform, and can be verified in batch.
 Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so a party that sees both sides of a verifiable transcryption can match attribute ciphertexts.
 Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well (Section 3.5).
-This addresses the gap noted under [As a three-party OPRF](#as-a-three-party-oprf): a transcryptor that applies a wrong factor is detected.
+This closes the gap noted under [As a three-party oblivious PRF](#as-a-three-party-oblivious-prf): a transcryptor that applies a wrong factor is detected.
 The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
 
 ## Relation to other primitives
 
-`libpep` combines two familiar primitives: `reshuffle` is an OPRF evaluation and `rekey` is a proxy re-encryption, applied to the same ciphertext.
+`libpep` combines two familiar primitives: `reshuffle` is an oblivious PRF evaluation and `rekey` is a proxy re-encryption, applied to the same ciphertext.
 
-### As a three-party OPRF
+### As a three-party oblivious PRF
 
-[RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html) specifies oblivious pseudorandom functions over prime-order groups as a two-party protocol: a *client* blinds an input, a *server* applies its secret key, and the client unblinds to obtain the PRF output, with the server learning neither input nor output.
+An oblivious pseudorandom function ([RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html) specifies them over prime-order groups) is a two-party protocol: a *client* blinds an input, a *server* applies its secret key, and the client unblinds to obtain the PRF output, with the server learning neither input nor output.
 
 `libpep` evaluates the same DH-PRF `F_s(M) = s*M`, but splits the client role over a **sender** and a **recipient**, with the **transcryptor** as evaluator.
 ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the recipient's decryption unblinds.
 The transcryptor learns neither `M` nor `s*M`, and neither sender nor recipient learns `s`.
-Because blinding and unblinding are performed by different parties, evaluation is non-interactive and asynchronous: the sender can encrypt before the recipient is known, and the PRF output appears only in the recipient's domain.
+Because blinding and unblinding are done by different parties, evaluation is non-interactive and asynchronous: the sender can encrypt before the recipient is known, and the PRF output appears only in the recipient's domain.
 
-Two differences with the RFC:
-RFC 9497 hashes the input into the group first; `libpep` omits that hash and relies on origin identifiers being uniformly random group elements, as described above.
-And the RFC's VOPRF and POPRF modes provide verifiability, whereas plain PEP transcryption does not: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
+There are two differences with the two-party protocol.
+`libpep` does not hash the input into the group first; it relies on origin identifiers being uniformly random group elements, as described above.
+And plain PEP transcryption is not verifiable: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
 
 ### As proxy re-encryption with built-in pseudonymization
 
@@ -239,13 +239,13 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `transcryptor` | Pseudonymization, rekeying and transcryption, single and in batch; `DistributedTranscryptor` produces session key shares; with the `verifiable` feature, the same operations with zero-knowledge proofs of correct transcryption |
 | `data` | `Pseudonym` and `Attribute`, their long (multi-block) variants, records, and JSON documents with nested pseudonyms and attributes |
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
-| `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for |
+| `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for, and the `TranscryptorId` that names a transcryptor |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
 | `elgamal` | The ElGamal ciphertext with `encrypt` and `decrypt`; the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`; in `elgamal::arithmetic` the `Group` trait (the prime-order group API) with its `Ristretto255` instance and its scalar and group element arithmetic, the `Ciphersuite` trait that pairs a group with a hash and supplies the domain separation tags of the protocol's hashes (`Ristretto255Sha512` for ristretto255 with SHA-512), and the hashing to the group and to scalars (`elgamal::arithmetic::hashing`: `expand_message_xmd`, `hash_to_group`, `hash_to_nonzero_scalar`); with the `verifiable` feature the primitives that emit proofs in `elgamal::verifiable`, and the underlying `elgamal::zkps` and `elgamal::dleq` |
 | `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
 The API is generic in two layers. The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter (`elgamal::arithmetic::Group`). Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite` parameter (`elgamal::arithmetic::Ciphersuite`), which pairs a group with a hash. Another group and hash can be used by implementing the two traits.
-Ristretto255 comes as `elgamal::arithmetic::Ristretto255` (the group) and `elgamal::arithmetic::Ristretto255Sha512` (the ciphersuite `ristretto255-SHA512`). The group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the ciphersuite where something is derived or verified (for example `Transcryptor::<Ristretto255Sha512>::new(..)`); the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255 with SHA-512.
+ristretto255 is `elgamal::arithmetic::Ristretto255` (the group) and `elgamal::arithmetic::Ristretto255Sha512` (the ciphersuite `ristretto255-SHA512`). The group is named where it cannot be inferred (for example `make_global_keys::<Ristretto255, _>(rng)`) and the ciphersuite where something is derived or verified (for example `Transcryptor::<Ristretto255Sha512>::new(..)`); the types follow from there. The `peppy` tool and the Python and JavaScript bindings use ristretto255 with SHA-512.
 The `prelude::client` and `prelude::transcryptor` modules re-export what each role needs.
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
@@ -259,11 +259,11 @@ Default features:
 - `serde`: serialization and deserialization support via Serde.
 - `json`: JSON documents with nested pseudonyms and attributes.
 - `batch-pk`: batches carry the public key their ciphertexts are encrypted under, so batch operations that rerandomize do not need it as a separate argument. No effect under `elgamal3`, where every ciphertext carries its key.
-- `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat–Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
+- `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat-Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
 
 Optional features:
 - `cli`: the `peppy` command-line tool (enables `long`, `offline`, `serde` and `verifiable`).
-- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter–Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor (Section 3.3.1 of the paper).
+- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor (Section 3.3.1 of the paper).
   This is not the preferred scheme: the factors are linear in two public hashes, so two leaked factors give the master secret, and two pseudonyms of one subject (or two session keys) give all of them.
   Use the published commitments of the `verifiable` feature unless commitment storage is the binding constraint and that trade-off is acceptable.
 - `elgamal3`: ciphertexts additionally encode the public key they were encrypted for, the `(B, C, Y)` triple encoding of the original PEP framework.

@@ -1,9 +1,10 @@
 //! PEP transcryptor system for pseudonymizing and rekeying encrypted data.
 //!
 //! [`Transcryptor`] and [`DistributedTranscryptor`] are generic over the
-//! [`Group`](crate::elgamal::arithmetic::Group), for example `Transcryptor<Ristretto255>`, as are
-//! the polymorphic functions such as [`transcrypt`], which work for every type of
-//! [`data`](crate::data).
+//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite), for example
+//! `Transcryptor<Ristretto255Sha512>`, because they derive factors by hashing. The polymorphic
+//! functions such as [`transcrypt`] take the group from their arguments and work for every type
+//! of [`data`](crate::data).
 
 // Module declarations
 #[cfg(feature = "batch")]

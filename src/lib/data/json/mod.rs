@@ -1,8 +1,8 @@
 //! JSON value types that can be encrypted using PEP cryptography.
 //!
-//! This module provides `PepJsonValue` which represents JSON values where
-//! primitive values (bools, numbers, strings) are encrypted as Attributes
-//! or LongAttributes, and optionally as Pseudonyms using `Pseudonym` variant.
+//! `PepJsonValue` represents a JSON value in which the primitive values (booleans, numbers,
+//! strings) are encrypted as attributes or long attributes, and fields marked as pseudonyms are
+//! encrypted as pseudonyms or long pseudonyms.
 
 pub mod builder;
 pub mod data;

@@ -1,7 +1,7 @@
 //! ristretto255 aliases of the generic libpep types, used by the bindings.
 //!
-//! The core crate is generic over the group; the Python module only exposes ristretto255, so the
-//! binding layer fixes the group once here.
+//! The core crate is generic over the group and the ciphersuite; the Python module only exposes
+//! ristretto255 with SHA-512, so the binding layer fixes both once here.
 
 #![allow(unused_imports)]
 

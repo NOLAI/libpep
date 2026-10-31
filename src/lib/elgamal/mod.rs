@@ -2,7 +2,7 @@
 //! (n)-PEP [primitives] that operate on ElGamal ciphertexts.
 //!
 //! Use this module when the individual (n)-PEP primitives are needed. Most callers should use the
-//! [high-level](crate::transcryptor) API, which is easier and safer to use.
+//! [high-level](crate::transcryptor) API, which also takes care of rerandomization.
 //!
 //! The ciphertext and the encryption functions are generic over the [`Group`](arithmetic::Group).
 

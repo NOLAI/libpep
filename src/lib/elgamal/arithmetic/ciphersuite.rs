@@ -9,10 +9,10 @@
 //! are generic over a ciphersuite `C`, and reach its group as `C::Group`.
 //!
 //! A ciphersuite is named by a [`CiphersuiteId`], such as `ristretto255-SHA512` for ristretto255
-//! with SHA-512 (the marker [`Ristretto255Sha512`](super::Ristretto255Sha512)) or `P256-SHA256`
-//! for P-256 with SHA-256. The identifier is taken verbatim from the ciphersuite table instead of
-//! being composed from group and hash fragments: the table spells the P-256 suite `P256-SHA256`
-//! while the group itself is called P-256, so a composed string would be wrong.
+//! with SHA-512 (the marker [`Ristretto255Sha512`](super::Ristretto255Sha512)). The identifier is
+//! written out in full for each ciphersuite and not composed from the names of the group and the
+//! hash, because those do not always combine into the usual identifier: P-256 with SHA-256 is
+//! `P256-SHA256`.
 //!
 //! # Domain separation
 //!
@@ -89,8 +89,8 @@ pub trait Ciphersuite:
     /// The identifier of this ciphersuite, whose context string the protocol's domain separation
     /// tags are built from.
     ///
-    /// Build it with the [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the
-    /// ciphersuite table, verbatim.
+    /// Build it with the [`ciphersuite!`](crate::ciphersuite) macro from the identifier, for
+    /// example `"ristretto255-SHA512"`.
     const ID: CiphersuiteId;
 
     /// `HashToGroup(msg, dst)`: a deterministic map of an arbitrary byte string to a group
@@ -136,8 +136,8 @@ impl CiphersuiteId {
 
     /// The context string `"nPEPV1-" || identifier`.
     ///
-    /// Related protocols call this value `contextString`, and the name is kept so it is
-    /// recognisable. It is unrelated to the [`contexts`](crate::contexts) module.
+    /// This value is called `contextString` in the descriptions of the tags. It is unrelated to
+    /// the [`contexts`](crate::contexts) module.
     #[must_use]
     pub const fn context_string(&self) -> &'static [u8] {
         self.context_string.as_bytes()

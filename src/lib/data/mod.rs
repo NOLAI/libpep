@@ -1,7 +1,7 @@
 //! The data types: pseudonyms, attributes, their long and encrypted forms, records, JSON
 //! documents, and the traits the operations are generic over.
 //!
-//! # Where the ElGamal assumption lives
+//! # ElGamal-specific parts
 //!
 //! Part of this module does not depend on how values are encrypted:
 //!

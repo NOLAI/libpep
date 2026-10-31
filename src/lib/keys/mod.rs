@@ -1,7 +1,8 @@
 //! Key management for PEP encryption.
 //!
-//! This module provides types and functions for managing global keys (used for system configuration),
-//! session keys (used for encryption/decryption), and distributed transcryptor key management.
+//! The module has the types and functions for global keys (used for system configuration),
+//! session keys (used for encryption and decryption), and the key management of distributed
+//! transcryptors.
 //!
 //! The key types are generic over the [`Group`](crate::elgamal::arithmetic::Group), for example
 //! `SessionKeys<Ristretto255>`; the group is inferred from the keys wherever they are passed

@@ -6,8 +6,8 @@ use wasm_bindgen::prelude::*;
 /// The ciphersuite identifier, from which the context string `"nPEPV1-" || identifier` is built.
 ///
 /// Hashes that take no secret, in particular `hashToGroup`, are domain-separated with it. An
-/// identifier names a group *and* a hash, so it is not chosen per
-/// call: a build has the suite `ristretto255-SHA512`, ristretto255 with SHA-512.
+/// identifier names a group and a hash together, so it is not chosen per call: a build has the
+/// suite `ristretto255-SHA512`, ristretto255 with SHA-512.
 ///
 /// This is not an `EncryptionContext` or a `PseudonymizationDomain`: those name a session and a
 /// domain within a deployment.

@@ -1,7 +1,7 @@
 //! WASM bindings for PKCS#7 padding operations on Pseudonym and Attribute types.
 //!
-//! Note: These are also exposed as methods on WASMPseudonym and WASMAttribute in core.rs.
-//! This module provides standalone function versions for API completeness.
+//! These are also exposed as methods on `WASMPseudonym` and `WASMAttribute`. This module has the
+//! standalone function versions.
 
 use crate::aliases::{Attribute, Pseudonym};
 use crate::data::simple::{WASMAttribute, WASMPseudonym};

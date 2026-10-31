@@ -1,6 +1,6 @@
 //! External padding for batch unlinkability.
 //!
-//! This module provides functions to create and detect the external padding blocks added by the
+//! The functions here create and detect the external padding blocks added by the
 //! `pad_to()` method on long data types. External padding gives values of different sizes the
 //! same structure, which batch transcryption needs to stay unlinkable.
 //!

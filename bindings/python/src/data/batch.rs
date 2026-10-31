@@ -4,7 +4,7 @@
 //! This module defines one wrapper per concrete `E` used in batch operations
 //! (simple/long pseudonyms and attributes, records). Each wrapper mirrors the Rust
 //! API 1:1, so callers can hold a batch across method calls instead of flattening
-//! to a `Vec<E>` between steps.
+//! it to a `Vec<E>` between steps.
 //!
 //! The cfg variants mirror the Rust impl in `transcryptor::batch`:
 //!   - `(batch-pk, !elgamal3)`: the batch carries the recipient public key and

@@ -1,4 +1,7 @@
-//! Ristretto255 instances of the generic libpep types, as used by these bindings.
+//! ristretto255 instances of the generic libpep types, as used by these bindings.
+//!
+//! The core crate is generic over the group and the ciphersuite; the JavaScript module only
+//! exposes ristretto255 with SHA-512, so the binding layer fixes both once here.
 
 use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 

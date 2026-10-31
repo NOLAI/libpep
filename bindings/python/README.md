@@ -47,7 +47,7 @@ assert decrypt(back, keys_a).to_hex() == pseudonym_a.to_hex()
 
 Keys are passed either as the one key an operation needs or as a bundle: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The type of the data selects the right half of the bundle.
 
-See the [repository README](https://github.com/NOLAI/libpep) for the full documentation, the cryptographic background, and the papers describing the scheme.
+See the [repository README](https://github.com/NOLAI/libpep) for the cryptographic background and the papers describing the scheme.
 
 ## Development
 

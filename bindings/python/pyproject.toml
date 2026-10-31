@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "libpep-py"
-description = "Python bindings for libpep - implementation of PEP primitives, offering pseudonymization and encryption interfaces"
+description = "Python bindings for libpep, polymorphic encryption and pseudonymization"
 authors = [
     {name = "Bernard van Gastel", email = "bvgastel@bitpowder.com"},
     {name = "Job Doesburg", email = "job@jobdoesburg.nl"}
