@@ -1,27 +1,20 @@
 #![cfg(feature = "json")]
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
-use common::aliases::PepJsonBuilder;
-use common::aliases::TranscryptionInfo;
-use common::aliases::{Ristretto255, Ristretto255Sha512};
-use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::traits::{Encryptable, Encrypted, Transcryptable};
-use libpep::factors::secrets::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::{make_global_keys, make_session_keys};
 use libpep::pep_json;
-#[cfg(feature = "batch")]
-use libpep::transcryptor::transcrypt_batch;
 use serde_json::json;
 
 #[macro_use]
 mod common;
+
+use common::aliases::*;
 
 #[test]
 fn test_json_transcryption_with_macro() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -29,8 +22,7 @@ fn test_json_transcryption_with_macro() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create patient record with pseudonym using macro
     let patient_record = pep_json!({
@@ -86,7 +78,7 @@ fn test_json_transcryption_with_builder() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -94,8 +86,7 @@ fn test_json_transcryption_with_builder() {
     let domain_b = PseudonymizationDomain::from("clinic-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create JSON with existing data, marking "user_id" as a pseudonym field
     let patient_data = json!({
@@ -170,7 +161,7 @@ fn test_json_batch_transcryption_same_structure() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -178,8 +169,7 @@ fn test_json_batch_transcryption_same_structure() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create two JSON values with the SAME structure using standard JSON
 
@@ -285,7 +275,7 @@ fn test_json_batch_transcryption_different_structures() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -293,8 +283,7 @@ fn test_json_batch_transcryption_different_structures() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create two JSON values with DIFFERENT structures using standard JSON
 
@@ -366,7 +355,7 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let enc_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
@@ -374,15 +363,11 @@ fn test_json_transcryption_with_client_and_transcryptor() {
     let domain_b = PseudonymizationDomain::from("domain-b");
     let session = EncryptionContext::from("session-1");
 
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &enc_secret);
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
-    let transcryptor = libpep::transcryptor::Transcryptor::<Ristretto255Sha512>::new(
-        pseudo_secret.clone(),
-        enc_secret.clone(),
-    );
+    let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
 
     // Create patient record JSON data
     let patient_data = json!({
@@ -462,20 +447,17 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
-    let transcryptor = libpep::transcryptor::Transcryptor::<Ristretto255Sha512>::new(
-        pseudonymization_secret.clone(),
-        encryption_secret.clone(),
-    );
+    let transcryptor =
+        Transcryptor::new(pseudonymization_secret.clone(), encryption_secret.clone());
 
     // Create PepJson with both short and long pseudonyms using pep_json! macro
     let original_pep = pep_json!({
@@ -572,25 +554,20 @@ fn test_pseudonym_roundtrip_with_json_serialization() {
 /// but uses the builder API instead of the pep_json! macro.
 #[test]
 fn test_pseudonym_roundtrip_with_builder() {
-    use libpep::data::json::data::PepJsonValue;
-
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
-    let transcryptor = libpep::transcryptor::Transcryptor::<Ristretto255Sha512>::new(
-        pseudonymization_secret.clone(),
-        encryption_secret.clone(),
-    );
+    let transcryptor =
+        Transcryptor::new(pseudonymization_secret.clone(), encryption_secret.clone());
 
     // 1. Create PepJson with both short and long pseudonyms using the builder
     let original_pep = PepJsonBuilder::new()
@@ -712,20 +689,17 @@ fn test_unicode_pseudonyms_and_attributes() {
     let mut rng = rand::rng();
 
     // Setup keys and secrets
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (_global_public, global_secret) = make_global_keys(&mut rng);
     let pseudonymization_secret = PseudonymizationSecret::from("pseudo-secret".as_bytes().to_vec());
     let encryption_secret = EncryptionSecret::from("encryption-secret".as_bytes().to_vec());
 
     let session = EncryptionContext::from("session-1");
-    let session_keys =
-        make_session_keys::<Ristretto255Sha512>(&global_secret, &session, &encryption_secret);
+    let session_keys = make_session_keys(&global_secret, &session, &encryption_secret);
 
     // Create client and transcryptor
     let client = libpep::client::Client::new(session_keys);
-    let transcryptor = libpep::transcryptor::Transcryptor::<Ristretto255Sha512>::new(
-        pseudonymization_secret.clone(),
-        encryption_secret.clone(),
-    );
+    let transcryptor =
+        Transcryptor::new(pseudonymization_secret.clone(), encryption_secret.clone());
 
     // Create PepJson with unicode characters
     let original_pep = pep_json!({

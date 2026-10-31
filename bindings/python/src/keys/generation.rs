@@ -7,9 +7,6 @@ use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::factors::secrets::PyEncryptionSecret;
 use crate::keys::types::PyAttributeSessionPublicKey;
 use crate::keys::types::PyPseudonymSessionPublicKey;
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
-use libpep::keys::generation::*;
 use libpep::keys::SecretKey;
 use pyo3::prelude::*;
 
@@ -18,7 +15,7 @@ use pyo3::prelude::*;
 #[pyo3(name = "make_pseudonym_global_keys")]
 pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+    let (public, secret) = make_pseudonym_global_keys(&mut rng);
     PyPseudonymGlobalKeyPair {
         public: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public)),
         secret: PyPseudonymGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
@@ -30,7 +27,7 @@ pub fn py_make_pseudonym_global_keys() -> PyPseudonymGlobalKeyPair {
 #[pyo3(name = "make_attribute_global_keys")]
 pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
     let mut rng = rand::rng();
-    let (public, secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
+    let (public, secret) = make_attribute_global_keys(&mut rng);
     PyAttributeGlobalKeyPair {
         public: PyAttributeGlobalPublicKey::from(PyGroupElement::from(*public)),
         secret: PyAttributeGlobalSecretKey::from(PyScalarNonZero::from(*secret.value())),
@@ -45,7 +42,7 @@ pub fn py_make_pseudonym_session_keys(
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyPseudonymSessionKeyPair {
-    let (public, secret_key) = make_pseudonym_session_keys::<Ristretto255Sha512>(
+    let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey::from_scalar(*global_key.0),
         &session.0,
         &secret.0,
@@ -64,7 +61,7 @@ pub fn py_make_attribute_session_keys(
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PyAttributeSessionKeyPair {
-    let (public, secret_key) = make_attribute_session_keys::<Ristretto255Sha512>(
+    let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey::from_scalar(*global_key.0),
         &session.0,
         &secret.0,
@@ -80,7 +77,7 @@ pub fn py_make_attribute_session_keys(
 #[pyo3(name = "make_global_keys")]
 pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     let mut rng = rand::rng();
-    let (public, secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+    let (public, secret) = make_global_keys(&mut rng);
     (
         PyGlobalPublicKeys {
             pseudonym: PyPseudonymGlobalPublicKey::from(PyGroupElement::from(*public.pseudonym)),
@@ -105,7 +102,7 @@ pub fn py_make_session_keys(
     session: &crate::contexts::PyEncryptionContext,
     secret: &PyEncryptionSecret,
 ) -> PySessionKeys {
-    let keys = make_session_keys::<Ristretto255Sha512>(
+    let keys = make_session_keys(
         &GlobalSecretKeys {
             pseudonym: PseudonymGlobalSecretKey::from_scalar(*global_key.pseudonym.0),
             attribute: AttributeGlobalSecretKey::from_scalar(*global_key.attribute.0),

@@ -8,14 +8,8 @@
 
 mod common;
 
-use common::aliases::Transcryptor;
-use common::aliases::{Attribute, Pseudonym};
-use common::aliases::{Ristretto255, Ristretto255Sha512, SessionKeys};
-use libpep::client::{decrypt, encrypt};
-use libpep::contexts::*;
-use libpep::data::simple::ElGamalEncryptable;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
-use libpep::keys::*;
+use common::aliases::*;
+
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
 
@@ -23,17 +17,13 @@ const SEED: [u8; 32] = [7u8; 32];
 
 fn setup() -> (Transcryptor, SessionKeys, EncryptionContext) {
     let rng = &mut ChaCha20Rng::from_seed(SEED);
-    let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+    let (_global_public, global_secret) = make_global_keys(rng);
     let transcryptor = Transcryptor::new(
         PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
         EncryptionSecret::from(b"encryption secret".to_vec()),
     );
     let session = EncryptionContext::from("session-a");
-    let keys = make_session_keys::<Ristretto255Sha512>(
-        &global_secret,
-        &session,
-        transcryptor.rekeying_secret(),
-    );
+    let keys = make_session_keys(&global_secret, &session, transcryptor.rekeying_secret());
     (transcryptor, keys, session)
 }
 

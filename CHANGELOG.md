@@ -8,7 +8,20 @@ a major change against the published 0.13.0.
 
 ### API changes
 
-- `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets.
+- `libpep::ristretto255` instantiates the generic API for ristretto255 with SHA-512, so that code
+  which does not need another group writes no type parameters. It has an alias for every generic
+  type under the same name, with the same feature gates (`Pseudonym` is `Pseudonym<Ristretto255>`,
+  `Transcryptor` is `Transcryptor<Ristretto255Sha512>`), wrappers with the same names for the
+  functions that cannot infer the group or ciphersuite (`make_global_keys`, `make_session_keys`,
+  `make_*_factor`, `hash_to_group`, `hash_to_nonzero_scalar`, `make_distributed_*_global_keys`,
+  `make_*_with_proof`, `verifiable_rerandomize`), the info constructors as functions
+  (`transcryption_info`, `pseudonymization_info`, `pseudonym_rekey_info`, `attribute_rekey_info`),
+  and the remaining items re-exported. Associated functions that take the ciphersuite as a type
+  parameter (`proof.verify::<C>(..)`, `verifiable_pseudonymize::<C>`) and tuple constructors
+  (`LongPseudonym(..)`, `FactorCommitment(..)`) cannot go through an alias and keep their form.
+  The generic items stay at their paths. `peppy` and the Python and JavaScript bindings use this
+  module instead of their own alias files.
+- `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets. Its types and key functions are the ristretto255 instances from `libpep::ristretto255`: after `use libpep::prelude::*;`, `Pseudonym::random(rng)`, `Transcryptor::new(..)`, `make_global_keys(rng)` and `make_session_keys(..)` need no type annotation.
 - `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
   inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.

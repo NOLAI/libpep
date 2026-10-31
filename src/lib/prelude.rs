@@ -5,6 +5,12 @@
 //! info, and the client and transcryptor operations. Features add their items: long variants
 //! (`long`), offline encryption (`offline`), batches (`batch`) and verification (`verifiable`).
 //!
+//! The types and the key functions are the ristretto255 instances from
+//! [`ristretto255`](crate::ristretto255): `Pseudonym` is `Pseudonym<Ristretto255>`, and
+//! `make_global_keys(rng)` needs no type parameter. The generic items are at their own paths
+//! (for example [`data::simple::Pseudonym`](crate::data::simple::Pseudonym)); import those
+//! explicitly to work with another group. An explicit import takes precedence over the glob.
+//!
 //! Left out on purpose, because they are rarely needed or ambiguous when glob-imported: the
 //! ElGamal internals, the proofs ([`elgamal::dleq`](crate::elgamal), `elgamal::zkps`), hashing,
 //! the [`Group`](crate::elgamal::arithmetic::Group) and
@@ -23,16 +29,16 @@
 //! use libpep::prelude::*;
 //!
 //! let rng = &mut rand::rng();
-//! let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
-//! let transcryptor = Transcryptor::<Ristretto255Sha512>::new(
+//! let (_global_public, global_secret) = make_global_keys(rng);
+//! let transcryptor = Transcryptor::new(
 //!     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
 //!     EncryptionSecret::from(b"encryption secret".to_vec()),
 //! );
 //!
 //! let (domain_a, session_a) = (PseudonymizationDomain::from("hospital"), EncryptionContext::from("session-a"));
 //! let (domain_b, session_b) = (PseudonymizationDomain::from("research"), EncryptionContext::from("session-b"));
-//! let keys_a = make_session_keys::<Ristretto255Sha512>(&global_secret, &session_a, transcryptor.rekeying_secret());
-//! let keys_b = make_session_keys::<Ristretto255Sha512>(&global_secret, &session_b, transcryptor.rekeying_secret());
+//! let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret());
+//! let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret());
 //!
 //! let pseudonym = Pseudonym::random(rng);
 //! let encrypted = encrypt(&pseudonym, &keys_a.public(), rng);
@@ -53,12 +59,12 @@
 pub use crate::client::prelude::*;
 pub use crate::transcryptor::prelude::*;
 
-pub use crate::keys::{
+pub use crate::ristretto255::{
     make_attribute_global_keys, make_attribute_session_keys, make_global_keys,
     make_pseudonym_global_keys, make_pseudonym_session_keys, make_session_keys, GlobalSecretKeys,
 };
 #[cfg(feature = "verifiable")]
-pub use crate::verifier::{Verifier, VerifyError};
+pub use crate::ristretto255::{Verifier, VerifyError};
 
 pub mod client {
     //! Client prelude for encryption and decryption operations.

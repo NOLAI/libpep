@@ -37,25 +37,12 @@
 
 mod common;
 
-use common::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use common::aliases::{AttributeRekeyInfo, PseudonymizationInfo};
-use common::aliases::{BlindingCommitment, SessionKeyShareProof};
-use common::aliases::{EncryptedAttribute, EncryptedPseudonym};
-use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::simple::ElGamalEncrypted;
-use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::hashing::hash_to_group;
-use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-use libpep::elgamal::arithmetic::{Ciphersuite, Ristretto255, Ristretto255Sha512};
-use libpep::elgamal::ElGamal;
+use common::aliases::*;
+
+use libpep::elgamal::arithmetic::group_elements::G;
+use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::elgamal::arithmetic::Ciphersuite;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
-use libpep::factors::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
-};
-use libpep::factors::{EncryptionSecret, Factor, PseudonymizationSecret};
-use libpep::keys::traits::{PublicKey, SecretKey};
-use libpep::keys::{make_attribute_session_keys, make_pseudonym_session_keys};
-use libpep::transcryptor::{pseudonymize_batch, rekey_batch};
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
 use std::fmt::Write as _;
@@ -290,7 +277,7 @@ fn rng_for(label: u8) -> ChaCha20Rng {
     ChaCha20Rng::from_seed(seed)
 }
 
-fn ciphertext_hex(c: &ElGamal<Ristretto255>) -> String {
+fn ciphertext_hex(c: &ElGamal) -> String {
     hex::encode(c.to_bytes())
 }
 
@@ -453,7 +440,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "SessionIdentifier", &hex::encode(b"session-a"));
     out.push('\n');
 
-    let k = make_pseudonym_rekey_factor::<Ristretto255Sha512>(&enc_secret, &session);
+    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
     put(
         out,
         "labelRekeyPseudonym",
@@ -463,7 +450,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "K_c", &(k.scalar() * G).to_hex());
     out.push('\n');
 
-    let ka = make_attribute_rekey_factor::<Ristretto255Sha512>(&enc_secret, &session);
+    let ka = make_attribute_rekey_factor(&enc_secret, &session);
     put(
         out,
         "labelRekeyAttribute",
@@ -473,7 +460,7 @@ fn vectors_derive_factor(out: &mut String) {
     put(out, "K'_c", &(ka.scalar() * G).to_hex());
     out.push('\n');
 
-    let s = make_pseudonymization_factor::<Ristretto255Sha512>(&pseudo_secret, &domain);
+    let s = make_pseudonymization_factor(&pseudo_secret, &domain);
     put(out, "labelReshuffle", &format!("{LABEL_RESHUFFLE:02x}"));
     put(out, "s_d", &s.scalar().to_hex());
     put(out, "S_d", &(s.scalar() * G).to_hex());
@@ -496,17 +483,13 @@ fn vectors_single_pseudonym(out: &mut String) {
     let y = ScalarNonZero::random(&mut rng);
     let global_secret = PseudonymGlobalSecretKey::from_scalar(y);
 
-    let (pk_from, _sk_from) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-        &global_secret,
-        &session_from,
-        &enc_secret,
-    );
-    let (_pk_to, sk_to) =
-        make_pseudonym_session_keys::<Ristretto255Sha512>(&global_secret, &session_to, &enc_secret);
+    let (pk_from, _sk_from) =
+        make_pseudonym_session_keys(&global_secret, &session_from, &enc_secret);
+    let (_pk_to, sk_to) = make_pseudonym_session_keys(&global_secret, &session_to, &enc_secret);
 
     // The identifier is encoded with hash_to_group.
     let identifier = b"patient-42";
-    let m = hash_to_group::<Ristretto255Sha512>(identifier);
+    let m = hash_to_group(identifier);
 
     // Enc(M, pk_from) with an explicit blinding scalar b.
     let b = ScalarNonZero::random(&mut rng);
@@ -549,7 +532,7 @@ fn vectors_single_pseudonym(out: &mut String) {
     let r = ScalarNonZero::random(&mut rng);
     let s = info.s.scalar();
     let k = info.k.scalar();
-    let rerandomized = ElGamal::<Ristretto255> {
+    let rerandomized = ElGamal {
         gb: ciphertext.gb + r * G,
         gc: ciphertext.gc + r * *pk_from.value(),
     };
@@ -589,26 +572,10 @@ fn vectors_batch(out: &mut String) {
     let y_attr = ScalarNonZero::random(&mut rng);
     let attribute_global = AttributeGlobalSecretKey::from_scalar(y_attr);
 
-    let (pk_from, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-        &pseudonym_global,
-        &session_from,
-        &enc_secret,
-    );
-    let (_, sk_to) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-        &pseudonym_global,
-        &session_to,
-        &enc_secret,
-    );
-    let (apk_from, _) = make_attribute_session_keys::<Ristretto255Sha512>(
-        &attribute_global,
-        &session_from,
-        &enc_secret,
-    );
-    let (_, ask_to) = make_attribute_session_keys::<Ristretto255Sha512>(
-        &attribute_global,
-        &session_to,
-        &enc_secret,
-    );
+    let (pk_from, _) = make_pseudonym_session_keys(&pseudonym_global, &session_from, &enc_secret);
+    let (_, sk_to) = make_pseudonym_session_keys(&pseudonym_global, &session_to, &enc_secret);
+    let (apk_from, _) = make_attribute_session_keys(&attribute_global, &session_from, &enc_secret);
+    let (_, ask_to) = make_attribute_session_keys(&attribute_global, &session_to, &enc_secret);
 
     out.push_str("// A batch of three pseudonyms (typePseudonym, 0x01) and three attributes\n");
     out.push_str("// (typeAttribute, 0x02). The permutation and every r are drawn from the\n");
@@ -623,7 +590,7 @@ fn vectors_batch(out: &mut String) {
     let identifiers: [&[u8]; 3] = [b"patient-1", b"patient-2", b"patient-3"];
     let mut pseudonyms = Vec::new();
     for (i, id) in identifiers.iter().enumerate() {
-        let m = hash_to_group::<Ristretto255Sha512>(id);
+        let m = hash_to_group(id);
         let b = ScalarNonZero::random(&mut rng);
         let c = ElGamal {
             gb: b * G,
@@ -666,7 +633,7 @@ fn vectors_batch(out: &mut String) {
         let p = c.value().gc - sk_to.value() * c.value().gb;
         put(out, &format!("PseudonymP_{i}"), &p.to_hex());
         let source = (0..3)
-            .find(|&j| s * hash_to_group::<Ristretto255Sha512>(identifiers[j]) == p)
+            .find(|&j| s * hash_to_group(identifiers[j]) == p)
             .expect("every output pseudonym comes from one of the inputs");
         permutation.push(source.to_string());
     }
@@ -733,7 +700,7 @@ fn vectors_session_key_share(out: &mut String) {
     let enc_secret = EncryptionSecret::from(b"transcryptor-1-encryption-secret".to_vec());
     let session = EncryptionContext::from("session-a");
 
-    let k = make_pseudonym_rekey_factor::<Ristretto255Sha512>(&enc_secret, &session);
+    let k = make_pseudonym_rekey_factor(&enc_secret, &session);
     let k_commitment = k.scalar() * G;
 
     let b = ScalarNonZero::random(&mut rng);

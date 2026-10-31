@@ -3,13 +3,8 @@ mod common;
 #[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
-    use crate::common::aliases::PseudonymRekeyFactor;
-    use crate::common::aliases::{BlindingFactor, Ristretto255Sha512};
-    use libpep::contexts::PseudonymizationDomain;
+    use crate::common::aliases::*;
     use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-    use libpep::factors::{make_pseudonymization_factor, Factor, PseudonymizationSecret};
-    use libpep::keys::distribution::shares::make_pseudonym_session_key_share;
-    use libpep::keys::distribution::SessionKeyShare;
 
     #[test]
     fn test_key_factor_component() {
@@ -34,8 +29,7 @@ mod legacy_pep_repo_tests {
             let secret = hex::decode(secret_hex).unwrap();
             let pseudo_secret = PseudonymizationSecret::from(secret);
             let context = PseudonymizationDomain::from_audience(payload, *audience_type as u32);
-            let pseudo_factor =
-                make_pseudonymization_factor::<Ristretto255Sha512>(&pseudo_secret, &context);
+            let pseudo_factor = make_pseudonymization_factor(&pseudo_secret, &context);
             assert_eq!(
                 pseudo_factor.scalar().to_hex().to_ascii_uppercase(),
                 *expected_factor

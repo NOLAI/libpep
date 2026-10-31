@@ -3,7 +3,6 @@
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarCanBeZero;
 use libpep::elgamal::arithmetic::hashing;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -50,7 +49,7 @@ pub fn py_hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> PyScalarCanBeZero {
 #[pyfunction]
 #[pyo3(name = "hash_to_group")]
 pub fn py_hash_to_group(x: &[u8]) -> PyGroupElement {
-    hashing::hash_to_group::<Ristretto255Sha512>(x).into()
+    crate::aliases::hash_to_group(x).into()
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
