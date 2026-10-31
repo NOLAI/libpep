@@ -3,8 +3,8 @@
 //!
 //! These take the complete domain separation tag, which is what the test vectors exercise. The
 //! protocol-level encoding, [`hash_to_group`](crate::elgamal::arithmetic::hashing::hash_to_group),
-//! derives the tag from a group's [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite)
-//! instead.
+//! derives the tag from a ciphersuite's
+//! [`CiphersuiteId`](crate::elgamal::arithmetic::CiphersuiteId) instead.
 
 use super::group_elements::GroupElement;
 use super::scalars::ScalarCanBeZero;
@@ -15,9 +15,9 @@ use sha2::Sha512;
 /// scalar hash of the ristretto255-SHA512 ciphersuite are built from.
 ///
 /// SHA-512 is pinned here because this is a ristretto255 primitive, not a generic one: it backs
-/// the raw-tag functions below and `Ristretto255`'s own trait methods, which the RFC 9380 and
+/// the raw-tag functions below and the trait methods of `Ristretto255Sha512`, which the RFC 9380 and
 /// published ristretto255-SHA512 test vectors exercise with SHA-512 by definition. Code that is generic over a
-/// [`Group`] must reach the ciphersuite's hash through [`Group::Hash`] instead.
+/// [`Ciphersuite`] must reach its hash through [`Ciphersuite::Hash`] instead.
 pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
     let mut out = [0u8; 64];
     out.copy_from_slice(&expand_message_xmd::<Sha512>(msg, dst, 64));

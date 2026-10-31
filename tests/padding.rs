@@ -3,8 +3,8 @@
 
 use common::aliases::LongPseudonym;
 use common::aliases::PseudonymizationInfo;
-use common::aliases::Ristretto255;
 use common::aliases::{EncryptedPseudonym, Pseudonym};
+use common::aliases::{Ristretto255, Ristretto255Sha512};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::traits::{Encryptable, Encrypted};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
@@ -30,7 +30,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
 
     // Create session keys
     let (session_public, session_secret) =
-        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+        make_pseudonym_session_keys::<Ristretto255Sha512>(&global_secret, &session, &enc_secret);
 
     // Original string to encrypt and pseudonymize
     let original_string = "This is a very long id that will be pseudonymized";
@@ -45,7 +45,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         .collect();
 
     // Step 3: Create pseudonymization info for transform
-    let pseudo_info = PseudonymizationInfo::new(
+    let pseudo_info = PseudonymizationInfo::new::<Ristretto255Sha512>(
         &domain_a,
         &domain_b,
         &session,
@@ -82,7 +82,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         .collect();
 
     // Step 7: Reverse the pseudonymization
-    let reverse_pseudo_info = PseudonymizationInfo::new(
+    let reverse_pseudo_info = PseudonymizationInfo::new::<Ristretto255Sha512>(
         &domain_b,
         &domain_a,
         &session,

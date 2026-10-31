@@ -8,6 +8,7 @@ use crate::aliases::{BlindingCommitment, SessionKeyShareProof};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
@@ -95,7 +96,11 @@ impl PySessionKeyShareProof {
     fn new(blinding: PyScalarNonZero, rekey_commitment: PyGroupElement) -> Self {
         let mut rng = rand::rng();
         Self {
-            inner: SessionKeyShareProof::new(&blinding.0, &rekey_commitment.0, &mut rng),
+            inner: SessionKeyShareProof::new::<Ristretto255Sha512, _>(
+                &blinding.0,
+                &rekey_commitment.0,
+                &mut rng,
+            ),
         }
     }
 
@@ -118,14 +123,14 @@ impl PySessionKeyShareProof {
         rekey_commitment: PyGroupElement,
     ) -> PyResult<bool> {
         if let Ok(s) = share.extract::<PyPseudonymSessionKeyShare>() {
-            return Ok(self.inner.verify_share(
+            return Ok(self.inner.verify_share::<Ristretto255Sha512, _>(
                 &s.0,
                 &blinding_commitment.inner,
                 &rekey_commitment.0,
             ));
         }
         if let Ok(s) = share.extract::<PyAttributeSessionKeyShare>() {
-            return Ok(self.inner.verify_share(
+            return Ok(self.inner.verify_share::<Ristretto255Sha512, _>(
                 &s.0,
                 &blinding_commitment.inner,
                 &rekey_commitment.0,
@@ -147,7 +152,7 @@ impl PySessionKeyShareProof {
         rekey_commitment: PyGroupElement,
     ) -> bool {
         self.inner
-            .verify(&blinding_commitment.inner, &rekey_commitment.0)
+            .verify::<Ristretto255Sha512>(&blinding_commitment.inner, &rekey_commitment.0)
     }
 
     /// Return the public commitment `U_i = u_i · G` to the session-key share.

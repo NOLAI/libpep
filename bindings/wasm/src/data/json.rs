@@ -30,6 +30,7 @@ use libpep::client::{decrypt_global, encrypt_global};
 use libpep::data::json::structure::JsonStructure;
 use libpep::data::json::utils;
 use libpep::data::traits::Transcryptable;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::keys::{PublicKey, SecretKey};
 #[cfg(feature = "batch")]
@@ -161,7 +162,7 @@ impl WASMEncryptedPepJsonValue {
         encryption_secret: &WASMEncryptionSecret,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
-        let transcryption_info = TranscryptionInfo::new(
+        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,
@@ -203,7 +204,7 @@ impl WASMEncryptedPepJsonValue {
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
         let pk = crate::aliases::SessionPublicKeys::from(public_key);
-        let transcryption_info = TranscryptionInfo::new(
+        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,

@@ -16,6 +16,7 @@ use crate::data::json::PyEncryptedPepJsonValue;
 use crate::factors::commitments::PyVerifiableTranscryptionCommitment;
 use crate::factors::types::PyTranscryptionInfo;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -79,7 +80,8 @@ impl PyJsonTranscryptionProof {
         original: &PyEncryptedPepJsonValue,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> bool {
-        self.inner.verify(&original.0, &commitments.inner)
+        self.inner
+            .verify::<Ristretto255Sha512>(&original.0, &commitments.inner)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -91,7 +93,7 @@ impl PyJsonTranscryptionProof {
     ) -> bool {
         let keys: crate::aliases::SessionKeys = session_keys.clone().into();
         self.inner
-            .verify(&original.0, &keys.public(), &commitments.inner)
+            .verify::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.inner)
     }
 
     /// Verify and reconstruct the transcrypted JSON value.
@@ -102,7 +104,7 @@ impl PyJsonTranscryptionProof {
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyEncryptedPepJsonValue> {
         self.inner
-            .verified_reconstruct(&original.0, &commitments.inner)
+            .verified_reconstruct::<Ristretto255Sha512>(&original.0, &commitments.inner)
             .map(PyEncryptedPepJsonValue)
             .ok_or_else(map_verify_err)
     }
@@ -116,7 +118,11 @@ impl PyJsonTranscryptionProof {
     ) -> PyResult<PyEncryptedPepJsonValue> {
         let keys: crate::aliases::SessionKeys = session_keys.clone().into();
         self.inner
-            .verified_reconstruct(&original.0, &keys.public(), &commitments.inner)
+            .verified_reconstruct::<Ristretto255Sha512>(
+                &original.0,
+                &keys.public(),
+                &commitments.inner,
+            )
             .map(PyEncryptedPepJsonValue)
             .ok_or_else(map_verify_err)
     }
@@ -181,7 +187,9 @@ impl PyEncryptedPepJsonValue {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
         PyJsonTranscryptionProof {
-            inner: self.0.verifiable_transcrypt(&info, &mut rng),
+            inner: self
+                .0
+                .verifiable_transcrypt::<Ristretto255Sha512, _>(&info, &mut rng),
         }
     }
 
@@ -197,9 +205,11 @@ impl PyEncryptedPepJsonValue {
         let info = TranscryptionInfo::from(info);
         let keys: crate::aliases::SessionKeys = session_keys.clone().into();
         PyJsonTranscryptionProof {
-            inner: self
-                .0
-                .verifiable_transcrypt(&info, &keys.public(), &mut rng),
+            inner: self.0.verifiable_transcrypt::<Ristretto255Sha512, _>(
+                &info,
+                &keys.public(),
+                &mut rng,
+            ),
         }
     }
 }

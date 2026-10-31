@@ -22,6 +22,7 @@ use derive_more::{Deref, From, Into};
 #[cfg(feature = "elgamal3")]
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 use wasm_bindgen::prelude::*;
@@ -102,13 +103,13 @@ macro_rules! wasm_verify {
         impl $w {
             /// Verify the proof against the original ciphertext(s) and the commitments.
             pub fn verify(&self, $($arg: $ty),*) -> bool {
-                self.0.verify($($call),*)
+                self.0.verify::<Ristretto255Sha512>($($call),*)
             }
 
             /// Verify the proof and return the result, or `undefined` if it does not verify.
             #[wasm_bindgen(js_name = verifiedReconstruct)]
             pub fn verified_reconstruct(&self, $($arg: $ty),*) -> Option<$out> {
-                self.0.verified_reconstruct($($call),*).map(ToWasm::to_wasm)
+                self.0.verified_reconstruct::<Ristretto255Sha512>($($call),*).map(ToWasm::to_wasm)
             }
         }
     };
@@ -178,26 +179,34 @@ impl WASMVerifiableRerandomize {
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, r: &Scalar) -> WASMVerifiableRerandomize {
-        Self(VerifiableRerandomize::new(&v.0.gy, r, &mut rand::rng()))
+        Self(VerifiableRerandomize::new::<Ristretto255Sha512, _>(
+            &v.0.gy,
+            r,
+            &mut rand::rng(),
+        ))
     }
 
     /// A proof of rerandomizing a ciphertext under `gy` with `r`.
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(gy: &WASMGroupElement, r: &Scalar) -> WASMVerifiableRerandomize {
-        Self(VerifiableRerandomize::new(gy, r, &mut rand::rng()))
+        Self(VerifiableRerandomize::new::<Ristretto255Sha512, _>(
+            gy,
+            r,
+            &mut rand::rng(),
+        ))
     }
 
     /// Verify the proof against the key of `v`.
     #[cfg(feature = "elgamal3")]
     pub fn verify(&self, v: &WASMElGamal) -> bool {
-        self.0.verify(&v.0.gy)
+        self.0.verify::<Ristretto255Sha512>(&v.0.gy)
     }
 
     /// Verify the proof against `gy`.
     #[cfg(not(feature = "elgamal3"))]
     pub fn verify(&self, gy: &WASMGroupElement) -> bool {
-        self.0.verify(gy)
+        self.0.verify::<Ristretto255Sha512>(gy)
     }
 
     /// Verify the proof and return the rerandomized ciphertext, or `undefined`.
@@ -205,7 +214,7 @@ impl WASMVerifiableRerandomize {
     #[wasm_bindgen(js_name = verifiedReconstruct)]
     pub fn verified_reconstruct(&self, original: &WASMElGamal) -> Option<WASMElGamal> {
         self.0
-            .verified_reconstruct(original, &original.0.gy)
+            .verified_reconstruct::<Ristretto255Sha512>(original, &original.0.gy)
             .map(ToWasm::to_wasm)
     }
 
@@ -218,7 +227,7 @@ impl WASMVerifiableRerandomize {
         gy: &WASMGroupElement,
     ) -> Option<WASMElGamal> {
         self.0
-            .verified_reconstruct(original, gy)
+            .verified_reconstruct::<Ristretto255Sha512>(original, gy)
             .map(ToWasm::to_wasm)
     }
 }
@@ -257,8 +266,10 @@ pub fn wasm_verifiable_rerandomize(
     original: &WASMElGamal,
     r: &Scalar,
 ) -> WASMVerifiableRerandomizeResult {
-    let (result, proof) =
-        libpep::elgamal::verifiable::verifiable_rerandomize(original, r, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
+        Ristretto255Sha512,
+        _,
+    >(original, r, &mut rand::rng());
     WASMVerifiableRerandomizeResult {
         result: result.to_wasm(),
         proof: WASMVerifiableRerandomize(proof),
@@ -273,8 +284,10 @@ pub fn wasm_verifiable_rerandomize(
     gy: &WASMGroupElement,
     r: &Scalar,
 ) -> WASMVerifiableRerandomizeResult {
-    let (result, proof) =
-        libpep::elgamal::verifiable::verifiable_rerandomize(original, gy, r, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
+        Ristretto255Sha512,
+        _,
+    >(original, gy, r, &mut rand::rng());
     WASMVerifiableRerandomizeResult {
         result: result.to_wasm(),
         proof: WASMVerifiableRerandomize(proof),
@@ -287,7 +300,11 @@ impl WASMVerifiableRekey {
     /// A proof of rekeying `v` with `k`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, k: &Scalar) -> WASMVerifiableRekey {
-        Self(VerifiableRekey::new(v, k, &mut rand::rng()))
+        Self(VerifiableRekey::new::<Ristretto255Sha512, _>(
+            v,
+            k,
+            &mut rand::rng(),
+        ))
     }
 }
 wasm_verify!(WASMVerifiableRekey as VerifiableRekey:
@@ -301,7 +318,12 @@ impl WASMVerifiableRekey2 {
     /// A proof of rekeying `v` from `k_from` to `k_to`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, k_from: &Scalar, k_to: &Scalar) -> WASMVerifiableRekey2 {
-        Self(VerifiableRekey2::new(v, k_from, k_to, &mut rand::rng()))
+        Self(VerifiableRekey2::new::<Ristretto255Sha512, _>(
+            v,
+            k_from,
+            k_to,
+            &mut rand::rng(),
+        ))
     }
 
     /// Verify the factor sub-proof against the commitments of both sessions.
@@ -311,7 +333,8 @@ impl WASMVerifiableRekey2 {
         from_commitment: &RekeyCommitment,
         to_commitment: &RekeyCommitment,
     ) -> bool {
-        self.0.verify_factor(from_commitment, to_commitment)
+        self.0
+            .verify_factor::<Ristretto255Sha512>(from_commitment, to_commitment)
     }
 
     /// The commitment to the combined factor `k_from⁻¹·k_to`.
@@ -334,7 +357,11 @@ impl WASMVerifiableReshuffle {
     /// A proof of reshuffling `v` with `s`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, s: &Scalar) -> WASMVerifiableReshuffle {
-        Self(VerifiableReshuffle::new(v, s, &mut rand::rng()))
+        Self(VerifiableReshuffle::new::<Ristretto255Sha512, _>(
+            v,
+            s,
+            &mut rand::rng(),
+        ))
     }
 }
 wasm_verify!(WASMVerifiableReshuffle as VerifiableReshuffle:
@@ -349,7 +376,12 @@ impl WASMVerifiableReshuffle2 {
     /// A proof of reshuffling `v` from `s_from` to `s_to`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, s_from: &Scalar, s_to: &Scalar) -> WASMVerifiableReshuffle2 {
-        Self(VerifiableReshuffle2::new(v, s_from, s_to, &mut rand::rng()))
+        Self(VerifiableReshuffle2::new::<Ristretto255Sha512, _>(
+            v,
+            s_from,
+            s_to,
+            &mut rand::rng(),
+        ))
     }
 
     /// Verify the factor sub-proof against the commitments of both domains.
@@ -359,7 +391,8 @@ impl WASMVerifiableReshuffle2 {
         from_commitment: &ReshuffleCommitment,
         to_commitment: &ReshuffleCommitment,
     ) -> bool {
-        self.0.verify_factor(from_commitment, to_commitment)
+        self.0
+            .verify_factor::<Ristretto255Sha512>(from_commitment, to_commitment)
     }
 
     /// The commitment to the combined factor `s_from⁻¹·s_to`.
@@ -387,7 +420,12 @@ impl WASMVerifiableRSK {
     /// A proof of reshuffling and rekeying `v` with `s` and `k`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, s: &Scalar, k: &Scalar) -> WASMVerifiableRSK {
-        Self(VerifiableRSK::new(v, s, k, &mut rand::rng()))
+        Self(VerifiableRSK::new::<Ristretto255Sha512, _>(
+            v,
+            s,
+            k,
+            &mut rand::rng(),
+        ))
     }
 }
 wasm_verify!(WASMVerifiableRSK as VerifiableRSK: (
@@ -409,7 +447,7 @@ impl WASMVerifiableRSK2 {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRSK2 {
-        Self(VerifiableRSK2::new(
+        Self(VerifiableRSK2::new::<Ristretto255Sha512, _>(
             v,
             s_from,
             s_to,
@@ -428,7 +466,7 @@ impl WASMVerifiableRSK2 {
         k_from_commitment: &RekeyCommitment,
         k_to_commitment: &RekeyCommitment,
     ) -> bool {
-        self.0.verify_factor(
+        self.0.verify_factor::<Ristretto255Sha512>(
             s_from_commitment,
             s_to_commitment,
             k_from_commitment,
@@ -470,7 +508,14 @@ impl WASMVerifiableRRSK {
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(v: &WASMElGamal, r: &Scalar, s: &Scalar, k: &Scalar) -> WASMVerifiableRRSK {
-        Self(VerifiableRRSK::new(v, &v.0.gy, r, s, k, &mut rand::rng()))
+        Self(VerifiableRRSK::new::<Ristretto255Sha512, _>(
+            v,
+            &v.0.gy,
+            r,
+            s,
+            k,
+            &mut rand::rng(),
+        ))
     }
 
     /// A proof of rerandomizing under `gy` with `r`, then reshuffling and rekeying with `s`
@@ -484,7 +529,14 @@ impl WASMVerifiableRRSK {
         s: &Scalar,
         k: &Scalar,
     ) -> WASMVerifiableRRSK {
-        Self(VerifiableRRSK::new(v, gy, r, s, k, &mut rand::rng()))
+        Self(VerifiableRRSK::new::<Ristretto255Sha512, _>(
+            v,
+            gy,
+            r,
+            s,
+            k,
+            &mut rand::rng(),
+        ))
     }
 }
 wasm_verify!(#[cfg(feature = "elgamal3")] WASMVerifiableRRSK as VerifiableRRSK: (
@@ -514,7 +566,7 @@ impl WASMVerifiableRRSK2 {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRRSK2 {
-        Self(VerifiableRRSK2::new(
+        Self(VerifiableRRSK2::new::<Ristretto255Sha512, _>(
             v,
             &v.0.gy,
             r,
@@ -540,7 +592,7 @@ impl WASMVerifiableRRSK2 {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRRSK2 {
-        Self(VerifiableRRSK2::new(
+        Self(VerifiableRRSK2::new::<Ristretto255Sha512, _>(
             v,
             gy,
             r,
@@ -597,7 +649,7 @@ impl WASMVerifiableRerandomizeBatch {
     #[cfg(feature = "elgamal3")]
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(n: usize, gy_source: &WASMElGamal) -> WASMVerifiableRerandomizeBatch {
-        Self(VerifiableRerandomizeBatch::new(
+        Self(VerifiableRerandomizeBatch::new::<Ristretto255Sha512, _>(
             n,
             &gy_source.0.gy,
             &mut rand::rng(),
@@ -608,19 +660,24 @@ impl WASMVerifiableRerandomizeBatch {
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(n: usize, gy: &WASMGroupElement) -> WASMVerifiableRerandomizeBatch {
-        Self(VerifiableRerandomizeBatch::new(n, gy, &mut rand::rng()))
+        Self(VerifiableRerandomizeBatch::new::<Ristretto255Sha512, _>(
+            n,
+            gy,
+            &mut rand::rng(),
+        ))
     }
 
     /// Verify the proof against `originals`, which carry one key.
     #[cfg(feature = "elgamal3")]
     pub fn verify(&self, originals: Vec<WASMElGamal>) -> bool {
-        common_gy(&originals).is_ok_and(|gy| self.0.verify(&els(&originals), &gy))
+        common_gy(&originals)
+            .is_ok_and(|gy| self.0.verify::<Ristretto255Sha512>(&els(&originals), &gy))
     }
 
     /// Verify the proof against `originals` and `gy`.
     #[cfg(not(feature = "elgamal3"))]
     pub fn verify(&self, originals: Vec<WASMElGamal>, gy: &WASMGroupElement) -> bool {
-        self.0.verify(&els(&originals), gy)
+        self.0.verify::<Ristretto255Sha512>(&els(&originals), gy)
     }
 
     /// Verify the proof and return the rerandomized ciphertexts, or `undefined`.
@@ -629,7 +686,7 @@ impl WASMVerifiableRerandomizeBatch {
     pub fn verified_reconstruct(&self, originals: Vec<WASMElGamal>) -> Option<Vec<WASMElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.0
-            .verified_reconstruct(&els(&originals), &gy)
+            .verified_reconstruct::<Ristretto255Sha512>(&els(&originals), &gy)
             .map(ToWasm::to_wasm)
     }
 
@@ -642,7 +699,7 @@ impl WASMVerifiableRerandomizeBatch {
         gy: &WASMGroupElement,
     ) -> Option<Vec<WASMElGamal>> {
         self.0
-            .verified_reconstruct(&els(&originals), gy)
+            .verified_reconstruct::<Ristretto255Sha512>(&els(&originals), gy)
             .map(ToWasm::to_wasm)
     }
 }
@@ -681,11 +738,10 @@ pub fn wasm_verifiable_rerandomize_batch(
     originals: Vec<WASMElGamal>,
 ) -> Result<WASMVerifiableRerandomizeBatchResult, JsValue> {
     let gy = common_gy(&originals)?;
-    let (results, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
-        &els(&originals),
-        &gy,
-        &mut rand::rng(),
-    );
+    let (results, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
+        Ristretto255Sha512,
+        _,
+    >(&els(&originals), &gy, &mut rand::rng());
     Ok(WASMVerifiableRerandomizeBatchResult {
         results: results.to_wasm(),
         proof: WASMVerifiableRerandomizeBatch(proof),
@@ -699,11 +755,10 @@ pub fn wasm_verifiable_rerandomize_batch(
     originals: Vec<WASMElGamal>,
     gy: &WASMGroupElement,
 ) -> WASMVerifiableRerandomizeBatchResult {
-    let (results, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
-        &els(&originals),
-        gy,
-        &mut rand::rng(),
-    );
+    let (results, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
+        Ristretto255Sha512,
+        _,
+    >(&els(&originals), gy, &mut rand::rng());
     WASMVerifiableRerandomizeBatchResult {
         results: results.to_wasm(),
         proof: WASMVerifiableRerandomizeBatch(proof),
@@ -716,7 +771,7 @@ impl WASMVerifiableRekeyBatch {
     /// A proof of rekeying every ciphertext with `k`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(ciphertexts: Vec<WASMElGamal>, k: &Scalar) -> WASMVerifiableRekeyBatch {
-        Self(VerifiableRekeyBatch::new(
+        Self(VerifiableRekeyBatch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             k,
             &mut rand::rng(),
@@ -739,7 +794,7 @@ impl WASMVerifiableRekey2Batch {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRekey2Batch {
-        Self(VerifiableRekey2Batch::new(
+        Self(VerifiableRekey2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             k_from,
             k_to,
@@ -754,7 +809,8 @@ impl WASMVerifiableRekey2Batch {
         from_commitment: &RekeyCommitment,
         to_commitment: &RekeyCommitment,
     ) -> bool {
-        self.0.verify_factor(from_commitment, to_commitment)
+        self.0
+            .verify_factor::<Ristretto255Sha512>(from_commitment, to_commitment)
     }
 
     /// The commitment to the combined factor `k_from⁻¹·k_to`.
@@ -777,7 +833,7 @@ impl WASMVerifiableReshuffleBatch {
     /// A proof of reshuffling every ciphertext with `s`.
     #[wasm_bindgen(js_name = newProof)]
     pub fn new_proof(ciphertexts: Vec<WASMElGamal>, s: &Scalar) -> WASMVerifiableReshuffleBatch {
-        Self(VerifiableReshuffleBatch::new(
+        Self(VerifiableReshuffleBatch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             s,
             &mut rand::rng(),
@@ -800,7 +856,7 @@ impl WASMVerifiableReshuffle2Batch {
         s_from: &Scalar,
         s_to: &Scalar,
     ) -> WASMVerifiableReshuffle2Batch {
-        Self(VerifiableReshuffle2Batch::new(
+        Self(VerifiableReshuffle2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             s_from,
             s_to,
@@ -815,7 +871,8 @@ impl WASMVerifiableReshuffle2Batch {
         from_commitment: &ReshuffleCommitment,
         to_commitment: &ReshuffleCommitment,
     ) -> bool {
-        self.0.verify_factor(from_commitment, to_commitment)
+        self.0
+            .verify_factor::<Ristretto255Sha512>(from_commitment, to_commitment)
     }
 
     /// The commitment to the combined factor `s_from⁻¹·s_to`.
@@ -842,7 +899,7 @@ impl WASMVerifiableRSKBatch {
         s: &Scalar,
         k: &Scalar,
     ) -> WASMVerifiableRSKBatch {
-        Self(VerifiableRSKBatch::new(
+        Self(VerifiableRSKBatch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             s,
             k,
@@ -857,7 +914,8 @@ impl WASMVerifiableRSKBatch {
         reshuffle_commitment: &ReshuffleCommitment,
         rekey_commitment: &RekeyCommitment,
     ) -> bool {
-        self.0.verify_factor(reshuffle_commitment, rekey_commitment)
+        self.0
+            .verify_factor::<Ristretto255Sha512>(reshuffle_commitment, rekey_commitment)
     }
 }
 wasm_verify!(WASMVerifiableRSKBatch as VerifiableRSKBatch: (
@@ -879,7 +937,7 @@ impl WASMVerifiableRSK2Batch {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRSK2Batch {
-        Self(VerifiableRSK2Batch::new(
+        Self(VerifiableRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             s_from,
             s_to,
@@ -898,7 +956,7 @@ impl WASMVerifiableRSK2Batch {
         k_from_commitment: &RekeyCommitment,
         k_to_commitment: &RekeyCommitment,
     ) -> bool {
-        self.0.verify_factor(
+        self.0.verify_factor::<Ristretto255Sha512>(
             s_from_commitment,
             s_to_commitment,
             k_from_commitment,
@@ -946,7 +1004,7 @@ impl WASMVerifiableRRSKBatch {
         k: &Scalar,
     ) -> Result<WASMVerifiableRRSKBatch, JsValue> {
         let gy = common_gy(&ciphertexts)?;
-        Ok(Self(VerifiableRRSKBatch::new(
+        Ok(Self(VerifiableRRSKBatch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             &gy,
             s,
@@ -964,7 +1022,7 @@ impl WASMVerifiableRRSKBatch {
         s: &Scalar,
         k: &Scalar,
     ) -> WASMVerifiableRRSKBatch {
-        Self(VerifiableRRSKBatch::new(
+        Self(VerifiableRRSKBatch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             gy,
             s,
@@ -982,7 +1040,7 @@ impl WASMVerifiableRRSKBatch {
         rekey_commitment: &RekeyCommitment,
     ) -> bool {
         common_gy(&originals).is_ok_and(|gy| {
-            self.0.verify(
+            self.0.verify::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 reshuffle_commitment,
@@ -1002,7 +1060,7 @@ impl WASMVerifiableRRSKBatch {
     ) -> Option<Vec<WASMElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.0
-            .verified_reconstruct(
+            .verified_reconstruct::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 reshuffle_commitment,
@@ -1034,7 +1092,7 @@ impl WASMVerifiableRRSK2Batch {
         k_to: &Scalar,
     ) -> Result<WASMVerifiableRRSK2Batch, JsValue> {
         let gy = common_gy(&ciphertexts)?;
-        Ok(Self(VerifiableRRSK2Batch::new(
+        Ok(Self(VerifiableRRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             &gy,
             s_from,
@@ -1058,7 +1116,7 @@ impl WASMVerifiableRRSK2Batch {
         k_from: &Scalar,
         k_to: &Scalar,
     ) -> WASMVerifiableRRSK2Batch {
-        Self(VerifiableRRSK2Batch::new(
+        Self(VerifiableRRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             gy,
             s_from,
@@ -1080,7 +1138,7 @@ impl WASMVerifiableRRSK2Batch {
         k_to_commitment: &RekeyCommitment,
     ) -> bool {
         common_gy(&originals).is_ok_and(|gy| {
-            self.0.verify(
+            self.0.verify::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 s_from_commitment,
@@ -1104,7 +1162,7 @@ impl WASMVerifiableRRSK2Batch {
     ) -> Option<Vec<WASMElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.0
-            .verified_reconstruct(
+            .verified_reconstruct::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 s_from_commitment,

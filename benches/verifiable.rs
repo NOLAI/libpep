@@ -11,7 +11,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 use libpep::elgamal::primitives::{rekey, rekey2, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2};
 use libpep::elgamal::verifiable::{
     PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
@@ -75,7 +75,9 @@ fn bench_verifiable_reshuffle_create(c: &mut Criterion) {
                 let s = ScalarNonZero::random(&mut rng);
                 (encrypted, s, rng)
             },
-            |(encrypted, s, mut rng)| VerifiableReshuffle::new(&encrypted, &s, &mut rng),
+            |(encrypted, s, mut rng)| {
+                VerifiableReshuffle::new::<Ristretto255Sha512, _>(&encrypted, &s, &mut rng)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -90,12 +92,15 @@ fn bench_verifiable_reshuffle_verify(c: &mut Criterion) {
                 let m = GroupElement::random(&mut rng);
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableReshuffle::new(&encrypted, &s, &mut rng);
+                let proof =
+                    VerifiableReshuffle::new::<Ristretto255Sha512, _>(&encrypted, &s, &mut rng);
                 let result = reshuffle(&encrypted, &s);
                 let commitments = PseudonymizationFactorCommitment::new(&s);
                 (encrypted, result, proof, commitments)
             },
-            |(encrypted, _result, proof, commitments)| proof.verify(&encrypted, &commitments),
+            |(encrypted, _result, proof, commitments)| {
+                proof.verify::<Ristretto255Sha512>(&encrypted, &commitments)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -112,7 +117,9 @@ fn bench_verifiable_rekey_create(c: &mut Criterion) {
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, k, rng)
             },
-            |(encrypted, k, mut rng)| VerifiableRekey::new(&encrypted, &k, &mut rng),
+            |(encrypted, k, mut rng)| {
+                VerifiableRekey::new::<Ristretto255Sha512, _>(&encrypted, &k, &mut rng)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -127,12 +134,14 @@ fn bench_verifiable_rekey_verify(c: &mut Criterion) {
                 let m = GroupElement::random(&mut rng);
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRekey::new(&encrypted, &k, &mut rng);
+                let proof = VerifiableRekey::new::<Ristretto255Sha512, _>(&encrypted, &k, &mut rng);
                 let result = rekey(&encrypted, &k);
                 let commitments = RekeyFactorCommitment::new(&k);
                 (encrypted, result, proof, commitments)
             },
-            |(encrypted, _result, proof, commitments)| proof.verify(&encrypted, &commitments),
+            |(encrypted, _result, proof, commitments)| {
+                proof.verify::<Ristretto255Sha512>(&encrypted, &commitments)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -150,7 +159,9 @@ fn bench_verifiable_rsk_create(c: &mut Criterion) {
                 let k = ScalarNonZero::random(&mut rng);
                 (encrypted, s, k, rng)
             },
-            |(encrypted, s, k, mut rng)| VerifiableRSK::new(&encrypted, &s, &k, &mut rng),
+            |(encrypted, s, k, mut rng)| {
+                VerifiableRSK::new::<Ristretto255Sha512, _>(&encrypted, &s, &k, &mut rng)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -166,13 +177,16 @@ fn bench_verifiable_rsk_verify(c: &mut Criterion) {
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRSK::new(&encrypted, &s, &k, &mut rng);
+                let proof =
+                    VerifiableRSK::new::<Ristretto255Sha512, _>(&encrypted, &s, &k, &mut rng);
                 let result = rsk(&encrypted, &s, &k);
                 let rs = PseudonymizationFactorCommitment::new(&s);
                 let rk = RekeyFactorCommitment::new(&k);
                 (encrypted, result, proof, rs, rk)
             },
-            |(encrypted, _result, proof, rs, rk)| proof.verify(&encrypted, &rs, &rk),
+            |(encrypted, _result, proof, rs, rk)| {
+                proof.verify::<Ristretto255Sha512>(&encrypted, &rs, &rk)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -191,7 +205,9 @@ fn bench_verifiable_reshuffle2_create(c: &mut Criterion) {
                 (encrypted, s_from, s_to, rng)
             },
             |(encrypted, s_from, s_to, mut rng)| {
-                VerifiableReshuffle2::new(&encrypted, &s_from, &s_to, &mut rng)
+                VerifiableReshuffle2::new::<Ristretto255Sha512, _>(
+                    &encrypted, &s_from, &s_to, &mut rng,
+                )
             },
             criterion::BatchSize::SmallInput,
         )
@@ -208,14 +224,16 @@ fn bench_verifiable_reshuffle2_verify(c: &mut Criterion) {
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let s_from = ScalarNonZero::random(&mut rng);
                 let s_to = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableReshuffle2::new(&encrypted, &s_from, &s_to, &mut rng);
+                let proof = VerifiableReshuffle2::new::<Ristretto255Sha512, _>(
+                    &encrypted, &s_from, &s_to, &mut rng,
+                );
                 let result = reshuffle2(&encrypted, &s_from, &s_to);
                 let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
                 let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
                 (encrypted, result, proof, s_from_com, s_to_com)
             },
             |(encrypted, _result, proof, s_from_com, s_to_com)| {
-                proof.verify(&encrypted, &s_from_com, &s_to_com)
+                proof.verify::<Ristretto255Sha512>(&encrypted, &s_from_com, &s_to_com)
             },
             criterion::BatchSize::SmallInput,
         )
@@ -235,7 +253,7 @@ fn bench_verifiable_rekey2_create(c: &mut Criterion) {
                 (encrypted, k_from, k_to, rng)
             },
             |(encrypted, k_from, k_to, mut rng)| {
-                VerifiableRekey2::new(&encrypted, &k_from, &k_to, &mut rng)
+                VerifiableRekey2::new::<Ristretto255Sha512, _>(&encrypted, &k_from, &k_to, &mut rng)
             },
             criterion::BatchSize::SmallInput,
         )
@@ -252,14 +270,16 @@ fn bench_verifiable_rekey2_verify(c: &mut Criterion) {
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRekey2::new(&encrypted, &k_from, &k_to, &mut rng);
+                let proof = VerifiableRekey2::new::<Ristretto255Sha512, _>(
+                    &encrypted, &k_from, &k_to, &mut rng,
+                );
                 let result = rekey2(&encrypted, &k_from, &k_to);
                 let k_from_com = RekeyFactorCommitment::new(&k_from);
                 let k_to_com = RekeyFactorCommitment::new(&k_to);
                 (encrypted, result, proof, k_from_com, k_to_com)
             },
             |(encrypted, _result, proof, k_from_com, k_to_com)| {
-                proof.verify(&encrypted, &k_from_com, &k_to_com)
+                proof.verify::<Ristretto255Sha512>(&encrypted, &k_from_com, &k_to_com)
             },
             criterion::BatchSize::SmallInput,
         )
@@ -281,7 +301,9 @@ fn bench_verifiable_rsk2_create(c: &mut Criterion) {
                 (encrypted, s_from, s_to, k_from, k_to, rng)
             },
             |(encrypted, s_from, s_to, k_from, k_to, mut rng)| {
-                VerifiableRSK2::new(&encrypted, &s_from, &s_to, &k_from, &k_to, &mut rng)
+                VerifiableRSK2::new::<Ristretto255Sha512, _>(
+                    &encrypted, &s_from, &s_to, &k_from, &k_to, &mut rng,
+                )
             },
             criterion::BatchSize::SmallInput,
         )
@@ -300,8 +322,9 @@ fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
-                let proof =
-                    VerifiableRSK2::new(&encrypted, &s_from, &s_to, &k_from, &k_to, &mut rng);
+                let proof = VerifiableRSK2::new::<Ristretto255Sha512, _>(
+                    &encrypted, &s_from, &s_to, &k_from, &k_to, &mut rng,
+                );
                 let result = rsk2(&encrypted, &s_from, &s_to, &k_from, &k_to);
                 let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
                 let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
@@ -312,7 +335,13 @@ fn bench_verifiable_rsk2_verify(c: &mut Criterion) {
                 )
             },
             |(encrypted, _result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
-                proof.verify(&encrypted, &s_from_com, &s_to_com, &k_from_com, &k_to_com)
+                proof.verify::<Ristretto255Sha512>(
+                    &encrypted,
+                    &s_from_com,
+                    &s_to_com,
+                    &k_from_com,
+                    &k_to_com,
+                )
             },
             criterion::BatchSize::SmallInput,
         )
@@ -333,7 +362,7 @@ fn bench_verifiable_rrsk_create(c: &mut Criterion) {
                 (encrypted, pk, r, s, k, rng)
             },
             |(encrypted, pk, r, s, k, mut rng)| {
-                VerifiableRRSK::new(&encrypted, &pk, &r, &s, &k, &mut rng)
+                VerifiableRRSK::new::<Ristretto255Sha512, _>(&encrypted, &pk, &r, &s, &k, &mut rng)
             },
             criterion::BatchSize::SmallInput,
         )
@@ -351,13 +380,17 @@ fn bench_verifiable_rrsk_verify(c: &mut Criterion) {
                 let r = ScalarNonZero::random(&mut rng);
                 let s = ScalarNonZero::random(&mut rng);
                 let k = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRRSK::new(&encrypted, &pk, &r, &s, &k, &mut rng);
+                let proof = VerifiableRRSK::new::<Ristretto255Sha512, _>(
+                    &encrypted, &pk, &r, &s, &k, &mut rng,
+                );
                 let result = rrsk_primitive(&encrypted, &pk, &r, &s, &k);
                 let rs = PseudonymizationFactorCommitment::new(&s);
                 let rk = RekeyFactorCommitment::new(&k);
                 (encrypted, pk, result, proof, rs, rk)
             },
-            |(encrypted, pk, _result, proof, rs, rk)| proof.verify(&encrypted, &pk, &rs, &rk),
+            |(encrypted, pk, _result, proof, rs, rk)| {
+                proof.verify::<Ristretto255Sha512>(&encrypted, &pk, &rs, &rk)
+            },
             criterion::BatchSize::SmallInput,
         )
     });
@@ -379,7 +412,7 @@ fn bench_verifiable_rrsk2_create(c: &mut Criterion) {
                 (encrypted, pk, r, s_from, s_to, k_from, k_to, rng)
             },
             |(encrypted, pk, r, s_from, s_to, k_from, k_to, mut rng)| {
-                VerifiableRRSK2::new(
+                VerifiableRRSK2::new::<Ristretto255Sha512, _>(
                     &encrypted, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng,
                 )
             },
@@ -401,7 +434,7 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
                 let s_to = ScalarNonZero::random(&mut rng);
                 let k_from = ScalarNonZero::random(&mut rng);
                 let k_to = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRRSK2::new(
+                let proof = VerifiableRRSK2::new::<Ristretto255Sha512, _>(
                     &encrypted, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng,
                 );
                 let result = rrsk2_primitive(&encrypted, &pk, &r, &s_from, &s_to, &k_from, &k_to);
@@ -414,7 +447,7 @@ fn bench_verifiable_rrsk2_verify(c: &mut Criterion) {
                 )
             },
             |(encrypted, pk, _result, proof, s_from_com, s_to_com, k_from_com, k_to_com)| {
-                proof.verify(
+                proof.verify::<Ristretto255Sha512>(
                     &encrypted,
                     &pk,
                     &s_from_com,
@@ -441,7 +474,9 @@ fn bench_verifiable_rerandomize_create(c: &mut Criterion) {
                 (encrypted, pk, r, rng)
             },
             |(_encrypted, pk, r, mut rng)| {
-                VerifiableRerandomize::<Ristretto255>::new(&pk, &r, &mut rng)
+                VerifiableRerandomize::<Ristretto255>::new::<Ristretto255Sha512, _>(
+                    &pk, &r, &mut rng,
+                )
             },
             criterion::BatchSize::SmallInput,
         )
@@ -459,14 +494,16 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
                 let m = GroupElement::random(&mut rng);
                 let encrypted = encrypt::<Ristretto255, _>(&m, &pk, &mut rng);
                 let r = ScalarNonZero::random(&mut rng);
-                let proof = VerifiableRerandomize::<Ristretto255>::new(&pk, &r, &mut rng);
+                let proof = VerifiableRerandomize::<Ristretto255>::new::<Ristretto255Sha512, _>(
+                    &pk, &r, &mut rng,
+                );
                 #[cfg(feature = "elgamal3")]
                 let result = rerandomize(&encrypted, &r);
                 #[cfg(not(feature = "elgamal3"))]
                 let result = rerandomize(&encrypted, &pk, &r);
                 (encrypted, pk, result, proof)
             },
-            |(_encrypted, pk, _result, proof)| proof.verify(&pk),
+            |(_encrypted, pk, _result, proof)| proof.verify::<Ristretto255Sha512>(&pk),
             criterion::BatchSize::SmallInput,
         )
     });
@@ -479,7 +516,7 @@ fn bench_verifiable_rerandomize_verify(c: &mut Criterion) {
 // `setup_pk`/`encrypt` scaffold as the verifiable benches so the create-side
 // numbers are directly comparable: a `baseline_rsk` run measures just the
 // `rsk(...)` primitive call, whereas `verifiable_rsk_create` measures
-// `VerifiableRSK::new(...)` which is the same primitive plus the proof.
+// `VerifiableRSK::new::<Ristretto255Sha512, _>(...)` which is the same primitive plus the proof.
 fn bench_baseline_reshuffle(c: &mut Criterion) {
     c.bench_function("baseline_reshuffle", |b| {
         b.iter_batched(

@@ -1,7 +1,7 @@
 //! Ristretto255 instances of the generic high-level types, for the tests.
 #![allow(dead_code, unused_imports)]
 
-pub use libpep::elgamal::arithmetic::Ristretto255;
+pub use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 
 pub type Client = libpep::client::types::Client<Ristretto255>;
 #[cfg(feature = "json")]
@@ -32,9 +32,10 @@ pub type AttributeRekeyInfo = libpep::factors::types::AttributeRekeyInfo<Ristret
 pub type TranscryptionInfo = libpep::factors::types::TranscryptionInfo<Ristretto255>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterPseudonymizationSecret =
-    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255>;
+    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
-pub type MasterRekeyingSecret = libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255>;
+pub type MasterRekeyingSecret =
+    libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255Sha512>;
 pub type BlindingFactor = libpep::keys::distribution::blinding::BlindingFactor<Ristretto255>;
 #[cfg(feature = "verifiable")]
 pub type BlindingCommitment = libpep::keys::distribution::proofs::BlindingCommitment<Ristretto255>;
@@ -49,7 +50,7 @@ pub type PseudonymSessionKeys = libpep::keys::types::PseudonymSessionKeys<Ristre
 pub type AttributeSessionKeys = libpep::keys::types::AttributeSessionKeys<Ristretto255>;
 pub type PseudonymSessionPublicKey = libpep::keys::types::PseudonymSessionPublicKey<Ristretto255>;
 pub type DistributedTranscryptor =
-    libpep::transcryptor::distributed::DistributedTranscryptor<Ristretto255>;
-pub type Transcryptor = libpep::transcryptor::types::Transcryptor<Ristretto255>;
+    libpep::transcryptor::distributed::DistributedTranscryptor<Ristretto255Sha512>;
+pub type Transcryptor = libpep::transcryptor::types::Transcryptor<Ristretto255Sha512>;
 #[cfg(feature = "verifiable")]
-pub type Verifier = libpep::verifier::Verifier<Ristretto255>;
+pub type Verifier = libpep::verifier::Verifier<Ristretto255Sha512>;

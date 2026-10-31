@@ -482,6 +482,7 @@ mod tests {
     use crate::data::errors::ParseError;
     use crate::data::padding::PaddingError;
     use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -667,7 +668,7 @@ mod tests {
     #[test]
     fn long_encrypted_pseudonym_serialize_deserialize() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys(
+        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
             &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
@@ -694,7 +695,7 @@ mod tests {
     #[test]
     fn long_encrypted_attribute_serialize_deserialize() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_attribute_session_keys(
+        let (session_public, _session_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
             &make_attribute_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
@@ -754,7 +755,7 @@ mod tests {
     #[cfg(feature = "json")]
     fn long_encrypted_serde_json() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys(
+        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
             &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
@@ -782,7 +783,7 @@ mod tests {
         use crate::data::padding::Padded;
 
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys(
+        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
             &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),

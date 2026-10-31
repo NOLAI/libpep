@@ -1,11 +1,12 @@
 //! Key generation functions for global and session keys.
 //!
-//! The generation is generic over the [`Group`]. The functions that take key material infer the
-//! group from it; the functions that generate global keys from randomness alone take the group as
-//! a type parameter, as there is nothing to infer it from.
+//! Global keys are generic over the [`Group`]: the functions that generate them from randomness
+//! alone take the group as a type parameter, as there is nothing to infer it from. Session keys
+//! are derived with a factor, so their functions are generic over the [`Ciphersuite`] and take it
+//! as a type parameter.
 
 use crate::contexts::EncryptionContext;
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::factors::derivation::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
 use crate::factors::types::Factor;
 use crate::factors::EncryptionSecret;
@@ -65,15 +66,15 @@ pub fn make_attribute_global_keys<G: Group, R: Rng + CryptoRng>(
 }
 
 /// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
-pub fn make_session_keys<G: Group>(
-    global: &GlobalSecretKeys<G>,
+pub fn make_session_keys<C: Ciphersuite>(
+    global: &GlobalSecretKeys<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-) -> SessionKeys<G> {
+) -> SessionKeys<C::Group> {
     let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys(&global.pseudonym, session, secret);
+        make_pseudonym_session_keys::<C>(&global.pseudonym, session, secret);
     let (attribute_public, attribute_secret) =
-        make_attribute_session_keys(&global.attribute, session, secret);
+        make_attribute_session_keys::<C>(&global.attribute, session, secret);
     SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
@@ -90,12 +91,15 @@ pub fn make_session_keys<G: Group>(
 ///
 /// The session secret key is the global secret key multiplied by the pseudonym rekey factor of
 /// the context.
-pub fn make_pseudonym_session_keys<G: Group>(
-    global: &PseudonymGlobalSecretKey<G>,
+pub fn make_pseudonym_session_keys<C: Ciphersuite>(
+    global: &PseudonymGlobalSecretKey<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-) -> (PseudonymSessionPublicKey<G>, PseudonymSessionSecretKey<G>) {
-    let k = make_pseudonym_rekey_factor::<G>(secret, session);
+) -> (
+    PseudonymSessionPublicKey<C::Group>,
+    PseudonymSessionSecretKey<C::Group>,
+) {
+    let k = make_pseudonym_rekey_factor::<C>(secret, session);
     let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -104,12 +108,15 @@ pub fn make_pseudonym_session_keys<G: Group>(
 ///
 /// The session secret key is the global secret key multiplied by the attribute rekey factor of
 /// the context.
-pub fn make_attribute_session_keys<G: Group>(
-    global: &AttributeGlobalSecretKey<G>,
+pub fn make_attribute_session_keys<C: Ciphersuite>(
+    global: &AttributeGlobalSecretKey<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
-) -> (AttributeSessionPublicKey<G>, AttributeSessionSecretKey<G>) {
-    let k = make_attribute_rekey_factor::<G>(secret, session);
+) -> (
+    AttributeSessionPublicKey<C::Group>,
+    AttributeSessionSecretKey<C::Group>,
+) {
+    let k = make_attribute_rekey_factor::<C>(secret, session);
     let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
@@ -119,7 +126,7 @@ pub fn make_attribute_session_keys<G: Group>(
 mod tests {
     use super::*;
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::factors::EncryptionSecret;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
@@ -165,7 +172,7 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret);
+        let session = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
 
         assert_eq!(
             *session.pseudonym.public,
@@ -184,8 +191,8 @@ mod tests {
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys(&global_sk, &context, &secret);
-        let session2 = make_session_keys(&global_sk, &context, &secret);
+        let session1 = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
+        let session2 = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
 
         assert_eq!(session1, session2);
     }
@@ -196,8 +203,16 @@ mod tests {
         let (_global_pk, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys(&global_sk, &EncryptionContext::from("context1"), &secret);
-        let session2 = make_session_keys(&global_sk, &EncryptionContext::from("context2"), &secret);
+        let session1 = make_session_keys::<Ristretto255Sha512>(
+            &global_sk,
+            &EncryptionContext::from("context1"),
+            &secret,
+        );
+        let session2 = make_session_keys::<Ristretto255Sha512>(
+            &global_sk,
+            &EncryptionContext::from("context2"),
+            &secret,
+        );
 
         assert_ne!(session1, session2);
     }
@@ -230,7 +245,7 @@ mod tests {
         let context = EncryptionContext::from("test");
         let secret = EncryptionSecret::from(b"secret".to_vec());
 
-        let session = make_session_keys(&global_sk, &context, &secret);
+        let session = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
 
         let json =
             serde_json::to_string(&session.pseudonym.secret).expect("serialization should succeed");

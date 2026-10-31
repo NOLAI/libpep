@@ -5,7 +5,7 @@
 
 #![allow(unused_imports)]
 
-use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 
 // data::simple
 pub type Pseudonym = libpep::data::simple::Pseudonym<Ristretto255>;
@@ -36,10 +36,11 @@ pub type EncryptedPepJsonValue = libpep::data::json::data::EncryptedPepJsonValue
 pub type Client = libpep::client::Client<Ristretto255>;
 #[cfg(feature = "offline")]
 pub type OfflineClient = libpep::client::OfflineClient<Ristretto255>;
-pub type Transcryptor = libpep::transcryptor::Transcryptor<Ristretto255>;
-pub type DistributedTranscryptor = libpep::transcryptor::DistributedTranscryptor<Ristretto255>;
+pub type Transcryptor = libpep::transcryptor::Transcryptor<Ristretto255Sha512>;
+pub type DistributedTranscryptor =
+    libpep::transcryptor::DistributedTranscryptor<Ristretto255Sha512>;
 #[cfg(feature = "verifiable")]
-pub type Verifier = libpep::verifier::Verifier<Ristretto255>;
+pub type Verifier = libpep::verifier::Verifier<Ristretto255Sha512>;
 
 // data::verifiable
 pub type PseudonymPseudonymizationProof =
@@ -103,15 +104,16 @@ pub type VerifiableTranscryptionCommitment =
     libpep::factors::VerifiableTranscryptionCommitment<Ristretto255>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterPseudonymizationSecret =
-    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255>;
+    libpep::factors::verifiable::MasterPseudonymizationSecret<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterPseudonymizationPublicKey =
-    libpep::factors::verifiable::MasterPseudonymizationPublicKey<Ristretto255>;
+    libpep::factors::verifiable::MasterPseudonymizationPublicKey<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
-pub type MasterRekeyingSecret = libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255>;
+pub type MasterRekeyingSecret =
+    libpep::factors::verifiable::MasterRekeyingSecret<Ristretto255Sha512>;
 #[cfg(feature = "verifiable-derivation")]
 pub type MasterRekeyingPublicKey =
-    libpep::factors::verifiable::MasterRekeyingPublicKey<Ristretto255>;
+    libpep::factors::verifiable::MasterRekeyingPublicKey<Ristretto255Sha512>;
 
 // keys
 pub type GlobalPublicKeys = libpep::keys::GlobalPublicKeys<Ristretto255>;

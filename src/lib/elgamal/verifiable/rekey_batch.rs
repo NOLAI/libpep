@@ -2,7 +2,7 @@
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
 use super::rekey::VerifiableRekey;
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -28,11 +28,15 @@ impl<G: Group> VerifiableRekeyBatch<G> {
 
 impl<G: Group> VerifiableRekeyBatch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(ciphertexts: &[ElGamal<G>], k: &G::Scalar, rng: &mut R) -> Self {
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
+        ciphertexts: &[ElGamal<G>],
+        k: &G::Scalar,
+        rng: &mut R,
+    ) -> Self {
         Self {
             inners: ciphertexts
                 .iter()
-                .map(|v| VerifiableRekey::new(v, k, rng))
+                .map(|v| VerifiableRekey::new::<C, _>(v, k, rng))
                 .collect(),
         }
     }
@@ -49,13 +53,17 @@ impl<G: Group> VerifiableRekeyBatch<G> {
 
     /// Verify the whole batch against `originals`.
     #[must_use]
-    pub fn verify(&self, originals: &[ElGamal<G>], commitment: &RekeyFactorCommitment<G>) -> bool {
+    pub fn verify<C: Ciphersuite<Group = G>>(
+        &self,
+        originals: &[ElGamal<G>],
+        commitment: &RekeyFactorCommitment<G>,
+    ) -> bool {
         originals.len() == self.inners.len()
             && self
                 .inners
                 .iter()
                 .zip(originals.iter())
-                .all(|(inner, o)| inner.verify(o, commitment))
+                .all(|(inner, o)| inner.verify::<C>(o, commitment))
     }
 
     reconstruct! {
@@ -98,7 +106,7 @@ impl<G: Group> VerifiableRekey2Batch<G> {
 
 impl<G: Group> VerifiableRekey2Batch<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         ciphertexts: &[ElGamal<G>],
         k_from: &G::Scalar,
         k_to: &G::Scalar,
@@ -106,10 +114,10 @@ impl<G: Group> VerifiableRekey2Batch<G> {
     ) -> Self {
         let k = G::scalar_inverse(k_from) * *k_to;
         let gk = k * G::generator();
-        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
+        let (_gk_from, p_gk_to) = create_proof::<C, R>(k_from, &gk, rng);
         let inners = ciphertexts
             .iter()
-            .map(|v| VerifiableRekey::new(v, &k, rng))
+            .map(|v| VerifiableRekey::new::<C, _>(v, &k, rng))
             .collect();
         Self {
             gk,
@@ -137,25 +145,25 @@ impl<G: Group> VerifiableRekey2Batch<G> {
     /// `K_from`, `K_to` commitments. After this passes, every inner can be
     /// verified against [`Self::combined_commitment`].
     #[must_use]
-    pub fn verify_factor(
+    pub fn verify_factor<C: Ciphersuite<Group = G>>(
         &self,
         from_commitments: &RekeyFactorCommitment<G>,
         to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gk_from = from_commitments.point();
         let gk_to = to_commitments.point();
-        *self.p_gk_to == gk_to && verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to)
+        *self.p_gk_to == gk_to && verify_proof::<C>(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         originals: &[ElGamal<G>],
         from_commitments: &RekeyFactorCommitment<G>,
         to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
-        if !self.verify_factor(from_commitments, to_commitments) {
+        if !self.verify_factor::<C>(from_commitments, to_commitments) {
             return false;
         }
         if originals.len() != self.inners.len() {
@@ -165,7 +173,7 @@ impl<G: Group> VerifiableRekey2Batch<G> {
         self.inners
             .iter()
             .zip(originals.iter())
-            .all(|(inner, o)| inner.verify(o, &commitment))
+            .all(|(inner, o)| inner.verify::<C>(o, &commitment))
     }
 
     reconstruct! {
@@ -179,12 +187,15 @@ impl<G: Group> VerifiableRekey2Batch<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{rekey, rekey2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         RekeyFactorCommitment, VerifiableRekey2Batch, VerifiableRekeyBatch,
     };
+
+    type C = Ristretto255Sha512;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();
@@ -203,12 +214,12 @@ mod tests {
         let mut rng = rand::rng();
         let cts = setup_pk_cts(5);
         let k = ScalarNonZero::random(&mut rng);
-        let batch = VerifiableRekeyBatch::new(&cts, &k, &mut rng);
+        let batch = VerifiableRekeyBatch::new::<C, _>(&cts, &k, &mut rng);
         let expected_news: Vec<_> = cts.iter().map(|c| rekey(c, &k)).collect();
         let com = RekeyFactorCommitment::new(&k);
-        let news = batch.verified_reconstruct(&cts, &com).expect("verify");
+        let news = batch.verified_reconstruct::<C>(&cts, &com).expect("verify");
         assert_eq!(news, expected_news);
-        assert!(batch.verify(&cts, &com));
+        assert!(batch.verify::<C>(&cts, &com));
     }
 
     #[test]
@@ -216,12 +227,12 @@ mod tests {
         let mut rng = rand::rng();
         let cts = setup_pk_cts(3);
         let k = ScalarNonZero::random(&mut rng);
-        let mut batch = VerifiableRekeyBatch::new(&cts, &k, &mut rng);
+        let mut batch = VerifiableRekeyBatch::new::<C, _>(&cts, &k, &mut rng);
         // Tamper an inner proof's response.
         batch.inners[1].p_gb.c1 = batch.inners[1].p_gb.c1 + GroupElement::random(&mut rng);
         let com = RekeyFactorCommitment::new(&k);
-        assert!(!batch.verify(&cts, &com));
-        assert!(batch.verified_reconstruct(&cts, &com).is_none());
+        assert!(!batch.verify::<C>(&cts, &com));
+        assert!(batch.verified_reconstruct::<C>(&cts, &com).is_none());
     }
 
     #[test]
@@ -230,15 +241,15 @@ mod tests {
         let cts = setup_pk_cts(5);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let batch = VerifiableRekey2Batch::new(&cts, &k_from, &k_to, &mut rng);
+        let batch = VerifiableRekey2Batch::new::<C, _>(&cts, &k_from, &k_to, &mut rng);
         let expected_news: Vec<_> = cts.iter().map(|c| rekey2(c, &k_from, &k_to)).collect();
         let from = RekeyFactorCommitment::new(&k_from);
         let to = RekeyFactorCommitment::new(&k_to);
         let news = batch
-            .verified_reconstruct(&cts, &from, &to)
+            .verified_reconstruct::<C>(&cts, &from, &to)
             .expect("verify");
         assert_eq!(news, expected_news);
-        assert!(batch.verify(&cts, &from, &to));
+        assert!(batch.verify::<C>(&cts, &from, &to));
     }
 
     #[test]
@@ -247,10 +258,10 @@ mod tests {
         let cts = setup_pk_cts(2);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let mut batch = VerifiableRekey2Batch::new(&cts, &k_from, &k_to, &mut rng);
+        let mut batch = VerifiableRekey2Batch::new::<C, _>(&cts, &k_from, &k_to, &mut rng);
         let from = RekeyFactorCommitment::new(&k_from);
         let to = RekeyFactorCommitment::new(&k_to);
         batch.gk = batch.gk + GroupElement::random(&mut rng);
-        assert!(!batch.verify(&cts, &from, &to));
+        assert!(!batch.verify::<C>(&cts, &from, &to));
     }
 }

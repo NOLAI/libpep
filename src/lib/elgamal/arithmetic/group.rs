@@ -1,13 +1,14 @@
-//! The prime-order group API over which the rest of the library is generic.
+//! The prime-order group API over which the data types of the library are generic.
 //!
-//! A [`Group`] is a marker type: it carries no data, and names a ciphersuite (a group together
-//! with its scalar type, encodings and hash functions). The library's generic types take it as
-//! a type parameter (`Pseudonym<G>`, `SessionKeys<G>`, `Transcryptor<G>`, ...), instantiated with
-//! [`Ristretto255`](super::Ristretto255).
+//! A [`Group`] is a marker type: it carries no data, and names a prime-order group together with
+//! its scalar type and encodings. The data types take it as a type parameter (`Pseudonym<G>`,
+//! `SessionKeys<G>`, ...), instantiated with [`Ristretto255`](super::Ristretto255). Hashing is not
+//! part of the group: the functions and types that hash are generic over a
+//! [`Ciphersuite`](super::Ciphersuite), which pairs a group with a hash.
 //!
 //! Beyond a bare prime-order group API, [`Group`] has what the PEP operations need:
 //! a multiplicative identity for identity factors, random elements for pseudonyms, and the
-//! mapping of a 64-byte hash to a scalar or an element that factor derivation uses.
+//! mapping of 64 uniform bytes to a scalar or an element that the ciphersuites hash into.
 //!
 //! # Element encodings
 //!
@@ -19,12 +20,9 @@
 //! `M2 = a * M1` between origin identifiers survives in every pseudonymization domain. Encoding
 //! an identifier `x` as `x * G` is therefore forbidden.
 
-use super::ciphersuite::Ciphersuite;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
-use sha2::digest::common::BlockSizeUser;
-use sha2::Digest;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{Add, Mul, Sub};
@@ -62,7 +60,7 @@ pub(crate) fn decode_hex<B: Bytes>(s: &str) -> Option<B> {
 
 macro_rules! group_trait {
     ($($extra:tt)*) => {
-        /// A prime-order group with its scalar field, serialization and hash-to-group functions.
+        /// A prime-order group with its scalar field and serialization.
         ///
         /// See the [module documentation](self) for how it is used. `Scalar` is always non-zero (the library never needs a zero
         /// scalar, and a zero factor would destroy a ciphertext), so the functions that reduce
@@ -114,35 +112,10 @@ macro_rules! group_trait {
             /// The serialized form of a scalar: `NS` bytes.
             type ScalarBytes: Bytes;
 
-            /// The hash of this ciphersuite: `SHA-512` for `ristretto255-SHA512`.
-            ///
-            /// The second half of a ciphersuite identifier names a hash, so it is declared here
-            /// and not left to each function to pick. Everything generic over a [`Group`]
-            /// that needs the ciphersuite's hash directly uses this. An implementation whose
-            /// [`CIPHERSUITE`](Self::CIPHERSUITE) says `-SHA256` therefore cannot hash with
-            /// SHA-512 unnoticed, because both declarations sit side by side in the same impl.
-            ///
-            /// This is the hash the ciphersuite is named after. It is not necessarily the hash
-            /// inside [`hash_to_group`](Self::hash_to_group) and
-            /// [`hash_to_scalar`](Self::hash_to_scalar), which may use whatever expander
-            /// RFC 9380 prescribes for the group.
-            type Hash: Digest + BlockSizeUser;
-
             /// The length of a serialized element in bytes (`Ne`).
             const NE: usize;
             /// The length of a serialized scalar in bytes (`Ns`).
             const NS: usize;
-
-            /// The ciphersuite this group and its hash form, whose identifier the protocol's
-            /// domain separation tags are built from.
-            ///
-            /// A ciphersuite identifier names a group and a hash, and this trait's
-            /// [`hash_to_group`](Self::hash_to_group) and
-            /// [`hash_to_scalar`](Self::hash_to_scalar) are written against one hash, so the
-            /// pair is fixed here. Build it with the
-            /// [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the
-            /// ciphersuite table, verbatim.
-            const CIPHERSUITE: Ciphersuite;
 
             /// The order of the group, as a big-endian integer.
             fn order() -> &'static [u8];
@@ -152,16 +125,6 @@ macro_rules! group_trait {
 
             /// The fixed generator of the group.
             fn generator() -> Self::Element;
-
-            /// `HashToGroup(msg, dst)`: a deterministic map of an arbitrary byte string to a group
-            /// element, indifferentiable from a random oracle; RFC 9380 hash-to-curve with domain
-            /// separation tag `dst`.
-            fn hash_to_group(msg: &[u8], dst: &[u8]) -> Self::Element;
-
-            /// `HashToScalar(msg, dst)`: a deterministic map of an arbitrary byte string to a
-            /// scalar, indifferentiable from a random oracle. Returns `None` if the scalar is
-            /// zero.
-            fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> Option<Self::Scalar>;
 
             /// Map 64 uniformly random bytes to a group element. Not invertible.
             fn element_from_uniform_bytes(bytes: &[u8; 64]) -> Self::Element;

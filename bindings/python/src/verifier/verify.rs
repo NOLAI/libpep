@@ -16,6 +16,7 @@ use crate::factors::commitments::{
     PyVerifiableTranscryptionCommitment,
 };
 use derive_more::{Deref, From, Into};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use pyo3::prelude::*;
@@ -636,7 +637,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -654,7 +659,11 @@ impl PyVerifier {
         let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -670,7 +679,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyPseudonymBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -688,7 +697,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -704,7 +717,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyPseudonymBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -722,7 +735,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyAttributeBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -738,7 +755,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyAttributeBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyAttributeBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -756,7 +773,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -774,7 +795,11 @@ impl PyVerifier {
         let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -790,7 +815,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyLongPseudonymBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -808,7 +833,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -824,7 +853,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyLongPseudonymBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyLongPseudonymBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -842,7 +871,11 @@ impl PyVerifier {
         let new_pk = crate::aliases::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_pk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_pk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongAttributeBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -858,7 +891,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyLongAttributeBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyLongAttributeBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -876,7 +909,11 @@ impl PyVerifier {
         let new_sk: crate::aliases::SessionKeys = new_session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -894,7 +931,11 @@ impl PyVerifier {
         let sk: crate::aliases::SessionKeys = session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &sk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -910,7 +951,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyRecordBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -928,7 +969,11 @@ impl PyVerifier {
         let new_sk: crate::aliases::SessionKeys = new_session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &new_sk.public(), &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &new_sk.public(),
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -946,7 +991,11 @@ impl PyVerifier {
         let sk: crate::aliases::SessionKeys = session_keys.clone().into();
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &sk, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(
+                &original.inner,
+                &sk,
+                &commitments.inner,
+            )
             .map(crate::data::batch::PyLongRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)
@@ -962,7 +1011,7 @@ impl PyVerifier {
     ) -> PyResult<crate::data::batch::PyLongRecordBatch> {
         proof
             .inner
-            .verified_reconstruct_batch(&original.inner, &commitments.inner)
+            .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &commitments.inner)
             .map(crate::data::batch::PyLongRecordBatch::from)
             .ok_or_else(|| {
                 crate::errors::verify_err_to_py(libpep::verifier::VerifyError::ProofRejected)

@@ -24,7 +24,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::{VerifiableRRSK, VerifiableRekey};
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
@@ -55,13 +55,13 @@ impl<G: Group> VerifiablePseudonymizationProof for PseudonymPseudonymizationProo
     type Output = EncryptedPseudonym<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
         self.0
-            .verified_reconstruct(
+            .verified_reconstruct::<C>(
                 original.value(),
                 &original.value().gy,
                 &commitments.reshuffle_commitment,
@@ -71,14 +71,14 @@ impl<G: Group> VerifiablePseudonymizationProof for PseudonymPseudonymizationProo
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &PseudonymSessionPublicKey<G>,
         commitments: &VerifiablePseudonymizationCommitment<G>,
     ) -> Option<Self::Output> {
         self.0
-            .verified_reconstruct(
+            .verified_reconstruct::<C>(
                 original.value(),
                 public_key.value(),
                 &commitments.reshuffle_commitment,
@@ -97,13 +97,13 @@ impl<G: Group> VerifiablePseudonymizable for EncryptedPseudonym<G> {
     type PseudonymizationProof = PseudonymPseudonymizationProof<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verifiable_pseudonymize<R: Rng + CryptoRng>(
+    fn verifiable_pseudonymize<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
         &self,
         info: &PseudonymizationInfo<G>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof {
         let r = G::random_scalar(rng);
-        PseudonymPseudonymizationProof(VerifiableRRSK::new(
+        PseudonymPseudonymizationProof(VerifiableRRSK::new::<C, _>(
             self.value(),
             &self.value().gy,
             &r,
@@ -114,14 +114,14 @@ impl<G: Group> VerifiablePseudonymizable for EncryptedPseudonym<G> {
     }
 
     #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_pseudonymize<R: Rng + CryptoRng>(
+    fn verifiable_pseudonymize<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
         &self,
         info: &PseudonymizationInfo<G>,
         public_key: &PseudonymSessionPublicKey<G>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof {
         let r = G::random_scalar(rng);
-        PseudonymPseudonymizationProof(VerifiableRRSK::new(
+        PseudonymPseudonymizationProof(VerifiableRRSK::new::<C, _>(
             self.value(),
             public_key.value(),
             &r,
@@ -149,13 +149,13 @@ macro_rules! rekey_proof {
             type DataType = $data<G>;
             type Output = $data<G>;
 
-            fn verified_reconstruct(
+            fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
                 &self,
                 original: &Self::DataType,
                 commitments: &VerifiableRekeyCommitment<G>,
             ) -> Option<Self::Output> {
                 self.0
-                    .verified_reconstruct(original.value(), &commitments.commitment)
+                    .verified_reconstruct::<C>(original.value(), &commitments.commitment)
                     .map($data::from_value)
             }
 
@@ -168,12 +168,12 @@ macro_rules! rekey_proof {
         impl<G: Group> VerifiableRekeyable for $data<G> {
             type RekeyProof = $proof<G>;
 
-            fn verifiable_rekey<R: Rng + CryptoRng>(
+            fn verifiable_rekey<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
                 &self,
                 info: &Self::RekeyInfo,
                 rng: &mut R,
             ) -> Self::RekeyProof {
-                $proof(VerifiableRekey::new(self.value(), &info.k.0, rng))
+                $proof(VerifiableRekey::new::<C, _>(self.value(), &info.k.0, rng))
             }
         }
     };

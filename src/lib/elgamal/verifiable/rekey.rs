@@ -22,7 +22,7 @@
 //! forward commitment `A = a·G`.
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -64,11 +64,15 @@ impl<G: Group> VerifiableRekey<G> {
 
 impl<G: Group> VerifiableRekey<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(v: &ElGamal<G>, k: &G::Scalar, rng: &mut R) -> Self {
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
+        v: &ElGamal<G>,
+        k: &G::Scalar,
+        rng: &mut R,
+    ) -> Self {
         let gb_prime = G::scalar_inverse(k) * v.gb;
-        let (_gk, p_gb) = create_proof::<G, R>(k, &gb_prime, rng);
+        let (_gk, p_gb) = create_proof::<C, R>(k, &gb_prime, rng);
         #[cfg(feature = "elgamal3")]
-        let (_gk_again, p_gy_prime) = create_proof::<G, R>(k, &v.gy, rng);
+        let (_gk_again, p_gy_prime) = create_proof::<C, R>(k, &v.gy, rng);
         Self {
             gb_prime,
             p_gb,
@@ -91,16 +95,20 @@ impl<G: Group> VerifiableRekey<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(&self, original: &ElGamal<G>, commitment: &RekeyFactorCommitment<G>) -> bool {
+    pub fn verify<C: Ciphersuite<Group = G>>(
+        &self,
+        original: &ElGamal<G>,
+        commitment: &RekeyFactorCommitment<G>,
+    ) -> bool {
         let gk = commitment.point();
         if *self.p_gb != original.gb {
             return false;
         }
-        if !verify_proof::<G>(&gk, &self.gb_prime, &self.p_gb) {
+        if !verify_proof::<C>(&gk, &self.gb_prime, &self.p_gb) {
             return false;
         }
         #[cfg(feature = "elgamal3")]
-        if !verify_proof::<G>(&gk, &original.gy, &self.p_gy_prime) {
+        if !verify_proof::<C>(&gk, &original.gy, &self.p_gy_prime) {
             return false;
         }
         true
@@ -148,7 +156,7 @@ impl<G: Group> VerifiableRekey2<G> {
 
 impl<G: Group> VerifiableRekey2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         k_from: &G::Scalar,
         k_to: &G::Scalar,
@@ -156,8 +164,8 @@ impl<G: Group> VerifiableRekey2<G> {
     ) -> Self {
         let k = G::scalar_inverse(k_from) * *k_to;
         let gk = k * G::generator();
-        let (_gk_from, p_gk_to) = create_proof::<G, R>(k_from, &gk, rng);
-        let inner = VerifiableRekey::new(v, &k, rng);
+        let (_gk_from, p_gk_to) = create_proof::<C, R>(k_from, &gk, rng);
+        let inner = VerifiableRekey::new::<C, _>(v, &k, rng);
         Self { gk, p_gk_to, inner }
     }
 
@@ -171,14 +179,14 @@ impl<G: Group> VerifiableRekey2<G> {
     /// per-message inner proofs are then checked against
     /// [`combined_commitment`](Self::combined_commitment).
     #[must_use]
-    pub fn verify_factor(
+    pub fn verify_factor<C: Ciphersuite<Group = G>>(
         &self,
         from_commitments: &RekeyFactorCommitment<G>,
         to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
         let gk_from = from_commitments.point();
         let gk_to = to_commitments.point();
-        *self.p_gk_to == gk_to && verify_proof::<G>(&gk_from, &self.gk, &self.p_gk_to)
+        *self.p_gk_to == gk_to && verify_proof::<C>(&gk_from, &self.gk, &self.p_gk_to)
     }
 
     /// The combined commitment `K = (k_from⁻¹·k_to)·G`, suitable for
@@ -190,14 +198,16 @@ impl<G: Group> VerifiableRekey2<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         from_commitments: &RekeyFactorCommitment<G>,
         to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
-        self.verify_factor(from_commitments, to_commitments)
-            && self.inner.verify(original, &self.combined_commitment())
+        self.verify_factor::<C>(from_commitments, to_commitments)
+            && self
+                .inner
+                .verify::<C>(original, &self.combined_commitment())
     }
 
     reconstruct! {
@@ -211,10 +221,13 @@ impl<G: Group> VerifiableRekey2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{rekey, rekey2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{RekeyFactorCommitment, VerifiableRekey, VerifiableRekey2};
+
+    type C = Ristretto255Sha512;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();
@@ -229,11 +242,14 @@ mod tests {
         let mut rng = rand::rng();
         let c = setup_ct();
         let k = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRekey::new(&c, &k, &mut rng);
+        let proof = VerifiableRekey::new::<C, _>(&c, &k, &mut rng);
         let expected = rekey(&c, &k);
         let commitments = RekeyFactorCommitment::new(&k);
-        assert!(proof.verify(&c, &commitments));
-        assert_eq!(proof.verified_reconstruct(&c, &commitments), Some(expected));
+        assert!(proof.verify::<C>(&c, &commitments));
+        assert_eq!(
+            proof.verified_reconstruct::<C>(&c, &commitments),
+            Some(expected)
+        );
     }
 
     #[test]
@@ -241,10 +257,10 @@ mod tests {
         let mut rng = rand::rng();
         let c = setup_ct();
         let k = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableRekey::new(&c, &k, &mut rng);
+        let mut proof = VerifiableRekey::new::<C, _>(&c, &k, &mut rng);
         let commitments = RekeyFactorCommitment::new(&k);
         proof.p_gb.c1 = proof.p_gb.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &commitments));
+        assert!(!proof.verify::<C>(&c, &commitments));
     }
 
     #[test]
@@ -253,9 +269,9 @@ mod tests {
         let c = setup_ct();
         let k = ScalarNonZero::random(&mut rng);
         let k_other = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRekey::new(&c, &k, &mut rng);
+        let proof = VerifiableRekey::new::<C, _>(&c, &k, &mut rng);
         let wrong = RekeyFactorCommitment::new(&k_other);
-        assert!(!proof.verify(&c, &wrong));
+        assert!(!proof.verify::<C>(&c, &wrong));
     }
 
     #[test]
@@ -264,13 +280,13 @@ mod tests {
         let c = setup_ct();
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRekey2::new(&c, &k_from, &k_to, &mut rng);
+        let proof = VerifiableRekey2::new::<C, _>(&c, &k_from, &k_to, &mut rng);
         let expected = rekey2(&c, &k_from, &k_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
-        assert!(proof.verify(&c, &k_from_com, &k_to_com));
+        assert!(proof.verify::<C>(&c, &k_from_com, &k_to_com));
         assert_eq!(
-            proof.verified_reconstruct(&c, &k_from_com, &k_to_com),
+            proof.verified_reconstruct::<C>(&c, &k_from_com, &k_to_com),
             Some(expected)
         );
     }
@@ -281,11 +297,11 @@ mod tests {
         let c = setup_ct();
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableRekey2::new(&c, &k_from, &k_to, &mut rng);
+        let mut proof = VerifiableRekey2::new::<C, _>(&c, &k_from, &k_to, &mut rng);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
         proof.inner.p_gb.c1 = proof.inner.p_gb.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &k_from_com, &k_to_com));
+        assert!(!proof.verify::<C>(&c, &k_from_com, &k_to_com));
     }
 
     #[test]
@@ -294,9 +310,9 @@ mod tests {
         let c = setup_ct();
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRekey2::new(&c, &k_from, &k_to, &mut rng);
+        let proof = VerifiableRekey2::new::<C, _>(&c, &k_from, &k_to, &mut rng);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_other = RekeyFactorCommitment::new(&ScalarNonZero::random(&mut rng));
-        assert!(!proof.verify(&c, &k_from_com, &k_to_other));
+        assert!(!proof.verify::<C>(&c, &k_from_com, &k_to_other));
     }
 }

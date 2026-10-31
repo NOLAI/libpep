@@ -18,7 +18,7 @@
 //! is verified against the forward commitment `A = a·G`).
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -48,8 +48,12 @@ impl<G: Group> VerifiableReshuffle<G> {
 
 impl<G: Group> VerifiableReshuffle<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(v: &ElGamal<G>, s: &G::Scalar, rng: &mut R) -> Self {
-        let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar::<G, R>(s, &v.gb, &v.gc, rng);
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
+        v: &ElGamal<G>,
+        s: &G::Scalar,
+        rng: &mut R,
+    ) -> Self {
+        let (_gs, p_gb_prime, p_gc_prime) = create_proofs_same_scalar::<C, R>(s, &v.gb, &v.gc, rng);
         Self {
             p_gb_prime,
             p_gc_prime,
@@ -69,14 +73,14 @@ impl<G: Group> VerifiableReshuffle<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         commitment: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         let gs = commitment.point();
-        verify_proof::<G>(&gs, &original.gb, &self.p_gb_prime)
-            && verify_proof::<G>(&gs, &original.gc, &self.p_gc_prime)
+        verify_proof::<C>(&gs, &original.gb, &self.p_gb_prime)
+            && verify_proof::<C>(&gs, &original.gc, &self.p_gc_prime)
     }
 
     reconstruct! {
@@ -116,7 +120,7 @@ impl<G: Group> VerifiableReshuffle2<G> {
 
 impl<G: Group> VerifiableReshuffle2<G> {
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         s_from: &G::Scalar,
         s_to: &G::Scalar,
@@ -124,8 +128,8 @@ impl<G: Group> VerifiableReshuffle2<G> {
     ) -> Self {
         let s = G::scalar_inverse(s_from) * *s_to;
         let gs = s * G::generator();
-        let (_gs_from, p_gs_to) = create_proof::<G, R>(s_from, &gs, rng);
-        let inner = VerifiableReshuffle::new(v, &s, rng);
+        let (_gs_from, p_gs_to) = create_proof::<C, R>(s_from, &gs, rng);
+        let inner = VerifiableReshuffle::new::<C, _>(v, &s, rng);
         Self { gs, p_gs_to, inner }
     }
 
@@ -140,14 +144,14 @@ impl<G: Group> VerifiableReshuffle2<G> {
     /// inner proofs via [`VerifiableReshuffle::verify`] against the
     /// combined commitment from [`Self::combined_commitment`].
     #[must_use]
-    pub fn verify_factor(
+    pub fn verify_factor<C: Ciphersuite<Group = G>>(
         &self,
         from_commitments: &PseudonymizationFactorCommitment<G>,
         to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
         let gs_from = from_commitments.point();
         let gs_to = to_commitments.point();
-        *self.p_gs_to == gs_to && verify_proof::<G>(&gs_from, &self.gs, &self.p_gs_to)
+        *self.p_gs_to == gs_to && verify_proof::<C>(&gs_from, &self.gs, &self.p_gs_to)
     }
 
     /// The combined commitment `S = (s_from⁻¹·s_to)·G`.
@@ -157,14 +161,16 @@ impl<G: Group> VerifiableReshuffle2<G> {
 
     #[must_use]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         from_commitments: &PseudonymizationFactorCommitment<G>,
         to_commitments: &PseudonymizationFactorCommitment<G>,
     ) -> bool {
-        self.verify_factor(from_commitments, to_commitments)
-            && self.inner.verify(original, &self.combined_commitment())
+        self.verify_factor::<C>(from_commitments, to_commitments)
+            && self
+                .inner
+                .verify::<C>(original, &self.combined_commitment())
     }
 
     reconstruct! {
@@ -178,12 +184,15 @@ impl<G: Group> VerifiableReshuffle2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle, VerifiableReshuffle2,
     };
+
+    type C = Ristretto255Sha512;
 
     fn setup_ct() -> ElGamal {
         let mut rng = rand::rng();
@@ -198,11 +207,14 @@ mod tests {
         let mut rng = rand::rng();
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableReshuffle::new(&c, &s, &mut rng);
+        let proof = VerifiableReshuffle::new::<C, _>(&c, &s, &mut rng);
         let expected = reshuffle(&c, &s);
         let commitments = PseudonymizationFactorCommitment::new(&s);
-        assert!(proof.verify(&c, &commitments));
-        assert_eq!(proof.verified_reconstruct(&c, &commitments), Some(expected));
+        assert!(proof.verify::<C>(&c, &commitments));
+        assert_eq!(
+            proof.verified_reconstruct::<C>(&c, &commitments),
+            Some(expected)
+        );
     }
 
     #[test]
@@ -210,10 +222,10 @@ mod tests {
         let mut rng = rand::rng();
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableReshuffle::new(&c, &s, &mut rng);
+        let mut proof = VerifiableReshuffle::new::<C, _>(&c, &s, &mut rng);
         let commitments = PseudonymizationFactorCommitment::new(&s);
         proof.p_gb_prime.c1 = proof.p_gb_prime.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &commitments));
+        assert!(!proof.verify::<C>(&c, &commitments));
     }
 
     #[test]
@@ -222,9 +234,9 @@ mod tests {
         let c = setup_ct();
         let s = ScalarNonZero::random(&mut rng);
         let s_other = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableReshuffle::new(&c, &s, &mut rng);
+        let proof = VerifiableReshuffle::new::<C, _>(&c, &s, &mut rng);
         let wrong = PseudonymizationFactorCommitment::new(&s_other);
-        assert!(!proof.verify(&c, &wrong));
+        assert!(!proof.verify::<C>(&c, &wrong));
     }
 
     #[test]
@@ -233,13 +245,13 @@ mod tests {
         let c = setup_ct();
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableReshuffle2::new(&c, &s_from, &s_to, &mut rng);
+        let proof = VerifiableReshuffle2::new::<C, _>(&c, &s_from, &s_to, &mut rng);
         let expected = reshuffle2(&c, &s_from, &s_to);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
-        assert!(proof.verify(&c, &s_from_com, &s_to_com));
+        assert!(proof.verify::<C>(&c, &s_from_com, &s_to_com));
         assert_eq!(
-            proof.verified_reconstruct(&c, &s_from_com, &s_to_com),
+            proof.verified_reconstruct::<C>(&c, &s_from_com, &s_to_com),
             Some(expected)
         );
     }
@@ -250,11 +262,11 @@ mod tests {
         let c = setup_ct();
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableReshuffle2::new(&c, &s_from, &s_to, &mut rng);
+        let mut proof = VerifiableReshuffle2::new::<C, _>(&c, &s_from, &s_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         proof.inner.p_gb_prime.c2 = proof.inner.p_gb_prime.c2 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &s_from_com, &s_to_com));
+        assert!(!proof.verify::<C>(&c, &s_from_com, &s_to_com));
     }
 
     #[test]
@@ -263,10 +275,10 @@ mod tests {
         let c = setup_ct();
         let s_from = ScalarNonZero::random(&mut rng);
         let s_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableReshuffle2::new(&c, &s_from, &s_to, &mut rng);
+        let proof = VerifiableReshuffle2::new::<C, _>(&c, &s_from, &s_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_other = PseudonymizationFactorCommitment::new(&ScalarNonZero::random(&mut rng));
-        assert!(!proof.verify(&c, &s_from_com, &s_to_other));
+        assert!(!proof.verify::<C>(&c, &s_from_com, &s_to_other));
     }
 
     #[test]
@@ -276,12 +288,12 @@ mod tests {
         let s_to = ScalarNonZero::random(&mut rng);
         let c1 = setup_ct();
         let c2 = setup_ct();
-        let vrs2 = VerifiableReshuffle2::new(&c1, &s_from, &s_to, &mut rng);
+        let vrs2 = VerifiableReshuffle2::new::<C, _>(&c1, &s_from, &s_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
-        assert!(vrs2.verify_factor(&s_from_com, &s_to_com));
+        assert!(vrs2.verify_factor::<C>(&s_from_com, &s_to_com));
         let s = s_from.invert() * s_to;
-        let inner2 = VerifiableReshuffle::new(&c2, &s, &mut rng);
-        assert!(inner2.verify(&c2, &vrs2.combined_commitment()));
+        let inner2 = VerifiableReshuffle::new::<C, _>(&c2, &s, &mut rng);
+        assert!(inner2.verify::<C>(&c2, &vrs2.combined_commitment()));
     }
 }

@@ -1,12 +1,12 @@
 //! Transcryptor type definitions.
 //!
-//! The transcryptor is generic over the [`Group`].
+//! The transcryptor is generic over the [`Ciphersuite`].
 
 use crate::contexts::*;
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ciphersuite;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
@@ -21,13 +21,13 @@ pub use crate::contexts::TranscryptorId;
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymization secret and a rekeying secret.
 #[derive(Clone)]
-pub struct Transcryptor<G: Group> {
+pub struct Transcryptor<C: Ciphersuite> {
     pub(crate) pseudonymization_secret: PseudonymizationSecret,
     pub(crate) rekeying_secret: EncryptionSecret,
-    pub(crate) group: PhantomData<G>,
+    pub(crate) group: PhantomData<C::Group>,
 }
 
-impl<G: Group> Transcryptor<G> {
+impl<C: Ciphersuite> Transcryptor<C> {
     /// Create a new PEP system with the given secrets.
     pub fn new(
         pseudonymization_secret: PseudonymizationSecret,
@@ -61,8 +61,8 @@ impl<G: Group> Transcryptor<G> {
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> AttributeRekeyInfo<G> {
-        AttributeRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+    ) -> AttributeRekeyInfo<C::Group> {
+        AttributeRekeyInfo::new::<C>(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
@@ -70,8 +70,8 @@ impl<G: Group> Transcryptor<G> {
         &self,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> PseudonymRekeyInfo<G> {
-        PseudonymRekeyInfo::new(session_from, session_to, &self.rekeying_secret)
+    ) -> PseudonymRekeyInfo<C::Group> {
+        PseudonymRekeyInfo::new::<C>(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
@@ -82,8 +82,8 @@ impl<G: Group> Transcryptor<G> {
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> PseudonymizationInfo<G> {
-        PseudonymizationInfo::new(
+    ) -> PseudonymizationInfo<C::Group> {
+        PseudonymizationInfo::new::<C>(
             domain_from,
             domain_to,
             session_from,
@@ -101,8 +101,8 @@ impl<G: Group> Transcryptor<G> {
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-    ) -> TranscryptionInfo<G> {
-        TranscryptionInfo::new(
+    ) -> TranscryptionInfo<C::Group> {
+        TranscryptionInfo::new::<C>(
             domain_from,
             domain_to,
             session_from,
@@ -117,7 +117,7 @@ impl<G: Group> Transcryptor<G> {
     #[cfg(feature = "elgamal3")]
     pub fn rekey<E, R>(&self, encrypted: &E, rekey_info: &E::RekeyInfo, rng: &mut R) -> E
     where
-        E: Rekeyable<Group = G>,
+        E: Rekeyable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::rekey(encrypted, rekey_info, rng)
@@ -135,7 +135,7 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> E
     where
-        E: Rekeyable<Group = G>,
+        E: Rekeyable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::rekey(encrypted, rekey_info, public_key, rng)
@@ -147,11 +147,11 @@ impl<G: Group> Transcryptor<G> {
     pub fn pseudonymize<E, R>(
         &self,
         encrypted: &E,
-        pseudonymization_info: &PseudonymizationInfo<G>,
+        pseudonymization_info: &PseudonymizationInfo<C::Group>,
         rng: &mut R,
     ) -> E
     where
-        E: Pseudonymizable<Group = G>,
+        E: Pseudonymizable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::pseudonymize(encrypted, pseudonymization_info, rng)
@@ -164,12 +164,12 @@ impl<G: Group> Transcryptor<G> {
     pub fn pseudonymize<E, R>(
         &self,
         encrypted: &E,
-        pseudonymization_info: &PseudonymizationInfo<G>,
+        pseudonymization_info: &PseudonymizationInfo<C::Group>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> E
     where
-        E: Pseudonymizable<Group = G>,
+        E: Pseudonymizable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::pseudonymize(
@@ -186,11 +186,11 @@ impl<G: Group> Transcryptor<G> {
     pub fn transcrypt<E, R>(
         &self,
         encrypted: &E,
-        transcryption_info: &TranscryptionInfo<G>,
+        transcryption_info: &TranscryptionInfo<C::Group>,
         rng: &mut R,
     ) -> E
     where
-        E: Transcryptable<Group = G>,
+        E: Transcryptable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::transcrypt(encrypted, transcryption_info, rng)
@@ -203,12 +203,12 @@ impl<G: Group> Transcryptor<G> {
     pub fn transcrypt<E, R>(
         &self,
         encrypted: &E,
-        transcryption_info: &TranscryptionInfo<G>,
+        transcryption_info: &TranscryptionInfo<C::Group>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> E
     where
-        E: Transcryptable<Group = G>,
+        E: Transcryptable<Group = C::Group>,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::functions::transcrypt(encrypted, transcryption_info, public_key, rng)
@@ -229,7 +229,7 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Rekeyable<Group = G> + crate::data::traits::HasStructure,
+        E: Rekeyable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::rekey_batch(encrypted, rekey_info, rng)
@@ -252,7 +252,7 @@ impl<G: Group> Transcryptor<G> {
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Rekeyable<Group = G> + crate::data::traits::HasStructure,
+        E: Rekeyable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::rekey_batch(encrypted, rekey_info, public_key, rng)
@@ -269,11 +269,11 @@ impl<G: Group> Transcryptor<G> {
     pub fn pseudonymize_batch<E, R>(
         &self,
         encrypted: &[E],
-        pseudonymization_info: &PseudonymizationInfo<G>,
+        pseudonymization_info: &PseudonymizationInfo<C::Group>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure,
+        E: Pseudonymizable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::pseudonymize_batch(encrypted, pseudonymization_info, rng)
@@ -291,12 +291,12 @@ impl<G: Group> Transcryptor<G> {
     pub fn pseudonymize_batch<E, R>(
         &self,
         encrypted: &[E],
-        pseudonymization_info: &PseudonymizationInfo<G>,
+        pseudonymization_info: &PseudonymizationInfo<C::Group>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Pseudonymizable<Group = G> + crate::data::traits::HasStructure,
+        E: Pseudonymizable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::pseudonymize_batch(
@@ -318,11 +318,11 @@ impl<G: Group> Transcryptor<G> {
     pub fn transcrypt_batch<E, R>(
         &self,
         encrypted: &[E],
-        transcryption_info: &TranscryptionInfo<G>,
+        transcryption_info: &TranscryptionInfo<C::Group>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Transcryptable<Group = G> + crate::data::traits::HasStructure,
+        E: Transcryptable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::transcrypt_batch(encrypted, transcryption_info, rng)
@@ -340,12 +340,12 @@ impl<G: Group> Transcryptor<G> {
     pub fn transcrypt_batch<E, R>(
         &self,
         encrypted: &[E],
-        transcryption_info: &TranscryptionInfo<G>,
+        transcryption_info: &TranscryptionInfo<C::Group>,
         public_key: &impl KeyProvider<<E::UnencryptedType as Encryptable>::PublicKeyType>,
         rng: &mut R,
     ) -> Result<Vec<E>, crate::data::batch::BatchError>
     where
-        E: Transcryptable<Group = G> + crate::data::traits::HasStructure,
+        E: Transcryptable<Group = C::Group> + crate::data::traits::HasStructure,
         R: Rng + CryptoRng,
     {
         crate::transcryptor::batch::transcrypt_batch(encrypted, transcryption_info, public_key, rng)

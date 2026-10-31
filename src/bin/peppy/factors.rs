@@ -3,7 +3,7 @@
 //! transcryptor publishes for verifiable transcryption.
 
 use crate::aliases::{
-    AttributeRekeyInfo, Ristretto255, TranscryptionInfo, VerifiableTranscryptionCommitment,
+    AttributeRekeyInfo, Ristretto255Sha512, TranscryptionInfo, VerifiableTranscryptionCommitment,
 };
 use crate::io::{self, Output, Result};
 use clap::{Args, Subcommand};
@@ -82,7 +82,7 @@ pub struct AttributeTransitionArgs {
 
 impl AttributeTransitionArgs {
     pub fn info(&self) -> Result<AttributeRekeyInfo> {
-        Ok(AttributeRekeyInfo::new(
+        Ok(AttributeRekeyInfo::new::<Ristretto255Sha512>(
             &io::context(self.from_context.as_deref())?,
             &io::context(self.to_context.as_deref())?,
             &io::encryption_secret(&self.encryption_secret)?,
@@ -92,7 +92,7 @@ impl AttributeTransitionArgs {
 
 impl TransitionArgs {
     pub fn info(&self) -> Result<TranscryptionInfo> {
-        Ok(TranscryptionInfo::new(
+        Ok(TranscryptionInfo::new::<Ristretto255Sha512>(
             &io::domain(&self.from_domain)?,
             &io::domain(&self.to_domain)?,
             &io::context(self.from_context.as_deref())?,
@@ -109,7 +109,7 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
             pseudonymization_secret,
             domain,
         } => {
-            let factor = make_pseudonymization_factor::<Ristretto255>(
+            let factor = make_pseudonymization_factor::<Ristretto255Sha512>(
                 &io::pseudonymization_secret(&pseudonymization_secret)?,
                 &io::domain(&domain)?,
             );
@@ -123,9 +123,9 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
             let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(context.as_deref())?;
             let factor = if attribute {
-                make_attribute_rekey_factor::<Ristretto255>(&secret, &context).scalar()
+                make_attribute_rekey_factor::<Ristretto255Sha512>(&secret, &context).scalar()
             } else {
-                make_pseudonym_rekey_factor::<Ristretto255>(&secret, &context).scalar()
+                make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret, &context).scalar()
             };
             out.value("rekey_factor", factor.to_hex());
         }

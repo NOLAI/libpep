@@ -22,6 +22,7 @@ use libpep::client::encrypt_global;
 use libpep::data::json::structure::JsonStructure;
 use libpep::data::json::utils;
 use libpep::data::traits::Transcryptable;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
@@ -144,7 +145,7 @@ impl PyEncryptedPepJsonValue {
         public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Self> {
         let mut rng = rand::rng();
-        let transcryption_info = TranscryptionInfo::new(
+        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,

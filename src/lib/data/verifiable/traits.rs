@@ -9,7 +9,7 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
@@ -35,25 +35,27 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
     /// Pseudonymize with proof generation, in elgamal3 mode (the recipient
     /// public key `Y` is carried by the ciphertext).
     #[cfg(feature = "elgamal3")]
-    fn verifiable_pseudonymize<R>(
+    fn verifiable_pseudonymize<C, R>(
         &self,
         info: &PseudonymizationInfo<Self::Group>,
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
+        C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 
     /// Pseudonymize with proof generation. `public_key` is the recipient
     /// public key the ciphertext was encrypted under, used by the rerandomize
     /// step and as the base for the `pi_y_r` proof inside `VerifiableRRSK`.
     #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_pseudonymize<R>(
+    fn verifiable_pseudonymize<C, R>(
         &self,
         info: &PseudonymizationInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self::PseudonymizationProof
     where
+        C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 }
 
@@ -75,7 +77,7 @@ pub trait VerifiableRekeyable: Rekeyable + Sized {
     type RekeyProof: VerifiableRekeyProof<Group = Self::Group, DataType = Self>;
 
     /// Rekey with proof generation.
-    fn verifiable_rekey<R: Rng + CryptoRng>(
+    fn verifiable_rekey<C: Ciphersuite<Group = Self::Group>, R: Rng + CryptoRng>(
         &self,
         info: &Self::RekeyInfo,
         rng: &mut R,
@@ -95,25 +97,27 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
 
     /// Transcrypt with proof generation, in elgamal3 mode.
     #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
+    fn verifiable_transcrypt<C, R>(
         &self,
         info: &TranscryptionInfo<Self::Group>,
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
+        C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 
     /// Transcrypt with proof generation. `public_key` is the recipient
     /// public key the ciphertext was encrypted under (needed by the
     /// rerandomize step on pseudonyms).
     #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
+    fn verifiable_transcrypt<C, R>(
         &self,
         info: &TranscryptionInfo<Self::Group>,
         public_key: &<Self::UnencryptedType as Encryptable>::PublicKeyType,
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
+        C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 }
 
@@ -132,17 +136,18 @@ pub trait VerifiableRekeyProof {
     type Output;
 
     /// Verify the proof against the original ciphertext and the commitments.
-    fn verify(
+    fn verify<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableRekeyCommitment<Self::Group>,
     ) -> bool {
-        self.verified_reconstruct(original, commitments).is_some()
+        self.verified_reconstruct::<C>(original, commitments)
+            .is_some()
     }
 
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableRekeyCommitment<Self::Group>,
@@ -171,31 +176,32 @@ pub trait VerifiablePseudonymizationProof {
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof against the original ciphertext and the commitments.
-    fn verify(
+    fn verify<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> bool {
-        self.verified_reconstruct(original, commitments).is_some()
+        self.verified_reconstruct::<C>(original, commitments)
+            .is_some()
     }
 
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
     /// `public_key` is the key the original was encrypted under.
-    fn verify(
+    fn verify<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &PseudonymSessionPublicKey<Self::Group>,
         commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
     ) -> bool {
-        self.verified_reconstruct(original, public_key, commitments)
+        self.verified_reconstruct::<C>(original, public_key, commitments)
             .is_some()
     }
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiablePseudonymizationCommitment<Self::Group>,
@@ -204,7 +210,7 @@ pub trait VerifiablePseudonymizationProof {
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &PseudonymSessionPublicKey<Self::Group>,
@@ -232,31 +238,32 @@ pub trait VerifiableTranscryptionProof {
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof against the original ciphertext and the commitments.
-    fn verify(
+    fn verify<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> bool {
-        self.verified_reconstruct(original, commitments).is_some()
+        self.verified_reconstruct::<C>(original, commitments)
+            .is_some()
     }
 
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof against the original ciphertext and the commitments; without `elgamal3`,
     /// `public_key` is the key the original was encrypted under.
-    fn verify(
+    fn verify<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &SessionPublicKeys<Self::Group>,
         commitments: &VerifiableTranscryptionCommitment<Self::Group>,
     ) -> bool {
-        self.verified_reconstruct(original, public_key, commitments)
+        self.verified_reconstruct::<C>(original, public_key, commitments)
             .is_some()
     }
 
     #[cfg(feature = "elgamal3")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableTranscryptionCommitment<Self::Group>,
@@ -265,7 +272,7 @@ pub trait VerifiableTranscryptionProof {
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         public_key: &SessionPublicKeys<Self::Group>,

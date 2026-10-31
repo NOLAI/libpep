@@ -1,6 +1,6 @@
 //! Ristretto255 instances of the generic high-level types used by the CLI.
 
-pub use libpep::elgamal::arithmetic::Ristretto255;
+pub use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 
 #[cfg(feature = "json")]
 pub type PepJsonBuilder = libpep::data::json::builder::PepJsonBuilder<Ristretto255>;

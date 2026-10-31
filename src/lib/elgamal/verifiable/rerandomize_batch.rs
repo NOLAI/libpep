@@ -1,7 +1,7 @@
 //! Batched verifiable rerandomize.
 
 use super::rerandomize::VerifiableRerandomize;
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -13,12 +13,12 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "insecure")]
 /// Rerandomize every ciphertext with its own fresh factor and return the results with their batch
 /// proof.
-pub fn verifiable_rerandomize_batch<G: Group, R: Rng + CryptoRng>(
-    originals: &[ElGamal<G>],
-    gy: &G::Element,
+pub fn verifiable_rerandomize_batch<C: Ciphersuite, R: Rng + CryptoRng>(
+    originals: &[ElGamal<C::Group>],
+    gy: &<C::Group as Group>::Element,
     rng: &mut R,
-) -> (Vec<ElGamal<G>>, VerifiableRerandomizeBatch<G>) {
-    let proof = VerifiableRerandomizeBatch::new(originals.len(), gy, rng);
+) -> (Vec<ElGamal<C::Group>>, VerifiableRerandomizeBatch<C::Group>) {
+    let proof = VerifiableRerandomizeBatch::new::<C, _>(originals.len(), gy, rng);
     let results = proof.result(originals);
     (results, proof)
 }
@@ -44,11 +44,15 @@ impl<G: Group> VerifiableRerandomizeBatch<G> {
 
 impl<G: Group> VerifiableRerandomizeBatch<G> {
     /// Fresh rerandomization proofs for `n` ciphertexts encrypted under `gy`.
-    pub fn new<R: Rng + CryptoRng>(n: usize, gy: &G::Element, rng: &mut R) -> Self {
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
+        n: usize,
+        gy: &G::Element,
+        rng: &mut R,
+    ) -> Self {
         let inners = (0..n)
             .map(|_| {
                 let r = G::random_scalar(rng);
-                VerifiableRerandomize::new(gy, &r, rng)
+                VerifiableRerandomize::new::<C, _>(gy, &r, rng)
             })
             .collect();
         Self { inners }
@@ -66,8 +70,12 @@ impl<G: Group> VerifiableRerandomizeBatch<G> {
 
     /// Verify every entry's `ZKP{Y_r = r·Y}` against the shared `Y`.
     #[must_use]
-    pub fn verify(&self, originals: &[ElGamal<G>], gy: &G::Element) -> bool {
-        originals.len() == self.inners.len() && self.inners.iter().all(|rer| rer.verify(gy))
+    pub fn verify<C: Ciphersuite<Group = G>>(
+        &self,
+        originals: &[ElGamal<G>],
+        gy: &G::Element,
+    ) -> bool {
+        originals.len() == self.inners.len() && self.inners.iter().all(|rer| rer.verify::<C>(gy))
     }
 
     reconstruct! {

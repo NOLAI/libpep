@@ -12,6 +12,7 @@ use crate::keys::distribution::shares::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
 };
 use derive_more::{From, Into};
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use wasm_bindgen::prelude::*;
 
 /// Public commitment `B_i = b_i · G` to a per-transcryptor blinding factor.
@@ -70,7 +71,7 @@ impl WASMSessionKeyShareProof {
     #[wasm_bindgen(constructor)]
     pub fn new(blinding: &WASMScalarNonZero, rekey_commitment: &WASMGroupElement) -> Self {
         let mut rng = rand::rng();
-        Self(SessionKeyShareProof::new(
+        Self(SessionKeyShareProof::new::<Ristretto255Sha512, _>(
             &blinding.0,
             &rekey_commitment.0,
             &mut rng,
@@ -90,8 +91,11 @@ impl WASMSessionKeyShareProof {
         blinding_commitment: &WASMBlindingCommitment,
         rekey_commitment: &WASMGroupElement,
     ) -> bool {
-        self.0
-            .verify_share(&share.0, &blinding_commitment.0, &rekey_commitment.0)
+        self.0.verify_share::<Ristretto255Sha512, _>(
+            &share.0,
+            &blinding_commitment.0,
+            &rekey_commitment.0,
+        )
     }
 
     /// Verify the proof *and* bind it to the attribute share actually received.
@@ -105,8 +109,11 @@ impl WASMSessionKeyShareProof {
         blinding_commitment: &WASMBlindingCommitment,
         rekey_commitment: &WASMGroupElement,
     ) -> bool {
-        self.0
-            .verify_share(&share.0, &blinding_commitment.0, &rekey_commitment.0)
+        self.0.verify_share::<Ristretto255Sha512, _>(
+            &share.0,
+            &blinding_commitment.0,
+            &rekey_commitment.0,
+        )
     }
 
     /// Verify the proof against a blinding commitment and rekey commitment.
@@ -120,7 +127,8 @@ impl WASMSessionKeyShareProof {
         blinding_commitment: &WASMBlindingCommitment,
         rekey_commitment: &WASMGroupElement,
     ) -> bool {
-        self.0.verify(&blinding_commitment.0, &rekey_commitment.0)
+        self.0
+            .verify::<Ristretto255Sha512>(&blinding_commitment.0, &rekey_commitment.0)
     }
 
     /// Return the public commitment `U_i = u_i · G` to the session-key share.

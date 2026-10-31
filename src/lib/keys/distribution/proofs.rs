@@ -41,7 +41,7 @@
 //!
 //! The types are generic over the [`Group`].
 
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
 
@@ -117,7 +117,7 @@ impl<G: Group> SessionKeyShareProof<G> {
     ///
     /// A proof that can be verified by the user to confirm the session key share
     /// was constructed correctly.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         blinding: &G::Scalar,
         rekey_commitment: &G::Element,
         rng: &mut R,
@@ -125,7 +125,7 @@ impl<G: Group> SessionKeyShareProof<G> {
         // Create ZKP proving knowledge of b_i such that:
         // - proof.n = U_i = b_i * rekey_commitment = b_i * k_i * G = u_i * G
         // - (which implies u_i = b_i * k_i since K_i = k_i * G)
-        let (_, proof) = create_proof::<G, R>(blinding, rekey_commitment, rng);
+        let (_, proof) = create_proof::<C, R>(blinding, rekey_commitment, rng);
 
         Self { proof }
     }
@@ -155,7 +155,7 @@ impl<G: Group> SessionKeyShareProof<G> {
     /// # Returns
     ///
     /// `true` if the proof is valid, `false` otherwise
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         blinding_commitment: &BlindingCommitment<G>,
         rekey_commitment: &G::Element,
@@ -163,7 +163,7 @@ impl<G: Group> SessionKeyShareProof<G> {
         // Verify the ZKP
         // This confirms: proof.n = b_i * rekey_commitment
         // which means: U_i = b_i * K_i = b_i * (k_i * G) = (b_i * k_i) * G = u_i * G
-        verify_proof::<G>(&blinding_commitment.0, rekey_commitment, &self.proof)
+        verify_proof::<C>(&blinding_commitment.0, rekey_commitment, &self.proof)
     }
 
     /// Get the public commitment to the session key share.
@@ -182,6 +182,9 @@ mod tests {
     use crate::elgamal::arithmetic::group_elements::G;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
+
+    type C = Ristretto255Sha512;
 
     type BlindingCommitment = super::BlindingCommitment<Ristretto255>;
     type SessionKeyShareProof = super::SessionKeyShareProof<Ristretto255>;
@@ -208,10 +211,10 @@ mod tests {
         let rekey_commitment = rekey_factor * G;
 
         // Create proof
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         // Verify proof
-        assert!(proof.verify(&blinding_commitment, &rekey_commitment));
+        assert!(proof.verify::<C>(&blinding_commitment, &rekey_commitment));
 
         // Verify U_i = (b_i * k_i) * G
         let expected_share_commitment = (blinding * rekey_factor) * G;
@@ -229,7 +232,7 @@ mod tests {
         let rekey_factor = ScalarNonZero::random(&mut rng);
         let rekey_commitment = rekey_factor * G;
 
-        let proof = SessionKeyShareProof::new(&blinding, &rekey_commitment, &mut rng);
+        let proof = SessionKeyShareProof::new::<C, _>(&blinding, &rekey_commitment, &mut rng);
 
         assert_eq!(proof.share_commitment(), proof.proof().n());
     }

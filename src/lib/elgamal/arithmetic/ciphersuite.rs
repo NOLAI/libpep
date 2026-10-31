@@ -1,15 +1,18 @@
-//! The [`Ciphersuite`]: the group-and-hash pair the protocol's hashes are domain-separated with.
+//! The [`Ciphersuite`]: a [`Group`] together with the hash its protocol runs on.
 //!
-//! A ciphersuite identifier names a group and a hash: `ristretto255-SHA512` is ristretto255
-//! with SHA-512, `P256-SHA256` is P-256 with SHA-256. Each [`Group`](super::Group) implementation
-//! fixes both (its `hash_to_group` and `hash_to_scalar` are written against one hash), so the
-//! identifier belongs to the group and is reached through it as
-//! [`Group::CIPHERSUITE`](super::Group::CIPHERSUITE). One group's identifier cannot be paired
-//! with another group's operations.
+//! A [`Group`] is pure group arithmetic. Everything that hashes (encoding an identifier as a
+//! group element, deriving factors, the Fiat-Shamir challenges of the proofs) needs more: a hash
+//! function, the maps from hash output to elements and scalars, and an identifier that keeps the
+//! domain separation tags of one ciphersuite apart from another. A [`Ciphersuite`] bundles these.
+//! Data types such as `Pseudonym<G>` only need the group and stay generic over a [`Group`]; the
+//! functions and types that hash (`Transcryptor<C>`, `hash_to_group::<C>`, proof verification)
+//! are generic over a ciphersuite `C`, and reach its group as `C::Group`.
 //!
-//! The identifier is taken verbatim from the ciphersuite table instead of being composed from
-//! group and hash fragments: the table spells the P-256 suite `P256-SHA256` while the group
-//! itself is called P-256, so a composed string would be wrong.
+//! A ciphersuite is named by a [`CiphersuiteId`], such as `ristretto255-SHA512` for ristretto255
+//! with SHA-512 (the marker [`Ristretto255Sha512`](super::Ristretto255Sha512)) or `P256-SHA256`
+//! for P-256 with SHA-256. The identifier is taken verbatim from the ciphersuite table instead of
+//! being composed from group and hash fragments: the table spells the P-256 suite `P256-SHA256`
+//! while the group itself is called P-256, so a composed string would be wrong.
 //!
 //! # Domain separation
 //!
@@ -29,12 +32,15 @@
 //!
 //! # Relation to the contexts module
 //!
-//! A [`Ciphersuite`] names the hash domain the whole protocol runs in. The
+//! A [`CiphersuiteId`] names the hash domain the whole protocol runs in. The
 //! [`EncryptionContext`](crate::contexts::EncryptionContext) and
 //! [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain) of the
 //! [`contexts`](crate::contexts) module name a session and a domain within a deployment, and a
 //! deployment uses those to separate its own data.
 
+use super::group::Group;
+use sha2::digest::common::BlockSizeUser;
+use sha2::Digest;
 use std::fmt;
 
 /// The prefix of every context string.
@@ -45,21 +51,72 @@ use std::fmt;
 /// side of the change derive unrelated values instead of silently disagreeing about the same ones.
 pub const PREFIX: &str = "nPEPV1-";
 
-/// A ciphersuite: the group-and-hash pair whose identifier the protocol's domain separation tags
-/// are built from, as `"nPEPV1-" || identifier`.
+/// The element type of the group of ciphersuite `C`.
+#[cfg(any(feature = "verifiable", feature = "verifiable-derivation"))]
+pub(crate) type ElementOf<C> = <<C as Ciphersuite>::Group as Group>::Element;
+/// The non-zero scalar type of the group of ciphersuite `C`.
+#[cfg(any(feature = "verifiable", feature = "verifiable-derivation"))]
+pub(crate) type ScalarOf<C> = <<C as Ciphersuite>::Group as Group>::Scalar;
+/// The possibly-zero scalar type of the group of ciphersuite `C`.
+#[cfg(any(feature = "verifiable", feature = "verifiable-derivation"))]
+pub(crate) type ScalarCanBeZeroOf<C> = <<C as Ciphersuite>::Group as Group>::ScalarCanBeZero;
+
+/// A ciphersuite: a [`Group`] together with the hash and the maps from hash output to elements
+/// and scalars that the protocol's hashes are built from.
 ///
-/// Reached through [`Group::CIPHERSUITE`](super::Group::CIPHERSUITE); see the
-/// [module documentation](self).
+/// A ciphersuite is a marker type: it carries no data. Implement it for a new unit struct, naming
+/// its group and hash, and give it an identifier with the [`ciphersuite!`](crate::ciphersuite)
+/// macro. [`Ristretto255Sha512`](super::Ristretto255Sha512) is the ciphersuite of ristretto255
+/// with SHA-512.
+pub trait Ciphersuite:
+    Copy + Clone + std::fmt::Debug + Default + Eq + Send + Sync + 'static
+{
+    /// The group this ciphersuite computes in.
+    type Group: Group;
+
+    /// The hash of this ciphersuite: `SHA-512` for `ristretto255-SHA512`.
+    ///
+    /// The second half of a ciphersuite identifier names a hash, so it is declared here and not
+    /// left to each function to pick. An implementation whose [`ID`](Self::ID) says `-SHA256`
+    /// therefore cannot hash with SHA-512 unnoticed, because both declarations sit side by side
+    /// in the same impl.
+    ///
+    /// This is the hash the ciphersuite is named after. It is not necessarily the hash inside
+    /// [`hash_to_group`](Self::hash_to_group) and [`hash_to_scalar`](Self::hash_to_scalar), which
+    /// may use whatever expander RFC 9380 prescribes for the group.
+    type Hash: Digest + BlockSizeUser;
+
+    /// The identifier of this ciphersuite, whose context string the protocol's domain separation
+    /// tags are built from.
+    ///
+    /// Build it with the [`ciphersuite!`](crate::ciphersuite) macro from the identifier in the
+    /// ciphersuite table, verbatim.
+    const ID: CiphersuiteId;
+
+    /// `HashToGroup(msg, dst)`: a deterministic map of an arbitrary byte string to a group
+    /// element, indifferentiable from a random oracle; RFC 9380 hash-to-curve with domain
+    /// separation tag `dst`.
+    fn hash_to_group(msg: &[u8], dst: &[u8]) -> <Self::Group as Group>::Element;
+
+    /// `HashToScalar(msg, dst)`: a deterministic map of an arbitrary byte string to a scalar,
+    /// indifferentiable from a random oracle. Returns `None` if the scalar is zero.
+    fn hash_to_scalar(msg: &[u8], dst: &[u8]) -> Option<<Self::Group as Group>::Scalar>;
+}
+
+/// The identifier of a [`Ciphersuite`], from which the protocol's domain separation tags are
+/// built, as `"nPEPV1-" || identifier`.
+///
+/// Reached through [`Ciphersuite::ID`]; see the [module documentation](self).
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct Ciphersuite {
+pub struct CiphersuiteId {
     identifier: &'static str,
     context_string: &'static str,
 }
 
-impl Ciphersuite {
-    /// The ciphersuite with the given identifier and the context string it implies.
+impl CiphersuiteId {
+    /// The identifier with the given name and the context string it implies.
     ///
-    /// Public only for the [`ciphersuite!`](crate::ciphersuite) macro, which a [`Group`](super::Group)
+    /// Public only for the [`ciphersuite!`](crate::ciphersuite) macro, which a [`Ciphersuite`]
     /// implementation outside this crate expands; it builds `context_string` as
     /// `"nPEPV1-" || identifier` at compile time, so the two cannot disagree.
     #[doc(hidden)]
@@ -97,51 +154,50 @@ impl Ciphersuite {
     }
 }
 
-impl fmt::Display for Ciphersuite {
+impl fmt::Display for CiphersuiteId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.context_string)
     }
 }
 
-/// Define a [`Ciphersuite`] constant from its identifier. The context string is concatenated at
+/// Define a [`CiphersuiteId`] constant from its identifier. The context string is concatenated at
 /// compile time, so the identifier is written once.
 ///
 /// ```
 /// # use libpep::ciphersuite;
-/// # use libpep::elgamal::arithmetic::Ciphersuite;
-/// const SUITE: Ciphersuite = ciphersuite!("ristretto255-SHA512");
+/// # use libpep::elgamal::arithmetic::CiphersuiteId;
+/// const SUITE: CiphersuiteId = ciphersuite!("ristretto255-SHA512");
 /// assert_eq!(SUITE.context_string(), b"nPEPV1-ristretto255-SHA512");
 /// ```
 #[macro_export]
 macro_rules! ciphersuite {
     ($identifier:literal) => {
-        $crate::elgamal::arithmetic::Ciphersuite::new($identifier, concat!("nPEPV1-", $identifier))
+        $crate::elgamal::arithmetic::CiphersuiteId::new(
+            $identifier,
+            concat!("nPEPV1-", $identifier),
+        )
     };
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::Ristretto255;
+    use super::super::Ristretto255Sha512;
     use super::*;
-    use crate::elgamal::arithmetic::Group;
 
     #[test]
     fn ristretto255_context_string() {
         // The context string is inside every DeriveFactor tag, so a change here
         // changes every derived factor and every hashed pseudonym.
         assert_eq!(
-            Ristretto255::CIPHERSUITE.context_string(),
+            Ristretto255Sha512::ID.context_string(),
             b"nPEPV1-ristretto255-SHA512"
         );
-        assert_eq!(
-            Ristretto255::CIPHERSUITE.identifier(),
-            "ristretto255-SHA512"
-        );
+        assert_eq!(Ristretto255Sha512::ID.identifier(), "ristretto255-SHA512");
     }
 
     #[test]
     fn macro_agrees_with_the_prefix() {
-        const SUITE: Ciphersuite = ciphersuite!("x-Y");
+        const SUITE: CiphersuiteId = ciphersuite!("x-Y");
         assert_eq!(SUITE.identifier(), "x-Y");
         assert_eq!(SUITE.context_string(), b"nPEPV1-x-Y");
     }
@@ -149,7 +205,7 @@ mod tests {
     #[test]
     fn dst_prefixes_label() {
         assert_eq!(
-            Ristretto255::CIPHERSUITE.dst(b"HashToGroup-"),
+            Ristretto255Sha512::ID.dst(b"HashToGroup-"),
             b"HashToGroup-nPEPV1-ristretto255-SHA512"
         );
     }
@@ -157,8 +213,8 @@ mod tests {
     #[test]
     fn display_matches_the_context_string() {
         assert_eq!(
-            Ristretto255::CIPHERSUITE.to_string().as_bytes(),
-            Ristretto255::CIPHERSUITE.context_string()
+            Ristretto255Sha512::ID.to_string().as_bytes(),
+            Ristretto255Sha512::ID.context_string()
         );
     }
 }

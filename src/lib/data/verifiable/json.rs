@@ -16,6 +16,7 @@ use crate::data::verifiable::traits::{
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::elgamal::arithmetic::Ciphersuite;
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::VerifiableTranscryptionCommitment;
@@ -69,7 +70,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
     #[cfg(feature = "elgamal3")]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         commitments: &VerifiableTranscryptionCommitment<G>,
@@ -79,25 +80,25 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 Some(EncryptedPepJsonValue::Null)
             }
             (EncryptedPepJsonValue::Bool(orig), JsonTranscryptionProof::Bool(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::Bool),
             (EncryptedPepJsonValue::Number(orig), JsonTranscryptionProof::Number(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::Number),
             (EncryptedPepJsonValue::String(orig), JsonTranscryptionProof::String(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::String),
             (EncryptedPepJsonValue::LongString(orig), JsonTranscryptionProof::LongString(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::LongString),
             (EncryptedPepJsonValue::Pseudonym(orig), JsonTranscryptionProof::Pseudonym(p)) => p
-                .verified_reconstruct(orig, &commitments.pseudonym)
+                .verified_reconstruct::<C>(orig, &commitments.pseudonym)
                 .map(EncryptedPepJsonValue::Pseudonym),
             (
                 EncryptedPepJsonValue::LongPseudonym(orig),
                 JsonTranscryptionProof::LongPseudonym(p),
             ) => p
-                .verified_reconstruct(orig, &commitments.pseudonym)
+                .verified_reconstruct::<C>(orig, &commitments.pseudonym)
                 .map(EncryptedPepJsonValue::LongPseudonym),
             (EncryptedPepJsonValue::Array(arr), JsonTranscryptionProof::Array(proofs)) => {
                 if arr.len() != proofs.len() {
@@ -106,7 +107,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 let items: Option<Vec<_>> = arr
                     .iter()
                     .zip(proofs.iter())
-                    .map(|(x, p)| p.verified_reconstruct(x, commitments))
+                    .map(|(x, p)| p.verified_reconstruct::<C>(x, commitments))
                     .collect();
                 items.map(EncryptedPepJsonValue::Array)
             }
@@ -117,7 +118,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     let p = proofs.get(k)?;
-                    let r = p.verified_reconstruct(v, commitments)?;
+                    let r = p.verified_reconstruct::<C>(v, commitments)?;
                     out.insert(k.clone(), r);
                 }
                 Some(EncryptedPepJsonValue::Object(out))
@@ -129,7 +130,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
     #[cfg(not(feature = "elgamal3"))]
     /// Verify the proof and return the result of the operation, or `None` if the proof does not
     /// verify; without `elgamal3`, `public_key` is the key the original was encrypted under.
-    fn verified_reconstruct(
+    fn verified_reconstruct<C: Ciphersuite<Group = Self::Group>>(
         &self,
         original: &Self::DataType,
         keys: &SessionPublicKeys<G>,
@@ -140,25 +141,25 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 Some(EncryptedPepJsonValue::Null)
             }
             (EncryptedPepJsonValue::Bool(orig), JsonTranscryptionProof::Bool(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::Bool),
             (EncryptedPepJsonValue::Number(orig), JsonTranscryptionProof::Number(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::Number),
             (EncryptedPepJsonValue::String(orig), JsonTranscryptionProof::String(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::String),
             (EncryptedPepJsonValue::LongString(orig), JsonTranscryptionProof::LongString(p)) => p
-                .verified_reconstruct(orig, &commitments.attribute)
+                .verified_reconstruct::<C>(orig, &commitments.attribute)
                 .map(EncryptedPepJsonValue::LongString),
             (EncryptedPepJsonValue::Pseudonym(orig), JsonTranscryptionProof::Pseudonym(p)) => p
-                .verified_reconstruct(orig, &keys.pseudonym, &commitments.pseudonym)
+                .verified_reconstruct::<C>(orig, &keys.pseudonym, &commitments.pseudonym)
                 .map(EncryptedPepJsonValue::Pseudonym),
             (
                 EncryptedPepJsonValue::LongPseudonym(orig),
                 JsonTranscryptionProof::LongPseudonym(p),
             ) => p
-                .verified_reconstruct(orig, &keys.pseudonym, &commitments.pseudonym)
+                .verified_reconstruct::<C>(orig, &keys.pseudonym, &commitments.pseudonym)
                 .map(EncryptedPepJsonValue::LongPseudonym),
             (EncryptedPepJsonValue::Array(arr), JsonTranscryptionProof::Array(proofs)) => {
                 if arr.len() != proofs.len() {
@@ -167,7 +168,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 let items: Option<Vec<_>> = arr
                     .iter()
                     .zip(proofs.iter())
-                    .map(|(x, p)| p.verified_reconstruct(x, keys, commitments))
+                    .map(|(x, p)| p.verified_reconstruct::<C>(x, keys, commitments))
                     .collect();
                 items.map(EncryptedPepJsonValue::Array)
             }
@@ -178,7 +179,7 @@ impl<G: InvertibleEncoding> VerifiableTranscryptionProof for JsonTranscryptionPr
                 let mut out = BTreeMap::new();
                 for (k, v) in obj {
                     let p = proofs.get(k)?;
-                    let r = p.verified_reconstruct(v, keys, commitments)?;
+                    let r = p.verified_reconstruct::<C>(v, keys, commitments)?;
                     out.insert(k.clone(), r);
                 }
                 Some(EncryptedPepJsonValue::Object(out))
@@ -240,80 +241,38 @@ impl<G: InvertibleEncoding> VerifiableTranscryptable for EncryptedPepJsonValue<G
     type TranscryptionProof = JsonTranscryptionProof<G>;
 
     #[cfg(feature = "elgamal3")]
-    fn verifiable_transcrypt<R>(
+    fn verifiable_transcrypt<C, R>(
         &self,
         info: &TranscryptionInfo<G>,
         rng: &mut R,
     ) -> Self::TranscryptionProof
     where
+        C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng,
     {
         match self {
             EncryptedPepJsonValue::Null => JsonTranscryptionProof::Null,
             EncryptedPepJsonValue::Bool(enc) => {
-                JsonTranscryptionProof::Bool(enc.verifiable_rekey(&info.attribute, rng))
+                JsonTranscryptionProof::Bool(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
             }
             EncryptedPepJsonValue::Number(enc) => {
-                JsonTranscryptionProof::Number(enc.verifiable_rekey(&info.attribute, rng))
+                JsonTranscryptionProof::Number(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
             }
             EncryptedPepJsonValue::String(enc) => {
-                JsonTranscryptionProof::String(enc.verifiable_rekey(&info.attribute, rng))
+                JsonTranscryptionProof::String(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
             }
-            EncryptedPepJsonValue::LongString(enc) => {
-                JsonTranscryptionProof::LongString(enc.verifiable_rekey(&info.attribute, rng))
-            }
-            EncryptedPepJsonValue::Pseudonym(enc) => {
-                JsonTranscryptionProof::Pseudonym(enc.verifiable_pseudonymize(&info.pseudonym, rng))
-            }
-            EncryptedPepJsonValue::LongPseudonym(enc) => JsonTranscryptionProof::LongPseudonym(
-                enc.verifiable_pseudonymize(&info.pseudonym, rng),
+            EncryptedPepJsonValue::LongString(enc) => JsonTranscryptionProof::LongString(
+                enc.verifiable_rekey::<C, _>(&info.attribute, rng),
             ),
-            EncryptedPepJsonValue::Array(arr) => JsonTranscryptionProof::Array(
-                arr.iter()
-                    .map(|x| Box::new(x.verifiable_transcrypt(info, rng)))
-                    .collect(),
-            ),
-            EncryptedPepJsonValue::Object(obj) => JsonTranscryptionProof::Object(
-                obj.iter()
-                    .map(|(k, v)| (k.clone(), Box::new(v.verifiable_transcrypt(info, rng))))
-                    .collect(),
-            ),
-        }
-    }
-
-    #[cfg(not(feature = "elgamal3"))]
-    fn verifiable_transcrypt<R>(
-        &self,
-        info: &TranscryptionInfo<G>,
-        keys: &SessionPublicKeys<G>,
-        rng: &mut R,
-    ) -> Self::TranscryptionProof
-    where
-        R: Rng + CryptoRng,
-    {
-        match self {
-            EncryptedPepJsonValue::Null => JsonTranscryptionProof::Null,
-            EncryptedPepJsonValue::Bool(enc) => {
-                JsonTranscryptionProof::Bool(enc.verifiable_rekey(&info.attribute, rng))
-            }
-            EncryptedPepJsonValue::Number(enc) => {
-                JsonTranscryptionProof::Number(enc.verifiable_rekey(&info.attribute, rng))
-            }
-            EncryptedPepJsonValue::String(enc) => {
-                JsonTranscryptionProof::String(enc.verifiable_rekey(&info.attribute, rng))
-            }
-            EncryptedPepJsonValue::LongString(enc) => {
-                JsonTranscryptionProof::LongString(enc.verifiable_rekey(&info.attribute, rng))
-            }
             EncryptedPepJsonValue::Pseudonym(enc) => JsonTranscryptionProof::Pseudonym(
-                enc.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym, rng),
+                enc.verifiable_pseudonymize::<C, _>(&info.pseudonym, rng),
             ),
             EncryptedPepJsonValue::LongPseudonym(enc) => JsonTranscryptionProof::LongPseudonym(
-                enc.verifiable_pseudonymize(&info.pseudonym, &keys.pseudonym, rng),
+                enc.verifiable_pseudonymize::<C, _>(&info.pseudonym, rng),
             ),
             EncryptedPepJsonValue::Array(arr) => JsonTranscryptionProof::Array(
                 arr.iter()
-                    .map(|x| Box::new(x.verifiable_transcrypt(info, keys, rng)))
+                    .map(|x| Box::new(x.verifiable_transcrypt::<C, _>(info, rng)))
                     .collect(),
             ),
             EncryptedPepJsonValue::Object(obj) => JsonTranscryptionProof::Object(
@@ -321,7 +280,56 @@ impl<G: InvertibleEncoding> VerifiableTranscryptable for EncryptedPepJsonValue<G
                     .map(|(k, v)| {
                         (
                             k.clone(),
-                            Box::new(v.verifiable_transcrypt(info, keys, rng)),
+                            Box::new(v.verifiable_transcrypt::<C, _>(info, rng)),
+                        )
+                    })
+                    .collect(),
+            ),
+        }
+    }
+
+    #[cfg(not(feature = "elgamal3"))]
+    fn verifiable_transcrypt<C, R>(
+        &self,
+        info: &TranscryptionInfo<G>,
+        keys: &SessionPublicKeys<G>,
+        rng: &mut R,
+    ) -> Self::TranscryptionProof
+    where
+        C: Ciphersuite<Group = Self::Group>,
+        R: Rng + CryptoRng,
+    {
+        match self {
+            EncryptedPepJsonValue::Null => JsonTranscryptionProof::Null,
+            EncryptedPepJsonValue::Bool(enc) => {
+                JsonTranscryptionProof::Bool(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
+            }
+            EncryptedPepJsonValue::Number(enc) => {
+                JsonTranscryptionProof::Number(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
+            }
+            EncryptedPepJsonValue::String(enc) => {
+                JsonTranscryptionProof::String(enc.verifiable_rekey::<C, _>(&info.attribute, rng))
+            }
+            EncryptedPepJsonValue::LongString(enc) => JsonTranscryptionProof::LongString(
+                enc.verifiable_rekey::<C, _>(&info.attribute, rng),
+            ),
+            EncryptedPepJsonValue::Pseudonym(enc) => JsonTranscryptionProof::Pseudonym(
+                enc.verifiable_pseudonymize::<C, _>(&info.pseudonym, &keys.pseudonym, rng),
+            ),
+            EncryptedPepJsonValue::LongPseudonym(enc) => JsonTranscryptionProof::LongPseudonym(
+                enc.verifiable_pseudonymize::<C, _>(&info.pseudonym, &keys.pseudonym, rng),
+            ),
+            EncryptedPepJsonValue::Array(arr) => JsonTranscryptionProof::Array(
+                arr.iter()
+                    .map(|x| Box::new(x.verifiable_transcrypt::<C, _>(info, keys, rng)))
+                    .collect(),
+            ),
+            EncryptedPepJsonValue::Object(obj) => JsonTranscryptionProof::Object(
+                obj.iter()
+                    .map(|(k, v)| {
+                        (
+                            k.clone(),
+                            Box::new(v.verifiable_transcrypt::<C, _>(info, keys, rng)),
                         )
                     })
                     .collect(),

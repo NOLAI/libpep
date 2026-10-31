@@ -1,28 +1,28 @@
 //! Python bindings for the ciphersuite.
 
-use libpep::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255};
+use libpep::elgamal::arithmetic::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
 /// The ciphersuite identifier, from which the context string `"nPEPV1-" || identifier` is built.
 ///
 /// Hashes that take no secret, in particular `hashing.hash_to_group`, are domain-separated with
-/// it. An identifier names a group and a hash together, so it belongs to the group and is not
-/// chosen per call. `ristretto255-SHA512` is the only suite this build implements.
+/// it. An identifier names a group and a hash together, so it is not chosen per call: a build
+/// has the suite `ristretto255-SHA512`, ristretto255 with SHA-512.
 ///
 /// A ciphersuite is unrelated to an `EncryptionContext` or a `PseudonymizationDomain`, which
 /// name a session and a domain within a deployment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[pyclass(name = "Ciphersuite", from_py_object)]
-pub struct PyCiphersuite(pub(crate) Ciphersuite);
+pub struct PyCiphersuite(pub(crate) CiphersuiteId);
 
 #[pymethods]
 impl PyCiphersuite {
-    /// The ciphersuite of the group this build implements: `ristretto255-SHA512`.
+    /// The ciphersuite of this build: `ristretto255-SHA512`.
     ///
     /// A ciphersuite cannot be constructed from an arbitrary identifier. It names a group and a
-    /// hash together, and pairing one group's identifier with another group's operations would
-    /// produce hashes tagged for the wrong curve.
+    /// hash together, and an identifier paired with the wrong operations would produce hashes
+    /// tagged for the wrong suite.
     #[new]
     fn new() -> Self {
         Self::current()
@@ -31,7 +31,7 @@ impl PyCiphersuite {
     /// The ciphersuite this build implements: `ristretto255-SHA512`.
     #[staticmethod]
     fn current() -> Self {
-        Self(Ristretto255::CIPHERSUITE)
+        Self(Ristretto255Sha512::ID)
     }
 
     /// The ciphersuite identifier.
@@ -41,8 +41,6 @@ impl PyCiphersuite {
     }
 
     /// The context string `"nPEPV1-" || identifier`.
-    ///
-    /// Other protocols call this value `contextString`.
     fn context_string(&self, py: Python) -> Py<PyAny> {
         PyBytes::new(py, self.0.context_string()).into()
     }

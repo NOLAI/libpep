@@ -20,6 +20,7 @@ use crate::elgamal::PyElGamal;
 #[cfg(feature = "elgamal3")]
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
 use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 #[cfg(feature = "elgamal3")]
@@ -111,12 +112,12 @@ macro_rules! py_verify {
         impl $py {
             /// Verify the proof against the original ciphertext(s) and the commitments.
             fn verify(&self, $($arg: $ty),*) -> bool {
-                self.inner.verify($($call),*)
+                self.inner.verify::<Ristretto255Sha512>($($call),*)
             }
 
             /// Verify the proof and return the result, or `None` if it does not verify.
             fn verified_reconstruct(&self, $($arg: $ty),*) -> Option<$out> {
-                self.inner.verified_reconstruct($($call),*).map(ToPy::to_py)
+                self.inner.verified_reconstruct::<Ristretto255Sha512>($($call),*).map(ToPy::to_py)
             }
         }
     };
@@ -184,33 +185,33 @@ impl PyVerifiableRerandomize {
     #[cfg(feature = "elgamal3")]
     #[staticmethod]
     fn new_proof(v: &PyElGamal, r: &PyScalarNonZero) -> Self {
-        VerifiableRerandomize::new(&v.0.gy, &r.0, &mut rand::rng()).into()
+        VerifiableRerandomize::new::<Ristretto255Sha512, _>(&v.0.gy, &r.0, &mut rand::rng()).into()
     }
 
     /// A proof of rerandomizing a ciphertext under `gy` with `r`.
     #[cfg(not(feature = "elgamal3"))]
     #[staticmethod]
     fn new_proof(gy: &PyGroupElement, r: &PyScalarNonZero) -> Self {
-        VerifiableRerandomize::new(&gy.0, &r.0, &mut rand::rng()).into()
+        VerifiableRerandomize::new::<Ristretto255Sha512, _>(&gy.0, &r.0, &mut rand::rng()).into()
     }
 
     /// Verify the proof against the key of `v`.
     #[cfg(feature = "elgamal3")]
     fn verify(&self, v: &PyElGamal) -> bool {
-        self.inner.verify(&v.0.gy)
+        self.inner.verify::<Ristretto255Sha512>(&v.0.gy)
     }
 
     /// Verify the proof against `gy`.
     #[cfg(not(feature = "elgamal3"))]
     fn verify(&self, gy: &PyGroupElement) -> bool {
-        self.inner.verify(&gy.0)
+        self.inner.verify::<Ristretto255Sha512>(&gy.0)
     }
 
     /// Verify the proof and return the rerandomized ciphertext, or `None`.
     #[cfg(feature = "elgamal3")]
     fn verified_reconstruct(&self, original: &PyElGamal) -> Option<PyElGamal> {
         self.inner
-            .verified_reconstruct(&original.0, &original.0.gy)
+            .verified_reconstruct::<Ristretto255Sha512>(&original.0, &original.0.gy)
             .map(ToPy::to_py)
     }
 
@@ -218,7 +219,7 @@ impl PyVerifiableRerandomize {
     #[cfg(not(feature = "elgamal3"))]
     fn verified_reconstruct(&self, original: &PyElGamal, gy: &PyGroupElement) -> Option<PyElGamal> {
         self.inner
-            .verified_reconstruct(&original.0, &gy.0)
+            .verified_reconstruct::<Ristretto255Sha512>(&original.0, &gy.0)
             .map(ToPy::to_py)
     }
 }
@@ -232,8 +233,10 @@ fn py_verifiable_rerandomize(
     original: &PyElGamal,
     r: &PyScalarNonZero,
 ) -> (PyElGamal, PyVerifiableRerandomize) {
-    let (result, proof) =
-        libpep::elgamal::verifiable::verifiable_rerandomize(&original.0, &r.0, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
+        Ristretto255Sha512,
+        _,
+    >(&original.0, &r.0, &mut rand::rng());
     (result.to_py(), proof.into())
 }
 
@@ -246,12 +249,10 @@ fn py_verifiable_rerandomize(
     gy: &PyGroupElement,
     r: &PyScalarNonZero,
 ) -> (PyElGamal, PyVerifiableRerandomize) {
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize(
-        &original.0,
-        &gy.0,
-        &r.0,
-        &mut rand::rng(),
-    );
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
+        Ristretto255Sha512,
+        _,
+    >(&original.0, &gy.0, &r.0, &mut rand::rng());
     (result.to_py(), proof.into())
 }
 
@@ -261,7 +262,7 @@ impl PyVerifiableRekey {
     /// A proof of rekeying `v` with `k`.
     #[staticmethod]
     fn new_proof(v: &PyElGamal, k: &PyScalarNonZero) -> Self {
-        VerifiableRekey::new(&v.0, &k.0, &mut rand::rng()).into()
+        VerifiableRekey::new::<Ristretto255Sha512, _>(&v.0, &k.0, &mut rand::rng()).into()
     }
 }
 py_verify!(PyVerifiableRekey: (original: &PyElGamal, commitment: &PyRekeyCommitment) -> PyElGamal
@@ -274,7 +275,8 @@ impl PyVerifiableRekey2 {
     /// A proof of rekeying `v` from `k_from` to `k_to`.
     #[staticmethod]
     fn new_proof(v: &PyElGamal, k_from: &PyScalarNonZero, k_to: &PyScalarNonZero) -> Self {
-        VerifiableRekey2::new(&v.0, &k_from.0, &k_to.0, &mut rand::rng()).into()
+        VerifiableRekey2::new::<Ristretto255Sha512, _>(&v.0, &k_from.0, &k_to.0, &mut rand::rng())
+            .into()
     }
 
     /// Verify the factor sub-proof against the commitments of both sessions.
@@ -284,7 +286,7 @@ impl PyVerifiableRekey2 {
         to_commitment: &PyRekeyCommitment,
     ) -> bool {
         self.inner
-            .verify_factor(&from_commitment.inner, &to_commitment.inner)
+            .verify_factor::<Ristretto255Sha512>(&from_commitment.inner, &to_commitment.inner)
     }
 
     /// The commitment to the combined factor `k_from⁻¹·k_to`.
@@ -303,7 +305,7 @@ impl PyVerifiableReshuffle {
     /// A proof of reshuffling `v` with `s`.
     #[staticmethod]
     fn new_proof(v: &PyElGamal, s: &PyScalarNonZero) -> Self {
-        VerifiableReshuffle::new(&v.0, &s.0, &mut rand::rng()).into()
+        VerifiableReshuffle::new::<Ristretto255Sha512, _>(&v.0, &s.0, &mut rand::rng()).into()
     }
 }
 py_verify!(PyVerifiableReshuffle: (original: &PyElGamal, commitment: &PyReshuffleCommitment)
@@ -316,7 +318,13 @@ impl PyVerifiableReshuffle2 {
     /// A proof of reshuffling `v` from `s_from` to `s_to`.
     #[staticmethod]
     fn new_proof(v: &PyElGamal, s_from: &PyScalarNonZero, s_to: &PyScalarNonZero) -> Self {
-        VerifiableReshuffle2::new(&v.0, &s_from.0, &s_to.0, &mut rand::rng()).into()
+        VerifiableReshuffle2::new::<Ristretto255Sha512, _>(
+            &v.0,
+            &s_from.0,
+            &s_to.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// Verify the factor sub-proof against the commitments of both domains.
@@ -326,7 +334,7 @@ impl PyVerifiableReshuffle2 {
         to_commitment: &PyReshuffleCommitment,
     ) -> bool {
         self.inner
-            .verify_factor(&from_commitment.inner, &to_commitment.inner)
+            .verify_factor::<Ristretto255Sha512>(&from_commitment.inner, &to_commitment.inner)
     }
 
     /// The commitment to the combined factor `s_from⁻¹·s_to`.
@@ -352,7 +360,7 @@ impl PyVerifiableRSK {
     /// A proof of reshuffling and rekeying `v` with `s` and `k`.
     #[staticmethod]
     fn new_proof(v: &PyElGamal, s: &PyScalarNonZero, k: &PyScalarNonZero) -> Self {
-        VerifiableRSK::new(&v.0, &s.0, &k.0, &mut rand::rng()).into()
+        VerifiableRSK::new::<Ristretto255Sha512, _>(&v.0, &s.0, &k.0, &mut rand::rng()).into()
     }
 }
 py_verify!(PyVerifiableRSK: (
@@ -374,7 +382,7 @@ impl PyVerifiableRSK2 {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRSK2::new(
+        VerifiableRSK2::new::<Ristretto255Sha512, _>(
             &v.0,
             &s_from.0,
             &s_to.0,
@@ -393,7 +401,7 @@ impl PyVerifiableRSK2 {
         k_from_commitment: &PyRekeyCommitment,
         k_to_commitment: &PyRekeyCommitment,
     ) -> bool {
-        self.inner.verify_factor(
+        self.inner.verify_factor::<Ristretto255Sha512>(
             &s_from_commitment.inner,
             &s_to_commitment.inner,
             &k_from_commitment.inner,
@@ -438,7 +446,15 @@ impl PyVerifiableRRSK {
         s: &PyScalarNonZero,
         k: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSK::new(&v.0, &v.0.gy, &r.0, &s.0, &k.0, &mut rand::rng()).into()
+        VerifiableRRSK::new::<Ristretto255Sha512, _>(
+            &v.0,
+            &v.0.gy,
+            &r.0,
+            &s.0,
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// A proof of rerandomizing under `gy` with `r`, then reshuffling and rekeying with `s`
@@ -452,7 +468,15 @@ impl PyVerifiableRRSK {
         s: &PyScalarNonZero,
         k: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSK::new(&v.0, &gy.0, &r.0, &s.0, &k.0, &mut rand::rng()).into()
+        VerifiableRRSK::new::<Ristretto255Sha512, _>(
+            &v.0,
+            &gy.0,
+            &r.0,
+            &s.0,
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 }
 py_verify!(#[cfg(feature = "elgamal3")] PyVerifiableRRSK: (
@@ -487,7 +511,7 @@ impl PyVerifiableRRSK2 {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSK2::new(
+        VerifiableRRSK2::new::<Ristretto255Sha512, _>(
             &v.0,
             &v.0.gy,
             &r.0,
@@ -514,7 +538,7 @@ impl PyVerifiableRRSK2 {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSK2::new(
+        VerifiableRRSK2::new::<Ristretto255Sha512, _>(
             &v.0,
             &gy.0,
             &r.0,
@@ -570,26 +594,35 @@ impl PyVerifiableRerandomizeBatch {
     #[cfg(feature = "elgamal3")]
     #[staticmethod]
     fn new_proof(n: usize, gy_source: &PyElGamal) -> Self {
-        VerifiableRerandomizeBatch::new(n, &gy_source.0.gy, &mut rand::rng()).into()
+        VerifiableRerandomizeBatch::new::<Ristretto255Sha512, _>(
+            n,
+            &gy_source.0.gy,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// A proof of rerandomizing `n` ciphertexts under `gy`.
     #[cfg(not(feature = "elgamal3"))]
     #[staticmethod]
     fn new_proof(n: usize, gy: &PyGroupElement) -> Self {
-        VerifiableRerandomizeBatch::new(n, &gy.0, &mut rand::rng()).into()
+        VerifiableRerandomizeBatch::new::<Ristretto255Sha512, _>(n, &gy.0, &mut rand::rng()).into()
     }
 
     /// Verify the proof against `originals`, which carry one key.
     #[cfg(feature = "elgamal3")]
     fn verify(&self, originals: Vec<PyElGamal>) -> bool {
-        common_gy(&originals).is_ok_and(|gy| self.inner.verify(&els(&originals), &gy))
+        common_gy(&originals).is_ok_and(|gy| {
+            self.inner
+                .verify::<Ristretto255Sha512>(&els(&originals), &gy)
+        })
     }
 
     /// Verify the proof against `originals` and `gy`.
     #[cfg(not(feature = "elgamal3"))]
     fn verify(&self, originals: Vec<PyElGamal>, gy: &PyGroupElement) -> bool {
-        self.inner.verify(&els(&originals), &gy.0)
+        self.inner
+            .verify::<Ristretto255Sha512>(&els(&originals), &gy.0)
     }
 
     /// Verify the proof and return the rerandomized ciphertexts, or `None`.
@@ -597,7 +630,7 @@ impl PyVerifiableRerandomizeBatch {
     fn verified_reconstruct(&self, originals: Vec<PyElGamal>) -> Option<Vec<PyElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.inner
-            .verified_reconstruct(&els(&originals), &gy)
+            .verified_reconstruct::<Ristretto255Sha512>(&els(&originals), &gy)
             .map(ToPy::to_py)
     }
 
@@ -609,7 +642,7 @@ impl PyVerifiableRerandomizeBatch {
         gy: &PyGroupElement,
     ) -> Option<Vec<PyElGamal>> {
         self.inner
-            .verified_reconstruct(&els(&originals), &gy.0)
+            .verified_reconstruct::<Ristretto255Sha512>(&els(&originals), &gy.0)
             .map(ToPy::to_py)
     }
 }
@@ -624,11 +657,10 @@ fn py_verifiable_rerandomize_batch(
     originals: Vec<PyElGamal>,
 ) -> PyResult<(Vec<PyElGamal>, PyVerifiableRerandomizeBatch)> {
     let gy = common_gy(&originals)?;
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
-        &els(&originals),
-        &gy,
-        &mut rand::rng(),
-    );
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
+        Ristretto255Sha512,
+        _,
+    >(&els(&originals), &gy, &mut rand::rng());
     Ok((result.to_py(), proof.into()))
 }
 
@@ -640,11 +672,10 @@ fn py_verifiable_rerandomize_batch(
     originals: Vec<PyElGamal>,
     gy: &PyGroupElement,
 ) -> (Vec<PyElGamal>, PyVerifiableRerandomizeBatch) {
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
-        &els(&originals),
-        &gy.0,
-        &mut rand::rng(),
-    );
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
+        Ristretto255Sha512,
+        _,
+    >(&els(&originals), &gy.0, &mut rand::rng());
     (result.to_py(), proof.into())
 }
 
@@ -654,7 +685,12 @@ impl PyVerifiableRekeyBatch {
     /// A proof of rekeying every ciphertext with `k`.
     #[staticmethod]
     fn new_proof(ciphertexts: Vec<PyElGamal>, k: &PyScalarNonZero) -> Self {
-        VerifiableRekeyBatch::new(&els(&ciphertexts), &k.0, &mut rand::rng()).into()
+        VerifiableRekeyBatch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 }
 py_verify!(PyVerifiableRekeyBatch: (originals: Vec<PyElGamal>, commitment: &PyRekeyCommitment)
@@ -672,7 +708,13 @@ impl PyVerifiableRekey2Batch {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRekey2Batch::new(&els(&ciphertexts), &k_from.0, &k_to.0, &mut rand::rng()).into()
+        VerifiableRekey2Batch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &k_from.0,
+            &k_to.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// Verify the factor sub-proof against the commitments of both sessions.
@@ -682,7 +724,7 @@ impl PyVerifiableRekey2Batch {
         to_commitment: &PyRekeyCommitment,
     ) -> bool {
         self.inner
-            .verify_factor(&from_commitment.inner, &to_commitment.inner)
+            .verify_factor::<Ristretto255Sha512>(&from_commitment.inner, &to_commitment.inner)
     }
 
     /// The commitment to the combined factor `k_from⁻¹·k_to`.
@@ -704,7 +746,12 @@ impl PyVerifiableReshuffleBatch {
     /// A proof of reshuffling every ciphertext with `s`.
     #[staticmethod]
     fn new_proof(ciphertexts: Vec<PyElGamal>, s: &PyScalarNonZero) -> Self {
-        VerifiableReshuffleBatch::new(&els(&ciphertexts), &s.0, &mut rand::rng()).into()
+        VerifiableReshuffleBatch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &s.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 }
 py_verify!(PyVerifiableReshuffleBatch: (
@@ -724,8 +771,13 @@ impl PyVerifiableReshuffle2Batch {
         s_from: &PyScalarNonZero,
         s_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableReshuffle2Batch::new(&els(&ciphertexts), &s_from.0, &s_to.0, &mut rand::rng())
-            .into()
+        VerifiableReshuffle2Batch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &s_from.0,
+            &s_to.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// Verify the factor sub-proof against the commitments of both domains.
@@ -735,7 +787,7 @@ impl PyVerifiableReshuffle2Batch {
         to_commitment: &PyReshuffleCommitment,
     ) -> bool {
         self.inner
-            .verify_factor(&from_commitment.inner, &to_commitment.inner)
+            .verify_factor::<Ristretto255Sha512>(&from_commitment.inner, &to_commitment.inner)
     }
 
     /// The commitment to the combined factor `s_from⁻¹·s_to`.
@@ -757,7 +809,13 @@ impl PyVerifiableRSKBatch {
     /// A proof of reshuffling and rekeying every ciphertext with `s` and `k`.
     #[staticmethod]
     fn new_proof(ciphertexts: Vec<PyElGamal>, s: &PyScalarNonZero, k: &PyScalarNonZero) -> Self {
-        VerifiableRSKBatch::new(&els(&ciphertexts), &s.0, &k.0, &mut rand::rng()).into()
+        VerifiableRSKBatch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &s.0,
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// Verify the factor sub-proof against the commitments.
@@ -766,8 +824,10 @@ impl PyVerifiableRSKBatch {
         reshuffle_commitment: &PyReshuffleCommitment,
         rekey_commitment: &PyRekeyCommitment,
     ) -> bool {
-        self.inner
-            .verify_factor(&reshuffle_commitment.inner, &rekey_commitment.inner)
+        self.inner.verify_factor::<Ristretto255Sha512>(
+            &reshuffle_commitment.inner,
+            &rekey_commitment.inner,
+        )
     }
 }
 py_verify!(PyVerifiableRSKBatch: (
@@ -789,7 +849,7 @@ impl PyVerifiableRSK2Batch {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRSK2Batch::new(
+        VerifiableRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             &s_from.0,
             &s_to.0,
@@ -808,7 +868,7 @@ impl PyVerifiableRSK2Batch {
         k_from_commitment: &PyRekeyCommitment,
         k_to_commitment: &PyRekeyCommitment,
     ) -> bool {
-        self.inner.verify_factor(
+        self.inner.verify_factor::<Ristretto255Sha512>(
             &s_from_commitment.inner,
             &s_to_commitment.inner,
             &k_from_commitment.inner,
@@ -854,7 +914,14 @@ impl PyVerifiableRRSKBatch {
         k: &PyScalarNonZero,
     ) -> PyResult<Self> {
         let gy = common_gy(&ciphertexts)?;
-        Ok(VerifiableRRSKBatch::new(&els(&ciphertexts), &gy, &s.0, &k.0, &mut rand::rng()).into())
+        Ok(VerifiableRRSKBatch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &gy,
+            &s.0,
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into())
     }
 
     /// A proof of rerandomizing under `gy`, reshuffling and rekeying every ciphertext.
@@ -866,7 +933,14 @@ impl PyVerifiableRRSKBatch {
         s: &PyScalarNonZero,
         k: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSKBatch::new(&els(&ciphertexts), &gy.0, &s.0, &k.0, &mut rand::rng()).into()
+        VerifiableRRSKBatch::new::<Ristretto255Sha512, _>(
+            &els(&ciphertexts),
+            &gy.0,
+            &s.0,
+            &k.0,
+            &mut rand::rng(),
+        )
+        .into()
     }
 
     /// Verify the proof against `originals`, which carry one key, and the commitments.
@@ -878,7 +952,7 @@ impl PyVerifiableRRSKBatch {
         rekey_commitment: &PyRekeyCommitment,
     ) -> bool {
         common_gy(&originals).is_ok_and(|gy| {
-            self.inner.verify(
+            self.inner.verify::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 &reshuffle_commitment.inner,
@@ -897,7 +971,7 @@ impl PyVerifiableRRSKBatch {
     ) -> Option<Vec<PyElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.inner
-            .verified_reconstruct(
+            .verified_reconstruct::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 &reshuffle_commitment.inner,
@@ -934,7 +1008,7 @@ impl PyVerifiableRRSK2Batch {
         k_to: &PyScalarNonZero,
     ) -> PyResult<Self> {
         let gy = common_gy(&ciphertexts)?;
-        Ok(VerifiableRRSK2Batch::new(
+        Ok(VerifiableRRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             &gy,
             &s_from.0,
@@ -958,7 +1032,7 @@ impl PyVerifiableRRSK2Batch {
         k_from: &PyScalarNonZero,
         k_to: &PyScalarNonZero,
     ) -> Self {
-        VerifiableRRSK2Batch::new(
+        VerifiableRRSK2Batch::new::<Ristretto255Sha512, _>(
             &els(&ciphertexts),
             &gy.0,
             &s_from.0,
@@ -981,7 +1055,7 @@ impl PyVerifiableRRSK2Batch {
         k_to_commitment: &PyRekeyCommitment,
     ) -> bool {
         common_gy(&originals).is_ok_and(|gy| {
-            self.inner.verify(
+            self.inner.verify::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 &s_from_commitment.inner,
@@ -1004,7 +1078,7 @@ impl PyVerifiableRRSK2Batch {
     ) -> Option<Vec<PyElGamal>> {
         let gy = common_gy(&originals).ok()?;
         self.inner
-            .verified_reconstruct(
+            .verified_reconstruct::<Ristretto255Sha512>(
                 &els(&originals),
                 &gy,
                 &s_from_commitment.inner,

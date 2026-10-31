@@ -17,6 +17,7 @@ use crate::factors::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::types::WASMTranscryptionInfo;
 use crate::verifier::WASMVerifier;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::verifier::VerifyError;
 use wasm_bindgen::prelude::*;
 
@@ -70,7 +71,8 @@ impl WASMJsonTranscryptionProof {
         original: &WASMEncryptedPepJsonValue,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
-        self.0.verify(&original.0, &commitments.0)
+        self.0
+            .verify::<Ristretto255Sha512>(&original.0, &commitments.0)
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -82,7 +84,8 @@ impl WASMJsonTranscryptionProof {
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
         let keys: crate::aliases::SessionKeys = (*session_keys).into();
-        self.0.verify(&original.0, &keys.public(), &commitments.0)
+        self.0
+            .verify::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.0)
     }
 
     /// Verify and reconstruct the transcrypted JSON value.
@@ -94,7 +97,7 @@ impl WASMJsonTranscryptionProof {
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         self.0
-            .verified_reconstruct(&original.0, &commitments.0)
+            .verified_reconstruct::<Ristretto255Sha512>(&original.0, &commitments.0)
             .map(WASMEncryptedPepJsonValue)
             .ok_or_else(verify_err)
     }
@@ -109,7 +112,7 @@ impl WASMJsonTranscryptionProof {
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let keys: crate::aliases::SessionKeys = (*session_keys).into();
         self.0
-            .verified_reconstruct(&original.0, &keys.public(), &commitments.0)
+            .verified_reconstruct::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.0)
             .map(WASMEncryptedPepJsonValue)
             .ok_or_else(verify_err)
     }
@@ -173,7 +176,10 @@ impl WASMEncryptedPepJsonValue {
     ) -> WASMJsonTranscryptionProof {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
-        WASMJsonTranscryptionProof(self.0.verifiable_transcrypt(&info.0, &mut rng))
+        WASMJsonTranscryptionProof(
+            self.0
+                .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &mut rng),
+        )
     }
 
     #[cfg(not(feature = "elgamal3"))]
@@ -186,10 +192,11 @@ impl WASMEncryptedPepJsonValue {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
         let keys: crate::aliases::SessionKeys = (*session_keys).into();
-        WASMJsonTranscryptionProof(
-            self.0
-                .verifiable_transcrypt(&info.0, &keys.public(), &mut rng),
-        )
+        WASMJsonTranscryptionProof(self.0.verifiable_transcrypt::<Ristretto255Sha512, _>(
+            &info.0,
+            &keys.public(),
+            &mut rng,
+        ))
     }
 }
 

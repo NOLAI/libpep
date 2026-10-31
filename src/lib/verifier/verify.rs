@@ -1,6 +1,6 @@
 //! The verifier and its commitment caches.
 //!
-//! The verifier is generic over the [`Group`].
+//! The verifier is generic over the [`Ciphersuite`].
 
 use super::cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache, PseudonymRekeyCommitmentsCache,
@@ -14,7 +14,8 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::ciphersuite::ElementOf;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
@@ -34,16 +35,16 @@ use std::collections::HashMap;
 /// [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK) or
 /// [`VerifiableRekey`](crate::elgamal::verifiable::VerifiableRekey) check against
 /// these commitments.
-pub struct Verifier<G: Group> {
-    pseudonymization_cache: PseudonymizationCommitmentsCache<G>,
-    pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache<G>,
-    attribute_rekey_cache: AttributeRekeyCommitmentsCache<G>,
+pub struct Verifier<C: Ciphersuite> {
+    pseudonymization_cache: PseudonymizationCommitmentsCache<C::Group>,
+    pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache<C::Group>,
+    attribute_rekey_cache: AttributeRekeyCommitmentsCache<C::Group>,
     /// Blinding commitments per transcryptor, for session-key-share verification.
-    blinding_commitments: HashMap<TranscryptorId, BlindingCommitment<G>>,
+    blinding_commitments: HashMap<TranscryptorId, BlindingCommitment<C::Group>>,
     #[cfg(feature = "verifiable-derivation")]
-    master_pseudonym_keys: HashMap<TranscryptorId, MasterPseudonymizationPublicKey<G>>,
+    master_pseudonym_keys: HashMap<TranscryptorId, MasterPseudonymizationPublicKey<C>>,
     #[cfg(feature = "verifiable-derivation")]
-    master_rekey_keys: HashMap<TranscryptorId, MasterRekeyingPublicKey<G>>,
+    master_rekey_keys: HashMap<TranscryptorId, MasterRekeyingPublicKey<C>>,
 }
 
 /// Key identifying a pseudonymization transition.
@@ -58,14 +59,14 @@ pub type PseudonymizationKey = (
 /// Key identifying a rekey transition.
 pub type RekeyTransitionKey = (TranscryptorId, EncryptionContext, EncryptionContext);
 
-impl<G: Group> Verifier<G> {
+impl<C: Ciphersuite> Verifier<C> {
     #[must_use]
     /// A verifier with empty, unbounded caches.
     pub fn new() -> Self {
         Self {
-            pseudonymization_cache: PseudonymizationCommitmentsCache::<G>::new(),
-            pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::<G>::new(),
-            attribute_rekey_cache: AttributeRekeyCommitmentsCache::<G>::new(),
+            pseudonymization_cache: PseudonymizationCommitmentsCache::<C::Group>::new(),
+            pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::<C::Group>::new(),
+            attribute_rekey_cache: AttributeRekeyCommitmentsCache::<C::Group>::new(),
             blinding_commitments: HashMap::new(),
             #[cfg(feature = "verifiable-derivation")]
             master_pseudonym_keys: HashMap::new(),
@@ -86,13 +87,13 @@ impl<G: Group> Verifier<G> {
     #[must_use]
     pub fn with_cache_capacity(max_entries: usize) -> Self {
         Self {
-            pseudonymization_cache: PseudonymizationCommitmentsCache::<G>::with_max_entries(
+            pseudonymization_cache: PseudonymizationCommitmentsCache::<C::Group>::with_max_entries(
                 max_entries,
             ),
-            pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::<G>::with_max_entries(
+            pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::<C::Group>::with_max_entries(
                 max_entries,
             ),
-            attribute_rekey_cache: AttributeRekeyCommitmentsCache::<G>::with_max_entries(
+            attribute_rekey_cache: AttributeRekeyCommitmentsCache::<C::Group>::with_max_entries(
                 max_entries,
             ),
             blinding_commitments: HashMap::new(),
@@ -118,7 +119,7 @@ impl<G: Group> Verifier<G> {
     pub fn register_blinding_commitment(
         &mut self,
         transcryptor_id: TranscryptorId,
-        commitment: BlindingCommitment<G>,
+        commitment: BlindingCommitment<C::Group>,
     ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitment.0, "blinding")?;
         match self.blinding_commitments.get(&transcryptor_id) {
@@ -134,7 +135,10 @@ impl<G: Group> Verifier<G> {
     }
 
     /// The blinding commitment registered for a transcryptor.
-    pub fn blinding_commitment(&self, transcryptor_id: &str) -> Option<&BlindingCommitment<G>> {
+    pub fn blinding_commitment(
+        &self,
+        transcryptor_id: &str,
+    ) -> Option<&BlindingCommitment<C::Group>> {
         self.blinding_commitments.get(transcryptor_id)
     }
 
@@ -158,8 +162,8 @@ impl<G: Group> Verifier<G> {
     pub fn register_master_keys(
         &mut self,
         transcryptor_id: TranscryptorId,
-        pseudonym_master_key: MasterPseudonymizationPublicKey<G>,
-        rekey_master_key: MasterRekeyingPublicKey<G>,
+        pseudonym_master_key: MasterPseudonymizationPublicKey<C>,
+        rekey_master_key: MasterRekeyingPublicKey<C>,
     ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&pseudonym_master_key.x1, "master pseudonym x1")?;
         Self::validate_not_weak(&pseudonym_master_key.x2, "master pseudonym x2")?;
@@ -187,7 +191,7 @@ impl<G: Group> Verifier<G> {
     pub fn get_master_pseudonym_key(
         &self,
         transcryptor_id: &str,
-    ) -> Option<&MasterPseudonymizationPublicKey<G>> {
+    ) -> Option<&MasterPseudonymizationPublicKey<C>> {
         self.master_pseudonym_keys.get(transcryptor_id)
     }
 
@@ -196,7 +200,7 @@ impl<G: Group> Verifier<G> {
     pub fn get_master_rekey_key(
         &self,
         transcryptor_id: &str,
-    ) -> Option<&MasterRekeyingPublicKey<G>> {
+    ) -> Option<&MasterRekeyingPublicKey<C>> {
         self.master_rekey_keys.get(transcryptor_id)
     }
 
@@ -212,10 +216,10 @@ impl<G: Group> Verifier<G> {
     // ------------------------------------------------------------------
 
     fn validate_not_weak(
-        val: &G::Element,
+        val: &ElementOf<C>,
         commitment_type: &'static str,
     ) -> Result<(), WeakCommitmentError> {
-        if *val == G::identity() || *val == G::generator() {
+        if *val == C::Group::identity() || *val == C::Group::generator() {
             Err(WeakCommitmentError(commitment_type))
         } else {
             Ok(())
@@ -228,7 +232,7 @@ impl<G: Group> Verifier<G> {
     /// bypass [`register_pseudonymization_commitments`] still get the same
     /// guard.
     fn check_pseudonymization_commitment(
-        c: &VerifiablePseudonymizationCommitment<G>,
+        c: &VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<(), VerifyError> {
         Self::validate_not_weak(&c.reshuffle_commitment.point(), "reshuffle").map_err(|e| {
             VerifyError::WeakCommitment {
@@ -246,7 +250,7 @@ impl<G: Group> Verifier<G> {
     /// As [`check_pseudonymization_commitment`] but for a single rekey
     /// commitment.
     fn check_rekey_commitment(
-        c: &VerifiableRekeyCommitment<G>,
+        c: &VerifiableRekeyCommitment<C::Group>,
         kind: &'static str,
     ) -> Result<(), VerifyError> {
         Self::validate_not_weak(&c.commitment.point(), kind).map_err(|e| {
@@ -259,7 +263,7 @@ impl<G: Group> Verifier<G> {
     /// As [`check_pseudonymization_commitment`] but for a composite
     /// transcryption commitment (pseudonym + attribute).
     fn check_transcryption_commitment(
-        c: &VerifiableTranscryptionCommitment<G>,
+        c: &VerifiableTranscryptionCommitment<C::Group>,
     ) -> Result<(), VerifyError> {
         Self::check_pseudonymization_commitment(&c.pseudonym)?;
         Self::check_rekey_commitment(&c.attribute, "attribute rekey")
@@ -274,7 +278,7 @@ impl<G: Group> Verifier<G> {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-        commitments: VerifiablePseudonymizationCommitment<G>,
+        commitments: VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.reshuffle_commitment.point(), "reshuffle")?;
         Self::validate_not_weak(&commitments.rekey_commitment.point(), "rekey")?;
@@ -296,7 +300,7 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &TranscryptorId,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-        commitments: VerifiableRekeyCommitment<G>,
+        commitments: VerifiableRekeyCommitment<C::Group>,
     ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.commitment.point(), "pseudonym rekey")?;
         let key: RekeyTransitionKey = (
@@ -315,7 +319,7 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &TranscryptorId,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-        commitments: VerifiableRekeyCommitment<G>,
+        commitments: VerifiableRekeyCommitment<C::Group>,
     ) -> Result<(), RegisterCommitmentsError> {
         Self::validate_not_weak(&commitments.commitment.point(), "attribute rekey")?;
         let key: RekeyTransitionKey = (
@@ -335,7 +339,7 @@ impl<G: Group> Verifier<G> {
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<&VerifiablePseudonymizationCommitment<G>> {
+    ) -> Option<&VerifiablePseudonymizationCommitment<C::Group>> {
         let key: PseudonymizationKey = (
             transcryptor_id.to_string(),
             domain_from.clone(),
@@ -352,7 +356,7 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &str,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<&VerifiableRekeyCommitment<G>> {
+    ) -> Option<&VerifiableRekeyCommitment<C::Group>> {
         let key: RekeyTransitionKey = (
             transcryptor_id.to_string(),
             context_from.clone(),
@@ -367,7 +371,7 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &str,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
-    ) -> Option<&VerifiableRekeyCommitment<G>> {
+    ) -> Option<&VerifiableRekeyCommitment<C::Group>> {
         let key: RekeyTransitionKey = (
             transcryptor_id.to_string(),
             context_from.clone(),
@@ -426,7 +430,7 @@ impl<G: Group> Verifier<G> {
     }
 
     /// The commitment caches, for their sizes.
-    pub fn cache(&self) -> VerifierCache<'_, G> {
+    pub fn cache(&self) -> VerifierCache<'_, C::Group> {
         VerifierCache {
             pseudonymization: &self.pseudonymization_cache,
             pseudonym_rekey: &self.pseudonym_rekey_cache,
@@ -452,13 +456,13 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiableRekeyCommitment<G>,
+        commitments: &VerifiableRekeyCommitment<C::Group>,
     ) -> Result<(), VerifyError>
     where
-        P: VerifiableRekeyProof<Group = G>,
+        P: VerifiableRekeyProof<Group = C::Group>,
     {
         Self::check_rekey_commitment(commitments, "rekey")?;
-        if proof.verify(original, commitments) {
+        if proof.verify::<C>(original, commitments) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -470,14 +474,14 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiableRekeyCommitment<G>,
+        commitments: &VerifiableRekeyCommitment<C::Group>,
     ) -> Result<P::Output, VerifyError>
     where
-        P: VerifiableRekeyProof<Group = G>,
+        P: VerifiableRekeyProof<Group = C::Group>,
     {
         Self::check_rekey_commitment(commitments, "rekey")?;
         proof
-            .verified_reconstruct(original, commitments)
+            .verified_reconstruct::<C>(original, commitments)
             .ok_or(VerifyError::ProofRejected)
     }
 
@@ -489,13 +493,13 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
+        commitments: &VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<(), VerifyError>
     where
-        P: VerifiablePseudonymizationProof<Group = G>,
+        P: VerifiablePseudonymizationProof<Group = C::Group>,
     {
         Self::check_pseudonymization_commitment(commitments)?;
-        if proof.verify(original, commitments) {
+        if proof.verify::<C>(original, commitments) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -509,14 +513,14 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        public_key: &PseudonymSessionPublicKey<G>,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
+        public_key: &PseudonymSessionPublicKey<C::Group>,
+        commitments: &VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<(), VerifyError>
     where
-        P: VerifiablePseudonymizationProof<Group = G>,
+        P: VerifiablePseudonymizationProof<Group = C::Group>,
     {
         Self::check_pseudonymization_commitment(commitments)?;
-        if proof.verify(original, public_key, commitments) {
+        if proof.verify::<C>(original, public_key, commitments) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -530,14 +534,14 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
+        commitments: &VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<P::Output, VerifyError>
     where
-        P: VerifiablePseudonymizationProof<Group = G>,
+        P: VerifiablePseudonymizationProof<Group = C::Group>,
     {
         Self::check_pseudonymization_commitment(commitments)?;
         proof
-            .verified_reconstruct(original, commitments)
+            .verified_reconstruct::<C>(original, commitments)
             .ok_or(VerifyError::ProofRejected)
     }
 
@@ -548,15 +552,15 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        public_key: &PseudonymSessionPublicKey<G>,
-        commitments: &VerifiablePseudonymizationCommitment<G>,
+        public_key: &PseudonymSessionPublicKey<C::Group>,
+        commitments: &VerifiablePseudonymizationCommitment<C::Group>,
     ) -> Result<P::Output, VerifyError>
     where
-        P: VerifiablePseudonymizationProof<Group = G>,
+        P: VerifiablePseudonymizationProof<Group = C::Group>,
     {
         Self::check_pseudonymization_commitment(commitments)?;
         proof
-            .verified_reconstruct(original, public_key, commitments)
+            .verified_reconstruct::<C>(original, public_key, commitments)
             .ok_or(VerifyError::ProofRejected)
     }
 
@@ -568,13 +572,13 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiableTranscryptionCommitment<G>,
+        commitments: &VerifiableTranscryptionCommitment<C::Group>,
     ) -> Result<(), VerifyError>
     where
-        P: VerifiableTranscryptionProof<Group = G>,
+        P: VerifiableTranscryptionProof<Group = C::Group>,
     {
         Self::check_transcryption_commitment(commitments)?;
-        if proof.verify(original, commitments) {
+        if proof.verify::<C>(original, commitments) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -588,14 +592,14 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        public_key: &SessionPublicKeys<G>,
-        commitments: &VerifiableTranscryptionCommitment<G>,
+        public_key: &SessionPublicKeys<C::Group>,
+        commitments: &VerifiableTranscryptionCommitment<C::Group>,
     ) -> Result<(), VerifyError>
     where
-        P: VerifiableTranscryptionProof<Group = G>,
+        P: VerifiableTranscryptionProof<Group = C::Group>,
     {
         Self::check_transcryption_commitment(commitments)?;
-        if proof.verify(original, public_key, commitments) {
+        if proof.verify::<C>(original, public_key, commitments) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -609,14 +613,14 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        commitments: &VerifiableTranscryptionCommitment<G>,
+        commitments: &VerifiableTranscryptionCommitment<C::Group>,
     ) -> Result<P::Output, VerifyError>
     where
-        P: VerifiableTranscryptionProof<Group = G>,
+        P: VerifiableTranscryptionProof<Group = C::Group>,
     {
         Self::check_transcryption_commitment(commitments)?;
         proof
-            .verified_reconstruct(original, commitments)
+            .verified_reconstruct::<C>(original, commitments)
             .ok_or(VerifyError::ProofRejected)
     }
 
@@ -627,15 +631,15 @@ impl<G: Group> Verifier<G> {
         &self,
         original: &P::DataType,
         proof: &P,
-        public_key: &SessionPublicKeys<G>,
-        commitments: &VerifiableTranscryptionCommitment<G>,
+        public_key: &SessionPublicKeys<C::Group>,
+        commitments: &VerifiableTranscryptionCommitment<C::Group>,
     ) -> Result<P::Output, VerifyError>
     where
-        P: VerifiableTranscryptionProof<Group = G>,
+        P: VerifiableTranscryptionProof<Group = C::Group>,
     {
         Self::check_transcryption_commitment(commitments)?;
         proof
-            .verified_reconstruct(original, public_key, commitments)
+            .verified_reconstruct::<C>(original, public_key, commitments)
             .ok_or(VerifyError::ProofRejected)
     }
 
@@ -658,7 +662,7 @@ impl<G: Group> Verifier<G> {
         context_to: &EncryptionContext,
     ) -> Result<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output, VerifyError>
     where
-        E: VerifiablePseudonymizable<Group = G> + Encrypted<Group = G>,
+        E: VerifiablePseudonymizable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
     {
         let key: PseudonymizationKey = (
@@ -688,14 +692,14 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &str,
         original: &E,
         proof: &E::PseudonymizationProof,
-        public_key: &PseudonymSessionPublicKey<G>,
+        public_key: &PseudonymSessionPublicKey<C::Group>,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
     ) -> Result<<E::PseudonymizationProof as VerifiablePseudonymizationProof>::Output, VerifyError>
     where
-        E: VerifiablePseudonymizable<Group = G> + Encrypted<Group = G>,
+        E: VerifiablePseudonymizable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::PseudonymizationProof: VerifiablePseudonymizationProof<DataType = E>,
     {
         let key: PseudonymizationKey = (
@@ -728,7 +732,7 @@ impl<G: Group> Verifier<G> {
         context_to: &EncryptionContext,
     ) -> Result<<E::RekeyProof as VerifiableRekeyProof>::Output, VerifyError>
     where
-        E: VerifiableRekeyable<Group = G> + Encrypted<Group = G>,
+        E: VerifiableRekeyable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::RekeyProof: VerifiableRekeyProof<DataType = E>,
     {
         let key: RekeyTransitionKey = (
@@ -754,7 +758,7 @@ impl<G: Group> Verifier<G> {
         context_to: &EncryptionContext,
     ) -> Result<<E::RekeyProof as VerifiableRekeyProof>::Output, VerifyError>
     where
-        E: VerifiableRekeyable<Group = G> + Encrypted<Group = G>,
+        E: VerifiableRekeyable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::RekeyProof: VerifiableRekeyProof<DataType = E>,
     {
         let key: RekeyTransitionKey = (
@@ -783,7 +787,7 @@ impl<G: Group> Verifier<G> {
         context_to: &EncryptionContext,
     ) -> Result<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output, VerifyError>
     where
-        E: VerifiableTranscryptable<Group = G> + Encrypted<Group = G>,
+        E: VerifiableTranscryptable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
     {
         let pseudo_key: PseudonymizationKey = (
@@ -826,14 +830,14 @@ impl<G: Group> Verifier<G> {
         transcryptor_id: &str,
         original: &E,
         proof: &E::TranscryptionProof,
-        public_key: &SessionPublicKeys<G>,
+        public_key: &SessionPublicKeys<C::Group>,
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         context_from: &EncryptionContext,
         context_to: &EncryptionContext,
     ) -> Result<<E::TranscryptionProof as VerifiableTranscryptionProof>::Output, VerifyError>
     where
-        E: VerifiableTranscryptable<Group = G> + Encrypted<Group = G>,
+        E: VerifiableTranscryptable<Group = C::Group> + Encrypted<Group = C::Group>,
         E::TranscryptionProof: VerifiableTranscryptionProof<DataType = E>,
     {
         let pseudo_key: PseudonymizationKey = (
@@ -882,13 +886,13 @@ impl<G: Group> Verifier<G> {
     pub fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
-        rekey_commitment: &G::Element,
-        proof: &SessionKeyShareProof<G>,
+        rekey_commitment: &ElementOf<C>,
+        proof: &SessionKeyShareProof<C::Group>,
     ) -> Result<(), VerifyError> {
         let blinding_commitment = self
             .blinding_commitment(transcryptor_id)
             .ok_or(VerifyError::UnknownCommitment)?;
-        if proof.verify(blinding_commitment, rekey_commitment) {
+        if proof.verify::<C>(blinding_commitment, rekey_commitment) {
             Ok(())
         } else {
             Err(VerifyError::ProofRejected)
@@ -932,7 +936,7 @@ impl<G: Group> VerifierCache<'_, G> {
     }
 }
 
-impl<G: Group> Default for Verifier<G> {
+impl<C: Ciphersuite> Default for Verifier<C> {
     fn default() -> Self {
         Self::new()
     }
@@ -943,13 +947,13 @@ impl<G: Group> Default for Verifier<G> {
 mod tests {
     use crate::contexts::{EncryptionContext, PseudonymizationDomain};
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::elgamal::verifiable::{
         FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
     };
     use crate::factors::VerifiablePseudonymizationCommitment;
 
-    type Verifier = super::Verifier<Ristretto255>;
+    type Verifier = super::Verifier<Ristretto255Sha512>;
 
     fn weak_pseudonymization_commitments(
         weak: GroupElement,

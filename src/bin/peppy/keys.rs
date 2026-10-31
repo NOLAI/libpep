@@ -7,7 +7,7 @@ use crate::aliases::{
     AttributeSessionSecretKey, BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKeys,
     BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymGlobalSecretKey,
     PseudonymSessionKeyShare, PseudonymSessionKeys, PseudonymSessionSecretKey, Ristretto255,
-    SessionKeyShares,
+    Ristretto255Sha512, SessionKeyShares,
 };
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
@@ -153,7 +153,8 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let Some(global) = pseudonym_global_secret {
                 let global: PseudonymGlobalSecretKey =
                     io::secret_key(&global, "pseudonym global secret key")?;
-                let (public, secret) = make_pseudonym_session_keys(&global, &context, &secret);
+                let (public, secret) =
+                    make_pseudonym_session_keys::<Ristretto255Sha512>(&global, &context, &secret);
                 out.value("pseudonym_public_key", public.to_hex());
                 out.value("pseudonym_secret_key", secret.value().to_hex());
                 pseudonym = Some(PseudonymSessionKeys { public, secret });
@@ -162,7 +163,8 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             if let Some(global) = attribute_global_secret {
                 let global: AttributeGlobalSecretKey =
                     io::secret_key(&global, "attribute global secret key")?;
-                let (public, secret) = make_attribute_session_keys(&global, &context, &secret);
+                let (public, secret) =
+                    make_attribute_session_keys::<Ristretto255Sha512>(&global, &context, &secret);
                 out.value("attribute_public_key", public.to_hex());
                 out.value("attribute_secret_key", secret.value().to_hex());
                 attribute = Some(AttributeSessionKeys { public, secret });
@@ -207,10 +209,12 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
             let secret = io::encryption_secret(&encryption_secret)?;
             let context = io::context(Some(&context))?;
-            let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&secret, &context);
-            let attribute_rekey_factor = make_attribute_rekey_factor(&secret, &context);
+            let pseudonym_rekey_factor =
+                make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret, &context);
+            let attribute_rekey_factor =
+                make_attribute_rekey_factor::<Ristretto255Sha512>(&secret, &context);
             if prove {
-                let (shares, proofs) = make_session_key_shares_with_proof(
+                let (shares, proofs) = make_session_key_shares_with_proof::<Ristretto255Sha512, _>(
                     &pseudonym_rekey_factor,
                     &attribute_rekey_factor,
                     &blinding,

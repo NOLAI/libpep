@@ -24,7 +24,7 @@
 use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use super::rerandomize::VerifiableRerandomize;
 use super::rsk::{VerifiableRSK, VerifiableRSK2};
-use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -56,7 +56,7 @@ impl<G: Group> VerifiableRRSK<G> {
     /// `gy` is the recipient public key against which the ciphertext was
     /// encrypted (in `elgamal3` mode this equals `v.gy`; in the default mode
     /// the caller supplies it explicitly).
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         gy: &G::Element,
         r: &G::Scalar,
@@ -64,9 +64,9 @@ impl<G: Group> VerifiableRRSK<G> {
         k: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let rerandomize = VerifiableRerandomize::new(gy, r, rng);
+        let rerandomize = VerifiableRerandomize::new::<C, _>(gy, r, rng);
         let rerandomized = rerandomize.result(v);
-        let rsk = VerifiableRSK::new(&rerandomized, s, k, rng);
+        let rsk = VerifiableRSK::new::<C, _>(&rerandomized, s, k, rng);
         Self { rerandomize, rsk }
     }
 
@@ -79,19 +79,19 @@ impl<G: Group> VerifiableRRSK<G> {
 
     /// Verify the proof against `original` and `gy`.
     #[must_use]
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         gy: &G::Element,
         reshuffle_commitment: &PseudonymizationFactorCommitment<G>,
         rekey_commitment: &RekeyFactorCommitment<G>,
     ) -> bool {
-        if !self.rerandomize.verify(gy) {
+        if !self.rerandomize.verify::<C>(gy) {
             return false;
         }
         let rerandomized = self.rerandomize.result(original);
         self.rsk
-            .verify(&rerandomized, reshuffle_commitment, rekey_commitment)
+            .verify::<C>(&rerandomized, reshuffle_commitment, rekey_commitment)
     }
 
     reconstruct! {
@@ -123,7 +123,7 @@ impl<G: Group> VerifiableRRSK2<G> {
 impl<G: Group> VerifiableRRSK2<G> {
     #[allow(clippy::too_many_arguments)]
     /// Apply the operation and produce its proof, with randomness from `rng`.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,
         gy: &G::Element,
         r: &G::Scalar,
@@ -133,9 +133,9 @@ impl<G: Group> VerifiableRRSK2<G> {
         k_to: &G::Scalar,
         rng: &mut R,
     ) -> Self {
-        let rerandomize = VerifiableRerandomize::new(gy, r, rng);
+        let rerandomize = VerifiableRerandomize::new::<C, _>(gy, r, rng);
         let rerandomized = rerandomize.result(v);
-        let rsk2 = VerifiableRSK2::new(&rerandomized, s_from, s_to, k_from, k_to, rng);
+        let rsk2 = VerifiableRSK2::new::<C, _>(&rerandomized, s_from, s_to, k_from, k_to, rng);
         Self { rerandomize, rsk2 }
     }
 
@@ -148,7 +148,7 @@ impl<G: Group> VerifiableRRSK2<G> {
     #[must_use]
     #[allow(clippy::too_many_arguments)]
     /// Verify the proof against the original ciphertext and the commitments.
-    pub fn verify(
+    pub fn verify<C: Ciphersuite<Group = G>>(
         &self,
         original: &ElGamal<G>,
         gy: &G::Element,
@@ -157,11 +157,11 @@ impl<G: Group> VerifiableRRSK2<G> {
         k_from_commitments: &RekeyFactorCommitment<G>,
         k_to_commitments: &RekeyFactorCommitment<G>,
     ) -> bool {
-        if !self.rerandomize.verify(gy) {
+        if !self.rerandomize.verify::<C>(gy) {
             return false;
         }
         let rerandomized = self.rerandomize.result(original);
-        self.rsk2.verify(
+        self.rsk2.verify::<C>(
             &rerandomized,
             s_from_commitments,
             s_to_commitments,
@@ -181,12 +181,15 @@ impl<G: Group> VerifiableRRSK2<G> {
 mod tests {
     use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::elgamal::primitives::{rrsk, rrsk2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
     };
+
+    type C = Ristretto255Sha512;
 
     fn make_pk_ct() -> (GroupElement, ElGamal) {
         let mut rng = rand::rng();
@@ -242,14 +245,14 @@ mod tests {
         let r = ScalarNonZero::random(&mut rng);
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRRSK::new(&c, &pk, &r, &s, &k, &mut rng);
+        let proof = VerifiableRRSK::new::<C, _>(&c, &pk, &r, &s, &k, &mut rng);
         let expected = run_rrsk(&c, &pk, &r, &s, &k);
         let rs = PseudonymizationFactorCommitment::new(&s);
         let rk = RekeyFactorCommitment::new(&k);
         assert_eq!(proof.result(), expected);
-        assert!(proof.verify(&c, &pk, &rs, &rk));
+        assert!(proof.verify::<C>(&c, &pk, &rs, &rk));
         assert_eq!(
-            proof.verified_reconstruct(&c, &pk, &rs, &rk),
+            proof.verified_reconstruct::<C>(&c, &pk, &rs, &rk),
             Some(expected)
         );
     }
@@ -261,11 +264,11 @@ mod tests {
         let r = ScalarNonZero::random(&mut rng);
         let s = ScalarNonZero::random(&mut rng);
         let k = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableRRSK::new(&c, &pk, &r, &s, &k, &mut rng);
+        let mut proof = VerifiableRRSK::new::<C, _>(&c, &pk, &r, &s, &k, &mut rng);
         let rs = PseudonymizationFactorCommitment::new(&s);
         let rk = RekeyFactorCommitment::new(&k);
         proof.rerandomize.p_gy_r.c1 = proof.rerandomize.p_gy_r.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &pk, &rs, &rk));
+        assert!(!proof.verify::<C>(&c, &pk, &rs, &rk));
     }
 
     #[test]
@@ -277,16 +280,24 @@ mod tests {
         let s_to = ScalarNonZero::random(&mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let proof = VerifiableRRSK2::new(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
+        let proof =
+            VerifiableRRSK2::new::<C, _>(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
         let expected = run_rrsk2(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
         assert_eq!(proof.result(), expected);
-        assert!(proof.verify(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
+        assert!(proof.verify::<C>(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
         assert_eq!(
-            proof.verified_reconstruct(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com),
+            proof.verified_reconstruct::<C>(
+                &c,
+                &pk,
+                &s_from_com,
+                &s_to_com,
+                &k_from_com,
+                &k_to_com
+            ),
             Some(expected)
         );
     }
@@ -300,13 +311,14 @@ mod tests {
         let s_to = ScalarNonZero::random(&mut rng);
         let k_from = ScalarNonZero::random(&mut rng);
         let k_to = ScalarNonZero::random(&mut rng);
-        let mut proof = VerifiableRRSK2::new(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
+        let mut proof =
+            VerifiableRRSK2::new::<C, _>(&c, &pk, &r, &s_from, &s_to, &k_from, &k_to, &mut rng);
         let s_from_com = PseudonymizationFactorCommitment::new(&s_from);
         let s_to_com = PseudonymizationFactorCommitment::new(&s_to);
         let k_from_com = RekeyFactorCommitment::new(&k_from);
         let k_to_com = RekeyFactorCommitment::new(&k_to);
         proof.rsk2.inner.inner.p_gb_prime.c1 =
             proof.rsk2.inner.inner.p_gb_prime.c1 + GroupElement::random(&mut rng);
-        assert!(!proof.verify(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
+        assert!(!proof.verify::<C>(&c, &pk, &s_from_com, &s_to_com, &k_from_com, &k_to_com));
     }
 }

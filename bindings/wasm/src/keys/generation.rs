@@ -7,6 +7,7 @@ use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::WASMEncryptionSecret;
 use libpep::elgamal::arithmetic::Ristretto255;
+use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::keys::generation::*;
 use libpep::keys::SecretKey;
 use wasm_bindgen::prelude::*;
@@ -57,7 +58,7 @@ pub fn wasm_make_pseudonym_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMPseudonymSessionKeyPair {
-    let (public, secret_key) = make_pseudonym_session_keys::<Ristretto255>(
+    let (public, secret_key) = make_pseudonym_session_keys::<Ristretto255Sha512>(
         &PseudonymGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
@@ -75,7 +76,7 @@ pub fn wasm_make_attribute_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMAttributeSessionKeyPair {
-    let (public, secret_key) = make_attribute_session_keys::<Ristretto255>(
+    let (public, secret_key) = make_attribute_session_keys::<Ristretto255Sha512>(
         &AttributeGlobalSecretKey::from_scalar(*global.0),
         &session.0,
         &secret.0,
@@ -93,7 +94,7 @@ pub fn wasm_make_session_keys(
     session: &WASMEncryptionContext,
     secret: &WASMEncryptionSecret,
 ) -> WASMSessionKeys {
-    let keys = make_session_keys::<Ristretto255>(
+    let keys = make_session_keys::<Ristretto255Sha512>(
         &GlobalSecretKeys {
             pseudonym: PseudonymGlobalSecretKey::from_scalar(global.pseudonym().0 .0),
             attribute: AttributeGlobalSecretKey::from_scalar(global.attribute().0 .0),

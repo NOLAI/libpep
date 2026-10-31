@@ -6,7 +6,7 @@
 //! - [`create_proofs_same_scalar`]: two proofs of the same scalar on two bases, for the
 //!   verifiable reshuffle
 //!
-//! The proofs are generic over the [`Group`]. The proof encoding
+//! The proofs are stored over a [`Group`] and created and verified under a [`Ciphersuite`]. The proof encoding
 //! is the four-element one of the published paper (Definition 8); the challenge hash is domain
 //! separated by the ciphersuite's context string under the label `"ZKPChallenge-"`.
 //! [`dleq`](crate::elgamal::dleq) has the two-scalar encoding, for interoperability
@@ -23,19 +23,22 @@
 //! ```
 //! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
 //! # use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-//! # use libpep::elgamal::arithmetic::Ristretto255;
+//! # use libpep::elgamal::arithmetic::Ristretto255Sha512;
 //! # use libpep::elgamal::zkps::{create_proof, verify_proof};
 //! # let mut rng = rand::rng();
 //! let secret = ScalarNonZero::random(&mut rng);
 //! let message = GroupElement::random(&mut rng);
 //!
 //! // Prover creates a proof
-//! let (public_key, proof) = create_proof::<Ristretto255, _>(&secret, &message, &mut rng);
+//! let (public_key, proof) = create_proof::<Ristretto255Sha512, _>(&secret, &message, &mut rng);
 //!
 //! // Verifier checks the proof
-//! assert!(verify_proof::<Ristretto255>(&public_key, &message, &proof));
+//! assert!(verify_proof::<Ristretto255Sha512>(&public_key, &message, &proof));
 //! ```
 
+use crate::elgamal::arithmetic::ciphersuite::{
+    Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf,
+};
 use crate::elgamal::arithmetic::group::Group;
 use base64::engine::general_purpose;
 use base64::Engine;
@@ -169,34 +172,34 @@ impl<'de, G: Group> Deserialize<'de> for Proof<G> {
 /// The Fiat-Shamir challenge `e = HashToScalar(A || M || N || c1 || c2)` under the DST
 /// `"ZKPChallenge-" || contextString`. The elements have a fixed size, so the transcript needs no
 /// length prefixes. A zero digest (negligible) is mapped to one.
-fn challenge<G: Group>(
-    ga: &G::Element,
-    gm: &G::Element,
-    gn: &G::Element,
-    gc1: &G::Element,
-    gc2: &G::Element,
-) -> G::Scalar {
-    let mut transcript = Vec::with_capacity(5 * G::NE);
+fn challenge<C: Ciphersuite>(
+    ga: &ElementOf<C>,
+    gm: &ElementOf<C>,
+    gn: &ElementOf<C>,
+    gc1: &ElementOf<C>,
+    gc2: &ElementOf<C>,
+) -> ScalarOf<C> {
+    let mut transcript = Vec::with_capacity(5 * C::Group::NE);
     for element in [ga, gm, gn, gc1, gc2] {
-        transcript.extend_from_slice(G::serialize_element(element).as_ref());
+        transcript.extend_from_slice(C::Group::serialize_element(element).as_ref());
     }
-    G::hash_to_scalar(&transcript, &G::CIPHERSUITE.dst(b"ZKPChallenge-"))
-        .unwrap_or_else(G::scalar_one)
+    C::hash_to_scalar(&transcript, &C::ID.dst(b"ZKPChallenge-"))
+        .unwrap_or_else(C::Group::scalar_one)
 }
 
 /// One proof that `N = a * M` for the public key `ga = a * G`, with a fresh nonce from `rng`.
-fn prove<G: Group, R: Rng + CryptoRng>(
-    a: &G::Scalar,
-    ga: &G::Element,
-    gm: &G::Element,
+fn prove<C: Ciphersuite, R: Rng + CryptoRng>(
+    a: &ScalarOf<C>,
+    ga: &ElementOf<C>,
+    gm: &ElementOf<C>,
     rng: &mut R,
-) -> Proof<G> {
-    let r = G::random_scalar(rng);
+) -> Proof<C::Group> {
+    let r = C::Group::random_scalar(rng);
     let gn = *a * *gm;
-    let gc1 = G::scalar_mult_gen(&r);
+    let gc1 = C::Group::scalar_mult_gen(&r);
     let gc2 = r * *gm;
-    let e = challenge::<G>(ga, gm, &gn, &gc1, &gc2);
-    let s = G::ScalarCanBeZero::from(*a * e) + G::ScalarCanBeZero::from(r);
+    let e = challenge::<C>(ga, gm, &gn, &gc1, &gc2);
+    let s = ScalarCanBeZeroOf::<C>::from(*a * e) + ScalarCanBeZeroOf::<C>::from(r);
     Proof {
         n: gn,
         c1: gc1,
@@ -208,13 +211,13 @@ fn prove<G: Group, R: Rng + CryptoRng>(
 /// Prove that `N = a * M` for the secret scalar `a` and the message `M = gm`.
 ///
 /// Returns the public key `A = a * G` and the proof, which carries `N`.
-pub fn create_proof<G: Group, R: Rng + CryptoRng>(
-    a: &G::Scalar,
-    gm: &G::Element,
+pub fn create_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+    a: &ScalarOf<C>,
+    gm: &ElementOf<C>,
     rng: &mut R,
-) -> (G::Element, Proof<G>) {
-    let ga = G::scalar_mult_gen(a);
-    let proof = prove::<G, R>(a, &ga, gm, rng);
+) -> (ElementOf<C>, Proof<C::Group>) {
+    let ga = C::Group::scalar_mult_gen(a);
+    let proof = prove::<C, R>(a, &ga, gm, rng);
     (ga, proof)
 }
 
@@ -223,15 +226,15 @@ pub fn create_proof<G: Group, R: Rng + CryptoRng>(
 ///
 /// Each proof uses an independent nonce: reusing one across two proofs of the same witness on
 /// different messages would let any verifier solve `a = (s1 - s2) / (e1 - e2)`.
-pub fn create_proofs_same_scalar<G: Group, R: Rng + CryptoRng>(
-    a: &G::Scalar,
-    gm1: &G::Element,
-    gm2: &G::Element,
+pub fn create_proofs_same_scalar<C: Ciphersuite, R: Rng + CryptoRng>(
+    a: &ScalarOf<C>,
+    gm1: &ElementOf<C>,
+    gm2: &ElementOf<C>,
     rng: &mut R,
-) -> (G::Element, Proof<G>, Proof<G>) {
-    let ga = G::scalar_mult_gen(a);
-    let proof1 = prove::<G, R>(a, &ga, gm1, rng);
-    let proof2 = prove::<G, R>(a, &ga, gm2, rng);
+) -> (ElementOf<C>, Proof<C::Group>, Proof<C::Group>) {
+    let ga = C::Group::scalar_mult_gen(a);
+    let proof1 = prove::<C, R>(a, &ga, gm1, rng);
+    let proof2 = prove::<C, R>(a, &ga, gm2, rng);
     (ga, proof1, proof2)
 }
 
@@ -240,29 +243,33 @@ pub fn create_proofs_same_scalar<G: Group, R: Rng + CryptoRng>(
 /// Checks `s * G == e * A + c1` and `s * M == e * N + c2` for the challenge `e`, and rejects an
 /// identity element in any component, with which the equations would be vacuous.
 #[must_use]
-pub(crate) fn verify_proof_split<G: Group>(
-    ga: &G::Element,
-    gm: &G::Element,
-    gn: &G::Element,
-    gc1: &G::Element,
-    gc2: &G::Element,
-    s: &G::ScalarCanBeZero,
+pub(crate) fn verify_proof_split<C: Ciphersuite>(
+    ga: &ElementOf<C>,
+    gm: &ElementOf<C>,
+    gn: &ElementOf<C>,
+    gc1: &ElementOf<C>,
+    gc2: &ElementOf<C>,
+    s: &ScalarCanBeZeroOf<C>,
 ) -> bool {
-    let identity = G::identity();
+    let identity = C::Group::identity();
     if [ga, gm, gn, gc1, gc2].contains(&&identity) {
         return false;
     }
-    let e = challenge::<G>(ga, gm, gn, gc1, gc2);
+    let e = challenge::<C>(ga, gm, gn, gc1, gc2);
     // Both checks are linear combinations of points, so they could be evaluated as multiscalar
     // multiplications, which would roughly halve the cost of verification. The measured cost is
     // therefore conservative.
-    *s * G::generator() == e * *ga + *gc1 && *s * *gm == e * *gn + *gc2
+    *s * C::Group::generator() == e * *ga + *gc1 && *s * *gm == e * *gn + *gc2
 }
 
 /// Verify that `p` proves `N = a * M` for the public key `ga = a * G` and the message `gm`.
 #[must_use]
-pub fn verify_proof<G: Group>(ga: &G::Element, gm: &G::Element, p: &Proof<G>) -> bool {
-    verify_proof_split::<G>(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
+pub fn verify_proof<C: Ciphersuite>(
+    ga: &ElementOf<C>,
+    gm: &ElementOf<C>,
+    p: &Proof<C::Group>,
+) -> bool {
+    verify_proof_split::<C>(ga, gm, &p.n, &p.c1, &p.c2, &p.s)
 }
 
 #[cfg(test)]
@@ -272,7 +279,10 @@ mod tests {
     use crate::elgamal::arithmetic::group_elements::GroupElement;
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::arithmetic::Ristretto255;
+    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use rand_core::{CryptoRng, Rng};
+
+    type C = Ristretto255Sha512;
 
     type Proof = super::Proof<Ristretto255>;
 
@@ -281,7 +291,7 @@ mod tests {
         gm: &GroupElement,
         rng: &mut R,
     ) -> (GroupElement, Proof) {
-        super::create_proof::<Ristretto255, R>(a, gm, rng)
+        super::create_proof::<C, R>(a, gm, rng)
     }
 
     fn create_proofs_same_scalar<R: Rng + CryptoRng>(
@@ -290,11 +300,11 @@ mod tests {
         gm2: &GroupElement,
         rng: &mut R,
     ) -> (GroupElement, Proof, Proof) {
-        super::create_proofs_same_scalar::<Ristretto255, R>(a, gm1, gm2, rng)
+        super::create_proofs_same_scalar::<C, R>(a, gm1, gm2, rng)
     }
 
     fn verify_proof(ga: &GroupElement, gm: &GroupElement, p: &Proof) -> bool {
-        super::verify_proof::<Ristretto255>(ga, gm, p)
+        super::verify_proof::<C>(ga, gm, p)
     }
 
     #[test]
@@ -348,7 +358,7 @@ mod tests {
         assert!(verify_proof(&ga, &gm, &p));
         // But swapping in identity for `gm` must fail.
         assert!(!verify_proof(&ga, &GroupElement::identity(), &p));
-        assert!(!verify_proof_split::<Ristretto255>(
+        assert!(!verify_proof_split::<C>(
             &ga,
             &GroupElement::identity(),
             &p.n,
@@ -368,7 +378,7 @@ mod tests {
         let (_ga, p) = create_proof(&a, &gm, &mut rng);
 
         assert!(!verify_proof(&GroupElement::identity(), &gm, &p));
-        assert!(!verify_proof_split::<Ristretto255>(
+        assert!(!verify_proof_split::<C>(
             &GroupElement::identity(),
             &gm,
             &p.n,
@@ -407,13 +417,13 @@ mod tests {
         let (ga, p) = create_proof(&a, &gm, &mut rng);
         let identity = GroupElement::identity();
 
-        assert!(!verify_proof_split::<Ristretto255>(
+        assert!(!verify_proof_split::<C>(
             &ga, &gm, &identity, &p.c1, &p.c2, &p.s
         ));
-        assert!(!verify_proof_split::<Ristretto255>(
+        assert!(!verify_proof_split::<C>(
             &ga, &gm, &p.n, &identity, &p.c2, &p.s
         ));
-        assert!(!verify_proof_split::<Ristretto255>(
+        assert!(!verify_proof_split::<C>(
             &ga, &gm, &p.n, &p.c1, &identity, &p.s
         ));
     }
