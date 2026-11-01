@@ -3,7 +3,8 @@
 //!
 //! [`group`] defines the prime-order group API as a trait, together with the optional element
 //! encodings. [`ciphersuite`] defines the [`Ciphersuite`] trait, which pairs a group with the hash
-//! the protocol's hashing is built on. [`ristretto255`] instantiates it over Curve25519 with Ristretto, using the
+//! the protocol's hashing is built on. [`ristretto255`] instantiates it with ristretto255, a prime-order group built on the curve
+//! edwards25519 (the Edwards form of Curve25519), using the
 //! [`curve25519-dalek`](https://crates.io/crates/curve25519-dalek) crate (with its `lizard`
 //! feature for the lizard encoding). Its element and scalar types are [`GroupElement`](group_elements::GroupElement),
 //! [`ScalarNonZero`](scalars::ScalarNonZero) and [`ScalarCanBeZero`](scalars::ScalarCanBeZero).

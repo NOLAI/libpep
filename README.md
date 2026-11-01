@@ -105,7 +105,8 @@ The public key a ciphertext is encrypted under travels with it from transcryptor
 ## How it works
 
 In the ElGamal scheme, a message `M` is encrypted for a receiver with public key `Y`, belonging to secret key `y`.
-Encryption is randomized (*polymorphic*): every fresh random `b` gives a different ciphertext for the same message.
+Encryption is randomized: every fresh random `b` gives a different ciphertext for the same message.
+The ciphertext is *polymorphic*: it can be transformed into many forms, one for every combination of pseudonymization domain and receiver, without decrypting it.
 It is written `Enc(b, M, Y)`.
 
 The library provides three homomorphic operations on a ciphertext `in = Enc(b, M, Y)`.
@@ -139,26 +140,27 @@ The factor `s` is tied to the *pseudonymization domain* of a user.
 Conversion is reversible, converting back gives the original pseudonym, and transitive, converting from A to B and then to C gives the pseudonym that converting from A to C directly gives.
 A global pseudonym that is valid in every domain would let colluding users link their pseudonyms, which is why pseudonyms are local.
 
-Reshuffling with factor `s` evaluates `F_s(M) = s*M`, the Diffie-Hellman function (the DH-PRF).
+Reshuffling with factor `s` evaluates `F_s(M) = s*M`, the Diffie-Hellman function, which is the core of the Diffie-Hellman PRF (DH-PRF) `x -> s*H(x)`.
 This is a *weak PRF*: under the Decisional Diffie-Hellman (DDH) assumption, and as long as `s` stays secret, `s*M` is indistinguishable from a random group element when `M` is a uniformly random group element, chosen independently of `s`.
 Pseudonyms in different domains then cannot be linked without knowing the ratio of their domain factors.
 Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this weak PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and receiver never learn `s`.
 
 #### Origin identifiers must be uniformly random
 
-`F_s` is not a (strong) PRF.
+`F_s` is not a full PRF, where the adversary may choose the inputs.
 For structured or adversarially chosen inputs it is linear, `F_s(a*M) = a*F_s(M)`, so if `M1 = a*M2` for a known `a`, then `s*M1 = a*(s*M2)` in every pseudonymization domain, and anyone who knows `a` can recognize the related pseudonyms.
-A strong PRF avoids this by hashing the input into the group first, `s*H(M)`.
+The DH-PRF is a full PRF in the random oracle model because it hashes the input into the group first, `s*H(x)`, so that the weak PRF only ever sees random inputs.
 `libpep` does not hash at reshuffle time, as it works on ElGamal ciphertexts of identifiers that are already encoded as group elements.
-It therefore assumes that origin identifiers are indistinguishable from uniformly random group elements, or at least that nobody can produce two identifiers with a known discrete-log relation.
+It therefore assumes that origin identifiers are indistinguishable from uniformly random group elements, or at least algebraically independent: nobody can produce two identifiers with a known discrete-log relation.
+This includes a relation to the generator `G`, since a known `r` with `M = r*G` gives `s*M = r*(s*G)`.
 In practice:
 
-- Sample identifiers at random (`Pseudonym::random`), or use random 16-byte identifiers or hashes of identifiers, encoded with `from_lizard`.
+- Sample identifiers at random (`Pseudonym::random`, whose discrete logarithm nobody knows), or use random 16-byte identifiers or hashes of identifiers, encoded with `from_lizard`.
 - Encode identifiers with the lizard encoding (`from_lizard`, `from_string_padded` and the long variants).
   It maps a 16-byte block to a ristretto255 element with the Elligator 2 map.
   The block is placed in the input of the map next to 16 bytes of a SHA-256 hash of the block, so that the block can be decoded again.
   No relation between the discrete logarithms of the encodings of different blocks is known, even for structured blocks such as `1`, `2` and `3`.
-  This is a property of the map that has no proof, and it holds for low-entropy identifiers too, so lizard-encoded identifiers remain unlinkable across domains.
+  This is a heuristic argument and not a proof, as lizard is not a random oracle, and it holds for low-entropy identifiers too, so lizard-encoded identifiers remain unlinkable across domains.
   Lizard only roughly gives uniform identifiers: the encoding is injective and unkeyed, so it reaches at most `2^128` of the roughly `2^252` group elements, one per block.
 - Longer identifiers are split into blocks by the long types, and every block is reshuffled separately, so identifiers that share a block share its pseudonym in every domain.
 - Never encode an identifier as `x*G`.
@@ -166,6 +168,11 @@ In practice:
   Import only elements that are random or that no adversary could have chosen.
 
 Individual pseudonyms remain unlinkable across domains under DDH, as long as nobody knows a relation between origin identifiers.
+
+Reshuffling also needs inputs that are not derived from someone else's.
+ElGamal is malleable: from a ciphertext of `M`, anyone can compute a ciphertext of `t*M` for a known `t` without decrypting, and a transcryptor cannot tell it from any other ciphertext.
+A user who submits such a ciphertext gets `t*s*M` back and computes with `t^-1` the pseudonym `s*M` that the original has in the same domain.
+Which ciphertexts a user may have transcrypted is therefore a matter of access control and of integrity of the ciphertexts, which the `verifiable` feature does not provide.
 
 A reshuffle alone is not enough, as the pseudonym is still encrypted for a key the receiver does not possess.
 A *rekey* with `k` makes it decryptable with `k*y`, in combination with a protocol to hand the receiver that secret key.
@@ -200,6 +207,7 @@ Verifying a rerandomization needs the original ciphertext, so the verifier learn
 Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well.
 
 A commitment makes the use of a factor consistent, but it does not show how the factor was derived or that it was sampled uniformly.
+Publishing it also makes the requirement on origin identifiers stricter: whoever knows `r` with `M = r·G` can compute `s·M = r·(s·G)` from the commitment alone, without any known pseudonym.
 With distributed transcryption this does not break the system, as the effective factor is uniform as long as one transcryptor samples honestly.
 The proofs are the building blocks of integrity, not a security proof of a complete protocol.
 This closes the gap noted under [As a three-party oblivious PRF](#as-a-three-party-oblivious-prf): a transcryptor that applies a wrong factor is detected.
@@ -220,7 +228,7 @@ The transcryptor learns neither `M` nor `s*M`, and neither sender nor receiver l
 Because blinding and unblinding are done by different users, evaluation is non-interactive and asynchronous: the sender can encrypt before the receiver is known, and the PRF output appears only in the receiver's domain.
 
 There are two differences with the two-party protocol.
-An OPRF hashes the input into the group first, so it is a strong PRF for any input.
+An OPRF hashes the input into the group first, so it is a full PRF for any input (in the random oracle model), and it hashes the output as well, which makes the output a bit string that cannot be converted to another domain.
 `libpep` does not: it relies on the weak PRF property and on origin identifiers being uniformly random group elements, as described under [origin identifiers](#origin-identifiers-must-be-uniformly-random).
 And plain PEP transcryption is not verifiable: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
 The `verifiable` feature closes that gap with discrete-log-equality proofs of the kind the verifiable OPRF of RFC 9497 uses.
@@ -308,8 +316,8 @@ Optional features:
 
 ## Security
 
-The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used by implementing the `Group` trait, and a hash for them by implementing the `Ciphersuite` trait.
-Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the weak PRF property of the Diffie-Hellman function evaluated by reshuffling, for uniformly random origin identifiers (see [origin identifiers](#origin-identifiers-must-be-uniformly-random)); both hold under the DDH assumption in the Ristretto group.
+The library uses ristretto255 (RFC 9496), a prime-order group built on the curve edwards25519 (the Edwards form of Curve25519), as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used by implementing the `Group` trait, and a hash for them by implementing the `Ciphersuite` trait.
+Confidentiality rests on the IND-CPA security of ElGamal, and pseudonym unlinkability on the weak PRF property of the Diffie-Hellman function evaluated by reshuffling, for uniformly random origin identifiers (see [origin identifiers](#origin-identifiers-must-be-uniformly-random)); both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `RekeyingSecret` are zeroized on drop.
 Distribution costs availability: all `n` transcryptors must take part in a transcryption.
@@ -329,6 +337,7 @@ They also assume that the shared data is unlinkable (it contains no quasi-identi
 Linkable artifacts can also arise in an application, for example the session names that a storage keeps next to ciphertexts, or symmetric encryption of large attributes, which cannot be rerandomized.
 n-PEP itself does not guarantee integrity or authenticity of pseudonyms or attributes; the `verifiable` feature adds proofs that the transcryptors transformed ciphertexts correctly.
 The security rests on the hardness of the discrete logarithm problem, so it is not post-quantum.
+A quantum computer could decrypt ciphertexts that are stored today, and could compute a factor from a known pair of an identifier and its pseudonym, or from a published commitment, which links pseudonyms that were released earlier.
 
 The library has been designed for production use but has not undergone a formal security audit.
 
