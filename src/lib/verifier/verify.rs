@@ -1,6 +1,4 @@
 //! The verifier and its commitment caches.
-//!
-//! The verifier is generic over the [`Ciphersuite`].
 
 use super::cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache, PseudonymRekeyCommitmentsCache,

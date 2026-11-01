@@ -1,4 +1,4 @@
-//! The ElGamal ciphertext and its encryption and decryption, generic over the [`Group`].
+//! The ElGamal ciphertext and its encryption and decryption.
 
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::Ristretto255;

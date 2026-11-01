@@ -1,12 +1,13 @@
 //! Discrete-logarithm-equivalence (DLEQ) proofs in the two-scalar `(c, s)` encoding.
 //!
-//! The proofs are stored over a [`Group`], and created and verified under a [`Ciphersuite`].
-//!
 //! A DLEQ proof shows that the same secret scalar `k` relates two pairs of group elements,
-//! `B = k * A` and `D_i = k * C_i`, without revealing `k`. This module implements the
-//! `GenerateProof` / `VerifyProof` pair, including the
-//! `ComputeComposites` batching that lets a single proof cover many `(C_i, D_i)` pairs
-//! transformed with the same scalar.
+//! `B = k * A` and `D_i = k * C_i`, without revealing `k`. The module follows the proof of the
+//! verifiable OPRF in [RFC 9497], Section 2.2: `GenerateProof` and `VerifyProof`, with the
+//! `ComputeComposites` batching that lets one proof cover many `(C_i, D_i)` pairs transformed
+//! with the same scalar. Only the domain separation tags differ, as they come from the
+//! [`Ciphersuite`].
+//!
+//! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 //!
 //! # Relation to [`super::zkps`]
 //!
@@ -18,11 +19,11 @@
 //!
 //! The transcripts end in the bare labels `"Composite"` and `"Challenge"`, and the context
 //! string enters through the DSTs of `HashToScalar` (`"HashToScalar-" || contextString`) and of
-//! the seed (`"Seed-" || contextString`). The context string comes from the ciphersuite,
-//! [`Ciphersuite::ID`], so two ciphersuites
-//! with different context strings produce proofs that never verify against one another.
+//! the seed (`"Seed-" || contextString`). The context string comes from [`Ciphersuite::ID`], so
+//! proofs of two ciphersuites never verify against one another.
 //!
-//! The implementation is checked against published ristretto255-SHA512 test vectors, for both a single pair and a batch of two.
+//! The tests reproduce the proofs of the RFC 9497 ristretto255-SHA512 VOPRF test vectors
+//! (Appendix A.1.2), for a single pair and for a batch of two.
 //!
 //! # Example
 //!
@@ -113,8 +114,7 @@ pub enum ProofError {
 /// (`"HashToScalar-" || contextString`).
 ///
 /// Normally built from the [`CiphersuiteId`], whose context string is prefixed `"nPEPV1-"`.
-/// The published test vectors use a different prefix, so the test module builds these
-/// directly to cross-check the transcript against them.
+/// The RFC 9497 test vectors use `"OPRFV1-"`, so the test module builds these directly.
 #[derive(Clone)]
 pub(crate) struct Dsts {
     /// `"Seed-" || contextString`, hashed inside the seed transcript.
@@ -434,11 +434,8 @@ mod tests {
         );
     }
 
-    /// The DSTs of the test vectors' ciphersuite, whose context string is
+    /// The DSTs of the RFC 9497 test vectors, whose context string is
     /// `"OPRFV1-" || I2OSP(modeVOPRF, 1) || "-" || "ristretto255-SHA512"` with modeVOPRF = 0x01.
-    ///
-    /// This is not this crate's [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite), whose
-    /// prefix is `"nPEPV1-"`, so reproducing the vectors requires their own context string.
     fn voprf_dsts() -> Dsts {
         let mut ctx = b"OPRFV1-".to_vec();
         ctx.push(0x01);
@@ -463,7 +460,7 @@ mod tests {
         ScalarNonZero::from_slice(&hex::decode(hex_str).unwrap()).unwrap()
     }
 
-    /// Cross-check `GenerateProof` against VOPRF Appendix A.1.2, Test Vector 1 (batch size 1).
+    /// Cross-check `GenerateProof` against RFC 9497, Appendix A.1.2, Test Vector 1 (batch size 1).
     ///
     /// With `a = G`, `b = pkSm`, `cs = [BlindedElement]`, `ds = [EvaluationElement]` and the
     /// vector's fixed `ProofRandomScalar`, the produced proof bytes must equal the vector's.

@@ -1,4 +1,4 @@
-//! Quick benchmarks for CI - simple roundtrip transcryption tests with 2 transcryptors.
+//! Quick benchmarks for CI: simple roundtrip transcryption tests with 2 transcryptors.
 
 #![allow(clippy::expect_used)]
 

@@ -1,7 +1,7 @@
 //! Hashing to the ristretto255 group and its scalars with raw domain separation tags: the
 //! `hash_to_ristretto255` map (RFC 9380, Appendix B) and `HashToScalar`, both with SHA-512.
 //!
-//! These take the complete domain separation tag, which is what the test vectors exercise. The
+//! These take the complete domain separation tag, as the RFC 9497 test vectors do. The
 //! protocol-level encoding, [`hash_to_group`](crate::elgamal::arithmetic::hashing::hash_to_group),
 //! derives the tag from a ciphersuite's
 //! [`CiphersuiteId`](crate::elgamal::arithmetic::CiphersuiteId) instead.
@@ -14,10 +14,10 @@ use sha2::Sha512;
 /// Expand `msg` under `dst` to 64 bytes with SHA-512, the uniform input both the group and the
 /// scalar hash of the ristretto255-SHA512 ciphersuite are built from.
 ///
-/// SHA-512 is pinned here because this is a ristretto255 primitive, not a generic one: it backs
-/// the raw-tag functions below and the trait methods of `Ristretto255Sha512`, which the RFC 9380 and
-/// published ristretto255-SHA512 test vectors exercise with SHA-512 by definition. Code that is generic over a
-/// [`Ciphersuite`] must reach its hash through [`Ciphersuite::Hash`] instead.
+/// SHA-512 is fixed here because this is a ristretto255 primitive: it backs the raw-tag functions
+/// below and the trait methods of `Ristretto255Sha512`, which the RFC 9380 and RFC 9497 test
+/// vectors define with SHA-512. Code that is generic over a [`Ciphersuite`] reaches its hash
+/// through [`Ciphersuite::Hash`] instead.
 pub(crate) fn expand_64(msg: &[u8], dst: &[u8]) -> [u8; 64] {
     let mut out = [0u8; 64];
     out.copy_from_slice(&expand_message_xmd::<Sha512>(msg, dst, 64));
@@ -53,7 +53,7 @@ mod tests {
     use super::*;
     use crate::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 
-    /// OPRF test vector A.1.1 (ristretto255-SHA512, OPRF mode): the blinded element is
+    /// RFC 9497, Appendix A.1.1 (ristretto255-SHA512, OPRF mode): the blinded element is
     /// `Blind * HashToGroup(Input)`.
     #[test]
     fn hash_to_group_matches_oprf_blinded_elements() {
@@ -80,7 +80,7 @@ mod tests {
         }
     }
 
-    /// OPRF test vector A.1: the server key is `DeriveKeyPair(Seed, KeyInfo)`, one
+    /// RFC 9497, Appendix A.1: the server key is `DeriveKeyPair(Seed, KeyInfo)`, one
     /// `HashToScalar` call with counter 0 in both modes.
     #[test]
     fn hash_to_scalar_matches_oprf_derive_key_pair() {

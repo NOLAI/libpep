@@ -24,7 +24,7 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
-/// Polymorphic pseudonymize - works with EncryptedPseudonym or LongEncryptedPseudonym.
+/// Polymorphic pseudonymize: works with EncryptedPseudonym or LongEncryptedPseudonym.
 #[pyfunction]
 #[pyo3(name = "pseudonymize", signature = (encrypted, pseudonymization_info, public_key=None))]
 pub fn py_pseudonymize(
@@ -54,7 +54,7 @@ pub fn py_pseudonymize(
     ))
 }
 
-/// Polymorphic rekey function - works with any rekeyable type.
+/// Polymorphic rekey function: works with any rekeyable type.
 /// Accepts EncryptedPseudonym, EncryptedAttribute, LongEncryptedPseudonym, or LongEncryptedAttribute.
 /// The rekey_info must be either PyPseudonymRekeyInfo or PyAttributeRekeyInfo.
 #[pyfunction]
@@ -107,7 +107,7 @@ pub fn py_rekey(
         "rekey() requires (EncryptedPseudonym | LongEncryptedPseudonym, PseudonymRekeyInfo) or (EncryptedAttribute | LongEncryptedAttribute, AttributeRekeyInfo)"
     ))
 }
-/// Polymorphic transcrypt function - works with any transcryptable type.
+/// Polymorphic transcrypt function: works with any transcryptable type.
 #[pyfunction]
 #[pyo3(name = "transcrypt", signature = (encrypted, info, public_key=None))]
 pub fn py_transcrypt(
@@ -148,7 +148,7 @@ pub fn py_transcrypt(
         "transcrypt() requires a transcryptable encrypted type",
     ))
 }
-/// Polymorphic rerandomize function - works with any encrypted type.
+/// Polymorphic rerandomize function: works with any encrypted type.
 /// Creates a binary unlinkable copy of the encrypted value.
 #[cfg(feature = "elgamal3")]
 #[pyfunction]
@@ -188,7 +188,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>) -> PyResult<Py<PyAny>> {
     ))
 }
 
-/// Polymorphic rerandomize function - works with any encrypted type.
+/// Polymorphic rerandomize function: works with any encrypted type.
 /// Creates a binary unlinkable copy of the encrypted value.
 /// Requires a public key for non-elgamal3 builds.
 #[cfg(not(feature = "elgamal3"))]
@@ -252,7 +252,7 @@ pub fn py_rerandomize(encrypted: &Bound<PyAny>, public_key: &Bound<PyAny>) -> Py
         "rerandomize() requires (encrypted_type, public_key) where types match",
     ))
 }
-/// Polymorphic rerandomize_known function - rerandomizes using a known factor.
+/// Polymorphic rerandomize_known function: rerandomizes using a known factor.
 #[cfg(feature = "elgamal3")]
 #[pyfunction]
 #[pyo3(name = "rerandomize_known")]
@@ -294,7 +294,7 @@ pub fn py_rerandomize_known(
     ))
 }
 
-/// Polymorphic rerandomize_known function - rerandomizes using a known factor.
+/// Polymorphic rerandomize_known function: rerandomizes using a known factor.
 /// Requires a public key for non-elgamal3 builds.
 #[cfg(not(feature = "elgamal3"))]
 #[pyfunction]

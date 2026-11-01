@@ -6,8 +6,6 @@
 //!
 //! Shares are protocol material, not keys: no data is encrypted towards them and they have no
 //! associated public key, so they do not implement [`SecretKey`].
-//!
-//! The types are generic over the [`Group`].
 
 use super::blinding::{
     BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedPseudonymGlobalSecretKey,

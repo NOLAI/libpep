@@ -1,6 +1,4 @@
 //! The record types and their encryption, string encoding and structure.
-//!
-//! The types are generic over the [`Group`].
 
 #[cfg(feature = "long")]
 use super::structure::LongRecordStructure;

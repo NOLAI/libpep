@@ -8,7 +8,7 @@ WebAssembly bindings for [libpep](https://github.com/NOLAI/libpep), a library fo
 npm install @nolai/libpep-wasm
 ```
 
-The package ships both a Node.js and a browser build, selected automatically through the `exports` field. The API mirrors the Rust crate, fixed to ristretto255 with SHA-512, the default of the crate's generic types, so there are no group or ciphersuite type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
+The package has a Node.js and a browser build, selected through the `exports` field. The API mirrors the Rust crate with its defaults, ristretto255 and SHA-512, so there are no group or ciphersuite type parameters. This round trip converts one party's pseudonym into another party's pseudonym for the same subject:
 
 ```javascript
 import {
@@ -58,7 +58,7 @@ See the [repository README](https://github.com/NOLAI/libpep) for the cryptograph
 
 ## Development
 
-Build and test from this crate directory:
+Build and test:
 
 ```bash
 cd bindings/wasm
@@ -75,5 +75,5 @@ npm run build         # bundler + web, for publishing
 ```
 
 ## License
-- Authors: Bernard van Gastel and Job Doesburg
-- License: Apache License 2.0
+
+Apache License 2.0. Authors: Bernard van Gastel and Job Doesburg.

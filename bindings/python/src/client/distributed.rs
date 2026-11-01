@@ -144,14 +144,14 @@ impl PyClient {
             return Ok(Py::new(py, PyLongEncryptedAttribute(result))?.into_any());
         }
 
-        // Try Record - uses SessionKeys directly
+        // Try Record: uses SessionKeys directly
         if let Ok(r) = message.extract::<PyRecord>() {
             use libpep::data::traits::Encryptable;
             let result = r.0.encrypt(&self.0.keys().public(), &mut rng);
             return Ok(Py::new(py, PyEncryptedRecord(result))?.into_any());
         }
 
-        // Try LongRecord - uses SessionKeys directly
+        // Try LongRecord: uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(lr) = message.extract::<PyLongRecord>() {
             use libpep::data::traits::Encryptable;
@@ -159,7 +159,7 @@ impl PyClient {
             return Ok(Py::new(py, PyLongEncryptedRecord(result))?.into_any());
         }
 
-        // Try PepJsonValue - uses SessionKeys directly
+        // Try PepJsonValue: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(j) = message.extract::<PyPepJsonValue>() {
             use libpep::data::traits::Encryptable;
@@ -217,7 +217,7 @@ impl PyClient {
             return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
         }
 
-        // Try EncryptedRecord - uses SessionKeys directly
+        // Try EncryptedRecord: uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
             use libpep::data::traits::Encrypted;
             let result =
@@ -226,7 +226,7 @@ impl PyClient {
             return Ok(Py::new(py, PyRecord(result))?.into_any());
         }
 
-        // Try LongEncryptedRecord - uses SessionKeys directly
+        // Try LongEncryptedRecord: uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
             use libpep::data::traits::Encrypted;
@@ -237,7 +237,7 @@ impl PyClient {
             return Ok(Py::new(py, PyLongRecord(result))?.into_any());
         }
 
-        // Try EncryptedPepJsonValue - uses SessionKeys directly
+        // Try EncryptedPepJsonValue: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPepJsonValue>() {
             use libpep::data::traits::Encrypted;
@@ -285,14 +285,14 @@ impl PyClient {
             return Ok(Py::new(py, PyLongAttribute(result))?.into_any());
         }
 
-        // Try EncryptedRecord - uses SessionKeys directly
+        // Try EncryptedRecord: uses SessionKeys directly
         if let Ok(er) = encrypted.extract::<PyEncryptedRecord>() {
             use libpep::data::traits::Encrypted;
             let result = er.0.decrypt(self.0.keys());
             return Ok(Py::new(py, PyRecord(result))?.into_any());
         }
 
-        // Try LongEncryptedRecord - uses SessionKeys directly
+        // Try LongEncryptedRecord: uses SessionKeys directly
         #[cfg(feature = "long")]
         if let Ok(ler) = encrypted.extract::<PyLongEncryptedRecord>() {
             use libpep::data::traits::Encrypted;
@@ -300,7 +300,7 @@ impl PyClient {
             return Ok(Py::new(py, PyLongRecord(result))?.into_any());
         }
 
-        // Try EncryptedPepJsonValue - uses SessionKeys directly
+        // Try EncryptedPepJsonValue: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(ej) = encrypted.extract::<PyEncryptedPepJsonValue>() {
             use libpep::data::traits::Encrypted;
@@ -382,7 +382,7 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
-        // Try Vec<PepJsonValue> - uses SessionKeys directly
+        // Try Vec<PepJsonValue>: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(las) = messages.extract::<Vec<PyPepJsonValue>>() {
             let msgs: Vec<_> = las.into_iter().map(|a| a.0).collect();
@@ -455,7 +455,7 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
-        // Try Vec<EncryptedPepJsonValue> - uses SessionKeys directly
+        // Try Vec<EncryptedPepJsonValue>: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPepJsonValue>>() {
             let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();
@@ -524,7 +524,7 @@ impl PyClient {
             return py_result.into_py_any(py);
         }
 
-        // Try Vec<EncryptedPepJsonValue> - uses SessionKeys directly
+        // Try Vec<EncryptedPepJsonValue>: uses SessionKeys directly
         #[cfg(feature = "json")]
         if let Ok(leas) = encrypted.extract::<Vec<PyEncryptedPepJsonValue>>() {
             let enc: Vec<_> = leas.into_iter().map(|e| e.0).collect();

@@ -1,10 +1,7 @@
 //! PEP transcryptor system for pseudonymizing and rekeying encrypted data.
 //!
-//! [`Transcryptor`] and [`DistributedTranscryptor`] are generic over the
-//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite), for example
-//! `Transcryptor<Ristretto255Sha512>`, because they derive factors by hashing. The polymorphic
-//! functions such as [`transcrypt`] take the group from their arguments and work for every type
-//! of [`data`](crate::data).
+//! [`Transcryptor`] and [`DistributedTranscryptor`] derive factors from their secrets. The
+//! polymorphic functions such as [`transcrypt`] work for every type of [`data`](crate::data).
 
 // Module declarations
 #[cfg(feature = "batch")]

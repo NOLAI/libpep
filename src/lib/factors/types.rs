@@ -4,8 +4,6 @@
 //! A *factor* is a single scalar operand of a PEP [primitive](crate::elgamal::primitives). An
 //! *info* is what a transcryptor computes for a transcryption from one domain and session to
 //! another: the factor ratios between the two, bundled per data type.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::Ristretto255;

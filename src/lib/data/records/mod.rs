@@ -2,8 +2,6 @@
 //!
 //! A `Record` represents a collection of pseudonyms and attributes that belong to the same entity.
 //! When encrypted, it becomes an `EncryptedRecord`.
-//!
-//! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group).
 
 pub mod data;
 pub mod structure;

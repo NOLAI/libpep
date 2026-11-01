@@ -1,7 +1,7 @@
 //! Test vectors for the ristretto255-SHA512 ciphersuite.
 //!
-//! The expected values live as Rust constants in `the `expected` module of `tests/vectors.rs``, one per line, and
-//! this file recomputes every one of them and asserts equality. Any change in derived factors,
+//! The expected values are Rust constants in the `expected` module of this file, one per line.
+//! The tests recompute every one of them and assert equality. Any change in derived factors,
 //! encodings, transcryption or proofs therefore fails the test instead of passing silently.
 //!
 //! Every random input is fixed: the transcryptor secrets and identifiers are literals, and every
@@ -15,14 +15,14 @@
 //! cargo test --features batch,verifiable --test vectors -- --ignored --nocapture
 //! ```
 //!
-//! which prints the current values in the layout of the `expected` module; copy the output there after
-//! checking the diff value by value.
+//! which prints the current values in the layout of the `expected` module. Check the diff value by
+//! value before copying the output there.
 //!
 //! The vectors cover the batch operations and the verifiable session key share, so the test is
 //! compiled out without those features. It is also compiled out under `elgamal3`, whose
 //! ciphertext carries a third element: a ciphertext here is `B || C`, 2 * Ne bytes, so the
-//! `elgamal3` encoding is a different wire format and is not covered. Every scalar
-//! and Element below is identical under both encodings; only the ciphertexts differ.
+//! `elgamal3` encoding is a different wire format and is not covered. Every scalar and element
+//! below is identical under both encodings; only the ciphertexts differ.
 //!
 //! The vectors also assume the default `DeriveFactor`, so the test is compiled out under the
 //! `legacy` feature, which selects the PEP repository's derivation instead.

@@ -1,10 +1,10 @@
 //! WASM wrappers around [`EncryptedBatch<E>`], with one concrete struct per encrypted shape.
 //!
 //! `wasm_bindgen` cannot expose generic Rust types to JavaScript, so each concrete `E` that
-//! participates in batch operations gets its own `#[wasm_bindgen]` wrapper. Each wrapper holds an `EncryptedBatch<E>` and mirrors the Rust
-//! API 1:1: `new`, `len`, `is_empty`, `items` (clone of the inner items), `publicKey`
-//! (under `batch-pk` only), and the batch operations (`pseudonymize`, `rekey`,
-//! `transcrypt`) as appropriate per shape.
+//! participates in batch operations gets its own `#[wasm_bindgen]` wrapper. Each wrapper holds
+//! an `EncryptedBatch<E>` and mirrors the Rust API: `new`, `len`, `is_empty`, `items` (a clone of
+//! the inner items), `publicKey` (under `batch-pk` only), and the batch operations
+//! (`pseudonymize`, `rekey`, `transcrypt`) that apply to the shape.
 //!
 //! The flat `*Batch` free functions in `transcryptor/batch.rs` remain. These wrappers let JS
 //! callers hold a batch across operations instead of round-tripping through `Vec<E>` between

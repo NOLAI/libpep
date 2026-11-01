@@ -1,9 +1,7 @@
 //! System setup for distributed transcryptors: blinding factors and blinded global secret keys.
 //!
-//! The functions set up a distributed system with multiple transcryptors.
-//!
-//! The `..._generic` functions take the group as a type parameter, as there is nothing to infer it
-//! from. The plain-named functions are the same for ristretto255.
+//! The `_generic` functions take the group as a type parameter; the plain-named ones are the
+//! ristretto255 versions (see the [crate docs](crate#groups-and-ciphersuites)).
 
 use super::blinding::*;
 use crate::elgamal::arithmetic::group::Group;
@@ -109,7 +107,7 @@ pub fn make_distributed_attribute_global_keys<R: Rng + CryptoRng>(
     make_distributed_attribute_global_keys_generic(n, rng)
 }
 
-/// Setup a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
+/// Set up a distributed system with both pseudonym and attribute global keys, blinded global secret keys,
 /// and a list of blinding factors. This combines
 /// [`make_distributed_pseudonym_global_keys`] and [`make_distributed_attribute_global_keys`].
 ///

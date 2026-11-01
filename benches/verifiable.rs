@@ -1,6 +1,6 @@
 //! Benchmarks for the verifiable transcryption primitives.
 //!
-//! For each operation we measure:
+//! Each operation has two benchmarks:
 //!   * `*_create`: running the verifiable operation (generates the proofs).
 //!   * `*_verify`: verifying the proof against the input ciphertext and the
 //!     forward factor commitment(s).

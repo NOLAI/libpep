@@ -557,7 +557,7 @@ test('n_pep_batch_distributed_verifiable', () => {
 // serialized proofs of the same shape (produced by two independent
 // `verifiable*` calls). Every Ristretto/scalar point in the proof JSON is a
 // fixed-length hex string; blindly flipping a character would yield an
-// undecodable point, so we cross-graft from another *valid* proof — that
+// undecodable point, so we cross-graft from another *valid* proof. That
 // keeps every individual element decodable while breaking proof relations.
 function swapFirstString(ProofClass, targetProof, donorProof) {
     const target = JSON.parse(targetProof.toJSON());

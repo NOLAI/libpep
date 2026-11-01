@@ -296,7 +296,7 @@ mod tests {
         let short = encrypt(&short_pep, &keys.public(), &mut rng);
         assert_eq!(short.structure(), JsonStructure::String(1));
 
-        // Longer string (multiple blocks - each block is 16 bytes)
+        // Longer string (multiple blocks: each block is 16 bytes)
         let long_pep = PepJsonValue::from_value(&json!(
             "This is a longer string that will need multiple blocks"
         ));

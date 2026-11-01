@@ -1,7 +1,7 @@
 {
   "name": "@nolai/libpep-wasm",
   "version": "0.14.0",
-  "description": "Library for polymorphic encryption and pseudonymization (in WASM)",
+  "description": "WebAssembly bindings for libpep, polymorphic encryption and pseudonymization",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NOLAI/libpep.git"

@@ -1,77 +1,33 @@
 //! External padding for batch unlinkability.
 //!
-//! The functions here create and detect the external padding blocks added by the
-//! `pad_to()` method on long data types. External padding gives values of different sizes the
-//! same structure, which batch transcryption needs to stay unlinkable.
+//! Values of different lengths get the same structure when they are brought to a common number
+//! of blocks with the `pad_to(n)` method of the long data types. This module creates and detects
+//! the padding blocks. Without it, the block count of a long value would link it across a batch.
 //!
-//! # Usage
-//!
-//! - It is added explicitly with the `pad_to(n)` method on long types.
-//! - It only applies to multi-block data (see the [`long`](crate::data::long) module).
-//! - It is required when batch processing needs unlinkability.
-//!
-//! # Format
-//!
-//! - Full 16-byte all-zero blocks are added after the data:
-//!   `[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]`
-//! - Decoding detects and removes them automatically. It scans backwards from the end, removing
-//!   all-zero blocks until it reaches a data block.
-//!
-//! # Order of operations
-//!
-//! **Encoding:**
-//! 1. PKCS#7 padding is applied first to the last data block
-//! 2. All-zero external padding blocks are added after
-//!
-//! **Decoding:**
-//! 1. Scan backwards from the end, removing all-zero blocks
-//! 2. Stop when a non-zero block is found (the last data block with PKCS#7 padding)
-//! 3. Remove PKCS#7 padding from the last data block
-//!
-//! Because of this order, even data that is all zeros ends with a last byte of `0x01`-`0x10`
-//! after PKCS#7 padding, so it is not detected as an external padding block.
-//!
-//! # Example
+//! An external padding block is 16 zero bytes, appended after the data. Encoding applies PKCS#7
+//! padding to the last data block first and then adds the zero blocks. Decoding scans backwards,
+//! removes zero blocks until it reaches a non-zero one, and then removes the PKCS#7 padding.
 //!
 //! ```text
 //! After pad_to(3):
-//! Block 1: [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]  ← data with PKCS#7
-//! Block 2: [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00]  ← padding
-//! Block 3: [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00]  ← padding
+//! Block 1: [h e l l o | 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B 0x0B]  data with PKCS#7
+//! Block 2: [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00]  padding
+//! Block 3: [0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00]  padding
 //! ```
 //!
-//! # Disambiguation
-//!
-//! External padding blocks are all zeros, while PKCS#7 padded blocks never have `0x00` in the
-//! last byte (valid PKCS#7 padding is `0x01`-`0x10`).
-//!
-//! PKCS#7 padding is applied first during encoding and always changes the last byte of the last
-//! data block to `0x01`-`0x10`, so no data can be mistaken for an external padding block. Every
-//! possible byte sequence can be encoded without ambiguity, including values that are all zeros.
+//! The scheme is unambiguous. PKCS#7 padding leaves the last byte of a data block between `0x01`
+//! and `0x10`, so a data block is never all zeros, even when the data itself is. Every byte
+//! sequence can therefore be encoded and decoded.
 
 use crate::elgamal::arithmetic::group::Bytes;
 
-/// Creates an external padding block.
-///
-/// Format: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-///
-/// PKCS#7 padded data blocks are never all zeros (valid padding bytes are 0x01-0x10), so the
-/// block cannot be confused with data.
+/// Creates an external padding block: all zeros.
 pub(crate) fn create_external_padding_block<B: Bytes>() -> B {
     B::zeroed()
 }
 
-/// Checks if a block is an external padding block.
-///
-/// Returns `true` if this block is all zeros (external padding),
-/// or `false` if this is a regular data block.
-///
-/// # Disambiguation
-///
-/// External padding blocks are all zeros. PKCS#7 padded data blocks never have `0x00` in the last
-/// byte (valid padding is `0x01`-`0x10`). Every possible byte sequence can therefore be encoded
-/// without ambiguity, including data blocks that are all zeros except the last byte (PKCS#7 sets
-/// the last byte to 0x01-0x10).
+/// Whether a block is an external padding block, that is, all zeros. A PKCS#7 padded data block
+/// always ends in `0x01` to `0x10`, so it is never mistaken for one.
 pub(crate) fn is_external_padding_block<B: Bytes>(block: &[u8]) -> bool {
     if block.len() != B::len() {
         return false;

@@ -35,10 +35,10 @@ mod tests {
     use super::*;
     use crate::elgamal::arithmetic::scalars::ScalarTraits;
 
-    /// The context string of the `ristretto255-SHA512` OPRF test vectors.
+    /// The context string of the RFC 9497 `ristretto255-SHA512` test vectors.
     const OPRF_CONTEXT: &[u8] = b"OPRFV1-\x00-ristretto255-SHA512";
 
-    /// OPRF test vector A.1.1: `DeriveKeyPair` is one `HashToScalar` call.
+    /// RFC 9497, Appendix A.1.1: `DeriveKeyPair` is one `HashToScalar` call.
     #[test]
     fn hash_to_scalar_matches_oprf() {
         let seed = [0xa3u8; 32];
@@ -55,7 +55,7 @@ mod tests {
         );
     }
 
-    /// OPRF test vector A.1.1.1: `BlindedElement = blind * HashToGroup(input)`.
+    /// RFC 9497, Appendix A.1.1: `BlindedElement = blind * HashToGroup(input)`.
     #[test]
     fn hash_to_group_matches_oprf() {
         let dst = [b"HashToGroup-".as_slice(), OPRF_CONTEXT].concat();

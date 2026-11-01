@@ -1,5 +1,4 @@
-//! Python bindings for deriving factors from secrets, sessions and domains within a protocol
-//! context.
+//! Python bindings for deriving factors from secrets, sessions and domains.
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};

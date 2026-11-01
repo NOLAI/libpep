@@ -26,7 +26,7 @@ use pyo3::Py;
 
 /// A collection of pseudonyms that together represent a larger pseudonym value using PKCS#7 padding.
 ///
-/// # Privacy Warning
+/// # Privacy warning
 ///
 /// The length (number of blocks) of a `LongPseudonym` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.
@@ -40,7 +40,7 @@ py_long_plaintext_impl!(PyLongPseudonym wraps LongPseudonym of PyPseudonym(Pseud
 
 /// A collection of attributes that together represent a larger data value using PKCS#7 padding.
 ///
-/// # Privacy Warning
+/// # Privacy warning
 ///
 /// The length (number of blocks) of a `LongAttribute` may reveal information about the original data.
 /// Consider padding your data to a fixed size before encoding to prevent length-based information leakage.

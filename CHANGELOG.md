@@ -13,9 +13,9 @@ a major change against the published 0.13.0.
   types generic over a group (data, keys, factors, proofs, `Client`, ...), and
   `Transcryptor<C: Ciphersuite = Ristretto255Sha512>`, `DistributedTranscryptor`, `Verifier` and the
   master secrets for the types generic over a ciphersuite. `Pseudonym<OtherGroup>` and
-  `Transcryptor<OtherSuite>` work as before. Rust does not use a default to infer a type
-  parameter, so an expression that nothing constrains (`Pseudonym::random(rng).to_hex()`) still
-  needs a type, for example `let p: Pseudonym = ...`.
+  `Transcryptor<OtherSuite>` take another group or ciphersuite. Rust does not use a default to
+  infer a type parameter, so an expression that nothing constrains
+  (`Pseudonym::random(rng).to_hex()`) still needs a type, for example `let p: Pseudonym = ...`.
 - The functions and constructors whose group or ciphersuite cannot be inferred from their
   arguments now come in pairs. The plain name is the ristretto255 function, with no type
   parameter: `make_global_keys`, `make_pseudonym_global_keys`, `make_attribute_global_keys`,
@@ -31,10 +31,8 @@ a major change against the published 0.13.0.
   generic version has the same name with the suffix `_generic` and takes the group or ciphersuite
   as a type parameter: `make_global_keys_generic::<G, _>(rng)`,
   `make_session_keys_generic::<C>(..)`, `Transcryptor::<C>::new_generic(..)`,
-  `TranscryptionInfo::new_generic::<C>(..)`. This is a rename of the previous generic functions
-  and constructors (`make_global_keys::<G, _>`, `Transcryptor::<C>::new`, `TranscryptionInfo::new::<C>`,
-  ...). Methods that take the ciphersuite as a type parameter (`proof.verify::<C>(..)`,
-  `verifiable_pseudonymize::<C>`) keep their form.
+  `TranscryptionInfo::new_generic::<C>(..)`. Methods that take the ciphersuite as a type parameter
+  (`proof.verify::<C>(..)`, `verifiable_pseudonymize::<C>`) name it in both cases.
 - `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets. After `use libpep::prelude::*;`, `make_global_keys(rng)`, `make_session_keys(..)` and `Transcryptor::new(..)` need no type annotation.
 - `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
@@ -68,27 +66,27 @@ a major change against the published 0.13.0.
   `PepJsonValue`, `EncryptedPepJsonValue`, `PepJsonBuilder` and `JsonStructure`; the Python and
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
-- `Group` is the group arithmetic only; hashing moved to a new `Ciphersuite` trait
-  (`elgamal::arithmetic::Ciphersuite`) with a `Group`, a `Hash`, a `CiphersuiteId` and the
-  `hash_to_group` and `hash_to_scalar` maps. `Group` lost `Hash`, `CIPHERSUITE`, `hash_to_group`
-  and `hash_to_scalar`, and keeps `element_from_uniform_bytes` and `scalar_from_uniform_bytes`.
-  The former `Ciphersuite` struct is `CiphersuiteId`, and `Ristretto255Sha512` is the ciphersuite
-  of ristretto255 with SHA-512 (its group is `Ristretto255`). Data types, keys, factors and
-  proofs stay generic over the group (`Pseudonym<G>`, `Proof<G>`); what hashes is generic over a
-  ciphersuite `C`: `hash_to_group::<C>`, `hash_to_nonzero_scalar::<C>`, `make_*_factor::<C>`,
-  `make_*session_keys::<C>`, the `*Info::new::<C>` constructors, creating and verifying proofs
-  (`create_proof::<C, _>`, `VerifiableRekey::new::<C, _>`, `proof.verify::<C>(..)`, the
-  `Verifiable*` traits of the data layer), and the types `Transcryptor<C>`,
-  `DistributedTranscryptor<C>`, `Verifier<C>` and the four `Master*` types of
-  `verifiable-derivation`. Proof bytes, derived factors and hashed pseudonyms are unchanged. The
-  Python and JavaScript bindings are unchanged.
+- Group arithmetic and hashing are separate traits. `Group`
+  (`elgamal::arithmetic::Group`) is the group arithmetic only, including
+  `element_from_uniform_bytes` and `scalar_from_uniform_bytes`. `Ciphersuite`
+  (`elgamal::arithmetic::Ciphersuite`) has a `Group`, a `Hash`, a `CiphersuiteId` and the
+  `hash_to_group` and `hash_to_scalar` maps. `Ristretto255Sha512` is the ciphersuite of
+  ristretto255 with SHA-512, and its group is `Ristretto255`. Data types, keys, factors and proofs
+  are generic over the group (`Pseudonym<G>`, `Proof<G>`); what hashes is generic over a
+  ciphersuite `C`: `hash_to_group_generic::<C>`, `hash_to_nonzero_scalar_generic::<C>`,
+  `make_*_factor_generic::<C>`, `make_*session_keys_generic::<C>`, the `*Info::new_generic::<C>`
+  constructors, creating and verifying proofs (`create_proof::<C, _>`,
+  `VerifiableRekey::new::<C, _>`, `proof.verify::<C>(..)`, the `Verifiable*` traits of the data
+  layer), and the types `Transcryptor<C>`, `DistributedTranscryptor<C>`, `Verifier<C>` and the
+  four `Master*` types of `verifiable-derivation`. The Python and JavaScript bindings are fixed
+  to ristretto255 with SHA-512.
 - The verifiable commitments expose their group element through `point()` and are built from
   the transcryption infos with `From` (`VerifiablePseudonymizationCommitment::from(info)` and
   so on).
 - The verifiable primitives of `elgamal` (`elgamal::verifiable`, `elgamal::zkps`,
-  `elgamal::dleq`) are generic over the group. For this, `Group` gained `ScalarCanBeZero`, the
-  scalar field with its addition, and its encoding functions, and `hashing::hash_to_nonzero_scalar`,
-  the group's hash reduced to a non-zero scalar. Proof bytes on ristretto255 are unchanged.
+  `elgamal::dleq`) are generic over the group. For this, `Group` has `ScalarCanBeZero`, the
+  scalar field with its addition, and its encoding functions, and `hashing` has
+  `hash_to_nonzero_scalar`, the ciphersuite's hash reduced to a non-zero scalar.
 - The batch proofs of the data layer are three types generic over the item type,
   `BatchPseudonymizationProof<E>`, `BatchRekeyProof<E>` and `BatchTranscryptionProof<E>` in
   `data::verifiable::batch`, built on the `VerifiableBatchItem` trait that lays an item's
@@ -110,9 +108,8 @@ a major change against the published 0.13.0.
   ristretto255 group, its scalars (`ScalarNonZero`, `ScalarCanBeZero`), group elements and raw-tag
   hash functions in `elgamal::arithmetic::ristretto255` (`group_elements` and `scalars` are still
   re-exported from `elgamal::arithmetic`; `hash_to_group_with_dst` and `hash_to_scalar_with_dst`
-  are in `elgamal::arithmetic::ristretto255::hashing`, re-exported from `elgamal::arithmetic::hashing`). The high level has no ristretto255 alias
-  layer and no `generic` submodules; each module is one file, or a module whose `mod.rs` only
-  declares and re-exports. `TranscryptorId` lives in `contexts` (still re-exported from
+  are in `elgamal::arithmetic::ristretto255::hashing`, re-exported from `elgamal::arithmetic::hashing`). Each module is one file, or a module
+  whose `mod.rs` only declares and re-exports. `TranscryptorId` lives in `contexts` (still re-exported from
   `transcryptor`), `Batchable` in `data::batch`, `SessionKeyShareProof::verify_share` in
   `keys::distribution::shares`, and the ElGamal-specific data traits (`ElGamalEncryptable`,
   `ElGamalEncrypted`) in `data::elgamal`, so `data::traits` does not name the scheme.
@@ -302,12 +299,11 @@ a major change against the published 0.13.0.
   takes `--keys` (without `elgamal3`).
 - The whole API is generic over the prime-order group and, where it hashes, over the ciphersuite
   (see *Added*): the `elgamal` module and the high-level API (`data`, `keys`, `factors`, `client`,
-  `transcryptor`, `verifier`) take a `G: Group` parameter (`elgamal::arithmetic::Group`) or a
-  `C: Ciphersuite` parameter, which users instantiate with `Ristretto255`
-  (`Pseudonym<Ristretto255>`) or `Ristretto255Sha512` (`Transcryptor<Ristretto255Sha512>`). The
-  group is inferred wherever it follows from the arguments; functions that create keys from
-  randomness alone take it explicitly (`make_global_keys::<Ristretto255, _>`). The bindings,
-  `peppy` and the tests name the group and the ciphersuite once in a small aliases file. Other changes: `ElGamal<G>` is generic; `ElGamal::to_bytes` returns a
+  `transcryptor`, `verifier`) take a `G: Group` parameter or a `C: Ciphersuite` parameter, which
+  default to `Ristretto255` and `Ristretto255Sha512`. The group is inferred wherever it follows
+  from the arguments; functions that create keys from randomness alone have a `_generic` version
+  that takes it explicitly (`make_global_keys_generic::<Ristretto255, _>`). The bindings and
+  `peppy` use the defaults. Other changes: `ElGamal<G>` is generic; `ElGamal::to_bytes` returns a
   `Vec<u8>` and `ElGamal::from_bytes(&[u8; N])` is replaced by `from_slice`; `ElGamalEncrypted::to_bytes`
   and `from_bytes` likewise; `elgamal::zkps` and `elgamal::dleq` are generic over the group;
   `BatchError` is `data::batch::BatchError` and exists only with the `batch` feature, and
@@ -335,7 +331,7 @@ a major change against the published 0.13.0.
   elements, random scalars and elements, and the generator, with `Ristretto255` as its instance.
   `Ristretto255Sha512::hash_to_group` and `hash_to_scalar` hash with the shared
   `expand_message_xmd` (RFC 9380) of `elgamal::arithmetic::hashing` under SHA-512 and match the
-  published ristretto255-SHA512 test vectors. Optional encodings:
+  RFC 9497 ristretto255-SHA512 test vectors. Optional encodings:
   `InvertibleEncoding` (the lizard encoding, implemented for ristretto255) and `OaepEncoding` (for
   Weierstrass curves, to be implemented).
 - The whole API (`elgamal`, `data`, `keys`, `factors`, `client`, `transcryptor`, `verifier`) is
@@ -356,20 +352,23 @@ a major change against the published 0.13.0.
 - `elgamal::dleq`: DLEQ proofs, generic over the group, as a second, additive proof encoding.
   A proof is the two scalars `(c, s)` and serializes to 64 bytes; `ComputeComposites` batches one
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
-  against the published ristretto255-SHA512 VOPRF test vectors, for a single
-  pair and for a batch of two. The paper's four-element encoding in `elgamal::zkps` is unchanged
-  and remains the default; proofs in the two encodings are not interchangeable.
+  against the ristretto255-SHA512 VOPRF test vectors of RFC 9497 (Appendix A.1.2), for a single
+  pair and for a batch of two. The proof and its batching follow Section 2.2 of the RFC.
+  The paper's four-element encoding in `elgamal::zkps` remains the default; proofs in the two
+  encodings are not interchangeable.
 - `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.
 - `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
   SHA-512 test vectors), and in `elgamal::arithmetic::ristretto255::hashing` (re-exported here) the raw-tag
   `hash_to_group_with_dst` (`hash_to_ristretto255` with SHA-512) and `hash_to_scalar_with_dst`
-  (`HashToScalar`), cross-checked against the published ristretto255-SHA512 test vectors.
-- `elgamal::arithmetic::hashing::hash_to_group::<C>(x)`: the `hash_to_group` encoding of
-  an identifier, with DST `"HashToGroup-" || contextString` derived from
-  `C::ID`, where `C` is the `Ciphersuite`. Its docs state the property every encoding must have (no known discrete-log
-  relations; encoding `x` as `x * G` is forbidden) and why the ciphersuite matters here: no secret
-  enters this hash. The invertible lizard encoding stays on
-  `GroupElement::from_lizard`/`to_lizard`, reachable generically through `InvertibleEncoding`.
+  (`HashToScalar`), cross-checked against the ristretto255-SHA512 test vectors of RFC 9497
+  (Appendix A.1).
+- `elgamal::arithmetic::hashing::hash_to_group_generic::<C>(x)`, and `hash_to_group(x)` for
+  ristretto255: the `hash_to_group` encoding of an identifier, with DST
+  `"HashToGroup-" || contextString` derived from `C::ID`, where `C` is the `Ciphersuite`. Its docs
+  state the property every encoding must have (no known discrete-log relations; encoding `x` as
+  `x * G` is forbidden) and why the ciphersuite matters here: no secret enters this hash.
+  The invertible lizard encoding is `GroupElement::from_lizard`/`to_lizard`, reachable generically
+  through `InvertibleEncoding`.
 
   The input is passed to `HashToGroup` unchanged rather than hashed first. Pre-hashing adds no
   collision resistance over a secure hash onto the group, diverges from anyone implementing the
@@ -379,7 +378,7 @@ a major change against the published 0.13.0.
 - `Ciphersuite::Hash`, the hash a ciphersuite identifier names, declared beside `Ciphersuite::ID`
   so that a ciphersuite whose identifier says `-SHA256` cannot hash with SHA-512. Code generic
   over a `Ciphersuite` reaches its hash through it; the ristretto255 primitives that the RFC 9380
-  and published test vectors pin keep hashing with SHA-512 by definition.
+  and RFC 9497 test vectors define keep hashing with SHA-512.
 - `elgamal::arithmetic::CiphersuiteId`, with `identifier()`, `context_string()` and `dst()`,
   reached through `Ciphersuite::ID` and built with the `ciphersuite!` macro so that the
   identifier appears once.

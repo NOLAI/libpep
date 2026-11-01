@@ -302,7 +302,7 @@ pub fn py_decrypt_long_record(
 }
 
 #[cfg(feature = "long")]
-/// Structure descriptor for LongRecords - describes the shape including block counts.
+/// Structure descriptor for LongRecords: describes the shape including block counts.
 #[pyclass(name = "LongRecordStructure", from_py_object)]
 #[derive(Clone)]
 pub struct PyLongRecordStructure(pub(crate) LongRecordStructure);

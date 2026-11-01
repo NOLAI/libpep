@@ -1,6 +1,6 @@
 //! WASM bindings for verifiable Carter-Wegman factor derivation.
 //!
-//! Mirrors `crate::factors::verifiable`. Only available with
+//! Mirrors `libpep::factors::verifiable`. Only available with
 //! `feature = "verifiable-derivation"`.
 
 #![cfg(feature = "verifiable-derivation")]
