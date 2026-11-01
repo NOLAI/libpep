@@ -159,8 +159,10 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// multiple of a fixed element, violates this and is forbidden. This function satisfies the
 /// requirement through the random oracle property of hashing to the group.
 /// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard) satisfies it
-/// because inverting it would need a discrete logarithm, and
-/// [`GroupElement::random`](super::group_elements::GroupElement::random) satisfies it trivially.
+/// heuristically and without proof: it is not a random oracle, but a related encoding would have
+/// to invert the map to an input that also passes its check bits. A uniformly random element
+/// from [`GroupElement::random`](super::group_elements::GroupElement::random) satisfies it, since
+/// nobody knows its discrete logarithm.
 #[must_use]
 pub fn hash_to_group_generic<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {
     /// The bound on a hashed identifier: at most `2^16 - 1` bytes.

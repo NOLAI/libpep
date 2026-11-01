@@ -66,8 +66,8 @@ pub trait ElGamalEncrypted:
 /// uniformly random group elements, chosen independently of `s`. It is linear,
 /// `F_s(a * M) = a * F_s(M)`, so a known discrete-log relation between two origin identifiers
 /// survives in every pseudonymization domain, and a user that knows it can recognize the
-/// related pseudonyms. A strong PRF would hash the input into the group first, which the
-/// library does not do at reshuffle time.
+/// related pseudonyms. A full PRF, where the adversary may choose the inputs, would hash the input into the group
+/// first (`s * H(x)`), which the library does not do at reshuffle time.
 ///
 /// Origin identifiers must therefore be (indistinguishable from) uniformly random group
 /// elements, or at least such that nobody can produce two of them with a known relation:
