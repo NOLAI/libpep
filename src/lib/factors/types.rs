@@ -54,6 +54,8 @@ factor! {
     ///
     /// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
     /// the factors of two domains (or their ratio) can link pseudonyms between those domains.
+    /// Unlinkability also needs uniformly random origin identifiers, as reshuffling is a weak PRF;
+    /// see [`reshuffle`](crate::elgamal::primitives::reshuffle).
     ReshuffleFactor
 }
 factor! {

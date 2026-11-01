@@ -37,6 +37,8 @@ pub fn wasm_rekey(v: &WASMElGamal, k: &WASMScalarNonZero) -> WASMElGamal {
 }
 /// Change the contents of a ciphertext with factor `s`, i.e. message `M` becomes `s * M`.
 /// Can be used to blindly and pseudo-randomly pseudonymize identifiers.
+/// Reshuffling is a weak PRF, so the messages must be uniformly random (or lizard-encoded)
+/// identifiers.
 #[wasm_bindgen(js_name = reshuffle)]
 pub fn wasm_reshuffle(v: &WASMElGamal, s: &WASMScalarNonZero) -> WASMElGamal {
     reshuffle(v, s).into()

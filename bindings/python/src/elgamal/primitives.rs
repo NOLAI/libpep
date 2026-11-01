@@ -41,6 +41,8 @@ pub fn py_rekey(v: &PyElGamal, k: &PyScalarNonZero) -> PyElGamal {
 
 /// Change the contents of a ciphertext with factor `s`, i.e. message `M` becomes `s * M`.
 /// Can be used to blindly and pseudo-randomly pseudonymize identifiers.
+/// Reshuffling is a weak PRF, so the messages must be uniformly random (or lizard-encoded)
+/// identifiers.
 #[pyfunction]
 #[pyo3(name = "reshuffle")]
 pub fn py_reshuffle(v: &PyElGamal, s: &PyScalarNonZero) -> PyElGamal {

@@ -44,6 +44,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// identifier. Consider padding identifiers to a fixed size, or use [`pad_to`](Self::pad_to)
 /// for batches.
 ///
+/// Reshuffling is a weak PRF and needs uniformly random identifiers; see the security note on
+/// [`ElGamalEncryptable`]. The padded constructors
+/// ([`from_string_padded`](Self::from_string_padded), [`from_bytes_padded`](Self::from_bytes_padded))
+/// lizard-encode every block, which roughly provides this. Blocks built from points of your own
+/// (the tuple constructor, `From<Vec<Pseudonym>>`) must be uniformly random themselves.
+///
 /// Reshuffling applies to every block separately, so pseudonyms that share a block are
 /// linkable: in
 ///

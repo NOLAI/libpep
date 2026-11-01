@@ -14,6 +14,10 @@ use pyo3::Py;
 
 /// A pseudonym identifies a user within a specific domain. It can be encrypted, rekeyed
 /// and reshuffled.
+///
+/// Reshuffling is a weak PRF, which is pseudorandom only for uniformly random inputs: origin
+/// pseudonyms must be created with `random` or `from_lizard` (or be hashes), and not imported
+/// with `from_bytes` or `from_hex` unless they are uniformly random.
 #[pyclass(name = "Pseudonym", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyPseudonym(pub(crate) Pseudonym);

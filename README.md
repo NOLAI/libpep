@@ -121,14 +121,33 @@ Data is encrypted once and later rekeyed, and reshuffled if it is an identifier,
 Every user knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one user's domain to another's, applying `s = s_from^-1 * s_to`, without a global pseudonym existing in between.
 The factor `s` is tied to the *pseudonymization domain* of a user.
 
-Pseudonym unlinkability rests on the fact that `F_s(M) = s*M` is the Diffie-Hellman pseudorandom function (DH-PRF): as long as `s` stays secret, `s*M` is indistinguishable from a random group element under the Decisional Diffie-Hellman (DDH) assumption, so pseudonyms in different domains cannot be linked without knowing the ratio of their domain factors.
-Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and receiver never learn `s`.
+Reshuffling with factor `s` evaluates `F_s(M) = s*M`, the Diffie-Hellman function.
+This is a *weak PRF*: under the Decisional Diffie-Hellman (DDH) assumption, and as long as `s` stays secret, `s*M` is indistinguishable from a random group element when `M` is a uniformly random group element, chosen independently of `s`.
+Pseudonyms in different domains then cannot be linked without knowing the ratio of their domain factors.
+Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this weak PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and receiver never learn `s`.
 
-> [!NOTE]
-> Strictly, the DH-PRF is `F_s(M) = s*H(M)` for a hash `H` into the group: without `H`, `F_s` is linear (`F_s(a*M) = a*F_s(M)`) and thus not pseudorandom for inputs with known discrete-log relations.
-> This library omits `H` because origin identifiers are expected to be uniformly random group elements, either sampled directly or produced by the elligator2-based lizard encoding, which makes it infeasible to construct identifiers with known relations.
-> Importing group elements with other distributions (via `from_bytes` or `from_hex`) preserves any discrete-log relation between origin identifiers in every domain (if `M1 = 2*M2`, then also `s*M1 = 2*(s*M2)`).
-> Individual pseudonyms remain unlinkable across domains under DDH, so this is acceptable as long as no user knows the relations between origin identifiers.
+#### Origin identifiers must be uniformly random
+
+`F_s` is not a (strong) PRF.
+For structured or adversarially chosen inputs it is linear, `F_s(a*M) = a*F_s(M)`, so if `M1 = a*M2` for a known `a`, then `s*M1 = a*(s*M2)` in every pseudonymization domain, and anyone who knows `a` can recognize the related pseudonyms.
+A strong PRF avoids this by hashing the input into the group first, `s*H(M)`.
+`libpep` does not hash at reshuffle time, as it works on ElGamal ciphertexts of identifiers that are already encoded as group elements.
+It therefore assumes that origin identifiers are indistinguishable from uniformly random group elements, or at least that nobody can produce two identifiers with a known discrete-log relation.
+In practice:
+
+- Sample identifiers at random (`Pseudonym::random`), or use random 16-byte identifiers or hashes of identifiers, encoded with `from_lizard`.
+- Encode identifiers with the lizard encoding (`from_lizard`, `from_string_padded` and the long variants).
+  It maps a 16-byte block to a ristretto255 element with the Elligator 2 map.
+  The block is placed in the input of the map next to 16 bytes of a SHA-256 hash of the block, so that the block can be decoded again.
+  No relation between the discrete logarithms of the encodings of different blocks is known, even for structured blocks such as `1`, `2` and `3`.
+  This is a property of the map that has no proof, and it holds for low-entropy identifiers too, so lizard-encoded identifiers remain unlinkable across domains.
+  Lizard only roughly gives uniform identifiers: the encoding is injective and unkeyed, so it reaches at most `2^128` of the roughly `2^252` group elements, one per block.
+- Longer identifiers are split into blocks by the long types, and every block is reshuffled separately, so identifiers that share a block share its pseudonym in every domain.
+- Never encode an identifier as `x*G`.
+- Elements imported with `from_bytes`, `from_hex`, `from_slice` or `from_point` bypass the encoding and keep whatever relations they have.
+  Import only elements that are random or that no adversary could have chosen.
+
+Individual pseudonyms remain unlinkable across domains under DDH, as long as nobody knows a relation between origin identifiers.
 
 A reshuffle alone is not enough, as the pseudonym is still encrypted for a key the receiver does not possess.
 A *rekey* with `k` makes it decryptable with `k*y`, in combination with a protocol to hand the receiver that secret key.
@@ -157,13 +176,14 @@ An oblivious pseudorandom function (OPRF, specified over prime-order groups in [
 A *client* blinds an input, a *server* applies its secret key, and the client unblinds the result to obtain the PRF output.
 The server learns neither input nor output.
 
-`libpep` evaluates the same DH-PRF `F_s(M) = s*M`, but splits the client role over a **sender** and a **receiver**, with the **transcryptor** as evaluator.
+`libpep` evaluates the same Diffie-Hellman function `F_s(M) = s*M`, but splits the client role over a **sender** and a **receiver**, with the **transcryptor** as evaluator.
 ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the receiver's decryption unblinds.
 The transcryptor learns neither `M` nor `s*M`, and neither sender nor receiver learns `s`.
 Because blinding and unblinding are done by different users, evaluation is non-interactive and asynchronous: the sender can encrypt before the receiver is known, and the PRF output appears only in the receiver's domain.
 
 There are two differences with the two-party protocol.
-`libpep` does not hash the input into the group first; it relies on origin identifiers being uniformly random group elements, as described above.
+An OPRF hashes the input into the group first, so it is a strong PRF for any input.
+`libpep` does not: it relies on the weak PRF property and on origin identifiers being uniformly random group elements, as described under [origin identifiers](#origin-identifiers-must-be-uniformly-random).
 And plain PEP transcryption is not verifiable: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
 The `verifiable` feature closes that gap with discrete-log-equality proofs of the kind the verifiable OPRF of RFC 9497 uses.
 
@@ -247,7 +267,7 @@ Optional features:
 ## Security
 
 The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used by implementing the `Group` trait, and a hash for them by implementing the `Ciphersuite` trait.
-Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
+Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the weak PRF property of the Diffie-Hellman function evaluated by reshuffling, for uniformly random origin identifiers (see [origin identifiers](#origin-identifiers-must-be-uniformly-random)); both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `RekeyingSecret` are zeroized on drop.
 Distribution costs availability: all `n` transcryptors must take part in a transcryption.

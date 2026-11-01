@@ -33,6 +33,12 @@ pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, gy: &G::Element, r: &G::Sca
 /// `F_s(M) = s * M`, which is pseudorandom under the DDH assumption while `s` stays secret:
 /// the performing transcryptor evaluates the PRF homomorphically without learning `M` or `s * M`,
 /// which makes the resulting pseudonyms unlinkable across domains.
+///
+/// `F_s` is a *weak PRF*: its output is pseudorandom only for uniformly random group elements
+/// `M` (chosen independently of `s`), not for structured inputs, since it is linear
+/// (`F_s(a * M) = a * F_s(M)`). The messages passed to `reshuffle` must therefore be uniformly
+/// random or lizard-encoded identifiers; see the
+/// [README](https://github.com/NOLAI/libpep#origin-identifiers-must-be-uniformly-random).
 pub fn reshuffle<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar) -> ElGamal<G> {
     ElGamal {
         gb: *s * encrypted.gb,
@@ -160,7 +166,7 @@ pub fn rrsk<G: Group>(
 }
 
 /// A transitive and reversible n-PEP extension of [`reshuffle`], reshuffling from one pseudonym to
-/// another.
+/// another. The weak PRF requirement of [`reshuffle`] on the origin identifiers applies.
 pub fn reshuffle2<G: Group>(m: &ElGamal<G>, s_from: &G::Scalar, s_to: &G::Scalar) -> ElGamal<G> {
     let s = G::scalar_inverse(s_from) * *s_to;
     reshuffle(m, &s)

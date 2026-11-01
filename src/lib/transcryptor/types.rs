@@ -156,6 +156,9 @@ impl<C: Ciphersuite> Transcryptor<C> {
 
     /// Pseudonymize (rerandomize, reshuffle and rekey) encrypted data from one domain/session to another.
     /// Works with any pseudonymizable type (pseudonyms, long pseudonyms, etc.).
+    /// Reshuffling is a weak PRF, so the pseudonyms must come from uniformly random or
+    /// lizard-encoded identifiers, see
+    /// [`ElGamalEncryptable`](crate::data::elgamal::ElGamalEncryptable).
     #[cfg(feature = "elgamal3")]
     pub fn pseudonymize<E, R>(
         &self,
@@ -172,6 +175,9 @@ impl<C: Ciphersuite> Transcryptor<C> {
 
     /// Pseudonymize (rerandomize, reshuffle and rekey) encrypted data from one domain/session to another.
     /// Works with any pseudonymizable type (pseudonyms, long pseudonyms, etc.).
+    /// Reshuffling is a weak PRF, so the pseudonyms must come from uniformly random or
+    /// lizard-encoded identifiers, see
+    /// [`ElGamalEncryptable`](crate::data::elgamal::ElGamalEncryptable).
     /// `public_key` is the key the ciphertext is currently encrypted under.
     #[cfg(not(feature = "elgamal3"))]
     pub fn pseudonymize<E, R>(

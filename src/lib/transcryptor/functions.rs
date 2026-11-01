@@ -10,6 +10,9 @@ use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
 /// Pseudonymize (rerandomize, reshuffle and rekey) an encrypted pseudonym.
+///
+/// Reshuffling is a weak PRF: the pseudonyms must have been created from uniformly random or
+/// lizard-encoded identifiers, see [`ElGamalEncryptable`](crate::data::elgamal::ElGamalEncryptable).
 #[cfg(feature = "elgamal3")]
 pub fn pseudonymize<G: Group, E, R>(encrypted: &E, info: &PseudonymizationInfo<G>, rng: &mut R) -> E
 where
@@ -20,6 +23,9 @@ where
 }
 
 /// Pseudonymize (rerandomize, reshuffle and rekey) an encrypted pseudonym.
+///
+/// Reshuffling is a weak PRF: the pseudonyms must have been created from uniformly random or
+/// lizard-encoded identifiers, see [`ElGamalEncryptable`](crate::data::elgamal::ElGamalEncryptable).
 /// `public_key` is the key the ciphertext is currently encrypted under.
 #[cfg(not(feature = "elgamal3"))]
 pub fn pseudonymize<G: Group, E, R>(
