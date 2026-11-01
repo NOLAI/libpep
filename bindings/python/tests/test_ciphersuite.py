@@ -6,7 +6,7 @@ Python integration tests for the ciphersuite, hashing and the element encodings.
 import unittest
 
 from libpep.contexts import EncryptionContext, PseudonymizationDomain
-from libpep.elgamal.arithmetic.ciphersuite import Ciphersuite
+from libpep.elgamal.arithmetic.ciphersuite import CiphersuiteId
 from libpep.elgamal.arithmetic.group_elements import GroupElement
 from libpep.elgamal.arithmetic.hashing import (
     expand_message_xmd_sha512,
@@ -21,18 +21,18 @@ from libpep.transcryptor import Transcryptor
 
 class TestCiphersuite(unittest.TestCase):
     def test_default_context_string(self):
-        ctx = Ciphersuite()
-        self.assertEqual(ctx, Ciphersuite.current())
+        ctx = CiphersuiteId()
+        self.assertEqual(ctx, CiphersuiteId.current())
         self.assertEqual(ctx.identifier, b"ristretto255-SHA512")
         self.assertEqual(ctx.context_string(), b"nPEPV1-ristretto255-SHA512")
 
     def test_ciphersuite_is_not_constructible_from_an_identifier(self):
         # An identifier names a group and a hash together, so it comes from the group rather
         # than being chosen per call; there is nothing to pass.
-        self.assertEqual(Ciphersuite(), Ciphersuite.current())
-        self.assertEqual(len({Ciphersuite(), Ciphersuite.current()}), 1)
+        self.assertEqual(CiphersuiteId(), CiphersuiteId.current())
+        self.assertEqual(len({CiphersuiteId(), CiphersuiteId.current()}), 1)
         with self.assertRaises(TypeError):
-            Ciphersuite("my-deployment")
+            CiphersuiteId("my-deployment")
 
     def test_transcryptor_takes_no_ciphersuite(self):
         # The ciphersuite is fixed for a build, so a transcryptor is built from its secrets
@@ -59,7 +59,7 @@ class TestHashing(unittest.TestCase):
             expand_message_xmd_sha512(b"", dst, 65536)
 
     def test_hash_to_group_uses_ciphersuite_dst(self):
-        dst = b"HashToGroup-" + Ciphersuite.current().context_string()
+        dst = b"HashToGroup-" + CiphersuiteId.current().context_string()
         self.assertEqual(
             hash_to_group(b"patient-1"), hash_to_group_with_dst(b"patient-1", dst)
         )

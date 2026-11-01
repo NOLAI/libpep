@@ -382,9 +382,9 @@ a major change against the published 0.13.0.
 - `elgamal::arithmetic::CiphersuiteId`, with `identifier()`, `context_string()` and `dst()`,
   reached through `Ciphersuite::ID` and built with the `ciphersuite!` macro so that the
   identifier appears once.
-- Python: `libpep.elgamal.arithmetic.ciphersuite` (`Ciphersuite`) and
+- Python: `libpep.elgamal.arithmetic.ciphersuite` (`CiphersuiteId`) and
   `libpep.elgamal.arithmetic.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
-  `hash_to_group_with_dst`, `hash_to_scalar_with_dst`). JavaScript: `Ciphersuite`, `hashToGroup`,
+  `hash_to_group_with_dst`, `hash_to_scalar_with_dst`). JavaScript: `CiphersuiteId`, `hashToGroup`,
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
