@@ -1,5 +1,9 @@
 //! PEP client for encrypting and decrypting data using session keys or global public keys.
 //!
+//! A client is a user: a sender when it encrypts under its own session key, a receiver when it
+//! decrypts what a transcryptor converted for it. Encrypting does not need the receiver to be
+//! known or online. Pseudonyms and attributes are encrypted under separate keys.
+//!
 //! [`Client`] and `OfflineClient` (with the `offline` feature) hold the keys. The polymorphic
 //! [`encrypt`] and [`decrypt`] functions work for every type of [`data`](crate::data).
 

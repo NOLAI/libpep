@@ -1,6 +1,6 @@
 //! Verifiable reshuffle and verifiable reshuffle-2.
 //!
-//! Implements the constructions as specified in the paper:
+//! Implements the verifiable reshuffle, VRS, and its transitive variant:
 //!
 //! ```text
 //!  VReshuffle(⟨B, C, Y⟩, s)

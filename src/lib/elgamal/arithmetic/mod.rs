@@ -11,7 +11,7 @@
 //! Scalars can be converted into group elements by multiplying them with the base point
 //! [`G`](group_elements::G). The two scalar types handle edge cases in the rest of the code where
 //! a zero scalar is not allowed. The arithmetic operators for addition, subtraction and
-//! multiplication are overloaded, so that the code matches the notation in the papers.
+//! multiplication are overloaded, so that the code matches the mathematical notation of the scheme.
 
 pub mod ciphersuite;
 pub mod group;

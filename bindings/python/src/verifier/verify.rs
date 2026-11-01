@@ -170,7 +170,7 @@ impl PyVerifier {
 
     /// Verify a pseudonymization operation against the combined commitments,
     /// returning the reconstructed pseudonym on success. In non-elgamal3
-    /// builds the recipient public key the original ciphertext was encrypted
+    /// builds the public key the original ciphertext was encrypted
     /// under must be supplied so that the inner rerandomize step can be
     /// verified.
     #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]

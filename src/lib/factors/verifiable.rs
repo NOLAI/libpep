@@ -1,5 +1,5 @@
-//! Factor derivation with Carter-Wegman universal hashing: the alternative of Section 3.3.1 of
-//! the paper, not the preferred scheme (see [Security](#security)).
+//! Factor derivation with Carter-Wegman universal hashing: the alternative to published factor
+//! commitments, not the preferred scheme (see [Security](#security)).
 //!
 //! The commitments to the factors can be computed from the master public keys, so the
 //! transcryptor does not publish a commitment per domain or session. The verifier computes them
@@ -19,7 +19,7 @@
 //!
 //! # Security
 //!
-//! Section 3.3.1 of the paper: the factors are not independent. One derived factor reveals
+//! The factors are not independent. One derived factor reveals
 //! nothing about another, but `n + 1` of them (with `n` transcryptors) determine the master
 //! secret and so every factor. Because the derivation is linear in the public hashes, the same
 //! holds for the values the factors multiply: two pseudonyms of one subject in known domains

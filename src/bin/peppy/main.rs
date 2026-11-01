@@ -45,7 +45,7 @@ enum Command {
     /// Global, session and distributed key material.
     #[command(subcommand)]
     Keys(keys::Keys),
-    /// Reshuffle and rekey factors and the info for a transcryption.
+    /// Reshuffle and rekey factors, their commitments, and the info for a transcryption.
     #[command(subcommand)]
     Factors(factors::Factors),
     /// Pseudonyms: identifiers that are reshuffled between domains.

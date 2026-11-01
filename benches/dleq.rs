@@ -1,6 +1,6 @@
 //! Benchmarks comparing the two proof encodings at batch sizes m = 1, 10 and 100.
 //!
-//! The paper's encoding ([`libpep::elgamal::zkps`]) proves one statement per ciphertext: a
+//! The four-element encoding ([`libpep::elgamal::zkps`]) proves one statement per ciphertext: a
 //! batch of m needs m proofs of 128 bytes each. The two-scalar encoding
 //! ([`libpep::elgamal::dleq`]) batches through `ComputeComposites`, so one 64-byte proof covers
 //! the whole batch, at the cost of hashing each pair into the composite.
@@ -42,7 +42,7 @@ fn bench_generate(c: &mut Criterion) {
             });
         });
 
-        // The paper's encoding proves each pair separately.
+        // The four-element encoding proves each pair separately.
         group.bench_with_input(BenchmarkId::new("paper_per_ciphertext", m), &m, |b, _| {
             let rng = &mut rand::rng();
             b.iter(|| {
@@ -91,10 +91,10 @@ fn bench_proof_size(c: &mut Criterion) {
     let mut group = c.benchmark_group("proof_size_bytes");
     for m in SIZES {
         let batched = dleq::Proof::<Ristretto255>::LENGTH;
-        // The paper's proof carries three elements and a scalar, per ciphertext.
+        // The four-element proof carries three elements and a scalar, per ciphertext.
         let per_ciphertext = m * 128;
         println!(
-            "m = {m:>3}: two-scalar batched = {batched:>5} bytes, paper per-ciphertext = {per_ciphertext:>5} bytes"
+            "m = {m:>3}: two-scalar batched = {batched:>5} bytes, four-element per-ciphertext = {per_ciphertext:>5} bytes"
         );
         group.bench_with_input(BenchmarkId::new("noop", m), &m, |b, _| b.iter(|| m));
     }

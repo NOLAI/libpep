@@ -1,6 +1,6 @@
 //! Verifiable rerandomize.
 //!
-//! Implements the paper construction
+//! Implements the verifiable rerandomize, VRR:
 //! `VRerandomize(⟨B, C, Y⟩, r) = ⟨R = r·G, ZKP{Y_r = r * Y}⟩` where the
 //! rerandomized ciphertext is reconstructed as `⟨R + B, Y_r + C, Y⟩`.
 //!
@@ -72,7 +72,7 @@ impl<G: Group> VerifiableRerandomize<G> {
         }
     }
 
-    /// Verify the rerandomize proof against the recipient public key `gy`
+    /// Verify the rerandomize proof against the public key `gy`
     /// the original ciphertext was encrypted under.
     ///
     /// Rerandomize proofs are independent of the original ciphertext

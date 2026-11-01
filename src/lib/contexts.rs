@@ -1,11 +1,17 @@
 //! [`PseudonymizationDomain`]s and [`EncryptionContext`]s: the identifiers that data is
-//! pseudonymized and encrypted for, from which the transcryption factors are derived, and the
-//! [`TranscryptorId`] that names a transcryptor.
+//! pseudonymized and encrypted for, and the [`TranscryptorId`] that names a transcryptor.
+//!
+//! A transcryptor derives its secret reshuffle factor from a pseudonymization domain and its
+//! secret rekey factor from an encryption context, so every user, which has its own domain and
+//! context, gets pseudonyms and a session key that no other user can relate to its own.
 
 /// Identifier of a transcryptor.
 pub type TranscryptorId = String;
 
-/// The domain in which pseudonyms exist (typically a user's role or user group).
+/// The pseudonymization domain: the domain in which a user knows data subjects by their
+/// pseudonyms (typically one per user, role or user group). Pseudonyms of the same data subject
+/// in different domains cannot be linked without the transcryptors, and the reshuffle factor is
+/// specific to the domain.
 ///
 /// With the `global-pseudonyms` feature, the domain can be `Global`, for pseudonyms that are the
 /// same in every domain. With the `legacy` feature, a specific domain also carries an
@@ -30,7 +36,8 @@ pub enum PseudonymizationDomain {
     Specific(String),
 }
 
-/// The context in which ciphertexts exist (typically a user's session).
+/// The encryption context: the context in which a ciphertext is encrypted (typically a user's
+/// session). Session keys and the rekey factor are specific to the context.
 ///
 /// With the `offline` feature, the context can be `Global`, for ciphertexts encrypted towards
 /// the global keys. With the `legacy` feature, a specific context also carries an

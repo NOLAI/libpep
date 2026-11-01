@@ -103,7 +103,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
         encrypted.verifiable_pseudonymize::<C, R>(info, public_key, rng)
     }
 
-    /// Perform a verifiable rekey operation: the paper's VRK, without rerandomization (see
+    /// Perform a verifiable rekey operation (VRK), without rerandomization (see
     /// [`VerifiableRekeyable`](crate::data::verifiable::traits::VerifiableRekeyable)).
     ///
     /// The verifier recovers the result by calling
@@ -142,8 +142,8 @@ impl<C: Ciphersuite> Transcryptor<C> {
     }
 
     /// Perform a verifiable transcryption operation on composite values
-    /// (records, JSON). `public_key` is the recipient public key the
-    /// pseudonym ciphertexts were encrypted under.
+    /// (records, JSON). `public_key` is the public key the
+    /// pseudonym ciphertexts are currently encrypted under.
     #[cfg(not(feature = "elgamal3"))]
     pub fn verifiable_transcrypt<E, R>(
         &self,

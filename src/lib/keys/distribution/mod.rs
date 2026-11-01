@@ -1,8 +1,12 @@
 //! Distributed transcryptor key management.
 //!
-//! In a distributed setup the global secret keys are blinded with one blinding factor per
-//! transcryptor, and each transcryptor contributes a session key share; a client combines the
-//! blinded global secret key with all shares to obtain its session key. The material involved
+//! In a distributed setup a trusted authority generates the global secret keys, blinds them with
+//! one blinding factor per transcryptor, hands each transcryptor its blinding factors and then
+//! discards the global secret keys. It exists only for this setup and never sees the secrets from
+//! which the transcryptors derive their factors. For a session, each transcryptor
+//! contributes a session key share (after authenticating the client), and a client combines the
+//! blinded global secret key with all shares to obtain its session key. Without the shares of all
+//! transcryptors, the blinded global key reveals nothing about the global secret key. The material involved
 //! is protocol state rather than keys, and has its own traits ([`BlindedGlobalSecretKey`],
 //! [`SessionKeyShare`]) instead of [`SecretKey`](crate::keys::SecretKey).
 //!

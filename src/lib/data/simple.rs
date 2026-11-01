@@ -20,8 +20,9 @@ use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// A pseudonym (in the background, this is a group element) that can be used to identify a user
-/// within a specific context, which can be encrypted, rekeyed and reshuffled.
+/// A pseudonym (in the background, this is a group element): the identifier of a data subject
+/// in one pseudonymization domain. It can be encrypted, rekeyed and reshuffled, which converts
+/// it into the pseudonym of the same data subject in another domain.
 ///
 /// Pseudonyms in different domains are unlinkable because
 /// [reshuffling](crate::elgamal::primitives::reshuffle) obliviously evaluates the Diffie-Hellman
@@ -40,8 +41,9 @@ pub struct Pseudonym<G: Group = Ristretto255> {
     pub value: G::Element,
 }
 
-/// An attribute (in the background, this is a group element), which should not be identifiable
-/// and can be encrypted and rekeyed, but not reshuffled.
+/// An attribute (in the background, this is a group element): a fact about a data subject that
+/// should be neither identifiable nor linkable. It can be encrypted and rekeyed, but not
+/// reshuffled.
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),

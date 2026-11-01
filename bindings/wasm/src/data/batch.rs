@@ -41,7 +41,7 @@ use wasm_bindgen::prelude::*;
 // EncryptedPseudonymBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of encrypted pseudonyms sharing a single recipient session.
+/// A batch of encrypted pseudonyms sharing a single session.
 #[wasm_bindgen(js_name = EncryptedPseudonymBatch)]
 #[derive(Clone)]
 pub struct WASMEncryptedPseudonymBatch {
@@ -50,7 +50,7 @@ pub struct WASMEncryptedPseudonymBatch {
 
 #[wasm_bindgen(js_class = EncryptedPseudonymBatch)]
 impl WASMEncryptedPseudonymBatch {
-    /// Construct a batch from items and the recipient public key the items
+    /// Construct a batch from items and the public key the items
     /// were encrypted against.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(constructor)]
@@ -95,7 +95,7 @@ impl WASMEncryptedPseudonymBatch {
             .collect()
     }
 
-    /// Recipient public key the batch is currently encrypted against.
+    /// Public key the batch is currently encrypted against.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     #[wasm_bindgen(getter, js_name = publicKey)]
     pub fn public_key(&self) -> WASMPseudonymSessionPublicKey {
@@ -183,7 +183,7 @@ impl WASMEncryptedPseudonymBatch {
 // EncryptedAttributeBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of encrypted attributes sharing a single recipient session.
+/// A batch of encrypted attributes sharing a single session.
 #[wasm_bindgen(js_name = EncryptedAttributeBatch)]
 #[derive(Clone)]
 pub struct WASMEncryptedAttributeBatch {
@@ -286,7 +286,7 @@ impl WASMEncryptedAttributeBatch {
 // LongEncryptedPseudonymBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of long encrypted pseudonyms sharing a single recipient session.
+/// A batch of long encrypted pseudonyms sharing a single session.
 #[cfg(feature = "long")]
 #[wasm_bindgen(js_name = LongEncryptedPseudonymBatch)]
 #[derive(Clone)]
@@ -417,7 +417,7 @@ impl WASMLongEncryptedPseudonymBatch {
 // LongEncryptedAttributeBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of long encrypted attributes sharing a single recipient session.
+/// A batch of long encrypted attributes sharing a single session.
 #[cfg(feature = "long")]
 #[wasm_bindgen(js_name = LongEncryptedAttributeBatch)]
 #[derive(Clone)]
@@ -522,7 +522,7 @@ impl WASMLongEncryptedAttributeBatch {
 // EncryptedRecordBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of encrypted records sharing a single recipient session.
+/// A batch of encrypted records sharing a single session.
 #[wasm_bindgen(js_name = EncryptedRecordBatch)]
 #[derive(Clone)]
 pub struct WASMEncryptedRecordBatch {
@@ -608,7 +608,7 @@ impl WASMEncryptedRecordBatch {
 // LongEncryptedRecordBatch
 // ---------------------------------------------------------------------------
 
-/// A batch of long encrypted records sharing a single recipient session.
+/// A batch of long encrypted records sharing a single session.
 #[cfg(feature = "long")]
 #[wasm_bindgen(js_name = LongEncryptedRecordBatch)]
 #[derive(Clone)]

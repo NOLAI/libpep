@@ -12,8 +12,8 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
 
-/// A pseudonym identifies a user within a specific domain. It can be encrypted, rekeyed
-/// and reshuffled.
+/// A pseudonym is the identifier of a data subject in one pseudonymization domain. It can be
+/// encrypted, rekeyed and reshuffled.
 ///
 /// Reshuffling is a weak PRF, which is pseudorandom only for uniformly random inputs: origin
 /// pseudonyms must be created with `random` or `from_lizard` (or be hashes), and not imported
@@ -23,8 +23,8 @@ use pyo3::Py;
 pub struct PyPseudonym(pub(crate) Pseudonym);
 py_plaintext_impl!(PyPseudonym wraps Pseudonym as "Pseudonym");
 
-/// An attribute which should not be identifiable
-/// within a specific domain, which can be encrypted and rekeyed, but not reshuffled.
+/// An attribute is a fact about a data subject that should be neither identifiable nor linkable.
+/// It can be encrypted and rekeyed, but not reshuffled.
 #[pyclass(name = "Attribute", from_py_object)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 pub struct PyAttribute(pub(crate) Attribute);

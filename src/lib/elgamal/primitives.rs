@@ -3,9 +3,10 @@
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::ElGamal;
 
-/// Change the representation of a ciphertext without changing the contents.
+/// Change the representation of a ciphertext without changing the message or the key it is
+/// encrypted for.
 /// Used to make multiple unlinkable copies of the same ciphertext (when disclosing a single
-/// stored message multiple times).
+/// stored message multiple times), and to protect against plaintext injection at transcryption.
 #[cfg(feature = "elgamal3")]
 pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, r: &G::Scalar) -> ElGamal<G> {
     ElGamal {
@@ -14,9 +15,10 @@ pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, r: &G::Scalar) -> ElGamal<G
         gy: encrypted.gy,
     }
 }
-/// Change the representation of a ciphertext without changing the contents.
+/// Change the representation of a ciphertext without changing the message or the key it is
+/// encrypted for.
 /// Used to make multiple unlinkable copies of the same ciphertext (when disclosing a single
-/// stored message multiple times).
+/// stored message multiple times), and to protect against plaintext injection at transcryption.
 /// Requires the public key `gy` that was used to encrypt the message to be provided.
 #[cfg(not(feature = "elgamal3"))]
 pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, gy: &G::Element, r: &G::Scalar) -> ElGamal<G> {
@@ -48,7 +50,8 @@ pub fn reshuffle<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar) -> ElGamal<G> 
     }
 }
 
-/// Make a message encrypted under one key decryptable under another key.
+/// Make a message encrypted under one key decryptable under another key, without the performing
+/// party knowing the secret key (a form of proxy re-encryption).
 /// If the original message was encrypted under key `Y`, the new message will be encrypted under key
 /// `k * Y` such that users with secret key `k * y` can decrypt it.
 pub fn rekey<G: Group>(encrypted: &ElGamal<G>, k: &G::Scalar) -> ElGamal<G> {

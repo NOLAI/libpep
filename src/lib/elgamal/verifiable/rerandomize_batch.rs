@@ -38,8 +38,8 @@ pub fn verifiable_rerandomize_batch<R: Rng + CryptoRng>(
     verifiable_rerandomize_batch_generic::<Ristretto255Sha512, R>(originals, gy, rng)
 }
 
-/// A batch of [`VerifiableRerandomize`] proofs sharing one recipient
-/// public key `Y`.
+/// A batch of [`VerifiableRerandomize`] proofs sharing one public key `Y`
+/// the ciphertexts are encrypted under.
 ///
 /// Each entry uses a freshly sampled `r` for per-message unlinkability.
 /// There is no per-batch header to hoist beyond `Y`, which lives at the

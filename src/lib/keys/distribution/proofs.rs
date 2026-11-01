@@ -5,7 +5,7 @@
 //! scheme. The construction works as follows:
 //!
 //! - Each transcryptor `i` holds a secret blinding scalar `b_i`.
-//! - At setup, a dealer computes the blinded global secret key
+//! - At setup, a trusted authority computes the blinded global secret key
 //!   `sk' = sk · ∏ b_i⁻¹` and publishes it together with the global public
 //!   key. Each transcryptor receives its own `b_i` over a secure channel.
 //! - To derive a session key for a context, each transcryptor computes its
@@ -29,13 +29,13 @@
 //!   rekey factor derived from the (known, deterministic) context.
 //!
 //! The proof does not guarantee:
-//! - That at setup the dealer actually used the same `b_i` in computing
+//! - That at setup the trusted authority actually used the same `b_i` in computing
 //!   `sk' = sk · ∏ b_i⁻¹` as the `b_i` that was shipped to transcryptor `i`.
 //!   There is no commitment phase, no broadcast, and no proof tying the
 //!   blinded global secret key back to the individual `B_i`. A malicious
-//!   dealer could in principle use a different set of blinding scalars in
-//!   the product than the ones it distributed. The dealer is therefore a
-//!   trusted party at setup time. Once setup is complete (and the dealer
+//!   trusted authority could in principle use a different set of blinding scalars in
+//!   the product than the ones it distributed. The trusted authority is therefore
+//!   trusted at setup time. Once setup is complete (and the authority
 //!   is gone), the per-share proofs in this module guarantee correctness of
 //!   each transcryptor's contribution at session-derivation time.
 

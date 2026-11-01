@@ -54,8 +54,8 @@ impl<G: Group> VerifiableRRSK<G> {
 impl<G: Group> VerifiableRRSK<G> {
     /// Build a VRRSK proof.
     ///
-    /// `gy` is the recipient public key against which the ciphertext was
-    /// encrypted (in `elgamal3` mode this equals `v.gy`; in the default mode
+    /// `gy` is the public key the ciphertext was
+    /// encrypted under (in `elgamal3` mode this equals `v.gy`; in the default mode
     /// the caller supplies it explicitly).
     pub fn new<C: Ciphersuite<Group = G>, R: Rng + CryptoRng>(
         v: &ElGamal<G>,

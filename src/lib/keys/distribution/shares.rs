@@ -209,7 +209,7 @@ pub struct SessionKeyShareProofs<G: Group = Ristretto255> {
 }
 
 /// A session key share `u_i = b_i · k_i` with the proof `ZKP{U_i = b_i · K_i}` that it was made
-/// from the committed blinding factor and rekey factor (Section 3.5 of the paper). The user
+/// from the committed blinding factor and rekey factor. The user
 /// receiving the share checks it with
 /// [`SessionKeyShareProof::verify_share`].
 #[cfg(feature = "verifiable")]
@@ -349,7 +349,7 @@ impl<G: Group> SessionKeyShareProof<G> {
     /// Verify the proof and bind it to the share scalar actually received.
     ///
     /// This is the check a user of a session key share must perform. It
-    /// covers both halves of the paper's requirement:
+    /// has two parts:
     ///
     /// 1. the ZKP is valid against the preconfigured `B_i = b_i · G` and the
     ///    rekey commitment `K_i`, so the proven `U_i` equals `b_i · K_i`

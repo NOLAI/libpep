@@ -1,5 +1,19 @@
 //! Verifier for verifiable transcryption operations.
 //!
+//! A verifier (a user or another transcryptor) checks that a transcryptor transformed a ciphertext
+//! with the factors it committed to, so that integrity does not depend on trusting the
+//! transcryptor. A transcryptor publishes a commitment to each reshuffle and rekey factor it
+//! uses for a domain or session, and the verifier records the commitments to enforce that the
+//! same factor is used for the same domain or session every time. The factors stay secret. The
+//! verifier is not trusted.
+//!
+//! A commitment makes the use of a factor consistent, but it does not show how the factor was
+//! derived or that it was sampled uniformly. With distributed transcryption the effective factor
+//! is still uniform as long as one transcryptor samples honestly.
+//!
+//! Who verifies is a deployment choice. Verifying a rerandomization needs the original
+//! ciphertext, so a verifier learns the link between a ciphertext and its rerandomized copy.
+//!
 //! The verifier checks that operations were performed with the factors a transcryptor
 //! committed to:
 //!

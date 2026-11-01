@@ -1162,7 +1162,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     );
 }
 
-/// The Carter-Wegman derivation of Section 3.3.1 of the paper: the transcryptor derives the
+/// The Carter-Wegman derivation: the transcryptor derives the
 /// factors of each domain and session from its master secrets, and the verifier computes the
 /// commitments to them from the master public keys alone, without a per-factor registration.
 /// A transitive RRSK proof (VRRSK2) then verifies against those computed commitments.

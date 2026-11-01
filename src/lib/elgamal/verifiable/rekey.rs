@@ -1,7 +1,7 @@
 //! Verifiable rekey and verifiable rekey-2.
 //!
 //! Implements the [`VerifiableRekey`] and [`VerifiableRekey2`] constructions
-//! as specified in the paper:
+//! (the verifiable rekey, VRK, and its transitive variant):
 //!
 //! ```text
 //!  VRekey(⟨B, C, Y⟩, k)  = ⟨ B', ZKP{B = k * B'}, ZKP{Y' = k * Y} ⟩

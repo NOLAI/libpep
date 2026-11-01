@@ -1,5 +1,10 @@
 //! System setup for distributed transcryptors: blinding factors and blinded global secret keys.
 //!
+//! Setup is run once by a trusted authority, which is a single point of failure for as long as it
+//! holds the global secret key. The functions generate the global secret key, blind it and drop
+//! it, so only the global public key, the blinded global secret key and the blinding factors
+//! are returned.
+//!
 //! The `_generic` functions take the group as a type parameter; the plain-named ones are the
 //! ristretto255 versions (see the [crate docs](crate#groups-and-ciphersuites)).
 

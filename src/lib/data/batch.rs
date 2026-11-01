@@ -1,4 +1,4 @@
-//! Polymorphic batches of encrypted values that share a single recipient session.
+//! Polymorphic batches of encrypted values that share a single session.
 //!
 //! [`EncryptedBatch<E>`] is the type for batch operations. It works
 //! for every encrypted type in the library: simple
@@ -121,7 +121,7 @@ impl<G: InvertibleEncoding> Batchable for PepJsonValue<G> {
     }
 }
 
-/// A polymorphic batch of ciphertexts that share a recipient session.
+/// A polymorphic batch of ciphertexts that share a session.
 ///
 /// `E` may be any encrypted wrapper: simple (`EncryptedPseudonym`,
 /// `EncryptedAttribute`), long, composite (`EncryptedRecord`,
@@ -139,7 +139,7 @@ impl<G: InvertibleEncoding> Batchable for PepJsonValue<G> {
     ))
 )]
 pub struct EncryptedBatch<E: Encrypted> {
-    /// Recipient public key material the items are encrypted under.
+    /// Public key material the items are encrypted under.
     ///
     /// The associated-type indirection means this is
     /// `PseudonymSessionPublicKey` for `EncryptedBatch<EncryptedPseudonym>`,
@@ -238,7 +238,7 @@ impl<E> EncryptedBatch<E>
 where
     E: Encrypted + HasStructure,
 {
-    /// Construct a batch from items and a recipient public key, validating
+    /// Construct a batch from items and the public key they are encrypted under, validating
     /// that all items share the same structure.
     ///
     /// # Errors

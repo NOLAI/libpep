@@ -50,7 +50,8 @@ factor! {
     RerandomizeFactor
 }
 factor! {
-    /// The factor of a [`reshuffle`](crate::elgamal::primitives::reshuffle).
+    /// The factor of a [`reshuffle`](crate::elgamal::primitives::reshuffle): the secret `s` of
+    /// the Diffie-Hellman function `F_s(M) = s * M`. Specific to a pseudonymization domain.
     ///
     /// Pseudonym unlinkability holds only while reshuffle factors remain secret: anyone who learns
     /// the factors of two domains (or their ratio) can link pseudonyms between those domains.
@@ -59,11 +60,15 @@ factor! {
     ReshuffleFactor
 }
 factor! {
-    /// The factor of a [`rekey`](crate::elgamal::primitives::rekey) of pseudonyms.
+    /// The factor of a [`rekey`](crate::elgamal::primitives::rekey) of pseudonyms. Specific to an
+    /// encryption context, and kept separate from the attribute rekey factor, so that an
+    /// encrypted pseudonym cannot be presented as an encrypted attribute and rekeyed without
+    /// being reshuffled.
     PseudonymRekeyFactor
 }
 factor! {
-    /// The factor of a [`rekey`](crate::elgamal::primitives::rekey) of attributes.
+    /// The factor of a [`rekey`](crate::elgamal::primitives::rekey) of attributes. Specific to an
+    /// encryption context.
     AttributeRekeyFactor
 }
 

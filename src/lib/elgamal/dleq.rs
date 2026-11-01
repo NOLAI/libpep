@@ -11,7 +11,7 @@
 //!
 //! # Relation to [`super::zkps`]
 //!
-//! [`super::zkps::Proof`] is the four-element encoding `(N, C1, C2, s)` of the published paper.
+//! [`super::zkps::Proof`] is the four-element encoding `(N, C1, C2, s)`: the result `N`, the two commitments of the prover and the response.
 //! The encoding here differs: a proof is the two scalars `(c, s)` and the verifier recomputes the
 //! commitments. Proofs in the two encodings are not interchangeable.
 //!
