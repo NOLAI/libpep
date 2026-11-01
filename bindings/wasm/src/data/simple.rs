@@ -12,6 +12,10 @@ use libpep::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym that can be used to identify a user.
+///
+/// Reshuffling is a weak PRF, which is pseudorandom only for uniformly random inputs: origin
+/// pseudonyms must be created with `random` or `fromLizard` (or be hashes), and not imported
+/// with `fromBytes` or `fromHex` unless they are uniformly random.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From, Into, Deref)]
 #[wasm_bindgen(js_name = Pseudonym)]
 pub struct WASMPseudonym(pub(crate) Pseudonym);

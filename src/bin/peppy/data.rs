@@ -37,6 +37,8 @@ pub enum PseudonymCommand {
     /// A random pseudonym.
     Random,
     /// Encode an identifier as a pseudonym; identifiers over 15 bytes become long pseudonyms.
+    /// Reshuffling is a weak PRF, which needs uniformly random identifiers; the lizard encoding
+    /// roughly provides that, random identifiers or hashes are safest.
     Encode(EncodeArgs),
     /// Decode a pseudonym back to the identifier it encodes.
     Decode(DecodeArgs),

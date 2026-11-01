@@ -61,25 +61,37 @@ pub trait ElGamalEncrypted:
 ///
 /// # Security
 ///
-/// Pseudonym unlinkability assumes that no user knows (or can feasibly find) discrete-log
-/// relations between origin identifiers. Origin identifiers are expected to be uniformly random
-/// group elements, either sampled directly ([`random`](Self::random)) or produced by the
-/// elligator2-based lizard encoding ([`from_lizard`](Self::from_lizard)), both of which rule such
-/// relations out. Importing group elements with other distributions via the raw decoders
-/// ([`from_bytes`](Self::from_bytes), [`from_hex`](Self::from_hex)) preserves any discrete-log
-/// relation between them in every domain (if `M1 = 2*M2`, then `s*M1 = 2*(s*M2)`). Individual
-/// pseudonyms remain unlinkable across domains, so this is acceptable as long as no user knows
-/// the relations between origin identifiers: a user that does could recognize related pseudonyms
-/// by testing for the known relation.
+/// Reshuffling evaluates the Diffie-Hellman function `F_s(M) = s * M`, which is a *weak PRF*:
+/// its output is pseudorandom (under DDH, while `s` stays secret) only for inputs that are
+/// uniformly random group elements, chosen independently of `s`. It is linear,
+/// `F_s(a * M) = a * F_s(M)`, so a known discrete-log relation between two origin identifiers
+/// survives in every pseudonymization domain, and a user that knows it can recognize the
+/// related pseudonyms. A strong PRF would hash the input into the group first, which the
+/// library does not do at reshuffle time.
+///
+/// Origin identifiers must therefore be (indistinguishable from) uniformly random group
+/// elements, or at least such that nobody can produce two of them with a known relation:
+/// sample them with [`random`](Self::random), or encode them with the lizard encoding
+/// ([`from_lizard`](Self::from_lizard)), which is roughly uniform (injective, so at most
+/// `2^128` elements on ristretto255) and for which no relations between encodings are known.
+/// The raw decoders ([`from_bytes`](Self::from_bytes), [`from_hex`](Self::from_hex),
+/// [`from_slice`](Self::from_slice), [`from_point`](Self::from_point)) bypass the encoding and
+/// keep whatever relations the imported elements have (if `M1 = 2*M2`, then
+/// `s*M1 = 2*(s*M2)`). Individual pseudonyms remain unlinkable across domains as long as
+/// nobody knows such a relation. See the [README](https://github.com/NOLAI/libpep#origin-identifiers-must-be-uniformly-random) for the full explanation.
 pub trait ElGamalEncryptable: Encryptable {
     /// The group element.
     fn value(&self) -> &<Self::Group as Group>::Element;
     /// Create from a group element.
+    ///
+    /// If the value is reshuffled as an origin identifier, the element must be uniformly random
+    /// or lizard-encoded; see the security note on [`ElGamalEncryptable`].
     fn from_point(value: <Self::Group as Group>::Element) -> Self
     where
         Self: Sized;
 
-    /// Create with a random value.
+    /// Create with a random value. This is the preferred way of creating a pseudonym that has no
+    /// existing identifier, as reshuffling (a weak PRF) needs uniformly random identifiers.
     fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self
     where
         Self: Sized,
@@ -96,6 +108,10 @@ pub trait ElGamalEncryptable: Encryptable {
     }
     /// Create from a byte array of the group's element length.
     /// Returns `None` if the input is not a valid encoding of a group element.
+    ///
+    /// This does not encode an identifier: it imports an existing element, which must be
+    /// uniformly random for use as an origin identifier (reshuffling is a weak PRF). Use
+    /// [`from_lizard`](Self::from_lizard) to encode identifier bytes.
     fn from_bytes(bytes: &<Self::Group as Group>::ElementBytes) -> Option<Self>
     where
         Self: Sized,
@@ -112,6 +128,9 @@ pub trait ElGamalEncryptable: Encryptable {
     }
     /// Create from a hexadecimal string.
     /// Returns `None` if the input is not a valid encoding of a group element.
+    ///
+    /// Like [`from_bytes`](Self::from_bytes), this imports an existing element, which must be
+    /// uniformly random for use as an origin identifier.
     fn from_hex(hex: &str) -> Option<Self>
     where
         Self: Sized,
@@ -121,6 +140,8 @@ pub trait ElGamalEncryptable: Encryptable {
     }
     /// Create from a 64-byte hash value.
     /// See [`Group::element_from_uniform_bytes`].
+    /// A hash of an identifier is a safe origin identifier for reshuffling (a weak PRF), if the
+    /// hash is a random oracle; the element is not invertible.
     fn from_hash(hash: &[u8; 64]) -> Self
     where
         Self: Sized,
@@ -131,7 +152,10 @@ pub trait ElGamalEncryptable: Encryptable {
     /// (lizard) encoding.
     /// It accepts any block, so it can create a pseudonym from an existing identifier or encode
     /// an attribute.
-    /// See [`InvertibleEncoding::encode_lizard`].
+    /// As a pseudonym, the encoding is what makes the identifier suitable for reshuffling, which
+    /// is a weak PRF and needs uniformly random identifiers: no discrete-log relations between
+    /// encodings are known, but it is injective and not uniform over the whole group.
+    /// See [`InvertibleEncoding::encode_lizard`] and the security note on [`ElGamalEncryptable`].
     fn from_lizard(data: &<Self::Group as InvertibleEncoding>::Block) -> Self
     where
         Self: Sized,

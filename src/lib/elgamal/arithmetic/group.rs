@@ -15,10 +15,12 @@
 //! How an identifier or a payload is turned into an element is not part of the group API but
 //! of the deployment. Two named encodings exist as optional traits: [`InvertibleEncoding`]
 //! (the lizard encoding, ristretto255 only) and [`OaepEncoding`] (an x-coordinate embedding for
-//! Weierstrass curves, to be implemented). Every encoding MUST be such that nobody can produce
-//! two encoded inputs with a known discrete-log relation: reshuffling is linear, so a relation
-//! `M2 = a * M1` between origin identifiers survives in every pseudonymization domain. Encoding
-//! an identifier `x` as `x * G` is therefore forbidden.
+//! Weierstrass curves, to be implemented). Reshuffling evaluates `F_s(M) = s * M`, a *weak PRF*
+//! that is pseudorandom only for uniformly random `M`, and it is linear, so a relation
+//! `M2 = a * M1` between origin identifiers survives in every pseudonymization domain. Every
+//! encoding MUST therefore be such that its outputs are (indistinguishable from) uniformly random
+//! elements, or at least that nobody can produce two encoded inputs with a known discrete-log
+//! relation. Encoding an identifier `x` as `x * G` is forbidden.
 
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
@@ -177,6 +179,9 @@ group_trait!();
 
 /// An invertible encoding of fixed-size byte blocks as group elements (the *lizard* encoding
 /// on ristretto255).
+///
+/// The encoding feeds reshuffling, a weak PRF, so its outputs must have no known discrete-log
+/// relations; see the [module documentation](self#element-encodings).
 ///
 /// Every block encodes to an element, and an element that was produced by [`encode_lizard`]
 /// decodes back to the block. An element that was not (a random element, a reshuffled one)

@@ -27,7 +27,8 @@ pub const G: GroupElement = GroupElement(curve25519_dalek::constants::RISTRETTO_
 pub struct GroupElement(pub(crate) RistrettoPoint);
 
 impl GroupElement {
-    /// Generate a random `GroupElement`. This is the preferred way of generating pseudonyms.
+    /// Generate a random `GroupElement`. This is the preferred way of generating pseudonyms:
+    /// uniformly random elements are what reshuffling, a weak PRF, needs.
     #[must_use]
     pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self(RistrettoPoint::random(rng))
@@ -37,6 +38,9 @@ impl GroupElement {
     ///
     /// Returns `None` if the point is not valid (only ~6.25% of all 32-byte strings are valid
     /// encodings, use lizard technique to decode arbitrary data).
+    ///
+    /// The element is imported as is: as a pseudonym it must be uniformly random, since
+    /// reshuffling is a weak PRF and keeps any discrete-log relation between elements.
     ///
     /// Curve25519 is defined over the field of 2^255 - 19 elements and has 8·ℓ points.
     /// Ristretto removes the cofactor 8 and maps the points to a subgroup of prime order ℓ =
@@ -89,9 +93,11 @@ impl GroupElement {
     /// [`to_lizard`](Self::to_lizard) recognize an encoded element among the up to eight
     /// Elligator preimages.
     ///
-    /// The Elligator-based map makes it infeasible to choose
-    /// inputs whose encodings have a known discrete-log relation, which pseudonym unlinkability
-    /// relies on. Encoding an identifier `x` as `x * G` would violate that and is forbidden.
+    /// No discrete-log relation between the encodings of different inputs is known, which
+    /// pseudonym unlinkability relies on: reshuffling is a weak PRF and needs uniformly random
+    /// identifiers. The encoding is injective, so it reaches at most 2^128 of the roughly 2^252
+    /// elements and is only roughly uniform. Encoding an identifier `x` as `x * G` would
+    /// violate the requirement and is forbidden.
     #[must_use]
     pub fn from_lizard(v: &[u8; 16]) -> Self {
         Self(RistrettoPoint::lizard_encode::<Sha256>(v))

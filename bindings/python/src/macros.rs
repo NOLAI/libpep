@@ -24,7 +24,8 @@ macro_rules! py_plaintext_impl {
                 self.0.value.into()
             }
 
-            /// Generate a random value.
+            /// Generate a random value. For a pseudonym this is the preferred way to create an
+            /// identifier: reshuffling is a weak PRF and needs uniformly random identifiers.
             #[staticmethod]
             #[pyo3(name = "random")]
             fn random() -> Self {
@@ -44,14 +45,17 @@ macro_rules! py_plaintext_impl {
                 self.0.to_hex()
             }
 
-            /// Decode from a byte array.
+            /// Decode from a byte array of an element. This imports an existing element; as a
+            /// pseudonym it must be uniformly random, since reshuffling (a weak PRF) keeps any
+            /// known relation between elements. Use `from_lizard` to encode identifier bytes.
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(bytes: &[u8]) -> Option<Self> {
                 <$core>::from_slice(bytes).map(Self)
             }
 
-            /// Decode from a hexadecimal string.
+            /// Decode from a hexadecimal string of an element. Like `from_bytes`, as a pseudonym
+            /// it must be uniformly random.
             #[staticmethod]
             #[pyo3(name = "from_hex")]
             fn from_hex(hex: &str) -> Option<Self> {
@@ -74,7 +78,9 @@ macro_rules! py_plaintext_impl {
 
             /// Decode from a byte array of length 16 using lizard encoding.
             /// Any 16-byte value is accepted, so this can create a value from an existing
-            /// identifier.
+            /// identifier. As a pseudonym, reshuffling is a weak PRF and needs uniformly random
+            /// identifiers: lizard encoding roughly provides that (no discrete-log relations
+            /// between encodings are known), random or hashed identifiers are safest.
             #[staticmethod]
             #[pyo3(name = "from_lizard")]
             fn from_lizard(data: &[u8]) -> PyResult<Self> {

@@ -24,9 +24,11 @@ use serde::{Deserialize, Serialize};
 /// within a specific context, which can be encrypted, rekeyed and reshuffled.
 ///
 /// Pseudonyms in different domains are unlinkable because
-/// [reshuffling](crate::elgamal::primitives::reshuffle) obliviously evaluates the Diffie-Hellman PRF
-/// on them. This requires origin pseudonyms to be uniformly random or lizard-encoded; see the
-/// security note on [`ElGamalEncryptable`].
+/// [reshuffling](crate::elgamal::primitives::reshuffle) obliviously evaluates the Diffie-Hellman
+/// weak PRF on them. A weak PRF is pseudorandom only for uniformly random inputs, so origin
+/// pseudonyms must be uniformly random ([`random`](ElGamalEncryptable::random)) or lizard-encoded
+/// ([`from_lizard`](ElGamalEncryptable::from_lizard)), and not imported or constructed with known
+/// discrete-log relations; see the security note on [`ElGamalEncryptable`].
 #[cfg_attr(
     feature = "serde",
     derive(Serialize, Deserialize),
