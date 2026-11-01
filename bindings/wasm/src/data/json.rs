@@ -143,8 +143,8 @@ impl WASMEncryptedPepJsonValue {
     ///
     /// * `from_domain` - Source pseudonymization domain
     /// * `to_domain` - Target pseudonymization domain
-    /// * `from_session` - Source encryption session (optional)
-    /// * `to_session` - Target encryption session (optional)
+    /// * `from_session` - Source encryption context
+    /// * `to_session` - Target encryption context
     /// * `pseudonymization_secret` - Pseudonymization secret
     /// * `encryption_secret` - Encryption secret
     ///
@@ -182,10 +182,11 @@ impl WASMEncryptedPepJsonValue {
     ///
     /// * `from_domain` - Source pseudonymization domain
     /// * `to_domain` - Target pseudonymization domain
-    /// * `from_session` - Source encryption session (optional)
-    /// * `to_session` - Target encryption session (optional)
+    /// * `from_session` - Source encryption context
+    /// * `to_session` - Target encryption context
     /// * `pseudonymization_secret` - Pseudonymization secret
     /// * `encryption_secret` - Encryption secret
+    /// * `public_key` - The session public keys the document is encrypted under
     ///
     /// # Returns
     ///

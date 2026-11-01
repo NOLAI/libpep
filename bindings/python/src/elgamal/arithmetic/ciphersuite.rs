@@ -13,11 +13,11 @@ use pyo3::types::PyBytes;
 /// A ciphersuite is unrelated to an `EncryptionContext` or a `PseudonymizationDomain`, which
 /// name a session and a domain within a deployment.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[pyclass(name = "Ciphersuite", from_py_object)]
-pub struct PyCiphersuite(pub(crate) CiphersuiteId);
+#[pyclass(name = "CiphersuiteId", from_py_object)]
+pub struct PyCiphersuiteId(pub(crate) CiphersuiteId);
 
 #[pymethods]
-impl PyCiphersuite {
+impl PyCiphersuiteId {
     /// The ciphersuite of this build: `ristretto255-SHA512`.
     ///
     /// A ciphersuite cannot be constructed from an arbitrary identifier. It names a group and a
@@ -46,14 +46,14 @@ impl PyCiphersuite {
     }
 
     fn __repr__(&self) -> String {
-        format!("Ciphersuite({})", self.0)
+        format!("CiphersuiteId({})", self.0)
     }
 
     fn __str__(&self) -> String {
         self.0.to_string()
     }
 
-    fn __eq__(&self, other: &PyCiphersuite) -> bool {
+    fn __eq__(&self, other: &PyCiphersuiteId) -> bool {
         self.0 == other.0
     }
 
@@ -66,6 +66,6 @@ impl PyCiphersuite {
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyCiphersuite>()?;
+    m.add_class::<PyCiphersuiteId>()?;
     Ok(())
 }

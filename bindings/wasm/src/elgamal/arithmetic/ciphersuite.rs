@@ -12,11 +12,11 @@ use wasm_bindgen::prelude::*;
 /// This is not an `EncryptionContext` or a `PseudonymizationDomain`: those name a session and a
 /// domain within a deployment.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[wasm_bindgen(js_name = Ciphersuite)]
-pub struct WASMCiphersuite(pub(crate) CiphersuiteId);
+#[wasm_bindgen(js_name = CiphersuiteId)]
+pub struct WASMCiphersuiteId(pub(crate) CiphersuiteId);
 
-#[wasm_bindgen(js_class = "Ciphersuite")]
-impl WASMCiphersuite {
+#[wasm_bindgen(js_class = "CiphersuiteId")]
+impl WASMCiphersuiteId {
     /// The ciphersuite of this build: `ristretto255-SHA512`.
     ///
     /// A ciphersuite cannot be built from an arbitrary identifier: it names a group and a hash
@@ -52,12 +52,12 @@ impl WASMCiphersuite {
 
     /// Whether two ciphersuites are the same.
     #[wasm_bindgen]
-    pub fn equals(&self, other: &WASMCiphersuite) -> bool {
+    pub fn equals(&self, other: &WASMCiphersuiteId) -> bool {
         self.0 == other.0
     }
 }
 
-impl Default for WASMCiphersuite {
+impl Default for WASMCiphersuiteId {
     fn default() -> Self {
         Self::current()
     }
