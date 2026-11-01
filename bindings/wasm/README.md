@@ -1,6 +1,6 @@
 # @nolai/libpep-wasm: WebAssembly bindings for libpep
 
-WebAssembly bindings for [libpep](https://github.com/NOLAI/libpep), a library for polymorphic encryption and pseudonymization implementing the *n-PEP* scheme: end-to-end encrypted, pseudonymized data sharing where semi-trusted *transcryptors* blindly re-encrypt data and convert pseudonyms between domains, with distributed trust over `n` transcryptors.
+WebAssembly bindings for [libpep](https://github.com/NOLAI/libpep), a library for polymorphic encryption and pseudonymization implementing the *n-PEP* scheme: end-to-end encrypted, asynchronous, pseudonymized data sharing between users, where semi-trusted *transcryptors* (no single one can read data or link pseudonyms) blindly re-encrypt data and convert pseudonyms between pseudonymization domains, with distributed trust over `n` transcryptors.
 
 ## Installation
 
@@ -8,7 +8,7 @@ WebAssembly bindings for [libpep](https://github.com/NOLAI/libpep), a library fo
 npm install @nolai/libpep-wasm
 ```
 
-The package has a Node.js and a browser build, selected through the `exports` field. The API mirrors the Rust crate with its defaults, ristretto255 and SHA-512, so there are no group or ciphersuite type parameters. This round trip converts one party's pseudonym into another party's pseudonym for the same subject:
+The package has a Node.js and a browser build, selected through the `exports` field. The API mirrors the Rust crate with its defaults, ristretto255 and SHA-512, so there are no group or ciphersuite type parameters. This round trip converts the pseudonym of one user, a sender, into the pseudonym of another user, a receiver, for the same subject:
 
 ```javascript
 import {
@@ -29,7 +29,8 @@ const globalKeys = makeGlobalKeys();
 const transcryptor = new Transcryptor("pseudonymization secret", "encryption secret");
 const encryptionSecret = new EncryptionSecret(new TextEncoder().encode("encryption secret"));
 
-// Parties A and B each have a pseudonymization domain, an encryption context and session keys.
+// User A (a sender) and user B (a receiver) each work in their own pseudonymization domain and
+// encryption context, with session keys for it.
 const domainA = new PseudonymizationDomain("hospital");
 const sessionA = new EncryptionContext("session-a");
 const domainB = new PseudonymizationDomain("research");
@@ -37,11 +38,11 @@ const sessionB = new EncryptionContext("session-b");
 const keysA = makeSessionKeys(globalKeys.secret, sessionA, encryptionSecret);
 const keysB = makeSessionKeys(globalKeys.secret, sessionB, encryptionSecret);
 
-// A encrypts one of its pseudonyms for its own session.
+// A encrypts one of its pseudonyms for its own encryption context.
 const pseudonymA = Pseudonym.random();
 const encrypted = encryptPseudonym(pseudonymA, keysA.pseudonym.public);
 
-// The transcryptor converts it to B's domain and session, without decrypting it.
+// The transcryptor converts it to B's domain and encryption context, without decrypting it.
 const info = transcryptor.transcryptionInfo(domainA, domainB, sessionA, sessionB);
 const transcrypted = transcryptPseudonym(encrypted, info, keysA.pseudonym.public);
 

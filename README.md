@@ -9,10 +9,13 @@
 [![Documentation](https://docs.rs/libpep/badge.svg)](https://docs.rs/libpep)
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
 
-`libpep` implements *n-PEP*, a scheme for end-to-end encrypted, pseudonymized data sharing.
-Every party knows its data subjects under its own pseudonyms, which cannot be linked to another party's.
-Encrypted data is blindly re-encrypted (*transcrypted*) for a receiving party by semi-trusted *transcryptors*, which convert the pseudonyms in it to the receiver's domain without decrypting anything.
-Transcryption can be distributed over `n` transcryptors, so that every transcryptor can independently monitor and block data exchanges, while confidentiality and pseudonym unlinkability hold as long as at least one of them remains uncompromised.
+`libpep` implements *n-PEP*, a scheme for end-to-end encrypted, asynchronous, pseudonymized data sharing between users.
+Every user knows its data subjects under its own pseudonyms, which cannot be linked to another user's.
+A sender encrypts data without the receiver being online, or even known, at that moment; *transcryptors* later blindly re-encrypt (*transcrypt*) it for the receiver's pseudonymization domain and encryption context, converting the pseudonyms in it without decrypting anything.
+Transcryption can be distributed over `n` transcryptors, so that every transcryptor can independently monitor and block data exchanges.
+
+The transcryptors are *semi-trusted*, the term the n-PEP paper uses: no single transcryptor can read data or link pseudonyms, and confidentiality and pseudonym unlinkability hold as long as at least one of the `n` transcryptors remains uncompromised.
+n-PEP assumes they apply the right factors; the `verifiable` feature lets that be checked (see [Verifiable transcryption](#verifiable-transcryption)).
 
 The library is the reference implementation of the n-PEP paper (see [Background](#background)).
 It ships as a Rust crate with Python and JavaScript/WebAssembly bindings that mirror the Rust API.
@@ -39,12 +42,12 @@ JavaScript, for Node.js and browsers:
 npm install @nolai/libpep-wasm
 ```
 
-The `peppy` command-line tool is installed with `cargo install libpep --features cli`.
+The `peppy` command-line tool is installed with `cargo install libpep --features cli` (see [Command line](#command-line)).
 
 ## Quick start
 
 A transcryptor holds two secrets from which all its factors derive.
-Every party works in its own *pseudonymization domain* (typically its role or user group) and *encryption context* (typically a session), and holds session keys for that context.
+Every user works in its own *pseudonymization domain* (typically its role or user group) and *encryption context* (typically a session), and holds session keys for that context.
 
 ```rust
 use libpep::prelude::*;
@@ -59,23 +62,24 @@ let transcryptor = Transcryptor::new(
     EncryptionSecret::from(b"encryption secret".to_vec()),
 );
 
-// Party A and party B each have a pseudonymization domain, an encryption context and session keys.
+// User A (a sender) and user B (a receiver) each work in their own pseudonymization domain and
+// encryption context, with session keys for it.
 let (domain_a, session_a) = (PseudonymizationDomain::from("hospital"), EncryptionContext::from("session-a"));
 let (domain_b, session_b) = (PseudonymizationDomain::from("research"), EncryptionContext::from("session-b"));
 let keys_a = make_session_keys(&global_secret, &session_a, transcryptor.rekeying_secret());
 let keys_b = make_session_keys(&global_secret, &session_b, transcryptor.rekeying_secret());
 
-// A encrypts one of its pseudonyms for its own session.
+// A encrypts one of its pseudonyms for its own encryption context.
 let pseudonym_a = Pseudonym::random(rng);
 let encrypted = encrypt(&pseudonym_a, &keys_a.public(), rng);
 
-// The transcryptor converts it to B's domain and session, without decrypting it.
+// The transcryptor converts it to B's domain and encryption context, without decrypting it.
 // Every transcryption rerandomizes the ciphertext first, which needs the key it is currently
 // encrypted under (A's session public key here; with the `elgamal3` feature the ciphertext carries it).
 let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
 let transcrypted = transcryptor.transcrypt(&encrypted, &info, &keys_a.public(), rng);
 
-// B decrypts its own pseudonym for the same subject, which is unlinkable to A's.
+// B, the receiver, decrypts its own pseudonym for the same subject, which is unlinkable to A's.
 let pseudonym_b = decrypt(&transcrypted, &keys_b);
 assert_ne!(pseudonym_a, pseudonym_b);
 
@@ -94,66 +98,6 @@ No party ever holds the global secret key.
 The public key a ciphertext is encrypted under travels with it from transcryptor to transcryptor: each obtains the next key with `rekey_public_key` (the `factors::RekeyPublicKey` trait) on its transcryption info (the CLI prints it as `key`).
 [`tests/distributed.rs`](tests/distributed.rs) walks through this flow; the Python and JavaScript test suites under [`bindings/`](bindings/) do the same in those languages.
 
-## Command line
-
-The `peppy` tool exposes the library on the command line. The first word names what is operated on, the second the operation:
-
-| Group | Operations |
-|-------|------------|
-| `keys global`, `keys session`, `keys distributed` | `generate`; `derive`; `setup`, `share`, `reconstruct`, `update` |
-| `factors` | `reshuffle`, `rekey`, `info`, `commitments` |
-| `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, `verify-rekey`, and `pseudonymize`, `verify-pseudonymize` for pseudonyms |
-| `json` | `encrypt`, `decrypt`, `transcrypt`, `verify-transcrypt` |
-| `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
-| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `mul`, `from-hash`, `hash-to-group` |
-
-`point hash-to-group` domain-separates its hash with the ciphersuite `ristretto255-SHA512`, which `peppy` is fixed to. Factor derivation is separated by the transcryptor secrets, the domain and the session.
-
-Values print one per line on standard output, labelled when that is a terminal and bare when piped; `--json` prints all values of a command as one object, which is the form to use when a command prints several values.
-Any value argument may be `-` to read standard input or `@path` to read a file.
-Scalars and group elements are hex, ciphertexts base64, and long values are given as space-separated (plain) or `|`-separated (encrypted) blocks.
-Malformed input exits with status 1 (a usage error with 2, from clap); with the `elgamal3` feature a decryption with the wrong key exits with status 3; a proof that does not verify exits with status 4.
-
-The quick start above, on the command line:
-
-```bash
-peppy keys global generate --json > global.json
-peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-a --json > session-a.json
-peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-b --json > session-b.json
-
-value=$(peppy pseudonym encode patient-42)
-encrypted=$(peppy pseudonym encrypt --key "$(jq -r .pseudonym_public_key session-a.json)" "$value")
-transcrypted=$(peppy pseudonym transcrypt \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json | jq -r .ciphertext)
-peppy pseudonym decrypt --key "$(jq -r .pseudonym_secret_key session-b.json)" "$transcrypted"
-```
-
-Transcryption is verifiable on the command line as well: `factors commitments` prints the commitments a transcryptor publishes for a transition, `--prove` on `rekey`, `pseudonymize` and `transcrypt` adds a `proof` (JSON) to the output, and `verify-rekey`, `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original ciphertext and the commitments, printing the transcrypted ciphertext only if it holds.
-A proof of `pseudonym transcrypt` is a pseudonymization proof, a proof of `attribute transcrypt` a rekey proof.
-
-```bash
-peppy factors commitments \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --json > commitments.json
-peppy pseudonym transcrypt --prove \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
-    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json > transcrypted.json
-jq -c .proof transcrypted.json > proof.json
-peppy pseudonym verify-pseudonymize \
-    --reshuffle-commitment "$(jq -r .reshuffle_commitment commitments.json)" \
-    --rekey-commitment "$(jq -r .pseudonym_rekey_commitment commitments.json)" \
-    --key "$(jq -r .pseudonym_public_key session-a.json)" --proof @proof.json "$encrypted"
-```
-
-`peppy keys distributed setup -n 3` sets up a system with three transcryptors; each one then answers a client with `keys distributed share`, and the client combines the shares with `keys distributed reconstruct`.
-`peppy completions <shell>` prints a completion script and `peppy man` the man page.
-
 ## How it works
 
 In the ElGamal scheme, a message `M` is encrypted for a receiver with public key `Y`, belonging to secret key `y`.
@@ -170,25 +114,25 @@ The library provides three homomorphic operations on a ciphertext `in = Enc(b, M
   `Enc(b, M, Y)` becomes `Enc(b+r, M, Y)`.
 
 Because these operations work on *encrypted* data, the receiver does not need to be known at encryption time.
-Data is encrypted once and later rekeyed, and reshuffled if it is an identifier, for whichever party is granted access: non-interactive, asynchronous end-to-end encryption with built-in pseudonymization.
+Data is encrypted once and later rekeyed, and reshuffled if it is an identifier, for whichever user is granted access: non-interactive, asynchronous end-to-end encryption with built-in pseudonymization.
 
 ### Pseudonymization
 
-Every party knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one party's domain to another's, applying `s = s_from^-1 * s_to`, without a global pseudonym existing in between.
-The factor `s` is tied to the *pseudonymization domain* of a party.
+Every user knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one user's domain to another's, applying `s = s_from^-1 * s_to`, without a global pseudonym existing in between.
+The factor `s` is tied to the *pseudonymization domain* of a user.
 
 Pseudonym unlinkability rests on the fact that `F_s(M) = s*M` is the Diffie-Hellman pseudorandom function (DH-PRF): as long as `s` stays secret, `s*M` is indistinguishable from a random group element under the Decisional Diffie-Hellman (DDH) assumption, so pseudonyms in different domains cannot be linked without knowing the ratio of their domain factors.
-Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and recipient never learn `s`.
+Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and receiver never learn `s`.
 
 > [!NOTE]
 > Strictly, the DH-PRF is `F_s(M) = s*H(M)` for a hash `H` into the group: without `H`, `F_s` is linear (`F_s(a*M) = a*F_s(M)`) and thus not pseudorandom for inputs with known discrete-log relations.
 > This library omits `H` because origin identifiers are expected to be uniformly random group elements, either sampled directly or produced by the elligator2-based lizard encoding, which makes it infeasible to construct identifiers with known relations.
 > Importing group elements with other distributions (via `from_bytes` or `from_hex`) preserves any discrete-log relation between origin identifiers in every domain (if `M1 = 2*M2`, then also `s*M1 = 2*(s*M2)`).
-> Individual pseudonyms remain unlinkable across domains under DDH, so this is acceptable as long as no party knows the relations between origin identifiers.
+> Individual pseudonyms remain unlinkable across domains under DDH, so this is acceptable as long as no user knows the relations between origin identifiers.
 
-A reshuffle alone is not enough, as the pseudonym is still encrypted for a key the receiving party does not possess.
-A *rekey* with `k` makes it decryptable with `k*y`, in combination with a protocol to hand the party that secret key.
-The factor `k` is tied to the *encryption context* of a party, typically its current session.
+A reshuffle alone is not enough, as the pseudonym is still encrypted for a key the receiver does not possess.
+A *rekey* with `k` makes it decryptable with `k*y`, in combination with a protocol to hand the receiver that secret key.
+The factor `k` is tied to the *encryption context* of a user, typically its current session.
 `rsk(in, s, k)` performs both at once, and `reshuffle2`, `rekey2` and `rsk2` are the transitive and reversible n-PEP variants that convert directly between two domains or sessions, applying `s = s_from^-1 * s_to` and `k = k_from^-1 * k_to`.
 
 When the same encrypted pseudonym is used more than once, it is rerandomized every time, so that comparing ciphertexts byte for byte reveals nothing.
@@ -198,7 +142,7 @@ Mixing fresh randomness into a ciphertext before reshuffling also protects again
 
 With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and `k·G` to each factor, and every transcryption can produce a zero-knowledge proof that exactly the committed factors were applied.
 The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat-Shamir transform, and can be verified in batch.
-Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so a party that sees both sides of a verifiable transcryption can match attribute ciphertexts.
+Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so anyone who sees both sides of a verifiable transcryption can match attribute ciphertexts.
 Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well (Section 3.5).
 This closes the gap noted under [As a three-party oblivious PRF](#as-a-three-party-oblivious-prf): a transcryptor that applies a wrong factor is detected.
 The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
@@ -213,10 +157,10 @@ An oblivious pseudorandom function (OPRF, specified over prime-order groups in [
 A *client* blinds an input, a *server* applies its secret key, and the client unblinds the result to obtain the PRF output.
 The server learns neither input nor output.
 
-`libpep` evaluates the same DH-PRF `F_s(M) = s*M`, but splits the client role over a **sender** and a **recipient**, with the **transcryptor** as evaluator.
-ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the recipient's decryption unblinds.
-The transcryptor learns neither `M` nor `s*M`, and neither sender nor recipient learns `s`.
-Because blinding and unblinding are done by different parties, evaluation is non-interactive and asynchronous: the sender can encrypt before the recipient is known, and the PRF output appears only in the recipient's domain.
+`libpep` evaluates the same DH-PRF `F_s(M) = s*M`, but splits the client role over a **sender** and a **receiver**, with the **transcryptor** as evaluator.
+ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the receiver's decryption unblinds.
+The transcryptor learns neither `M` nor `s*M`, and neither sender nor receiver learns `s`.
+Because blinding and unblinding are done by different users, evaluation is non-interactive and asynchronous: the sender can encrypt before the receiver is known, and the PRF output appears only in the receiver's domain.
 
 There are two differences with the two-party protocol.
 `libpep` does not hash the input into the group first; it relies on origin identifiers being uniformly random group elements, as described above.
@@ -224,17 +168,17 @@ And plain PEP transcryption is not verifiable: a transcryptor that applies a wro
 The `verifiable` feature closes that gap with discrete-log-equality proofs of the kind the verifiable OPRF of RFC 9497 uses.
 
 The primitives shared with RFC 9497 are checked against its ristretto255-SHA512 test vectors (Appendix A.1): `hash_to_group`, `HashToScalar`, and the batched DLEQ proof in `elgamal::dleq`.
-They are also checked against the `expand_message_xmd` vectors of RFC 9380.
+Hashing to the group follows [RFC 9380](https://www.rfc-editor.org/rfc/rfc9380.html): `hash_to_group` is `hash_to_ristretto255` (Appendix B) over `expand_message_xmd` (Section 5.3.1) with SHA-512, and `expand_message_xmd` is also checked against the vectors of RFC 9380 (Appendix K).
 The library uses its own context string (`nPEPV1-`) in production, so that its hashes are separate from those of any OPRF.
 The proofs of verifiable transcryption use the encoding of the WPES paper (`elgamal::zkps`), not the encoding of `elgamal::dleq`.
 
-The three-party construction, with its sender, recipient and transcryptor, is specified as a convertible OPRF (coPRF) in the Internet-Draft `draft-doesburg-cfrg-coprf`, which uses the same prime-order group API as RFC 9497.
+The three-party construction, with its sender, receiver and transcryptor, is specified as a convertible OPRF (coPRF) in the Internet-Draft `draft-doesburg-cfrg-coprf`, which uses the same prime-order group API as RFC 9497.
 
 ### As proxy re-encryption with built-in pseudonymization
 
 `rekey` is ordinary unidirectional [proxy re-encryption](https://en.wikipedia.org/wiki/Proxy_re-encryption) over ElGamal: it transforms `Enc(b, M, Y)` into `Enc(k^-1*b, M, k*Y)`, decryptable by `k*y`, with the transcryptor acting as the proxy without learning the message or holding either secret key.
 `reshuffle` adds the one transformation a plain proxy cannot do, mapping `M` to `s*M`.
-Attributes are never reshuffled, so for attributes the scheme is exactly proxy re-encryption; for identifiers, the same homomorphic step that re-encrypts a pseudonym for a new recipient also rewrites it into that recipient's domain, so no global identifier is ever exposed.
+Attributes are never reshuffled, so for attributes the scheme is exactly proxy re-encryption; for identifiers, the same homomorphic step that re-encrypts a pseudonym for a new receiver also rewrites it into that receiver's domain, so no global identifier is ever exposed.
 
 This is what the name refers to: *polymorphic* encryption is the proxy re-encryption, and *pseudonymization* is the PRF evaluation carried out in the same step.
 
@@ -281,7 +225,7 @@ Default features:
 - `verifiable`: verifiable transcryption. Every operation gets a counterpart that also emits a Schnorr-style discrete-log-equality proof, made non-interactive with Fiat-Shamir, so a verifier can check that a transcryptor applied the factors it committed to without learning them. See [Verifiable transcryption](#verifiable-transcryption).
 
 Optional features:
-- `cli`: the `peppy` command-line tool (enables `long`, `offline`, `serde` and `verifiable`).
+- `cli`: the `peppy` command-line tool, see [Command line](#command-line) (enables `long`, `offline`, `serde` and `verifiable`).
 - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor (Section 3.3.1 of the paper).
   This is not the preferred scheme: the factors are linear in two public hashes, so two leaked factors give the master secret, and two pseudonyms of one subject (or two session keys) give all of them.
   Use the published commitments of the `verifiable` feature unless commitment storage is the binding constraint and that trade-off is acceptable.
@@ -306,9 +250,70 @@ The library uses the Ristretto group over Curve25519 as implemented by [`curve25
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `EncryptionSecret` are zeroized on drop.
+Distribution costs availability: all `n` transcryptors must take part in a transcryption.
 The library has been designed for production use but has not undergone a formal security audit.
 
 The minimum supported Rust version is 1.88; raising it is considered a semver-relevant change.
+
+## Command line
+
+The `peppy` tool exposes the library on the command line. The first word names what is operated on, the second the operation:
+
+| Group | Operations |
+|-------|------------|
+| `keys global`, `keys session`, `keys distributed` | `generate`; `derive`; `setup`, `share`, `reconstruct`, `update` |
+| `factors` | `reshuffle`, `rekey`, `info`, `commitments` |
+| `pseudonym`, `attribute` | `random`, `encode`, `decode`, `encrypt`, `decrypt`, `rerandomize`, `rekey`, `transcrypt`, `verify-rekey`, and `pseudonymize`, `verify-pseudonymize` for pseudonyms |
+| `json` | `encrypt`, `decrypt`, `transcrypt`, `verify-transcrypt` |
+| `elgamal` | `encrypt`, `decrypt`, `rr`, `rs`, `rk`, `rsk`, `rrsk`, `rs2`, `rk2`, `rsk2`, `rrsk2` |
+| `scalar`, `point` | `random`, `invert`, `mul`, `from-hash`; `random`, `base`, `mul`, `from-hash`, `hash-to-group` |
+
+`point hash-to-group` domain-separates its hash with the ciphersuite `ristretto255-SHA512`, which `peppy` is fixed to. Factor derivation is separated by the transcryptor secrets, the domain and the session.
+
+Values print one per line on standard output, labelled when that is a terminal and bare when piped; `--json` prints all values of a command as one object, which is the form to use when a command prints several values.
+Any value argument may be `-` to read standard input or `@path` to read a file.
+Scalars and group elements are hex, ciphertexts base64, and long values are given as space-separated (plain) or `|`-separated (encrypted) blocks.
+Malformed input exits with status 1 (a usage error with 2, from clap); with the `elgamal3` feature a decryption with the wrong key exits with status 3; a proof that does not verify exits with status 4.
+
+The quick start on the command line:
+
+```bash
+peppy keys global generate --json > global.json
+peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
+    --encryption-secret "encryption secret" --context session-a --json > session-a.json
+peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
+    --encryption-secret "encryption secret" --context session-b --json > session-b.json
+
+value=$(peppy pseudonym encode patient-42)
+encrypted=$(peppy pseudonym encrypt --key "$(jq -r .pseudonym_public_key session-a.json)" "$value")
+transcrypted=$(peppy pseudonym transcrypt \
+    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
+    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json | jq -r .ciphertext)
+peppy pseudonym decrypt --key "$(jq -r .pseudonym_secret_key session-b.json)" "$transcrypted"
+```
+
+Transcryption is verifiable on the command line as well: `factors commitments` prints the commitments a transcryptor publishes for a transition, `--prove` on `rekey`, `pseudonymize` and `transcrypt` adds a `proof` (JSON) to the output, and `verify-rekey`, `verify-pseudonymize` and `json verify-transcrypt` check a proof against the original ciphertext and the commitments, printing the transcrypted ciphertext only if it holds.
+A proof of `pseudonym transcrypt` is a pseudonymization proof, a proof of `attribute transcrypt` a rekey proof.
+
+```bash
+peppy factors commitments \
+    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
+    --json > commitments.json
+peppy pseudonym transcrypt --prove \
+    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
+    --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json > transcrypted.json
+jq -c .proof transcrypted.json > proof.json
+peppy pseudonym verify-pseudonymize \
+    --reshuffle-commitment "$(jq -r .reshuffle_commitment commitments.json)" \
+    --rekey-commitment "$(jq -r .pseudonym_rekey_commitment commitments.json)" \
+    --key "$(jq -r .pseudonym_public_key session-a.json)" --proof @proof.json "$encrypted"
+```
+
+`peppy keys distributed setup -n 3` sets up a system with three transcryptors; each one then answers a client with `keys distributed share`, and the client combines the shares with `keys distributed reconstruct`.
+`peppy completions <shell>` prints a completion script and `peppy man` the man page.
 
 ## Development
 
@@ -326,13 +331,13 @@ This library implements the *n-PEP* scheme, described in:
 
 > Job Doesburg, Bernard van Gastel and Erik Poll, *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*. In **Security and Trust Management. STM 2026**, Lecture Notes in Computer Science, vol. 17172, Springer, Cham, 2027. [doi:10.1007/978-3-032-41330-7_5](https://doi.org/10.1007/978-3-032-41330-7_5) · [PDF](https://jobdoesburg.nl/docs/n-PEP-STM2026.pdf)
 
-n-PEP extends the PEP framework with *reversible* and *transitive* pseudonymization between domains (the `reshuffle2`, `rekey2` and `rsk2` operations), eliminating the polymorphic pseudonyms that act as a linking oracle in basic PEP, and distributes transcryption and session key establishment over `n` semi-trusted transcryptors, so that confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised.
+n-PEP extends the PEP framework with *reversible* and *transitive* pseudonymization between domains (the `reshuffle2`, `rekey2` and `rsk2` operations), eliminating the polymorphic pseudonyms that act as a linking oracle in basic PEP, and distributes transcryption and session key establishment over `n` semi-trusted transcryptors (none of which alone can read data or link pseudonyms), so that confidentiality and pseudonym unlinkability hold as long as at least one transcryptor remains uncompromised. It does not guarantee the integrity of pseudonyms or attributes: a transcryptor could transcrypt inconsistently, which the verifiable operations below address.
 
 The verifiable operations (the `verifiable` feature: the DLEQ proofs, the factor commitments and the verifier) are specified in:
 
 > Job Doesburg, Bernard van Gastel and Erik Poll, *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs*. In **25th Workshop on Privacy in the Electronic Society (WPES '26)**, November 15-19, 2026, The Hague, Netherlands, ACM, New York, NY, USA, 13 pages. [doi:10.1145/3847192.3847358](https://doi.org/10.1145/3847192.3847358)
 
-That paper guarantees integrity without breaking the unlinkability of PEP: each transcryptor proves in zero knowledge that it transformed a ciphertext with the factors it committed to, so no single transcryptor is a point of failure for integrity. Table 1 of the paper is the reference for the cost of each verifiable operation.
+That paper guarantees integrity without breaking the unlinkability of PEP: each transcryptor proves in zero knowledge that it transformed a ciphertext with the factors it committed to, so that a transcryptor that applies other factors is detected. Table 1 of the paper is the reference for the cost of each verifiable operation.
 
 The original PEP framework was introduced in:
 

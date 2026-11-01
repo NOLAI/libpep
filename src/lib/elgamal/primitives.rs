@@ -31,7 +31,7 @@ pub fn rerandomize<G: Group>(encrypted: &ElGamal<G>, gy: &G::Element, r: &G::Sca
 ///
 /// This is an encryption-based oblivious evaluation of the Diffie-Hellman PRF
 /// `F_s(M) = s * M`, which is pseudorandom under the DDH assumption while `s` stays secret:
-/// the performing party evaluates the PRF homomorphically without learning `M` or `s * M`,
+/// the performing transcryptor evaluates the PRF homomorphically without learning `M` or `s * M`,
 /// which makes the resulting pseudonyms unlinkable across domains.
 pub fn reshuffle<G: Group>(encrypted: &ElGamal<G>, s: &G::Scalar) -> ElGamal<G> {
     ElGamal {
