@@ -149,7 +149,7 @@ a major change against the published 0.13.0.
   `SessionKeyShareProof::verify` checks the ZKP against the blinding and rekey commitments, but
   it never sees the share scalar `u_i`, so a transcryptor could hand over a valid proof alongside
   an unrelated share and nothing would catch it. `verify_share` (and `matches_share`) additionally
-  check `U_i == u_i · G`, as the WPES '26 paper requires; `verify` remains for verifiers that hold
+  check `U_i == u_i · G`, as the proof of a session key share requires; `verify` remains for verifiers that hold
   only public values and now documents what it does not establish. Exposed in Python as
   `verify_share` and in JavaScript as `verifyPseudonymShare` / `verifyAttributeShare`.
 - The Fiat-Shamir challenge of the Schnorr proofs (`elgamal::zkps`) is domain separated: it is
@@ -193,18 +193,18 @@ a major change against the published 0.13.0.
   (`{n}:{items};{m}:{items}`), so a record with no pseudonyms or attributes round-trips;
   `ParseError::InvalidCount` reports a bad count.
 
-- A transcryptor has one blinding factor, used for its pseudonym and attribute shares alike
-  (Section 2.2.4 of the paper), so it publishes one `BlindingCommitment`: `BlindingCommitments`
+- A transcryptor has one blinding factor, used for its pseudonym and attribute shares alike,
+  so it publishes one `BlindingCommitment`: `BlindingCommitments`
   is gone, `Verifier::register_blinding_commitment`, `blinding_commitment` and
   `has_blinding_commitment` take and return one, and
   `verify_session_key_share_with_commitment` no longer takes a pseudonym/attribute flag.
-- A session key share is proved as the paper's Section 3.5 describes, by the transcryptor that
+- A session key share is proved by the transcryptor that
   holds the blinding factor and the rekey factor: `make_session_key_share_with_proof` (with the
   pseudonym, attribute and `shares` variants) returns the share and `ZKP{U_i = b_i · K_i}`, and
   `DistributedTranscryptor::pseudonym_session_key_share_with_proof`,
   `attribute_session_key_share_with_proof` and `session_key_shares_with_proof` do the same for a
   session. `make_pseudonym_session_keys_with_proof`, `make_attribute_session_keys_with_proof` and
-  `make_session_key_pair_with_proof`, which needed the global secret key the dealer discards,
+  `make_session_key_pair_with_proof`, which needed the global secret key the trusted authority discards,
   are gone; `SessionKeyShareError` lives in `keys::distribution`. The bindings follow
   (`DistributedTranscryptor.session_key_shares_with_proof` and friends), and
   `peppy keys distributed share --prove` prints the proofs.
@@ -357,7 +357,7 @@ a major change against the published 0.13.0.
   proof over every ciphertext transformed with the same scalar. Cross-checked byte for byte
   against the ristretto255-SHA512 VOPRF test vectors of RFC 9497 (Appendix A.1.2), for a single
   pair and for a batch of two. The proof and its batching follow Section 2.2 of the RFC.
-  The paper's four-element encoding in `elgamal::zkps` remains the default; proofs in the two
+  The four-element encoding in `elgamal::zkps` remains the default; proofs in the two
   encodings are not interchangeable.
 - `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.
 - `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
@@ -391,8 +391,8 @@ a major change against the published 0.13.0.
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the
   ciphersuite.
-- The `verifiable-derivation` feature is documented as the alternative of Section 3.3.1 of the
-  paper and not the preferred scheme: its factors are linear in two public hashes, so two leaked
+- The `verifiable-derivation` feature is documented as the alternative to published factor commitments
+  and not the preferred scheme: its factors are linear in two public hashes, so two leaked
   factors, two pseudonyms of one subject or two session keys reveal all of them.
 - `peppy` does verifiable transcryption: `factors commitments` prints the commitments of a
   transition, `--prove` on `pseudonym|attribute rekey|pseudonymize|transcrypt` and
@@ -426,5 +426,6 @@ a major change against the published 0.13.0.
 
 - `docs/scalar-mult-counts.md` and `docs/scalar-mult-counts-elgamal3.md`. They analysed scalar
   multiplication counts against a module layout several refactors old, and counted the whole flow
-  where the paper separates per-message from per-batch cost, so their totals disagreed with it
-  from RSK onwards. Table 1 of the WPES '26 paper is the reference for the cost of each operation.
+  where per-message and per-batch cost are separate, so their totals disagreed with the published
+  costs from RSK onwards. The README's Background points to the reference for the cost of each
+  operation.
