@@ -14,7 +14,7 @@
 //!
 //! let transcryptor = Transcryptor::new(
 //!     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
-//!     EncryptionSecret::from(b"encryption secret".to_vec()),
+//!     RekeyingSecret::from(b"rekeying secret".to_vec()),
 //! );
 //! let info = transcryptor.transcryption_info(
 //!     &PseudonymizationDomain::from("hospital"),
@@ -39,8 +39,8 @@ pub use crate::data::verifiable::traits::{
 };
 pub use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 pub use crate::factors::{
-    AttributeRekeyInfo, EncryptionSecret, Factor, PseudonymRekeyInfo, PseudonymizationInfo,
-    PseudonymizationSecret, RekeyPublicKey, TranscryptionInfo,
+    AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, PseudonymizationSecret,
+    RekeyPublicKey, RekeyingSecret, TranscryptionInfo,
 };
 #[cfg(feature = "verifiable")]
 pub use crate::factors::{

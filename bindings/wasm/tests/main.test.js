@@ -18,7 +18,7 @@ const {
     AttributeRekeyInfo,
     TranscryptionInfo,
     PseudonymizationSecret,
-    EncryptionSecret,
+    RekeyingSecret,
     transcryptBatch,
     PseudonymGlobalPublicKey,
     AttributeGlobalPublicKey,
@@ -48,17 +48,17 @@ test('test high level', async () => {
     const secret = Uint8Array.from(Buffer.from("secret"))
 
     const pseudoSecret = new PseudonymizationSecret(secret);
-    const encSecret = new EncryptionSecret(secret);
+    const rekeyingSecret = new RekeyingSecret(secret);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const session1 = new EncryptionContext("session1");
     const domain2 = new PseudonymizationDomain("domain2");
     const session2 = new EncryptionContext("session2");
 
-    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
-    const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
-    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
-    const attributeSession2Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
+    const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
+    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, rekeyingSecret);
+    const attributeSession2Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, rekeyingSecret);
 
     const pseudo = Pseudonym.random();
     const encPseudo = encryptPseudonym(pseudo, pseudonymSession1Keys.public);
@@ -73,8 +73,8 @@ test('test high level', async () => {
     expect(pseudo.toHex()).toEqual(decPseudo.toHex());
     expect(data.toHex()).toEqual(decData.toHex());
 
-    const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
-    const rekeyInfo = new AttributeRekeyInfo(session1, session2, encSecret);
+    const pseudoInfo = new PseudonymizationInfo(domain1, domain2, session1, session2, pseudoSecret, rekeyingSecret);
+    const rekeyInfo = new AttributeRekeyInfo(session1, session2, rekeyingSecret);
 
     const rekeyed = rekeyAttribute(encData, rekeyInfo, attributeSession1Keys.public);
     const rekeyedDec = decryptAttribute(rekeyed, attributeSession2Keys.secret);
@@ -186,10 +186,10 @@ test('test encrypted types encoding', async () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const attributeGlobalKeys = makeAttributeGlobalKeys();
     const secret = new Uint8Array(Buffer.from("secret"));
-    const encSecret = new EncryptionSecret(secret);
+    const rekeyingSecret = new RekeyingSecret(secret);
     const session = new EncryptionContext("session");
-    const pseudonymSessionKeys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session, encSecret);
-    const attributeSessionKeys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session, encSecret);
+    const pseudonymSessionKeys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session, rekeyingSecret);
+    const attributeSessionKeys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session, rekeyingSecret);
 
     // Create encrypted pseudonym
     const pseudo = Pseudonym.random();
@@ -225,7 +225,7 @@ test('test encrypted types encoding', async () => {
 
 test('test key generation consistency', async () => {
     const secret = new Uint8Array(Buffer.from("consistent_secret"));
-    const encSecret = new EncryptionSecret(secret);
+    const rekeyingSecret = new RekeyingSecret(secret);
 
     // Generate same global keys multiple times (they should be random)
     const pseudoKeys1 = makePseudonymGlobalKeys();
@@ -239,15 +239,15 @@ test('test key generation consistency', async () => {
     // Generate same session keys with same inputs (should be deterministic)
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const session1 = new EncryptionContext("session1");
-    const session1a = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
-    const session1b = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+    const session1a = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
+    const session1b = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
 
     // Access GroupElement directly from SessionPublicKey (it has property '0')
     expect(session1a.public[0].toHex()).toEqual(session1b.public[0].toHex());
 
     // Different session names should give different keys
     const session2 = new EncryptionContext("session2");
-    const session2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+    const session2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
     expect(session1a.public[0].toHex()).not.toEqual(session2Keys.public[0].toHex());
 });
 
@@ -277,17 +277,17 @@ test('test batch long operations', async () => {
 
     const secret = Uint8Array.from(Buffer.from("secret"));
     const pseudoSecret = new PseudonymizationSecret(secret);
-    const encSecret = new EncryptionSecret(secret);
+    const rekeyingSecret = new RekeyingSecret(secret);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const session1 = new EncryptionContext("session1");
     const domain2 = new PseudonymizationDomain("domain2");
     const session2 = new EncryptionContext("session2");
 
-    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
-    const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
-    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
-    const attributeSession2Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
+    const pseudonymSession2Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
+    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, rekeyingSecret);
+    const attributeSession2Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, rekeyingSecret);
 
     // Create long pseudonyms and attributes with padding
     const testStrings = [
@@ -305,7 +305,7 @@ test('test batch long operations', async () => {
     );
 
     const transcryptionInfo = new TranscryptionInfo(
-        domain1, domain2, session1, session2, pseudoSecret, encSecret
+        domain1, domain2, session1, session2, pseudoSecret, rekeyingSecret
     );
 
     // Test batch rekeying of long pseudonyms
@@ -386,17 +386,17 @@ test.skip('test batch transcrypt', async () => {
     const secret = Uint8Array.from(Buffer.from("secret"))
 
     const pseudoSecret = new PseudonymizationSecret(secret);
-    const encSecret = new EncryptionSecret(secret);
+    const rekeyingSecret = new RekeyingSecret(secret);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const session1 = new EncryptionContext("session1");
     const domain2 = new PseudonymizationDomain("domain2");
     const session2 = new EncryptionContext("session2");
 
-    const transcryptionInfo = new TranscryptionInfo(domain1, domain2, session1, session2, pseudoSecret, encSecret);
+    const transcryptionInfo = new TranscryptionInfo(domain1, domain2, session1, session2, pseudoSecret, rekeyingSecret);
 
-    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
-    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+    const pseudonymSession1Keys = makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
+    const attributeSession1Keys = makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, rekeyingSecret);
 
     const messages = [];
 

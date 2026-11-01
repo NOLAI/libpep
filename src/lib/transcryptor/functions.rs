@@ -96,7 +96,7 @@ where
 /// # use libpep::prelude::*;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
-/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
 /// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let rerandomized = rerandomize(&encrypted_pseudonym, rng);
@@ -117,7 +117,7 @@ where
 /// # use libpep::prelude::*;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
-/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
 /// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let rerandomized = rerandomize(&encrypted_pseudonym, &keys.public(), rng);
@@ -145,7 +145,7 @@ where
 /// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
-/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
 /// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let factor = RerandomizeFactor::from_scalar(Ristretto255::random_scalar(rng));
@@ -169,7 +169,7 @@ where
 /// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
-/// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
 /// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// # let encrypted_pseudonym = encrypt(&Pseudonym::random(rng), &keys.public(), rng);
 /// let factor = RerandomizeFactor::from_scalar(Ristretto255::random_scalar(rng));

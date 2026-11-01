@@ -18,13 +18,9 @@ fn n_pep() {
         .map(|i| {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes());
-            let encryption_secret = EncryptionSecret::from(format!("es-secret-{i}").as_bytes());
+            let rekeying_secret = RekeyingSecret::from(format!("es-secret-{i}").as_bytes());
             let blinding_factor = blinding_factors[i];
-            DistributedTranscryptor::new(
-                pseudonymization_secret,
-                encryption_secret,
-                blinding_factor,
-            )
+            DistributedTranscryptor::new(pseudonymization_secret, rekeying_secret, blinding_factor)
         })
         .collect::<Vec<_>>();
 

@@ -23,7 +23,7 @@ use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use libpep::data::simple::EncryptedAttribute;
 use libpep::data::simple::EncryptedPseudonym;
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PseudonymSessionPublicKey;
 #[cfg(not(feature = "elgamal3"))]
@@ -43,7 +43,7 @@ impl WASMTranscryptor {
     pub fn new(pseudonymization_secret: &str, rekeying_secret: &str) -> Self {
         Self(Transcryptor::new(
             PseudonymizationSecret::from(pseudonymization_secret.as_bytes()),
-            EncryptionSecret::from(rekeying_secret.as_bytes()),
+            RekeyingSecret::from(rekeying_secret.as_bytes()),
         ))
     }
 

@@ -13,7 +13,7 @@ The package has a Node.js and a browser build, selected through the `exports` fi
 ```javascript
 import {
   EncryptionContext,
-  EncryptionSecret,
+  RekeyingSecret,
   Pseudonym,
   PseudonymizationDomain,
   Transcryptor,
@@ -26,8 +26,8 @@ import {
 
 // System setup: global keys and the secrets of the transcryptor.
 const globalKeys = makeGlobalKeys();
-const transcryptor = new Transcryptor("pseudonymization secret", "encryption secret");
-const encryptionSecret = new EncryptionSecret(new TextEncoder().encode("encryption secret"));
+const transcryptor = new Transcryptor("pseudonymization secret", "rekeying secret");
+const rekeyingSecret = new RekeyingSecret(new TextEncoder().encode("rekeying secret"));
 
 // User A (a sender) and user B (a receiver) each work in their own pseudonymization domain and
 // encryption context, with session keys for it.
@@ -35,8 +35,8 @@ const domainA = new PseudonymizationDomain("hospital");
 const sessionA = new EncryptionContext("session-a");
 const domainB = new PseudonymizationDomain("research");
 const sessionB = new EncryptionContext("session-b");
-const keysA = makeSessionKeys(globalKeys.secret, sessionA, encryptionSecret);
-const keysB = makeSessionKeys(globalKeys.secret, sessionB, encryptionSecret);
+const keysA = makeSessionKeys(globalKeys.secret, sessionA, rekeyingSecret);
+const keysB = makeSessionKeys(globalKeys.secret, sessionB, rekeyingSecret);
 
 // A encrypts one of its pseudonyms for its own encryption context.
 const pseudonymA = Pseudonym.random();

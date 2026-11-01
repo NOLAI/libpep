@@ -283,7 +283,7 @@ def make_attribute_session_key_share(rekey_factor, blinding_factor):
     ...
 
 def make_attribute_session_keys(global_key, session, secret):
-    """Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyEncryptionSecret`]."""
+    """Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyRekeyingSecret`]."""
     ...
 
 def make_blinded_attribute_global_secret_key(global_secret_key, blinding_factors):
@@ -326,7 +326,7 @@ def make_pseudonym_session_key_share(rekey_factor, blinding_factor):
     ...
 
 def make_pseudonym_session_keys(global_key, session, secret):
-    """Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyEncryptionSecret`]."""
+    """Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyRekeyingSecret`]."""
     ...
 
 def make_session_key_shares(pseudonym_rekey_factor, attribute_rekey_factor, blinding_factor):
@@ -334,7 +334,7 @@ def make_session_key_shares(pseudonym_rekey_factor, attribute_rekey_factor, blin
     ...
 
 def make_session_keys(global_key, session, secret):
-    """Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyEncryptionSecret`]."""
+    """Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyRekeyingSecret`]."""
     ...
 
 def make_session_keys_distributed(blinded_global_keys, session_key_shares):

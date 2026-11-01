@@ -8,6 +8,9 @@ a major change against the published 0.13.0.
 
 ### API changes
 
+- `EncryptionSecret` is renamed `RekeyingSecret`, as it derives the rekey factors (the Python and
+  JavaScript classes, the `encryption_secret` parameters and the `peppy` `--encryption-secret`
+  option follow: `rekeying_secret` and `--rekeying-secret`).
 - Every generic type defaults its parameter to ristretto255, so that code which does not need
   another group writes no type parameters: `Pseudonym<G: Group = Ristretto255>` and the other
   types generic over a group (data, keys, factors, proofs, `Client`, ...), and
@@ -34,7 +37,7 @@ a major change against the published 0.13.0.
   `TranscryptionInfo::new_generic::<C>(..)`. Methods that take the ciphersuite as a type parameter
   (`proof.verify::<C>(..)`, `verifiable_pseudonymize::<C>`) name it in both cases.
 - `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets. After `use libpep::prelude::*;`, `make_global_keys(rng)`, `make_session_keys(..)` and `Transcryptor::new(..)` need no type annotation.
-- `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
+- `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `RekeyingSecret`
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
   inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.
 - The four factor types implement one `factors::Factor` trait (`from_scalar`, `scalar`); the
@@ -167,7 +170,7 @@ a major change against the published 0.13.0.
 - Factor derivation rejects a factor equal to 1 as well as 0 (derived factors are unchanged in the
   non-degenerate case).
 
-- Secrets are wiped from memory: the byte secrets (`PseudonymizationSecret`, `EncryptionSecret`)
+- Secrets are wiped from memory: the byte secrets (`PseudonymizationSecret`, `RekeyingSecret`)
   and the Carter-Wegman master secrets zeroize on drop, and the secret keys, factors, blinding
   factors and shares implement `zeroize::Zeroize` (they are `Copy`, so wiping them is the
   caller's call).
@@ -238,7 +241,7 @@ a major change against the published 0.13.0.
   the `JSON` duplicates are gone. `OfflinePEPClient` is `OfflineClient`, `rekeyPublicKeys` is
   `rekeyPublicKey`. Python: a batch function given items of different types raises `TypeError`
   instead of panicking.
-- `peppy`: `--encryption-secret` and `--pseudonymization-secret` name the secrets everywhere
+- `peppy`: `--rekeying-secret` and `--pseudonymization-secret` name the secrets everywhere
   (`--secret` is gone from `factors reshuffle|rekey`, `keys session derive` and
   `keys distributed share`); `attribute transcrypt` no longer accepts the pseudonymization
   flags; `encode`/`decode` use the PKCS#7 padding of the library, so an identifier gives the
@@ -408,7 +411,7 @@ a major change against the published 0.13.0.
 - Python: `EncryptionContext.global_` and `PseudonymizationDomain.global_` (the global context
   and domain) replace `global`, a keyword that made them unreachable, and the global secret
   key parameter of the session key functions is `global_key` so it can be passed by keyword.
-  The unreachable `PseudonymizationSecret.from` and `EncryptionSecret.from` are gone; the
+  The unreachable `PseudonymizationSecret.from` and `RekeyingSecret.from` are gone; the
   constructors do the same.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `PseudonymizationInfo` and
   `TranscryptionInfo` (the `factors::RekeyPublicKey` trait): the public key a transcrypted

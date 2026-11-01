@@ -1,7 +1,7 @@
 //! Python bindings for PEP JSON encryption.
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
-use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
+use crate::factors::secrets::{PyPseudonymizationSecret, PyRekeyingSecret};
 #[cfg(feature = "batch")]
 use crate::factors::types::PyTranscryptionInfo;
 #[cfg(feature = "offline")]
@@ -125,13 +125,13 @@ impl PyEncryptedPepJsonValue {
     ///     from_session: Source encryption session
     ///     to_session: Target encryption session
     ///     pseudonymization_secret: Pseudonymization secret
-    ///     encryption_secret: Encryption secret
+    ///     rekeying_secret: Rekeying secret
     ///     public_key: The session public keys the document is encrypted under (required
     ///         without the elgamal3 feature; SessionPublicKeys or SessionKeys)
     ///
     /// Returns:
     ///     A transcrypted EncryptedPepJsonValue
-    #[pyo3(name = "transcrypt", signature = (from_domain, to_domain, from_session, to_session, pseudonymization_secret, encryption_secret, public_key=None))]
+    #[pyo3(name = "transcrypt", signature = (from_domain, to_domain, from_session, to_session, pseudonymization_secret, rekeying_secret, public_key=None))]
     #[allow(clippy::too_many_arguments)]
     fn transcrypt(
         &self,
@@ -140,7 +140,7 @@ impl PyEncryptedPepJsonValue {
         from_session: &PyEncryptionContext,
         to_session: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
-        encryption_secret: &PyEncryptionSecret,
+        rekeying_secret: &PyRekeyingSecret,
         public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Self> {
         let mut rng = rand::rng();
@@ -150,7 +150,7 @@ impl PyEncryptedPepJsonValue {
             &from_session.0,
             &to_session.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         );
 
         let transcrypted = crate::transcrypt_with!(@on self.0, .transcrypt, &transcryption_info, public_key => crate::keys::pk::session, &mut rng);

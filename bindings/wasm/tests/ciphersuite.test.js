@@ -5,7 +5,7 @@ const {
     Pseudonym,
     EncryptionContext,
     PseudonymizationDomain,
-    EncryptionSecret,
+    RekeyingSecret,
     PseudonymizationSecret,
     TranscryptionInfo,
     makeGlobalKeys,
@@ -81,33 +81,33 @@ test('Secrets, domains and sessions separate factors and session keys', () => {
     // different secrets already give unrelated factors, and the domain and session separate
     // within a deployment.
     const globalKeys = makeGlobalKeys();
-    const encSecret = new EncryptionSecret(utf8("encryption secret"));
+    const rekeyingSecret = new RekeyingSecret(utf8("rekeying secret"));
     const pseudoSecret = new PseudonymizationSecret(utf8("pseudonymization secret"));
-    const otherEnc = new EncryptionSecret(utf8("other encryption secret"));
+    const otherRekeying = new RekeyingSecret(utf8("other rekeying secret"));
     const otherPseudo = new PseudonymizationSecret(utf8("other pseudonymization secret"));
     const sessionA = new EncryptionContext("session-a");
     const sessionB = new EncryptionContext("session-b");
     const domainA = new PseudonymizationDomain("hospital");
     const domainB = new PseudonymizationDomain("research");
 
-    const keys = makeSessionKeys(globalKeys.secret, sessionA, encSecret);
-    const info = new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, encSecret);
+    const keys = makeSessionKeys(globalKeys.secret, sessionA, rekeyingSecret);
+    const info = new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, rekeyingSecret);
 
     // Deterministic in the secrets, the domains and the sessions.
     expect(keys.pseudonym.secret[0].toHex())
-        .toBe(makeSessionKeys(globalKeys.secret, sessionA, encSecret).pseudonym.secret[0].toHex());
+        .toBe(makeSessionKeys(globalKeys.secret, sessionA, rekeyingSecret).pseudonym.secret[0].toHex());
     expect(info.pseudonym.s.scalar().toHex())
-        .toBe(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, encSecret).pseudonym.s.scalar().toHex());
+        .toBe(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, pseudoSecret, rekeyingSecret).pseudonym.s.scalar().toHex());
 
     // A different secret separates.
-    expect(makeSessionKeys(globalKeys.secret, sessionA, otherEnc).pseudonym.secret[0].toHex())
+    expect(makeSessionKeys(globalKeys.secret, sessionA, otherRekeying).pseudonym.secret[0].toHex())
         .not.toBe(keys.pseudonym.secret[0].toHex());
-    expect(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, otherPseudo, otherEnc).pseudonym.s.scalar().toHex())
+    expect(new TranscryptionInfo(domainA, domainB, sessionA, sessionB, otherPseudo, otherRekeying).pseudonym.s.scalar().toHex())
         .not.toBe(info.pseudonym.s.scalar().toHex());
 
     // A different session or domain separates.
-    expect(makeSessionKeys(globalKeys.secret, sessionB, encSecret).pseudonym.secret[0].toHex())
+    expect(makeSessionKeys(globalKeys.secret, sessionB, rekeyingSecret).pseudonym.secret[0].toHex())
         .not.toBe(keys.pseudonym.secret[0].toHex());
-    expect(new TranscryptionInfo(domainA, new PseudonymizationDomain("other"), sessionA, sessionB, pseudoSecret, encSecret).pseudonym.s.scalar().toHex())
+    expect(new TranscryptionInfo(domainA, new PseudonymizationDomain("other"), sessionA, sessionB, pseudoSecret, rekeyingSecret).pseudonym.s.scalar().toHex())
         .not.toBe(info.pseudonym.s.scalar().toHex());
 });

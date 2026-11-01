@@ -12,7 +12,7 @@ from libpep.client import decrypt, encrypt
 from libpep.contexts import EncryptionContext, PseudonymizationDomain
 from libpep.data import Attribute, Pseudonym
 from libpep.factors import (
-    EncryptionSecret,
+    RekeyingSecret,
     PseudonymizationInfo,
     PseudonymizationSecret,
 )
@@ -24,9 +24,9 @@ class TestKeyBundles(unittest.TestCase):
     def setUp(self):
         global_keys = make_global_keys()
         self.pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
-        self.enc_secret = EncryptionSecret(b"encryption-secret")
+        self.rekeying_secret = RekeyingSecret(b"rekeying-secret")
         self.session = EncryptionContext("session-a")
-        self.keys = make_session_keys(global_keys[1], self.session, self.enc_secret)
+        self.keys = make_session_keys(global_keys[1], self.session, self.rekeying_secret)
 
     def test_the_two_halves_are_different_keys(self):
         """The premise: selecting the wrong half would be observable."""
@@ -77,7 +77,7 @@ class TestKeyBundles(unittest.TestCase):
             self.session,
             session_b,
             self.pseudo_secret,
-            self.enc_secret,
+            self.rekeying_secret,
         )
         # Both forms are accepted where the current public key is needed, and both yield a
         # ciphertext that still decrypts to A's pseudonym when converted straight back.
@@ -99,7 +99,7 @@ class TestKeyBundles(unittest.TestCase):
             self.session,
             session_b,
             self.pseudo_secret,
-            self.enc_secret,
+            self.rekeying_secret,
         )
         with self.assertRaises(TypeError):
             pseudonymize(encrypted, info, self.keys.attribute.public)

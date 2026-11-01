@@ -4,7 +4,7 @@ use super::types::*;
 use crate::contexts::WASMEncryptionContext;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
-use crate::factors::secrets::WASMEncryptionSecret;
+use crate::factors::secrets::WASMRekeyingSecret;
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -53,7 +53,7 @@ pub fn wasm_make_attribute_global_keys() -> WASMAttributeGlobalKeyPair {
 pub fn wasm_make_pseudonym_session_keys(
     global: &WASMPseudonymGlobalSecretKey,
     session: &WASMEncryptionContext,
-    secret: &WASMEncryptionSecret,
+    secret: &WASMRekeyingSecret,
 ) -> WASMPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey::from_scalar(*global.0),
@@ -71,7 +71,7 @@ pub fn wasm_make_pseudonym_session_keys(
 pub fn wasm_make_attribute_session_keys(
     global: &WASMAttributeGlobalSecretKey,
     session: &WASMEncryptionContext,
-    secret: &WASMEncryptionSecret,
+    secret: &WASMRekeyingSecret,
 ) -> WASMAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey::from_scalar(*global.0),
@@ -89,7 +89,7 @@ pub fn wasm_make_attribute_session_keys(
 pub fn wasm_make_session_keys(
     global: &WASMGlobalSecretKeys,
     session: &WASMEncryptionContext,
-    secret: &WASMEncryptionSecret,
+    secret: &WASMRekeyingSecret,
 ) -> WASMSessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {

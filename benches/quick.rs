@@ -7,7 +7,7 @@ use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
 use libpep::factors::RekeyPublicKey;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 mod common;
 use libpep::transcryptor::DistributedTranscryptor;
 use rand::rng;
@@ -45,10 +45,10 @@ fn setup_system() -> (
         .map(|i| {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(format!("ps-{i}").as_bytes());
-            let encryption_secret = EncryptionSecret::from(format!("es-{i}").as_bytes());
+            let rekeying_secret = RekeyingSecret::from(format!("es-{i}").as_bytes());
             DistributedTranscryptor::new(
                 pseudonymization_secret,
-                encryption_secret,
+                rekeying_secret,
                 blinding_factors[i],
             )
         })

@@ -87,8 +87,8 @@ fn setup() -> (serde_json::Value, Session, Session) {
             field(&global, "pseudonym_secret_key"),
             "--attribute-global-secret",
             field(&global, "attribute_secret_key"),
-            "--encryption-secret",
-            "encryption secret",
+            "--rekeying-secret",
+            "rekeying secret",
             "--context",
             context,
         ]),
@@ -125,8 +125,8 @@ fn transcrypt(args: &[&str]) -> (String, String) {
 const TRANSCRYPT: [&str; 4] = [
     "--pseudonymization-secret",
     "pseudonymization secret",
-    "--encryption-secret",
-    "encryption secret",
+    "--rekeying-secret",
+    "rekeying secret",
 ];
 
 #[test]
@@ -188,8 +188,8 @@ fn attribute_is_rekeyed_not_reshuffled() {
     let mut args = vec!["attribute", "transcrypt"];
     args.extend_from_slice(&key_arg(field(&a.keys, "attribute_public_key")));
     args.extend_from_slice(&[
-        "--encryption-secret",
-        "encryption secret",
+        "--rekeying-secret",
+        "rekeying secret",
         "--from-context",
         "session-a",
         "--to-context",
@@ -238,8 +238,8 @@ fn explicit_factors_match_the_transcryptor() {
         "info",
         "--pseudonymization-secret",
         "pseudonymization secret",
-        "--encryption-secret",
-        "encryption secret",
+        "--rekeying-secret",
+        "rekeying secret",
         "--from-domain",
         "hospital",
         "--to-domain",
@@ -351,7 +351,7 @@ fn distributed_setup_shares_and_reconstruction() {
                 "--prove",
                 "--blinding",
                 factors[i],
-                "--encryption-secret",
+                "--rekeying-secret",
                 &secrets[i],
                 "--context",
                 "session-1",
@@ -395,7 +395,7 @@ fn distributed_setup_shares_and_reconstruction() {
         args.extend_from_slice(&[
             "--pseudonymization-secret",
             secret,
-            "--encryption-secret",
+            "--rekeying-secret",
             secret,
             "--from-domain",
             "domain",
@@ -429,7 +429,7 @@ fn distributed_setup_shares_and_reconstruction() {
         "share",
         "--blinding",
         factors[0],
-        "--encryption-secret",
+        "--rekeying-secret",
         &secrets[0],
         "--context",
         "session-2",
@@ -450,7 +450,7 @@ fn distributed_setup_shares_and_reconstruction() {
     args.extend_from_slice(&[
         "--pseudonymization-secret",
         &secrets[0],
-        "--encryption-secret",
+        "--rekeying-secret",
         &secrets[0],
         "--from-domain",
         "domain",
@@ -606,8 +606,8 @@ fn proofs_of_rekeying_verify() {
     let mut args = vec!["attribute", "transcrypt", "--prove"];
     args.extend_from_slice(&key_arg(field(&a.keys, "attribute_public_key")));
     args.extend_from_slice(&[
-        "--encryption-secret",
-        "encryption secret",
+        "--rekeying-secret",
+        "rekeying secret",
         "--from-context",
         "session-a",
         "--to-context",

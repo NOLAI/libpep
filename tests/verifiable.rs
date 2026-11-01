@@ -82,7 +82,7 @@ fn test_verifiable_pseudonymization_simple() {
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let domain2 = PseudonymizationDomain::from("domain2");
@@ -90,14 +90,14 @@ fn test_verifiable_pseudonymization_simple() {
     let session2 = EncryptionContext::from("session2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
     let (_, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &rekeying_secret);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
 
-    let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+    let transcryptor = Transcryptor::new(pseudo_secret.clone(), rekeying_secret.clone());
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
     let commitments =
         transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
@@ -138,20 +138,20 @@ fn test_verifiable_pseudonym_rekey() {
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
 
     let (pseudonym_session1_public, pseudonym_session1_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
     let (_, pseudonym_session2_secret) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session2, &rekeying_secret);
 
     let pseudo = Pseudonym::random(rng);
     let enc_pseudo = encrypt(&pseudo, &pseudonym_session1_public, rng);
 
-    let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+    let transcryptor = Transcryptor::new(pseudo_secret.clone(), rekeying_secret.clone());
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
@@ -181,20 +181,20 @@ fn test_verifiable_attribute_rekey() {
 
     let (_attribute_global_public, attribute_global_secret) = make_attribute_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("session1");
     let session2 = EncryptionContext::from("session2");
 
     let (attribute_session1_public, attribute_session1_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+        make_attribute_session_keys(&attribute_global_secret, &session1, &rekeying_secret);
     let (_, attribute_session2_secret) =
-        make_attribute_session_keys(&attribute_global_secret, &session2, &enc_secret);
+        make_attribute_session_keys(&attribute_global_secret, &session2, &rekeying_secret);
 
     let attr = Attribute::random(rng);
     let enc_attr = encrypt(&attr, &attribute_session1_public, rng);
 
-    let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+    let transcryptor = Transcryptor::new(pseudo_secret.clone(), rekeying_secret.clone());
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
@@ -224,7 +224,7 @@ fn test_verifier_cache_pseudonymization() {
 
     let (_pseudonym_global_public, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("domain1");
     let domain2 = PseudonymizationDomain::from("domain2");
@@ -233,9 +233,9 @@ fn test_verifier_cache_pseudonymization() {
     let session2 = EncryptionContext::from("session2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret.clone(), enc_secret.clone());
+    let transcryptor = Transcryptor::new(pseudo_secret.clone(), rekeying_secret.clone());
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
     let commitments =
         transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
@@ -335,7 +335,7 @@ fn n_pep_batch_distributed_verifiable() {
         .map(|i| {
             DistributedTranscryptor::new(
                 PseudonymizationSecret::from(format!("ps-{i}").as_bytes()),
-                EncryptionSecret::from(format!("es-{i}").as_bytes()),
+                RekeyingSecret::from(format!("es-{i}").as_bytes()),
                 blinding_factors[i],
             )
         })
@@ -437,7 +437,7 @@ fn test_verifiable_record_transcryption() {
     let (_global_pseudonym_pk, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
     let (_global_attribute_pk, global_attribute_sk) = make_attribute_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain_a = PseudonymizationDomain::from("a");
     let domain_b = PseudonymizationDomain::from("b");
@@ -445,9 +445,9 @@ fn test_verifiable_record_transcryption() {
     let session_b = EncryptionContext::from("sb");
 
     let (pseudonym_session_a_pk, pseudonym_session_a_sk) =
-        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &enc_secret);
+        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &rekeying_secret);
     let (attribute_session_a_pk, attribute_session_a_sk) =
-        make_attribute_session_keys(&global_attribute_sk, &session_a, &enc_secret);
+        make_attribute_session_keys(&global_attribute_sk, &session_a, &rekeying_secret);
     let session_a_keys = SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_session_a_pk,
@@ -481,7 +481,7 @@ fn test_verifiable_record_transcryption() {
             .collect(),
     );
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
     let commitments =
         transcryptor.transcryption_commitment(&domain_a, &domain_b, &session_a, &session_b);
@@ -522,7 +522,7 @@ fn tampered_proof_rejected_pseudonymization() {
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -530,9 +530,9 @@ fn tampered_proof_rejected_pseudonymization() {
     let session2 = EncryptionContext::from("s2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
     let commitments =
         transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
@@ -578,7 +578,7 @@ fn wrong_original_rejected_pseudonymization() {
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -586,9 +586,9 @@ fn wrong_original_rejected_pseudonymization() {
     let session2 = EncryptionContext::from("s2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
     let commitments =
         transcryptor.pseudonymization_commitment(&domain1, &domain2, &session1, &session2);
@@ -604,14 +604,14 @@ fn wrong_original_rejected_pseudonymization() {
     );
 
     // Verify the proof against a *different* ciphertext.
-    let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    let other_rekeying = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
 
     let verifier = Verifier::new();
     #[cfg(feature = "elgamal3")]
-    let result = verifier.verify_pseudonymization::<_>(&other_enc, &proof, &commitments);
+    let result = verifier.verify_pseudonymization::<_>(&other_rekeying, &proof, &commitments);
     #[cfg(not(feature = "elgamal3"))]
     let result = verifier.verify_pseudonymization::<_>(
-        &other_enc,
+        &other_rekeying,
         &proof,
         &pseudonym_session1_public,
         &commitments,
@@ -624,7 +624,7 @@ fn wrong_commitments_rejected_pseudonymization() {
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain1 = PseudonymizationDomain::from("d1");
     let domain2 = PseudonymizationDomain::from("d2");
@@ -633,9 +633,9 @@ fn wrong_commitments_rejected_pseudonymization() {
     let session2 = EncryptionContext::from("s2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&domain1, &domain2, &session1, &session2);
     // Commitments for a *different* target domain than the proof.
     let wrong_commitments =
@@ -670,15 +670,15 @@ fn tampered_proof_rejected_pseudonym_rekey() {
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
@@ -700,25 +700,25 @@ fn wrong_original_rejected_pseudonym_rekey() {
     let rng = &mut rand::rng();
     let (_, pseudonym_global_secret) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
     let (pseudonym_session1_public, _) =
-        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &enc_secret);
+        make_pseudonym_session_keys(&pseudonym_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonym_rekey_info(&session1, &session2);
     let commitments = transcryptor.pseudonym_rekey_commitment(&session1, &session2);
 
     let enc_pseudo = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
     let proof = enc_pseudo.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
-    let other_enc = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
+    let other_rekeying = encrypt(&Pseudonym::random(rng), &pseudonym_session1_public, rng);
 
     let verifier = Verifier::new();
-    let result: Result<(), _> = verifier.verify_rekey(&other_enc, &proof, &commitments);
+    let result: Result<(), _> = verifier.verify_rekey(&other_rekeying, &proof, &commitments);
     assert!(matches!(result, Err(VerifyError::ProofRejected)));
 }
 
@@ -728,15 +728,15 @@ fn tampered_proof_rejected_attribute_rekey() {
     let rng = &mut rand::rng();
     let (_, attribute_global_secret) = make_attribute_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
     let (attribute_session1_public, _) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+        make_attribute_session_keys(&attribute_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
@@ -758,25 +758,25 @@ fn wrong_original_rejected_attribute_rekey() {
     let rng = &mut rand::rng();
     let (_, attribute_global_secret) = make_attribute_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let session1 = EncryptionContext::from("s1");
     let session2 = EncryptionContext::from("s2");
 
     let (attribute_session1_public, _) =
-        make_attribute_session_keys(&attribute_global_secret, &session1, &enc_secret);
+        make_attribute_session_keys(&attribute_global_secret, &session1, &rekeying_secret);
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.attribute_rekey_info(&session1, &session2);
     let commitments = transcryptor.attribute_rekey_commitment(&session1, &session2);
 
     let enc_attr = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
     let proof = enc_attr.verifiable_rekey::<Ristretto255Sha512, _>(&info, rng);
 
-    let other_enc = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
+    let other_rekeying = encrypt(&Attribute::random(rng), &attribute_session1_public, rng);
 
     let verifier = Verifier::new();
-    let result: Result<(), _> = verifier.verify_rekey(&other_enc, &proof, &commitments);
+    let result: Result<(), _> = verifier.verify_rekey(&other_rekeying, &proof, &commitments);
     assert!(matches!(result, Err(VerifyError::ProofRejected)));
 }
 
@@ -787,7 +787,7 @@ fn tampered_proof_rejected_record_transcryption() {
     let (_, global_pseudonym_sk) = make_pseudonym_global_keys(rng);
     let (_, global_attribute_sk) = make_attribute_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let domain_a = PseudonymizationDomain::from("a");
     let domain_b = PseudonymizationDomain::from("b");
@@ -795,9 +795,9 @@ fn tampered_proof_rejected_record_transcryption() {
     let session_b = EncryptionContext::from("sb");
 
     let (pseudonym_session_a_pk, pseudonym_session_a_sk) =
-        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &enc_secret);
+        make_pseudonym_session_keys(&global_pseudonym_sk, &session_a, &rekeying_secret);
     let (attribute_session_a_pk, attribute_session_a_sk) =
-        make_attribute_session_keys(&global_attribute_sk, &session_a, &enc_secret);
+        make_attribute_session_keys(&global_attribute_sk, &session_a, &rekeying_secret);
     let session_a_keys = SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_session_a_pk,
@@ -826,7 +826,7 @@ fn tampered_proof_rejected_record_transcryption() {
             .collect(),
     );
 
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.transcryption_info(&domain_a, &domain_b, &session_a, &session_b);
     let commitments =
         transcryptor.transcryption_commitment(&domain_a, &domain_b, &session_a, &session_b);
@@ -897,15 +897,15 @@ fn batch_pseudonymize_fixture<R: rand_core::Rng + rand_core::CryptoRng>(
 ) {
     let (_, gsk) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &rekeying_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
 
@@ -1044,15 +1044,15 @@ fn single_element_batch_verified_pseudonymization() {
     let rng = &mut rand::rng();
     let (_, gsk) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &rekeying_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
 
@@ -1082,15 +1082,15 @@ fn empty_batch_proof_only_verifies_against_empty_batch() {
     let rng = &mut rand::rng();
     let (_, gsk) = make_pseudonym_global_keys(rng);
     let pseudo_secret = PseudonymizationSecret::from("secret".as_bytes());
-    let enc_secret = EncryptionSecret::from("secret".as_bytes());
+    let rekeying_secret = RekeyingSecret::from("secret".as_bytes());
 
     let d1 = PseudonymizationDomain::from("d1");
     let d2 = PseudonymizationDomain::from("d2");
     let s1 = EncryptionContext::from("s1");
     let s2 = EncryptionContext::from("s2");
 
-    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &enc_secret);
-    let transcryptor = Transcryptor::new(pseudo_secret, enc_secret);
+    let (pk1, _) = make_pseudonym_session_keys(&gsk, &s1, &rekeying_secret);
+    let transcryptor = Transcryptor::new(pseudo_secret, rekeying_secret);
     let info = transcryptor.pseudonymization_info(&d1, &d2, &s1, &s2);
     let commitments = transcryptor.pseudonymization_commitment(&d1, &d2, &s1, &s2);
 
@@ -1142,7 +1142,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
     // Build a foreign item under a *different* recipient session key so the
     // `gy` differs from the rest of the batch.
     let (_, gsk2) = make_pseudonym_global_keys(rng);
-    let enc_secret2 = EncryptionSecret::from("other-secret".as_bytes());
+    let enc_secret2 = RekeyingSecret::from("other-secret".as_bytes());
     let (other_session_pk, _) = make_pseudonym_session_keys(
         &gsk2,
         &EncryptionContext::from("other-session"),

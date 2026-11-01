@@ -7,7 +7,7 @@ const {
     transcryptJsonBatch,
     TranscryptionInfo,
     PseudonymizationSecret,
-    EncryptionSecret,
+    RekeyingSecret,
     PseudonymizationDomain,
     EncryptionContext, encryptJsonBatch,
 } = require("../pkg/libpep.js");
@@ -16,11 +16,11 @@ test('test json transcryption with builder', async () => {
     // Setup keys and secrets
     const globalKeys = makeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
-    const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
+    const rekeyingSecret = new RekeyingSecret(Uint8Array.from(Buffer.from("rekeying-secret")));
 
     const session = new EncryptionContext("session-1");
 
-    const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
+    const sessionKeys = makeSessionKeys(globalKeys.secret, session, rekeyingSecret);
 
     // Create JSON with existing data
     const patientData = {
@@ -54,7 +54,7 @@ test('test json transcryption with builder', async () => {
         session,
         session,
         pseudoSecret,
-        encSecret,
+        rekeyingSecret,
         sessionKeys.public()
     );
 
@@ -77,13 +77,13 @@ test('test json batch transcryption same structure', async () => {
     // Setup keys and secrets
     const globalKeys = makeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
-    const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
+    const rekeyingSecret = new RekeyingSecret(Uint8Array.from(Buffer.from("rekeying-secret")));
 
     const domainA = new PseudonymizationDomain("domain-a");
     const domainB = new PseudonymizationDomain("domain-b");
     const session = new EncryptionContext("session-1");
 
-    const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
+    const sessionKeys = makeSessionKeys(globalKeys.secret, session, rekeyingSecret);
 
     // Create two JSON values with the SAME structure using JavaScript objects
     const data1 = {
@@ -118,7 +118,7 @@ test('test json batch transcryption same structure', async () => {
         session,
         session,
         pseudoSecret,
-        encSecret
+        rekeyingSecret
     );
 
     const transcryptedBatch = transcryptJsonBatch(
@@ -155,13 +155,13 @@ test('test json batch transcryption different structures', async () => {
     // Setup keys and secrets
     const globalKeys = makeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
-    const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
+    const rekeyingSecret = new RekeyingSecret(Uint8Array.from(Buffer.from("rekeying-secret")));
 
     const domainA = new PseudonymizationDomain("domain-a");
     const domainB = new PseudonymizationDomain("domain-b");
     const session = new EncryptionContext("session-1");
 
-    const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
+    const sessionKeys = makeSessionKeys(globalKeys.secret, session, rekeyingSecret);
 
     // Create two JSON values with DIFFERENT structures using JavaScript objects
     const data1 = {
@@ -197,7 +197,7 @@ test('test json batch transcryption different structures', async () => {
         session,
         session,
         pseudoSecret,
-        encSecret
+        rekeyingSecret
     );
 
     // Verify we get an error about structure mismatch
@@ -211,13 +211,13 @@ test('test json batch transcryption same structure different lengths', async () 
     // Setup keys and secrets
     const globalKeys = makeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(Uint8Array.from(Buffer.from("pseudo-secret")));
-    const encSecret = new EncryptionSecret(Uint8Array.from(Buffer.from("encryption-secret")));
+    const rekeyingSecret = new RekeyingSecret(Uint8Array.from(Buffer.from("rekeying-secret")));
 
     const domainA = new PseudonymizationDomain("domain-a");
     const domainB = new PseudonymizationDomain("domain-b");
     const session = new EncryptionContext("session-1");
 
-    const sessionKeys = makeSessionKeys(globalKeys.secret, session, encSecret);
+    const sessionKeys = makeSessionKeys(globalKeys.secret, session, rekeyingSecret);
 
     // Create two JSON values with DIFFERENT structures using JavaScript objects
     const data1 = {
@@ -252,7 +252,7 @@ test('test json batch transcryption same structure different lengths', async () 
         session,
         session,
         pseudoSecret,
-        encSecret
+        rekeyingSecret
     );
 
     // Verify we get an error about structure mismatch

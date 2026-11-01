@@ -156,9 +156,9 @@ pub fn pseudonymization_secret(raw: &str) -> Result<PseudonymizationSecret> {
     ))
 }
 
-pub fn encryption_secret(raw: &str) -> Result<EncryptionSecret> {
-    Ok(EncryptionSecret::from(
-        derivation_input(raw, "encryption secret")?.into_bytes(),
+pub fn rekeying_secret(raw: &str) -> Result<RekeyingSecret> {
+    Ok(RekeyingSecret::from(
+        derivation_input(raw, "rekeying secret")?.into_bytes(),
     ))
 }
 

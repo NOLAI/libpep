@@ -3,7 +3,7 @@
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
-use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::secrets::{WASMPseudonymizationSecret, WASMRekeyingSecret};
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
@@ -106,7 +106,7 @@ impl WASMPseudonymizationInfo {
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
     ) -> Self {
         Self(PseudonymizationInfo::new(
             &domain_from.0,
@@ -114,7 +114,7 @@ impl WASMPseudonymizationInfo {
             &session_from.0,
             &session_to.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -163,18 +163,18 @@ pub struct WASMPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[wasm_bindgen(js_class = "PseudonymRekeyInfo")]
 impl WASMPseudonymRekeyInfo {
-    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// Derive the info from sessions and the rekeying secret within the protocol `context`
     /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
     ) -> Self {
         Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -211,18 +211,18 @@ pub struct WASMAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[wasm_bindgen(js_class = "AttributeRekeyInfo")]
 impl WASMAttributeRekeyInfo {
-    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// Derive the info from sessions and the rekeying secret within the protocol `context`
     /// (the default context if omitted).
     #[wasm_bindgen(constructor)]
     pub fn new(
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
     ) -> Self {
         Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -271,7 +271,7 @@ impl WASMTranscryptionInfo {
         session_from: &WASMEncryptionContext,
         session_to: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
     ) -> Self {
         Self(TranscryptionInfo::new(
             &domain_from.0,
@@ -279,7 +279,7 @@ impl WASMTranscryptionInfo {
             &session_from.0,
             &session_to.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 

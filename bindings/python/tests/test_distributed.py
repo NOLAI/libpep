@@ -22,7 +22,7 @@ from libpep.keys import (
 )
 from libpep.factors import (
     PseudonymizationSecret,
-    EncryptionSecret,
+    RekeyingSecret,
     TranscryptionInfo,
     PseudonymizationInfo,
     AttributeRekeyInfo,
@@ -51,7 +51,7 @@ class TestDistributed(unittest.TestCase):
         # Create secrets
         self.secret = b"test_secret"
         self.pseudo_secret = PseudonymizationSecret(self.secret)
-        self.enc_secret = EncryptionSecret(self.secret)
+        self.rekeying_secret = RekeyingSecret(self.secret)
 
         # Create blinding factors (simulate 3 transcryptors)
         self.blinding_factors = [
@@ -100,7 +100,7 @@ class TestDistributed(unittest.TestCase):
             EncryptionContext("session1"),
             EncryptionContext("session2"),
             self.pseudo_secret,
-            self.enc_secret,
+            self.rekeying_secret,
         )
 
         # Test reverse operation

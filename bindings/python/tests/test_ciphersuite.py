@@ -14,7 +14,7 @@ from libpep.elgamal.arithmetic.hashing import (
     hash_to_group_with_dst,
     hash_to_scalar_with_dst,
 )
-from libpep.factors import EncryptionSecret, PseudonymizationSecret, TranscryptionInfo
+from libpep.factors import RekeyingSecret, PseudonymizationSecret, TranscryptionInfo
 from libpep.keys import make_global_keys, make_session_keys
 from libpep.transcryptor import Transcryptor
 
@@ -96,46 +96,46 @@ class TestSeparation(unittest.TestCase):
         # different secrets already give unrelated factors, and the domain and the session
         # separate within a deployment.
         _, global_secret = make_global_keys()
-        enc_secret = EncryptionSecret(b"encryption secret")
+        rekeying_secret = RekeyingSecret(b"rekeying secret")
         pseudo_secret = PseudonymizationSecret(b"pseudonymization secret")
-        other_enc = EncryptionSecret(b"other encryption secret")
+        other_rekeying = RekeyingSecret(b"other rekeying secret")
         other_pseudo = PseudonymizationSecret(b"other pseudonymization secret")
         session_a = EncryptionContext("session-a")
         session_b = EncryptionContext("session-b")
         domain_a = PseudonymizationDomain("hospital")
         domain_b = PseudonymizationDomain("research")
 
-        keys = make_session_keys(global_secret, session_a, enc_secret)
-        info = TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, enc_secret)
+        keys = make_session_keys(global_secret, session_a, rekeying_secret)
+        info = TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, rekeying_secret)
 
         # Deterministic in the secrets, the domains and the sessions.
         self.assertEqual(
             keys.pseudonym.public.to_hex(),
-            make_session_keys(global_secret, session_a, enc_secret).pseudonym.public.to_hex(),
+            make_session_keys(global_secret, session_a, rekeying_secret).pseudonym.public.to_hex(),
         )
         self.assertEqual(
             info.pseudonym.s.scalar().to_hex(),
-            TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, enc_secret).pseudonym.s.scalar().to_hex(),
+            TranscryptionInfo(domain_a, domain_b, session_a, session_b, pseudo_secret, rekeying_secret).pseudonym.s.scalar().to_hex(),
         )
 
         # A different secret separates.
         self.assertNotEqual(
             keys.pseudonym.public.to_hex(),
-            make_session_keys(global_secret, session_a, other_enc).pseudonym.public.to_hex(),
+            make_session_keys(global_secret, session_a, other_rekeying).pseudonym.public.to_hex(),
         )
         self.assertNotEqual(
             info.pseudonym.s.scalar().to_hex(),
-            TranscryptionInfo(domain_a, domain_b, session_a, session_b, other_pseudo, other_enc).pseudonym.s.scalar().to_hex(),
+            TranscryptionInfo(domain_a, domain_b, session_a, session_b, other_pseudo, other_rekeying).pseudonym.s.scalar().to_hex(),
         )
 
         # A different session or domain separates.
         self.assertNotEqual(
             keys.pseudonym.public.to_hex(),
-            make_session_keys(global_secret, session_b, enc_secret).pseudonym.public.to_hex(),
+            make_session_keys(global_secret, session_b, rekeying_secret).pseudonym.public.to_hex(),
         )
         self.assertNotEqual(
             info.pseudonym.s.scalar().to_hex(),
-            TranscryptionInfo(domain_a, PseudonymizationDomain("other"), session_a, session_b, pseudo_secret, enc_secret).pseudonym.s.scalar().to_hex(),
+            TranscryptionInfo(domain_a, PseudonymizationDomain("other"), session_a, session_b, pseudo_secret, rekeying_secret).pseudonym.s.scalar().to_hex(),
         )
 
 

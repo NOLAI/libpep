@@ -258,7 +258,7 @@ mod tests {
     use crate::contexts::EncryptionContext;
     use crate::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::factors::EncryptionSecret;
+    use crate::factors::RekeyingSecret;
     use crate::keys::*;
 
     type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;
@@ -318,10 +318,10 @@ mod tests {
     fn encrypt_decrypt_pseudonym() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+            make_pseudonym_session_keys(&global_secret, &session, &rekeying_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -337,10 +337,10 @@ mod tests {
     fn encrypt_decrypt_attribute() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_attribute_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =
-            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+            make_attribute_session_keys(&global_secret, &session, &rekeying_secret);
 
         let original = Attribute::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -356,10 +356,10 @@ mod tests {
     fn encrypted_pseudonym_base64_roundtrip() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, _) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+            make_pseudonym_session_keys(&global_secret, &session, &rekeying_secret);
 
         let pseudonym = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
@@ -375,10 +375,10 @@ mod tests {
     fn encrypted_attribute_serde_json() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_attribute_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, _) =
-            make_attribute_session_keys(&global_secret, &session, &enc_secret);
+            make_attribute_session_keys(&global_secret, &session, &rekeying_secret);
 
         let attribute = Attribute::random(&mut rng);
         let encrypted = encrypt(&attribute, &session_public, &mut rng);
@@ -393,10 +393,10 @@ mod tests {
     fn polymorphic_encrypt_decrypt() {
         let mut rng = rand::rng();
         let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
         let (session_public, session_secret) =
-            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+            make_pseudonym_session_keys(&global_secret, &session, &rekeying_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);

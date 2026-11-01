@@ -1,7 +1,7 @@
 //! WASM bindings for PEP JSON encryption.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::secrets::{WASMPseudonymizationSecret, WASMRekeyingSecret};
 #[cfg(feature = "batch")]
 use crate::factors::types::WASMTranscryptionInfo;
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -146,7 +146,7 @@ impl WASMEncryptedPepJsonValue {
     /// * `from_session` - Source encryption context
     /// * `to_session` - Target encryption context
     /// * `pseudonymization_secret` - Pseudonymization secret
-    /// * `encryption_secret` - Encryption secret
+    /// * `rekeying_secret` - Rekeying secret
     ///
     /// # Returns
     ///
@@ -159,7 +159,7 @@ impl WASMEncryptedPepJsonValue {
         from_session: &WASMEncryptionContext,
         to_session: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
         let transcryption_info = TranscryptionInfo::new(
@@ -168,7 +168,7 @@ impl WASMEncryptedPepJsonValue {
             &from_session.0,
             &to_session.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         );
 
         let transcrypted = self.0.transcrypt(&transcryption_info, &mut rng);
@@ -185,7 +185,7 @@ impl WASMEncryptedPepJsonValue {
     /// * `from_session` - Source encryption context
     /// * `to_session` - Target encryption context
     /// * `pseudonymization_secret` - Pseudonymization secret
-    /// * `encryption_secret` - Encryption secret
+    /// * `rekeying_secret` - Rekeying secret
     /// * `public_key` - The session public keys the document is encrypted under
     ///
     /// # Returns
@@ -200,7 +200,7 @@ impl WASMEncryptedPepJsonValue {
         from_session: &WASMEncryptionContext,
         to_session: &WASMEncryptionContext,
         pseudonymization_secret: &WASMPseudonymizationSecret,
-        encryption_secret: &WASMEncryptionSecret,
+        rekeying_secret: &WASMRekeyingSecret,
         public_key: &WASMSessionPublicKeys,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
@@ -211,7 +211,7 @@ impl WASMEncryptedPepJsonValue {
             &from_session.0,
             &to_session.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         );
 
         let transcrypted = self.0.transcrypt(&transcryption_info, &pk, &mut rng);

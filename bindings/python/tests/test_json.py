@@ -10,7 +10,7 @@ from libpep.keys import (
     make_session_keys,
 )
 from libpep.factors import (
-    EncryptionSecret,
+    RekeyingSecret,
     PseudonymizationSecret,
     TranscryptionInfo,
     PseudonymizationInfo,
@@ -34,13 +34,13 @@ class TestJSONTranscryption(unittest.TestCase):
         # Setup keys and secrets
         global_keys = make_global_keys()
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
-        enc_secret = EncryptionSecret(b"encryption-secret")
+        rekeying_secret = RekeyingSecret(b"rekeying-secret")
 
         domain_a = PseudonymizationDomain("clinic-a")
         domain_b = PseudonymizationDomain("clinic-b")
         session = EncryptionContext("session-1")
 
-        session_keys = make_session_keys(global_keys[1], session, enc_secret)
+        session_keys = make_session_keys(global_keys[1], session, rekeying_secret)
 
         # Create JSON with existing data
         patient_data = {
@@ -71,7 +71,7 @@ class TestJSONTranscryption(unittest.TestCase):
             session,
             session,
             pseudo_secret,
-            enc_secret,
+            rekeying_secret,
             session_keys.public(),
         )
 
@@ -103,13 +103,13 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         # Setup keys and secrets
         global_keys = make_global_keys()
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
-        enc_secret = EncryptionSecret(b"encryption-secret")
+        rekeying_secret = RekeyingSecret(b"rekeying-secret")
 
         domain_a = PseudonymizationDomain("domain-a")
         domain_b = PseudonymizationDomain("domain-b")
         session = EncryptionContext("session-1")
 
-        session_keys = make_session_keys(global_keys[1], session, enc_secret)
+        session_keys = make_session_keys(global_keys[1], session, rekeying_secret)
 
         # Create two JSON values with the SAME structure using Python dicts
         data1 = {"patient_id": "patient-001", "diagnosis": "Flu", "temperature": 38.5}
@@ -136,7 +136,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             session,
             session,
             pseudo_secret,
-            enc_secret,
+            rekeying_secret,
         )
 
         transcrypted_batch = transcrypt_json_batch(
@@ -184,13 +184,13 @@ class TestJSONBatchTranscryption(unittest.TestCase):
         # Setup keys and secrets
         global_keys = make_global_keys()
         pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
-        enc_secret = EncryptionSecret(b"encryption-secret")
+        rekeying_secret = RekeyingSecret(b"rekeying-secret")
 
         domain_a = PseudonymizationDomain("domain-a")
         domain_b = PseudonymizationDomain("domain-b")
         session = EncryptionContext("session-1")
 
-        session_keys = make_session_keys(global_keys[1], session, enc_secret)
+        session_keys = make_session_keys(global_keys[1], session, rekeying_secret)
 
         # Create two JSON values with DIFFERENT structures using Python dicts
         data1 = {"patient_id": "patient-001", "diagnosis": "Flu", "temperature": 38.5}
@@ -219,7 +219,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             session,
             session,
             pseudo_secret,
-            enc_secret,
+            rekeying_secret,
         )
 
         # Verify we get an error about structure mismatch
@@ -244,14 +244,14 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             # Setup keys and secrets
             global_keys = make_global_keys()
             pseudo_secret = PseudonymizationSecret(b"pseudo-secret")
-            enc_secret = EncryptionSecret(b"encryption-secret")
+            rekeying_secret = RekeyingSecret(b"rekeying-secret")
 
             domain_a = PseudonymizationDomain("domain-a")
             domain_b = PseudonymizationDomain("domain-b")
             session = EncryptionContext("session-1")
 
             # global_keys[1] is the Public Key
-            session_keys = make_session_keys(global_keys[1], session, enc_secret)
+            session_keys = make_session_keys(global_keys[1], session, rekeying_secret)
 
             # Create two JSON values with same keys but different string lengths
             data1 = {
@@ -278,7 +278,7 @@ class TestJSONBatchTranscryption(unittest.TestCase):
             self.assertNotEqual(encrypted1.structure(), encrypted2.structure())
 
             transcryption_info = TranscryptionInfo(
-                domain_a, domain_b, session, session, pseudo_secret, enc_secret
+                domain_a, domain_b, session, session, pseudo_secret, rekeying_secret
             )
 
             # 2. Attempt batch transcryption (should fail because structures are not identical)

@@ -14,7 +14,7 @@ use crate::factors::types::{
 };
 use derive_more::{Deref, From, Into};
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use libpep::transcryptor::Transcryptor;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
@@ -35,7 +35,7 @@ impl PyTranscryptor {
     fn new(pseudonymization_secret: &str, rekeying_secret: &str) -> Self {
         Self(Transcryptor::new(
             PseudonymizationSecret::from(pseudonymization_secret.as_bytes().to_vec()),
-            EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
+            RekeyingSecret::from(rekeying_secret.as_bytes().to_vec()),
         ))
     }
 

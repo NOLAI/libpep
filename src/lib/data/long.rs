@@ -481,7 +481,7 @@ mod tests {
     use crate::data::errors::ParseError;
     use crate::data::padding::PaddingError;
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::factors::EncryptionSecret;
+    use crate::factors::RekeyingSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys,
@@ -669,7 +669,7 @@ mod tests {
         let (session_public, _session_secret) = make_pseudonym_session_keys(
             &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
-            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+            &RekeyingSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
         let pseudonyms = LongPseudonym::from_string_padded("test-data-for-serialization");
@@ -696,7 +696,7 @@ mod tests {
         let (session_public, _session_secret) = make_attribute_session_keys(
             &make_attribute_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
-            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+            &RekeyingSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
         let attributes = LongAttribute::from_string_padded("attribute-test-data");
@@ -756,7 +756,7 @@ mod tests {
         let (session_public, _session_secret) = make_pseudonym_session_keys(
             &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
-            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+            &RekeyingSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
         let pseudonyms = LongPseudonym::from_string_padded("serde-test-data");
@@ -784,7 +784,7 @@ mod tests {
         let (session_public, _session_secret) = make_pseudonym_session_keys(
             &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
-            &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
+            &RekeyingSecret::from("enc-secret".as_bytes().to_vec()),
         );
 
         let pseudonym = Pseudonym::from_bytes_padded(b"single").unwrap();

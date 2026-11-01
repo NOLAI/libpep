@@ -14,20 +14,20 @@ The module is importable as `libpep`. The API mirrors the Rust crate with its de
 from libpep.client import decrypt, encrypt
 from libpep.contexts import EncryptionContext, PseudonymizationDomain
 from libpep.data import Pseudonym
-from libpep.factors import EncryptionSecret
+from libpep.factors import RekeyingSecret
 from libpep.keys import make_global_keys, make_session_keys
 from libpep.transcryptor import Transcryptor
 
 # System setup: global keys and the secrets of the transcryptor.
 global_public, global_secret = make_global_keys()
-transcryptor = Transcryptor("pseudonymization secret", "encryption secret")
+transcryptor = Transcryptor("pseudonymization secret", "rekeying secret")
 
 # User A (a sender) and user B (a receiver) each work in their own pseudonymization domain and
 # encryption context, with session keys for it.
 domain_a, session_a = PseudonymizationDomain("hospital"), EncryptionContext("session-a")
 domain_b, session_b = PseudonymizationDomain("research"), EncryptionContext("session-b")
-keys_a = make_session_keys(global_secret, session_a, EncryptionSecret(b"encryption secret"))
-keys_b = make_session_keys(global_secret, session_b, EncryptionSecret(b"encryption secret"))
+keys_a = make_session_keys(global_secret, session_a, RekeyingSecret(b"rekeying secret"))
+keys_b = make_session_keys(global_secret, session_b, RekeyingSecret(b"rekeying secret"))
 
 # A encrypts one of its pseudonyms for its own encryption context.
 pseudonym_a = Pseudonym.random()

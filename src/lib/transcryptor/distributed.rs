@@ -6,7 +6,7 @@ use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::factors::derivation::{
     make_attribute_rekey_factor_generic, make_pseudonym_rekey_factor_generic,
 };
-use crate::factors::{EncryptionSecret, PseudonymizationSecret};
+use crate::factors::{PseudonymizationSecret, RekeyingSecret};
 use crate::keys::distribution::blinding::BlindingFactor;
 #[cfg(feature = "verifiable")]
 use crate::keys::distribution::proofs::SessionKeyShareProof;
@@ -49,7 +49,7 @@ impl DistributedTranscryptor {
     /// See [`new_generic`](DistributedTranscryptor::new_generic) for another ciphersuite.
     pub fn new(
         pseudonymization_secret: PseudonymizationSecret,
-        rekeying_secret: EncryptionSecret,
+        rekeying_secret: RekeyingSecret,
         blinding_factor: BlindingFactor,
     ) -> Self {
         Self::new_generic(pseudonymization_secret, rekeying_secret, blinding_factor)
@@ -63,7 +63,7 @@ impl<C: Ciphersuite> DistributedTranscryptor<C> {
     /// [`DistributedTranscryptor::new`] is this function for ristretto255 with SHA-512.
     pub fn new_generic(
         pseudonymization_secret: PseudonymizationSecret,
-        rekeying_secret: EncryptionSecret,
+        rekeying_secret: RekeyingSecret,
         blinding_factor: BlindingFactor<C::Group>,
     ) -> Self {
         Self {

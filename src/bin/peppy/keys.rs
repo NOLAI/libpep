@@ -44,7 +44,7 @@ pub enum Global {
 
 #[derive(Subcommand)]
 pub enum Session {
-    /// Derive session keys from global secret keys, an encryption secret and a context.
+    /// Derive session keys from global secret keys, an rekeying secret and a context.
     Derive {
         /// Global secret key for pseudonyms (hex).
         #[arg(long)]
@@ -52,9 +52,9 @@ pub enum Session {
         /// Global secret key for attributes (hex).
         #[arg(long)]
         attribute_global_secret: Option<String>,
-        /// The transcryptor's encryption secret.
+        /// The transcryptor's rekeying secret.
         #[arg(long)]
-        encryption_secret: String,
+        rekeying_secret: String,
         /// The encryption context (session) to derive keys for.
         #[arg(long)]
         context: String,
@@ -75,9 +75,9 @@ pub enum Distributed {
         /// This transcryptor's blinding factor (hex).
         #[arg(long)]
         blinding: String,
-        /// This transcryptor's encryption secret.
+        /// This transcryptor's rekeying secret.
         #[arg(long)]
-        encryption_secret: String,
+        rekeying_secret: String,
         /// The encryption context (session).
         #[arg(long)]
         context: String,
@@ -134,7 +134,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
         Keys::Session(Session::Derive {
             pseudonym_global_secret,
             attribute_global_secret,
-            encryption_secret,
+            rekeying_secret,
             context,
         }) => {
             if pseudonym_global_secret.is_none() && attribute_global_secret.is_none() {
@@ -142,7 +142,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                     "give --pseudonym-global-secret, --attribute-global-secret or both",
                 ));
             }
-            let secret = io::encryption_secret(&encryption_secret)?;
+            let secret = io::rekeying_secret(&rekeying_secret)?;
             let context = io::context(Some(&context))?;
             let mut pseudonym = None;
             if let Some(global) = pseudonym_global_secret {
@@ -194,12 +194,12 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
         }
         Keys::Distributed(Distributed::Share {
             blinding,
-            encryption_secret,
+            rekeying_secret,
             context,
             prove,
         }) => {
             let blinding = BlindingFactor::from_scalar(io::scalar(&blinding, "blinding factor")?);
-            let secret = io::encryption_secret(&encryption_secret)?;
+            let secret = io::rekeying_secret(&rekeying_secret)?;
             let context = io::context(Some(&context))?;
             let pseudonym_rekey_factor = make_pseudonym_rekey_factor(&secret, &context);
             let attribute_rekey_factor = make_attribute_rekey_factor(&secret, &context);
