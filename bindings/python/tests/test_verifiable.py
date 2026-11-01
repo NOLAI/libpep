@@ -38,7 +38,7 @@ from libpep.keys import (
     SessionKeys,
 )
 from libpep.factors import (
-    EncryptionSecret,
+    RekeyingSecret,
 )
 from libpep.contexts import (
     PseudonymizationDomain,
@@ -58,7 +58,7 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_pseudonymization_simple(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         domain1 = PseudonymizationDomain("domain1")
         domain2 = PseudonymizationDomain("domain2")
@@ -66,10 +66,10 @@ class TestVerifiable(unittest.TestCase):
         session2 = EncryptionContext("session2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session1, enc_secret,
+            pseudonym_global_keys.secret, session1, rekeying_secret,
         )
         pseudonym_session2_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session2, enc_secret,
+            pseudonym_global_keys.secret, session2, rekeying_secret,
         )
 
         pseudo = Pseudonym.random()
@@ -96,16 +96,16 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         session1 = EncryptionContext("session1")
         session2 = EncryptionContext("session2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session1, enc_secret,
+            pseudonym_global_keys.secret, session1, rekeying_secret,
         )
         pseudonym_session2_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session2, enc_secret,
+            pseudonym_global_keys.secret, session2, rekeying_secret,
         )
 
         pseudo = Pseudonym.random()
@@ -125,16 +125,16 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifiable_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         session1 = EncryptionContext("session1")
         session2 = EncryptionContext("session2")
 
         attribute_session1_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session1, enc_secret,
+            attribute_global_keys.secret, session1, rekeying_secret,
         )
         attribute_session2_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session2, enc_secret,
+            attribute_global_keys.secret, session2, rekeying_secret,
         )
 
         attr = Attribute.random()
@@ -158,7 +158,7 @@ class TestVerifiable(unittest.TestCase):
         # through JSON and verify only against the commitments of their own transition.
         pseudonym_global_keys = make_pseudonym_global_keys()
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         domain1 = PseudonymizationDomain("domain1")
         domain2 = PseudonymizationDomain("domain2")
@@ -166,16 +166,16 @@ class TestVerifiable(unittest.TestCase):
         session2 = EncryptionContext("session2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session1, enc_secret,
+            pseudonym_global_keys.secret, session1, rekeying_secret,
         )
         pseudonym_session2_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session2, enc_secret,
+            pseudonym_global_keys.secret, session2, rekeying_secret,
         )
         attribute_session1_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session1, enc_secret,
+            attribute_global_keys.secret, session1, rekeying_secret,
         )
         attribute_session2_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session2, enc_secret,
+            attribute_global_keys.secret, session2, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -236,7 +236,7 @@ class TestVerifiable(unittest.TestCase):
         # and `Verifier.verify_record_transcryption` (verifier).
         global_pseudonym_keys = make_pseudonym_global_keys()
         global_attribute_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         domain_a = PseudonymizationDomain("a")
         domain_b = PseudonymizationDomain("b")
@@ -244,10 +244,10 @@ class TestVerifiable(unittest.TestCase):
         session_b = EncryptionContext("sb")
 
         pseudonym_session_a = make_pseudonym_session_keys(
-            global_pseudonym_keys.secret, session_a, enc_secret,
+            global_pseudonym_keys.secret, session_a, rekeying_secret,
         )
         attribute_session_a = make_attribute_session_keys(
-            global_attribute_keys.secret, session_a, enc_secret,
+            global_attribute_keys.secret, session_a, rekeying_secret,
         )
         session_a_keys = SessionKeys(
             PseudonymSessionKeys(
@@ -285,7 +285,7 @@ class TestVerifiable(unittest.TestCase):
 
     def test_verifier_cache_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         domain1 = PseudonymizationDomain("domain1")
         domain2 = PseudonymizationDomain("domain2")
@@ -294,7 +294,7 @@ class TestVerifiable(unittest.TestCase):
         session2 = EncryptionContext("session2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session1, enc_secret,
+            pseudonym_global_keys.secret, session1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -420,7 +420,7 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_tampered_proof_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
         d2 = PseudonymizationDomain("d2")
@@ -428,7 +428,7 @@ class TestVerifiableNegative(unittest.TestCase):
         s2 = EncryptionContext("s2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, s1, enc_secret,
+            pseudonym_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -460,7 +460,7 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_wrong_original_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
         d2 = PseudonymizationDomain("d2")
@@ -468,7 +468,7 @@ class TestVerifiableNegative(unittest.TestCase):
         s2 = EncryptionContext("s2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, s1, enc_secret,
+            pseudonym_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -481,17 +481,17 @@ class TestVerifiableNegative(unittest.TestCase):
         )
 
         # Verify the proof against a *different* ciphertext.
-        other_enc = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
+        other_rekeying = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
 
         verifier = Verifier()
         with self.assertRaises(Exception):
             verifier.verify_pseudonymization(
-                other_enc, proof, pseudonym_session1_keys.public, commitments,
+                other_rekeying, proof, pseudonym_session1_keys.public, commitments,
             )
 
     def test_wrong_commitments_rejected_pseudonymization(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         d1 = PseudonymizationDomain("d1")
         d2 = PseudonymizationDomain("d2")
@@ -500,7 +500,7 @@ class TestVerifiableNegative(unittest.TestCase):
         s2 = EncryptionContext("s2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, s1, enc_secret,
+            pseudonym_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -521,13 +521,13 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_tampered_proof_rejected_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         s1 = EncryptionContext("s1")
         s2 = EncryptionContext("s2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, s1, enc_secret,
+            pseudonym_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -547,13 +547,13 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_wrong_original_rejected_pseudonym_rekey(self):
         pseudonym_global_keys = make_pseudonym_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         s1 = EncryptionContext("s1")
         s2 = EncryptionContext("s2")
 
         pseudonym_session1_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, s1, enc_secret,
+            pseudonym_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -562,21 +562,21 @@ class TestVerifiableNegative(unittest.TestCase):
         enc_pseudo = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
         proof = transcryptor.verifiable_pseudonym_rekey(enc_pseudo, s1, s2)
 
-        other_enc = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
+        other_rekeying = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            verifier.verify_pseudonym_rekey(other_enc, proof, commitments)
+            verifier.verify_pseudonym_rekey(other_rekeying, proof, commitments)
 
     def test_tampered_proof_rejected_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         s1 = EncryptionContext("s1")
         s2 = EncryptionContext("s2")
 
         attribute_session1_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, s1, enc_secret,
+            attribute_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -598,7 +598,7 @@ class TestVerifiableNegative(unittest.TestCase):
     def test_tampered_proof_rejected_record_transcryption(self):
         global_pseudonym_keys = make_pseudonym_global_keys()
         global_attribute_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         d1 = PseudonymizationDomain("a")
         d2 = PseudonymizationDomain("b")
@@ -606,10 +606,10 @@ class TestVerifiableNegative(unittest.TestCase):
         s2 = EncryptionContext("sb")
 
         pseudonym_session_a = make_pseudonym_session_keys(
-            global_pseudonym_keys.secret, s1, enc_secret,
+            global_pseudonym_keys.secret, s1, rekeying_secret,
         )
         attribute_session_a = make_attribute_session_keys(
-            global_attribute_keys.secret, s1, enc_secret,
+            global_attribute_keys.secret, s1, rekeying_secret,
         )
         session_a_keys = SessionKeys(
             PseudonymSessionKeys(
@@ -649,13 +649,13 @@ class TestVerifiableNegative(unittest.TestCase):
 
     def test_wrong_original_rejected_attribute_rekey(self):
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(SECRET)
+        rekeying_secret = RekeyingSecret(SECRET)
 
         s1 = EncryptionContext("s1")
         s2 = EncryptionContext("s2")
 
         attribute_session1_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, s1, enc_secret,
+            attribute_global_keys.secret, s1, rekeying_secret,
         )
 
         transcryptor = Transcryptor("secret", "secret")
@@ -665,11 +665,11 @@ class TestVerifiableNegative(unittest.TestCase):
         enc_attr = encrypt(Attribute.random(), attribute_session1_keys.public)
         proof = transcryptor.verifiable_attribute_rekey(enc_attr, rekey_info)
 
-        other_enc = encrypt(Attribute.random(), attribute_session1_keys.public)
+        other_rekeying = encrypt(Attribute.random(), attribute_session1_keys.public)
 
         verifier = Verifier()
         with self.assertRaises(Exception):
-            verifier.verify_attribute_rekey(other_enc, proof, commitments)
+            verifier.verify_attribute_rekey(other_rekeying, proof, commitments)
 
 
 # ---------------------------------------------------------------------------
@@ -769,7 +769,7 @@ class TestSessionKeyShareBinding(unittest.TestCase):
         transcryptor = DistributedTranscryptor("ps", "es", BlindingFactor(blinding_scalar))
         session = EncryptionContext("session-1")
         commitment = BlindingCommitment(blinding_scalar)
-        secret = EncryptionSecret(b"es")
+        secret = RekeyingSecret(b"es")
 
         share, proof = transcryptor.pseudonym_session_key_share_with_proof(session)
         k = make_pseudonym_rekey_factor(secret, session)

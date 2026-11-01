@@ -16,7 +16,7 @@ const {
     PseudonymizationDomain,
     EncryptionContext,
     PseudonymizationSecret,
-    EncryptionSecret,
+    RekeyingSecret,
     Transcryptor,
     Verifier,
     encryptPseudonym,
@@ -49,7 +49,7 @@ const SECRET = Uint8Array.from(Buffer.from("secret"));
 test('test_verifiable_pseudonymization_simple', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const domain2 = new PseudonymizationDomain("domain2");
@@ -57,9 +57,9 @@ test('test_verifiable_pseudonymization_simple', () => {
     const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
     const pseudonymSession2Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
 
     const pseudo = Pseudonym.random();
     const encPseudo = encryptPseudonym(pseudo, pseudonymSession1Keys.public);
@@ -87,7 +87,7 @@ test('test_verifiable_long_values', () => {
     // through JSON and verify only against the commitments of their own transition.
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const attributeGlobalKeys = makeAttributeGlobalKeys();
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const domain2 = new PseudonymizationDomain("domain2");
@@ -95,13 +95,13 @@ test('test_verifiable_long_values', () => {
     const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
     const pseudonymSession2Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
     const attributeSession1Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, rekeyingSecret);
     const attributeSession2Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const verifier = new Verifier();
@@ -149,15 +149,15 @@ test('test_verifiable_long_values', () => {
 test('test_verifiable_pseudonym_rekey', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const session1 = new EncryptionContext("session1");
     const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
     const pseudonymSession2Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session2, rekeyingSecret);
 
     const pseudo = Pseudonym.random();
     const encPseudo = encryptPseudonym(pseudo, pseudonymSession1Keys.public);
@@ -179,15 +179,15 @@ test('test_verifiable_pseudonym_rekey', () => {
 test('test_verifiable_attribute_rekey', () => {
     const attributeGlobalKeys = makeAttributeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const session1 = new EncryptionContext("session1");
     const session2 = new EncryptionContext("session2");
 
     const attributeSession1Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session1, rekeyingSecret);
     const attributeSession2Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, session2, rekeyingSecret);
 
     const attr = Attribute.random();
     const encAttr = encryptAttribute(attr, attributeSession1Keys.public);
@@ -209,7 +209,7 @@ test('test_verifiable_attribute_rekey', () => {
 test('test_verifier_cache_pseudonymization', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const domain1 = new PseudonymizationDomain("domain1");
     const domain2 = new PseudonymizationDomain("domain2");
@@ -218,7 +218,7 @@ test('test_verifier_cache_pseudonymization', () => {
     const session2 = new EncryptionContext("session2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, session1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const info = transcryptor.pseudonymizationInfo(domain1, domain2, session1, session2);
@@ -258,7 +258,7 @@ test('test_verifier_cache_pseudonymization', () => {
 test('tampered_proof_rejected_pseudonymization', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const d1 = new PseudonymizationDomain("d1");
     const d2 = new PseudonymizationDomain("d2");
@@ -266,7 +266,7 @@ test('tampered_proof_rejected_pseudonymization', () => {
     const s2 = new EncryptionContext("s2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const info = transcryptor.pseudonymizationInfo(d1, d2, s1, s2);
@@ -296,7 +296,7 @@ test('tampered_proof_rejected_pseudonymization', () => {
 test('wrong_original_rejected_pseudonymization', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const d1 = new PseudonymizationDomain("d1");
     const d2 = new PseudonymizationDomain("d2");
@@ -304,7 +304,7 @@ test('wrong_original_rejected_pseudonymization', () => {
     const s2 = new EncryptionContext("s2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const info = transcryptor.pseudonymizationInfo(d1, d2, s1, s2);
@@ -314,12 +314,12 @@ test('wrong_original_rejected_pseudonymization', () => {
     const proof = transcryptor.verifiablePseudonymize(encPseudo, info, pseudonymSession1Keys.public);
 
     // Verify the proof against a *different* ciphertext.
-    const otherEnc = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
+    const otherRekeying = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
 
     const verifier = new Verifier();
     expect(() => {
         verifier.verifyPseudonymization(
-            otherEnc, proof, pseudonymSession1Keys.public, commitments,
+            otherRekeying, proof, pseudonymSession1Keys.public, commitments,
         );
     }).toThrow();
 });
@@ -327,7 +327,7 @@ test('wrong_original_rejected_pseudonymization', () => {
 test('wrong_commitments_rejected_pseudonymization', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const d1 = new PseudonymizationDomain("d1");
     const d2 = new PseudonymizationDomain("d2");
@@ -336,7 +336,7 @@ test('wrong_commitments_rejected_pseudonymization', () => {
     const s2 = new EncryptionContext("s2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const info = transcryptor.pseudonymizationInfo(d1, d2, s1, s2);
@@ -357,13 +357,13 @@ test('wrong_commitments_rejected_pseudonymization', () => {
 test('tampered_proof_rejected_pseudonym_rekey', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const s1 = new EncryptionContext("s1");
     const s2 = new EncryptionContext("s2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const commitments = transcryptor.pseudonymRekeyCommitment(s1, s2);
@@ -385,13 +385,13 @@ test('tampered_proof_rejected_pseudonym_rekey', () => {
 test('wrong_original_rejected_pseudonym_rekey', () => {
     const pseudonymGlobalKeys = makePseudonymGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const s1 = new EncryptionContext("s1");
     const s2 = new EncryptionContext("s2");
 
     const pseudonymSession1Keys =
-        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, encSecret);
+        makePseudonymSessionKeys(pseudonymGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const commitments = transcryptor.pseudonymRekeyCommitment(s1, s2);
@@ -399,24 +399,24 @@ test('wrong_original_rejected_pseudonym_rekey', () => {
     const encPseudo = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
     const proof = transcryptor.verifiablePseudonymRekey(encPseudo, s1, s2);
 
-    const otherEnc = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
+    const otherRekeying = encryptPseudonym(Pseudonym.random(), pseudonymSession1Keys.public);
 
     const verifier = new Verifier();
     expect(() => {
-        verifier.verifyPseudonymRekey(otherEnc, proof, commitments);
+        verifier.verifyPseudonymRekey(otherRekeying, proof, commitments);
     }).toThrow();
 });
 
 test('tampered_proof_rejected_attribute_rekey', () => {
     const attributeGlobalKeys = makeAttributeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const s1 = new EncryptionContext("s1");
     const s2 = new EncryptionContext("s2");
 
     const attributeSession1Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, s1, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const rekeyInfo = transcryptor.attributeRekeyInfo(s1, s2);
@@ -439,13 +439,13 @@ test('tampered_proof_rejected_attribute_rekey', () => {
 test('wrong_original_rejected_attribute_rekey', () => {
     const attributeGlobalKeys = makeAttributeGlobalKeys();
     const pseudoSecret = new PseudonymizationSecret(SECRET);
-    const encSecret = new EncryptionSecret(SECRET);
+    const rekeyingSecret = new RekeyingSecret(SECRET);
 
     const s1 = new EncryptionContext("s1");
     const s2 = new EncryptionContext("s2");
 
     const attributeSession1Keys =
-        makeAttributeSessionKeys(attributeGlobalKeys.secret, s1, encSecret);
+        makeAttributeSessionKeys(attributeGlobalKeys.secret, s1, rekeyingSecret);
 
     const transcryptor = new Transcryptor("secret", "secret");
     const rekeyInfo = transcryptor.attributeRekeyInfo(s1, s2);
@@ -454,11 +454,11 @@ test('wrong_original_rejected_attribute_rekey', () => {
     const encAttr = encryptAttribute(Attribute.random(), attributeSession1Keys.public);
     const proof = transcryptor.verifiableAttributeRekey(encAttr, rekeyInfo);
 
-    const otherEnc = encryptAttribute(Attribute.random(), attributeSession1Keys.public);
+    const otherRekeying = encryptAttribute(Attribute.random(), attributeSession1Keys.public);
 
     const verifier = new Verifier();
     expect(() => {
-        verifier.verifyAttributeRekey(otherEnc, proof, commitments);
+        verifier.verifyAttributeRekey(otherRekeying, proof, commitments);
     }).toThrow();
 });
 
@@ -608,7 +608,7 @@ test('distributed_transcryptor_proves_its_shares', () => {
     // `new BlindingFactor` takes the scalar by value, so it comes last.
     const transcryptor = new DistributedTranscryptor("ps", "es", new BlindingFactor(blindingScalar));
     const session = new EncryptionContext("session-1");
-    const secret = new EncryptionSecret(Uint8Array.from(Buffer.from("es")));
+    const secret = new RekeyingSecret(Uint8Array.from(Buffer.from("es")));
 
     const [share, proof] = transcryptor.pseudonymSessionKeyShareWithProof(session);
     const k = makePseudonymRekeyFactor(secret, session);

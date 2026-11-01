@@ -1,7 +1,7 @@
 //! Python bindings for the secrets from which factors are derived.
 
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -29,22 +29,22 @@ impl PyPseudonymizationSecret {
     }
 }
 
-/// Encryption secret used to derive rekey factors from encryption contexts.
+/// Rekeying secret used to derive rekey factors from encryption contexts.
 /// A secret is a byte array of arbitrary length.
 #[derive(Clone, Debug)]
-#[pyclass(name = "EncryptionSecret", from_py_object)]
-pub struct PyEncryptionSecret(pub(crate) EncryptionSecret);
+#[pyclass(name = "RekeyingSecret", from_py_object)]
+pub struct PyRekeyingSecret(pub(crate) RekeyingSecret);
 
 #[pymethods]
-impl PyEncryptionSecret {
+impl PyRekeyingSecret {
     #[new]
     fn new(data: Vec<u8>) -> PyResult<Self> {
-        Ok(Self(EncryptionSecret::from(checked(data)?)))
+        Ok(Self(RekeyingSecret::from(checked(data)?)))
     }
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPseudonymizationSecret>()?;
-    m.add_class::<PyEncryptionSecret>()?;
+    m.add_class::<PyRekeyingSecret>()?;
     Ok(())
 }

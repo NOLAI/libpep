@@ -234,7 +234,7 @@ mod tests {
     use crate::contexts::EncryptionContext;
     use crate::data::json::data::PepJsonValue;
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::factors::EncryptionSecret;
+    use crate::factors::RekeyingSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,
@@ -245,13 +245,13 @@ mod tests {
         let mut rng = rand::rng();
         let (_, attr_global_secret) = make_attribute_global_keys(&mut rng);
         let (_, pseudo_global_secret) = make_pseudonym_global_keys(&mut rng);
-        let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
+        let rekeying_secret = RekeyingSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
 
         let (attr_public, attr_secret) =
-            make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+            make_attribute_session_keys(&attr_global_secret, &session, &rekeying_secret);
         let (pseudo_public, pseudo_secret) =
-            make_pseudonym_session_keys(&pseudo_global_secret, &session, &enc_secret);
+            make_pseudonym_session_keys(&pseudo_global_secret, &session, &rekeying_secret);
 
         SessionKeys {
             attribute: AttributeSessionKeys {

@@ -2,7 +2,7 @@
 
 use derive_more::{Deref, From, Into};
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use wasm_bindgen::prelude::*;
 
 /// The factor derivation needs the secret shorter than 2^16 bytes.
@@ -36,23 +36,23 @@ impl WASMPseudonymizationSecret {
     }
 }
 
-/// Encryption secret used to derive rekey factors from encryption contexts.
+/// Rekeying secret used to derive rekey factors from encryption contexts.
 /// A secret is a byte array of arbitrary length.
 #[derive(Clone, Debug, From, Into, Deref)]
-#[wasm_bindgen(js_name = EncryptionSecret)]
-pub struct WASMEncryptionSecret(pub(crate) EncryptionSecret);
+#[wasm_bindgen(js_name = RekeyingSecret)]
+pub struct WASMRekeyingSecret(pub(crate) RekeyingSecret);
 
-#[wasm_bindgen(js_class = "EncryptionSecret")]
-impl WASMEncryptionSecret {
-    /// Create a new encryption secret from bytes.
+#[wasm_bindgen(js_class = "RekeyingSecret")]
+impl WASMRekeyingSecret {
+    /// Create a new rekeying secret from bytes.
     #[wasm_bindgen(constructor)]
-    pub fn new(secret: Vec<u8>) -> Result<WASMEncryptionSecret, JsError> {
-        Ok(Self(EncryptionSecret::from(checked(secret)?)))
+    pub fn new(secret: Vec<u8>) -> Result<WASMRekeyingSecret, JsError> {
+        Ok(Self(RekeyingSecret::from(checked(secret)?)))
     }
 
-    /// Create a new encryption secret from bytes (static method).
+    /// Create a new rekeying secret from bytes (static method).
     #[wasm_bindgen(js_name = from)]
-    pub fn wasm_from(secret: Vec<u8>) -> Result<WASMEncryptionSecret, JsError> {
+    pub fn wasm_from(secret: Vec<u8>) -> Result<WASMRekeyingSecret, JsError> {
         Self::new(secret)
     }
 }

@@ -14,7 +14,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
     let mut rng = rand::rng();
     let (_global_public, global_secret) = make_pseudonym_global_keys(&mut rng);
     let pseudo_secret = PseudonymizationSecret::from("test-secret".as_bytes().to_vec());
-    let enc_secret = EncryptionSecret::from("enc-secret".as_bytes().to_vec());
+    let rekeying_secret = RekeyingSecret::from("enc-secret".as_bytes().to_vec());
 
     // Setup domains and contexts
     let domain_a = PseudonymizationDomain::from("domain-a");
@@ -23,7 +23,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
 
     // Create session keys
     let (session_public, session_secret) =
-        make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
+        make_pseudonym_session_keys(&global_secret, &session, &rekeying_secret);
 
     // Original string to encrypt and pseudonymize
     let original_string = "This is a very long id that will be pseudonymized";
@@ -44,7 +44,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         &session,
         &session,
         &pseudo_secret,
-        &enc_secret,
+        &rekeying_secret,
     );
 
     // Step 4: Pseudonymize (transform) the encrypted pseudonyms
@@ -81,7 +81,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         &session,
         &session,
         &pseudo_secret,
-        &enc_secret,
+        &rekeying_secret,
     );
 
     let reverse_transformed: Vec<EncryptedPseudonym> = re_encrypted_pseudonyms

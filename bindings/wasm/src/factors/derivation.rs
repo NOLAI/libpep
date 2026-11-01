@@ -1,7 +1,7 @@
 //! WASM bindings for deriving factors from secrets, sessions and domains.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
+use crate::factors::secrets::{WASMPseudonymizationSecret, WASMRekeyingSecret};
 use crate::factors::types::{
     WASMAttributeRekeyFactor, WASMPseudonymRekeyFactor, WASMReshuffleFactor,
 };
@@ -10,19 +10,19 @@ use libpep::factors::{
 };
 use wasm_bindgen::prelude::*;
 
-/// Derive the pseudonym rekey factor of a session from an encryption secret.
+/// Derive the pseudonym rekey factor of a session from an rekeying secret.
 #[wasm_bindgen(js_name = makePseudonymRekeyFactor)]
 pub fn wasm_make_pseudonym_rekey_factor(
-    secret: &WASMEncryptionSecret,
+    secret: &WASMRekeyingSecret,
     session: &WASMEncryptionContext,
 ) -> WASMPseudonymRekeyFactor {
     make_pseudonym_rekey_factor(&secret.0, &session.0).into()
 }
 
-/// Derive the attribute rekey factor of a session from an encryption secret.
+/// Derive the attribute rekey factor of a session from an rekeying secret.
 #[wasm_bindgen(js_name = makeAttributeRekeyFactor)]
 pub fn wasm_make_attribute_rekey_factor(
-    secret: &WASMEncryptionSecret,
+    secret: &WASMRekeyingSecret,
     session: &WASMEncryptionContext,
 ) -> WASMAttributeRekeyFactor {
     make_attribute_rekey_factor(&secret.0, &session.0).into()

@@ -13,11 +13,11 @@ pub type Secret = Box<[u8]>;
 #[debug("PseudonymizationSecret([redacted])")]
 pub struct PseudonymizationSecret(pub(crate) Secret);
 
-/// Encryption secret used to derive rekey factors from an
+/// Rekeying secret used to derive rekey factors from an
 /// [`EncryptionContext`](crate::contexts::EncryptionContext).
 #[derive(Clone, zeroize::Zeroize, derive_more::Debug)]
-#[debug("EncryptionSecret([redacted])")]
-pub struct EncryptionSecret(pub(crate) Secret);
+#[debug("RekeyingSecret([redacted])")]
+pub struct RekeyingSecret(pub(crate) Secret);
 
 impl Drop for PseudonymizationSecret {
     fn drop(&mut self) {
@@ -25,14 +25,14 @@ impl Drop for PseudonymizationSecret {
     }
 }
 
-impl Drop for EncryptionSecret {
+impl Drop for RekeyingSecret {
     fn drop(&mut self) {
         zeroize::Zeroize::zeroize(self);
     }
 }
 
 impl zeroize::ZeroizeOnDrop for PseudonymizationSecret {}
-impl zeroize::ZeroizeOnDrop for EncryptionSecret {}
+impl zeroize::ZeroizeOnDrop for RekeyingSecret {}
 
 macro_rules! impl_secret {
     ($t:ident) => {
@@ -64,7 +64,7 @@ macro_rules! impl_secret {
 }
 
 impl_secret!(PseudonymizationSecret);
-impl_secret!(EncryptionSecret);
+impl_secret!(RekeyingSecret);
 
 #[cfg(test)]
 mod zeroize_tests {
@@ -73,7 +73,7 @@ mod zeroize_tests {
 
     #[test]
     fn wiping_a_secret_clears_its_bytes() {
-        let mut secret = EncryptionSecret::from("a secret".as_bytes());
+        let mut secret = RekeyingSecret::from("a secret".as_bytes());
         secret.zeroize();
         assert!(secret.as_bytes().iter().all(|&b| b == 0));
     }

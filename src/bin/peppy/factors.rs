@@ -23,9 +23,9 @@ pub enum Factors {
     },
     /// The rekey factor of an encryption context.
     Rekey {
-        /// The transcryptor's encryption secret.
+        /// The transcryptor's rekeying secret.
         #[arg(long)]
-        encryption_secret: String,
+        rekeying_secret: String,
         /// The encryption context (session); omit for the global context.
         #[arg(long)]
         context: Option<String>,
@@ -47,9 +47,9 @@ pub struct TransitionArgs {
     /// The transcryptor's pseudonymization secret.
     #[arg(long)]
     pseudonymization_secret: String,
-    /// The transcryptor's encryption secret.
+    /// The transcryptor's rekeying secret.
     #[arg(long)]
-    encryption_secret: String,
+    rekeying_secret: String,
     /// The pseudonymization domain the data comes from.
     #[arg(long)]
     from_domain: String,
@@ -64,12 +64,12 @@ pub struct TransitionArgs {
     to_context: Option<String>,
 }
 
-/// A rekey transition of attributes: the transcryptor's encryption secret and the contexts.
+/// A rekey transition of attributes: the transcryptor's rekeying secret and the contexts.
 #[derive(Args)]
 pub struct AttributeTransitionArgs {
-    /// The transcryptor's encryption secret.
+    /// The transcryptor's rekeying secret.
     #[arg(long)]
-    encryption_secret: String,
+    rekeying_secret: String,
     /// The encryption context the data comes from; omit for the global context.
     #[arg(long)]
     from_context: Option<String>,
@@ -83,7 +83,7 @@ impl AttributeTransitionArgs {
         Ok(AttributeRekeyInfo::new(
             &io::context(self.from_context.as_deref())?,
             &io::context(self.to_context.as_deref())?,
-            &io::encryption_secret(&self.encryption_secret)?,
+            &io::rekeying_secret(&self.rekeying_secret)?,
         ))
     }
 }
@@ -96,7 +96,7 @@ impl TransitionArgs {
             &io::context(self.from_context.as_deref())?,
             &io::context(self.to_context.as_deref())?,
             &io::pseudonymization_secret(&self.pseudonymization_secret)?,
-            &io::encryption_secret(&self.encryption_secret)?,
+            &io::rekeying_secret(&self.rekeying_secret)?,
         ))
     }
 }
@@ -114,11 +114,11 @@ pub fn run(cmd: Factors, out: &mut Output) -> Result<()> {
             out.value("reshuffle_factor", factor.scalar().to_hex());
         }
         Factors::Rekey {
-            encryption_secret,
+            rekeying_secret,
             context,
             attribute,
         } => {
-            let secret = io::encryption_secret(&encryption_secret)?;
+            let secret = io::rekeying_secret(&rekeying_secret)?;
             let context = io::context(context.as_deref())?;
             let factor = if attribute {
                 make_attribute_rekey_factor(&secret, &context).scalar()

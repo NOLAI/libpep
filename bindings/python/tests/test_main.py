@@ -21,7 +21,7 @@ from libpep.keys import (
 )
 from libpep.factors import (
     PseudonymizationSecret,
-    EncryptionSecret,
+    RekeyingSecret,
     PseudonymizationInfo,
     AttributeRekeyInfo,
     TranscryptionInfo,
@@ -42,15 +42,15 @@ class TestHighLevel(unittest.TestCase):
         # Generate global keys
         pseudonym_global_keys = make_pseudonym_global_keys()
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(b"test_secret")
+        rekeying_secret = RekeyingSecret(b"test_secret")
 
         # Create session keys
         session = EncryptionContext("test_session")
         pseudonym_session_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session, enc_secret
+            pseudonym_global_keys.secret, session, rekeying_secret
         )
         attribute_session_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session, enc_secret
+            attribute_global_keys.secret, session, rekeying_secret
         )
 
         # Create and encrypt pseudonym
@@ -150,14 +150,14 @@ class TestHighLevel(unittest.TestCase):
         # Setup
         pseudonym_global_keys = make_pseudonym_global_keys()
         attribute_global_keys = make_attribute_global_keys()
-        enc_secret = EncryptionSecret(b"test_secret")
+        rekeying_secret = RekeyingSecret(b"test_secret")
         session = EncryptionContext("test_session")
 
         pseudonym_session_keys = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, session, enc_secret
+            pseudonym_global_keys.secret, session, rekeying_secret
         )
         attribute_session_keys = make_attribute_session_keys(
-            attribute_global_keys.secret, session, enc_secret
+            attribute_global_keys.secret, session, rekeying_secret
         )
 
         # Create encrypted pseudonym
@@ -194,7 +194,7 @@ class TestHighLevel(unittest.TestCase):
     def test_key_generation_consistency(self):
         """Test that key generation is consistent"""
         secret = b"consistent_secret"
-        enc_secret = EncryptionSecret(secret)
+        rekeying_secret = RekeyingSecret(secret)
 
         # Generate same global keys multiple times (they should be random)
         pseudo_keys1 = make_pseudonym_global_keys()
@@ -208,10 +208,10 @@ class TestHighLevel(unittest.TestCase):
         # Generate same session keys with same inputs (should be deterministic)
         pseudonym_global_keys = make_pseudonym_global_keys()
         session1a = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session1"), rekeying_secret
         )
         session1b = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session1"), enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session1"), rekeying_secret
         )
 
         self.assertEqual(
@@ -220,7 +220,7 @@ class TestHighLevel(unittest.TestCase):
 
         # Different session names should give different keys
         session2 = make_pseudonym_session_keys(
-            pseudonym_global_keys.secret, EncryptionContext("session2"), enc_secret
+            pseudonym_global_keys.secret, EncryptionContext("session2"), rekeying_secret
         )
         self.assertNotEqual(
             session1a.public.to_point().to_hex(), session2.public.to_point().to_hex()

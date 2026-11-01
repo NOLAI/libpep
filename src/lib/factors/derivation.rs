@@ -21,7 +21,7 @@
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
-use crate::factors::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
+use crate::factors::secrets::{PseudonymizationSecret, RekeyingSecret, Secret};
 use crate::factors::types::*;
 #[cfg(feature = "legacy")]
 use hmac::{Hmac, KeyInit, Mac};
@@ -45,7 +45,7 @@ pub const LABEL_RESHUFFLE: u8 = 0x03;
 /// Derive a pseudonym rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
 pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     session: &EncryptionContext,
 ) -> PseudonymRekeyFactor<C::Group> {
     match session {
@@ -66,7 +66,7 @@ pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
 ///
 /// See [`make_pseudonym_rekey_factor_generic`] for another ciphersuite.
 pub fn make_pseudonym_rekey_factor(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     session: &EncryptionContext,
 ) -> PseudonymRekeyFactor {
     make_pseudonym_rekey_factor_generic::<Ristretto255Sha512>(secret, session)
@@ -75,7 +75,7 @@ pub fn make_pseudonym_rekey_factor(
 /// Derive an attribute rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
 pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     session: &EncryptionContext,
 ) -> AttributeRekeyFactor<C::Group> {
     match session {
@@ -96,7 +96,7 @@ pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
 ///
 /// See [`make_attribute_rekey_factor_generic`] for another ciphersuite.
 pub fn make_attribute_rekey_factor(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     session: &EncryptionContext,
 ) -> AttributeRekeyFactor {
     make_attribute_rekey_factor_generic::<Ristretto255Sha512>(secret, session)
@@ -173,7 +173,7 @@ pub(crate) fn make_factor<C: Ciphersuite>(
 /// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
 pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     context: &EncryptionContext,
 ) -> PseudonymRekeyFactor<C::Group> {
     match context {
@@ -191,7 +191,7 @@ pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
 /// Derive an attribute rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
 pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
-    secret: &EncryptionSecret,
+    secret: &RekeyingSecret,
     context: &EncryptionContext,
 ) -> AttributeRekeyFactor<C::Group> {
     match context {
@@ -259,14 +259,14 @@ impl<G: Group> PseudonymizationInfo<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
         let s_from =
             make_pseudonymization_factor_generic::<C>(pseudonymization_secret, domain_from);
         let s_to = make_pseudonymization_factor_generic::<C>(pseudonymization_secret, domain_to);
         Self {
             s: ReshuffleFactor(C::Group::scalar_inverse(&s_from.0) * s_to.0),
-            k: PseudonymRekeyInfo::new_generic::<C>(session_from, session_to, encryption_secret).k,
+            k: PseudonymRekeyInfo::new_generic::<C>(session_from, session_to, rekeying_secret).k,
         }
     }
 }
@@ -281,7 +281,7 @@ impl PseudonymizationInfo {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
         Self::new_generic::<Ristretto255Sha512>(
             domain_from,
@@ -289,7 +289,7 @@ impl PseudonymizationInfo {
             session_from,
             session_to,
             pseudonymization_secret,
-            encryption_secret,
+            rekeying_secret,
         )
     }
 }
@@ -299,10 +299,10 @@ impl<G: Group> PseudonymRekeyInfo<G> {
     pub fn new_generic<C: Ciphersuite<Group = G>>(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
-        let k_from = make_pseudonym_rekey_factor_generic::<C>(encryption_secret, session_from);
-        let k_to = make_pseudonym_rekey_factor_generic::<C>(encryption_secret, session_to);
+        let k_from = make_pseudonym_rekey_factor_generic::<C>(rekeying_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor_generic::<C>(rekeying_secret, session_to);
         Self {
             k: PseudonymRekeyFactor(C::Group::scalar_inverse(&k_from.0) * k_to.0),
         }
@@ -316,9 +316,9 @@ impl PseudonymRekeyInfo {
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
-        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, encryption_secret)
+        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, rekeying_secret)
     }
 }
 
@@ -327,10 +327,10 @@ impl<G: Group> AttributeRekeyInfo<G> {
     pub fn new_generic<C: Ciphersuite<Group = G>>(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
-        let k_from = make_attribute_rekey_factor_generic::<C>(encryption_secret, session_from);
-        let k_to = make_attribute_rekey_factor_generic::<C>(encryption_secret, session_to);
+        let k_from = make_attribute_rekey_factor_generic::<C>(rekeying_secret, session_from);
+        let k_to = make_attribute_rekey_factor_generic::<C>(rekeying_secret, session_to);
         Self {
             k: AttributeRekeyFactor(C::Group::scalar_inverse(&k_from.0) * k_to.0),
         }
@@ -344,9 +344,9 @@ impl AttributeRekeyInfo {
     pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
-        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, encryption_secret)
+        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, rekeying_secret)
     }
 }
 
@@ -358,7 +358,7 @@ impl<G: Group> TranscryptionInfo<G> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
         Self {
             pseudonym: PseudonymizationInfo::new_generic::<C>(
@@ -367,12 +367,12 @@ impl<G: Group> TranscryptionInfo<G> {
                 session_from,
                 session_to,
                 pseudonymization_secret,
-                encryption_secret,
+                rekeying_secret,
             ),
             attribute: AttributeRekeyInfo::new_generic::<C>(
                 session_from,
                 session_to,
-                encryption_secret,
+                rekeying_secret,
             ),
         }
     }
@@ -388,7 +388,7 @@ impl TranscryptionInfo {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         pseudonymization_secret: &PseudonymizationSecret,
-        encryption_secret: &EncryptionSecret,
+        rekeying_secret: &RekeyingSecret,
     ) -> Self {
         Self::new_generic::<Ristretto255Sha512>(
             domain_from,
@@ -396,7 +396,7 @@ impl TranscryptionInfo {
             session_from,
             session_to,
             pseudonymization_secret,
-            encryption_secret,
+            rekeying_secret,
         )
     }
 }
@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn info_is_the_factor_ratio() {
-        let secret = EncryptionSecret::from(b"secret".to_vec());
+        let secret = RekeyingSecret::from(b"secret".to_vec());
         let from = EncryptionContext::from("from");
         let to = EncryptionContext::from("to");
         let info = PseudonymRekeyInfo::new(&from, &to, &secret);

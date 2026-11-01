@@ -9,7 +9,7 @@ use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
-use crate::factors::{EncryptionSecret, PseudonymizationSecret};
+use crate::factors::{PseudonymizationSecret, RekeyingSecret};
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
@@ -22,7 +22,7 @@ pub use crate::contexts::TranscryptorId;
 #[derive(Clone)]
 pub struct Transcryptor<C: Ciphersuite = Ristretto255Sha512> {
     pub(crate) pseudonymization_secret: PseudonymizationSecret,
-    pub(crate) rekeying_secret: EncryptionSecret,
+    pub(crate) rekeying_secret: RekeyingSecret,
     pub(crate) group: PhantomData<C::Group>,
 }
 
@@ -32,7 +32,7 @@ impl Transcryptor {
     /// See [`new_generic`](Transcryptor::new_generic) for another ciphersuite.
     pub fn new(
         pseudonymization_secret: PseudonymizationSecret,
-        rekeying_secret: EncryptionSecret,
+        rekeying_secret: RekeyingSecret,
     ) -> Self {
         Self::new_generic(pseudonymization_secret, rekeying_secret)
     }
@@ -44,7 +44,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
     /// [`Transcryptor::new`] is this function for ristretto255 with SHA-512.
     pub fn new_generic(
         pseudonymization_secret: PseudonymizationSecret,
-        rekeying_secret: EncryptionSecret,
+        rekeying_secret: RekeyingSecret,
     ) -> Self {
         Self {
             pseudonymization_secret,
@@ -65,7 +65,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
     ///
     /// Exposes secret material; intended for bindings and embedding code that
     /// manages the transcryptor's configuration.
-    pub fn rekeying_secret(&self) -> &EncryptionSecret {
+    pub fn rekeying_secret(&self) -> &RekeyingSecret {
         &self.rekeying_secret
     }
 

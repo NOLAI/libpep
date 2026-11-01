@@ -18,9 +18,9 @@ test('n_pep', async () => {
     // Initialize systems.
     const systems = Array.from({ length: n }, (_, i) => {
         const pseudonymizationSecret = `secret-${i}`;
-        const encryptionSecret = `secret-${i}`;
+        const rekeyingSecret = `secret-${i}`;
         const blindingFactor = blindingFactors[i];
-        return new DistributedTranscryptor(pseudonymizationSecret, encryptionSecret, blindingFactor);
+        return new DistributedTranscryptor(pseudonymizationSecret, rekeyingSecret, blindingFactor);
     });
 
     // Create pseudonymization domains and encryption contexts.

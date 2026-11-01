@@ -6,7 +6,7 @@
 //! - [`types`]: Factor types (`ReshuffleFactor`, `PseudonymRekeyFactor`, `AttributeRekeyFactor`,
 //!   `RerandomizeFactor`) and the info types that bundle the factors for one transcryption
 //!   (`PseudonymizationInfo`, `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `TranscryptionInfo`)
-//! - [`secrets`]: Secret types (`PseudonymizationSecret`, `EncryptionSecret`) from which factors
+//! - [`secrets`]: Secret types (`PseudonymizationSecret`, `RekeyingSecret`) from which factors
 //!   are derived
 //! - [`derivation`]: Derivation of factors from secrets and contexts
 
@@ -24,7 +24,7 @@ pub use derivation::{
     make_pseudonym_rekey_factor_generic, make_pseudonymization_factor,
     make_pseudonymization_factor_generic,
 };
-pub use secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
+pub use secrets::{PseudonymizationSecret, RekeyingSecret, Secret};
 pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, Factor, PseudonymRekeyFactor, PseudonymRekeyInfo,
     PseudonymizationInfo, RekeyPublicKey, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,

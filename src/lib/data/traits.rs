@@ -24,13 +24,13 @@ use rand_core::{CryptoRng, Rng};
 /// use libpep::contexts::EncryptionContext;
 /// use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
 /// use libpep::elgamal::arithmetic::Ristretto255;
-/// use libpep::factors::EncryptionSecret;
+/// use libpep::factors::RekeyingSecret;
 /// use libpep::keys::{make_global_keys, make_session_keys};
 /// use libpep::elgamal::arithmetic::Ristretto255Sha512;
 ///
 /// let rng = &mut rand::rng();
 /// let (_global_public, global_secret) = make_global_keys(rng);
-/// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+/// let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
 /// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 ///

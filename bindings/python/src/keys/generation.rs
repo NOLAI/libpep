@@ -3,7 +3,7 @@
 use super::types::*;
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
-use crate::factors::secrets::PyEncryptionSecret;
+use crate::factors::secrets::PyRekeyingSecret;
 use crate::keys::types::PyAttributeSessionPublicKey;
 use crate::keys::types::PyPseudonymSessionPublicKey;
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
@@ -34,13 +34,13 @@ pub fn py_make_attribute_global_keys() -> PyAttributeGlobalKeyPair {
     }
 }
 
-/// Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
+/// Generate pseudonym session keys from a [`PyPseudonymGlobalSecretKey`], a session and an [`PyRekeyingSecret`].
 #[pyfunction]
 #[pyo3(name = "make_pseudonym_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_pseudonym_session_keys(
     global_key: &PyPseudonymGlobalSecretKey,
     session: &crate::contexts::PyEncryptionContext,
-    secret: &PyEncryptionSecret,
+    secret: &PyRekeyingSecret,
 ) -> PyPseudonymSessionKeyPair {
     let (public, secret_key) = make_pseudonym_session_keys(
         &PseudonymGlobalSecretKey::from_scalar(*global_key.0),
@@ -53,13 +53,13 @@ pub fn py_make_pseudonym_session_keys(
     }
 }
 
-/// Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyEncryptionSecret`].
+/// Generate attribute session keys from a [`PyAttributeGlobalSecretKey`], a session and an [`PyRekeyingSecret`].
 #[pyfunction]
 #[pyo3(name = "make_attribute_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_attribute_session_keys(
     global_key: &PyAttributeGlobalSecretKey,
     session: &crate::contexts::PyEncryptionContext,
-    secret: &PyEncryptionSecret,
+    secret: &PyRekeyingSecret,
 ) -> PyAttributeSessionKeyPair {
     let (public, secret_key) = make_attribute_session_keys(
         &AttributeGlobalSecretKey::from_scalar(*global_key.0),
@@ -94,13 +94,13 @@ pub fn py_make_global_keys() -> (PyGlobalPublicKeys, PyGlobalSecretKeys) {
     )
 }
 
-/// Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyEncryptionSecret`].
+/// Generate session keys for both pseudonyms and attributes from a [`PyGlobalSecretKeys`], a session and an [`PyRekeyingSecret`].
 #[pyfunction]
 #[pyo3(name = "make_session_keys", signature = (global_key, session, secret))]
 pub fn py_make_session_keys(
     global_key: &PyGlobalSecretKeys,
     session: &crate::contexts::PyEncryptionContext,
-    secret: &PyEncryptionSecret,
+    secret: &PyRekeyingSecret,
 ) -> PySessionKeys {
     let keys = make_session_keys(
         &GlobalSecretKeys {

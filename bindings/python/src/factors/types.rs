@@ -3,7 +3,7 @@
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::PyScalarNonZero;
-use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
+use crate::factors::secrets::{PyPseudonymizationSecret, PyRekeyingSecret};
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
@@ -98,7 +98,7 @@ impl PyPseudonymizationInfo {
     /// Derive the info from domains, sessions and secrets within the protocol `context`
     /// (the default context if omitted).
     #[new]
-    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret))]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, rekeying_secret))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
@@ -106,7 +106,7 @@ impl PyPseudonymizationInfo {
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
-        encryption_secret: &PyEncryptionSecret,
+        rekeying_secret: &PyRekeyingSecret,
     ) -> Self {
         Self(PseudonymizationInfo::new(
             &domain_from.0,
@@ -114,7 +114,7 @@ impl PyPseudonymizationInfo {
             &session_from.0,
             &session_to.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -161,19 +161,19 @@ pub struct PyPseudonymRekeyInfo(pub(crate) PseudonymRekeyInfo);
 
 #[pymethods]
 impl PyPseudonymRekeyInfo {
-    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// Derive the info from sessions and the rekeying secret within the protocol `context`
     /// (the default context if omitted).
     #[new]
-    #[pyo3(signature = (session_from, session_to, encryption_secret))]
+    #[pyo3(signature = (session_from, session_to, rekeying_secret))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-        encryption_secret: &PyEncryptionSecret,
+        rekeying_secret: &PyRekeyingSecret,
     ) -> Self {
         Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -208,19 +208,19 @@ pub struct PyAttributeRekeyInfo(pub(crate) AttributeRekeyInfo);
 
 #[pymethods]
 impl PyAttributeRekeyInfo {
-    /// Derive the info from sessions and the encryption secret within the protocol `context`
+    /// Derive the info from sessions and the rekeying secret within the protocol `context`
     /// (the default context if omitted).
     #[new]
-    #[pyo3(signature = (session_from, session_to, encryption_secret))]
+    #[pyo3(signature = (session_from, session_to, rekeying_secret))]
     fn new(
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
-        encryption_secret: &PyEncryptionSecret,
+        rekeying_secret: &PyRekeyingSecret,
     ) -> Self {
         Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 
@@ -260,7 +260,7 @@ impl PyTranscryptionInfo {
     /// Derive the info from domains, sessions and secrets within the protocol `context`
     /// (the default context if omitted).
     #[new]
-    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, encryption_secret))]
+    #[pyo3(signature = (domain_from, domain_to, session_from, session_to, pseudonymization_secret, rekeying_secret))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         domain_from: &PyPseudonymizationDomain,
@@ -268,7 +268,7 @@ impl PyTranscryptionInfo {
         session_from: &PyEncryptionContext,
         session_to: &PyEncryptionContext,
         pseudonymization_secret: &PyPseudonymizationSecret,
-        encryption_secret: &PyEncryptionSecret,
+        rekeying_secret: &PyRekeyingSecret,
     ) -> Self {
         Self(TranscryptionInfo::new(
             &domain_from.0,
@@ -276,7 +276,7 @@ impl PyTranscryptionInfo {
             &session_from.0,
             &session_to.0,
             &pseudonymization_secret.0,
-            &encryption_secret.0,
+            &rekeying_secret.0,
         ))
     }
 

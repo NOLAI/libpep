@@ -16,7 +16,7 @@ use crate::keys::distribution::PyBlindingFactor;
 use crate::keys::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
 use derive_more::{Deref, From, Into};
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use libpep::keys::distribution::BlindingFactor;
 use libpep::transcryptor::DistributedTranscryptor;
 use pyo3::exceptions::PyTypeError;
@@ -43,7 +43,7 @@ impl PyDistributedTranscryptor {
     ) -> Self {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymization_secret.as_bytes().to_vec()),
-            EncryptionSecret::from(rekeying_secret.as_bytes().to_vec()),
+            RekeyingSecret::from(rekeying_secret.as_bytes().to_vec()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
     }

@@ -59,7 +59,7 @@ let rng = &mut rand::rng();
 let (_global_public, global_secret) = make_global_keys(rng);
 let transcryptor = Transcryptor::new(
     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
-    EncryptionSecret::from(b"encryption secret".to_vec()),
+    RekeyingSecret::from(b"rekeying secret".to_vec()),
 );
 
 // User A (a sender) and user B (a receiver) each work in their own pseudonymization domain and
@@ -249,7 +249,7 @@ Optional features:
 The library uses the Ristretto group over Curve25519 as implemented by [`curve25519-dalek`](https://docs.rs/curve25519-dalek), offering 128 bits of security; other prime-order groups can be used by implementing the `Group` trait, and a hash for them by implementing the `Ciphersuite` trait.
 Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinkability on the pseudorandomness of the DH-PRF evaluated by reshuffling; both hold under the DDH assumption in the Ristretto group.
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
-Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `EncryptionSecret` are zeroized on drop.
+Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `RekeyingSecret` are zeroized on drop.
 Distribution costs availability: all `n` transcryptors must take part in a transcryption.
 The library has been designed for production use but has not undergone a formal security audit.
 
@@ -280,14 +280,14 @@ The quick start on the command line:
 ```bash
 peppy keys global generate --json > global.json
 peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-a --json > session-a.json
+    --rekeying-secret "rekeying secret" --context session-a --json > session-a.json
 peppy keys session derive --pseudonym-global-secret "$(jq -r .pseudonym_secret_key global.json)" \
-    --encryption-secret "encryption secret" --context session-b --json > session-b.json
+    --rekeying-secret "rekeying secret" --context session-b --json > session-b.json
 
 value=$(peppy pseudonym encode patient-42)
 encrypted=$(peppy pseudonym encrypt --key "$(jq -r .pseudonym_public_key session-a.json)" "$value")
 transcrypted=$(peppy pseudonym transcrypt \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --pseudonymization-secret "pseudonymization secret" --rekeying-secret "rekeying secret" \
     --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
     --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json | jq -r .ciphertext)
 peppy pseudonym decrypt --key "$(jq -r .pseudonym_secret_key session-b.json)" "$transcrypted"
@@ -298,11 +298,11 @@ A proof of `pseudonym transcrypt` is a pseudonymization proof, a proof of `attri
 
 ```bash
 peppy factors commitments \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --pseudonymization-secret "pseudonymization secret" --rekeying-secret "rekeying secret" \
     --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
     --json > commitments.json
 peppy pseudonym transcrypt --prove \
-    --pseudonymization-secret "pseudonymization secret" --encryption-secret "encryption secret" \
+    --pseudonymization-secret "pseudonymization secret" --rekeying-secret "rekeying secret" \
     --from-domain hospital --to-domain research --from-context session-a --to-context session-b \
     --key "$(jq -r .pseudonym_public_key session-a.json)" "$encrypted" --json > transcrypted.json
 jq -c .proof transcrypted.json > proof.json

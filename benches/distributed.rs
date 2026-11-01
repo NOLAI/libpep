@@ -6,7 +6,7 @@ use libpep::data::simple::{
     Attribute, ElGamalEncryptable, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
 use libpep::factors::RekeyPublicKey;
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use libpep::keys::SessionPublicKeys;
 use libpep::transcryptor::DistributedTranscryptor;
 
@@ -43,13 +43,9 @@ pub fn setup_distributed_system(
         .map(|i| {
             let pseudonymization_secret =
                 PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes());
-            let encryption_secret = EncryptionSecret::from(format!("es-secret-{i}").as_bytes());
+            let rekeying_secret = RekeyingSecret::from(format!("es-secret-{i}").as_bytes());
             let blinding_factor = blinding_factors[i];
-            DistributedTranscryptor::new(
-                pseudonymization_secret,
-                encryption_secret,
-                blinding_factor,
-            )
+            DistributedTranscryptor::new(pseudonymization_secret, rekeying_secret, blinding_factor)
         })
         .collect();
 

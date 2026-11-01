@@ -20,7 +20,7 @@ fn setup() -> (Transcryptor, SessionKeys, EncryptionContext) {
     let (_global_public, global_secret) = make_global_keys(rng);
     let transcryptor = Transcryptor::new(
         PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
-        EncryptionSecret::from(b"encryption secret".to_vec()),
+        RekeyingSecret::from(b"rekeying secret".to_vec()),
     );
     let session = EncryptionContext::from("session-a");
     let keys = make_session_keys(&global_secret, &session, transcryptor.rekeying_secret());

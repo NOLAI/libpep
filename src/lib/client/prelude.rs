@@ -12,12 +12,12 @@
 //! ```
 //! use libpep::prelude::client::*;
 //! // The setup that hands a client its session keys is not part of the client role.
-//! use libpep::factors::EncryptionSecret;
+//! use libpep::factors::RekeyingSecret;
 //! use libpep::keys::{make_global_keys, make_session_keys};
 //!
 //! let rng = &mut rand::rng();
 //! let (_, global_secret) = make_global_keys(rng);
-//! let secret = EncryptionSecret::from(b"secret".to_vec());
+//! let secret = RekeyingSecret::from(b"secret".to_vec());
 //! let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 //!
 //! let client = Client::new(keys);

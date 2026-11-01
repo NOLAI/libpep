@@ -29,7 +29,7 @@ use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use libpep::data::simple::EncryptedAttribute;
 use libpep::data::simple::EncryptedPseudonym;
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
-use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
 use libpep::keys::distribution::BlindingFactor;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PseudonymSessionPublicKey;
@@ -55,7 +55,7 @@ impl WASMDistributedTranscryptor {
     ) -> Self {
         Self(DistributedTranscryptor::new(
             PseudonymizationSecret::from(pseudonymization_secret.as_bytes()),
-            EncryptionSecret::from(rekeying_secret.as_bytes()),
+            RekeyingSecret::from(rekeying_secret.as_bytes()),
             BlindingFactor::from_scalar(*blinding_factor.0.value()),
         ))
     }

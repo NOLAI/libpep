@@ -405,7 +405,7 @@ mod proof_tests {
     use crate::elgamal::arithmetic::scalars::ScalarNonZero;
     use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::factors::{
-        make_attribute_rekey_factor, make_pseudonym_rekey_factor, EncryptionSecret, Factor,
+        make_attribute_rekey_factor, make_pseudonym_rekey_factor, Factor, RekeyingSecret,
     };
     use crate::keys::distribution::BlindingFactor;
 
@@ -419,7 +419,7 @@ mod proof_tests {
     fn shares_with_proof_verify() {
         let mut rng = rand::rng();
         let session = EncryptionContext::from("test-context");
-        let secret = EncryptionSecret::from(b"test-secret".to_vec());
+        let secret = RekeyingSecret::from(b"test-secret".to_vec());
         let blinding = BlindingFactor::<Ristretto255>::random(&mut rng);
         let commitment = BlindingCommitment::new(blinding.value());
         assert_eq!(*commitment.value(), *blinding.value() * G);
@@ -443,7 +443,7 @@ mod proof_tests {
     fn shares_with_proof_reject_unit_blinding() {
         let mut rng = rand::rng();
         let k = make_pseudonym_rekey_factor(
-            &EncryptionSecret::from(b"test-secret".to_vec()),
+            &RekeyingSecret::from(b"test-secret".to_vec()),
             &EncryptionContext::from("test-context"),
         );
         let blinding = BlindingFactor::<Ristretto255>::from_scalar(ScalarNonZero::one());

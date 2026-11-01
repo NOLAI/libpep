@@ -22,7 +22,7 @@ use libpep::elgamal::arithmetic::{
     Ciphersuite, CiphersuiteId, Group, InvertibleEncoding, Ristretto255, Ristretto255Sha512,
 };
 use libpep::factors::{
-    make_pseudonym_rekey_factor_generic, EncryptionSecret, Factor, PseudonymizationSecret,
+    make_pseudonym_rekey_factor_generic, Factor, PseudonymizationSecret, RekeyingSecret,
     TranscryptionInfo,
 };
 use libpep::keys::distribution::make_distributed_global_keys_generic;
@@ -126,16 +126,16 @@ impl Ciphersuite for TestSuite {
     }
 }
 
-fn secrets() -> (PseudonymizationSecret, EncryptionSecret) {
+fn secrets() -> (PseudonymizationSecret, RekeyingSecret) {
     (
         PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
-        EncryptionSecret::from(b"encryption secret".to_vec()),
+        RekeyingSecret::from(b"rekeying secret".to_vec()),
     )
 }
 
 #[test]
 fn the_test_suite_is_a_different_suite() {
-    let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+    let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
     let session = EncryptionContext::from("session");
     // Hashing to the group takes its tag from the suite identifier.
     assert_ne!(
@@ -155,10 +155,10 @@ fn the_test_suite_is_a_different_suite() {
 fn round_trip() {
     let rng = &mut rand::rng();
     let (_public, global_secret) = make_global_keys_generic::<TestGroup, _>(rng);
-    let (pseudonymization_secret, encryption_secret) = secrets();
+    let (pseudonymization_secret, rekeying_secret) = secrets();
     let transcryptor = Transcryptor::<TestSuite>::new_generic(
         pseudonymization_secret.clone(),
-        encryption_secret.clone(),
+        rekeying_secret.clone(),
     );
 
     let (domain_a, session_a) = (
@@ -170,9 +170,9 @@ fn round_trip() {
         EncryptionContext::from("session-b"),
     );
     let keys_a: SessionKeys<TestGroup> =
-        make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &encryption_secret);
+        make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &rekeying_secret);
     let keys_b =
-        make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &encryption_secret);
+        make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &rekeying_secret);
 
     let pseudonym = Pseudonym::<TestGroup>::random(rng);
     let attribute = Attribute::<TestGroup>::random(rng);
@@ -188,7 +188,7 @@ fn round_trip() {
         &session_a,
         &session_b,
         &pseudonymization_secret,
-        &encryption_secret,
+        &rekeying_secret,
     );
     assert_eq!(info, same_info);
 
@@ -239,18 +239,18 @@ fn long_values() {
 
     let rng = &mut rand::rng();
     let (_public, global_secret) = make_global_keys_generic::<TestGroup, _>(rng);
-    let (pseudonymization_secret, encryption_secret) = secrets();
+    let (pseudonymization_secret, rekeying_secret) = secrets();
     let transcryptor =
-        Transcryptor::<TestSuite>::new_generic(pseudonymization_secret, encryption_secret.clone());
+        Transcryptor::<TestSuite>::new_generic(pseudonymization_secret, rekeying_secret.clone());
     let (domain, session_a, session_b) = (
         PseudonymizationDomain::from("hospital"),
         EncryptionContext::from("session-a"),
         EncryptionContext::from("session-b"),
     );
     let keys_a =
-        make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &encryption_secret);
+        make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &rekeying_secret);
     let keys_b =
-        make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &encryption_secret);
+        make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &rekeying_secret);
 
     let pseudonym =
         LongPseudonym::<TestGroup>::from_string_padded("a long identifier of a patient");
@@ -280,7 +280,7 @@ fn distributed() {
         .map(|i| {
             DistributedTranscryptor::<TestSuite>::new_generic(
                 PseudonymizationSecret::from(format!("ps-secret-{i}").as_bytes()),
-                EncryptionSecret::from(format!("es-secret-{i}").as_bytes()),
+                RekeyingSecret::from(format!("es-secret-{i}").as_bytes()),
                 blinding_factors[i],
             )
         })
@@ -346,10 +346,10 @@ mod verifiable {
     fn verified_transcryption() {
         let rng = &mut rand::rng();
         let (_public, global_secret) = make_global_keys_generic::<TestGroup, _>(rng);
-        let (pseudonymization_secret, encryption_secret) = secrets();
+        let (pseudonymization_secret, rekeying_secret) = secrets();
         let transcryptor = Transcryptor::<TestSuite>::new_generic(
             pseudonymization_secret,
-            encryption_secret.clone(),
+            rekeying_secret.clone(),
         );
         let (domain_a, domain_b) = (
             PseudonymizationDomain::from("hospital"),
@@ -360,9 +360,9 @@ mod verifiable {
             EncryptionContext::from("session-b"),
         );
         let keys_a =
-            make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &encryption_secret);
+            make_session_keys_generic::<TestSuite>(&global_secret, &session_a, &rekeying_secret);
         let keys_b =
-            make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &encryption_secret);
+            make_session_keys_generic::<TestSuite>(&global_secret, &session_b, &rekeying_secret);
 
         let record = Record::<TestGroup>::new(
             vec![Pseudonym::random(rng), Pseudonym::random(rng)],
@@ -411,7 +411,7 @@ mod verifiable {
         {
             let other = Transcryptor::<Ristretto255Sha512>::new(
                 PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
-                encryption_secret,
+                rekeying_secret,
             );
             let other_commitments =
                 other.transcryption_commitment(&domain_a, &domain_b, &session_a, &session_b);
@@ -456,7 +456,7 @@ mod verifiable {
         let rng = &mut rand::rng();
         let (_, _, blinding_factors) = make_distributed_global_keys_generic::<TestGroup, _>(1, rng);
         let blinding_factor: BlindingFactor<TestGroup> = blinding_factors[0];
-        let secret = EncryptionSecret::from(b"encryption secret".to_vec());
+        let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
         let factor = make_pseudonym_rekey_factor_generic::<TestSuite>(
             &secret,
             &EncryptionContext::from("session"),
