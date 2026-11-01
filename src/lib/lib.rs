@@ -1,13 +1,18 @@
 //! # `libpep`: Library for polymorphic pseudonymization and encryption
 //!
-//! This library implements *n-PEP*, a scheme for end-to-end encrypted, pseudonymized data
-//! sharing. Every party knows its data subjects under its own pseudonyms, which cannot be linked
-//! to another party's. Encrypted data is blindly re-encrypted (*transcrypted*) for a receiving
-//! party by semi-trusted *transcryptors*, which convert the pseudonyms in it to the receiver's
-//! domain without decrypting anything. Transcryption can be distributed over `n` transcryptors,
-//! so that every transcryptor can independently monitor and block data exchanges, while
-//! confidentiality and pseudonym unlinkability hold as long as at least one of them remains
-//! uncompromised.
+//! This library implements *n-PEP*, a scheme for end-to-end encrypted, asynchronous,
+//! pseudonymized data sharing between users. Every user knows its data subjects under its own
+//! pseudonyms, which cannot be linked to another user's. A sender encrypts data without the
+//! receiver being online, or even known, at that moment; *transcryptors* later blindly
+//! re-encrypt (*transcrypt*) it for the receiver's pseudonymization domain and encryption
+//! context, converting the pseudonyms in it without decrypting anything. Transcryption can be
+//! distributed over `n` transcryptors, so that every transcryptor can independently monitor and
+//! block data exchanges.
+//!
+//! The transcryptors are *semi-trusted*, the term the n-PEP paper uses: no single transcryptor
+//! can read data or link pseudonyms, and confidentiality and pseudonym unlinkability hold as
+//! long as at least one of the `n` transcryptors remains uncompromised. n-PEP assumes they apply
+//! the right factors; the `verifiable` feature lets that be checked.
 //!
 //! The cryptographic background and a quick start
 //! are in the [README](https://github.com/NOLAI/libpep#readme). The scheme is described

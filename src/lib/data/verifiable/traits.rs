@@ -67,7 +67,7 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
 ///
 /// This is the paper's VRK (Definition 10): the ciphertext is rekeyed and not rerandomized, so
 /// its second component `C` is unchanged, unlike the non-verifiable
-/// [`rekey`](crate::data::traits::Rekeyable::rekey), which rerandomizes first. A party that
+/// [`rekey`](crate::data::traits::Rekeyable::rekey), which rerandomizes first. Anyone who
 /// sees input and output can therefore match them by `C`. The paper accepts this because the
 /// verifier of a proof always learns that link (Section 3.2.1); choose who verifies
 /// accordingly (Section 3.6).

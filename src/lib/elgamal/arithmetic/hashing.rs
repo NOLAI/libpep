@@ -154,7 +154,7 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// Reshuffling is linear: the pseudonym of `M` in domain `d` is `s_d * M`, so for any `M_1` and
 /// `M_2 = a * M_1` the pseudonyms satisfy the same relation in every domain. Cross-domain
 /// unlinkability holds under DDH only for elements whose mutual discrete-log relations are
-/// unknown to every party, so an encoding MUST make it infeasible to produce two encoded inputs
+/// unknown to everyone, so an encoding MUST make it infeasible to produce two encoded inputs
 /// with a known discrete-log relation. Encoding an identifier `x` as `x * G`, or as any scalar
 /// multiple of a fixed element, violates this and is forbidden. This function satisfies the
 /// requirement through the random oracle property of hashing to the group.
