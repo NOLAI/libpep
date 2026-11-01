@@ -6,8 +6,6 @@
 //! benchmarks measure a correct end-to-end flow in both ciphertext encodings.
 #![allow(dead_code, clippy::expect_used)]
 
-pub mod aliases;
-
 use libpep::data::traits::{Encryptable, Encrypted, HasStructure, Rekeyable, Transcryptable};
 use libpep::elgamal::arithmetic::Ciphersuite;
 use libpep::factors::types::TranscryptionInfo;

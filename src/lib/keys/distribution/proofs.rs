@@ -41,6 +41,7 @@
 //!
 //! The types are generic over the [`Group`].
 
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use rand_core::{CryptoRng, Rng};
@@ -55,7 +56,7 @@ use serde::{Deserialize, Serialize};
 /// verification of session key share proofs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct BlindingCommitment<G: Group>(pub G::Element);
+pub struct BlindingCommitment<G: Group = Ristretto255>(pub G::Element);
 
 impl<G: Group> BlindingCommitment<G> {
     /// Create a new blinding commitment from a blinding factor.
@@ -89,7 +90,7 @@ impl<G: Group> BlindingCommitment<G> {
 /// scalar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct SessionKeyShareProof<G: Group> {
+pub struct SessionKeyShareProof<G: Group = Ristretto255> {
     /// Zero-knowledge proof that u_i = b_i * k_i.
     ///
     /// The proof's `n` field equals `U_i = u_i · G`, the public commitment

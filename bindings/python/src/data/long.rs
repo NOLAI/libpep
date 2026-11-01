@@ -1,15 +1,3 @@
-use crate::aliases::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::aliases::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey,
-};
-use crate::aliases::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
-};
-#[cfg(feature = "verifiable")]
-use crate::aliases::{
-    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
-};
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
@@ -18,8 +6,20 @@ use crate::keys::types::{
 use crate::macros::{py_long_encrypted_impl, py_long_plaintext_impl};
 use derive_more::{Deref, From};
 use libpep::client::{decrypt, encrypt};
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+#[cfg(feature = "long")]
+use libpep::data::long::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
+};
+use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+#[cfg(all(feature = "verifiable", feature = "long"))]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
+use libpep::keys::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey, PublicKey, SecretKey,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

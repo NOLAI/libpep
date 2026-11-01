@@ -47,6 +47,7 @@ use crate::elgamal::arithmetic::ciphersuite::{
     Ciphersuite, CiphersuiteId, ElementOf, ScalarCanBeZeroOf, ScalarOf,
 };
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 use sha2::Digest;
 
@@ -54,7 +55,7 @@ use sha2::Digest;
 ///
 /// Serializes to [`LENGTH`](Self::LENGTH) bytes as `SerializeScalar(c) || SerializeScalar(s)`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Proof<G: Group> {
+pub struct Proof<G: Group = Ristretto255> {
     /// The challenge scalar.
     pub c: G::ScalarCanBeZero,
     /// The response scalar.

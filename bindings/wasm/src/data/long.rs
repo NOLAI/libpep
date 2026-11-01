@@ -1,13 +1,3 @@
-#[cfg(not(feature = "elgamal3"))]
-use crate::aliases::PseudonymSessionPublicKey;
-use crate::aliases::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::aliases::{
-    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
-};
-#[cfg(feature = "verifiable")]
-use crate::aliases::{
-    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
-};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
@@ -17,8 +7,18 @@ use crate::keys::types::{WASMPseudonymSessionPublicKey, WASMSessionPublicKeys};
 use crate::macros::wasm_proof_class;
 use crate::macros::{wasm_long_encrypted_impl, wasm_long_plaintext_impl};
 use derive_more::{Deref, From};
+#[cfg(feature = "long")]
+use libpep::data::long::{
+    LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
+};
+use libpep::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+#[cfg(feature = "verifiable")]
+#[cfg(all(feature = "verifiable", feature = "long"))]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyProof, LongPseudonymPseudonymizationProof, LongPseudonymRekeyProof,
+};
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::PublicKey;
+use libpep::keys::{PseudonymSessionPublicKey, PublicKey};
 use wasm_bindgen::prelude::*;
 
 /// A collection of pseudonyms that together represent a larger pseudonym value using PKCS#7 padding.
@@ -57,15 +57,15 @@ wasm_long_encrypted_impl!(WASMLongEncryptedAttribute wraps LongEncryptedAttribut
     ctor(encrypted_attributes, doc = "Create from a vector of encrypted attributes."),
     items(encrypted_attributes as encryptedAttributes, doc = "Get the underlying encrypted attributes."));
 
-/// WASM bindings for batch operations on long (multi-block) data types.
-#[cfg(feature = "batch")]
-use crate::aliases::LongEncryptedRecord;
-#[cfg(feature = "batch")]
-use crate::aliases::TranscryptionInfo;
 #[cfg(feature = "batch")]
 use crate::factors::types::WASMPseudonymRekeyInfo;
 #[cfg(feature = "batch")]
 use crate::factors::types::WASMTranscryptionInfo;
+/// WASM bindings for batch operations on long (multi-block) data types.
+#[cfg(feature = "batch")]
+use libpep::data::records::LongEncryptedRecord;
+#[cfg(feature = "batch")]
+use libpep::factors::TranscryptionInfo;
 #[cfg(feature = "batch")]
 use libpep::transcryptor::{rekey_batch, transcrypt_batch};
 
@@ -151,7 +151,7 @@ pub fn wasm_transcrypt_long_batch(
     transcryption_info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
 ) -> Result<Vec<WASMLongEncryptedRecord>, JsValue> {
-    let pk = crate::aliases::SessionPublicKeys::from(public_key);
+    let pk = libpep::keys::SessionPublicKeys::from(public_key);
     let mut rng = rand::rng();
     let enc: Vec<LongEncryptedRecord> = encrypted
         .into_iter()

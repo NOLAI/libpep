@@ -1,6 +1,5 @@
 //! The `Verifier` class.
 
-use crate::aliases::Verifier;
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -18,6 +17,7 @@ use crate::factors::commitments::{
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
+use libpep::verifier::Verifier;
 use wasm_bindgen::prelude::*;
 
 /// A verifier for verifiable transcryption operations (WASM).
@@ -303,7 +303,7 @@ impl WASMVerifier {
         proof: &crate::data::records::WASMRecordTranscryptionProof,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
-        let orig: crate::aliases::EncryptedRecord = original.clone().into();
+        let orig: libpep::data::records::EncryptedRecord = original.clone().into();
         self.inner
             .verified_reconstruct_transcryption(&orig, &proof.0, &commitments.0)
             .map(crate::data::records::WASMEncryptedRecord::from)
@@ -319,8 +319,8 @@ impl WASMVerifier {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
-        let orig: crate::aliases::EncryptedRecord = original.clone().into();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let orig: libpep::data::records::EncryptedRecord = original.clone().into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public(), &commitments.0)
             .map(crate::data::records::WASMEncryptedRecord::from)
@@ -337,7 +337,7 @@ impl WASMVerifier {
         proof: &crate::data::records::WASMLongRecordTranscryptionProof,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::records::WASMLongEncryptedRecord, JsValue> {
-        let orig: crate::aliases::LongEncryptedRecord = original.clone().into();
+        let orig: libpep::data::records::LongEncryptedRecord = original.clone().into();
         self.inner
             .verified_reconstruct_transcryption(&orig, &proof.0, &commitments.0)
             .map(crate::data::records::WASMLongEncryptedRecord::from)
@@ -353,8 +353,8 @@ impl WASMVerifier {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::records::WASMLongEncryptedRecord, JsValue> {
-        let orig: crate::aliases::LongEncryptedRecord = original.clone().into();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let orig: libpep::data::records::LongEncryptedRecord = original.clone().into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verified_reconstruct_transcryption(&orig, &proof.0, &sk.public(), &commitments.0)
             .map(crate::data::records::WASMLongEncryptedRecord::from)
@@ -589,7 +589,7 @@ impl WASMVerifier {
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
-        let orig: crate::aliases::EncryptedRecord = original.clone().into();
+        let orig: libpep::data::records::EncryptedRecord = original.clone().into();
         self.inner
             .verified_reconstruct_transcryption_cached(
                 transcryptor_id,
@@ -619,10 +619,10 @@ impl WASMVerifier {
         context_from: &WASMEncryptionContext,
         context_to: &WASMEncryptionContext,
     ) -> Result<crate::data::records::WASMEncryptedRecord, JsValue> {
-        let orig: crate::aliases::EncryptedRecord = original.clone().into();
+        let orig: libpep::data::records::EncryptedRecord = original.clone().into();
         // Verification needs only the public halves; `public()` projects them out so a caller
         // may still pass the full `SessionKeys` it holds.
-        let pk = crate::aliases::SessionKeys::from(*session_keys).public();
+        let pk = libpep::keys::SessionKeys::from(*session_keys).public();
         self.inner
             .verified_reconstruct_transcryption_cached(
                 transcryptor_id,
@@ -938,7 +938,7 @@ impl WASMVerifier {
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMEncryptedRecordBatch, JsValue> {
-        let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
+        let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         proof
             .0
             .verified_reconstruct_batch::<Ristretto255Sha512>(
@@ -961,7 +961,7 @@ impl WASMVerifier {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMEncryptedRecordBatch, JsValue> {
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         proof
             .0
             .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
@@ -997,7 +997,7 @@ impl WASMVerifier {
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMLongEncryptedRecordBatch, JsValue> {
-        let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
+        let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         proof
             .0
             .verified_reconstruct_batch::<Ristretto255Sha512>(
@@ -1020,7 +1020,7 @@ impl WASMVerifier {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<crate::data::batch::WASMLongEncryptedRecordBatch, JsValue> {
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         proof
             .0
             .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)

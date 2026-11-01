@@ -1,12 +1,12 @@
 //! WASM bindings for key generation functions.
 
 use super::types::*;
-use crate::aliases::*;
 use crate::contexts::WASMEncryptionContext;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::WASMEncryptionSecret;
-use libpep::keys::SecretKey;
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// Generate both pseudonym and attribute global key pairs at once.

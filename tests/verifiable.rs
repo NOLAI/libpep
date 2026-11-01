@@ -5,7 +5,22 @@
 
 mod common;
 
-use common::aliases::*;
+#[cfg(feature = "batch")]
+use libpep::data::records::EncryptedRecord;
+use libpep::data::records::Record;
+#[cfg(all(feature = "verifiable", feature = "batch"))]
+use libpep::data::verifiable::simple::PseudonymPseudonymizationBatchProof;
+use libpep::data::verifiable::traits::VerifiablePseudonymizationProof;
+#[cfg(feature = "verifiable-derivation")]
+use libpep::elgamal::arithmetic::group_elements::GroupElement;
+#[cfg(feature = "verifiable-derivation")]
+use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+#[cfg(feature = "verifiable-derivation")]
+use libpep::elgamal::verifiable::VerifiableRRSK2;
+#[cfg(feature = "verifiable-derivation")]
+use libpep::factors::{MasterPseudonymizationSecret, MasterRekeyingSecret};
+use libpep::keys::{AttributeSessionKeys, PseudonymSessionKeys, PseudonymSessionPublicKey};
+use libpep::prelude::*;
 
 /// Swap the proof's first base64 / hex-encoded string value with the
 /// corresponding value from a *different but valid* proof, producing a
@@ -345,7 +360,7 @@ fn n_pep_batch_distributed_verifiable() {
 
     // Client A encrypts a batch of pseudonyms.
     let pseudonyms: Vec<Pseudonym> = (0..5).map(|_| Pseudonym::random(rng)).collect();
-    let initial_batch: EncryptedBatch<EncryptedPseudonym> = client_a
+    let initial_batch: libpep::data::batch::EncryptedBatch<EncryptedPseudonym> = client_a
         .encrypt_batch(&pseudonyms, rng)
         .expect("encrypt batch");
 
@@ -353,7 +368,7 @@ fn n_pep_batch_distributed_verifiable() {
     // *next* step can verify it before doing its own transcryption.
     let mut current = initial_batch;
     let mut prev: Option<(
-        EncryptedBatch<EncryptedPseudonym>,
+        libpep::data::batch::EncryptedBatch<EncryptedPseudonym>,
         PseudonymPseudonymizationBatchProof,
         VerifiablePseudonymizationCommitment,
     )> = None;

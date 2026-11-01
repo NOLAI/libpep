@@ -40,6 +40,7 @@ use crate::elgamal::arithmetic::ciphersuite::{
     Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf,
 };
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use base64::engine::general_purpose;
 use base64::Engine;
 use derive_more::Deref;
@@ -64,7 +65,7 @@ use std::fmt::Formatter;
 /// The encoding is `N || c1 || c2 || s`, the serialized elements and scalar; with serde it is a
 /// base64 string of that.
 #[derive(Eq, PartialEq, Clone, Copy, Debug, Deref)]
-pub struct Proof<G: Group> {
+pub struct Proof<G: Group = Ristretto255> {
     /// The result `N = a * M`.
     #[deref]
     pub(crate) n: G::Element,

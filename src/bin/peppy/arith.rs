@@ -1,10 +1,10 @@
 //! `peppy scalar` and `peppy point`: arithmetic on the group's scalars and elements.
 
-use crate::aliases::*;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::elgamal::arithmetic::group_elements::G;
-use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
+use libpep::elgamal::arithmetic::hashing::hash_to_group;
+use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 

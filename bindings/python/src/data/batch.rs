@@ -14,13 +14,6 @@
 //!   - `elgamal3`: every ciphertext already carries its own `gy`, so neither the
 //!     constructor nor the operations need a public key.
 
-use crate::aliases::EncryptedAttribute;
-use crate::aliases::EncryptedPseudonym;
-use crate::aliases::EncryptedRecord;
-use crate::aliases::LongEncryptedAttribute;
-use crate::aliases::LongEncryptedPseudonym;
-use crate::aliases::LongEncryptedRecord;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(feature = "long")]
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
@@ -31,6 +24,10 @@ use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use libpep::data::batch::EncryptedBatch;
+use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+use libpep::data::records::{EncryptedRecord, LongEncryptedRecord};
+use libpep::data::simple::{EncryptedAttribute, EncryptedPseudonym};
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use pyo3::prelude::*;
@@ -71,7 +68,7 @@ impl PyPseudonymBatch {
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
     ) -> PyResult<Self> {
         let items: Vec<EncryptedPseudonym> = items.into_iter().map(|p| p.0).collect();
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -137,7 +134,7 @@ impl PyPseudonymBatch {
     ) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner.pseudonymize(&info, &pk, &mut rng)
     }
 
@@ -183,7 +180,7 @@ impl PyPseudonymBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
@@ -227,7 +224,7 @@ impl PyAttributeBatch {
         public_key: &crate::keys::PyAttributeSessionPublicKey,
     ) -> PyResult<Self> {
         let items: Vec<EncryptedAttribute> = items.into_iter().map(|a| a.0).collect();
-        let pk = crate::aliases::AttributeSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -309,7 +306,7 @@ impl PyAttributeBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let pk = crate::aliases::AttributeSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
@@ -357,7 +354,7 @@ impl PyLongPseudonymBatch {
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
     ) -> PyResult<Self> {
         let items: Vec<LongEncryptedPseudonym> = items.into_iter().map(|p| p.0).collect();
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -416,7 +413,7 @@ impl PyLongPseudonymBatch {
     ) {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner.pseudonymize(&info, &pk, &mut rng)
     }
 
@@ -460,7 +457,7 @@ impl PyLongPseudonymBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
@@ -508,7 +505,7 @@ impl PyLongAttributeBatch {
         public_key: &crate::keys::PyAttributeSessionPublicKey,
     ) -> PyResult<Self> {
         let items: Vec<LongEncryptedAttribute> = items.into_iter().map(|a| a.0).collect();
-        let pk = crate::aliases::AttributeSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         EncryptedBatch::new(items, pk)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -590,7 +587,7 @@ impl PyLongAttributeBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let pk = crate::aliases::AttributeSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::AttributeSessionPublicKey::from_point(public_key.0 .0);
         self.inner.transcrypt(&info, &pk, &mut rng)
     }
 
@@ -634,7 +631,7 @@ impl PyRecordBatch {
         session_keys: &crate::keys::distribution::shares::PySessionPublicKeys,
     ) -> PyResult<Self> {
         let items: Vec<EncryptedRecord> = items.into_iter().map(|r| r.0).collect();
-        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
         EncryptedBatch::new(items, keys)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -691,7 +688,7 @@ impl PyRecordBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         let keys = keys.public();
         self.inner.transcrypt(&info, &keys, &mut rng)
     }
@@ -740,7 +737,7 @@ impl PyLongRecordBatch {
         session_keys: &crate::keys::distribution::shares::PySessionPublicKeys,
     ) -> PyResult<Self> {
         let items: Vec<LongEncryptedRecord> = items.into_iter().map(|r| r.0).collect();
-        let keys: crate::aliases::SessionPublicKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionPublicKeys = (*session_keys).into();
         EncryptedBatch::new(items, keys)
             .map(|inner| Self { inner })
             .map_err(crate::errors::batch_err_to_py)
@@ -795,7 +792,7 @@ impl PyLongRecordBatch {
     ) {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         let keys = keys.public();
         self.inner.transcrypt(&info, &keys, &mut rng)
     }
@@ -816,7 +813,7 @@ impl PyLongRecordBatch {
 
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
 fn rust_session_public_keys_to_py(
-    keys: &crate::aliases::SessionPublicKeys,
+    keys: &libpep::keys::SessionPublicKeys,
 ) -> crate::keys::distribution::shares::PySessionPublicKeys {
     use crate::elgamal::arithmetic::group_elements::PyGroupElement;
     use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};

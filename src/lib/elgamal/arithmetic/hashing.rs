@@ -5,7 +5,7 @@
 //! such as SHA-512). The groups use it to produce the uniform bytes they map into the group or
 //! the scalar field.
 //!
-//! [`hash_to_group`] is the protocol-level encoding: it derives the tag from a
+//! [`hash_to_group_generic`] is the protocol-level encoding: it derives the tag from a
 //! ciphersuite's [`CiphersuiteId`](super::CiphersuiteId) instead of taking one. The raw-tag functions for
 //! ristretto255, [`hash_to_group_with_dst`] and [`hash_to_scalar_with_dst`], live in
 //! [`ristretto255::hashing`](super::ristretto255::hashing) and are re-exported here.
@@ -14,6 +14,9 @@
 
 use super::ciphersuite::Ciphersuite;
 use super::group::Group;
+use super::ristretto255::group_elements::GroupElement;
+use super::ristretto255::scalars::ScalarNonZero;
+use super::ristretto255::Ristretto255Sha512;
 use sha2::digest::common::BlockSizeUser;
 use sha2::Digest;
 
@@ -30,7 +33,9 @@ const MAX_DST_LENGTH: usize = 255;
 /// hash of the Carter-Wegman derivation (`factors::verifiable`). On ristretto255-SHA512
 /// it is the SHA-512 digest reduced modulo the group order. A digest of any other length is
 /// zero-padded or truncated to the 64 bytes the reduction takes.
-pub fn hash_to_nonzero_scalar<C: Ciphersuite>(parts: &[&[u8]]) -> <C::Group as Group>::Scalar {
+pub fn hash_to_nonzero_scalar_generic<C: Ciphersuite>(
+    parts: &[&[u8]],
+) -> <C::Group as Group>::Scalar {
     let mut hasher = C::Hash::new();
     for part in parts {
         hasher.update(part);
@@ -40,6 +45,11 @@ pub fn hash_to_nonzero_scalar<C: Ciphersuite>(parts: &[&[u8]]) -> <C::Group as G
     let n = digest.len().min(64);
     bytes[..n].copy_from_slice(&digest[..n]);
     C::Group::scalar_from_uniform_bytes(&bytes).unwrap_or_else(C::Group::scalar_one)
+}
+
+/// [`hash_to_nonzero_scalar_generic`] for ristretto255 with SHA-512.
+pub fn hash_to_nonzero_scalar(parts: &[&[u8]]) -> ScalarNonZero {
+    hash_to_nonzero_scalar_generic::<Ristretto255Sha512>(parts)
 }
 
 /// `expand_message_xmd` from RFC 9380, Section 5.3.1: hash `msg` to any requested number of
@@ -161,7 +171,7 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// because inverting it would need a discrete logarithm, and
 /// [`GroupElement::random`](super::group_elements::GroupElement::random) satisfies it trivially.
 #[must_use]
-pub fn hash_to_group<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {
+pub fn hash_to_group_generic<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {
     /// The bound on a hashed identifier: at most `2^16 - 1` bytes.
     const MAX_HASH_INPUT: usize = u16::MAX as usize;
 
@@ -171,6 +181,12 @@ pub fn hash_to_group<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {
     } else {
         C::hash_to_group(x, &dst)
     }
+}
+
+/// [`hash_to_group_generic`] for ristretto255 with SHA-512.
+#[must_use]
+pub fn hash_to_group(x: &[u8]) -> GroupElement {
+    hash_to_group_generic::<Ristretto255Sha512>(x)
 }
 
 #[cfg(test)]
@@ -297,14 +313,8 @@ mod tests {
 
     #[test]
     fn hash_to_group_is_deterministic_and_input_specific() {
-        assert_eq!(
-            hash_to_group::<Ristretto255Sha512>(b"alice"),
-            hash_to_group::<Ristretto255Sha512>(b"alice")
-        );
-        assert_ne!(
-            hash_to_group::<Ristretto255Sha512>(b"alice"),
-            hash_to_group::<Ristretto255Sha512>(b"bob")
-        );
+        assert_eq!(hash_to_group(b"alice"), hash_to_group(b"alice"));
+        assert_ne!(hash_to_group(b"alice"), hash_to_group(b"bob"));
     }
 
     /// The tag carries the ciphersuite identifier, so a ciphersuite whose identifier differed would
@@ -314,11 +324,11 @@ mod tests {
     fn hash_to_group_is_separated_by_the_ciphersuite_identifier() {
         let suite = Ristretto255Sha512::ID;
         assert_eq!(
-            hash_to_group::<Ristretto255Sha512>(b"alice"),
+            hash_to_group(b"alice"),
             hash_to_group_with_dst(b"alice", &suite.dst(b"HashToGroup-"))
         );
         assert_ne!(
-            hash_to_group::<Ristretto255Sha512>(b"alice"),
+            hash_to_group(b"alice"),
             hash_to_group_with_dst(b"alice", b"HashToGroup-nPEPV1-another-suite")
         );
     }
@@ -326,7 +336,7 @@ mod tests {
     #[test]
     fn hash_to_group_uses_the_ciphersuite_dst() {
         assert_eq!(
-            hash_to_group::<Ristretto255Sha512>(b"alice"),
+            hash_to_group(b"alice"),
             hash_to_group_with_dst(b"alice", b"HashToGroup-nPEPV1-ristretto255-SHA512")
         );
     }
@@ -339,12 +349,12 @@ mod tests {
         let dst = Ristretto255Sha512::ID.dst(b"HashToGroup-");
         for x in [b"".as_slice(), b"a", b"patient-42", &[0xffu8; 1000]] {
             assert_eq!(
-                hash_to_group::<Ristretto255Sha512>(x),
+                hash_to_group(x),
                 hash_to_group_with_dst(x, &dst),
                 "hash_to_group must pass the input through unchanged"
             );
             assert_ne!(
-                hash_to_group::<Ristretto255Sha512>(x),
+                hash_to_group(x),
                 hash_to_group_with_dst(&Sha512::digest(x), &dst),
                 "hash_to_group must not pre-hash an input within the bound"
             );
@@ -357,20 +367,15 @@ mod tests {
         let max_input = u16::MAX as usize;
         let long = vec![7u8; max_input + 1];
         assert_eq!(
-            hash_to_group::<Ristretto255Sha512>(&long),
+            hash_to_group(&long),
             hash_to_group_with_dst(&Sha512::digest(&long), &dst)
         );
         let max = vec![7u8; max_input];
-        assert_eq!(
-            hash_to_group::<Ristretto255Sha512>(&max),
-            hash_to_group_with_dst(&max, &dst)
-        );
+        assert_eq!(hash_to_group(&max), hash_to_group_with_dst(&max, &dst));
     }
 
     #[test]
     fn hashed_elements_are_not_lizard_encodings() {
-        assert!(hash_to_group::<Ristretto255Sha512>(b"alice")
-            .to_lizard()
-            .is_none());
+        assert!(hash_to_group(b"alice").to_lizard().is_none());
     }
 }

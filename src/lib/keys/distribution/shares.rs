@@ -17,6 +17,9 @@ use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
 #[cfg(feature = "verifiable")]
 use crate::elgamal::arithmetic::Ciphersuite;
+use crate::elgamal::arithmetic::Ristretto255;
+#[cfg(feature = "verifiable")]
+use crate::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(feature = "verifiable")]
 use crate::elgamal::verifiable::RekeyFactorCommitment;
 use crate::factors::types::{AttributeRekeyFactor, Factor, PseudonymRekeyFactor};
@@ -92,7 +95,7 @@ pub trait SessionKeyShare: Sized {
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 #[zeroize(bound = "")]
 #[debug("PseudonymSessionKeyShare([redacted])")]
-pub struct PseudonymSessionKeyShare<G: Group>(pub(crate) G::Scalar);
+pub struct PseudonymSessionKeyShare<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
 /// An attribute session key share, which is a part of an attribute session key provided by one transcryptor.
 /// By combining all attribute session key shares and the [`BlindedAttributeGlobalSecretKey`], an attribute session key can be derived.
@@ -101,7 +104,7 @@ pub struct PseudonymSessionKeyShare<G: Group>(pub(crate) G::Scalar);
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 #[zeroize(bound = "")]
 #[debug("AttributeSessionKeyShare([redacted])")]
-pub struct AttributeSessionKeyShare<G: Group>(pub(crate) G::Scalar);
+pub struct AttributeSessionKeyShare<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
 macro_rules! impl_session_key_share {
     ($($t:ident { rekey: $rf:ident, blinded: $b:ident, session: $sk:ident }),+ $(,)?) => {$(
@@ -139,7 +142,7 @@ impl_session_key_share!(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 #[zeroize(bound = "")]
-pub struct SessionKeyShares<G: Group> {
+pub struct SessionKeyShares<G: Group = Ristretto255> {
     /// The share of the pseudonym session key.
     pub pseudonym: PseudonymSessionKeyShare<G>,
     /// The share of the attribute session key.
@@ -200,7 +203,7 @@ pub enum SessionKeyShareError {
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
-pub struct SessionKeyShareProofs<G: Group> {
+pub struct SessionKeyShareProofs<G: Group = Ristretto255> {
     /// The proof of the pseudonym session key share.
     pub pseudonym: SessionKeyShareProof<G>,
     /// The proof of the attribute session key share.
@@ -234,7 +237,7 @@ pub fn make_session_key_share_with_proof<
 /// A [`PseudonymSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
 #[allow(clippy::type_complexity)]
-pub fn make_pseudonym_session_key_share_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn make_pseudonym_session_key_share_with_proof_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     rekey_factor: &PseudonymRekeyFactor<C::Group>,
     blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
@@ -248,10 +251,25 @@ pub fn make_pseudonym_session_key_share_with_proof<C: Ciphersuite, R: Rng + Cryp
     make_session_key_share_with_proof::<_, C, R>(rekey_factor, blinding_factor, rng)
 }
 
+/// [`make_pseudonym_session_key_share_with_proof_generic`] for ristretto255 with SHA-512.
+#[cfg(feature = "verifiable")]
+#[allow(clippy::type_complexity)]
+pub fn make_pseudonym_session_key_share_with_proof<R: Rng + CryptoRng>(
+    rekey_factor: &PseudonymRekeyFactor,
+    blinding_factor: &BlindingFactor,
+    rng: &mut R,
+) -> Result<(PseudonymSessionKeyShare, SessionKeyShareProof), SessionKeyShareError> {
+    make_pseudonym_session_key_share_with_proof_generic::<Ristretto255Sha512, R>(
+        rekey_factor,
+        blinding_factor,
+        rng,
+    )
+}
+
 /// An [`AttributeSessionKeyShare`] with its proof; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
 #[allow(clippy::type_complexity)]
-pub fn make_attribute_session_key_share_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn make_attribute_session_key_share_with_proof_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     rekey_factor: &AttributeRekeyFactor<C::Group>,
     blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
@@ -265,21 +283,36 @@ pub fn make_attribute_session_key_share_with_proof<C: Ciphersuite, R: Rng + Cryp
     make_session_key_share_with_proof::<_, C, R>(rekey_factor, blinding_factor, rng)
 }
 
+/// [`make_attribute_session_key_share_with_proof_generic`] for ristretto255 with SHA-512.
+#[cfg(feature = "verifiable")]
+#[allow(clippy::type_complexity)]
+pub fn make_attribute_session_key_share_with_proof<R: Rng + CryptoRng>(
+    rekey_factor: &AttributeRekeyFactor,
+    blinding_factor: &BlindingFactor,
+    rng: &mut R,
+) -> Result<(AttributeSessionKeyShare, SessionKeyShareProof), SessionKeyShareError> {
+    make_attribute_session_key_share_with_proof_generic::<Ristretto255Sha512, R>(
+        rekey_factor,
+        blinding_factor,
+        rng,
+    )
+}
+
 /// Both session key shares with their proofs; see [`make_session_key_share_with_proof`].
 #[cfg(feature = "verifiable")]
 #[allow(clippy::type_complexity)]
-pub fn make_session_key_shares_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn make_session_key_shares_with_proof_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     pseudonym_rekey_factor: &PseudonymRekeyFactor<C::Group>,
     attribute_rekey_factor: &AttributeRekeyFactor<C::Group>,
     blinding_factor: &BlindingFactor<C::Group>,
     rng: &mut R,
 ) -> Result<(SessionKeyShares<C::Group>, SessionKeyShareProofs<C::Group>), SessionKeyShareError> {
-    let (pseudonym, pseudonym_proof) = make_pseudonym_session_key_share_with_proof::<C, R>(
+    let (pseudonym, pseudonym_proof) = make_pseudonym_session_key_share_with_proof_generic::<C, R>(
         pseudonym_rekey_factor,
         blinding_factor,
         rng,
     )?;
-    let (attribute, attribute_proof) = make_attribute_session_key_share_with_proof::<C, R>(
+    let (attribute, attribute_proof) = make_attribute_session_key_share_with_proof_generic::<C, R>(
         attribute_rekey_factor,
         blinding_factor,
         rng,
@@ -294,6 +327,23 @@ pub fn make_session_key_shares_with_proof<C: Ciphersuite, R: Rng + CryptoRng>(
             attribute: attribute_proof,
         },
     ))
+}
+
+/// [`make_session_key_shares_with_proof_generic`] for ristretto255 with SHA-512.
+#[cfg(feature = "verifiable")]
+#[allow(clippy::type_complexity)]
+pub fn make_session_key_shares_with_proof<R: Rng + CryptoRng>(
+    pseudonym_rekey_factor: &PseudonymRekeyFactor,
+    attribute_rekey_factor: &AttributeRekeyFactor,
+    blinding_factor: &BlindingFactor,
+    rng: &mut R,
+) -> Result<(SessionKeyShares, SessionKeyShareProofs), SessionKeyShareError> {
+    make_session_key_shares_with_proof_generic::<Ristretto255Sha512, R>(
+        pseudonym_rekey_factor,
+        attribute_rekey_factor,
+        blinding_factor,
+        rng,
+    )
 }
 
 #[cfg(feature = "verifiable")]
@@ -376,15 +426,17 @@ mod proof_tests {
         let commitment = BlindingCommitment::new(blinding.value());
         assert_eq!(*commitment.value(), *blinding.value() * G);
 
-        let k = make_pseudonym_rekey_factor::<C>(&secret, &session);
+        let k = make_pseudonym_rekey_factor(&secret, &session);
         let (share, proof) =
-            make_pseudonym_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).unwrap();
+            make_pseudonym_session_key_share_with_proof_generic::<C, _>(&k, &blinding, &mut rng)
+                .unwrap();
         let k_commitment = RekeyFactorCommitment::<Ristretto255>::new(&k.scalar()).point();
         assert!(proof.verify_share::<C, _>(&share, &commitment, &k_commitment));
 
-        let k = make_attribute_rekey_factor::<C>(&secret, &session);
+        let k = make_attribute_rekey_factor(&secret, &session);
         let (share, proof) =
-            make_attribute_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).unwrap();
+            make_attribute_session_key_share_with_proof_generic::<C, _>(&k, &blinding, &mut rng)
+                .unwrap();
         let k_commitment = RekeyFactorCommitment::<Ristretto255>::new(&k.scalar()).point();
         assert!(proof.verify_share::<C, _>(&share, &commitment, &k_commitment));
     }
@@ -392,13 +444,14 @@ mod proof_tests {
     #[test]
     fn shares_with_proof_reject_unit_blinding() {
         let mut rng = rand::rng();
-        let k = make_pseudonym_rekey_factor::<C>(
+        let k = make_pseudonym_rekey_factor(
             &EncryptionSecret::from(b"test-secret".to_vec()),
             &EncryptionContext::from("test-context"),
         );
         let blinding = BlindingFactor::<Ristretto255>::from_scalar(ScalarNonZero::one());
         assert_eq!(
-            make_pseudonym_session_key_share_with_proof::<C, _>(&k, &blinding, &mut rng).err(),
+            make_pseudonym_session_key_share_with_proof_generic::<C, _>(&k, &blinding, &mut rng)
+                .err(),
             Some(SessionKeyShareError::WeakBlinding)
         );
     }

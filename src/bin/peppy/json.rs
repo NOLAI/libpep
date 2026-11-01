@@ -3,10 +3,15 @@
 //! Session keys are given as the JSON object that `peppy keys session derive --json` prints,
 //! typically via `--keys @session.json`.
 
-use crate::aliases::*;
 use crate::factors::TransitionArgs;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
+#[cfg(feature = "json")]
+use libpep::data::json::{EncryptedPepJsonValue, PepJsonBuilder};
+#[cfg(all(feature = "verifiable", feature = "json"))]
+use libpep::data::verifiable::json::JsonTranscryptionProof;
+use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
+use libpep::prelude::*;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]

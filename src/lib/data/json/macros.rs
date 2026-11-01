@@ -18,9 +18,9 @@
 /// use serde_json::json;
 ///
 /// let rng = &mut rand::rng();
-/// let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let (_global_public, global_secret) = make_global_keys(rng);
 /// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 ///
 /// let pep_value = pep_json!({
 ///     "id": pseudonym("user1@example.com"),
@@ -140,7 +140,6 @@ mod tests {
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -157,16 +156,10 @@ mod tests {
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
 
-        let (attr_public, attr_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
-            &attr_global_secret,
-            &session,
-            &enc_secret,
-        );
-        let (pseudo_public, pseudo_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &pseudo_global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (attr_public, attr_secret) =
+            make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+        let (pseudo_public, pseudo_secret) =
+            make_pseudonym_session_keys(&pseudo_global_secret, &session, &enc_secret);
 
         SessionKeys {
             attribute: AttributeSessionKeys {

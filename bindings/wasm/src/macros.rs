@@ -221,13 +221,13 @@ macro_rules! wasm_long_plaintext_impl {
             #[doc = concat!("Encodes an arbitrary-length string into a `", stringify!($core), "` using PKCS#7 padding.")]
             #[wasm_bindgen(js_name = fromStringPadded)]
             pub fn from_string_padded(text: &str) -> $w {
-                Self($core::from_string_padded(text))
+                Self(<$core>::from_string_padded(text))
             }
 
             #[doc = concat!("Encodes an arbitrary-length byte array into a `", stringify!($core), "` using PKCS#7 padding.")]
             #[wasm_bindgen(js_name = fromBytesPadded)]
             pub fn from_bytes_padded(data: &[u8]) -> $w {
-                Self($core::from_bytes_padded(data))
+                Self(<$core>::from_bytes_padded(data))
             }
 
             #[doc = concat!("Decodes the `", stringify!($core), "` back to the original string.")]
@@ -304,7 +304,7 @@ macro_rules! wasm_long_encrypted_impl {
             /// Deserializes from a pipe-delimited base64 string.
             #[wasm_bindgen]
             pub fn deserialize(s: &str) -> Result<$w, JsError> {
-                $core::deserialize(s)
+                <$core>::deserialize(s)
                     .map(Self)
                     .map_err(|e| JsError::new(&format!("Deserialization failed: {e}")))
             }
@@ -338,7 +338,7 @@ macro_rules! wasm_scalar_key_impl {
         impl $w {
             #[wasm_bindgen(constructor)]
             pub fn new(x: WASMScalarNonZero) -> Self {
-                $w($core::from_scalar(x.0))
+                $w(<$core>::from_scalar(x.0))
             }
 
             #[wasm_bindgen(js_name = toBytes)]
@@ -348,7 +348,7 @@ macro_rules! wasm_scalar_key_impl {
 
             #[wasm_bindgen(js_name = fromBytes)]
             pub fn from_bytes(bytes: Vec<u8>) -> Option<$w> {
-                $core::from_slice(&bytes).map($w)
+                <$core>::from_slice(&bytes).map($w)
             }
 
             #[wasm_bindgen(js_name = toHex)]
@@ -358,7 +358,7 @@ macro_rules! wasm_scalar_key_impl {
 
             #[wasm_bindgen(js_name = fromHex)]
             pub fn from_hex(hex: &str) -> Option<$w> {
-                $core::from_hex(hex).map($w)
+                <$core>::from_hex(hex).map($w)
             }
         }
     };

@@ -7,7 +7,9 @@ use serde_json::json;
 #[macro_use]
 mod common;
 
-use common::aliases::*;
+#[cfg(feature = "json")]
+use libpep::data::json::{PepJsonBuilder, PepJsonValue};
+use libpep::prelude::*;
 
 #[test]
 fn test_json_transcryption_with_macro() {
@@ -47,7 +49,7 @@ fn test_json_transcryption_with_macro() {
     assert_eq!(json_original["diagnosis"], "Flu");
 
     // Transcrypt from domain A to domain B
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
         &session,
@@ -119,7 +121,7 @@ fn test_json_transcryption_with_builder() {
     assert_eq!(json_original["active"], true);
 
     // Transcrypt from clinic A to clinic B
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
         &session,
@@ -203,7 +205,7 @@ fn test_json_batch_transcryption_same_structure() {
     assert_eq!(structure1, structure2, "Records should have same structure");
 
     // Batch transcrypt (this should succeed because structures match)
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
         &session,
@@ -321,7 +323,7 @@ fn test_json_batch_transcryption_different_structures() {
     );
 
     // Attempt batch transcryption (this should return an error because structures don't match)
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
         &session,

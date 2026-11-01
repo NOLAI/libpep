@@ -18,6 +18,7 @@
 //! is verified against the forward commitment `A = a·G`).
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -28,7 +29,7 @@ use serde::{Deserialize, Serialize};
 /// Verifiable reshuffle: `⟨ZKP{B' = s * B}, ZKP{C' = s * C}⟩`.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableReshuffle<G: Group> {
+pub struct VerifiableReshuffle<G: Group = Ristretto255> {
     /// `ZKP{B' = s * B}`: first component is `B' = s·B`.
     pub(crate) p_gb_prime: Proof<G>,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
@@ -94,7 +95,7 @@ impl<G: Group> VerifiableReshuffle<G> {
 /// published `S_from`, `S_to` commitments.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableReshuffle2<G: Group> {
+pub struct VerifiableReshuffle2<G: Group = Ristretto255> {
     /// `S = (s_from⁻¹·s_to)·G`.
     pub(crate) gs: G::Element,
     /// `ZKP{S_to = s_from * S}`: first component is `S_to = s_to·G`.

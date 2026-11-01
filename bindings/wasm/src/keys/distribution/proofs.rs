@@ -4,7 +4,6 @@
 
 #![cfg(feature = "verifiable")]
 
-use crate::aliases::{BlindingCommitment, SessionKeyShareProof};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::errors::malformed_proof_err;
@@ -13,6 +12,8 @@ use crate::keys::distribution::shares::{
 };
 use derive_more::{From, Into};
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
+#[cfg(feature = "verifiable")]
+use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use wasm_bindgen::prelude::*;
 
 /// Public commitment `B_i = b_i · G` to a per-transcryptor blinding factor.

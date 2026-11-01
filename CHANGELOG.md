@@ -8,20 +8,34 @@ a major change against the published 0.13.0.
 
 ### API changes
 
-- `libpep::ristretto255` instantiates the generic API for ristretto255 with SHA-512, so that code
-  which does not need another group writes no type parameters. It has an alias for every generic
-  type under the same name, with the same feature gates (`Pseudonym` is `Pseudonym<Ristretto255>`,
-  `Transcryptor` is `Transcryptor<Ristretto255Sha512>`), wrappers with the same names for the
-  functions that cannot infer the group or ciphersuite (`make_global_keys`, `make_session_keys`,
-  `make_*_factor`, `hash_to_group`, `hash_to_nonzero_scalar`, `make_distributed_*_global_keys`,
-  `make_*_with_proof`, `verifiable_rerandomize`), the info constructors as functions
-  (`transcryption_info`, `pseudonymization_info`, `pseudonym_rekey_info`, `attribute_rekey_info`),
-  and the remaining items re-exported. Associated functions that take the ciphersuite as a type
-  parameter (`proof.verify::<C>(..)`, `verifiable_pseudonymize::<C>`) and tuple constructors
-  (`LongPseudonym(..)`, `FactorCommitment(..)`) cannot go through an alias and keep their form.
-  The generic items stay at their paths. `peppy` and the Python and JavaScript bindings use this
-  module instead of their own alias files.
-- `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets. Its types and key functions are the ristretto255 instances from `libpep::ristretto255`: after `use libpep::prelude::*;`, `Pseudonym::random(rng)`, `Transcryptor::new(..)`, `make_global_keys(rng)` and `make_session_keys(..)` need no type annotation.
+- Every generic type defaults its parameter to ristretto255, so that code which does not need
+  another group writes no type parameters: `Pseudonym<G: Group = Ristretto255>` and the other
+  types generic over a group (data, keys, factors, proofs, `Client`, ...), and
+  `Transcryptor<C: Ciphersuite = Ristretto255Sha512>`, `DistributedTranscryptor`, `Verifier` and the
+  master secrets for the types generic over a ciphersuite. `Pseudonym<OtherGroup>` and
+  `Transcryptor<OtherSuite>` work as before. Rust does not use a default to infer a type
+  parameter, so an expression that nothing constrains (`Pseudonym::random(rng).to_hex()`) still
+  needs a type, for example `let p: Pseudonym = ...`.
+- The functions and constructors whose group or ciphersuite cannot be inferred from their
+  arguments now come in pairs. The plain name is the ristretto255 function, with no type
+  parameter: `make_global_keys`, `make_pseudonym_global_keys`, `make_attribute_global_keys`,
+  `make_session_keys`, `make_pseudonym_session_keys`, `make_attribute_session_keys`,
+  `make_distributed_global_keys` (and its pseudonym and attribute variants),
+  `make_pseudonymization_factor`, `make_pseudonym_rekey_factor`, `make_attribute_rekey_factor`,
+  `hash_to_group`, `hash_to_nonzero_scalar`, `make_pseudonym_session_key_share_with_proof`,
+  `make_attribute_session_key_share_with_proof`, `make_session_key_shares_with_proof`,
+  `verifiable_rerandomize` and `verifiable_rerandomize_batch`, and the inherent constructors
+  `Transcryptor::new`, `DistributedTranscryptor::new`, `Verifier::new`,
+  `Verifier::with_cache_capacity`, `PseudonymizationInfo::new`, `PseudonymRekeyInfo::new`,
+  `AttributeRekeyInfo::new`, `TranscryptionInfo::new` and `random` of the master secrets. The
+  generic version has the same name with the suffix `_generic` and takes the group or ciphersuite
+  as a type parameter: `make_global_keys_generic::<G, _>(rng)`,
+  `make_session_keys_generic::<C>(..)`, `Transcryptor::<C>::new_generic(..)`,
+  `TranscryptionInfo::new_generic::<C>(..)`. This is a rename of the previous generic functions
+  and constructors (`make_global_keys::<G, _>`, `Transcryptor::<C>::new`, `TranscryptionInfo::new::<C>`,
+  ...). Methods that take the ciphersuite as a type parameter (`proof.verify::<C>(..)`,
+  `verifiable_pseudonymize::<C>`) keep their form.
+- `libpep::prelude::*` imports what a typical application needs (the ristretto255 markers, contexts, data types and their traits, keys, secrets, and the client and transcryptor operations); `prelude::client` and `prelude::transcryptor` are the role-specific subsets. After `use libpep::prelude::*;`, `make_global_keys(rng)`, `make_session_keys(..)` and `Transcryptor::new(..)` need no type annotation.
 - `PseudonymizationDomain`, `EncryptionContext`, `PseudonymizationSecret` and `EncryptionSecret`
   implement `From` (`&str` and `String`; `&[u8]`, `Vec<u8>` and `Box<[u8]>`) instead of an
   inherent `from`, so `"x".into()` works and the secrets expose `as_bytes`.

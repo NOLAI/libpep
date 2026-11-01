@@ -1,7 +1,5 @@
 //! Python bindings for [libpep](https://crates.io/crates/libpep), built with PyO3 and distributed on PyPI as `libpep-py`
 //! (importable as `libpep`).
-
-pub(crate) mod aliases;
 pub(crate) mod macros;
 
 pub mod client;

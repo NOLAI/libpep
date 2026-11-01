@@ -16,6 +16,7 @@ use crate::data::verifiable::traits::{
 };
 use crate::elgamal::arithmetic::ciphersuite::ElementOf;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
@@ -35,7 +36,7 @@ use std::collections::HashMap;
 /// [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK) or
 /// [`VerifiableRekey`](crate::elgamal::verifiable::VerifiableRekey) check against
 /// these commitments.
-pub struct Verifier<C: Ciphersuite> {
+pub struct Verifier<C: Ciphersuite = Ristretto255Sha512> {
     pseudonymization_cache: PseudonymizationCommitmentsCache<C::Group>,
     pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache<C::Group>,
     attribute_rekey_cache: AttributeRekeyCommitmentsCache<C::Group>,
@@ -59,10 +60,29 @@ pub type PseudonymizationKey = (
 /// Key identifying a rekey transition.
 pub type RekeyTransitionKey = (TranscryptorId, EncryptionContext, EncryptionContext);
 
-impl<C: Ciphersuite> Verifier<C> {
+impl Verifier {
+    /// A verifier with empty, unbounded caches, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](Verifier::new_generic) for another ciphersuite.
     #[must_use]
-    /// A verifier with empty, unbounded caches.
     pub fn new() -> Self {
+        Self::new_generic()
+    }
+
+    /// A verifier with each commitment cache capped at `max_entries`, for ristretto255 with
+    /// SHA-512. See [`with_cache_capacity_generic`](Verifier::with_cache_capacity_generic).
+    #[must_use]
+    pub fn with_cache_capacity(max_entries: usize) -> Self {
+        Self::with_cache_capacity_generic(max_entries)
+    }
+}
+
+impl<C: Ciphersuite> Verifier<C> {
+    /// A verifier with empty, unbounded caches, for ciphersuite `C`.
+    ///
+    /// [`Verifier::new`] is this function for ristretto255 with SHA-512.
+    #[must_use]
+    pub fn new_generic() -> Self {
         Self {
             pseudonymization_cache: PseudonymizationCommitmentsCache::<C::Group>::new(),
             pseudonym_rekey_cache: PseudonymRekeyCommitmentsCache::<C::Group>::new(),
@@ -84,8 +104,10 @@ impl<C: Ciphersuite> Verifier<C> {
     ///
     /// Use this when commitment registration is reachable from untrusted code
     /// and memory must be bounded.
+    ///
+    /// [`Verifier::with_cache_capacity`] is this function for ristretto255 with SHA-512.
     #[must_use]
-    pub fn with_cache_capacity(max_entries: usize) -> Self {
+    pub fn with_cache_capacity_generic(max_entries: usize) -> Self {
         Self {
             pseudonymization_cache: PseudonymizationCommitmentsCache::<C::Group>::with_max_entries(
                 max_entries,
@@ -901,7 +923,7 @@ impl<C: Ciphersuite> Verifier<C> {
 }
 
 /// Read-only view of the verifier's cache.
-pub struct VerifierCache<'a, G: Group> {
+pub struct VerifierCache<'a, G: Group = Ristretto255> {
     pseudonymization: &'a PseudonymizationCommitmentsCache<G>,
     pseudonym_rekey: &'a PseudonymRekeyCommitmentsCache<G>,
     attribute_rekey: &'a AttributeRekeyCommitmentsCache<G>,
@@ -938,7 +960,7 @@ impl<G: Group> VerifierCache<'_, G> {
 
 impl<C: Ciphersuite> Default for Verifier<C> {
     fn default() -> Self {
-        Self::new()
+        Self::new_generic()
     }
 }
 

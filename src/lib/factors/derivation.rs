@@ -21,7 +21,7 @@
 //! [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite) module docs.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
 use crate::factors::secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 use crate::factors::types::*;
 #[cfg(feature = "legacy")]
@@ -45,7 +45,7 @@ pub const LABEL_RESHUFFLE: u8 = 0x03;
 
 /// Derive a pseudonym rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
-pub fn make_pseudonym_rekey_factor<C: Ciphersuite>(
+pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
 ) -> PseudonymRekeyFactor<C::Group> {
@@ -63,9 +63,19 @@ pub fn make_pseudonym_rekey_factor<C: Ciphersuite>(
     }
 }
 
+/// Derive a pseudonym rekey factor from a secret and a context, for ristretto255 with SHA-512.
+///
+/// See [`make_pseudonym_rekey_factor_generic`] for another ciphersuite.
+pub fn make_pseudonym_rekey_factor(
+    secret: &EncryptionSecret,
+    session: &EncryptionContext,
+) -> PseudonymRekeyFactor {
+    make_pseudonym_rekey_factor_generic::<Ristretto255Sha512>(secret, session)
+}
+
 /// Derive an attribute rekey factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
-pub fn make_attribute_rekey_factor<C: Ciphersuite>(
+pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
     secret: &EncryptionSecret,
     session: &EncryptionContext,
 ) -> AttributeRekeyFactor<C::Group> {
@@ -83,9 +93,19 @@ pub fn make_attribute_rekey_factor<C: Ciphersuite>(
     }
 }
 
+/// Derive an attribute rekey factor from a secret and a context, for ristretto255 with SHA-512.
+///
+/// See [`make_attribute_rekey_factor_generic`] for another ciphersuite.
+pub fn make_attribute_rekey_factor(
+    secret: &EncryptionSecret,
+    session: &EncryptionContext,
+) -> AttributeRekeyFactor {
+    make_attribute_rekey_factor_generic::<Ristretto255Sha512>(secret, session)
+}
+
 /// Derive a pseudonymization factor from a secret and a context.
 #[cfg(not(feature = "legacy"))]
-pub fn make_pseudonymization_factor<C: Ciphersuite>(
+pub fn make_pseudonymization_factor_generic<C: Ciphersuite>(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor<C::Group> {
@@ -101,6 +121,16 @@ pub fn make_pseudonymization_factor<C: Ciphersuite>(
             ReshuffleFactor(C::Group::scalar_one())
         }
     }
+}
+
+/// Derive a pseudonymization factor from a secret and a context, for ristretto255 with SHA-512.
+///
+/// See [`make_pseudonymization_factor_generic`] for another ciphersuite.
+pub fn make_pseudonymization_factor(
+    secret: &PseudonymizationSecret,
+    domain: &PseudonymizationDomain,
+) -> ReshuffleFactor {
+    make_pseudonymization_factor_generic::<Ristretto255Sha512>(secret, domain)
 }
 
 /// `DeriveFactor(secret, label, id)` .
@@ -143,7 +173,7 @@ pub(crate) fn make_factor<C: Ciphersuite>(
 
 /// Derive a pseudonym rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
-pub fn make_pseudonym_rekey_factor<C: Ciphersuite>(
+pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> PseudonymRekeyFactor<C::Group> {
@@ -161,7 +191,7 @@ pub fn make_pseudonym_rekey_factor<C: Ciphersuite>(
 
 /// Derive an attribute rekey factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
-pub fn make_attribute_rekey_factor<C: Ciphersuite>(
+pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
     secret: &EncryptionSecret,
     context: &EncryptionContext,
 ) -> AttributeRekeyFactor<C::Group> {
@@ -179,7 +209,7 @@ pub fn make_attribute_rekey_factor<C: Ciphersuite>(
 
 /// Derive a pseudonymization factor from a secret and a context (using the legacy PEP repo method).
 #[cfg(feature = "legacy")]
-pub fn make_pseudonymization_factor<C: Ciphersuite>(
+pub fn make_pseudonymization_factor_generic<C: Ciphersuite>(
     secret: &PseudonymizationSecret,
     domain: &PseudonymizationDomain,
 ) -> ReshuffleFactor<C::Group> {
@@ -224,7 +254,7 @@ fn make_factor<C: Ciphersuite>(
 
 impl<G: Group> PseudonymizationInfo<G> {
     /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets.
-    pub fn new<C: Ciphersuite<Group = G>>(
+    pub fn new_generic<C: Ciphersuite<Group = G>>(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
@@ -232,48 +262,98 @@ impl<G: Group> PseudonymizationInfo<G> {
         pseudonymization_secret: &PseudonymizationSecret,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let s_from = make_pseudonymization_factor::<C>(pseudonymization_secret, domain_from);
-        let s_to = make_pseudonymization_factor::<C>(pseudonymization_secret, domain_to);
+        let s_from =
+            make_pseudonymization_factor_generic::<C>(pseudonymization_secret, domain_from);
+        let s_to = make_pseudonymization_factor_generic::<C>(pseudonymization_secret, domain_to);
         Self {
             s: ReshuffleFactor(C::Group::scalar_inverse(&s_from.0) * s_to.0),
-            k: PseudonymRekeyInfo::new::<C>(session_from, session_to, encryption_secret).k,
+            k: PseudonymRekeyInfo::new_generic::<C>(session_from, session_to, encryption_secret).k,
         }
+    }
+}
+
+impl PseudonymizationInfo {
+    /// Compute the pseudonymization info given pseudonymization domains, sessions and secrets, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](PseudonymizationInfo::new_generic) for another ciphersuite.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        Self::new_generic::<Ristretto255Sha512>(
+            domain_from,
+            domain_to,
+            session_from,
+            session_to,
+            pseudonymization_secret,
+            encryption_secret,
+        )
     }
 }
 
 impl<G: Group> PseudonymRekeyInfo<G> {
     /// Compute the rekey info for pseudonyms given sessions and secrets.
-    pub fn new<C: Ciphersuite<Group = G>>(
+    pub fn new_generic<C: Ciphersuite<Group = G>>(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_pseudonym_rekey_factor::<C>(encryption_secret, session_from);
-        let k_to = make_pseudonym_rekey_factor::<C>(encryption_secret, session_to);
+        let k_from = make_pseudonym_rekey_factor_generic::<C>(encryption_secret, session_from);
+        let k_to = make_pseudonym_rekey_factor_generic::<C>(encryption_secret, session_to);
         Self {
             k: PseudonymRekeyFactor(C::Group::scalar_inverse(&k_from.0) * k_to.0),
         }
     }
 }
 
-impl<G: Group> AttributeRekeyInfo<G> {
-    /// Compute the rekey info for attributes given sessions and secrets.
-    pub fn new<C: Ciphersuite<Group = G>>(
+impl PseudonymRekeyInfo {
+    /// Compute the rekey info for pseudonyms given sessions and secrets, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](PseudonymRekeyInfo::new_generic) for another ciphersuite.
+    pub fn new(
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
         encryption_secret: &EncryptionSecret,
     ) -> Self {
-        let k_from = make_attribute_rekey_factor::<C>(encryption_secret, session_from);
-        let k_to = make_attribute_rekey_factor::<C>(encryption_secret, session_to);
+        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, encryption_secret)
+    }
+}
+
+impl<G: Group> AttributeRekeyInfo<G> {
+    /// Compute the rekey info for attributes given sessions and secrets.
+    pub fn new_generic<C: Ciphersuite<Group = G>>(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        let k_from = make_attribute_rekey_factor_generic::<C>(encryption_secret, session_from);
+        let k_to = make_attribute_rekey_factor_generic::<C>(encryption_secret, session_to);
         Self {
             k: AttributeRekeyFactor(C::Group::scalar_inverse(&k_from.0) * k_to.0),
         }
     }
 }
 
+impl AttributeRekeyInfo {
+    /// Compute the rekey info for attributes given sessions and secrets, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](AttributeRekeyInfo::new_generic) for another ciphersuite.
+    pub fn new(
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        Self::new_generic::<Ristretto255Sha512>(session_from, session_to, encryption_secret)
+    }
+}
+
 impl<G: Group> TranscryptionInfo<G> {
     /// Compute the transcryption info given pseudonymization domains, sessions and secrets.
-    pub fn new<C: Ciphersuite<Group = G>>(
+    pub fn new_generic<C: Ciphersuite<Group = G>>(
         domain_from: &PseudonymizationDomain,
         domain_to: &PseudonymizationDomain,
         session_from: &EncryptionContext,
@@ -282,7 +362,7 @@ impl<G: Group> TranscryptionInfo<G> {
         encryption_secret: &EncryptionSecret,
     ) -> Self {
         Self {
-            pseudonym: PseudonymizationInfo::new::<C>(
+            pseudonym: PseudonymizationInfo::new_generic::<C>(
                 domain_from,
                 domain_to,
                 session_from,
@@ -290,8 +370,35 @@ impl<G: Group> TranscryptionInfo<G> {
                 pseudonymization_secret,
                 encryption_secret,
             ),
-            attribute: AttributeRekeyInfo::new::<C>(session_from, session_to, encryption_secret),
+            attribute: AttributeRekeyInfo::new_generic::<C>(
+                session_from,
+                session_to,
+                encryption_secret,
+            ),
         }
+    }
+}
+
+impl TranscryptionInfo {
+    /// Compute the transcryption info given pseudonymization domains, sessions and secrets, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](TranscryptionInfo::new_generic) for another ciphersuite.
+    pub fn new(
+        domain_from: &PseudonymizationDomain,
+        domain_to: &PseudonymizationDomain,
+        session_from: &EncryptionContext,
+        session_to: &EncryptionContext,
+        pseudonymization_secret: &PseudonymizationSecret,
+        encryption_secret: &EncryptionSecret,
+    ) -> Self {
+        Self::new_generic::<Ristretto255Sha512>(
+            domain_from,
+            domain_to,
+            session_from,
+            session_to,
+            pseudonymization_secret,
+            encryption_secret,
+        )
     }
 }
 
@@ -349,9 +456,9 @@ mod tests {
         let secret = EncryptionSecret::from(b"secret".to_vec());
         let from = EncryptionContext::from("from");
         let to = EncryptionContext::from("to");
-        let info = PseudonymRekeyInfo::new::<Ristretto255Sha512>(&from, &to, &secret);
-        let k_from = make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret, &from);
-        let k_to = make_pseudonym_rekey_factor::<Ristretto255Sha512>(&secret, &to);
+        let info = PseudonymRekeyInfo::new(&from, &to, &secret);
+        let k_from = make_pseudonym_rekey_factor(&secret, &from);
+        let k_to = make_pseudonym_rekey_factor(&secret, &to);
         assert_eq!(k_from.scalar() * info.k.scalar(), k_to.scalar());
         assert_eq!(info.reverse().reverse(), info);
     }

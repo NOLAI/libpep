@@ -1,12 +1,12 @@
 //! Python bindings for deriving factors from secrets, sessions and domains within a protocol
 //! context.
 
-use crate::aliases::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
-};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::factors::types::{PyAttributeRekeyFactor, PyPseudonymRekeyFactor, PyReshuffleFactor};
+use libpep::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
+};
 use pyo3::prelude::*;
 
 /// Derive the pseudonym rekey factor of a session from an encryption secret.

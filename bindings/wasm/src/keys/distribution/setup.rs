@@ -2,18 +2,18 @@ use super::blinding::{
     WASMBlindedAttributeGlobalSecretKey, WASMBlindedGlobalSecretKeys,
     WASMBlindedPseudonymGlobalSecretKey, WASMBlindingFactor,
 };
-use crate::aliases::*;
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::keys::types::{
     WASMAttributeGlobalPublicKey, WASMAttributeGlobalSecretKey, WASMGlobalPublicKeys,
     WASMPseudonymGlobalPublicKey, WASMPseudonymGlobalSecretKey,
 };
+use libpep::keys::distribution::BlindingFactor;
 use libpep::keys::distribution::{
     make_blinded_attribute_global_secret_key, make_blinded_pseudonym_global_secret_key,
     make_distributed_attribute_global_keys, make_distributed_global_keys,
     make_distributed_pseudonym_global_keys,
 };
-use libpep::keys::SecretKey;
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey, SecretKey};
 use wasm_bindgen::prelude::*;
 
 /// A distributed system needs at least one transcryptor.

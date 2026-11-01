@@ -29,9 +29,9 @@ use rand_core::{CryptoRng, Rng};
 /// use libpep::elgamal::arithmetic::Ristretto255Sha512;
 ///
 /// let rng = &mut rand::rng();
-/// let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// let (_global_public, global_secret) = make_global_keys(rng);
 /// let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
+/// let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 ///
 /// // Pseudonym uses PseudonymSessionPublicKey.

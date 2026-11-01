@@ -1,20 +1,19 @@
 //! WASM bindings for record types: standalone encrypt and decrypt operations.
 
-use crate::aliases::{EncryptedRecord, Record};
 use crate::data::simple::{
     WASMAttribute, WASMEncryptedAttribute, WASMEncryptedPseudonym, WASMPseudonym,
 };
 use crate::errors::malformed_proof_err;
+use libpep::data::records::{EncryptedRecord, Record};
 use wasm_bindgen::prelude::*;
 
-#[cfg(feature = "long")]
-use crate::aliases::{LongEncryptedRecord, LongRecord};
 #[cfg(feature = "long")]
 use crate::data::long::{
     WASMLongAttribute, WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym, WASMLongPseudonym,
 };
 #[cfg(feature = "long")]
-use libpep::data::records::LongRecordStructure;
+#[cfg(feature = "long")]
+use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
 #[wasm_bindgen(js_name = Record)]
@@ -350,7 +349,9 @@ impl WASMLongRecordStructure {
 #[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_name = RecordTranscryptionProof)]
 #[derive(Clone)]
-pub struct WASMRecordTranscryptionProof(pub(crate) crate::aliases::RecordTranscryptionProof);
+pub struct WASMRecordTranscryptionProof(
+    pub(crate) libpep::data::verifiable::records::RecordTranscryptionProof,
+);
 
 #[cfg(feature = "verifiable")]
 #[wasm_bindgen(js_class = RecordTranscryptionProof)]
@@ -373,8 +374,10 @@ impl WASMRecordTranscryptionProof {
 }
 
 #[cfg(feature = "verifiable")]
-impl From<crate::aliases::RecordTranscryptionProof> for WASMRecordTranscryptionProof {
-    fn from(p: crate::aliases::RecordTranscryptionProof) -> Self {
+impl From<libpep::data::verifiable::records::RecordTranscryptionProof>
+    for WASMRecordTranscryptionProof
+{
+    fn from(p: libpep::data::verifiable::records::RecordTranscryptionProof) -> Self {
         Self(p)
     }
 }
@@ -383,7 +386,7 @@ impl From<crate::aliases::RecordTranscryptionProof> for WASMRecordTranscryptionP
 #[wasm_bindgen(js_name = LongRecordTranscryptionProof)]
 #[derive(Clone)]
 pub struct WASMLongRecordTranscryptionProof(
-    pub(crate) crate::aliases::LongRecordTranscryptionProof,
+    pub(crate) libpep::data::verifiable::records::LongRecordTranscryptionProof,
 );
 
 #[cfg(all(feature = "verifiable", feature = "long"))]
@@ -405,8 +408,10 @@ impl WASMLongRecordTranscryptionProof {
 }
 
 #[cfg(all(feature = "verifiable", feature = "long"))]
-impl From<crate::aliases::LongRecordTranscryptionProof> for WASMLongRecordTranscryptionProof {
-    fn from(p: crate::aliases::LongRecordTranscryptionProof) -> Self {
+impl From<libpep::data::verifiable::records::LongRecordTranscryptionProof>
+    for WASMLongRecordTranscryptionProof
+{
+    fn from(p: libpep::data::verifiable::records::LongRecordTranscryptionProof) -> Self {
         Self(p)
     }
 }

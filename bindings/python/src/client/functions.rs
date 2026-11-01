@@ -1,13 +1,3 @@
-#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
-use crate::aliases::GlobalSecretKeys;
-#[cfg(feature = "offline")]
-use crate::aliases::{AttributeGlobalPublicKey, GlobalPublicKeys, PseudonymGlobalPublicKey};
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
-use crate::aliases::{
-    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymSessionPublicKey,
-    PseudonymSessionSecretKey, SessionKeys,
-};
 #[cfg(feature = "json")]
 use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 #[cfg(feature = "long")]
@@ -39,8 +29,19 @@ use libpep::client::encrypt_global;
 use libpep::client::{decrypt, encrypt};
 #[cfg(feature = "batch")]
 use libpep::client::{decrypt_batch, encrypt_batch};
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+#[cfg(feature = "offline")]
+use libpep::keys::AttributeGlobalPublicKey;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::AttributeGlobalSecretKey;
+#[cfg(all(feature = "offline", feature = "insecure", feature = "json"))]
+use libpep::keys::GlobalSecretKeys;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::PseudonymGlobalSecretKey;
+use libpep::keys::{
+    AttributeSessionPublicKey, AttributeSessionSecretKey, GlobalPublicKeys,
+    PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey, PublicKey,
+    SecretKey, SessionKeys,
+};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

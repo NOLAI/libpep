@@ -1,6 +1,7 @@
 //! Python bindings for commitment types.
 
-use crate::aliases::{
+#[cfg(feature = "verifiable")]
+use libpep::factors::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };

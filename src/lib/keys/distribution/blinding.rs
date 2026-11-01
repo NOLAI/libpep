@@ -12,6 +12,7 @@
 
 use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::keys::traits::SecretKey;
 use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use rand_core::{CryptoRng, Rng};
@@ -20,7 +21,7 @@ use rand_core::{CryptoRng, Rng};
 #[derive(Copy, Clone, zeroize::Zeroize, derive_more::Debug)]
 #[zeroize(bound = "")]
 #[debug("BlindingFactor([redacted])")]
-pub struct BlindingFactor<G: Group>(pub(crate) G::Scalar);
+pub struct BlindingFactor<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
 impl<G: Group> BlindingFactor<G> {
     /// Create a random blinding factor.
@@ -119,7 +120,7 @@ pub trait BlindedGlobalSecretKey: Sized {
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 #[zeroize(bound = "")]
 #[debug("BlindedPseudonymGlobalSecretKey([redacted])")]
-pub struct BlindedPseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
+pub struct BlindedPseudonymGlobalSecretKey<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
 /// A blinded attribute global secret key, which is the attribute global secret key blinded by the blinding factors from
 /// all transcryptors, making it impossible to see or derive other keys from it without cooperation
@@ -129,7 +130,7 @@ pub struct BlindedPseudonymGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
 #[cfg_attr(feature = "serde", serde(transparent, bound = ""))]
 #[zeroize(bound = "")]
 #[debug("BlindedAttributeGlobalSecretKey([redacted])")]
-pub struct BlindedAttributeGlobalSecretKey<G: Group>(pub(crate) G::Scalar);
+pub struct BlindedAttributeGlobalSecretKey<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
 macro_rules! impl_blinded_global_secret_key {
     ($($t:ident),+ $(,)?) => {$(
@@ -156,7 +157,7 @@ impl_blinded_global_secret_key!(
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = ""))]
 #[zeroize(bound = "")]
-pub struct BlindedGlobalSecretKeys<G: Group> {
+pub struct BlindedGlobalSecretKeys<G: Group = Ristretto255> {
     /// The blinded global secret key for pseudonyms.
     pub pseudonym: BlindedPseudonymGlobalSecretKey<G>,
     /// The blinded global secret key for attributes.

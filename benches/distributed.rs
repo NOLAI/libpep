@@ -1,14 +1,14 @@
-use common::aliases::Client;
-use common::aliases::DistributedTranscryptor;
-use common::aliases::EncryptedRecord;
-use common::aliases::SessionPublicKeys;
-use common::aliases::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use libpep::client::Distributed;
+use libpep::client::{Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
-use libpep::data::simple::ElGamalEncryptable;
+use libpep::data::records::EncryptedRecord;
+use libpep::data::simple::{
+    Attribute, ElGamalEncryptable, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
+};
 use libpep::factors::RekeyPublicKey;
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::SessionPublicKeys;
+use libpep::transcryptor::DistributedTranscryptor;
 
 #[path = "common/mod.rs"]
 mod common;

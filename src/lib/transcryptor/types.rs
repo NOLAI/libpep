@@ -7,6 +7,7 @@ use crate::contexts::*;
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
 use crate::elgamal::arithmetic::Ciphersuite;
+use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
@@ -21,15 +22,29 @@ pub use crate::contexts::TranscryptorId;
 /// A PEP transcryptor system that can pseudonymize and rekey data, based on
 /// a pseudonymization secret and a rekeying secret.
 #[derive(Clone)]
-pub struct Transcryptor<C: Ciphersuite> {
+pub struct Transcryptor<C: Ciphersuite = Ristretto255Sha512> {
     pub(crate) pseudonymization_secret: PseudonymizationSecret,
     pub(crate) rekeying_secret: EncryptionSecret,
     pub(crate) group: PhantomData<C::Group>,
 }
 
-impl<C: Ciphersuite> Transcryptor<C> {
-    /// Create a new PEP system with the given secrets.
+impl Transcryptor {
+    /// Create a new PEP system with the given secrets, for ristretto255 with SHA-512.
+    ///
+    /// See [`new_generic`](Transcryptor::new_generic) for another ciphersuite.
     pub fn new(
+        pseudonymization_secret: PseudonymizationSecret,
+        rekeying_secret: EncryptionSecret,
+    ) -> Self {
+        Self::new_generic(pseudonymization_secret, rekeying_secret)
+    }
+}
+
+impl<C: Ciphersuite> Transcryptor<C> {
+    /// Create a new PEP system with the given secrets, for ciphersuite `C`.
+    ///
+    /// [`Transcryptor::new`] is this function for ristretto255 with SHA-512.
+    pub fn new_generic(
         pseudonymization_secret: PseudonymizationSecret,
         rekeying_secret: EncryptionSecret,
     ) -> Self {
@@ -62,7 +77,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> AttributeRekeyInfo<C::Group> {
-        AttributeRekeyInfo::new::<C>(session_from, session_to, &self.rekeying_secret)
+        AttributeRekeyInfo::new_generic::<C>(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonym rekey info to rekey pseudonyms from a given [`EncryptionContext`] to another.
@@ -71,7 +86,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> PseudonymRekeyInfo<C::Group> {
-        PseudonymRekeyInfo::new::<C>(session_from, session_to, &self.rekeying_secret)
+        PseudonymRekeyInfo::new_generic::<C>(session_from, session_to, &self.rekeying_secret)
     }
 
     /// Generate a pseudonymization info to pseudonymize from a given [`PseudonymizationDomain`]
@@ -83,7 +98,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> PseudonymizationInfo<C::Group> {
-        PseudonymizationInfo::new::<C>(
+        PseudonymizationInfo::new_generic::<C>(
             domain_from,
             domain_to,
             session_from,
@@ -102,7 +117,7 @@ impl<C: Ciphersuite> Transcryptor<C> {
         session_from: &EncryptionContext,
         session_to: &EncryptionContext,
     ) -> TranscryptionInfo<C::Group> {
-        TranscryptionInfo::new::<C>(
+        TranscryptionInfo::new_generic::<C>(
             domain_from,
             domain_to,
             session_from,

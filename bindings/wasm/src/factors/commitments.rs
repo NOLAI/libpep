@@ -1,11 +1,12 @@
 //! WASM bindings for commitment types.
 
-use crate::aliases::{
+use crate::errors::malformed_proof_err;
+use derive_more::{Deref, From, Into};
+#[cfg(feature = "verifiable")]
+use libpep::factors::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
-use crate::errors::malformed_proof_err;
-use derive_more::{Deref, From, Into};
 use wasm_bindgen::prelude::*;
 
 /// Pseudonymization factor commitment for a single transition (WASM).

@@ -23,7 +23,9 @@ pub mod commitments;
 pub mod verifiable;
 
 pub use derivation::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
+    make_attribute_rekey_factor, make_attribute_rekey_factor_generic, make_pseudonym_rekey_factor,
+    make_pseudonym_rekey_factor_generic, make_pseudonymization_factor,
+    make_pseudonymization_factor_generic,
 };
 pub use secrets::{EncryptionSecret, PseudonymizationSecret, Secret};
 pub use types::{

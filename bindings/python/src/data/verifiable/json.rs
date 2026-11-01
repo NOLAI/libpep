@@ -8,15 +8,15 @@
 //! are added to `PyVerifier` from this module via an extra `#[pymethods]` block
 //! (PyO3's `multiple-pymethods` feature is enabled).
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
-use crate::aliases::JsonTranscryptionBatchProof;
-use crate::aliases::JsonTranscryptionProof;
-use crate::aliases::TranscryptionInfo;
 use crate::data::json::PyEncryptedPepJsonValue;
 use crate::factors::commitments::PyVerifiableTranscryptionCommitment;
 use crate::factors::types::PyTranscryptionInfo;
+#[cfg(all(feature = "batch", feature = "verifiable"))]
+use libpep::data::verifiable::json::JsonTranscryptionBatchProof;
+use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::factors::TranscryptionInfo;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
@@ -91,7 +91,7 @@ impl PyJsonTranscryptionProof {
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> bool {
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verify::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.inner)
     }
@@ -116,7 +116,7 @@ impl PyJsonTranscryptionProof {
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyEncryptedPepJsonValue> {
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verified_reconstruct::<Ristretto255Sha512>(
                 &original.0,
@@ -203,7 +203,7 @@ impl PyEncryptedPepJsonValue {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         PyJsonTranscryptionProof {
             inner: self.0.verifiable_transcrypt::<Ristretto255Sha512, _>(
                 &info,
@@ -242,7 +242,7 @@ impl crate::verifier::PyVerifier {
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyEncryptedPepJsonValue> {
-        let keys: crate::aliases::SessionKeys = session_keys.clone().into();
+        let keys: libpep::keys::SessionKeys = session_keys.clone().into();
         self.verified_reconstruct_transcryption(
             &original.0,
             &proof.inner,

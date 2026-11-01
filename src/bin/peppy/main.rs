@@ -7,8 +7,6 @@
 // The CLI reports errors through `io::Error`; the remaining `expect`s are on infallible
 // serialization and on verifying a proof the command itself just made.
 #![allow(clippy::expect_used)]
-
-mod aliases;
 mod arith;
 mod data;
 mod elgamal;

@@ -19,6 +19,7 @@ use crate::data::padding::PaddingError;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::elgamal::arithmetic::group::{Bytes, Group, InvertibleEncoding};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
     TranscryptionInfo,
@@ -59,7 +60,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// the second block is `"@example.com"` plus padding, and every other identifier ending in
 /// `"@example.com"` shares it in every domain.
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongPseudonym<G: Group>(pub Vec<Pseudonym<G>>);
+pub struct LongPseudonym<G: Group = Ristretto255>(pub Vec<Pseudonym<G>>);
 
 /// An attribute of more than one block: a sequence of [`Attribute`]s that together hold a longer
 /// value, PKCS#7-padded in the last block.
@@ -70,15 +71,15 @@ pub struct LongPseudonym<G: Group>(pub Vec<Pseudonym<G>>);
 /// value. Consider padding values to a fixed size, or use [`pad_to`](Self::pad_to) for
 /// batches.
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongAttribute<G: Group>(pub Vec<Attribute<G>>);
+pub struct LongAttribute<G: Group = Ristretto255>(pub Vec<Attribute<G>>);
 
 /// An encrypted [`LongPseudonym`]: one [`EncryptedPseudonym`] per block.
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongEncryptedPseudonym<G: Group>(pub Vec<EncryptedPseudonym<G>>);
+pub struct LongEncryptedPseudonym<G: Group = Ristretto255>(pub Vec<EncryptedPseudonym<G>>);
 
 /// An encrypted [`LongAttribute`]: one [`EncryptedAttribute`] per block.
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deref, From)]
-pub struct LongEncryptedAttribute<G: Group>(pub Vec<EncryptedAttribute<G>>);
+pub struct LongEncryptedAttribute<G: Group = Ristretto255>(pub Vec<EncryptedAttribute<G>>);
 
 /// The encodings, encryption, decryption and rerandomization of a long plaintext/ciphertext
 /// pair, block by block, under the given key types.
@@ -482,7 +483,6 @@ mod tests {
     use crate::data::errors::ParseError;
     use crate::data::padding::PaddingError;
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -668,8 +668,8 @@ mod tests {
     #[test]
     fn long_encrypted_pseudonym_serialize_deserialize() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -695,8 +695,8 @@ mod tests {
     #[test]
     fn long_encrypted_attribute_serialize_deserialize() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
-            &make_attribute_global_keys::<Ristretto255, _>(&mut rng).1,
+        let (session_public, _session_secret) = make_attribute_session_keys(
+            &make_attribute_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -755,8 +755,8 @@ mod tests {
     #[cfg(feature = "json")]
     fn long_encrypted_serde_json() {
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );
@@ -783,8 +783,8 @@ mod tests {
         use crate::data::padding::Padded;
 
         let mut rng = rand::rng();
-        let (session_public, _session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &make_pseudonym_global_keys::<Ristretto255, _>(&mut rng).1,
+        let (session_public, _session_secret) = make_pseudonym_session_keys(
+            &make_pseudonym_global_keys(&mut rng).1,
             &EncryptionContext::from("session-1"),
             &EncryptionSecret::from("enc-secret".as_bytes().to_vec()),
         );

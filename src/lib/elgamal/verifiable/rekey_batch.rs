@@ -2,6 +2,7 @@
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
 use super::rekey::VerifiableRekey;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -15,7 +16,7 @@ use serde::{Deserialize, Serialize};
 /// by the verifier as part of the published per-transition commitments.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRekeyBatch<G: Group> {
+pub struct VerifiableRekeyBatch<G: Group = Ristretto255> {
     pub(crate) inners: Vec<VerifiableRekey<G>>,
 }
 
@@ -80,7 +81,7 @@ impl<G: Group> VerifiableRekeyBatch<G> {
 /// [`VerifiableRekey`] values that verify against [`Self::combined_commitment`].
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRekey2Batch<G: Group> {
+pub struct VerifiableRekey2Batch<G: Group = Ristretto255> {
     /// `K = (k_from⁻¹·k_to)·G`.
     pub(crate) gk: G::Element,
     /// `ZKP{K_to = k_from * K}`.

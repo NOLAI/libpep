@@ -6,7 +6,7 @@ use std::error::Error;
 #[macro_use]
 mod common;
 
-use common::aliases::*;
+use libpep::prelude::*;
 
 #[test]
 fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
@@ -29,7 +29,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
     let original_string = "This is a very long id that will be pseudonymized";
 
     // Step 1: Convert string to padded pseudonyms
-    let pseudonym = LongPseudonym::from_string_padded(original_string);
+    let pseudonym: LongPseudonym = LongPseudonym::from_string_padded(original_string);
 
     // Step 2: Encrypt the pseudonyms
     let encrypted_pseudonyms: Vec<EncryptedPseudonym> = pseudonym
@@ -38,7 +38,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         .collect();
 
     // Step 3: Create pseudonymization info for transform
-    let pseudo_info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let pseudo_info = PseudonymizationInfo::new(
         &domain_a,
         &domain_b,
         &session,
@@ -75,7 +75,7 @@ fn test_pseudonymize_string_roundtrip() -> Result<(), Box<dyn Error>> {
         .collect();
 
     // Step 7: Reverse the pseudonymization
-    let reverse_pseudo_info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let reverse_pseudo_info = PseudonymizationInfo::new(
         &domain_b,
         &domain_a,
         &session,

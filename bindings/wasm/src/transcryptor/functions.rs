@@ -1,10 +1,5 @@
 //! WASM bindings for transcryption functions.
 
-use crate::aliases::{
-    AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
-};
-#[cfg(not(feature = "elgamal3"))]
-use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
@@ -15,9 +10,13 @@ use crate::factors::types::{
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
-use libpep::factors::Factor;
+use libpep::factors::{
+    AttributeRekeyInfo, Factor, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
+};
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::PublicKey;
+use libpep::keys::PseudonymSessionPublicKey;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::{AttributeSessionPublicKey, PublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use wasm_bindgen::prelude::*;
 

@@ -23,6 +23,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
@@ -43,7 +44,7 @@ macro_rules! record_proof {
         $(#[cfg($cfg)])?
         #[derive(Clone, Debug, PartialEq, Eq)]
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-        pub struct $proof<G: Group> {
+        pub struct $proof<G: Group = Ristretto255> {
             /// The pseudonymization proofs, one per pseudonym.
             pub pseudonym_operation_proofs: Vec<$p_proof<G>>,
             /// The rekey proofs, one per attribute.
@@ -226,7 +227,9 @@ record_proof! {
 
 /// Proof of a verifiable transcryption of a batch of [`EncryptedRecord`]s.
 #[cfg(feature = "batch")]
-pub type RecordTranscryptionBatchProof<G> = BatchTranscryptionProof<EncryptedRecord<G>>;
+pub type RecordTranscryptionBatchProof<G = Ristretto255> =
+    BatchTranscryptionProof<EncryptedRecord<G>>;
 /// Proof of a verifiable transcryption of a batch of [`LongEncryptedRecord`]s.
 #[cfg(all(feature = "batch", feature = "long"))]
-pub type LongRecordTranscryptionBatchProof<G> = BatchTranscryptionProof<LongEncryptedRecord<G>>;
+pub type LongRecordTranscryptionBatchProof<G = Ristretto255> =
+    BatchTranscryptionProof<LongEncryptedRecord<G>>;

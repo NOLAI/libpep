@@ -3,7 +3,7 @@
 
 mod common;
 
-use common::aliases::*;
+use libpep::prelude::*;
 
 #[cfg(feature = "json")]
 use libpep::pep_json;

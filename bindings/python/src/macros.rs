@@ -15,7 +15,7 @@ macro_rules! py_plaintext_impl {
             /// Create from a [`PyGroupElement`].
             #[new]
             fn new(x: PyGroupElement) -> Self {
-                Self($core::from_point(x.0))
+                Self(<$core>::from_point(x.0))
             }
 
             /// Convert to a [`PyGroupElement`].
@@ -29,7 +29,7 @@ macro_rules! py_plaintext_impl {
             #[pyo3(name = "random")]
             fn random() -> Self {
                 let mut rng = rand::rng();
-                Self($core::random(&mut rng))
+                Self(<$core>::random(&mut rng))
             }
 
             /// Encode as a byte array.
@@ -48,14 +48,14 @@ macro_rules! py_plaintext_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(bytes: &[u8]) -> Option<Self> {
-                $core::from_slice(bytes).map(Self)
+                <$core>::from_slice(bytes).map(Self)
             }
 
             /// Decode from a hexadecimal string.
             #[staticmethod]
             #[pyo3(name = "from_hex")]
             fn from_hex(hex: &str) -> Option<Self> {
-                $core::from_hex(hex).map(Self)
+                <$core>::from_hex(hex).map(Self)
             }
 
             /// Decode from a 64-byte hash value.
@@ -69,7 +69,7 @@ macro_rules! py_plaintext_impl {
                 }
                 let mut arr = [0u8; 64];
                 arr.copy_from_slice(v);
-                Ok($core::from_hash(&arr).into())
+                Ok(<$core>::from_hash(&arr).into())
             }
 
             /// Decode from a byte array of length 16 using lizard encoding.
@@ -85,7 +85,7 @@ macro_rules! py_plaintext_impl {
                 }
                 let mut arr = [0u8; 16];
                 arr.copy_from_slice(data);
-                Ok(Self($core::from_lizard(&arr)))
+                Ok(Self(<$core>::from_lizard(&arr)))
             }
 
             /// Encode as a byte array of length 16 using lizard encoding.
@@ -101,7 +101,7 @@ macro_rules! py_plaintext_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes_padded")]
             fn from_bytes_padded(data: &[u8]) -> PyResult<Self> {
-                $core::from_bytes_padded(data).map(Self).map_err(|e| {
+                <$core>::from_bytes_padded(data).map(Self).map_err(|e| {
                     pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}"))
                 })
             }
@@ -110,7 +110,7 @@ macro_rules! py_plaintext_impl {
             #[staticmethod]
             #[pyo3(name = "from_string_padded")]
             fn from_string_padded(text: &str) -> PyResult<Self> {
-                $core::from_string_padded(text).map(Self).map_err(|e| {
+                <$core>::from_string_padded(text).map(Self).map_err(|e| {
                     pyo3::exceptions::PyValueError::new_err(format!("Encoding failed: {e}"))
                 })
             }
@@ -185,7 +185,7 @@ macro_rules! py_encrypted_impl {
             #[staticmethod]
             #[pyo3(name = "from_base64")]
             fn from_base64(s: &str) -> Option<Self> {
-                $core::from_base64(s).map(Self)
+                <$core>::from_base64(s).map(Self)
             }
 
             fn __repr__(&self) -> String {
@@ -319,14 +319,14 @@ macro_rules! py_long_plaintext_impl {
             #[staticmethod]
             #[pyo3(name = "from_string_padded")]
             fn from_string_padded(text: &str) -> Self {
-                Self($core::from_string_padded(text))
+                Self(<$core>::from_string_padded(text))
             }
 
             #[doc = concat!("Encodes an arbitrary-length byte array into a `", stringify!($core), "` using PKCS#7 padding.")]
             #[staticmethod]
             #[pyo3(name = "from_bytes_padded")]
             fn from_bytes_padded(data: &[u8]) -> Self {
-                Self($core::from_bytes_padded(data))
+                Self(<$core>::from_bytes_padded(data))
             }
 
             #[doc = concat!("Decodes the `", stringify!($core), "` back to the original string.")]
@@ -409,7 +409,7 @@ macro_rules! py_long_encrypted_impl {
             #[staticmethod]
             #[pyo3(name = "deserialize")]
             fn deserialize(s: &str) -> PyResult<Self> {
-                $core::deserialize(s).map(Self).map_err(|e| {
+                <$core>::deserialize(s).map(Self).map_err(|e| {
                     pyo3::exceptions::PyValueError::new_err(format!("Deserialization failed: {e}"))
                 })
             }
@@ -444,7 +444,7 @@ macro_rules! py_scalar_key_impl {
         impl $w {
             #[new]
             fn new(x: PyScalarNonZero) -> Self {
-                $w($core::from_scalar(x.0))
+                $w(<$core>::from_scalar(x.0))
             }
 
             #[pyo3(name = "to_bytes")]
@@ -455,7 +455,7 @@ macro_rules! py_scalar_key_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(bytes: &[u8]) -> Option<$w> {
-                $core::from_slice(bytes).map($w)
+                <$core>::from_slice(bytes).map($w)
             }
 
             #[pyo3(name = "to_hex")]
@@ -466,7 +466,7 @@ macro_rules! py_scalar_key_impl {
             #[staticmethod]
             #[pyo3(name = "from_hex")]
             fn from_hex(hex: &str) -> Option<$w> {
-                $core::from_hex(hex).map($w)
+                <$core>::from_hex(hex).map($w)
             }
 
             fn __repr__(&self) -> String {

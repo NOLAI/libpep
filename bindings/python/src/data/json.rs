@@ -1,12 +1,5 @@
 //! Python bindings for PEP JSON encryption.
 
-#[cfg(feature = "offline")]
-use crate::aliases::GlobalPublicKeys;
-#[cfg(all(feature = "insecure", feature = "offline"))]
-use crate::aliases::GlobalSecretKeys;
-use crate::aliases::PepJsonBuilder;
-use crate::aliases::TranscryptionInfo;
-use crate::aliases::{EncryptedPepJsonValue, PepJsonValue};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 #[cfg(feature = "batch")]
@@ -20,9 +13,15 @@ use libpep::client::decrypt_global;
 #[cfg(feature = "offline")]
 use libpep::client::encrypt_global;
 use libpep::data::json::structure::JsonStructure;
-use libpep::data::json::utils;
+use libpep::data::json::{utils, PepJsonBuilder};
+#[cfg(feature = "json")]
+use libpep::data::json::{EncryptedPepJsonValue, PepJsonValue};
 use libpep::data::traits::Transcryptable;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::factors::TranscryptionInfo;
+#[cfg(feature = "offline")]
+use libpep::keys::GlobalPublicKeys;
+#[cfg(all(feature = "insecure", feature = "offline"))]
+use libpep::keys::GlobalSecretKeys;
 #[cfg(feature = "batch")]
 use libpep::transcryptor::transcrypt_batch;
 use pyo3::exceptions::PyValueError;
@@ -145,7 +144,7 @@ impl PyEncryptedPepJsonValue {
         public_key: Option<&Bound<PyAny>>,
     ) -> PyResult<Self> {
         let mut rng = rand::rng();
-        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+        let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,

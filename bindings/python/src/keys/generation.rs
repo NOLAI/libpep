@@ -1,13 +1,13 @@
 //! Python bindings for key generation functions.
 
 use super::types::*;
-use crate::aliases::*;
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::factors::secrets::PyEncryptionSecret;
 use crate::keys::types::PyAttributeSessionPublicKey;
 use crate::keys::types::PyPseudonymSessionPublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::prelude::*;
 use pyo3::prelude::*;
 
 /// Generate a new pseudonym global key pair.

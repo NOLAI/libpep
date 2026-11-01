@@ -1,12 +1,14 @@
-use crate::aliases::*;
-#[cfg(feature = "verifiable")]
-use crate::aliases::{AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::WASMElGamal;
 use crate::macros::{wasm_encrypted_impl, wasm_plaintext_impl};
 use derive_more::{Deref, From, Into};
 use libpep::data::padding::Padded;
-use libpep::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
+#[cfg(feature = "verifiable")]
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::simple::{
+    AttributeRekeyProof, PseudonymPseudonymizationProof, PseudonymRekeyProof,
+};
+use libpep::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// A pseudonym that can be used to identify a user.

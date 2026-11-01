@@ -3,8 +3,12 @@ mod common;
 #[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
-    use crate::common::aliases::*;
     use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+    use libpep::factors::{make_pseudonymization_factor, PseudonymRekeyFactor};
+    use libpep::keys::distribution::{
+        make_pseudonym_session_key_share, BlindingFactor, SessionKeyShare,
+    };
+    use libpep::prelude::*;
 
     #[test]
     fn test_key_factor_component() {
@@ -35,7 +39,7 @@ mod legacy_pep_repo_tests {
                 *expected_factor
             );
 
-            let blinding_factor = BlindingFactor::from_hex(blinding_hex).unwrap();
+            let blinding_factor: BlindingFactor = BlindingFactor::from_hex(blinding_hex).unwrap();
             // Note: PEP repo uses the pseudonymization factor for rekeying pseudonyms instead of a session bound key.
             // We wrap the scalar in a PseudonymRekeyFactor for API compatibility.
             let rekey_factor = PseudonymRekeyFactor::from_scalar(pseudo_factor.scalar());

@@ -2,8 +2,6 @@
 //! ciphertext encodings.
 #![allow(unused_macros)]
 
-pub mod aliases;
-
 /// Call a transcryption function with the argument list of the active ciphertext encoding: with
 /// `elgamal3` the ciphertext carries its public key, otherwise it is passed explicitly.
 macro_rules! tx {

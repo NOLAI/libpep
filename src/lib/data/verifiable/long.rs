@@ -24,6 +24,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::VerifiableRRSKBatch;
 use crate::elgamal::ElGamal;
@@ -48,7 +49,7 @@ use serde::{Deserialize, Serialize};
     derive(Serialize, Deserialize),
     serde(bound = "", transparent)
 )]
-pub struct LongPseudonymPseudonymizationProof<G: Group>(pub VerifiableRRSKBatch<G>);
+pub struct LongPseudonymPseudonymizationProof<G: Group = Ristretto255>(pub VerifiableRRSKBatch<G>);
 
 /// The ciphertexts of the blocks of a long value.
 fn blocks<G: Group>(value: &LongEncryptedPseudonym<G>) -> Vec<ElGamal<G>> {
@@ -158,7 +159,7 @@ macro_rules! long_rekey_proof {
             derive(Serialize, Deserialize),
             serde(bound = "", transparent)
         )]
-        pub struct $proof<G: Group>(pub Vec<$block_proof<G>>);
+        pub struct $proof<G: Group = Ristretto255>(pub Vec<$block_proof<G>>);
 
         impl<G: Group> VerifiableRekeyProof for $proof<G> {
             type Group = G;
@@ -257,11 +258,13 @@ long_batch_item!(LongEncryptedAttribute of EncryptedAttribute => attributes of _
 
 /// Proof of a verifiable pseudonymization of a batch of [`LongEncryptedPseudonym`]s.
 #[cfg(feature = "batch")]
-pub type LongPseudonymPseudonymizationBatchProof<G> =
+pub type LongPseudonymPseudonymizationBatchProof<G = Ristretto255> =
     BatchPseudonymizationProof<LongEncryptedPseudonym<G>>;
 /// Proof of a verifiable rekeying of a batch of [`LongEncryptedPseudonym`]s.
 #[cfg(feature = "batch")]
-pub type LongPseudonymRekeyBatchProof<G> = BatchRekeyProof<LongEncryptedPseudonym<G>>;
+pub type LongPseudonymRekeyBatchProof<G = Ristretto255> =
+    BatchRekeyProof<LongEncryptedPseudonym<G>>;
 /// Proof of a verifiable rekeying of a batch of [`LongEncryptedAttribute`]s.
 #[cfg(feature = "batch")]
-pub type LongAttributeRekeyBatchProof<G> = BatchRekeyProof<LongEncryptedAttribute<G>>;
+pub type LongAttributeRekeyBatchProof<G = Ristretto255> =
+    BatchRekeyProof<LongEncryptedAttribute<G>>;

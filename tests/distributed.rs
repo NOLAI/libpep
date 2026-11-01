@@ -2,7 +2,7 @@
 
 mod common;
 
-use common::aliases::*;
+use libpep::prelude::*;
 
 #[test]
 fn n_pep() {

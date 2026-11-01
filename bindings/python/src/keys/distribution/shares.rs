@@ -2,8 +2,6 @@ use super::blinding::{
     PyBlindedAttributeGlobalSecretKey, PyBlindedGlobalSecretKeys,
     PyBlindedPseudonymGlobalSecretKey, PyBlindingFactor,
 };
-use crate::aliases::*;
-use crate::aliases::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
 use crate::keys::types::{
     PyAttributeSessionPublicKey, PyAttributeSessionSecretKey, PyPseudonymSessionPublicKey,
@@ -15,10 +13,17 @@ use libpep::client::distributed::{
     make_attribute_session_key, make_pseudonym_session_key, make_session_keys_distributed,
     update_attribute_session_key, update_pseudonym_session_key, update_session_keys,
 };
-use libpep::factors::Factor;
-use libpep::keys::distribution::SessionKeyShare;
+use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor};
 use libpep::keys::distribution::{make_attribute_session_key_share, make_session_key_shares};
-use libpep::keys::{PublicKey, SecretKey};
+use libpep::keys::distribution::{
+    AttributeSessionKeyShare, BlindedGlobalSecretKeys, PseudonymSessionKeyShare, SessionKeyShare,
+    SessionKeyShares,
+};
+use libpep::keys::{
+    AttributeSessionKeys, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    PseudonymSessionKeys, PseudonymSessionPublicKey, PseudonymSessionSecretKey,
+};
+use libpep::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
@@ -340,7 +345,7 @@ pub fn py_make_pseudonym_session_key_share(
     rekey_factor: &PyScalarNonZero,
     blinding_factor: &PyBlindingFactor,
 ) -> PyPseudonymSessionKeyShare {
-    use crate::aliases::PseudonymRekeyFactor;
+    use libpep::factors::PseudonymRekeyFactor;
     use libpep::keys::distribution::make_pseudonym_session_key_share;
     PyPseudonymSessionKeyShare(make_pseudonym_session_key_share(
         &PseudonymRekeyFactor::from_scalar(rekey_factor.0),

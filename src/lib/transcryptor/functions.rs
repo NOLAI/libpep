@@ -93,7 +93,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::ristretto255::*;
+/// # use libpep::prelude::*;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
@@ -114,7 +114,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::ristretto255::*;
+/// # use libpep::prelude::*;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
@@ -140,8 +140,9 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::ristretto255::*;
+/// # use libpep::prelude::*;
 /// # use libpep::elgamal::arithmetic::Group;
+/// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
@@ -163,8 +164,9 @@ where
 ///
 /// # Examples
 /// ```
-/// # use libpep::ristretto255::*;
+/// # use libpep::prelude::*;
 /// # use libpep::elgamal::arithmetic::Group;
+/// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());

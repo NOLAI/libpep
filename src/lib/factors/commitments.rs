@@ -7,6 +7,7 @@
 //! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::verifiable::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use crate::factors::types::{
     AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
@@ -19,7 +20,7 @@ use crate::factors::types::{
     derive(serde::Serialize, serde::Deserialize),
     serde(bound = "")
 )]
-pub struct VerifiablePseudonymizationCommitment<G: Group> {
+pub struct VerifiablePseudonymizationCommitment<G: Group = Ristretto255> {
     /// Public commitment to the reshuffle factor: `S = s·G`.
     pub reshuffle_commitment: PseudonymizationFactorCommitment<G>,
     /// Public commitment to the rekey factor: `K = k·G`.
@@ -43,7 +44,7 @@ impl<G: Group> From<PseudonymizationInfo<G>> for VerifiablePseudonymizationCommi
     derive(serde::Serialize, serde::Deserialize),
     serde(bound = "")
 )]
-pub struct VerifiableRekeyCommitment<G: Group> {
+pub struct VerifiableRekeyCommitment<G: Group = Ristretto255> {
     /// Public commitment to the rekey factor: `K = k·G`.
     pub commitment: RekeyFactorCommitment<G>,
 }
@@ -75,7 +76,7 @@ impl<G: Group> From<AttributeRekeyInfo<G>> for VerifiableRekeyCommitment<G> {
     derive(serde::Serialize, serde::Deserialize),
     serde(bound = "")
 )]
-pub struct VerifiableTranscryptionCommitment<G: Group> {
+pub struct VerifiableTranscryptionCommitment<G: Group = Ristretto255> {
     /// Pseudonymization commitments (`S = s·G`, `K_pseudo = k·G`).
     pub pseudonym: VerifiablePseudonymizationCommitment<G>,
     /// Attribute rekey commitment (`K_attr = k·G`).

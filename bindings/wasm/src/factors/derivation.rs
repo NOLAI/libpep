@@ -1,13 +1,13 @@
 //! WASM bindings for deriving factors from secrets, sessions and domains within a protocol
 //! context.
 
-use crate::aliases::{
-    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
-};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 use crate::factors::types::{
     WASMAttributeRekeyFactor, WASMPseudonymRekeyFactor, WASMReshuffleFactor,
+};
+use libpep::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
 use wasm_bindgen::prelude::*;
 

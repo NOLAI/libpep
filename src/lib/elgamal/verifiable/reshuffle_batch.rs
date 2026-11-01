@@ -2,6 +2,7 @@
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
 use super::reshuffle::VerifiableReshuffle;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// A batch of [`VerifiableReshuffle`] proofs sharing one reshuffle factor.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableReshuffleBatch<G: Group> {
+pub struct VerifiableReshuffleBatch<G: Group = Ristretto255> {
     pub(crate) inners: Vec<VerifiableReshuffle<G>>,
 }
 
@@ -76,7 +77,7 @@ impl<G: Group> VerifiableReshuffleBatch<G> {
 /// VerifiableReshuffle`) at batch level.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableReshuffle2Batch<G: Group> {
+pub struct VerifiableReshuffle2Batch<G: Group = Ristretto255> {
     pub(crate) gs: G::Element,
     pub(crate) p_gs_to: Proof<G>,
     pub(crate) inners: Vec<VerifiableReshuffle<G>>,

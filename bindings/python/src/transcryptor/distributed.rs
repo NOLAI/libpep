@@ -1,8 +1,5 @@
 //! Python bindings for distributed transcryptor.
 
-use crate::aliases::BlindingFactor;
-use crate::aliases::DistributedTranscryptor;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
@@ -18,7 +15,10 @@ use crate::factors::types::{
 use crate::keys::distribution::PyBlindingFactor;
 use crate::keys::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare, PySessionKeyShares};
 use derive_more::{Deref, From, Into};
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::distribution::BlindingFactor;
+use libpep::transcryptor::DistributedTranscryptor;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

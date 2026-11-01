@@ -8,14 +8,14 @@
 //! `verifyJSONTranscryptionBatch` are added to `WASMVerifier` from this module
 //! via an extra `#[wasm_bindgen(js_class = Verifier)]` impl block.
 
-#[cfg(all(feature = "batch", feature = "verifiable"))]
-use crate::aliases::JsonTranscryptionBatchProof;
-use crate::aliases::JsonTranscryptionProof;
 use crate::data::json::WASMEncryptedPepJsonValue;
 use crate::errors::{malformed_proof_err, verify_err_to_js};
 use crate::factors::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::types::WASMTranscryptionInfo;
 use crate::verifier::WASMVerifier;
+#[cfg(all(feature = "batch", feature = "verifiable"))]
+use libpep::data::verifiable::json::JsonTranscryptionBatchProof;
+use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::verifier::VerifyError;
@@ -83,7 +83,7 @@ impl WASMJsonTranscryptionProof {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> bool {
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
             .verify::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.0)
     }
@@ -110,7 +110,7 @@ impl WASMJsonTranscryptionProof {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
             .verified_reconstruct::<Ristretto255Sha512>(&original.0, &keys.public(), &commitments.0)
             .map(WASMEncryptedPepJsonValue)
@@ -191,7 +191,7 @@ impl WASMEncryptedPepJsonValue {
     ) -> WASMJsonTranscryptionProof {
         use libpep::data::verifiable::traits::VerifiableTranscryptable;
         let mut rng = rand::rng();
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         WASMJsonTranscryptionProof(self.0.verifiable_transcrypt::<Ristretto255Sha512, _>(
             &info.0,
             &keys.public(),
@@ -231,7 +231,7 @@ impl WASMVerifier {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verified_reconstruct_transcryption(
                 &original.0,

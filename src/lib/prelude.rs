@@ -5,11 +5,12 @@
 //! info, and the client and transcryptor operations. Features add their items: long variants
 //! (`long`), offline encryption (`offline`), batches (`batch`) and verification (`verifiable`).
 //!
-//! The types and the key functions are the ristretto255 instances from
-//! [`ristretto255`](crate::ristretto255): `Pseudonym` is `Pseudonym<Ristretto255>`, and
-//! `make_global_keys(rng)` needs no type parameter. The generic items are at their own paths
-//! (for example [`data::simple::Pseudonym`](crate::data::simple::Pseudonym)); import those
-//! explicitly to work with another group. An explicit import takes precedence over the glob.
+//! The types are the generic ones, whose type parameter defaults to ristretto255 (`Pseudonym` is
+//! `Pseudonym<Ristretto255>`), and the key functions are the ristretto255 ones:
+//! `make_global_keys(rng)` needs no type parameter. For another group, import the generic items
+//! and the `_generic` functions from their own paths (for example
+//! [`keys::make_global_keys_generic`](crate::keys::make_global_keys_generic)). An explicit import
+//! takes precedence over the glob.
 //!
 //! Left out on purpose, because they are rarely needed or ambiguous when glob-imported: the
 //! ElGamal internals, the proofs ([`elgamal::dleq`](crate::elgamal), `elgamal::zkps`), hashing,
@@ -59,12 +60,12 @@
 pub use crate::client::prelude::*;
 pub use crate::transcryptor::prelude::*;
 
-pub use crate::ristretto255::{
+pub use crate::keys::{
     make_attribute_global_keys, make_attribute_session_keys, make_global_keys,
     make_pseudonym_global_keys, make_pseudonym_session_keys, make_session_keys, GlobalSecretKeys,
 };
 #[cfg(feature = "verifiable")]
-pub use crate::ristretto255::{Verifier, VerifyError};
+pub use crate::verifier::{Verifier, VerifyError};
 
 pub mod client {
     //! Client prelude for encryption and decryption operations.

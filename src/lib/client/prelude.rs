@@ -2,10 +2,9 @@
 //!
 //! It names the ristretto255 group and ciphersuite, the contexts, the data types and the traits to
 //! call methods on them, the keys a client holds, and the client operations. The types are the
-//! [ristretto255 instances](crate::ristretto255) of the generic ones, so no type parameter is
-//! written. The items it shares
-//! with the [transcryptor prelude](crate::transcryptor::prelude) are the same items, so both can
-//! be glob-imported together. Keys come from the setup or from session key shares
+//! generic ones, whose type parameter defaults to ristretto255, so none is written. The items it
+//! shares with the [transcryptor prelude](crate::transcryptor::prelude) are the same items, so
+//! both can be glob-imported together. Keys come from the setup or from session key shares
 //! ([`Distributed`]); key generation is in [`crate::keys`].
 //!
 //! # Examples
@@ -13,7 +12,8 @@
 //! ```
 //! use libpep::prelude::client::*;
 //! // The setup that hands a client its session keys is not part of the client role.
-//! use libpep::ristretto255::{make_global_keys, make_session_keys, EncryptionSecret};
+//! use libpep::factors::EncryptionSecret;
+//! use libpep::keys::{make_global_keys, make_session_keys};
 //!
 //! let rng = &mut rand::rng();
 //! let (_, global_secret) = make_global_keys(rng);
@@ -37,19 +37,18 @@ pub use crate::client::decrypt_global_batch;
 pub use crate::client::encrypt_global;
 #[cfg(all(feature = "batch", feature = "offline"))]
 pub use crate::client::encrypt_global_batch;
-pub use crate::client::{decrypt, encrypt, Distributed};
+#[cfg(feature = "offline")]
+pub use crate::client::OfflineClient;
+pub use crate::client::{decrypt, encrypt, Client, Distributed};
 #[cfg(feature = "batch")]
 pub use crate::client::{decrypt_batch, encrypt_batch};
 pub use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 pub use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
-pub use crate::data::traits::{Encryptable, Encrypted};
-#[cfg(feature = "offline")]
-pub use crate::ristretto255::OfflineClient;
-pub use crate::ristretto255::{
-    Attribute, Client, EncryptedAttribute, EncryptedPseudonym, GlobalPublicKeys, Pseudonym,
-    Ristretto255, Ristretto255Sha512, SessionKeys, SessionPublicKeys,
-};
 #[cfg(feature = "long")]
-pub use crate::ristretto255::{
+pub use crate::data::long::{
     LongAttribute, LongEncryptedAttribute, LongEncryptedPseudonym, LongPseudonym,
 };
+pub use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
+pub use crate::data::traits::{Encryptable, Encrypted};
+pub use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+pub use crate::keys::{GlobalPublicKeys, PublicKey, SecretKey, SessionKeys, SessionPublicKeys};

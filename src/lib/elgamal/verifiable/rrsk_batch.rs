@@ -3,6 +3,7 @@
 use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use super::rerandomize_batch::VerifiableRerandomizeBatch;
 use super::rsk_batch::{VerifiableRSK2Batch, VerifiableRSKBatch};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// [`VerifiableRSKBatch`] over the same factor pair.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRRSKBatch<G: Group> {
+pub struct VerifiableRRSKBatch<G: Group = Ristretto255> {
     pub(crate) rerandomize: VerifiableRerandomizeBatch<G>,
     pub(crate) rsk: VerifiableRSKBatch<G>,
 }
@@ -100,7 +101,7 @@ impl<G: Group> VerifiableRRSKBatch<G> {
 /// Mirrors `VerifiableRRSK2 { rerandomize, rsk2 }`.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRRSK2Batch<G: Group> {
+pub struct VerifiableRRSK2Batch<G: Group = Ristretto255> {
     pub(crate) rerandomize: VerifiableRerandomizeBatch<G>,
     pub(crate) rsk2: VerifiableRSK2Batch<G>,
 }

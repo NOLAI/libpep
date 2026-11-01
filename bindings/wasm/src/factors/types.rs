@@ -1,7 +1,5 @@
 //! WASM bindings for factor types and the transcryption info types that bundle them.
 
-use crate::aliases::*;
-use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
@@ -10,9 +8,11 @@ use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
-use libpep::factors::{Factor, RekeyPublicKey};
-use libpep::keys::PublicKey;
+use libpep::factors::{
+    AttributeRekeyFactor, PseudonymRekeyFactor, RerandomizeFactor, ReshuffleFactor,
+};
+use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
+use libpep::prelude::*;
 use wasm_bindgen::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -108,7 +108,7 @@ impl WASMPseudonymizationInfo {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(PseudonymizationInfo::new::<Ristretto255Sha512>(
+        Self(PseudonymizationInfo::new(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -171,7 +171,7 @@ impl WASMPseudonymRekeyInfo {
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(PseudonymRekeyInfo::new::<Ristretto255Sha512>(
+        Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -219,7 +219,7 @@ impl WASMAttributeRekeyInfo {
         session_to: &WASMEncryptionContext,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(AttributeRekeyInfo::new::<Ristretto255Sha512>(
+        Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -273,7 +273,7 @@ impl WASMTranscryptionInfo {
         pseudonymization_secret: &WASMPseudonymizationSecret,
         encryption_secret: &WASMEncryptionSecret,
     ) -> Self {
-        Self(TranscryptionInfo::new::<Ristretto255Sha512>(
+        Self(TranscryptionInfo::new(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -305,7 +305,7 @@ impl WASMTranscryptionInfo {
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
     #[wasm_bindgen(js_name = rekeyPublicKey)]
     pub fn rekey_public_key(&self, before: &WASMSessionPublicKeys) -> WASMSessionPublicKeys {
-        let before: crate::aliases::SessionPublicKeys = (*before).into();
+        let before: libpep::keys::SessionPublicKeys = (*before).into();
         self.0.rekey_public_key(&before).into()
     }
 }

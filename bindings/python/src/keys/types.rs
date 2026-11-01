@@ -1,12 +1,16 @@
-use crate::aliases::*;
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::keys::PublicKey;
-use libpep::keys::SecretKey;
+use libpep::keys::{
+    AttributeGlobalPublicKey, AttributeGlobalSecretKey, AttributeSessionKeys,
+    AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,
+    PseudonymGlobalSecretKey, PseudonymSessionKeys, PseudonymSessionPublicKey,
+    PseudonymSessionSecretKey,
+};
+use libpep::prelude::*;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;
