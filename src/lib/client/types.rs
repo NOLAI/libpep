@@ -1,6 +1,4 @@
 //! Client type definitions.
-//!
-//! The clients are generic over the [`Group`].
 
 use crate::data::traits::{Encryptable, Encrypted};
 use crate::elgamal::arithmetic::group::Group;

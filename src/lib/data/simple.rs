@@ -3,8 +3,6 @@
 //!
 //! The [`ElGamalEncryptable`] and [`ElGamalEncrypted`] traits of [`data::elgamal`](crate::data::elgamal)
 //! give access to the single group element or ciphertext behind these types, and to its encodings.
-//!
-//! The types are generic over the [`Group`].
 
 pub use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};

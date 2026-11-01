@@ -1,21 +1,9 @@
 //! Internal PKCS#7 padding for single-block (16 byte) encoding.
 //!
-//! The [`Padded`] trait encodes data up to 15 bytes using PKCS#7 padding.
-//! PKCS#7 padding fills the data up to a complete 16-byte block before encryption.
-//!
-//! # Usage
-//!
-//! - It is applied automatically during encoding and decoding.
-//! - For single-block data (up to 15 bytes), use the [`Padded`] trait.
-//! - For multi-block data, it is applied to the last block (see the `data::long` module).
-//!
-//! # Format
-//!
-//! - The value of each padding byte is the number of padding bytes.
-//! - Valid padding bytes are `0x01`-`0x10`.
-//! - Padding is always applied, even if the data is an exact multiple of 16 bytes.
-//!
-//! # Example
+//! The [`Padded`] trait encodes data of up to 15 bytes into one block. Each padding byte holds the
+//! number of padding bytes, so valid padding bytes are `0x01` to `0x10`, and padding is always
+//! added, even when the data is a multiple of the block size. Multi-block values pad their last
+//! block this way (see `data::long`).
 //!
 //! ```text
 //! "hello" (5 bytes):
@@ -23,18 +11,9 @@
 //!  └─ data ─┘ └──────────────── 11 padding bytes ────────────────────┘
 //! ```
 //!
-//! # Order of operations
-//!
-//! PKCS#7 padding is applied before external padding (see `data::padding::external`)
-//! and removed after the external padding is removed during decoding. The order matters for
-//! disambiguation: even if the data matches the external padding pattern, PKCS#7 changes the last
-//! byte to `0x01`-`0x10`, so it is detected correctly.
-//!
-//! # Disambiguation
-//!
-//! PKCS#7 padding uses bytes `0x01`-`0x10`, so the last byte is never `0x00`.
-//! A padded data block is therefore never mistaken for an external padding block, which is all
-//! zeros. Every possible byte sequence can be encoded without ambiguity.
+//! PKCS#7 padding is applied before external padding (see `data::padding::external`) and removed
+//! after it. Because the last byte of a padded block is never `0x00`, a data block cannot be
+//! mistaken for an all-zero external padding block.
 
 use super::PaddingError;
 use crate::data::elgamal::ElGamalEncryptable;

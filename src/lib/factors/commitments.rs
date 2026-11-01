@@ -3,8 +3,6 @@
 //! With the forward-direction constructions, a "commitment" to a factor is a single group
 //! element `A = a·G`; no separate proof of well-formedness is required because every
 //! verifiable operation proves a relation against `A` directly.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::Ristretto255;

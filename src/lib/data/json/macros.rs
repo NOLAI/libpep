@@ -64,7 +64,7 @@ macro_rules! pep_json {
         pep_json!(@object builder, $($tt)*)
     }};
 
-    // Parse object fields - empty
+    // Parse object fields: empty
     (@object $builder:ident, ) => {
         $builder.build()
     };

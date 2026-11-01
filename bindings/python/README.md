@@ -8,7 +8,7 @@ Python bindings for [libpep](https://github.com/NOLAI/libpep), a library for pol
 pip install libpep-py
 ```
 
-The module is importable as `libpep`. The API mirrors the Rust crate, fixed to ristretto255 with SHA-512, the default of the crate's generic types, so there are no group or ciphersuite type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
+The module is importable as `libpep`. The API mirrors the Rust crate with its defaults, ristretto255 and SHA-512, so there are no group or ciphersuite type parameters. This round trip converts one party's pseudonym into another party's pseudonym for the same subject:
 
 ```python
 from libpep.client import decrypt, encrypt
@@ -45,13 +45,13 @@ back = transcryptor.transcrypt(transcrypted, info.reverse(), keys_b.public())
 assert decrypt(back, keys_a).to_hex() == pseudonym_a.to_hex()
 ```
 
-Keys are passed either as the one key an operation needs or as a bundle: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The type of the data selects the right half of the bundle.
+An operation takes either the one key it needs or a bundle: `keys_a.public()` for the session's public keys, `keys_a` itself where a secret key is needed. The type of the data selects the right half of the bundle.
 
 See the [repository README](https://github.com/NOLAI/libpep) for the cryptographic background and the papers describing the scheme.
 
 ## Development
 
-Build and test from the repository root:
+Build and test:
 
 ```bash
 cd bindings/python

@@ -387,7 +387,7 @@ pub fn wasm_encrypt_json(
 ///
 /// # Arguments
 /// * `values` - Array of PepJsonValue objects to encrypt
-/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
 ///
 /// # Returns
 /// An array of EncryptedPepJsonValue objects, all with the same structure and padded to match the maximum block counts for that structure
@@ -438,7 +438,7 @@ pub fn wasm_decrypt_json(
 /// # Arguments
 ///
 /// * `encrypted` - Array of EncryptedPepJsonValue objects to decrypt
-/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and
+/// * `session_keys` - Session keys containing public and secret keys for both pseudonyms and attributes
 ///
 /// # Returns
 /// An array of PepJsonValue objects

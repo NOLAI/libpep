@@ -1,8 +1,7 @@
-//! Verifier for verifiable transcryption operations, generic over the
-//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) (`Verifier<Ristretto255Sha512>`).
+//! Verifier for verifiable transcryption operations.
 //!
-//! The verifier checks that operations were performed against published
-//! forward commitments:
+//! The verifier checks that operations were performed with the factors a transcryptor
+//! committed to:
 //!
 //!   * For a pseudonymization transition `(d_from, d_to, c_from, c_to)` the
 //!     transcryptor publishes the *combined* commitments

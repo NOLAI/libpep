@@ -51,7 +51,7 @@ use pyo3::types::PyAny;
 // ============================================================================
 
 py_dispatch!(
-    /// Polymorphic encrypt function - works with any encryptable type.
+    /// Polymorphic encrypt function: works with any encryptable type.
     ///
     /// Supports:
     /// - Pseudonym + PseudonymSessionPublicKey
@@ -107,7 +107,7 @@ py_dispatch!(
 );
 
 py_dispatch!(
-    /// Polymorphic decrypt function - works with any encrypted type.
+    /// Polymorphic decrypt function: works with any encrypted type.
     #[cfg(feature = "elgamal3")]
     #[pyfunction]
     #[pyo3(name = "decrypt")]
@@ -167,7 +167,7 @@ py_dispatch!(
 );
 
 py_dispatch!(
-    /// Polymorphic decrypt function - works with any encrypted type.
+    /// Polymorphic decrypt function: works with any encrypted type.
     #[cfg(not(feature = "elgamal3"))]
     #[pyfunction]
     #[pyo3(name = "decrypt")]

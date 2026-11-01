@@ -443,7 +443,7 @@ class TestVerifiableNegative(unittest.TestCase):
         # Build a second valid proof to donate one of its components. Every
         # Ristretto/scalar in the proof JSON is a fixed-length hex string;
         # flipping a character blindly would yield an undecodable point, so we
-        # cross-graft from another *valid* proof — every individual element
+        # cross-graft from another *valid* proof: every individual element
         # still decodes, but the per-statement binding no longer matches.
         donor_enc = encrypt(Pseudonym.random(), pseudonym_session1_keys.public)
         donor_proof = transcryptor.verifiable_pseudonymize(
@@ -691,11 +691,11 @@ def _swap_first_string_proof(proof, donor):
     """Swap the first differing leaf string value between two proofs.
 
     Returns a new proof object (same class as `proof`) that is well-formed JSON
-    — every Ristretto point still decodes — but no longer matches the
-    statement `proof` was generated for. We do this by parsing both proofs
-    as JSON, finding the first leaf string in `proof` that differs from the
-    corresponding leaf in `donor`, swapping it in, and round-tripping back
-    through the proof class's `from_json`.
+    (every Ristretto point still decodes) but no longer matches the
+    statement `proof` was generated for. It parses both proofs as JSON,
+    swaps the first leaf string in `proof` that differs from the
+    corresponding leaf in `donor` for the donor's, and round-trips the
+    result through the proof class's `from_json`.
     """
     target = json.loads(_proof_to_json(proof))
     donor_v = json.loads(_proof_to_json(donor))

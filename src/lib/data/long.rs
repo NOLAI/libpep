@@ -8,8 +8,6 @@
 //! Long values use PKCS#7 padding (internal padding) in their last block, and can be brought
 //! to a fixed number of blocks with external padding ([`pad_to`](LongPseudonym::pad_to)) for
 //! batch unlinkability. See the [`padding`](crate::data::padding) module.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
 pub use crate::data::errors::ParseError;
@@ -868,7 +866,7 @@ mod tests {
         let decoded_15 = attr_15.to_string_padded().unwrap();
         assert_eq!(str_15, decoded_15);
 
-        // 16 null bytes - requires 2 blocks (first full, second with 15 bytes data + 1 padding)
+        // 16 null bytes, requires 2 blocks (first full, second with 15 bytes data + 1 padding)
         let str_16 = "\0".repeat(16);
         let attr_16 = LongAttribute::from_string_padded(&str_16);
         let decoded_16 = attr_16.to_string_padded().unwrap();
@@ -1013,7 +1011,7 @@ mod tests {
     #[test]
     fn long_attribute_data_containing_magic_marker_multiblock() {
         // Edge case: Data that contains bytes [0xFF, 0xEE, 0xDD, 0xCC]
-        // CAN be encoded regardless - external padding is all zeros now.
+        // CAN be encoded regardless: external padding is all zeros.
         let data = vec![
             0xFF, 0xEE, 0xDD, 0xCC, 0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
             0xAA, 0xBB, 0xCC,
@@ -1067,7 +1065,7 @@ mod tests {
         let padded_once = attr.pad_to(2).unwrap();
         let padded_twice = padded_once.pad_to(3).unwrap();
 
-        // This should succeed - all zero blocks are removed, leaving just the data
+        // This should succeed: all zero blocks are removed, leaving just the data
         let result = padded_twice.to_string_padded();
         assert!(
             result.is_ok(),

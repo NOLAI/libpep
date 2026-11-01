@@ -307,7 +307,7 @@ impl From<WASMLongEncryptedRecord> for LongEncryptedRecord {
 }
 
 #[cfg(feature = "long")]
-/// Structure descriptor for LongRecords - describes the shape including block counts.
+/// Structure descriptor for LongRecords: describes the shape including block counts.
 #[wasm_bindgen(js_name = LongRecordStructure)]
 pub struct WASMLongRecordStructure(pub(crate) LongRecordStructure);
 

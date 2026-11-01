@@ -1,24 +1,23 @@
 //! Derivation of factors from secrets and contexts, and of the info for a transcryption between
 //! two contexts.
 //!
-//! The derivation is generic over the [`Ciphersuite`], which supplies the hash and the domain separation tag.
+//! The [`Ciphersuite`] supplies the hash and the domain separation tag.
 //!
 //! Two derivations exist, selected by feature:
 //!
-//! - The default is `DeriveFactor`: `HashToScalar` (ristretto255-SHA512) over the length-prefixed secret, the label and the length-prefixed
-//!   identifier, domain-separated with `"DeriveFactor-" || contextString` of
-//!   the [ciphersuite](crate::elgamal::arithmetic::Ciphersuite::ID). A factor that is 0 or 1 is rejected
-//!   and the derivation retried with the next counter.
+//! - The default is `DeriveFactor`: `HashToScalar` over the length-prefixed secret, the label and
+//!   the length-prefixed identifier, domain-separated with `"DeriveFactor-" || contextString` of
+//!   the [ciphersuite](crate::elgamal::arithmetic::Ciphersuite::ID). A factor that is 0 or 1 is
+//!   rejected and the derivation retried with the next counter.
 //! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
 //! The labels differ: the default uses `0x01` for a pseudonym rekey factor, `0x02` for an
 //! attribute rekey factor and `0x03` for a reshuffle factor; the legacy derivation uses `0x02`
 //! for a pseudonym rekey factor and `0x01` for the other two, with the audience type.
 //!
-//! The secret is part of the hash input, so deployments with different secrets already derive
-//! unrelated factors, and the domain or session identifier separates within a deployment. The
-//! ciphersuite adds its own tag on top of that. See the
-//! [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite) module docs.
+//! The secret is part of the hash input, so deployments with different secrets derive unrelated
+//! factors, and the domain or session identifier separates within a deployment. The ciphersuite
+//! adds its tag on top (see [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite)).
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
@@ -57,7 +56,7 @@ pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
         )),
         #[cfg(feature = "offline")]
         EncryptionContext::Global => {
-            // Global context - return identity factor
+            // Global context: return identity factor
             PseudonymRekeyFactor(C::Group::scalar_one())
         }
     }
@@ -87,7 +86,7 @@ pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
         )),
         #[cfg(feature = "offline")]
         EncryptionContext::Global => {
-            // Global context - return identity factor
+            // Global context: return identity factor
             AttributeRekeyFactor(C::Group::scalar_one())
         }
     }
@@ -117,7 +116,7 @@ pub fn make_pseudonymization_factor_generic<C: Ciphersuite>(
         )),
         #[cfg(feature = "global-pseudonyms")]
         PseudonymizationDomain::Global => {
-            // Global domain - return identity factor
+            // Global domain: return identity factor
             ReshuffleFactor(C::Group::scalar_one())
         }
     }
@@ -183,7 +182,7 @@ pub fn make_pseudonym_rekey_factor_generic<C: Ciphersuite>(
             audience_type,
         } => PseudonymRekeyFactor(make_factor::<C>(&secret.0, 0x02, *audience_type, payload)),
         EncryptionContext::Global => {
-            // Global context - return identity factor
+            // Global context: return identity factor
             PseudonymRekeyFactor(C::Group::scalar_one())
         }
     }
@@ -201,7 +200,7 @@ pub fn make_attribute_rekey_factor_generic<C: Ciphersuite>(
             audience_type,
         } => AttributeRekeyFactor(make_factor::<C>(&secret.0, 0x01, *audience_type, payload)),
         EncryptionContext::Global => {
-            // Global context - return identity factor
+            // Global context: return identity factor
             AttributeRekeyFactor(C::Group::scalar_one())
         }
     }
@@ -219,7 +218,7 @@ pub fn make_pseudonymization_factor_generic<C: Ciphersuite>(
             audience_type,
         } => ReshuffleFactor(make_factor::<C>(&secret.0, 0x01, *audience_type, payload)),
         PseudonymizationDomain::Global => {
-            // Global domain - return identity factor
+            // Global domain: return identity factor
             ReshuffleFactor(C::Group::scalar_one())
         }
     }

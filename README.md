@@ -17,9 +17,9 @@ Transcryption can be distributed over `n` transcryptors, so that every transcryp
 The library is the reference implementation of the n-PEP paper (see [Background](#background)).
 It ships as a Rust crate with Python and JavaScript/WebAssembly bindings that mirror the Rust API.
 
-The library is generic over the group and the ciphersuite, and is built for ristretto255 with SHA-512.
-Every generic type defaults its parameter to them, so in the common case no type parameter is written: `Pseudonym` is `Pseudonym<Ristretto255>` and `Transcryptor` is `Transcryptor<Ristretto255Sha512>`.
-`use libpep::prelude::*;` brings in what a typical application needs, and `peppy` and the Python and JavaScript bindings use this default.
+The library is generic over the group and the hash, and is built for ristretto255 with SHA-512, which every type defaults to.
+Most code therefore writes no type parameters (see [API overview](#api-overview)), and `use libpep::prelude::*;` imports what a typical application needs.
+`peppy` and the Python and JavaScript bindings are fixed to ristretto255 with SHA-512.
 
 ## Installation
 
@@ -158,7 +158,7 @@ peppy pseudonym verify-pseudonymize \
 
 In the ElGamal scheme, a message `M` is encrypted for a receiver with public key `Y`, belonging to secret key `y`.
 Encryption is randomized (*polymorphic*): every fresh random `b` gives a different ciphertext for the same message.
-We write it as `Enc(b, M, Y)`.
+It is written `Enc(b, M, Y)`.
 
 The library provides three homomorphic operations on a ciphertext `in = Enc(b, M, Y)`:
 
@@ -209,7 +209,9 @@ The construction is described in *Verifiable Blind Pseudonymization via Polymorp
 
 ### As a three-party oblivious PRF
 
-An oblivious pseudorandom function ([RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html) specifies them over prime-order groups) is a two-party protocol: a *client* blinds an input, a *server* applies its secret key, and the client unblinds to obtain the PRF output, with the server learning neither input nor output.
+An oblivious pseudorandom function (OPRF, specified over prime-order groups in [RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html)) is a two-party protocol.
+A *client* blinds an input, a *server* applies its secret key, and the client unblinds the result to obtain the PRF output.
+The server learns neither input nor output.
 
 `libpep` evaluates the same DH-PRF `F_s(M) = s*M`, but splits the client role over a **sender** and a **recipient**, with the **transcryptor** as evaluator.
 ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the recipient's decryption unblinds.
@@ -219,6 +221,14 @@ Because blinding and unblinding are done by different parties, evaluation is non
 There are two differences with the two-party protocol.
 `libpep` does not hash the input into the group first; it relies on origin identifiers being uniformly random group elements, as described above.
 And plain PEP transcryption is not verifiable: a transcryptor that applies a wrong factor produces an incorrect pseudonym undetectably.
+The `verifiable` feature closes that gap with discrete-log-equality proofs of the kind the verifiable OPRF of RFC 9497 uses.
+
+The primitives shared with RFC 9497 are checked against its ristretto255-SHA512 test vectors (Appendix A.1): `hash_to_group`, `HashToScalar`, and the batched DLEQ proof in `elgamal::dleq`.
+They are also checked against the `expand_message_xmd` vectors of RFC 9380.
+The library uses its own context string (`nPEPV1-`) in production, so that its hashes are separate from those of any OPRF.
+The proofs of verifiable transcryption use the encoding of the WPES paper (`elgamal::zkps`), not the encoding of `elgamal::dleq`.
+
+The three-party construction, with its sender, recipient and transcryptor, is specified as a convertible OPRF (coPRF) in the Internet-Draft `draft-doesburg-cfrg-coprf`, which uses the same prime-order group API as RFC 9497.
 
 ### As proxy re-encryption with built-in pseudonymization
 
@@ -242,10 +252,20 @@ This is what the name refers to: *polymorphic* encryption is the proxy re-encryp
 | `prelude` | The imports a typical application needs, with subsets `prelude::client` and `prelude::transcryptor` for each role |
 | `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
-The API is generic in two layers. The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter (`elgamal::arithmetic::Group`). Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite` parameter (`elgamal::arithmetic::Ciphersuite`), which pairs a group with a hash. Another group and hash can be used by implementing the two traits.
-ristretto255 is `elgamal::arithmetic::Ristretto255` (the group) and `elgamal::arithmetic::Ristretto255Sha512` (the ciphersuite `ristretto255-SHA512`), and every generic type defaults its parameter to them: `Pseudonym<G: Group = Ristretto255>`, `Transcryptor<C: Ciphersuite = Ristretto255Sha512>`. `Pseudonym<OtherGroup>` works like `Pseudonym`, and another group or ciphersuite is added by implementing the two traits. `libpep::prelude::*` imports what a typical application needs, and `prelude::client` and `prelude::transcryptor` are the subsets for each role. The `peppy` tool and the Python and JavaScript bindings are fixed to ristretto255 with SHA-512.
+The API is generic in two layers.
+The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter.
+Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite`, which pairs a group with a hash.
+Both traits are in `elgamal::arithmetic`, and another group or hash is added by implementing them.
+ristretto255 is `Ristretto255` and the ciphersuite `ristretto255-SHA512` is `Ristretto255Sha512`.
+Every generic type defaults its parameter to them: `Pseudonym<G: Group = Ristretto255>`, `Transcryptor<C: Ciphersuite = Ristretto255Sha512>`.
+`Pseudonym<OtherGroup>` works like `Pseudonym`.
 
-Rust does not use a default type parameter to infer one, so an expression that nothing constrains still needs a type: `Pseudonym::random(rng).to_hex()` does not compile, `let pseudonym: Pseudonym = Pseudonym::random(rng);` does. The functions and constructors that cannot infer their parameter at all, because it appears only in the result or in an associated type, come in pairs: the plain name is the ristretto255 one (`make_global_keys(rng)`, `make_session_keys(..)`, `make_*_factor(..)`, `hash_to_group(..)`, `Transcryptor::new(..)`, `DistributedTranscryptor::new(..)`, `TranscryptionInfo::new(..)`, `Verifier::new()`), and the same name with the suffix `_generic` takes the group or ciphersuite as a type parameter (`make_global_keys_generic::<G, _>(rng)`, `make_session_keys_generic::<C>(..)`, `Transcryptor::<C>::new_generic(..)`). Generic code uses the `_generic` names. Calls to methods that take the ciphersuite as a type parameter, such as `proof.verify::<Ristretto255Sha512>(..)`, still name it.
+Rust does not use a default type parameter to infer one, so an expression that nothing constrains still needs a type: `Pseudonym::random(rng).to_hex()` does not compile, `let pseudonym: Pseudonym = Pseudonym::random(rng);` does.
+Functions and constructors that cannot infer their parameter, because it appears only in the result or in an associated type, come in pairs.
+The plain name is the ristretto255 one: `make_global_keys(rng)`, `make_session_keys(..)`, `make_*_factor(..)`, `hash_to_group(..)`, `Transcryptor::new(..)`, `DistributedTranscryptor::new(..)`, `TranscryptionInfo::new(..)` and `Verifier::new()`.
+The same name with the suffix `_generic` takes the group or ciphersuite as a type parameter: `make_global_keys_generic::<G, _>(rng)`, `make_session_keys_generic::<C>(..)`, `Transcryptor::<C>::new_generic(..)`.
+Generic code uses the `_generic` names. Methods that take the ciphersuite as a type parameter, such as `proof.verify::<Ristretto255Sha512>(..)`, name it in both cases.
+
 The Python and JavaScript bindings expose the same modules and names.
 Full API documentation is on [docs.rs/libpep](https://docs.rs/libpep).
 
@@ -271,8 +291,7 @@ Optional features:
   The two modes are not wire-compatible; choose one per deployment.
 - `legacy`: compatibility with the legacy PEP repository implementation, which derives scalars from domains, contexts and secrets differently.
   Implies `elgamal3`, `offline` and `global-pseudonyms`.
-
-The two derivations (default and `legacy`) produce different factors and session keys from the same secrets; a deployment picks one.
+  The default and `legacy` derivations produce different factors and session keys from the same secrets, so a deployment picks one.
 - `insecure`: methods that use global *secret* keys directly, such as `decrypt_global`.
 - `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
 

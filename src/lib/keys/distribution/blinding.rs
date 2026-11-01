@@ -7,8 +7,6 @@
 //! Blinding factors and blinded keys are protocol material, not keys: no data is encrypted
 //! towards them and they have no associated public key, so they do not implement
 //! [`SecretKey`].
-//!
-//! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::decode_hex;
 use crate::elgamal::arithmetic::group::Group;

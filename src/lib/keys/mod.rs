@@ -4,11 +4,6 @@
 //! session keys (used for encryption and decryption), and the key management of distributed
 //! transcryptors.
 //!
-//! The key types are generic over the [`Group`](crate::elgamal::arithmetic::Group), for example
-//! `SessionKeys<Ristretto255>`; the group is inferred from the keys wherever they are passed
-//! on, and named once where keys are made from randomness alone
-//! (`make_global_keys_generic::<G, _>(rng)`).
-//!
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
 //!

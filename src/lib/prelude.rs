@@ -13,7 +13,7 @@
 //! takes precedence over the glob.
 //!
 //! Left out on purpose, because they are rarely needed or ambiguous when glob-imported: the
-//! ElGamal internals, the proofs ([`elgamal::dleq`](crate::elgamal), `elgamal::zkps`), hashing,
+//! ElGamal internals, the proofs (`elgamal::dleq`, `elgamal::zkps`), hashing,
 //! the [`Group`](crate::elgamal::arithmetic::Group) and
 //! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) traits, the individual factor and key
 //! types, and records and JSON documents. Import those from their modules.

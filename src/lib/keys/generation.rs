@@ -1,10 +1,9 @@
 //! Key generation functions for global and session keys.
 //!
-//! Global keys are generic over the [`Group`]: the functions that generate them from randomness
-//! alone take the group as a type parameter (`..._generic`), as there is nothing to infer it from.
-//! Session keys are derived with a factor, so their functions are generic over the
-//! [`Ciphersuite`] and take it as a type parameter (`..._generic`). Each generic function has a
-//! plain-named counterpart for ristretto255 with SHA-512 that needs no type parameter.
+//! Global keys are made from randomness alone, so the `_generic` functions take the [`Group`] as a
+//! type parameter. Session keys are derived with a factor, which hashes, so theirs take the
+//! [`Ciphersuite`]. The plain-named functions are the ristretto255 versions (see the
+//! [crate docs](crate#groups-and-ciphersuites)).
 
 use crate::contexts::EncryptionContext;
 use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};

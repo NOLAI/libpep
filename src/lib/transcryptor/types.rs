@@ -1,6 +1,4 @@
 //! Transcryptor type definitions.
-//!
-//! The transcryptor is generic over the [`Ciphersuite`].
 
 use crate::contexts::*;
 #[cfg(not(feature = "elgamal3"))]

@@ -1,7 +1,5 @@
 //! PEP primitives for [rekey]ing, [reshuffle]ing, [rerandomize]ation of [ElGamal] ciphertexts, their
 //! transitive and reversible n-PEP extensions, and combined versions.
-//!
-//! All primitives are generic over the [`Group`]; the group is inferred from the ciphertext.
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::ElGamal;
 

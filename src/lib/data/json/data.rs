@@ -1,7 +1,6 @@
 //! Core JSON encryption types and implementations.
 //!
-//! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group), which must have an
-//! [`InvertibleEncoding`] for the attribute values.
+//! The group must have an [`InvertibleEncoding`] for the attribute values.
 
 use crate::data::elgamal::ElGamalEncryptable;
 use crate::data::json::utils::{bool_to_byte, byte_to_bool, bytes_to_number, number_to_bytes};
@@ -334,7 +333,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
                 Ok(Self::LongPseudonym(padded))
             }
 
-            // Array padding - recursively pad each element
+            // Array padding: recursively pad each element
             (Self::Array(arr), JsonStructure::Array(target_structures)) => {
                 if arr.len() != target_structures.len() {
                     return Err(JsonError::StructureMismatch {
@@ -352,7 +351,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
                 Ok(Self::Array(padded?))
             }
 
-            // Object padding - recursively pad each field
+            // Object padding: recursively pad each field
             (Self::Object(obj), JsonStructure::Object(target_fields)) => {
                 let mut padded = BTreeMap::new();
 
@@ -1489,7 +1488,7 @@ mod tests {
             _ => panic!("Expected String structure"),
         };
 
-        // Try to normalize to fewer blocks - should fail
+        // Try to normalize to fewer blocks, should fail
         let result = long_value.pad_to(&JsonStructure::String(current_blocks - 1));
         assert!(result.is_err());
 
@@ -1509,7 +1508,7 @@ mod tests {
         // Create a string value
         let string_value = PepJsonValue::from_value(&json!("hello"));
 
-        // Try to normalize to a number structure - should fail
+        // Try to normalize to a number structure, should fail
         let result = string_value.pad_to(&JsonStructure::Number);
         assert!(result.is_err());
 

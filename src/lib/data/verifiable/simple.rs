@@ -11,8 +11,6 @@
 //! provide the verifier-side API. The wrappers also implement the
 //! appropriate `Verifiable*Proof` trait (rekey / pseudonymization) so
 //! they work polymorphically with [`Verifier`](crate::verifier::Verifier).
-//!
-//! The types are generic over the [`Group`].
 
 use crate::data::elgamal::ElGamalEncrypted;
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};

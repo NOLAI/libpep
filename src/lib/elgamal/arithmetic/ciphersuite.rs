@@ -3,10 +3,9 @@
 //! A [`Group`] is pure group arithmetic. Everything that hashes (encoding an identifier as a
 //! group element, deriving factors, the Fiat-Shamir challenges of the proofs) needs more: a hash
 //! function, the maps from hash output to elements and scalars, and an identifier that keeps the
-//! domain separation tags of one ciphersuite apart from another. A [`Ciphersuite`] bundles these.
-//! Data types such as `Pseudonym<G>` only need the group and stay generic over a [`Group`]; the
-//! functions and types that hash (`Transcryptor<C>`, `hash_to_group_generic::<C>`, proof verification)
-//! are generic over a ciphersuite `C`, and reach its group as `C::Group`.
+//! domain separation tags of one ciphersuite apart from another. A [`Ciphersuite`] bundles these,
+//! and reaches its group as `C::Group`. The split between the two traits is described in the
+//! [crate docs](crate#groups-and-ciphersuites).
 //!
 //! A ciphersuite is named by a [`CiphersuiteId`], such as `ristretto255-SHA512` for ristretto255
 //! with SHA-512 (the marker [`Ristretto255Sha512`](super::Ristretto255Sha512)). The identifier is
@@ -16,27 +15,20 @@
 //!
 //! # Domain separation
 //!
-//! Separation by ciphersuite matters for hashes that take no secret, where the input alone
-//! determines the output and another protocol hashing the same input on the same group would get
-//! the same element. [`hash_to_group`](super::hashing::hash_to_group) is such a hash: the
-//! [`PREFIX`] keeps a pseudonym apart from other protocols' hashes of the same identifier on
-//! ristretto255. The prefix reads `"nPEPV1-"` and is versioned independently of the crate; see
-//! [`PREFIX`].
+//! Separation by ciphersuite matters for hashes that take no secret: the input alone determines
+//! the output, so another protocol hashing the same input on the same group would get the same
+//! element. [`hash_to_group`](super::hashing::hash_to_group) is such a hash, and the [`PREFIX`]
+//! (`"nPEPV1-"`, versioned independently of the crate) keeps a pseudonym apart from those.
 //!
-//! Factor [derivation](crate::factors::derivation) hashes the length-prefixed transcryptor secret
-//! together with the label and the length-prefixed domain or session identifier, so two
+//! Factor [derivation](crate::factors::derivation) hashes the transcryptor secret, so two
 //! deployments derive unrelated factors because their secrets differ. The ciphersuite only
 //! contributes the domain separation tag. The protocol's hashes are separated from each other by
 //! the label of each tag (`"DeriveFactor-"`, `"HashToGroup-"`, `"HashToScalar-"`, and the proof
 //! transcript's own labels).
 //!
-//! # Relation to the contexts module
-//!
-//! A [`CiphersuiteId`] names the hash domain the whole protocol runs in. The
-//! [`EncryptionContext`](crate::contexts::EncryptionContext) and
-//! [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain) of the
-//! [`contexts`](crate::contexts) module name a session and a domain within a deployment, and a
-//! deployment uses those to separate its own data.
+//! A [`CiphersuiteId`] is not an [`EncryptionContext`](crate::contexts::EncryptionContext) or a
+//! [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain): it names the hash domain
+//! of the whole protocol, while those name a session and a domain within a deployment.
 
 use super::group::Group;
 use sha2::digest::common::BlockSizeUser;
@@ -74,16 +66,12 @@ pub trait Ciphersuite:
     /// The group this ciphersuite computes in.
     type Group: Group;
 
-    /// The hash of this ciphersuite: `SHA-512` for `ristretto255-SHA512`.
+    /// The hash this ciphersuite is named after: `SHA-512` for `ristretto255-SHA512`.
     ///
-    /// The second half of a ciphersuite identifier names a hash, so it is declared here and not
-    /// left to each function to pick. An implementation whose [`ID`](Self::ID) says `-SHA256`
-    /// therefore cannot hash with SHA-512 unnoticed, because both declarations sit side by side
-    /// in the same impl.
-    ///
-    /// This is the hash the ciphersuite is named after. It is not necessarily the hash inside
-    /// [`hash_to_group`](Self::hash_to_group) and [`hash_to_scalar`](Self::hash_to_scalar), which
-    /// may use whatever expander RFC 9380 prescribes for the group.
+    /// It is declared next to [`ID`](Self::ID) so that the identifier and the hash cannot drift
+    /// apart. It is not necessarily the hash inside [`hash_to_group`](Self::hash_to_group) and
+    /// [`hash_to_scalar`](Self::hash_to_scalar), which may use the expander RFC 9380 prescribes
+    /// for the group.
     type Hash: Digest + BlockSizeUser;
 
     /// The identifier of this ciphersuite, whose context string the protocol's domain separation

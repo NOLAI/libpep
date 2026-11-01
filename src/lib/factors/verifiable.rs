@@ -1,10 +1,9 @@
-//! Verifiable factor derivation using Carter-Wegman universal hashing: the alternative of
-//! Section 3.3.1 of the paper, not the preferred scheme (see [Security](#security)).
+//! Factor derivation with Carter-Wegman universal hashing: the alternative of Section 3.3.1 of
+//! the paper, not the preferred scheme (see [Security](#security)).
 //!
-//! Factor commitments are publicly computable from master public keys, so
-//! the transcryptor does not need to publish a per-domain / per-session
-//! commitment for every factor it uses. The verifier reconstructs them
-//! from a single master public-key pair plus the domain / session identifier.
+//! The commitments to the factors can be computed from the master public keys, so the
+//! transcryptor does not publish a commitment per domain or session. The verifier computes them
+//! from one pair of master public keys and the domain or session identifier.
 //!
 //! # Construction
 //!
@@ -28,8 +27,6 @@
 //! The commitment scheme of [`crate::factors::commitments`] with the default derivation has no
 //! such structure and is the preferred scheme; choose this derivation only where commitment
 //! storage is the binding constraint and that trade-off is acceptable.
-//!
-//! The types are generic over the [`Ciphersuite`], whose hash and group the derivation uses.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::elgamal::arithmetic::ciphersuite::{

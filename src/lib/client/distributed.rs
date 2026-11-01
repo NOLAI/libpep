@@ -5,9 +5,6 @@
 //! key, leaving the global secret key times the rekey factors. Replacing one transcryptor's
 //! share (when that transcryptor moves the client to another session) divides out the old share
 //! and multiplies in the new one.
-//!
-//! The functions are generic over the [`Group`] and infer it from the key material they are
-//! given.
 
 use crate::client::types::Client;
 use crate::elgamal::arithmetic::group::Group;

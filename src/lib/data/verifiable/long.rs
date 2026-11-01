@@ -5,8 +5,6 @@
 //! The pseudonymization proof of a long pseudonym is one RRSK batch proof over its blocks, which
 //! share the factor proofs; a rekey proof is one proof per block. A batch proof lays all blocks
 //! of all values out in one list.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::data::elgamal::ElGamalEncrypted;
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};

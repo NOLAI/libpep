@@ -1,6 +1,4 @@
 //! Distributed transcryptor for generating session key shares.
-//!
-//! The distributed transcryptor is generic over the [`Ciphersuite`].
 
 use crate::contexts::EncryptionContext;
 use crate::elgamal::arithmetic::Ciphersuite;

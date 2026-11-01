@@ -1,16 +1,18 @@
-//! Hashing to the group and to scalars, generic over the [`Ciphersuite`], following [RFC 9380].
+//! Hashing to the group and to scalars under a [`Ciphersuite`], following [RFC 9380].
 //!
-//! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1: it hashes a message to
-//! any requested number of bytes under a label (`xmd` names the variant for block-based hashes
-//! such as SHA-512). The groups use it to produce the uniform bytes they map into the group or
-//! the scalar field.
+//! [`expand_message_xmd`] is the expander of RFC 9380, Section 5.3.1. It hashes a message to any
+//! number of bytes under a domain separation tag, and the groups map those bytes to elements and
+//! scalars. It is checked against the RFC's test vectors.
 //!
-//! [`hash_to_group_generic`] is the protocol-level encoding: it derives the tag from a
-//! ciphersuite's [`CiphersuiteId`](super::CiphersuiteId) instead of taking one. The raw-tag functions for
-//! ristretto255, [`hash_to_group_with_dst`] and [`hash_to_scalar_with_dst`], live in
-//! [`ristretto255::hashing`](super::ristretto255::hashing) and are re-exported here.
+//! [`hash_to_group_generic`] is the protocol-level encoding. It builds the tag from the
+//! ciphersuite's [`CiphersuiteId`](super::CiphersuiteId) as `"HashToGroup-" || contextString`,
+//! the shape of `HashToGroup` for ristretto255 in [RFC 9497], Section 4.1, with the library's own
+//! context string. The raw-tag functions for
+//! ristretto255, [`hash_to_group_with_dst`] and [`hash_to_scalar_with_dst`], are in
+//! [`ristretto255::hashing`](super::ristretto255::hashing) and re-exported here.
 //!
 //! [RFC 9380]: https://www.rfc-editor.org/rfc/rfc9380
+//! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 
 use super::ciphersuite::Ciphersuite;
 use super::group::Group;
@@ -55,19 +57,16 @@ pub fn hash_to_nonzero_scalar(parts: &[&[u8]]) -> ScalarNonZero {
 /// `expand_message_xmd` from RFC 9380, Section 5.3.1: hash `msg` to any requested number of
 /// bytes, under a label.
 ///
-/// Where `H` returns a fixed number of bytes, this returns `len_in_bytes` of them, uniformly
-/// pseudorandom, by chaining `H` over a counter. The domain separation tag `dst` is mixed into
-/// every block, so the same message under two different tags gives two unrelated outputs. This
-/// keeps a pseudonym derived from an identifier unrelated to a factor derived from it.
-/// The tag's own length is appended to it, so a message can never be mistaken for a tag.
+/// `H` returns a fixed number of bytes; this returns `len_in_bytes` of them by chaining `H` over
+/// a counter. The tag `dst` is mixed into every block, so the same message under two tags gives
+/// unrelated outputs. Its length is appended to it, so a message cannot be mistaken for a tag.
 ///
-/// `xmd` is the RFC's name for the variant built on a Merkle-Damgård hash, i.e. one with an
-/// internal block size, such as SHA-512. Its counterpart `expand_message_xof` is built on an
-/// extendable-output function such as SHAKE and is not interchangeable with this one, so the
-/// suffix is part of the name.
+/// `xmd` names the variant for Merkle-Damgård hashes, which have an internal block size (SHA-512,
+/// for example). `expand_message_xof` is built on an extendable-output function such as SHAKE
+/// and gives different output.
 ///
 /// A tag longer than 255 bytes cannot carry a one-byte length, so it is replaced by
-/// `H("H2C-OVERSIZE-DST-" || dst)` as prescribed by Section 5.3.3.
+/// `H("H2C-OVERSIZE-DST-" || dst)` (Section 5.3.3).
 ///
 /// # Panics
 ///
@@ -133,30 +132,22 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// Encode an input as a group element: `HashToGroup(x)` under the domain separation tag
 /// `"HashToGroup-" || contextString` of `C`'s ciphersuite identifier.
 ///
-/// This is the `hash_to_group` encoding, the only encoding available
-/// on every ciphersuite. It is not invertible: the origin party recognizes a pseudonym as
-/// belonging to `x` only by recomputing it. For an invertible encoding on ristretto255, see
+/// This is the only encoding available on every ciphersuite. It is not invertible: the origin
+/// party recognizes a pseudonym as belonging to `x` only by recomputing it. For an invertible
+/// encoding on ristretto255, see
 /// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard).
 ///
-/// No secret enters this hash, unlike factor derivation, so the input alone determines the
-/// output and another protocol hashing the same input on the same group would get the same
-/// element. The ciphersuite's `"nPEPV1-"` prefix is what keeps a pseudonym here apart from other
-/// protocols' hashes of the same identifier on ristretto255. The tag comes from
-/// [`C::ID`](Ciphersuite::ID), so one ciphersuite's identifier cannot be paired with another
-/// ciphersuite's operations.
+/// No secret enters this hash, unlike factor derivation, so another protocol hashing the same
+/// input on the same group would get the same element. The `"nPEPV1-"` prefix of the
+/// ciphersuite's identifier keeps a pseudonym apart from those hashes.
 ///
 /// # Input length
 ///
 /// `x` goes straight to `HashToGroup`, without a prior hash. A pre-hash adds no collision
-/// resistance, because `HashToGroup` is already a secure hash onto the group: a collision in
-/// `HashToGroup(H(x))` is a collision in either `H` or `HashToGroup`. It also breaks
-/// interoperability, since an implementation that computes `HashToGroup(x)` gets different
-/// pseudonyms. Finally, it makes the hash choice matter twice, giving each new ciphersuite two
-/// chances to pair the wrong hash with its identifier.
-///
-/// The one use of a pre-hash is to bound the input length: an `x` of 2^16 bytes or more is
-/// reduced with [`C::Hash`](Ciphersuite::Hash) first. Shorter inputs, which include every realistic
-/// identifier, are passed through unchanged.
+/// resistance, since a collision in `HashToGroup(H(x))` is a collision in `H` or in
+/// `HashToGroup`, and it makes the pseudonyms differ from those of an implementation that
+/// computes `HashToGroup(x)`. The one exception bounds the input length: an `x` of 2^16 bytes or
+/// more is reduced with [`C::Hash`](Ciphersuite::Hash) first.
 ///
 /// # Encoding requirement
 ///

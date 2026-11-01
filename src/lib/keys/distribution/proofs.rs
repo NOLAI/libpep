@@ -38,8 +38,6 @@
 //!   trusted party at setup time. Once setup is complete (and the dealer
 //!   is gone), the per-share proofs in this module guarantee correctness of
 //!   each transcryptor's contribution at session-derivation time.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};

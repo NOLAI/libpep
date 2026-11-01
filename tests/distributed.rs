@@ -9,7 +9,7 @@ fn n_pep() {
     let n = 3;
     let rng = &mut rand::rng();
 
-    // Global config - using the combined convenience method
+    // Global config: using the combined convenience method
     let (_global_public_keys, blinded_global_keys, blinding_factors) =
         libpep::keys::distribution::make_distributed_global_keys(n, rng);
 

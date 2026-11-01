@@ -2,8 +2,6 @@
 //!
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
-//!
-//! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::Ristretto255;

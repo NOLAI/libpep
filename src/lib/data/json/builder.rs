@@ -1,6 +1,4 @@
 //! Builder pattern for constructing PepJsonValue objects.
-//!
-//! The builder is generic over the [`Group`](crate::elgamal::arithmetic::Group).
 
 use crate::elgamal::arithmetic::Ristretto255;
 use serde_json::Value;

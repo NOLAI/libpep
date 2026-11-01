@@ -1,5 +1,4 @@
-//! WASM bindings for deriving factors from secrets, sessions and domains within a protocol
-//! context.
+//! WASM bindings for deriving factors from secrets, sessions and domains.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};

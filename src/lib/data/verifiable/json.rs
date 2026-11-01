@@ -1,8 +1,6 @@
 //! Verifiable variants of the JSON data-layer operations.
 //!
 //! Mirrors [`crate::data::json::data`].
-//!
-//! The types are generic over the [`Group`](crate::elgamal::arithmetic::Group).
 
 use crate::data::json::data::EncryptedPepJsonValue;
 #[cfg(feature = "batch")]
