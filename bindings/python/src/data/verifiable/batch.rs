@@ -11,7 +11,7 @@
 //! the underlying inherent impl. The cfg variants mirror the Rust ones:
 //!   - `(batch-pk, !elgamal3)`: needs both the old `public_key` and the
 //!     `new_public_key` (or `session_keys` / `new_session_keys` for records).
-//!   - `(!batch-pk, !elgamal3)`: needs only the recipient `public_key` /
+//!   - `(!batch-pk, !elgamal3)`: needs only the `public_key` /
 //!     `session_keys`.
 //!   - `elgamal3`: no key parameter.
 //!
@@ -102,9 +102,9 @@ impl PyPseudonymPseudonymizationBatchProof {
             .map_err(map_de_err)
     }
 
-    /// Verify the proof against the original batch and the recipient public
+    /// Verify the proof against the original batch and the public
     /// keys (under `batch-pk`, both the old and the new pk; under
-    /// `!batch-pk`, only the recipient pk; under `elgamal3`, no pk),
+    /// `!batch-pk`, only the pk; under `elgamal3`, no pk),
     /// returning the reconstructed batch on success.
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn verified_reconstruct_batch(

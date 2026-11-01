@@ -225,7 +225,7 @@ impl WASMTranscryptor {
         crate::data::records::WASMRecordTranscryptionProof::from(proof)
     }
 
-    /// Non-elgamal3 variant: the recipient session keys the record was
+    /// Non-elgamal3 variant: the session keys the record was
     /// encrypted under must be supplied so the inner rerandomize step's
     /// binding can be proven.
     #[cfg(not(feature = "elgamal3"))]
@@ -265,7 +265,7 @@ impl WASMTranscryptor {
         crate::data::records::WASMLongRecordTranscryptionProof::from(proof)
     }
 
-    /// Non-elgamal3 variant: the recipient session keys the record was
+    /// Non-elgamal3 variant: the session keys the record was
     /// encrypted under must be supplied so the inner rerandomize step's
     /// binding can be proven.
     #[cfg(all(feature = "long", not(feature = "elgamal3")))]

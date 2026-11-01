@@ -7,7 +7,8 @@
 //!   verifiable reshuffle
 //!
 //! The proofs are stored over a [`Group`] and created and verified under a [`Ciphersuite`]. The proof encoding
-//! is the four-element one of the published paper (Definition 8); the challenge hash is domain
+//! is the four-element one, `(N, C1, C2, s)`, of a Chaum-Pedersen proof of equality of discrete
+//! logarithms (a DLEQ proof) made non-interactive with Fiat-Shamir; the challenge hash is domain
 //! separated by the ciphersuite's context string under the label `"ZKPChallenge-"`.
 //! [`dleq`](crate::elgamal::dleq) has the two-scalar encoding; the verifiable operations use the
 //! encoding of this module.

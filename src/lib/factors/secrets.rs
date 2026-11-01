@@ -15,6 +15,8 @@ pub struct PseudonymizationSecret(pub(crate) Secret);
 
 /// Rekeying secret used to derive rekey factors from an
 /// [`EncryptionContext`](crate::contexts::EncryptionContext).
+///
+/// All rekey factors of a transcryptor derive from this secret.
 #[derive(Clone, zeroize::Zeroize, derive_more::Debug)]
 #[debug("RekeyingSecret([redacted])")]
 pub struct RekeyingSecret(pub(crate) Secret);

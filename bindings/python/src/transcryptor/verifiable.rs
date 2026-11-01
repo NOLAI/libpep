@@ -239,7 +239,7 @@ impl PyTranscryptor {
         crate::data::records::PyRecordTranscryptionProof { inner: proof }
     }
 
-    /// Non-`elgamal3` variant: the recipient session keys the pseudonym /
+    /// Non-`elgamal3` variant: the session keys the pseudonym /
     /// attribute ciphertexts were encrypted under must be supplied so the
     /// inner rerandomize step's binding can be proven.
     #[cfg(all(feature = "verifiable", not(feature = "elgamal3")))]

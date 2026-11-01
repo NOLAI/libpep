@@ -1,6 +1,11 @@
 //! The data types: pseudonyms, attributes, their long and encrypted forms, records, JSON
 //! documents, and the traits the operations are generic over.
 //!
+//! Data consists of *pseudonyms*, the identifiers of data subjects in a pseudonymization domain,
+//! and *attributes*, facts about data subjects that do not identify them. Pseudonyms are
+//! reshuffled and rekeyed when they are transcrypted, attributes only rekeyed, and the two are
+//! encrypted under separate keys.
+//!
 //! # ElGamal-specific parts
 //!
 //! Part of this module does not depend on how values are encrypted:

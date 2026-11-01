@@ -1,6 +1,6 @@
 //! Verifiable RSK and verifiable RSK-2.
 //!
-//! Implements the constructions as specified in the paper:
+//! Implements the verifiable integrated reshuffle and rekey, VRSK, and its transitive variant:
 //!
 //! ```text
 //!  VRSK(⟨B, C, Y⟩, s, k)

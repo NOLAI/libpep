@@ -31,7 +31,7 @@ pub enum Keys {
     /// Session keys, derived from global keys for one encryption context.
     #[command(subcommand)]
     Session(Session),
-    /// Keys for a system with n transcryptors that never hold the global secret key.
+    /// Keys for a system with n transcryptors, none of which holds the global secret key.
     #[command(subcommand)]
     Distributed(Distributed),
 }
@@ -44,7 +44,7 @@ pub enum Global {
 
 #[derive(Subcommand)]
 pub enum Session {
-    /// Derive session keys from global secret keys, an rekeying secret and a context.
+    /// Derive session keys from global secret keys, a rekeying secret and a context.
     Derive {
         /// Global secret key for pseudonyms (hex).
         #[arg(long)]
@@ -63,8 +63,9 @@ pub enum Session {
 
 #[derive(Subcommand)]
 pub enum Distributed {
-    /// Generate global keys, blind the secret keys, and produce one blinding factor per
-    /// transcryptor. The blinded keys are public; each blinding factor goes to one transcryptor.
+    /// System setup, as run by a trusted authority: generate global keys, blind the secret keys,
+    /// and produce one blinding factor per transcryptor. The global secret keys are discarded.
+    /// The blinded keys are public; each blinding factor goes to one transcryptor.
     Setup {
         /// Number of transcryptors.
         #[arg(short, long)]

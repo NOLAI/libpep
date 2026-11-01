@@ -152,7 +152,7 @@ pub trait Encrypted: Sized {
 // factors: `pseudonymize` is an RRSK, `rekey` an RRK, and `transcrypt` one of the two.
 // Rerandomization mixes fresh randomness and the current public key into the ciphertext, so that
 // even a malformed input (a plaintext placed directly in the ciphertext) yields a result that is
-// hidden under the recipient's key. Without it, a malicious sender could obtain the reshuffled
+// hidden under the receiver's key. Without it, a malicious sender could obtain the reshuffled
 // pseudonym in the clear, bypassing rekeying.
 //
 // The `*_raw` variants apply the factors only. They are the building blocks of the rerandomizing

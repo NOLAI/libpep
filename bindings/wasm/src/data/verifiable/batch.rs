@@ -3,8 +3,8 @@
 //! Wraps the eight batch-proof types from
 //! [`libpep::data::verifiable`] and exposes `verifiedReconstructBatch`
 //! on each. Cfg-forks mirror Rust 1:1: `(batch-pk, !elgamal3)` takes both
-//! the old and new recipient key, `(!batch-pk, !elgamal3)` takes only the
-//! recipient key, and `elgamal3` takes neither.
+//! the old and new key, `(!batch-pk, !elgamal3)` takes only the
+//! key, and `elgamal3` takes neither.
 //!
 //! This module also adds `verifiable_pseudonymize` / `verifiable_rekey` /
 //! `verifiable_transcrypt` to the existing `WASM*Batch` types from

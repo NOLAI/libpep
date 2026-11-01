@@ -7,7 +7,7 @@
 //! it to a `Vec<E>` between steps.
 //!
 //! The cfg variants mirror the Rust impl in `transcryptor::batch`:
-//!   - `(batch-pk, !elgamal3)`: the batch carries the recipient public key and
+//!   - `(batch-pk, !elgamal3)`: the batch carries the public key and
 //!     converts it in lockstep on each operation.
 //!   - `(!batch-pk, !elgamal3)`: the constructor takes only items; operations take an
 //!     extra `public_key` parameter.
@@ -40,7 +40,7 @@ use pyo3::prelude::*;
 // PyPseudonymBatch: EncryptedBatch<EncryptedPseudonym>
 // ---------------------------------------------------------------------------
 
-/// A batch of `EncryptedPseudonym`s sharing a recipient session.
+/// A batch of `EncryptedPseudonym`s sharing a session.
 #[pyclass(name = "EncryptedPseudonymBatch", from_py_object)]
 #[derive(Clone)]
 pub struct PyPseudonymBatch {
@@ -107,7 +107,7 @@ impl PyPseudonymBatch {
             .collect()
     }
 
-    /// The recipient public key carried by this batch (only under
+    /// The public key carried by this batch (only under
     /// `(batch-pk, !elgamal3)`).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
@@ -196,7 +196,7 @@ impl PyPseudonymBatch {
 // PyAttributeBatch: EncryptedBatch<EncryptedAttribute>
 // ---------------------------------------------------------------------------
 
-/// A batch of `EncryptedAttribute`s sharing a recipient session.
+/// A batch of `EncryptedAttribute`s sharing a session.
 #[pyclass(name = "EncryptedAttributeBatch", from_py_object)]
 #[derive(Clone)]
 pub struct PyAttributeBatch {
@@ -322,7 +322,7 @@ impl PyAttributeBatch {
 // PyLongPseudonymBatch: EncryptedBatch<LongEncryptedPseudonym>
 // ---------------------------------------------------------------------------
 
-/// A batch of `LongEncryptedPseudonym`s sharing a recipient session.
+/// A batch of `LongEncryptedPseudonym`s sharing a session.
 #[cfg(feature = "long")]
 #[pyclass(name = "LongEncryptedPseudonymBatch", from_py_object)]
 #[derive(Clone)]
@@ -473,7 +473,7 @@ impl PyLongPseudonymBatch {
 // PyLongAttributeBatch: EncryptedBatch<LongEncryptedAttribute>
 // ---------------------------------------------------------------------------
 
-/// A batch of `LongEncryptedAttribute`s sharing a recipient session.
+/// A batch of `LongEncryptedAttribute`s sharing a session.
 #[cfg(feature = "long")]
 #[pyclass(name = "LongEncryptedAttributeBatch", from_py_object)]
 #[derive(Clone)]
@@ -603,7 +603,7 @@ impl PyLongAttributeBatch {
 // PyRecordBatch: EncryptedBatch<EncryptedRecord>
 // ---------------------------------------------------------------------------
 
-/// A batch of `EncryptedRecord`s sharing a recipient session-key bundle.
+/// A batch of `EncryptedRecord`s sharing a session-key bundle.
 #[pyclass(name = "EncryptedRecordBatch", from_py_object)]
 #[derive(Clone)]
 pub struct PyRecordBatch {
@@ -705,7 +705,7 @@ impl PyRecordBatch {
 // PyLongRecordBatch: EncryptedBatch<LongEncryptedRecord>
 // ---------------------------------------------------------------------------
 
-/// A batch of `LongEncryptedRecord`s sharing a recipient session-key bundle.
+/// A batch of `LongEncryptedRecord`s sharing a session-key bundle.
 #[cfg(feature = "long")]
 #[pyclass(name = "LongEncryptedRecordBatch", from_py_object)]
 #[derive(Clone)]

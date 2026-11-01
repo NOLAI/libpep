@@ -32,8 +32,8 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
         DataType = Self,
     >;
 
-    /// Pseudonymize with proof generation, in elgamal3 mode (the recipient
-    /// public key `Y` is carried by the ciphertext).
+    /// Pseudonymize with proof generation, in elgamal3 mode (the public key `Y` the ciphertext
+    /// is encrypted under is carried by the ciphertext).
     #[cfg(feature = "elgamal3")]
     fn verifiable_pseudonymize<C, R>(
         &self,
@@ -44,8 +44,8 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
         C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 
-    /// Pseudonymize with proof generation. `public_key` is the recipient
-    /// public key the ciphertext was encrypted under, used by the rerandomize
+    /// Pseudonymize with proof generation. `public_key` is the public key the ciphertext is
+    /// currently encrypted under, used by the rerandomize
     /// step and as the base for the `pi_y_r` proof inside `VerifiableRRSK`.
     #[cfg(not(feature = "elgamal3"))]
     fn verifiable_pseudonymize<C, R>(
@@ -65,12 +65,12 @@ pub trait VerifiablePseudonymizable: Pseudonymizable + Sized {
 /// a rekey operation was performed correctly. The proof type
 /// ([`RekeyProof`](Self::RekeyProof)) implements [`VerifiableRekeyProof`].
 ///
-/// This is the paper's VRK (Definition 10): the ciphertext is rekeyed and not rerandomized, so
+/// This is the verifiable rekey (VRK): the ciphertext is rekeyed and not rerandomized, so
 /// its second component `C` is unchanged, unlike the non-verifiable
 /// [`rekey`](crate::data::traits::Rekeyable::rekey), which rerandomizes first. Anyone who
-/// sees input and output can therefore match them by `C`. The paper accepts this because the
-/// verifier of a proof always learns that link (Section 3.2.1); choose who verifies
-/// accordingly (Section 3.6).
+/// sees input and output can therefore match them by `C`. This is accepted because the
+/// verifier of a proof always learns that link: verifying a rerandomization needs the original
+/// ciphertext. Choose who verifies accordingly.
 pub trait VerifiableRekeyable: Rekeyable + Sized {
     /// The proof type for rekey operations.
     /// Implements [`VerifiableRekeyProof`] with `DataType = Self`.
@@ -106,8 +106,8 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
         C: Ciphersuite<Group = Self::Group>,
         R: Rng + CryptoRng;
 
-    /// Transcrypt with proof generation. `public_key` is the recipient
-    /// public key the ciphertext was encrypted under (needed by the
+    /// Transcrypt with proof generation. `public_key` is the public key the ciphertext is
+    /// currently encrypted under (needed by the
     /// rerandomize step on pseudonyms).
     #[cfg(not(feature = "elgamal3"))]
     fn verifiable_transcrypt<C, R>(
@@ -123,7 +123,7 @@ pub trait VerifiableTranscryptable: Transcryptable + Sized {
 
 /// Verifier-side trait for proofs of a rekey operation.
 ///
-/// Rekey does not involve a rerandomize step, so no recipient public key
+/// Rekey does not involve a rerandomize step, so no public key
 /// is needed for verification. Mirrors the shape of
 /// [`VerifiableRekey`](crate::elgamal::verifiable::VerifiableRekey) in the
 /// core layer.
@@ -161,8 +161,8 @@ pub trait VerifiableRekeyProof {
 /// Verifier-side trait for proofs of a pseudonymization (RRSK) operation.
 ///
 /// Pseudonymization involves a rerandomize step, so without `elgamal3` the
-/// verifier needs the recipient `PseudonymSessionPublicKey` that the
-/// proof was generated against. Under `elgamal3` each ciphertext carries
+/// verifier needs the `PseudonymSessionPublicKey` that the ciphertext was encrypted under and
+/// that the proof was generated against. Under `elgamal3` each ciphertext carries
 /// its own `gy` and the parameter is dropped.
 ///
 /// Mirrors [`VerifiableRRSK`](crate::elgamal::verifiable::VerifiableRRSK).
@@ -226,8 +226,8 @@ pub trait VerifiablePseudonymizationProof {
 /// rekey) operation on a record-like value.
 ///
 /// Like pseudonymization, transcryption involves a rerandomize step, so
-/// without `elgamal3` the verifier needs the recipient public-key bundle
-/// (`SessionPublicKeys`). Under `elgamal3` the parameter is dropped.
+/// without `elgamal3` the verifier needs the public-key bundle (`SessionPublicKeys`) the
+/// ciphertext was encrypted under. Under `elgamal3` the parameter is dropped.
 pub trait VerifiableTranscryptionProof {
     /// The group the proof is over.
     type Group: Group;

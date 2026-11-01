@@ -181,7 +181,7 @@ impl WASMVerifier {
 
     /// Verify a pseudonymization operation against the combined commitments,
     /// returning the reconstructed pseudonym on success. In non-elgamal3
-    /// builds the recipient public key the original ciphertext was encrypted
+    /// builds the public key the original ciphertext was encrypted
     /// under must be supplied.
     #[cfg(not(feature = "elgamal3"))]
     #[wasm_bindgen(js_name = verifyPseudonymization)]

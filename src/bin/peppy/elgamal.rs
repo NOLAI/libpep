@@ -1,6 +1,6 @@
 //! `peppy elgamal`: the raw primitives on ElGamal ciphertexts and scalar factors.
 //!
-//! These are the operations of the paper, without the pseudonym and attribute types on top:
+//! These are the PEP operations on ElGamal ciphertexts, without the pseudonym and attribute types on top:
 //! `rr` (rerandomize), `rs` (reshuffle), `rk` (rekey), their combinations `rsk` and `rrsk`, and
 //! the transitive `*2` variants that take the factors of both source and target.
 

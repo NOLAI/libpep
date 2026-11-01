@@ -1,5 +1,10 @@
 //! Commitment types for verifiable transcryption.
 //!
+//! A transcryptor commits to a secret reshuffle or rekey factor with a public group element,
+//! the first time it uses the factor for a domain or session. The commitment binds the
+//! transcryptor to the factor without revealing it, and lets verifiers enforce that the factor is
+//! used consistently.
+//!
 //! With the forward-direction constructions, a "commitment" to a factor is a single group
 //! element `A = a·G`; no separate proof of well-formedness is required because every
 //! verifiable operation proves a relation against `A` directly.
