@@ -1,11 +1,13 @@
-use crate::aliases::*;
-use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};
 use libpep::keys::distribution::{make_blinded_global_keys, BlindedGlobalSecretKey};
-use libpep::keys::SecretKey;
+use libpep::keys::distribution::{
+    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKeys, BlindedPseudonymGlobalSecretKey,
+    BlindingFactor,
+};
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey, SecretKey};
 use wasm_bindgen::prelude::*;
 
 /// A blinding factor.

@@ -4,6 +4,7 @@
 
 use crate::data::traits::{Encryptable, Encrypted};
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::keys::traits::KeyProvider;
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;
@@ -13,7 +14,7 @@ use rand_core::{CryptoRng, Rng};
 /// A PEP client that encrypts and decrypts data with its session keys for pseudonyms and
 /// attributes.
 #[derive(Clone)]
-pub struct Client<G: Group> {
+pub struct Client<G: Group = Ristretto255> {
     pub(crate) keys: SessionKeys<G>,
 }
 
@@ -115,7 +116,7 @@ impl<G: Group> Client<G> {
 /// decrypt.
 #[cfg(feature = "offline")]
 #[derive(Clone)]
-pub struct OfflineClient<G: Group> {
+pub struct OfflineClient<G: Group = Ristretto255> {
     /// The global public keys encrypted towards.
     pub global_public_keys: GlobalPublicKeys<G>,
 }

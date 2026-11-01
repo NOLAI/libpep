@@ -36,7 +36,8 @@ use crate::elgamal::arithmetic::ciphersuite::{
     Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf,
 };
 use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::hashing::hash_to_nonzero_scalar;
+use crate::elgamal::arithmetic::hashing::hash_to_nonzero_scalar_generic;
+use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
@@ -75,7 +76,7 @@ use serde::{Deserialize, Serialize};
 /// Master pseudonymization secret with two Carter-Wegman components.
 #[derive(Clone, zeroize::Zeroize)]
 #[zeroize(bound = "")]
-pub struct MasterPseudonymizationSecret<C: Ciphersuite> {
+pub struct MasterPseudonymizationSecret<C: Ciphersuite = Ristretto255Sha512> {
     pub(crate) x1: ScalarOf<C>,
     pub(crate) x2: ScalarOf<C>,
 }
@@ -90,7 +91,7 @@ impl<C: Ciphersuite> std::fmt::Debug for MasterPseudonymizationSecret<C> {
 /// Master pseudonymization public key: `(X₁, X₂) = (x₁·G, x₂·G)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct MasterPseudonymizationPublicKey<C: Ciphersuite> {
+pub struct MasterPseudonymizationPublicKey<C: Ciphersuite = Ristretto255Sha512> {
     /// `X₁ = x₁·G`.
     pub x1: ElementOf<C>,
     /// `X₂ = x₂·G`.
@@ -100,7 +101,7 @@ pub struct MasterPseudonymizationPublicKey<C: Ciphersuite> {
 /// Master rekeying secret with two Carter-Wegman components.
 #[derive(Clone, zeroize::Zeroize)]
 #[zeroize(bound = "")]
-pub struct MasterRekeyingSecret<C: Ciphersuite> {
+pub struct MasterRekeyingSecret<C: Ciphersuite = Ristretto255Sha512> {
     pub(crate) y1: ScalarOf<C>,
     pub(crate) y2: ScalarOf<C>,
 }
@@ -115,7 +116,7 @@ impl<C: Ciphersuite> std::fmt::Debug for MasterRekeyingSecret<C> {
 /// Master rekeying public key: `(Y₁, Y₂) = (y₁·G, y₂·G)`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct MasterRekeyingPublicKey<C: Ciphersuite> {
+pub struct MasterRekeyingPublicKey<C: Ciphersuite = Ristretto255Sha512> {
     /// `Y₁ = y₁·G`.
     pub y1: ElementOf<C>,
     /// `Y₂ = y₂·G`.
@@ -138,9 +139,18 @@ fn cw_combine<C: Ciphersuite>(
     })
 }
 
-impl<C: Ciphersuite> MasterPseudonymizationSecret<C> {
-    /// Generate a new random master pseudonymization secret.
+impl MasterPseudonymizationSecret {
+    /// Generate a new random master pseudonymization secret, for ristretto255 with SHA-512.
+    ///
+    /// See [`random_generic`](MasterPseudonymizationSecret::random_generic) for another ciphersuite.
     pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+        Self::random_generic(rng)
+    }
+}
+
+impl<C: Ciphersuite> MasterPseudonymizationSecret<C> {
+    /// Generate a new random master pseudonymization secret, for ciphersuite `C`.
+    pub fn random_generic<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self {
             x1: C::Group::random_scalar(rng),
             x2: C::Group::random_scalar(rng),
@@ -169,9 +179,18 @@ impl<C: Ciphersuite> MasterPseudonymizationSecret<C> {
     }
 }
 
-impl<C: Ciphersuite> MasterRekeyingSecret<C> {
-    /// Generate a new random master rekeying secret.
+impl MasterRekeyingSecret {
+    /// Generate a new random master rekeying secret, for ristretto255 with SHA-512.
+    ///
+    /// See [`random_generic`](MasterRekeyingSecret::random_generic) for another ciphersuite.
     pub fn random<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+        Self::random_generic(rng)
+    }
+}
+
+impl<C: Ciphersuite> MasterRekeyingSecret<C> {
+    /// Generate a new random master rekeying secret, for ciphersuite `C`.
+    pub fn random_generic<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         Self {
             y1: C::Group::random_scalar(rng),
             y2: C::Group::random_scalar(rng),
@@ -294,12 +313,12 @@ fn commit<C: Ciphersuite>(
 
 /// First hash-to-scalar function H₁.
 pub(crate) fn hash_to_scalar_1<C: Ciphersuite>(typ: &[u8], input: &[u8]) -> ScalarOf<C> {
-    hash_to_nonzero_scalar::<C>(&[b"h1:", typ, b":", input])
+    hash_to_nonzero_scalar_generic::<C>(&[b"h1:", typ, b":", input])
 }
 
 /// Second hash-to-scalar function H₂.
 pub(crate) fn hash_to_scalar_2<C: Ciphersuite>(typ: &[u8], input: &[u8]) -> ScalarOf<C> {
-    hash_to_nonzero_scalar::<C>(&[b"h2:", typ, b":", input])
+    hash_to_nonzero_scalar_generic::<C>(&[b"h2:", typ, b":", input])
 }
 
 impl<C: Ciphersuite> Drop for MasterPseudonymizationSecret<C> {

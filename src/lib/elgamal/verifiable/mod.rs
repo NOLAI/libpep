@@ -24,12 +24,12 @@ mod rsk_batch;
 pub use commitments::{FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment};
 pub use rekey::{VerifiableRekey, VerifiableRekey2};
 pub use rekey_batch::{VerifiableRekey2Batch, VerifiableRekeyBatch};
-#[cfg(feature = "insecure")]
-pub use rerandomize::verifiable_rerandomize;
 pub use rerandomize::VerifiableRerandomize;
 #[cfg(feature = "insecure")]
-pub use rerandomize_batch::verifiable_rerandomize_batch;
+pub use rerandomize::{verifiable_rerandomize, verifiable_rerandomize_generic};
 pub use rerandomize_batch::VerifiableRerandomizeBatch;
+#[cfg(feature = "insecure")]
+pub use rerandomize_batch::{verifiable_rerandomize_batch, verifiable_rerandomize_batch_generic};
 pub use reshuffle::{VerifiableReshuffle, VerifiableReshuffle2};
 pub use reshuffle_batch::{VerifiableReshuffle2Batch, VerifiableReshuffleBatch};
 pub use rrsk::{VerifiableRRSK, VerifiableRRSK2};

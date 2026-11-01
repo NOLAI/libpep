@@ -12,17 +12,6 @@
 //! `#[wasm_bindgen(js_class = "...")] impl X { ... }` blocks for the same
 //! type as long as the `js_class` matches the original `js_name`.
 
-#[cfg(feature = "long")]
-use crate::aliases::LongRecordTranscryptionBatchProof;
-use crate::aliases::RecordTranscryptionBatchProof;
-use crate::aliases::{
-    AttributeRekeyBatchProof, PseudonymPseudonymizationBatchProof, PseudonymRekeyBatchProof,
-};
-#[cfg(feature = "long")]
-use crate::aliases::{
-    LongAttributeRekeyBatchProof, LongPseudonymPseudonymizationBatchProof,
-    LongPseudonymRekeyBatchProof,
-};
 use crate::data::batch::{
     WASMEncryptedAttributeBatch, WASMEncryptedPseudonymBatch, WASMEncryptedRecordBatch,
 };
@@ -38,6 +27,19 @@ use crate::factors::commitments::{
 use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
+};
+#[cfg(feature = "long")]
+#[cfg(all(feature = "verifiable", feature = "batch", feature = "long"))]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyBatchProof, LongPseudonymPseudonymizationBatchProof,
+    LongPseudonymRekeyBatchProof,
+};
+#[cfg(feature = "long")]
+use libpep::data::verifiable::records::LongRecordTranscryptionBatchProof;
+use libpep::data::verifiable::records::RecordTranscryptionBatchProof;
+#[cfg(all(feature = "verifiable", feature = "batch"))]
+use libpep::data::verifiable::simple::{
+    AttributeRekeyBatchProof, PseudonymPseudonymizationBatchProof, PseudonymRekeyBatchProof,
 };
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
@@ -551,7 +553,7 @@ impl WASMRecordTranscryptionBatchProof {
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
-        let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
+        let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         self.0
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -570,7 +572,7 @@ impl WASMRecordTranscryptionBatchProof {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMEncryptedRecordBatch, JsValue> {
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
             .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| WASMEncryptedRecordBatch { inner })
@@ -639,7 +641,7 @@ impl WASMLongRecordTranscryptionBatchProof {
         new_session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
-        let new_sk: crate::aliases::SessionKeys = (*new_session_keys).into();
+        let new_sk: libpep::keys::SessionKeys = (*new_session_keys).into();
         self.0
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -658,7 +660,7 @@ impl WASMLongRecordTranscryptionBatchProof {
         session_keys: &crate::keys::types::WASMSessionKeys,
         commitments: &WASMVerifiableTranscryptionCommitment,
     ) -> Result<WASMLongEncryptedRecordBatch, JsValue> {
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.0
             .verified_reconstruct_batch::<Ristretto255Sha512>(&original.inner, &sk, &commitments.0)
             .map(|inner| WASMLongEncryptedRecordBatch { inner })
@@ -844,7 +846,7 @@ impl WASMEncryptedRecordBatch {
         session_keys: &crate::keys::types::WASMSessionKeys,
     ) -> WASMRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &sk, &mut rng)
             .into()
@@ -886,7 +888,7 @@ impl WASMLongEncryptedRecordBatch {
         session_keys: &crate::keys::types::WASMSessionKeys,
     ) -> WASMLongRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         self.inner
             .verifiable_transcrypt::<Ristretto255Sha512, _>(&info.0, &sk, &mut rng)
             .into()

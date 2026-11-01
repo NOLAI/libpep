@@ -8,6 +8,7 @@
 //! The types are generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::keys::traits::PublicKey;
 use crate::keys::types::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
 use derive_more::From;
@@ -30,7 +31,7 @@ macro_rules! factor {
         #[derive(Copy, Clone, Eq, PartialEq, zeroize::Zeroize, derive_more::Debug)]
         #[zeroize(bound = "")]
         #[debug("{}([redacted])", stringify!($name))]
-        pub struct $name<G: Group>(pub(crate) G::Scalar);
+        pub struct $name<G: Group = Ristretto255>(pub(crate) G::Scalar);
 
         impl<G: Group> Factor for $name<G> {
             type Group = G;
@@ -85,7 +86,7 @@ pub trait RekeyPublicKey<K> {
 /// [`rsk`](crate::elgamal::primitives::rsk) operation, which is equivalent to
 /// [`rsk2`](crate::elgamal::primitives::rsk2) with the source and target factors but cheaper.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct PseudonymizationInfo<G: Group> {
+pub struct PseudonymizationInfo<G: Group = Ristretto255> {
     /// The reshuffle factor, from the source domain to the target domain.
     pub s: ReshuffleFactor<G>,
     /// The rekey factor, from the source session to the target session.
@@ -114,7 +115,7 @@ impl<G: Group> RekeyPublicKey<PseudonymSessionPublicKey<G>> for Pseudonymization
 /// The information for a rekeying of pseudonyms from one session to another: the ratio between
 /// the pseudonym rekey factors of the source and the target session.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct PseudonymRekeyInfo<G: Group> {
+pub struct PseudonymRekeyInfo<G: Group = Ristretto255> {
     /// The rekey factor, from the source session to the target session.
     pub k: PseudonymRekeyFactor<G>,
 }
@@ -146,7 +147,7 @@ impl<G: Group> RekeyPublicKey<PseudonymSessionPublicKey<G>> for PseudonymRekeyIn
 /// The information for a rekeying of attributes from one session to another: the ratio between
 /// the attribute rekey factors of the source and the target session.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
-pub struct AttributeRekeyInfo<G: Group> {
+pub struct AttributeRekeyInfo<G: Group = Ristretto255> {
     /// The rekey factor, from the source session to the target session.
     pub k: AttributeRekeyFactor<G>,
 }
@@ -172,7 +173,7 @@ impl<G: Group> RekeyPublicKey<AttributeSessionPublicKey<G>> for AttributeRekeyIn
 /// The information for a transcryption from one domain and session to another: the
 /// pseudonymization info for the pseudonyms and the rekey info for the attributes.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct TranscryptionInfo<G: Group> {
+pub struct TranscryptionInfo<G: Group = Ristretto255> {
     /// The info applied to pseudonyms.
     pub pseudonym: PseudonymizationInfo<G>,
     /// The info applied to attributes.

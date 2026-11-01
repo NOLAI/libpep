@@ -7,7 +7,7 @@
 //! The key types are generic over the [`Group`](crate::elgamal::arithmetic::Group), for example
 //! `SessionKeys<Ristretto255>`; the group is inferred from the keys wherever they are passed
 //! on, and named once where keys are made from randomness alone
-//! (`make_global_keys::<G, _>(rng)`).
+//! (`make_global_keys_generic::<G, _>(rng)`).
 //!
 //! Keys are split into separate Attribute and Pseudonym encryption keys to prevent pseudonym values
 //! from being leaked by falsely presenting them as attributes.
@@ -29,8 +29,11 @@ pub mod traits;
 pub mod types;
 
 pub use generation::{
-    make_attribute_global_keys, make_attribute_session_keys, make_global_key_pair,
-    make_global_keys, make_pseudonym_global_keys, make_pseudonym_session_keys, make_session_keys,
+    make_attribute_global_keys, make_attribute_global_keys_generic, make_attribute_session_keys,
+    make_attribute_session_keys_generic, make_global_key_pair, make_global_keys,
+    make_global_keys_generic, make_pseudonym_global_keys, make_pseudonym_global_keys_generic,
+    make_pseudonym_session_keys, make_pseudonym_session_keys_generic, make_session_keys,
+    make_session_keys_generic,
 };
 pub use traits::{KeyProvider, PublicKey, SecretKey};
 pub use types::{

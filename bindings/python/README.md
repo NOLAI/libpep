@@ -8,7 +8,7 @@ Python bindings for [libpep](https://github.com/NOLAI/libpep), a library for pol
 pip install libpep-py
 ```
 
-The module is importable as `libpep`. The API mirrors the Rust crate, instantiated for ristretto255 with SHA-512 as in the crate's `libpep::ristretto255` module, so there are no group or ciphersuite type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
+The module is importable as `libpep`. The API mirrors the Rust crate, fixed to ristretto255 with SHA-512, the default of the crate's generic types, so there are no group or ciphersuite type parameters. A complete round trip, from one party's pseudonym to another party's pseudonym for the same subject:
 
 ```python
 from libpep.client import decrypt, encrypt

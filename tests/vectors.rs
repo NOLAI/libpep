@@ -37,7 +37,17 @@
 
 mod common;
 
-use common::aliases::*;
+use libpep::elgamal::arithmetic::group_elements::GroupElement;
+use libpep::elgamal::arithmetic::hashing::hash_to_group;
+use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::elgamal::ElGamal;
+use libpep::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
+};
+#[cfg(feature = "verifiable")]
+use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::prelude::*;
 
 use libpep::elgamal::arithmetic::group_elements::G;
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
@@ -517,7 +527,7 @@ fn vectors_single_pseudonym(out: &mut String) {
     out.push('\n');
 
     // The transcryption factors, and the ratio actually applied.
-    let info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let info = PseudonymizationInfo::new(
         &domain_from,
         &domain_to,
         &session_from,
@@ -532,7 +542,7 @@ fn vectors_single_pseudonym(out: &mut String) {
     let r = ScalarNonZero::random(&mut rng);
     let s = info.s.scalar();
     let k = info.k.scalar();
-    let rerandomized = ElGamal {
+    let rerandomized: ElGamal = ElGamal {
         gb: ciphertext.gb + r * G,
         gc: ciphertext.gc + r * *pk_from.value(),
     };
@@ -604,7 +614,7 @@ fn vectors_batch(out: &mut String) {
     }
     out.push('\n');
 
-    let info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let info = PseudonymizationInfo::new(
         &domain_from,
         &domain_to,
         &session_from,
@@ -659,8 +669,7 @@ fn vectors_batch(out: &mut String) {
     }
     out.push('\n');
 
-    let rekey_info =
-        AttributeRekeyInfo::new::<Ristretto255Sha512>(&session_from, &session_to, &enc_secret);
+    let rekey_info = AttributeRekeyInfo::new(&session_from, &session_to, &enc_secret);
     put(out, "k_attribute", &rekey_info.k.scalar().to_hex());
 
     let rekeyed = rekey_batch(&attributes.clone(), &rekey_info, &apk_from, &mut rng)
@@ -704,7 +713,7 @@ fn vectors_session_key_share(out: &mut String) {
     let k_commitment = k.scalar() * G;
 
     let b = ScalarNonZero::random(&mut rng);
-    let blinding_commitment = BlindingCommitment::new(&b);
+    let blinding_commitment: BlindingCommitment = BlindingCommitment::new(&b);
     let u = b * k.scalar();
 
     let proof = SessionKeyShareProof::new::<Ristretto255Sha512, _>(&b, &k_commitment, &mut rng);

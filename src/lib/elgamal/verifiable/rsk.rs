@@ -31,6 +31,7 @@
 use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -42,7 +43,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 /// Proof of a verifiable RSK: the reshuffle and rekey of one ciphertext with a factor pair `(s,
 /// k)`.
-pub struct VerifiableRSK<G: Group> {
+pub struct VerifiableRSK<G: Group = Ristretto255> {
     /// `T = (s·k⁻¹)·G`.
     pub(crate) gt: G::Element,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
@@ -130,7 +131,7 @@ impl<G: Group> VerifiableRSK<G> {
 /// `(S, K)` commitments.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRSKInner<G: Group> {
+pub struct VerifiableRSKInner<G: Group = Ristretto255> {
     /// `ZKP{B' = (s·k⁻¹) * B}`: first component is `B' = (s·k⁻¹)·B`.
     pub(crate) p_gb_prime: Proof<G>,
     /// `ZKP{C' = s * C}`: first component is `C' = s·C`.
@@ -223,7 +224,7 @@ impl<G: Group> VerifiableRSKInner<G> {
 /// per-message).
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRSK2<G: Group> {
+pub struct VerifiableRSK2<G: Group = Ristretto255> {
     /// `S = (s_from⁻¹·s_to)·G`.
     pub(crate) gs: G::Element,
     /// `K = (k_from⁻¹·k_to)·G`.

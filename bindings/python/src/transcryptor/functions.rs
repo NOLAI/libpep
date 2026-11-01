@@ -1,9 +1,5 @@
 //! Python bindings for transcryption functions.
 
-use crate::aliases::TranscryptionInfo;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, RerandomizeFactor};
-#[cfg(not(feature = "elgamal3"))]
-use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
 #[cfg(feature = "long")]
@@ -16,9 +12,13 @@ use crate::factors::types::{
 };
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
-use libpep::factors::Factor;
+use libpep::factors::{
+    AttributeRekeyInfo, Factor, PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo,
+};
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::PublicKey;
+use libpep::keys::PseudonymSessionPublicKey;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::{AttributeSessionPublicKey, PublicKey};
 use libpep::transcryptor::{pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

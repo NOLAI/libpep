@@ -1,9 +1,5 @@
 //! Python bindings for Record types.
 
-use crate::aliases::SessionKeys;
-use crate::aliases::{EncryptedRecord, Record};
-#[cfg(feature = "long")]
-use crate::aliases::{LongEncryptedRecord, LongRecord};
 #[cfg(feature = "long")]
 use crate::data::long::{
     PyLongAttribute, PyLongEncryptedAttribute, PyLongEncryptedPseudonym, PyLongPseudonym,
@@ -11,8 +7,12 @@ use crate::data::long::{
 use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudonym, PyPseudonym};
 use crate::keys::PySessionKeys;
 use libpep::client::{decrypt, encrypt};
+use libpep::data::records::EncryptedRecord;
+use libpep::data::records::Record;
 #[cfg(feature = "long")]
-use libpep::data::records::LongRecordStructure;
+#[cfg(feature = "long")]
+use libpep::data::records::{LongEncryptedRecord, LongRecord, LongRecordStructure};
+use libpep::keys::SessionKeys;
 use pyo3::prelude::*;
 
 /// A record containing multiple pseudonyms and attributes for a single entity.
@@ -352,7 +352,7 @@ impl PyLongRecordStructure {
 #[pyclass(name = "RecordTranscryptionProof", from_py_object)]
 #[derive(Clone)]
 pub struct PyRecordTranscryptionProof {
-    pub(crate) inner: crate::aliases::RecordTranscryptionProof,
+    pub(crate) inner: libpep::data::verifiable::records::RecordTranscryptionProof,
 }
 
 #[cfg(feature = "verifiable")]
@@ -382,7 +382,7 @@ impl PyRecordTranscryptionProof {
 #[pyclass(name = "LongRecordTranscryptionProof", from_py_object)]
 #[derive(Clone)]
 pub struct PyLongRecordTranscryptionProof {
-    pub(crate) inner: crate::aliases::LongRecordTranscryptionProof,
+    pub(crate) inner: libpep::data::verifiable::records::LongRecordTranscryptionProof,
 }
 
 #[cfg(all(feature = "verifiable", feature = "long"))]

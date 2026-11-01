@@ -8,7 +8,7 @@
 
 mod common;
 
-use common::aliases::*;
+use libpep::prelude::*;
 
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;

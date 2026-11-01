@@ -1,14 +1,5 @@
 //! WASM bindings for distributed transcryptor.
 
-use crate::aliases::BlindingFactor;
-use crate::aliases::DistributedTranscryptor;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo};
-#[cfg(not(feature = "elgamal3"))]
-use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
-#[cfg(feature = "batch")]
-use crate::aliases::{EncryptedAttribute, EncryptedPseudonym};
-#[cfg(all(feature = "long", feature = "batch"))]
-use crate::aliases::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
@@ -31,9 +22,20 @@ use crate::keys::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare, WASMSessionKeyShares,
 };
 use derive_more::{Deref, From, Into};
+#[cfg(all(feature = "long", feature = "batch"))]
+#[cfg(feature = "long")]
+use libpep::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
+#[cfg(feature = "batch")]
+use libpep::data::simple::EncryptedAttribute;
+use libpep::data::simple::EncryptedPseudonym;
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::keys::distribution::BlindingFactor;
 #[cfg(not(feature = "elgamal3"))]
-use libpep::keys::PublicKey;
+use libpep::keys::PseudonymSessionPublicKey;
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::{AttributeSessionPublicKey, PublicKey};
+use libpep::transcryptor::DistributedTranscryptor;
 use wasm_bindgen::prelude::*;
 
 /// A distributed PEP transcryptor system with blinding factor support.
@@ -617,7 +619,7 @@ impl WASMDistributedTranscryptor {
         public_key: &WASMSessionPublicKeys,
     ) -> crate::data::json::WASMEncryptedPepJsonValue {
         let mut rng = rand::rng();
-        let pk = crate::aliases::SessionPublicKeys::from(public_key);
+        let pk = libpep::keys::SessionPublicKeys::from(public_key);
         let transcrypted = self.transcrypt(&encrypted.0, &transcryption_info.0, &pk, &mut rng);
         crate::data::json::WASMEncryptedPepJsonValue(transcrypted)
     }
@@ -654,7 +656,7 @@ impl WASMDistributedTranscryptor {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
         let items: Vec<_> = values.into_iter().map(|v| v.0).collect();
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch.transcrypt(&transcryption_info.0, &mut rng);
@@ -674,7 +676,7 @@ impl WASMDistributedTranscryptor {
         transcryption_info: &WASMTranscryptionInfo,
     ) -> WASMEncryptedRecord {
         let mut rng = rand::rng();
-        use crate::aliases::EncryptedRecord;
+        use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Transcryptable;
         let rust_encrypted: EncryptedRecord = encrypted.into();
         let transcrypted = rust_encrypted.transcrypt(&transcryption_info.0, &mut rng);
@@ -690,11 +692,11 @@ impl WASMDistributedTranscryptor {
         transcryption_info: &WASMTranscryptionInfo,
         session_keys: &crate::keys::types::WASMSessionKeys,
     ) -> WASMEncryptedRecord {
-        use crate::aliases::EncryptedRecord;
+        use libpep::data::records::EncryptedRecord;
         use libpep::data::traits::Transcryptable;
         let mut rng = rand::rng();
         let rust_encrypted: EncryptedRecord = encrypted.into();
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let transcrypted =
             rust_encrypted.transcrypt(&transcryption_info.0, &keys.public(), &mut rng);
         transcrypted.into()
@@ -709,7 +711,7 @@ impl WASMDistributedTranscryptor {
         encrypted: WASMLongEncryptedRecord,
         transcryption_info: &WASMTranscryptionInfo,
     ) -> WASMLongEncryptedRecord {
-        use crate::aliases::LongEncryptedRecord;
+        use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Transcryptable;
         let mut rng = rand::rng();
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
@@ -728,8 +730,8 @@ impl WASMDistributedTranscryptor {
         public_key: &WASMSessionPublicKeys,
     ) -> WASMLongEncryptedRecord {
         let mut rng = rand::rng();
-        let pk = crate::aliases::SessionPublicKeys::from(public_key);
-        use crate::aliases::LongEncryptedRecord;
+        let pk = libpep::keys::SessionPublicKeys::from(public_key);
+        use libpep::data::records::LongEncryptedRecord;
         use libpep::data::traits::Transcryptable;
         let rust_encrypted: LongEncryptedRecord = encrypted.into();
         let transcrypted = rust_encrypted.transcrypt(&transcryption_info.0, &pk, &mut rng);
@@ -747,7 +749,7 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
-        let items: Vec<crate::aliases::EncryptedRecord> =
+        let items: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch.transcrypt(&transcryption_info.0, &mut rng);
@@ -768,9 +770,9 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMEncryptedRecord>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
-        let items: Vec<crate::aliases::EncryptedRecord> =
+        let items: Vec<libpep::data::records::EncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch.transcrypt(&transcryption_info.0, &mut rng);
@@ -792,7 +794,7 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
-        let items: Vec<crate::aliases::LongEncryptedRecord> =
+        let items: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
         let mut batch = EncryptedBatch::new(items).map_err(batch_err_to_js)?;
         batch.transcrypt(&transcryption_info.0, &mut rng);
@@ -813,9 +815,9 @@ impl WASMDistributedTranscryptor {
     ) -> Result<Vec<WASMLongEncryptedRecord>, wasm_bindgen::JsValue> {
         use libpep::data::batch::EncryptedBatch;
         let mut rng = rand::rng();
-        let items: Vec<crate::aliases::LongEncryptedRecord> =
+        let items: Vec<libpep::data::records::LongEncryptedRecord> =
             records.into_iter().map(|r| r.into()).collect();
-        let keys: crate::aliases::SessionKeys = (*session_keys).into();
+        let keys: libpep::keys::SessionKeys = (*session_keys).into();
         let keys = keys.public();
         let mut batch = EncryptedBatch::new(items, keys).map_err(batch_err_to_js)?;
         batch.transcrypt(&transcryption_info.0, &mut rng);

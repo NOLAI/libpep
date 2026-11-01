@@ -1,13 +1,16 @@
 //! Key generation functions for global and session keys.
 //!
 //! Global keys are generic over the [`Group`]: the functions that generate them from randomness
-//! alone take the group as a type parameter, as there is nothing to infer it from. Session keys
-//! are derived with a factor, so their functions are generic over the [`Ciphersuite`] and take it
-//! as a type parameter.
+//! alone take the group as a type parameter (`..._generic`), as there is nothing to infer it from.
+//! Session keys are derived with a factor, so their functions are generic over the
+//! [`Ciphersuite`] and take it as a type parameter (`..._generic`). Each generic function has a
+//! plain-named counterpart for ristretto255 with SHA-512 that needs no type parameter.
 
 use crate::contexts::EncryptionContext;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
-use crate::factors::derivation::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
+use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
+use crate::factors::derivation::{
+    make_attribute_rekey_factor_generic, make_pseudonym_rekey_factor_generic,
+};
 use crate::factors::types::Factor;
 use crate::factors::EncryptionSecret;
 use crate::keys::traits::SecretKey;
@@ -33,12 +36,15 @@ where
     (sk.public_key(), sk)
 }
 
-/// Generate new global key pairs for both pseudonyms and attributes.
-pub fn make_global_keys<G: Group, R: Rng + CryptoRng>(
+/// Generate new global key pairs for both pseudonyms and attributes, for group `G`.
+///
+/// There is nothing to infer the group from, so it is a type parameter. [`make_global_keys`] is
+/// this function for ristretto255.
+pub fn make_global_keys_generic<G: Group, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (GlobalPublicKeys<G>, GlobalSecretKeys<G>) {
-    let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys(rng);
-    let (attribute_pk, attribute_sk) = make_attribute_global_keys(rng);
+    let (pseudonym_pk, pseudonym_sk) = make_pseudonym_global_keys_generic(rng);
+    let (attribute_pk, attribute_sk) = make_attribute_global_keys_generic(rng);
     (
         GlobalPublicKeys {
             pseudonym: pseudonym_pk,
@@ -51,30 +57,54 @@ pub fn make_global_keys<G: Group, R: Rng + CryptoRng>(
     )
 }
 
-/// Generate a new global key pair for pseudonyms.
-pub fn make_pseudonym_global_keys<G: Group, R: Rng + CryptoRng>(
+/// Generate new global key pairs for both pseudonyms and attributes, for ristretto255.
+///
+/// See [`make_global_keys_generic`] for another group.
+pub fn make_global_keys<R: Rng + CryptoRng>(rng: &mut R) -> (GlobalPublicKeys, GlobalSecretKeys) {
+    make_global_keys_generic(rng)
+}
+
+/// Generate a new global key pair for pseudonyms, for group `G`.
+pub fn make_pseudonym_global_keys_generic<G: Group, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (PseudonymGlobalPublicKey<G>, PseudonymGlobalSecretKey<G>) {
     make_global_key_pair(rng)
 }
 
-/// Generate a new global key pair for attributes.
-pub fn make_attribute_global_keys<G: Group, R: Rng + CryptoRng>(
+/// Generate a new global key pair for pseudonyms, for ristretto255.
+pub fn make_pseudonym_global_keys<R: Rng + CryptoRng>(
+    rng: &mut R,
+) -> (PseudonymGlobalPublicKey, PseudonymGlobalSecretKey) {
+    make_pseudonym_global_keys_generic(rng)
+}
+
+/// Generate a new global key pair for attributes, for group `G`.
+pub fn make_attribute_global_keys_generic<G: Group, R: Rng + CryptoRng>(
     rng: &mut R,
 ) -> (AttributeGlobalPublicKey<G>, AttributeGlobalSecretKey<G>) {
     make_global_key_pair(rng)
 }
 
-/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an [`EncryptionContext`] and an [`EncryptionSecret`].
-pub fn make_session_keys<C: Ciphersuite>(
+/// Generate a new global key pair for attributes, for ristretto255.
+pub fn make_attribute_global_keys<R: Rng + CryptoRng>(
+    rng: &mut R,
+) -> (AttributeGlobalPublicKey, AttributeGlobalSecretKey) {
+    make_attribute_global_keys_generic(rng)
+}
+
+/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], under ciphersuite `C`.
+///
+/// [`make_session_keys`] is this function for ristretto255 with SHA-512.
+pub fn make_session_keys_generic<C: Ciphersuite>(
     global: &GlobalSecretKeys<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
 ) -> SessionKeys<C::Group> {
     let (pseudonym_public, pseudonym_secret) =
-        make_pseudonym_session_keys::<C>(&global.pseudonym, session, secret);
+        make_pseudonym_session_keys_generic::<C>(&global.pseudonym, session, secret);
     let (attribute_public, attribute_secret) =
-        make_attribute_session_keys::<C>(&global.attribute, session, secret);
+        make_attribute_session_keys_generic::<C>(&global.attribute, session, secret);
     SessionKeys {
         pseudonym: PseudonymSessionKeys {
             public: pseudonym_public,
@@ -87,11 +117,24 @@ pub fn make_session_keys<C: Ciphersuite>(
     }
 }
 
-/// Generate session keys for pseudonyms from a [`PseudonymGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
+/// Generate session keys for both pseudonyms and attributes from [`GlobalSecretKeys`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], for ristretto255 with SHA-512.
+///
+/// See [`make_session_keys_generic`] for another ciphersuite.
+pub fn make_session_keys(
+    global: &GlobalSecretKeys,
+    session: &EncryptionContext,
+    secret: &EncryptionSecret,
+) -> SessionKeys {
+    make_session_keys_generic::<Ristretto255Sha512>(global, session, secret)
+}
+
+/// Generate session keys for pseudonyms from a [`PseudonymGlobalSecretKey`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], under ciphersuite `C`.
 ///
 /// The session secret key is the global secret key multiplied by the pseudonym rekey factor of
 /// the context.
-pub fn make_pseudonym_session_keys<C: Ciphersuite>(
+pub fn make_pseudonym_session_keys_generic<C: Ciphersuite>(
     global: &PseudonymGlobalSecretKey<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
@@ -99,16 +142,27 @@ pub fn make_pseudonym_session_keys<C: Ciphersuite>(
     PseudonymSessionPublicKey<C::Group>,
     PseudonymSessionSecretKey<C::Group>,
 ) {
-    let k = make_pseudonym_rekey_factor::<C>(secret, session);
+    let k = make_pseudonym_rekey_factor_generic::<C>(secret, session);
     let sk = PseudonymSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
 }
 
-/// Generate session keys for attributes from an [`AttributeGlobalSecretKey`], an [`EncryptionContext`] and an [`EncryptionSecret`].
+/// Generate session keys for pseudonyms from a [`PseudonymGlobalSecretKey`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], for ristretto255 with SHA-512.
+pub fn make_pseudonym_session_keys(
+    global: &PseudonymGlobalSecretKey,
+    session: &EncryptionContext,
+    secret: &EncryptionSecret,
+) -> (PseudonymSessionPublicKey, PseudonymSessionSecretKey) {
+    make_pseudonym_session_keys_generic::<Ristretto255Sha512>(global, session, secret)
+}
+
+/// Generate session keys for attributes from an [`AttributeGlobalSecretKey`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], under ciphersuite `C`.
 ///
 /// The session secret key is the global secret key multiplied by the attribute rekey factor of
 /// the context.
-pub fn make_attribute_session_keys<C: Ciphersuite>(
+pub fn make_attribute_session_keys_generic<C: Ciphersuite>(
     global: &AttributeGlobalSecretKey<C::Group>,
     session: &EncryptionContext,
     secret: &EncryptionSecret,
@@ -116,9 +170,19 @@ pub fn make_attribute_session_keys<C: Ciphersuite>(
     AttributeSessionPublicKey<C::Group>,
     AttributeSessionSecretKey<C::Group>,
 ) {
-    let k = make_attribute_rekey_factor::<C>(secret, session);
+    let k = make_attribute_rekey_factor_generic::<C>(secret, session);
     let sk = AttributeSessionSecretKey::from_scalar(k.scalar() * *global.value());
     (sk.public_key(), sk)
+}
+
+/// Generate session keys for attributes from an [`AttributeGlobalSecretKey`], an
+/// [`EncryptionContext`] and an [`EncryptionSecret`], for ristretto255 with SHA-512.
+pub fn make_attribute_session_keys(
+    global: &AttributeGlobalSecretKey,
+    session: &EncryptionContext,
+    secret: &EncryptionSecret,
+) -> (AttributeSessionPublicKey, AttributeSessionSecretKey) {
+    make_attribute_session_keys_generic::<Ristretto255Sha512>(global, session, secret)
 }
 
 #[cfg(test)]
@@ -126,7 +190,7 @@ pub fn make_attribute_session_keys<C: Ciphersuite>(
 mod tests {
     use super::*;
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::EncryptionSecret;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
@@ -136,7 +200,7 @@ mod tests {
     #[test]
     fn make_global_keys_creates_valid_keypairs() {
         let mut rng = rand::rng();
-        let (public, secret) = make_global_keys::<Ristretto255, _>(&mut rng);
+        let (public, secret) = make_global_keys(&mut rng);
 
         assert_eq!(*public.pseudonym, *secret.pseudonym.value() * G);
         assert_eq!(*public.attribute, *secret.attribute.value() * G);
@@ -161,18 +225,18 @@ mod tests {
     #[test]
     fn public_key_matches_derivation() {
         let mut rng = rand::rng();
-        let (public, secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+        let (public, secret) = make_pseudonym_global_keys(&mut rng);
         assert_eq!(public, secret.public_key());
     }
 
     #[test]
     fn make_session_keys_derives_from_global() {
         let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(
             *session.pseudonym.public,
@@ -187,12 +251,12 @@ mod tests {
     #[test]
     fn session_keys_deterministic() {
         let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let context = EncryptionContext::from("test-context");
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
-        let session2 = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
+        let session1 = make_session_keys(&global_sk, &context, &secret);
+        let session2 = make_session_keys(&global_sk, &context, &secret);
 
         assert_eq!(session1, session2);
     }
@@ -200,19 +264,11 @@ mod tests {
     #[test]
     fn different_contexts_produce_different_keys() {
         let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let secret = EncryptionSecret::from(b"test-secret".to_vec());
 
-        let session1 = make_session_keys::<Ristretto255Sha512>(
-            &global_sk,
-            &EncryptionContext::from("context1"),
-            &secret,
-        );
-        let session2 = make_session_keys::<Ristretto255Sha512>(
-            &global_sk,
-            &EncryptionContext::from("context2"),
-            &secret,
-        );
+        let session1 = make_session_keys(&global_sk, &EncryptionContext::from("context1"), &secret);
+        let session2 = make_session_keys(&global_sk, &EncryptionContext::from("context2"), &secret);
 
         assert_ne!(session1, session2);
     }
@@ -220,7 +276,7 @@ mod tests {
     #[test]
     fn public_key_encode_decode() {
         let mut rng = rand::rng();
-        let (public, _) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+        let (public, _) = make_pseudonym_global_keys(&mut rng);
         let encoded = public.to_bytes();
         let decoded = PseudonymGlobalPublicKey::<Ristretto255>::from_bytes(&encoded)
             .expect("decoding should succeed");
@@ -230,7 +286,7 @@ mod tests {
     #[test]
     fn public_key_hex_roundtrip() {
         let mut rng = rand::rng();
-        let (public, _) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
+        let (public, _) = make_attribute_global_keys(&mut rng);
         let hex = public.to_hex();
         let decoded = AttributeGlobalPublicKey::<Ristretto255>::from_hex(&hex)
             .expect("hex decoding should succeed");
@@ -241,11 +297,11 @@ mod tests {
     #[cfg(feature = "serde")]
     fn session_secret_key_serde() {
         let mut rng = rand::rng();
-        let (_global_pk, global_sk) = make_global_keys::<Ristretto255, _>(&mut rng);
+        let (_global_pk, global_sk) = make_global_keys(&mut rng);
         let context = EncryptionContext::from("test");
         let secret = EncryptionSecret::from(b"secret".to_vec());
 
-        let session = make_session_keys::<Ristretto255Sha512>(&global_sk, &context, &secret);
+        let session = make_session_keys(&global_sk, &context, &secret);
 
         let json =
             serde_json::to_string(&session.pseudonym.secret).expect("serialization should succeed");

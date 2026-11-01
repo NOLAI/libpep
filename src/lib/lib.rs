@@ -35,53 +35,71 @@
 //!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars, which runs under a
 //!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite): a group together with the hash and the
 //!   identifier its domain separation tags are built from.
-//! - [`ristretto255`] instantiates all of the above for ristretto255 with SHA-512, so that no
-//!   type parameter is written.
-//! - [`prelude`] imports what a typical application needs from it, with subsets for each role.
+//! - [`prelude`] imports what a typical application needs, with subsets for each role.
 //! - With the `verifiable` feature, `elgamal::verifiable` holds the primitives that emit
 //!   zero-knowledge proofs, `verifier` checks such proofs against factor commitments, and the
 //!   high-level layers gain verifiable counterparts of their operations
 //!   (`data::verifiable`).
 //!
-//! ## Groups
+//! ## Groups and ciphersuites
 //!
 //! The whole API ([`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
 //! `verifier`) is generic, in two layers.
 //!
 //! The data types (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) and the group
 //! arithmetic are generic over the prime-order group, abstracted as the
-//! [`Group`](elgamal::arithmetic::Group) trait. The group is inferred wherever it follows from
-//! the arguments (a key, a ciphertext); functions that create keys from randomness alone take
-//! it as a type parameter, like `make_global_keys::<G, _>(&mut rng)`.
+//! [`Group`](elgamal::arithmetic::Group) trait. Whatever hashes is generic over a
+//! [`Ciphersuite`](elgamal::arithmetic::Ciphersuite), which pairs a group with a hash: deriving
+//! factors, hashing an identifier to the group, creating and verifying proofs, and the roles built
+//! on them (`Transcryptor<C>`, `Verifier<C>`). Another group and hash can be used by implementing
+//! the two traits.
 //!
-//! Whatever hashes is generic over a [`Ciphersuite`](elgamal::arithmetic::Ciphersuite), which
-//! pairs a group with a hash: deriving factors, hashing an identifier to the group, creating
-//! and verifying proofs, and the roles built on them (`Transcryptor<C>`, `Verifier<C>`). Another
-//! group and hash can be used by implementing the two traits.
-//!
-//! ristretto255 with SHA-512 is
+//! The library is built for ristretto255 with SHA-512,
 //! [`Ristretto255`](elgamal::arithmetic::Ristretto255) with
-//! [`Ristretto255Sha512`](elgamal::arithmetic::Ristretto255Sha512). The [`ristretto255`] module
-//! instantiates the API for it: an alias for every generic type, so that `Pseudonym` is
-//! `Pseudonym<Ristretto255>`, and wrappers for the functions that cannot infer the group or
-//! ciphersuite, so that `make_global_keys(&mut rng)` and `Transcryptor::new(..)` need no
-//! annotation. The [`prelude`] re-exports the commonly needed part. The generic items remain at
-//! their own paths, for example [`data::simple::Pseudonym`].
+//! [`Ristretto255Sha512`](elgamal::arithmetic::Ristretto255Sha512), and every generic type
+//! defaults its parameter to them: `Pseudonym` is `Pseudonym<Ristretto255>` and `Transcryptor` is
+//! `Transcryptor<Ristretto255Sha512>`. In the common case no type parameter is written, which is
+//! how `peppy` and the Python and JavaScript bindings use the library.
 //!
 //! ```
 //! use libpep::prelude::*;
 //!
 //! let rng = &mut rand::rng();
-//! let (_public, _secret) = make_global_keys(rng);
+//! let (_public, global_secret) = make_global_keys(rng);
+//! let transcryptor = Transcryptor::new(
+//!     PseudonymizationSecret::from(b"pseudonymization secret".to_vec()),
+//!     EncryptionSecret::from(b"encryption secret".to_vec()),
+//! );
+//! let session = EncryptionContext::from("session");
+//! let keys = make_session_keys(&global_secret, &session, transcryptor.rekeying_secret());
 //! let pseudonym = Pseudonym::random(rng);
-//!
-//! // The same, written for the generic API.
-//! use libpep::data::simple::Pseudonym as GenericPseudonym;
-//! use libpep::keys::make_global_keys as make_generic_global_keys;
-//! let (_public, _secret) = make_generic_global_keys::<Ristretto255, _>(rng);
-//! let generic: GenericPseudonym<Ristretto255> = GenericPseudonym::random(rng);
-//! assert_eq!(generic.to_hex().len(), pseudonym.to_hex().len());
+//! let encrypted = encrypt(&pseudonym, &keys.public(), rng);
+//! # #[cfg(not(feature = "elgamal3"))]
+//! assert_eq!(decrypt(&encrypted, &keys), pseudonym);
+//! # #[cfg(feature = "elgamal3")]
+//! # assert_eq!(decrypt(&encrypted, &keys), Some(pseudonym));
 //! ```
+//!
+//! Rust does not use a default type parameter to infer one, so an expression that nothing
+//! constrains still needs a type: `Pseudonym::random(rng).to_hex()` does not compile, while
+//! `let pseudonym: Pseudonym = Pseudonym::random(rng);` does. The functions and constructors that
+//! could never infer their parameter, because it appears only in the result or in an associated
+//! type, come in a pair instead:
+//!
+//! - the plain name is the ristretto255 one, with no type parameter: [`keys::make_global_keys`],
+//!   [`keys::make_session_keys`] and the other key functions, [`factors::make_pseudonymization_factor`]
+//!   and the other factor functions, [`elgamal::arithmetic::hashing::hash_to_group`],
+//!   [`transcryptor::Transcryptor::new`], [`transcryptor::DistributedTranscryptor::new`],
+//!   `PseudonymizationInfo::new` (and the other info types), and with the `verifiable` feature
+//!   `Verifier::new`, the session key share functions with a proof and the master secrets;
+//! - the same name with the suffix `_generic` takes the group or ciphersuite as a type
+//!   parameter: `make_global_keys_generic::<G, _>(rng)`, `make_session_keys_generic::<C>(..)`,
+//!   `Transcryptor::<C>::new_generic(..)`. The body is written once, in the generic function, and
+//!   the plain one calls it.
+//!
+//! Generic code, and code for another group, uses the `_generic` names. The generic types stay at
+//! their own paths, for example [`data::simple::Pseudonym`], and `Pseudonym<OtherGroup>` works
+//! like `Pseudonym`.
 //!
 //! ## Feature flags
 //!
@@ -127,7 +145,6 @@ pub mod elgamal;
 pub mod factors;
 pub mod keys;
 pub mod prelude;
-pub mod ristretto255;
 pub mod transcryptor;
 
 /// Runs the README's quick start as a doctest, in the default ciphertext mode it is written for.

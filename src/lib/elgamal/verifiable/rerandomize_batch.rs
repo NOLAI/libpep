@@ -1,6 +1,11 @@
 //! Batched verifiable rerandomize.
 
 use super::rerandomize::VerifiableRerandomize;
+#[cfg(feature = "insecure")]
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::elgamal::arithmetic::Ristretto255;
+#[cfg(feature = "insecure")]
+use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -13,7 +18,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "insecure")]
 /// Rerandomize every ciphertext with its own fresh factor and return the results with their batch
 /// proof.
-pub fn verifiable_rerandomize_batch<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn verifiable_rerandomize_batch_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     originals: &[ElGamal<C::Group>],
     gy: &<C::Group as Group>::Element,
     rng: &mut R,
@@ -21,6 +26,16 @@ pub fn verifiable_rerandomize_batch<C: Ciphersuite, R: Rng + CryptoRng>(
     let proof = VerifiableRerandomizeBatch::new::<C, _>(originals.len(), gy, rng);
     let results = proof.result(originals);
     (results, proof)
+}
+
+#[cfg(feature = "insecure")]
+/// [`verifiable_rerandomize_batch_generic`] for ristretto255 with SHA-512.
+pub fn verifiable_rerandomize_batch<R: Rng + CryptoRng>(
+    originals: &[ElGamal],
+    gy: &GroupElement,
+    rng: &mut R,
+) -> (Vec<ElGamal>, VerifiableRerandomizeBatch) {
+    verifiable_rerandomize_batch_generic::<Ristretto255Sha512, R>(originals, gy, rng)
 }
 
 /// A batch of [`VerifiableRerandomize`] proofs sharing one recipient
@@ -31,7 +46,7 @@ pub fn verifiable_rerandomize_batch<C: Ciphersuite, R: Rng + CryptoRng>(
 /// batch level (or in each ciphertext under `elgamal3`).
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRerandomizeBatch<G: Group> {
+pub struct VerifiableRerandomizeBatch<G: Group = Ristretto255> {
     pub(crate) inners: Vec<VerifiableRerandomize<G>>,
 }
 

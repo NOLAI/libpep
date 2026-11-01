@@ -21,6 +21,7 @@ use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::elgamal::arithmetic::group::Group;
 #[cfg(feature = "long")]
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::types::{RerandomizeFactor, TranscryptionInfo};
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;
@@ -33,7 +34,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// The pseudonyms and attributes of one entity.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Record<G: Group> {
+pub struct Record<G: Group = Ristretto255> {
     /// The pseudonyms of the entity.
     pub pseudonyms: Vec<Pseudonym<G>>,
     /// The attributes of the entity.
@@ -42,7 +43,7 @@ pub struct Record<G: Group> {
 
 /// An encrypted [`Record`].
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EncryptedRecord<G: Group> {
+pub struct EncryptedRecord<G: Group = Ristretto255> {
     /// The encrypted pseudonyms.
     pub pseudonyms: Vec<EncryptedPseudonym<G>>,
     /// The encrypted attributes.
@@ -52,7 +53,7 @@ pub struct EncryptedRecord<G: Group> {
 /// The long pseudonyms and long attributes of one entity.
 #[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LongRecord<G: Group> {
+pub struct LongRecord<G: Group = Ristretto255> {
     /// The pseudonyms of the entity.
     pub pseudonyms: Vec<LongPseudonym<G>>,
     /// The attributes of the entity.
@@ -62,7 +63,7 @@ pub struct LongRecord<G: Group> {
 /// An encrypted [`LongRecord`].
 #[cfg(feature = "long")]
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LongEncryptedRecord<G: Group> {
+pub struct LongEncryptedRecord<G: Group = Ristretto255> {
     /// The encrypted pseudonyms.
     pub pseudonyms: Vec<LongEncryptedPseudonym<G>>,
     /// The encrypted attributes.

@@ -9,6 +9,7 @@
 pub use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::ElGamal;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
@@ -34,7 +35,7 @@ use serde::{Deserialize, Serialize};
     serde(bound = "", transparent)
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
-pub struct Pseudonym<G: Group> {
+pub struct Pseudonym<G: Group = Ristretto255> {
     /// The group element.
     pub value: G::Element,
 }
@@ -47,7 +48,7 @@ pub struct Pseudonym<G: Group> {
     serde(bound = "", transparent)
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
-pub struct Attribute<G: Group> {
+pub struct Attribute<G: Group = Ristretto255> {
     /// The group element.
     pub value: G::Element,
 }
@@ -59,7 +60,7 @@ pub struct Attribute<G: Group> {
     serde(bound = "", transparent)
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
-pub struct EncryptedPseudonym<G: Group> {
+pub struct EncryptedPseudonym<G: Group = Ristretto255> {
     /// The ciphertext.
     pub value: ElGamal<G>,
 }
@@ -71,7 +72,7 @@ pub struct EncryptedPseudonym<G: Group> {
     serde(bound = "", transparent)
 )]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Deref)]
-pub struct EncryptedAttribute<G: Group> {
+pub struct EncryptedAttribute<G: Group = Ristretto255> {
     /// The ciphertext.
     pub value: ElGamal<G>,
 }
@@ -259,7 +260,6 @@ mod tests {
     use crate::contexts::EncryptionContext;
     use crate::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::*;
 
@@ -319,14 +319,11 @@ mod tests {
     #[test]
     fn encrypt_decrypt_pseudonym() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -341,14 +338,11 @@ mod tests {
     #[test]
     fn encrypt_decrypt_attribute() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
+        let (_, global_secret) = make_attribute_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
-            &global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (session_public, session_secret) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Attribute::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);
@@ -363,14 +357,11 @@ mod tests {
     #[test]
     fn encrypted_pseudonym_base64_roundtrip() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (session_public, _) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let pseudonym = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&pseudonym, &session_public, &mut rng);
@@ -385,14 +376,11 @@ mod tests {
     #[cfg(feature = "serde")]
     fn encrypted_attribute_serde_json() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_attribute_global_keys::<Ristretto255, _>(&mut rng);
+        let (_, global_secret) = make_attribute_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, _) = make_attribute_session_keys::<Ristretto255Sha512>(
-            &global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (session_public, _) =
+            make_attribute_session_keys(&global_secret, &session, &enc_secret);
 
         let attribute = Attribute::random(&mut rng);
         let encrypted = encrypt(&attribute, &session_public, &mut rng);
@@ -406,14 +394,11 @@ mod tests {
     #[test]
     fn polymorphic_encrypt_decrypt() {
         let mut rng = rand::rng();
-        let (_, global_secret) = make_pseudonym_global_keys::<Ristretto255, _>(&mut rng);
+        let (_, global_secret) = make_pseudonym_global_keys(&mut rng);
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
-        let (session_public, session_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (session_public, session_secret) =
+            make_pseudonym_session_keys(&global_secret, &session, &enc_secret);
 
         let original = Pseudonym::random(&mut rng);
         let encrypted = encrypt(&original, &session_public, &mut rng);

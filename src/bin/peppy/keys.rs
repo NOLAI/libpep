@@ -1,10 +1,26 @@
 //! `peppy keys`: global, session and distributed key material.
 
-use crate::aliases::*;
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
+use libpep::client::distributed::{
+    make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
+};
 use libpep::elgamal::arithmetic::group::Group;
-use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
+#[cfg(feature = "verifiable")]
+use libpep::keys::distribution::make_session_key_shares_with_proof;
+use libpep::keys::distribution::{
+    make_distributed_global_keys, make_session_key_shares, AttributeSessionKeyShare,
+    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedGlobalSecretKeys,
+    BlindedPseudonymGlobalSecretKey, BlindingFactor, PseudonymSessionKeyShare, SessionKeyShare,
+    SessionKeyShares,
+};
+use libpep::keys::{
+    AttributeGlobalSecretKey, AttributeSessionKeys, AttributeSessionSecretKey,
+    PseudonymGlobalSecretKey, PseudonymSessionKeys, PseudonymSessionSecretKey,
+};
+use libpep::prelude::*;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]
@@ -231,7 +247,7 @@ pub fn run<R: Rng + CryptoRng>(cmd: Keys, rng: &mut R, out: &mut Output) -> Resu
                         "blinded attribute secret key",
                     )?),
                 };
-                let shares = pseudonym_shares
+                let shares: Vec<SessionKeyShares> = pseudonym_shares
                     .iter()
                     .zip(&attribute_shares)
                     .map(|(p, a)| {

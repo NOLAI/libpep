@@ -9,13 +9,14 @@
 //! is required.
 
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Forward commitment `A = a·G` to a factor scalar `a`.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct FactorCommitment<G: Group>(pub G::Element);
+pub struct FactorCommitment<G: Group = Ristretto255>(pub G::Element);
 
 impl<G: Group> FactorCommitment<G> {
     /// Build a commitment to scalar `a`: `A = a · G`.
@@ -36,13 +37,13 @@ impl<G: Group> FactorCommitment<G> {
 /// through the explicit [`point`](Self::point), which is meant to be visible in code review.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct RekeyFactorCommitment<G: Group>(pub FactorCommitment<G>);
+pub struct RekeyFactorCommitment<G: Group = Ristretto255>(pub FactorCommitment<G>);
 
 /// Commitment to a pseudonymization (reshuffle) factor `s`: `S = s·G`. See
 /// [`RekeyFactorCommitment`] for the phantom-type rationale.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct PseudonymizationFactorCommitment<G: Group>(pub FactorCommitment<G>);
+pub struct PseudonymizationFactorCommitment<G: Group = Ristretto255>(pub FactorCommitment<G>);
 
 macro_rules! impl_commitment {
     ($t:ident) => {

@@ -49,7 +49,7 @@ pub fn py_hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> PyScalarCanBeZero {
 #[pyfunction]
 #[pyo3(name = "hash_to_group")]
 pub fn py_hash_to_group(x: &[u8]) -> PyGroupElement {
-    crate::aliases::hash_to_group(x).into()
+    libpep::elgamal::arithmetic::hashing::hash_to_group(x).into()
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

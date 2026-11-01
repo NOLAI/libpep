@@ -7,7 +7,11 @@ use std::collections::HashSet;
 #[macro_use]
 mod common;
 
-use common::aliases::*;
+#[cfg(all(feature = "batch", feature = "long"))]
+use libpep::data::records::LongEncryptedRecord;
+use libpep::elgamal::arithmetic::hashing::hash_to_group;
+use libpep::elgamal::ElGamal;
+use libpep::prelude::*;
 
 #[test]
 fn test_core_flow() {
@@ -68,7 +72,7 @@ fn test_core_flow() {
         assert_eq!(data, rr_dec_data);
     }
 
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
         &session1,
@@ -159,7 +163,7 @@ fn test_batch() {
         pseudonym_values.push(pseudonym);
     }
 
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
         &session1,
@@ -271,7 +275,7 @@ fn test_batch_long() {
         })
         .collect();
 
-    let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let transcryption_info = TranscryptionInfo::new(
         &domain1,
         &domain2,
         &session1,
@@ -406,7 +410,7 @@ fn test_pseudonymize_changes_encryption_context() {
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
-    let info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let info = PseudonymizationInfo::new(
         &from_domain,
         &to_domain,
         &from_ctx,
@@ -443,7 +447,7 @@ fn test_rekey_pseudonym_preserves_plaintext() {
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
-    let rekey_info = PseudonymRekeyInfo::new::<Ristretto255Sha512>(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_info = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
     let rekeyed = tx!(
         rekey,
         &encrypted,
@@ -473,7 +477,7 @@ fn test_rekey_attribute_preserves_plaintext() {
     let attribute = Attribute::random(&mut rng);
     let encrypted = encrypt(&attribute, &from_session.attribute.public, &mut rng);
 
-    let rekey_info = AttributeRekeyInfo::new::<Ristretto255Sha512>(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_info = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
     let rekeyed = tx!(
         rekey,
         &encrypted,
@@ -506,7 +510,7 @@ fn test_transcrypt_pseudonym_applies_pseudonymization() {
     let pseudonym = Pseudonym::random(&mut rng);
     let encrypted = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
 
-    let info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let info = TranscryptionInfo::new(
         &from_domain,
         &to_domain,
         &from_ctx,
@@ -546,7 +550,7 @@ fn test_transcrypt_attribute_rekeys_only() {
     let attribute = Attribute::random(&mut rng);
     let encrypted = encrypt(&attribute, &from_session.attribute.public, &mut rng);
 
-    let info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let info = TranscryptionInfo::new(
         &from_domain,
         &to_domain,
         &from_ctx,
@@ -583,7 +587,7 @@ fn test_polymorphic_rekey_works_for_both_types() {
     // Test with pseudonym
     let pseudonym = Pseudonym::random(&mut rng);
     let enc_p = encrypt(&pseudonym, &from_session.pseudonym.public, &mut rng);
-    let rekey_p = PseudonymRekeyInfo::new::<Ristretto255Sha512>(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_p = PseudonymRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
     let rekeyed_p = tx!(
         rekey,
         &enc_p,
@@ -600,7 +604,7 @@ fn test_polymorphic_rekey_works_for_both_types() {
     // Test with attribute
     let attribute = Attribute::random(&mut rng);
     let enc_a = encrypt(&attribute, &from_session.attribute.public, &mut rng);
-    let rekey_a = AttributeRekeyInfo::new::<Ristretto255Sha512>(&from_ctx, &to_ctx, &enc_secret);
+    let rekey_a = AttributeRekeyInfo::new(&from_ctx, &to_ctx, &enc_secret);
     let rekeyed_a = tx!(
         rekey,
         &enc_a,
@@ -627,7 +631,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
     let from_ctx = EncryptionContext::from("from");
     let to_ctx = EncryptionContext::from("to");
     let from_session = make_session_keys(&global_sk, &from_ctx, &enc_secret);
-    let info = PseudonymizationInfo::new::<Ristretto255Sha512>(
+    let info = PseudonymizationInfo::new(
         &PseudonymizationDomain::from("domain-from"),
         &PseudonymizationDomain::from("domain-to"),
         &from_ctx,
@@ -636,7 +640,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
         &enc_secret,
     );
 
-    let pseudonym = Pseudonym::random(&mut rng);
+    let pseudonym: Pseudonym = Pseudonym::random(&mut rng);
     let malformed = EncryptedPseudonym::from_value(ElGamal {
         gb: libpep::elgamal::arithmetic::group_elements::GroupElement::random(&mut rng),
         gc: *pseudonym.value(),
@@ -681,7 +685,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
 
     // Hashing an identifier to the group involves no secret, so the ciphersuite is the only
     // thing separating this pseudonym from another protocol's hash of the same identifier.
-    let origin = Pseudonym::from_point(hash_to_group(b"patient-1"));
+    let origin: Pseudonym = Pseudonym::from_point(hash_to_group(b"patient-1"));
     assert_eq!(origin, Pseudonym::from_point(hash_to_group(b"patient-1")));
     // Another protocol hashing the same identifier on the same group under its own tag gets an
     // unrelated element, because the ciphersuite identifier differs.
@@ -699,7 +703,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
 
     // Factor derivation takes no ciphersuite: it is deterministic in the secrets, the domains
     // and the sessions.
-    let info = TranscryptionInfo::new::<Ristretto255Sha512>(
+    let info = TranscryptionInfo::new(
         &domain_a,
         &domain_b,
         &session_a,
@@ -709,7 +713,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
     );
     assert_eq!(
         info,
-        TranscryptionInfo::new::<Ristretto255Sha512>(
+        TranscryptionInfo::new(
             &domain_a,
             &domain_b,
             &session_a,
@@ -729,7 +733,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
     let other_enc = EncryptionSecret::from(b"other encryption secret".to_vec());
     assert_ne!(
         info,
-        TranscryptionInfo::new::<Ristretto255Sha512>(
+        TranscryptionInfo::new(
             &domain_a,
             &domain_b,
             &session_a,
@@ -746,7 +750,7 @@ fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
     // Within a deployment, the domain and the session separate the factors.
     assert_ne!(
         info,
-        TranscryptionInfo::new::<Ristretto255Sha512>(
+        TranscryptionInfo::new(
             &domain_a,
             &PseudonymizationDomain::from("other-domain"),
             &session_a,

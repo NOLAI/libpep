@@ -3,9 +3,9 @@
 //! These are also exposed as methods on `PyPseudonym` and `PyAttribute`. This module has the
 //! standalone function versions.
 
-use crate::aliases::{Attribute, Pseudonym};
 use crate::data::simple::{PyAttribute, PyPseudonym};
 use libpep::data::padding::Padded;
+use libpep::data::simple::{Attribute, Pseudonym};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 

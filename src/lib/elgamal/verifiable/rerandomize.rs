@@ -11,6 +11,13 @@
 //! In `elgamal3` mode `Y` is carried by the ciphertext; in the default mode
 //! the caller supplies it explicitly to the constructor and verifier.
 
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
+use crate::elgamal::arithmetic::group_elements::GroupElement;
+#[cfg(feature = "insecure")]
+use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+use crate::elgamal::arithmetic::Ristretto255;
+#[cfg(feature = "insecure")]
+use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -22,7 +29,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
 /// Proof of a verifiable rerandomization: the commitment `R = r·G` and the proof that `Y_r =
 /// r·Y`.
-pub struct VerifiableRerandomize<G: Group> {
+pub struct VerifiableRerandomize<G: Group = Ristretto255> {
     /// `R = r·G`.
     pub(crate) gr: G::Element,
     /// `ZKP{Y_r = r * Y}`: first component is `Y_r = r·Y`.
@@ -87,7 +94,7 @@ impl<G: Group> VerifiableRerandomize<G> {
 // the `pub(crate)` `result` helper, which external callers cannot reach.
 #[cfg(all(feature = "insecure", feature = "elgamal3"))]
 /// Rerandomize `original` with a fresh factor and return the result with its proof.
-pub fn verifiable_rerandomize<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn verifiable_rerandomize_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     original: &ElGamal<C::Group>,
     r: &<C::Group as Group>::Scalar,
     rng: &mut R,
@@ -97,10 +104,20 @@ pub fn verifiable_rerandomize<C: Ciphersuite, R: Rng + CryptoRng>(
     (result, proof)
 }
 
+#[cfg(all(feature = "insecure", feature = "elgamal3"))]
+/// [`verifiable_rerandomize_generic`] for ristretto255 with SHA-512.
+pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
+    original: &ElGamal,
+    r: &ScalarNonZero,
+    rng: &mut R,
+) -> (ElGamal, VerifiableRerandomize) {
+    verifiable_rerandomize_generic::<Ristretto255Sha512, R>(original, r, rng)
+}
+
 #[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
 /// Rerandomize `original` with a fresh factor and return the result with its proof; `gy` is the
 /// key it is encrypted under.
-pub fn verifiable_rerandomize<C: Ciphersuite, R: Rng + CryptoRng>(
+pub fn verifiable_rerandomize_generic<C: Ciphersuite, R: Rng + CryptoRng>(
     original: &ElGamal<C::Group>,
     gy: &<C::Group as Group>::Element,
     r: &<C::Group as Group>::Scalar,
@@ -109,6 +126,17 @@ pub fn verifiable_rerandomize<C: Ciphersuite, R: Rng + CryptoRng>(
     let proof = VerifiableRerandomize::new::<C, _>(gy, r, rng);
     let result = proof.result(original);
     (result, proof)
+}
+
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
+/// [`verifiable_rerandomize_generic`] for ristretto255 with SHA-512.
+pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
+    original: &ElGamal,
+    gy: &GroupElement,
+    r: &ScalarNonZero,
+    rng: &mut R,
+) -> (ElGamal, VerifiableRerandomize) {
+    verifiable_rerandomize_generic::<Ristretto255Sha512, R>(original, gy, r, rng)
 }
 
 #[cfg(test)]

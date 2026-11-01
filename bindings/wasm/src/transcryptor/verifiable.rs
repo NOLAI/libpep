@@ -217,7 +217,7 @@ impl WASMTranscryptor {
         encrypted: &crate::data::records::WASMEncryptedRecord,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
     ) -> crate::data::records::WASMRecordTranscryptionProof {
-        let enc: crate::aliases::EncryptedRecord = encrypted.clone().into();
+        let enc: libpep::data::records::EncryptedRecord = encrypted.clone().into();
         let mut rng = rand::rng();
         let proof = self
             .0
@@ -236,8 +236,8 @@ impl WASMTranscryptor {
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
         session_keys: &crate::keys::types::WASMSessionKeys,
     ) -> crate::data::records::WASMRecordTranscryptionProof {
-        let enc: crate::aliases::EncryptedRecord = encrypted.clone().into();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let enc: libpep::data::records::EncryptedRecord = encrypted.clone().into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let mut rng = rand::rng();
         let proof =
             self.0
@@ -257,7 +257,7 @@ impl WASMTranscryptor {
         encrypted: &crate::data::records::WASMLongEncryptedRecord,
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
     ) -> crate::data::records::WASMLongRecordTranscryptionProof {
-        let enc: crate::aliases::LongEncryptedRecord = encrypted.clone().into();
+        let enc: libpep::data::records::LongEncryptedRecord = encrypted.clone().into();
         let mut rng = rand::rng();
         let proof = self
             .0
@@ -276,8 +276,8 @@ impl WASMTranscryptor {
         transcryption_info: &crate::factors::types::WASMTranscryptionInfo,
         session_keys: &crate::keys::types::WASMSessionKeys,
     ) -> crate::data::records::WASMLongRecordTranscryptionProof {
-        let enc: crate::aliases::LongEncryptedRecord = encrypted.clone().into();
-        let sk: crate::aliases::SessionKeys = (*session_keys).into();
+        let enc: libpep::data::records::LongEncryptedRecord = encrypted.clone().into();
+        let sk: libpep::keys::SessionKeys = (*session_keys).into();
         let mut rng = rand::rng();
         let proof =
             self.0

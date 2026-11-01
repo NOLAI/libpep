@@ -26,8 +26,9 @@ pub use blinding::{
     BlindedPseudonymGlobalSecretKey, BlindingFactor,
 };
 pub use setup::{
-    make_distributed_attribute_global_keys, make_distributed_global_keys,
-    make_distributed_pseudonym_global_keys,
+    make_distributed_attribute_global_keys, make_distributed_attribute_global_keys_generic,
+    make_distributed_global_keys, make_distributed_global_keys_generic,
+    make_distributed_pseudonym_global_keys, make_distributed_pseudonym_global_keys_generic,
 };
 pub use shares::{
     make_attribute_session_key_share, make_pseudonym_session_key_share, make_session_key_share,
@@ -36,9 +37,12 @@ pub use shares::{
 };
 #[cfg(feature = "verifiable")]
 pub use shares::{
-    make_attribute_session_key_share_with_proof, make_pseudonym_session_key_share_with_proof,
-    make_session_key_share_with_proof, make_session_key_shares_with_proof, SessionKeyShareError,
-    SessionKeyShareProofs,
+    make_attribute_session_key_share_with_proof,
+    make_attribute_session_key_share_with_proof_generic,
+    make_pseudonym_session_key_share_with_proof,
+    make_pseudonym_session_key_share_with_proof_generic, make_session_key_share_with_proof,
+    make_session_key_shares_with_proof, make_session_key_shares_with_proof_generic,
+    SessionKeyShareError, SessionKeyShareProofs,
 };
 
 #[cfg(feature = "verifiable")]

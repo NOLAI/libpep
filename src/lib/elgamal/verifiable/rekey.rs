@@ -22,6 +22,7 @@
 //! forward commitment `A = a·G`.
 
 use super::commitments::{FactorCommitment, RekeyFactorCommitment};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -39,7 +40,7 @@ use serde::{Deserialize, Serialize};
 ///   `Y' = k·Y`, verified against `K`.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRekey<G: Group> {
+pub struct VerifiableRekey<G: Group = Ristretto255> {
     pub(crate) gb_prime: G::Element,
     pub(crate) p_gb: Proof<G>,
     #[cfg(feature = "elgamal3")]
@@ -130,7 +131,7 @@ impl<G: Group> VerifiableRekey<G> {
 /// [`VerifiableRekey`] / combined commitment for cheap per-ciphertext proofs.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRekey2<G: Group> {
+pub struct VerifiableRekey2<G: Group = Ristretto255> {
     /// `K = (k_from⁻¹ · k_to) · G`.
     pub(crate) gk: G::Element,
     /// `ZKP{K_to = k_from * K}`: first component equals `K_to = k_to·G`.

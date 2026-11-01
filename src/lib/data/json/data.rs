@@ -12,6 +12,7 @@ use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::types::{RerandomizeFactor, TranscryptionInfo};
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;
@@ -74,7 +75,7 @@ pub enum JsonError {
 ///
 /// Call `.encrypt()` to convert this into an `EncryptedPepJsonValue`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PepJsonValue<G: InvertibleEncoding> {
+pub enum PepJsonValue<G: InvertibleEncoding = Ristretto255> {
     /// JSON `null`, kept in the clear.
     Null,
     /// A boolean, as one attribute.
@@ -110,7 +111,7 @@ pub enum PepJsonValue<G: InvertibleEncoding> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(bound = "")]
 #[serde(tag = "type", content = "data")]
-pub enum EncryptedPepJsonValue<G: InvertibleEncoding> {
+pub enum EncryptedPepJsonValue<G: InvertibleEncoding = Ristretto255> {
     /// JSON `null`, kept in the clear.
     Null,
     /// A boolean, as one encrypted attribute.
@@ -873,7 +874,6 @@ mod tests {
     use crate::contexts::EncryptionContext;
     use crate::data::json::data::JsonError;
     use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::EncryptionSecret;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
@@ -891,16 +891,10 @@ mod tests {
         let enc_secret = EncryptionSecret::from("test-secret".as_bytes().to_vec());
         let session = EncryptionContext::from("session-1");
 
-        let (attr_public, attr_secret) = make_attribute_session_keys::<Ristretto255Sha512>(
-            &attr_global_secret,
-            &session,
-            &enc_secret,
-        );
-        let (pseudo_public, pseudo_secret) = make_pseudonym_session_keys::<Ristretto255Sha512>(
-            &pseudo_global_secret,
-            &session,
-            &enc_secret,
-        );
+        let (attr_public, attr_secret) =
+            make_attribute_session_keys(&attr_global_secret, &session, &enc_secret);
+        let (pseudo_public, pseudo_secret) =
+            make_pseudonym_session_keys(&pseudo_global_secret, &session, &enc_secret);
 
         SessionKeys {
             attribute: AttributeSessionKeys {

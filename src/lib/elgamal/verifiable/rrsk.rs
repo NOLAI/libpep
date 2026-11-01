@@ -24,6 +24,7 @@
 use super::commitments::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use super::rerandomize::VerifiableRerandomize;
 use super::rsk::{VerifiableRSK, VerifiableRSK2};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::ElGamal;
 use rand_core::{CryptoRng, Rng};
@@ -34,7 +35,7 @@ use serde::{Deserialize, Serialize};
 /// [`VerifiableRSK`] on the rerandomized ciphertext.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRRSK<G: Group> {
+pub struct VerifiableRRSK<G: Group = Ristretto255> {
     pub(crate) rerandomize: VerifiableRerandomize<G>,
     pub(crate) rsk: VerifiableRSK<G>,
 }
@@ -104,7 +105,7 @@ impl<G: Group> VerifiableRRSK<G> {
 /// [`VerifiableRSK2`] on the rerandomized ciphertext.
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRRSK2<G: Group> {
+pub struct VerifiableRRSK2<G: Group = Ristretto255> {
     pub(crate) rerandomize: VerifiableRerandomize<G>,
     pub(crate) rsk2: VerifiableRSK2<G>,
 }

@@ -6,10 +6,17 @@
 //! element (hex). A rekey proof is verified with `verify-rekey`, a pseudonymization proof (also
 //! the one of `pseudonym transcrypt`) with `verify-pseudonymize`.
 
-use crate::aliases::*;
 use crate::data::{Cipher, Kind, PseudonymKind};
 use crate::io::{self, Output, Result};
 use clap::Args;
+#[cfg(all(feature = "verifiable", feature = "long"))]
+use libpep::data::verifiable::long::LongPseudonymPseudonymizationProof;
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::simple::PseudonymPseudonymizationProof;
+use libpep::data::verifiable::traits::{VerifiablePseudonymizationProof, VerifiableRekeyProof};
+#[cfg(not(feature = "elgamal3"))]
+use libpep::keys::PseudonymSessionPublicKey;
+use libpep::prelude::*;
 use rand_core::{CryptoRng, Rng};
 
 /// A proof made by the transcryptor verifies against the commitments to its own factors.

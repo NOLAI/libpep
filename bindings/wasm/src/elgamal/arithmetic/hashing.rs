@@ -32,7 +32,7 @@ pub fn wasm_expand_message_xmd_sha512(
 /// `Attribute.fromLizard` for an invertible encoding.
 #[wasm_bindgen(js_name = hashToGroup)]
 pub fn wasm_hash_to_group(x: &[u8]) -> WASMGroupElement {
-    crate::aliases::hash_to_group(x).into()
+    libpep::elgamal::arithmetic::hashing::hash_to_group(x).into()
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag

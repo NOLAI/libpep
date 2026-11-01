@@ -5,7 +5,7 @@
 //! function, the maps from hash output to elements and scalars, and an identifier that keeps the
 //! domain separation tags of one ciphersuite apart from another. A [`Ciphersuite`] bundles these.
 //! Data types such as `Pseudonym<G>` only need the group and stay generic over a [`Group`]; the
-//! functions and types that hash (`Transcryptor<C>`, `hash_to_group::<C>`, proof verification)
+//! functions and types that hash (`Transcryptor<C>`, `hash_to_group_generic::<C>`, proof verification)
 //! are generic over a ciphersuite `C`, and reach its group as `C::Group`.
 //!
 //! A ciphersuite is named by a [`CiphersuiteId`], such as `ristretto255-SHA512` for ristretto255

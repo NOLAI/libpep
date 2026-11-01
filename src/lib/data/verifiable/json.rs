@@ -17,6 +17,7 @@ use crate::data::verifiable::traits::{
 };
 use crate::elgamal::arithmetic::group::InvertibleEncoding;
 use crate::elgamal::arithmetic::Ciphersuite;
+use crate::elgamal::arithmetic::Ristretto255;
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::VerifiableTranscryptionCommitment;
@@ -41,7 +42,7 @@ use std::collections::BTreeMap;
     serde(bound = "")
 )]
 #[allow(clippy::large_enum_variant)]
-pub enum JsonTranscryptionProof<G: InvertibleEncoding> {
+pub enum JsonTranscryptionProof<G: InvertibleEncoding = Ristretto255> {
     /// JSON `null`: nothing to prove.
     Null,
     /// The rekey proof of a boolean.
@@ -407,4 +408,5 @@ impl<G: InvertibleEncoding> VerifiableBatchItem for EncryptedPepJsonValue<G> {
 
 /// Proof of a verifiable transcryption of a batch of [`EncryptedPepJsonValue`]s.
 #[cfg(feature = "batch")]
-pub type JsonTranscryptionBatchProof<G> = BatchTranscryptionProof<EncryptedPepJsonValue<G>>;
+pub type JsonTranscryptionBatchProof<G = Ristretto255> =
+    BatchTranscryptionProof<EncryptedPepJsonValue<G>>;

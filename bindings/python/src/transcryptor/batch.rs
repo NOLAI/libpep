@@ -1,6 +1,5 @@
 //! Python bindings for batch transcryption operations.
 
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
 #[cfg(feature = "long")]
@@ -10,6 +9,7 @@ use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use libpep::transcryptor::{pseudonymize_batch, rekey_batch, transcrypt_batch};
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;

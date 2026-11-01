@@ -8,11 +8,23 @@
 //! The transcryption commands take `--prove` to also produce a proof of the operation; the
 //! `verify-*` commands check such a proof, see [`crate::verifiable`].
 
-use crate::aliases::*;
 use crate::factors::{AttributeTransitionArgs, TransitionArgs};
 use crate::io::{self, Output, Result};
 use crate::verifiable::{self, VerifyPseudonymizeArgs, VerifyRekeyArgs};
 use clap::{Args, Subcommand};
+use libpep::data::errors::ParseError;
+use libpep::data::padding::{Padded, PaddingError};
+#[cfg(feature = "verifiable")]
+use libpep::data::verifiable::traits::VerifiableRekeyProof;
+use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, ReshuffleFactor};
+use libpep::keys::{
+    AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
+    PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey,
+};
+#[cfg(feature = "insecure")]
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
+use libpep::prelude::*;
 use rand_core::{CryptoRng, Rng};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -664,7 +676,7 @@ pub fn run_pseudonym<R: Rng + CryptoRng>(
 ) -> Result<()> {
     match cmd {
         PseudonymCommand::Random => {
-            out.value("value", Pseudonym::random(rng).to_hex());
+            out.value("value", Pseudonym::<Ristretto255>::random(rng).to_hex());
             Ok(())
         }
         PseudonymCommand::Encode(args) => encode::<PseudonymKind>(args, out),
@@ -687,7 +699,7 @@ pub fn run_attribute<R: Rng + CryptoRng>(
 ) -> Result<()> {
     match cmd {
         AttributeCommand::Random => {
-            out.value("value", Attribute::random(rng).to_hex());
+            out.value("value", Attribute::<Ristretto255>::random(rng).to_hex());
             Ok(())
         }
         AttributeCommand::Encode(args) => encode::<AttributeKind>(args, out),

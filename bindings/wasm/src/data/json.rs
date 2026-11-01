@@ -1,16 +1,5 @@
 //! WASM bindings for PEP JSON encryption.
 
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::aliases::GlobalPublicKeys;
-use crate::aliases::PepJsonBuilder;
-use crate::aliases::SessionKeys;
-use crate::aliases::TranscryptionInfo;
-#[cfg(all(feature = "offline", feature = "insecure"))]
-use crate::aliases::{
-    AttributeGlobalPublicKey, AttributeGlobalSecretKey, PseudonymGlobalPublicKey,
-    PseudonymGlobalSecretKey,
-};
-use crate::aliases::{EncryptedPepJsonValue, PepJsonValue};
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMEncryptionSecret, WASMPseudonymizationSecret};
 #[cfg(feature = "batch")]
@@ -28,9 +17,20 @@ use libpep::client::{decrypt_batch, encrypt_batch};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::client::{decrypt_global, encrypt_global};
 use libpep::data::json::structure::JsonStructure;
-use libpep::data::json::utils;
+use libpep::data::json::{utils, PepJsonBuilder};
+#[cfg(feature = "json")]
+use libpep::data::json::{EncryptedPepJsonValue, PepJsonValue};
 use libpep::data::traits::Transcryptable;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::factors::TranscryptionInfo;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::AttributeGlobalSecretKey;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::PseudonymGlobalPublicKey;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::PseudonymGlobalSecretKey;
+use libpep::keys::SessionKeys;
+#[cfg(all(feature = "offline", feature = "insecure"))]
+use libpep::keys::{AttributeGlobalPublicKey, GlobalPublicKeys};
 #[cfg(all(feature = "offline", feature = "insecure"))]
 use libpep::keys::{PublicKey, SecretKey};
 #[cfg(feature = "batch")]
@@ -162,7 +162,7 @@ impl WASMEncryptedPepJsonValue {
         encryption_secret: &WASMEncryptionSecret,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
-        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+        let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,
@@ -203,8 +203,8 @@ impl WASMEncryptedPepJsonValue {
         public_key: &WASMSessionPublicKeys,
     ) -> Result<WASMEncryptedPepJsonValue, JsValue> {
         let mut rng = rand::rng();
-        let pk = crate::aliases::SessionPublicKeys::from(public_key);
-        let transcryption_info = TranscryptionInfo::new::<Ristretto255Sha512>(
+        let pk = libpep::keys::SessionPublicKeys::from(public_key);
+        let transcryption_info = TranscryptionInfo::new(
             &from_domain.0,
             &to_domain.0,
             &from_session.0,
@@ -512,7 +512,7 @@ pub fn wasm_transcrypt_json_batch(
     transcryption_info: &WASMTranscryptionInfo,
     public_key: &WASMSessionPublicKeys,
 ) -> Result<Vec<WASMEncryptedPepJsonValue>, JsValue> {
-    let pk = crate::aliases::SessionPublicKeys::from(public_key);
+    let pk = libpep::keys::SessionPublicKeys::from(public_key);
     let mut rng = rand::rng();
     let rust_values: Vec<EncryptedPepJsonValue> = values.into_iter().map(|v| v.0).collect();
     let transcrypted = transcrypt_batch(&rust_values, &transcryption_info.0, &pk, &mut rng)

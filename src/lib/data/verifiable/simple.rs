@@ -24,6 +24,7 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::{VerifiableRRSK, VerifiableRekey};
 #[cfg(feature = "batch")]
@@ -47,7 +48,7 @@ use serde::{Deserialize, Serialize};
     derive(Serialize, Deserialize),
     serde(bound = "", transparent)
 )]
-pub struct PseudonymPseudonymizationProof<G: Group>(pub VerifiableRRSK<G>);
+pub struct PseudonymPseudonymizationProof<G: Group = Ristretto255>(pub VerifiableRRSK<G>);
 
 impl<G: Group> VerifiablePseudonymizationProof for PseudonymPseudonymizationProof<G> {
     type Group = G;
@@ -142,7 +143,7 @@ macro_rules! rekey_proof {
             derive(Serialize, Deserialize),
             serde(bound = "", transparent)
         )]
-        pub struct $proof<G: Group>(pub VerifiableRekey<G>);
+        pub struct $proof<G: Group = Ristretto255>(pub VerifiableRekey<G>);
 
         impl<G: Group> VerifiableRekeyProof for $proof<G> {
             type Group = G;
@@ -219,10 +220,11 @@ batch_item!(EncryptedAttribute => attributes of _pseudonyms, attributes);
 
 /// Proof of a verifiable pseudonymization of a batch of [`EncryptedPseudonym`]s.
 #[cfg(feature = "batch")]
-pub type PseudonymPseudonymizationBatchProof<G> = BatchPseudonymizationProof<EncryptedPseudonym<G>>;
+pub type PseudonymPseudonymizationBatchProof<G = Ristretto255> =
+    BatchPseudonymizationProof<EncryptedPseudonym<G>>;
 /// Proof of a verifiable rekeying of a batch of [`EncryptedPseudonym`]s.
 #[cfg(feature = "batch")]
-pub type PseudonymRekeyBatchProof<G> = BatchRekeyProof<EncryptedPseudonym<G>>;
+pub type PseudonymRekeyBatchProof<G = Ristretto255> = BatchRekeyProof<EncryptedPseudonym<G>>;
 /// Proof of a verifiable rekeying of a batch of [`EncryptedAttribute`]s.
 #[cfg(feature = "batch")]
-pub type AttributeRekeyBatchProof<G> = BatchRekeyProof<EncryptedAttribute<G>>;
+pub type AttributeRekeyBatchProof<G = Ristretto255> = BatchRekeyProof<EncryptedAttribute<G>>;

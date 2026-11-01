@@ -1,7 +1,5 @@
 //! Python bindings for transcryptor types.
 
-use crate::aliases::Transcryptor;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "json")]
 use crate::data::json::PyEncryptedPepJsonValue;
@@ -15,7 +13,9 @@ use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
 use derive_more::{Deref, From, Into};
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use libpep::factors::{EncryptionSecret, PseudonymizationSecret};
+use libpep::transcryptor::Transcryptor;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::PyAny;

@@ -4,6 +4,7 @@ use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use super::rsk::VerifiableRSKInner;
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
@@ -19,7 +20,7 @@ use serde::{Deserialize, Serialize};
 /// the ciphertext-dependent sub-proofs.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRSKBatch<G: Group> {
+pub struct VerifiableRSKBatch<G: Group = Ristretto255> {
     /// `T = (s·k⁻¹)·G`.
     pub(crate) gt: G::Element,
     /// `ZKP{S = k * T}`: first component is `S = s·G`.
@@ -128,7 +129,7 @@ impl<G: Group> VerifiableRSKBatch<G> {
 /// combined scalars `(s, k) = (s_from⁻¹·s_to, k_from⁻¹·k_to)`.
 #[derive(Eq, PartialEq, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(bound = ""))]
-pub struct VerifiableRSK2Batch<G: Group> {
+pub struct VerifiableRSK2Batch<G: Group = Ristretto255> {
     /// `S = (s_from⁻¹·s_to)·G`.
     pub(crate) gs: G::Element,
     /// `K = (k_from⁻¹·k_to)·G`.

@@ -1,8 +1,5 @@
 //! Python bindings for client types.
 
-use crate::aliases::OfflineClient;
-#[cfg(feature = "offline")]
-use crate::aliases::*;
 #[cfg(all(feature = "offline", feature = "json"))]
 use crate::data::json::{PyEncryptedPepJsonValue, PyPepJsonValue};
 #[cfg(all(feature = "offline", feature = "long"))]
@@ -19,8 +16,9 @@ use crate::data::simple::{PyAttribute, PyEncryptedAttribute, PyEncryptedPseudony
 use crate::keys::PyGlobalPublicKeys;
 #[cfg(feature = "offline")]
 use derive_more::{Deref, From, Into};
-use libpep::data::traits::Encryptable;
-use libpep::keys::PublicKey;
+use libpep::keys::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
+#[cfg(feature = "offline")]
+use libpep::prelude::*;
 #[cfg(feature = "offline")]
 #[cfg(feature = "offline")]
 use pyo3::exceptions::PyTypeError;

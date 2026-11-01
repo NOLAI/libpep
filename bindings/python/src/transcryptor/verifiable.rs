@@ -1,7 +1,6 @@
 //! Python bindings for verifiable transcryptor operations.
 
 use super::types::PyTranscryptor;
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 #[cfg(feature = "long")]
 use crate::data::long::{
@@ -17,6 +16,7 @@ use crate::factors::types::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTran
 use crate::keys::types::PyPseudonymSessionPublicKey;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
 use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use pyo3::prelude::*;
@@ -118,7 +118,7 @@ impl PyTranscryptor {
     ) -> crate::data::simple::PyPseudonymPseudonymizationProof {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(pseudo_info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         let operation_proof = encrypted
             .0
             .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rng);
@@ -187,7 +187,7 @@ impl PyTranscryptor {
         public_key: &PyPseudonymSessionPublicKey,
     ) -> PyLongPseudonymPseudonymizationProof {
         let info = PseudonymizationInfo::from(pseudo_info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         encrypted
             .0
             .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rand::rng())
@@ -251,7 +251,7 @@ impl PyTranscryptor {
     ) -> crate::data::records::PyRecordTranscryptionProof {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(transcryption_info);
-        let sk = crate::aliases::SessionKeys::from(session_keys.clone());
+        let sk = libpep::keys::SessionKeys::from(session_keys.clone());
         let proof = self
             .0
             .verifiable_transcrypt(&encrypted.0, &info, &sk.public(), &mut rng);
@@ -280,7 +280,7 @@ impl PyTranscryptor {
     ) -> crate::data::records::PyLongRecordTranscryptionProof {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(transcryption_info);
-        let sk = crate::aliases::SessionKeys::from(session_keys.clone());
+        let sk = libpep::keys::SessionKeys::from(session_keys.clone());
         let proof = self
             .0
             .verifiable_transcrypt(&encrypted.0, &info, &sk.public(), &mut rng);

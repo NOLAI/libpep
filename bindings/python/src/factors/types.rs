@@ -1,7 +1,5 @@
 //! Python bindings for factor types and the transcryption info types that bundle them.
 
-use crate::aliases::*;
-use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::elgamal::arithmetic::group_elements::PyGroupElement;
 use crate::elgamal::arithmetic::PyScalarNonZero;
@@ -9,9 +7,11 @@ use crate::factors::secrets::{PyEncryptionSecret, PyPseudonymizationSecret};
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
-use libpep::factors::{Factor, RekeyPublicKey};
-use libpep::keys::PublicKey;
+use libpep::factors::{
+    AttributeRekeyFactor, PseudonymRekeyFactor, RerandomizeFactor, ReshuffleFactor,
+};
+use libpep::keys::{AttributeSessionPublicKey, PseudonymSessionPublicKey};
+use libpep::prelude::*;
 use pyo3::prelude::*;
 
 /// A factor used to rerandomize an ElGamal ciphertext.
@@ -108,7 +108,7 @@ impl PyPseudonymizationInfo {
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(PseudonymizationInfo::new::<Ristretto255Sha512>(
+        Self(PseudonymizationInfo::new(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -170,7 +170,7 @@ impl PyPseudonymRekeyInfo {
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(PseudonymRekeyInfo::new::<Ristretto255Sha512>(
+        Self(PseudonymRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -217,7 +217,7 @@ impl PyAttributeRekeyInfo {
         session_to: &PyEncryptionContext,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(AttributeRekeyInfo::new::<Ristretto255Sha512>(
+        Self(AttributeRekeyInfo::new(
             &session_from.0,
             &session_to.0,
             &encryption_secret.0,
@@ -270,7 +270,7 @@ impl PyTranscryptionInfo {
         pseudonymization_secret: &PyPseudonymizationSecret,
         encryption_secret: &PyEncryptionSecret,
     ) -> Self {
-        Self(TranscryptionInfo::new::<Ristretto255Sha512>(
+        Self(TranscryptionInfo::new(
             &domain_from.0,
             &domain_to.0,
             &session_from.0,
@@ -300,7 +300,7 @@ impl PyTranscryptionInfo {
     /// The public keys that data transcrypted with this info is encrypted under, given the keys it
     /// was encrypted under before. A transcryptor passes this on with the ciphertext.
     fn rekey_public_key(&self, before: &PySessionPublicKeys) -> PySessionPublicKeys {
-        let before: crate::aliases::SessionPublicKeys = (*before).into();
+        let before: libpep::keys::SessionPublicKeys = (*before).into();
         self.0.rekey_public_key(&before).into()
     }
 }

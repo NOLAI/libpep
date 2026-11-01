@@ -1,17 +1,18 @@
-use crate::aliases::*;
-use crate::aliases::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::keys::types::{
     PyAttributeGlobalSecretKey, PyGlobalSecretKeys, PyPseudonymGlobalSecretKey,
 };
 use crate::macros::py_scalar_key_impl;
 use derive_more::{Deref, From, Into};
-use libpep::keys::distribution::BlindedGlobalSecretKey;
 use libpep::keys::distribution::{
     make_blinded_attribute_global_secret_key, make_blinded_global_keys,
     make_blinded_pseudonym_global_secret_key,
 };
-use libpep::keys::SecretKey;
+use libpep::keys::distribution::{
+    BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedPseudonymGlobalSecretKey,
+    BlindingFactor,
+};
+use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey, SecretKey};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

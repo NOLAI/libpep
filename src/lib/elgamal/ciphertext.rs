@@ -1,6 +1,7 @@
 //! The ElGamal ciphertext and its encryption and decryption, generic over the [`Group`].
 
 use crate::elgamal::arithmetic::group::Group;
+use crate::elgamal::arithmetic::Ristretto255;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, Rng};
@@ -15,7 +16,7 @@ use std::hash::Hash;
 /// An ElGamal ciphertext over the group `G`: the pair `(B, C)`, and with the `elgamal3` feature
 /// also the public key `Y` it was encrypted under.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct ElGamal<G: Group> {
+pub struct ElGamal<G: Group = Ristretto255> {
     /// `B = r·G`, the blinding of the randomness `r`.
     pub gb: G::Element,
     /// `C = M + r·Y`, the message blinded under the public key.

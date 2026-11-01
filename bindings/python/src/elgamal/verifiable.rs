@@ -6,21 +6,21 @@
 //! their combined commitments. Without `elgamal3` the rerandomizing proofs take the public key
 //! `gy` the ciphertexts are encrypted under; with `elgamal3` it is read from the ciphertexts.
 
-use crate::aliases::{
-    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK,
-    VerifiableRRSK2, VerifiableRRSK2Batch, VerifiableRRSKBatch, VerifiableRSK, VerifiableRSK2,
-    VerifiableRSK2Batch, VerifiableRSKBatch, VerifiableRSKInner, VerifiableRekey, VerifiableRekey2,
-    VerifiableRekey2Batch, VerifiableRekeyBatch, VerifiableRerandomize, VerifiableRerandomizeBatch,
-    VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
-};
 #[cfg(not(feature = "elgamal3"))]
 use crate::elgamal::arithmetic::PyGroupElement;
 use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::elgamal::PyElGamal;
 #[cfg(feature = "elgamal3")]
 use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+#[cfg(feature = "verifiable")]
+use libpep::elgamal::verifiable::{
+    FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK,
+    VerifiableRRSK2, VerifiableRRSK2Batch, VerifiableRRSKBatch, VerifiableRSK, VerifiableRSK2,
+    VerifiableRSK2Batch, VerifiableRSKBatch, VerifiableRSKInner, VerifiableRekey, VerifiableRekey2,
+    VerifiableRekey2Batch, VerifiableRekeyBatch, VerifiableRerandomize, VerifiableRerandomizeBatch,
+    VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
+};
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 #[cfg(feature = "elgamal3")]
@@ -233,10 +233,8 @@ fn py_verifiable_rerandomize(
     original: &PyElGamal,
     r: &PyScalarNonZero,
 ) -> (PyElGamal, PyVerifiableRerandomize) {
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
-        Ristretto255Sha512,
-        _,
-    >(&original.0, &r.0, &mut rand::rng());
+    let (result, proof) =
+        libpep::elgamal::verifiable::verifiable_rerandomize(&original.0, &r.0, &mut rand::rng());
     (result.to_py(), proof.into())
 }
 
@@ -249,10 +247,12 @@ fn py_verifiable_rerandomize(
     gy: &PyGroupElement,
     r: &PyScalarNonZero,
 ) -> (PyElGamal, PyVerifiableRerandomize) {
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize::<
-        Ristretto255Sha512,
-        _,
-    >(&original.0, &gy.0, &r.0, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize(
+        &original.0,
+        &gy.0,
+        &r.0,
+        &mut rand::rng(),
+    );
     (result.to_py(), proof.into())
 }
 
@@ -657,10 +657,11 @@ fn py_verifiable_rerandomize_batch(
     originals: Vec<PyElGamal>,
 ) -> PyResult<(Vec<PyElGamal>, PyVerifiableRerandomizeBatch)> {
     let gy = common_gy(&originals)?;
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
-        Ristretto255Sha512,
-        _,
-    >(&els(&originals), &gy, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
+        &els(&originals),
+        &gy,
+        &mut rand::rng(),
+    );
     Ok((result.to_py(), proof.into()))
 }
 
@@ -672,10 +673,11 @@ fn py_verifiable_rerandomize_batch(
     originals: Vec<PyElGamal>,
     gy: &PyGroupElement,
 ) -> (Vec<PyElGamal>, PyVerifiableRerandomizeBatch) {
-    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch::<
-        Ristretto255Sha512,
-        _,
-    >(&els(&originals), &gy.0, &mut rand::rng());
+    let (result, proof) = libpep::elgamal::verifiable::verifiable_rerandomize_batch(
+        &els(&originals),
+        &gy.0,
+        &mut rand::rng(),
+    );
     (result.to_py(), proof.into())
 }
 

@@ -5,6 +5,7 @@
 //! rejects a different commitment for a transition it already holds.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
+use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
@@ -179,7 +180,7 @@ use crate::contexts::TranscryptorId;
 
 /// Cache keyed by `(transcryptor, domain_from, domain_to, context_from, context_to)`
 /// storing the combined pseudonymization commitments for a transition.
-pub type PseudonymizationCommitmentsCache<G> = InMemoryCommitmentsCache<
+pub type PseudonymizationCommitmentsCache<G = Ristretto255> = InMemoryCommitmentsCache<
     (
         TranscryptorId,
         PseudonymizationDomain,
@@ -192,14 +193,14 @@ pub type PseudonymizationCommitmentsCache<G> = InMemoryCommitmentsCache<
 
 /// Cache keyed by `(transcryptor, context_from, context_to)` storing the
 /// combined pseudonym-rekey commitment for a transition.
-pub type PseudonymRekeyCommitmentsCache<G> = InMemoryCommitmentsCache<
+pub type PseudonymRekeyCommitmentsCache<G = Ristretto255> = InMemoryCommitmentsCache<
     (TranscryptorId, EncryptionContext, EncryptionContext),
     VerifiableRekeyCommitment<G>,
 >;
 
 /// Cache keyed by `(transcryptor, context_from, context_to)` storing the
 /// combined attribute-rekey commitment for a transition.
-pub type AttributeRekeyCommitmentsCache<G> = InMemoryCommitmentsCache<
+pub type AttributeRekeyCommitmentsCache<G = Ristretto255> = InMemoryCommitmentsCache<
     (TranscryptorId, EncryptionContext, EncryptionContext),
     VerifiableRekeyCommitment<G>,
 >;

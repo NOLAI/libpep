@@ -15,5 +15,3 @@ pub mod transcryptor;
 pub mod verifier;
 
 pub mod errors;
-
-pub mod aliases;

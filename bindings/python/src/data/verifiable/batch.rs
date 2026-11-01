@@ -38,18 +38,6 @@ fn map_verify_err() -> PyErr {
     ProofRejectedError::new_err("proof rejected")
 }
 
-#[cfg(feature = "long")]
-use crate::aliases::LongRecordTranscryptionBatchProof;
-use crate::aliases::RecordTranscryptionBatchProof;
-use crate::aliases::{
-    AttributeRekeyBatchProof, PseudonymPseudonymizationBatchProof, PseudonymRekeyBatchProof,
-};
-use crate::aliases::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
-#[cfg(feature = "long")]
-use crate::aliases::{
-    LongAttributeRekeyBatchProof, LongPseudonymPseudonymizationBatchProof,
-    LongPseudonymRekeyBatchProof,
-};
 use crate::data::batch::{PyAttributeBatch, PyPseudonymBatch, PyRecordBatch};
 #[cfg(feature = "long")]
 use crate::data::batch::{PyLongAttributeBatch, PyLongPseudonymBatch, PyLongRecordBatch};
@@ -60,6 +48,20 @@ use crate::factors::commitments::{
 use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
+#[cfg(feature = "long")]
+#[cfg(all(feature = "verifiable", feature = "batch", feature = "long"))]
+use libpep::data::verifiable::long::{
+    LongAttributeRekeyBatchProof, LongPseudonymPseudonymizationBatchProof,
+    LongPseudonymRekeyBatchProof,
+};
+#[cfg(feature = "long")]
+use libpep::data::verifiable::records::LongRecordTranscryptionBatchProof;
+use libpep::data::verifiable::records::RecordTranscryptionBatchProof;
+#[cfg(all(feature = "verifiable", feature = "batch"))]
+use libpep::data::verifiable::simple::{
+    AttributeRekeyBatchProof, PseudonymPseudonymizationBatchProof, PseudonymRekeyBatchProof,
+};
+use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 
@@ -111,7 +113,7 @@ impl PyPseudonymPseudonymizationBatchProof {
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyPseudonymBatch> {
-        let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -129,7 +131,7 @@ impl PyPseudonymPseudonymizationBatchProof {
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyPseudonymBatch> {
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -197,7 +199,7 @@ impl PyPseudonymRekeyBatchProof {
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyPseudonymBatch> {
-        let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -265,7 +267,7 @@ impl PyAttributeRekeyBatchProof {
         new_public_key: &crate::keys::PyAttributeSessionPublicKey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyAttributeBatch> {
-        let new_pk = crate::aliases::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -337,7 +339,7 @@ impl PyLongPseudonymPseudonymizationBatchProof {
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyLongPseudonymBatch> {
-        let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -355,7 +357,7 @@ impl PyLongPseudonymPseudonymizationBatchProof {
         public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiablePseudonymizationCommitment,
     ) -> PyResult<PyLongPseudonymBatch> {
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -427,7 +429,7 @@ impl PyLongPseudonymRekeyBatchProof {
         new_public_key: &crate::keys::PyPseudonymSessionPublicKey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyLongPseudonymBatch> {
-        let new_pk = crate::aliases::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::PseudonymSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -499,7 +501,7 @@ impl PyLongAttributeRekeyBatchProof {
         new_public_key: &crate::keys::PyAttributeSessionPublicKey,
         commitments: &PyVerifiableRekeyCommitment,
     ) -> PyResult<PyLongAttributeBatch> {
-        let new_pk = crate::aliases::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
+        let new_pk = libpep::keys::AttributeSessionPublicKey::from_point(new_public_key.0 .0);
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -567,7 +569,7 @@ impl PyRecordTranscryptionBatchProof {
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyRecordBatch> {
-        let new_sk: crate::aliases::SessionKeys = new_session_keys.clone().into();
+        let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -585,7 +587,7 @@ impl PyRecordTranscryptionBatchProof {
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyRecordBatch> {
-        let sk: crate::aliases::SessionKeys = session_keys.clone().into();
+        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -657,7 +659,7 @@ impl PyLongRecordTranscryptionBatchProof {
         new_session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyLongRecordBatch> {
-        let new_sk: crate::aliases::SessionKeys = new_session_keys.clone().into();
+        let new_sk: libpep::keys::SessionKeys = new_session_keys.clone().into();
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -675,7 +677,7 @@ impl PyLongRecordTranscryptionBatchProof {
         session_keys: &crate::keys::PySessionKeys,
         commitments: &PyVerifiableTranscryptionCommitment,
     ) -> PyResult<PyLongRecordBatch> {
-        let sk: crate::aliases::SessionKeys = session_keys.clone().into();
+        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verified_reconstruct_batch::<Ristretto255Sha512>(
                 &original.inner,
@@ -730,7 +732,7 @@ impl PyPseudonymBatch {
     ) -> PyPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rng)
             .into()
@@ -790,7 +792,7 @@ impl PyLongPseudonymBatch {
     ) -> PyLongPseudonymPseudonymizationBatchProof {
         let mut rng = rand::rng();
         let info = PseudonymizationInfo::from(info);
-        let pk = crate::aliases::PseudonymSessionPublicKey::from_point(public_key.0 .0);
+        let pk = libpep::keys::PseudonymSessionPublicKey::from_point(public_key.0 .0);
         self.inner
             .verifiable_pseudonymize::<Ristretto255Sha512, _>(&info, &pk, &mut rng)
             .into()
@@ -850,7 +852,7 @@ impl PyRecordBatch {
     ) -> PyRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let sk: crate::aliases::SessionKeys = session_keys.clone().into();
+        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verifiable_transcrypt::<Ristretto255Sha512, _>(&info, &sk, &mut rng)
             .into()
@@ -892,7 +894,7 @@ impl PyLongRecordBatch {
     ) -> PyLongRecordTranscryptionBatchProof {
         let mut rng = rand::rng();
         let info = TranscryptionInfo::from(info);
-        let sk: crate::aliases::SessionKeys = session_keys.clone().into();
+        let sk: libpep::keys::SessionKeys = session_keys.clone().into();
         self.inner
             .verifiable_transcrypt::<Ristretto255Sha512, _>(&info, &sk, &mut rng)
             .into()

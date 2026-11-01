@@ -8,10 +8,11 @@
 #[allow(dead_code)]
 pub mod pk {
 
-    use crate::aliases::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
     use crate::keys::distribution::shares::PySessionPublicKeys;
     use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
-    use libpep::keys::PublicKey;
+    use libpep::keys::{
+        AttributeSessionPublicKey, PseudonymSessionPublicKey, PublicKey, SessionPublicKeys,
+    };
     use pyo3::exceptions::PyTypeError;
     use pyo3::prelude::*;
 
@@ -52,7 +53,7 @@ pub mod pk {
             return Ok(keys.into());
         }
         if let Ok(keys) = obj.extract::<crate::keys::PySessionKeys>() {
-            return Ok(crate::aliases::SessionKeys::from(keys).public());
+            return Ok(libpep::keys::SessionKeys::from(keys).public());
         }
         Err(PyTypeError::new_err(
             "public_key must be the session public key for this data type, SessionPublicKeys or SessionKeys",
@@ -74,10 +75,11 @@ pub mod pk {
 #[allow(dead_code)]
 pub mod sk {
 
-    use crate::aliases::{AttributeSessionSecretKey, PseudonymSessionSecretKey, SessionKeys};
     use crate::keys::types::{PyAttributeSessionSecretKey, PyPseudonymSessionSecretKey};
     use crate::keys::PySessionKeys;
-    use libpep::keys::SecretKey;
+    use libpep::keys::{
+        AttributeSessionSecretKey, PseudonymSessionSecretKey, SecretKey, SessionKeys,
+    };
     use pyo3::exceptions::PyTypeError;
     use pyo3::prelude::*;
 

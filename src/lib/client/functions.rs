@@ -20,9 +20,9 @@ use rand_core::{CryptoRng, Rng};
 /// # use libpep::keys::{make_global_keys, make_session_keys};
 /// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 /// let attribute = Attribute::<Ristretto255>::random(rng);
 ///
@@ -57,9 +57,9 @@ where
 /// # use libpep::keys::{make_global_keys, make_session_keys};
 /// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 /// let encrypted = encrypt(&pseudonym, &keys.public(), rng);
 /// assert_eq!(decrypt(&encrypted, &keys), Some(pseudonym));
@@ -87,9 +87,9 @@ where
 /// # use libpep::keys::{make_global_keys, make_session_keys};
 /// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
-/// # let (_global_public, global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = EncryptionSecret::from(b"encryption secret".to_vec());
-/// # let keys = make_session_keys::<Ristretto255Sha512>(&global_secret, &EncryptionContext::from("session"), &secret);
+/// # let keys = make_session_keys(&global_secret, &EncryptionContext::from("session"), &secret);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 /// let encrypted = encrypt(&pseudonym, &keys.public(), rng);
 /// assert_eq!(decrypt(&encrypted, &keys), pseudonym);
@@ -114,7 +114,7 @@ where
 /// # use libpep::elgamal::arithmetic::Ristretto255;
 /// # use libpep::keys::make_global_keys;
 /// # let rng = &mut rand::rng();
-/// # let (global_public, _global_secret) = make_global_keys::<Ristretto255, _>(rng);
+/// # let (global_public, _global_secret) = make_global_keys(rng);
 /// let pseudonym = Pseudonym::<Ristretto255>::random(rng);
 /// let encrypted = encrypt_global(&pseudonym, &global_public, rng);
 /// ```

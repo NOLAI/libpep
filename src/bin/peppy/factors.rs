@@ -2,10 +2,13 @@
 //! transcryption between two domains and contexts, and the commitments to its factors that a
 //! transcryptor publishes for verifiable transcryption.
 
-use crate::aliases::*;
 use crate::io::{self, Output, Result};
 use clap::{Args, Subcommand};
 use libpep::elgamal::arithmetic::scalars::ScalarTraits;
+use libpep::factors::{
+    make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
+};
+use libpep::prelude::*;
 
 #[derive(Subcommand)]
 pub enum Factors {
@@ -77,7 +80,7 @@ pub struct AttributeTransitionArgs {
 
 impl AttributeTransitionArgs {
     pub fn info(&self) -> Result<AttributeRekeyInfo> {
-        Ok(AttributeRekeyInfo::new::<Ristretto255Sha512>(
+        Ok(AttributeRekeyInfo::new(
             &io::context(self.from_context.as_deref())?,
             &io::context(self.to_context.as_deref())?,
             &io::encryption_secret(&self.encryption_secret)?,
@@ -87,7 +90,7 @@ impl AttributeTransitionArgs {
 
 impl TransitionArgs {
     pub fn info(&self) -> Result<TranscryptionInfo> {
-        Ok(TranscryptionInfo::new::<Ristretto255Sha512>(
+        Ok(TranscryptionInfo::new(
             &io::domain(&self.from_domain)?,
             &io::domain(&self.to_domain)?,
             &io::context(self.from_context.as_deref())?,
