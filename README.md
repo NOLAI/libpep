@@ -10,14 +10,15 @@
 [![Dependencies](https://deps.rs/repo/github/NOLAI/libpep/status.svg)](https://deps.rs/repo/github/NOLAI/libpep)
 
 `libpep` implements *n-PEP*, a scheme for end-to-end encrypted, asynchronous, pseudonymized data sharing between users.
-Every user knows its data subjects under its own pseudonyms, which cannot be linked to another user's.
+Every user knows its data subjects under its own pseudonyms, which cannot be linked to another user's pseudonyms for the same data subjects.
 A sender encrypts data without the receiver being online, or even known, at that moment; *transcryptors* later blindly re-encrypt (*transcrypt*) it for the receiver's pseudonymization domain and encryption context, converting the pseudonyms in it without decrypting anything.
 Transcryption can be distributed over `n` transcryptors, so that every transcryptor can independently monitor and block data exchanges.
 
-The transcryptors are *semi-trusted*, the term the n-PEP paper uses: no single transcryptor can read data or link pseudonyms, and confidentiality and pseudonym unlinkability hold as long as at least one of the `n` transcryptors remains uncompromised.
-n-PEP assumes they apply the right factors; the `verifiable` feature lets that be checked (see [Verifiable transcryption](#verifiable-transcryption)).
+The transcryptors are *semi-trusted*: no single transcryptor can read data or link pseudonyms, and confidentiality and pseudonym unlinkability hold as long as at least one of the `n` transcryptors remains uncompromised.
+n-PEP does not guarantee integrity: nothing shows that a transcryptor applied the right factors.
+The `verifiable` feature lets that be checked (see [Verifiable transcryption](#verifiable-transcryption)).
 
-The library is the reference implementation of the n-PEP paper (see [Background](#background)).
+The library is the reference implementation of n-PEP and of its verifiable extension (see [Background](#background)).
 It ships as a Rust crate with Python and JavaScript/WebAssembly bindings that mirror the Rust API.
 
 The library is generic over the group and the hash, and is built for ristretto255 with SHA-512, which every type defaults to.
@@ -93,8 +94,11 @@ Every key operation takes either the one key it needs or a bundle to take it fro
 Attributes (`Attribute`, `LongAttribute`) are encrypted and transcrypted the same way, but only rekeyed, never converted between domains.
 With the `json` feature, whole JSON documents with nested pseudonyms and attributes are encrypted and transcrypted as one value.
 
-In the distributed setting, `keys::distribution::make_distributed_global_keys` produces a blinded global key and one blinding factor per transcryptor, each `transcryptor::DistributedTranscryptor` hands a client a *session key share*, and `client::Client::from_shares` reconstructs the session keys from the shares.
-No party ever holds the global secret key.
+In the distributed setting, a trusted authority runs `keys::distribution::make_distributed_global_keys` once.
+It generates the global keys, blinds the global secret key with one *blinding factor* per transcryptor, discards the global secret key, and hands each transcryptor its blinding factor.
+The authority exists only for this setup, and never sees the secrets the transcryptors derive their factors from.
+After that, each `transcryptor::DistributedTranscryptor` hands a client (after authenticating it) a *session key share*, and `client::Client::from_shares` reconstructs the session keys from the blinded global key and the shares.
+Without the shares of all transcryptors, the blinded global key does not reveal the global secret key.
 The public key a ciphertext is encrypted under travels with it from transcryptor to transcryptor: each obtains the next key with `rekey_public_key` (the `factors::RekeyPublicKey` trait) on its transcryption info (the CLI prints it as `key`).
 [`tests/distributed.rs`](tests/distributed.rs) walks through this flow; the Python and JavaScript test suites under [`bindings/`](bindings/) do the same in those languages.
 
@@ -104,24 +108,38 @@ In the ElGamal scheme, a message `M` is encrypted for a receiver with public key
 Encryption is randomized (*polymorphic*): every fresh random `b` gives a different ciphertext for the same message.
 It is written `Enc(b, M, Y)`.
 
-The library provides three homomorphic operations on a ciphertext `in = Enc(b, M, Y)`:
+The library provides three homomorphic operations on a ciphertext `in = Enc(b, M, Y)`.
+Each is applied blindly, without the party that performs it seeing the message:
 
-- `rekey(in, k)`: if `in` can be decrypted with `y`, the result can be decrypted with `k*y`, and both decrypt to `M`.
+- `rekey(in, k)`: makes a ciphertext decryptable with `k*y` instead of `y`, without the party performing it knowing `y`.
+  Both decrypt to `M`.
   `Enc(b, M, Y)` becomes `Enc(k^-1*b, M, k*Y)`.
-- `reshuffle(in, s)`: changes the message so that decrypting the result yields `s*M`.
+  This is a form of proxy re-encryption.
+- `reshuffle(in, s)`: scales the message, so that decrypting the result yields `s*M`.
+  This turns an identifier into a pseudonym that is unlinkable to it while `s` stays secret.
   `Enc(b, M, Y)` becomes `Enc(s*b, s*M, Y)`.
-- `rerandomize(in, r)`: changes the binary form of the ciphertext only; it still decrypts with `y` to `M`.
+- `rerandomize(in, r)`: re-encodes the ciphertext without changing its message or the key it is encrypted for, which gives unlinkable copies of it.
   `Enc(b, M, Y)` becomes `Enc(b+r, M, Y)`.
 
 Because these operations work on *encrypted* data, the receiver does not need to be known at encryption time.
 Data is encrypted once and later rekeyed, and reshuffled if it is an identifier, for whichever user is granted access: non-interactive, asynchronous end-to-end encryption with built-in pseudonymization.
+Reshuffling and then rekeying identifiers (`rsk`), or only rekeying attributes, is called *transcryption*.
+A transcryptor can decide whether transcryption between two users is allowed.
+A request reveals the authenticated requesting user and the source and target domains and contexts, but not the values of pseudonyms or data.
+
+Data consists of *pseudonyms*, the identifiers of data subjects, and *attributes*, facts about data subjects that do not identify them.
+Pseudonyms and attributes are encrypted with different keys and rekeyed with different factors.
+Otherwise an encrypted pseudonym could be presented as an encrypted attribute and rekeyed without being reshuffled, which would leak the pseudonym of another user.
+Pseudonymization only protects against identification through identifiers: the shared data itself must not contain quasi-identifiers or other linkable attributes.
 
 ### Pseudonymization
 
 Every user knows a data subject under its own *local pseudonym*, and reshuffling converts a pseudonym from one user's domain to another's, applying `s = s_from^-1 * s_to`, without a global pseudonym existing in between.
 The factor `s` is tied to the *pseudonymization domain* of a user.
+Conversion is reversible, converting back gives the original pseudonym, and transitive, converting from A to B and then to C gives the pseudonym that converting from A to C directly gives.
+A global pseudonym that is valid in every domain would let colluding users link their pseudonyms, which is why pseudonyms are local.
 
-Reshuffling with factor `s` evaluates `F_s(M) = s*M`, the Diffie-Hellman function.
+Reshuffling with factor `s` evaluates `F_s(M) = s*M`, the Diffie-Hellman function (the DH-PRF).
 This is a *weak PRF*: under the Decisional Diffie-Hellman (DDH) assumption, and as long as `s` stays secret, `s*M` is indistinguishable from a random group element when `M` is a uniformly random group element, chosen independently of `s`.
 Pseudonyms in different domains then cannot be linked without knowing the ratio of their domain factors.
 Reshuffling an *encrypted* pseudonym is an encryption-based *oblivious evaluation* of this weak PRF: because the operation is homomorphic, the transcryptor applies its secret factor `s` without ever seeing the pseudonym or the result, and the sender and receiver never learn `s`.
@@ -155,16 +173,36 @@ The factor `k` is tied to the *encryption context* of a user, typically its curr
 `rsk(in, s, k)` performs both at once, and `reshuffle2`, `rekey2` and `rsk2` are the transitive and reversible n-PEP variants that convert directly between two domains or sessions, applying `s = s_from^-1 * s_to` and `k = k_from^-1 * k_to`.
 
 When the same encrypted pseudonym is used more than once, it is rerandomized every time, so that comparing ciphertexts byte for byte reveals nothing.
-Mixing fresh randomness into a ciphertext before reshuffling also protects against plaintext injection at transcryption, which is why pseudonymization and transcryption always rerandomize, and in the default ciphertext mode take the public key the ciphertext is encrypted under.
+Rerandomizing also protects against plaintext injection at transcryption.
+A malicious sender could place a plaintext pseudonym `M` directly in the second component of a ciphertext, so that an `rsk` returns the reshuffled pseudonym `s*M` in the clear and bypasses rekeying.
+Mixing fresh randomness into the ciphertext before reshuffling keeps `s*M` hidden even for such a malformed input.
+This is why pseudonymization and transcryption always rerandomize, and in the default ciphertext mode take the public key the ciphertext is encrypted under.
+
+With `n` transcryptors, each applies its own secret factors, and the factors that are effectively applied are their products, `s = s_1*...*s_n` and `k = k_1*...*k_n`.
+They stay secret as long as one transcryptor keeps its own factors secret.
+Every transcryptor derives its factors from two secrets of its own, a pseudonymization secret and a rekeying secret, with the pseudonymization domain and the encryption context.
+Rerandomization distributes the same way, and the protection against plaintext injection holds as long as one transcryptor rerandomizes honestly.
 
 ### Verifiable transcryption
 
-With the `verifiable` feature a transcryptor publishes a *commitment* `s·G` and `k·G` to each factor, and every transcryption can produce a zero-knowledge proof that exactly the committed factors were applied.
-The proofs are Schnorr-style proofs of discrete-log equality, made non-interactive with the Fiat-Shamir transform, and can be verified in batch.
-Pseudonyms are transformed with the paper's VRRSK (rerandomize, then reshuffle and rekey in one integrated proof, Section 3.4.2); attributes with its VRK (Definition 10), which rekeys without rerandomization, so anyone who sees both sides of a verifiable transcryption can match attribute ciphertexts.
-Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well (Section 3.5).
+Without further measures, nothing binds the output of a transcryptor to a correct application of the operations on its input: it could return an arbitrary ciphertext, or apply different factors for the same domain or session.
+Such corruption is hard to notice, as pseudonyms look random by design.
+The `verifiable` feature closes this gap without breaking unlinkability.
+A transcryptor publishes a *commitment* `s·G` or `k·G` to each reshuffle and rekey factor it uses for a domain or session, and every transcryption can produce a zero-knowledge proof that the committed factors were applied.
+The proofs are Schnorr-style non-interactive proofs of discrete-log equality (Chaum-Pedersen proofs made non-interactive with the Fiat-Shamir transform) and can be verified in batch.
+*Verifiers*, which are users or other transcryptors, record the commitments and check the proofs against them, so that consistency, and with it integrity, is enforced and not trusted.
+A verifier is not trusted, and learns nothing about the factors.
+
+Pseudonyms are transformed with a verifiable `rrsk`: the rerandomization is proved first, and then the reshuffle and rekey are proved together in one chain of proofs over the factor commitments.
+Proving reshuffle and rekey one after the other would expose the intermediate ciphertext to the verifier, which, if it colludes with the sender or receiver, could decrypt it and learn a pseudonym.
+Attributes are transformed with a verifiable rekey, which does not rerandomize, so anyone who sees both sides of a verifiable transcryption can match attribute ciphertexts.
+Verifying a rerandomization needs the original ciphertext, so the verifier learns the link between a ciphertext and its copy; who verifies is a deployment choice.
+Session key shares carry a proof of correct construction against the transcryptor's blinding commitment as well.
+
+A commitment makes the use of a factor consistent, but it does not show how the factor was derived or that it was sampled uniformly.
+With distributed transcryption this does not break the system, as the effective factor is uniform as long as one transcryptor samples honestly.
+The proofs are the building blocks of integrity, not a security proof of a complete protocol.
 This closes the gap noted under [As a three-party oblivious PRF](#as-a-three-party-oblivious-prf): a transcryptor that applies a wrong factor is detected.
-The construction is described in *Verifiable Blind Pseudonymization via Polymorphic Encryption Using Zero-Knowledge Proofs* (WPES 2026).
 
 ## Relation to other primitives
 
@@ -172,11 +210,11 @@ The construction is described in *Verifiable Blind Pseudonymization via Polymorp
 
 ### As a three-party oblivious PRF
 
-An oblivious pseudorandom function (OPRF, specified over prime-order groups in [RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html)) is a two-party protocol.
+An oblivious pseudorandom function (OPRF, specified over prime-order groups in [RFC 9497](https://www.rfc-editor.org/rfc/rfc9497.html)) is a two-party, blinding-based protocol.
 A *client* blinds an input, a *server* applies its secret key, and the client unblinds the result to obtain the PRF output.
 The server learns neither input nor output.
 
-`libpep` evaluates the same Diffie-Hellman function `F_s(M) = s*M`, but splits the client role over a **sender** and a **receiver**, with the **transcryptor** as evaluator.
+`libpep` evaluates the same Diffie-Hellman function `F_s(M) = s*M`, in a three-party, encryption-based protocol: the client role is split over a **sender** and a **receiver**, with the **transcryptor** as evaluator.
 ElGamal encryption takes the place of blinding: the sender's encryption randomness `b` blinds the pseudonym, the transcryptor reshuffles with its domain factor `s`, and the receiver's decryption unblinds.
 The transcryptor learns neither `M` nor `s*M`, and neither sender nor receiver learns `s`.
 Because blinding and unblinding are done by different users, evaluation is non-interactive and asynchronous: the sender can encrypt before the receiver is known, and the PRF output appears only in the receiver's domain.
@@ -190,15 +228,19 @@ The `verifiable` feature closes that gap with discrete-log-equality proofs of th
 The primitives shared with RFC 9497 are checked against its ristretto255-SHA512 test vectors (Appendix A.1): `hash_to_group`, `HashToScalar`, and the batched DLEQ proof in `elgamal::dleq`.
 Hashing to the group follows [RFC 9380](https://www.rfc-editor.org/rfc/rfc9380.html): `hash_to_group` is `hash_to_ristretto255` (Appendix B) over `expand_message_xmd` (Section 5.3.1) with SHA-512, and `expand_message_xmd` is also checked against the vectors of RFC 9380 (Appendix K).
 The library uses its own context string (`nPEPV1-`) in production, so that its hashes are separate from those of any OPRF.
-The proofs of verifiable transcryption use the encoding of the WPES paper (`elgamal::zkps`), not the encoding of `elgamal::dleq`.
+The proofs of verifiable transcryption use the four-element encoding of `elgamal::zkps`, not the two-scalar encoding of `elgamal::dleq`.
 
 The three-party construction, with its sender, receiver and transcryptor, is specified as a convertible OPRF (coPRF) in the Internet-Draft `draft-doesburg-cfrg-coprf`, which uses the same prime-order group API as RFC 9497.
 
 ### As proxy re-encryption with built-in pseudonymization
 
-`rekey` is ordinary unidirectional [proxy re-encryption](https://en.wikipedia.org/wiki/Proxy_re-encryption) over ElGamal: it transforms `Enc(b, M, Y)` into `Enc(k^-1*b, M, k*Y)`, decryptable by `k*y`, with the transcryptor acting as the proxy without learning the message or holding either secret key.
+`rekey` is [proxy re-encryption](https://en.wikipedia.org/wiki/Proxy_re-encryption) over ElGamal: it transforms `Enc(b, M, Y)` into `Enc(k^-1*b, M, k*Y)`, decryptable by `k*y`, with the transcryptor acting as the proxy without learning the message or holding either secret key.
 `reshuffle` adds the one transformation a plain proxy cannot do, mapping `M` to `s*M`.
 Attributes are never reshuffled, so for attributes the scheme is exactly proxy re-encryption; for identifiers, the same homomorphic step that re-encrypts a pseudonym for a new receiver also rewrites it into that receiver's domain, so no global identifier is ever exposed.
+
+With the transitive `rekey2` and `reshuffle2`, the scheme is a bidirectional, multi-hop proxy re-encryption scheme with built-in pseudonymization.
+Traditional proxy re-encryption treats transitivity and bidirectionality as vulnerabilities: a single proxy could derive re-encryption keys that were never authorized, or collude with a receiver to recover the sender's key.
+Here the transcryptors are themselves the authorization point for conversions, which makes transitivity a feature, and with `n` transcryptors no single one can convert or decrypt data without the cooperation of all others.
 
 This is what the name refers to: *polymorphic* encryption is the proxy re-encryption, and *pseudonymization* is the PRF evaluation carried out in the same step.
 
@@ -246,7 +288,7 @@ Default features:
 
 Optional features:
 - `cli`: the `peppy` command-line tool, see [Command line](#command-line) (enables `long`, `offline`, `serde` and `verifiable`).
-- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor (Section 3.3.1 of the paper).
+- `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman universal hash, so that a verifier can compute the commitment for any domain or context from two master public keys instead of storing one commitment per factor.
   This is not the preferred scheme: the factors are linear in two public hashes, so two leaked factors give the master secret, and two pseudonyms of one subject (or two session keys) give all of them.
   Use the published commitments of the `verifiable` feature unless commitment storage is the binding constraint and that trade-off is acceptable.
 - `elgamal3`: ciphertexts additionally encode the public key they were encrypted for, the `(B, C, Y)` triple encoding of the original PEP framework.
@@ -257,10 +299,10 @@ Optional features:
   Implies `elgamal3`, `offline` and `global-pseudonyms`.
   The default and `legacy` derivations produce different factors and session keys from the same secrets, so a deployment picks one.
 - `insecure`: methods that use global *secret* keys directly, such as `decrypt_global`.
-- `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1.
+- `global-pseudonyms`: pseudonyms in a *global* pseudonymization domain, using reshuffle factor 1 (the global, or polymorphic, pseudonyms of the original PEP framework).
 
 > [!WARNING]
-> In the intended security model the global secret key is discarded after distributed setup and never exists in one place; `insecure` retains it, so its holder can decrypt everything.
+> In the intended security model the global secret key is discarded after distributed setup and exists only at the trusted authority during setup; `insecure` retains it, so its holder can decrypt everything.
 > Global pseudonyms are linkable across all domains, which defeats the purpose of domain-specific pseudonymization.
 > Use `insecure` only for testing, `global-pseudonyms` only when that linkability is an explicit requirement, and `legacy` only for interoperability with existing legacy PEP deployments.
 
@@ -271,6 +313,23 @@ Confidentiality rests on the semantic security of ElGamal, and pseudonym unlinka
 All scalar and group arithmetic is constant time, and randomness comes from the caller's cryptographically secure random number generator.
 Secret keys, blinding factors and factors print as `[redacted]` in `Debug` output and implement `Zeroize`, but they are `Copy`, so they are not wiped when dropped: an application that needs them gone from memory has to call `zeroize` on every copy itself. `PseudonymizationSecret` and `RekeyingSecret` are zeroized on drop.
 Distribution costs availability: all `n` transcryptors must take part in a transcryption.
+
+The security properties of n-PEP are the following, against an attacker that compromises (learns all secrets of) at most `n-1` transcryptors and any number of storages and users not involved in the communication:
+
+- *Attribute confidentiality*: the value of attributes sent between a sender and a receiver stays confidential to anyone but the two.
+- *Pseudonym confidentiality*: the value of a user's pseudonym for a data subject stays confidential against any other user, including compromised receivers.
+- *Pseudonym unlinkability*: given two pseudonyms in two different pseudonymization domains, it is not possible to tell whether they are for the same data subject without the cooperation of at least one uncompromised transcryptor.
+  This also holds if both the senders and the receivers are compromised, as long as the attributes are unlinkable.
+- *Cross-encryption ciphertext unlinkability*: given two ciphertexts from different encryptions, it is not possible to tell whether they encrypt the same plaintext.
+- *Cross-rerandomization ciphertext unlinkability*: given two ciphertexts, it is not possible to tell whether one is a rerandomized copy of the other.
+  This excludes compromised storages that are involved in the communication.
+
+These properties assume a trusted initial setup (see [Quick start](#quick-start)), secure authenticated connections between users, transcryptors and storages, and the DDH assumption in the Ristretto group.
+They also assume that the shared data is unlinkable (it contains no quasi-identifiers) and that no other channel links the data, such as traffic or timing analysis, which batch transcryption with shuffling mitigates.
+Linkable artifacts can also arise in an application, for example the session names that a storage keeps next to ciphertexts, or symmetric encryption of large attributes, which cannot be rerandomized.
+n-PEP itself does not guarantee integrity or authenticity of pseudonyms or attributes; the `verifiable` feature adds proofs that the transcryptors transformed ciphertexts correctly.
+The security rests on the hardness of the discrete logarithm problem, so it is not post-quantum.
+
 The library has been designed for production use but has not undergone a formal security audit.
 
 The minimum supported Rust version is 1.88; raising it is considered a semver-relevant change.

@@ -1,22 +1,23 @@
-//! # `libpep`: Library for polymorphic pseudonymization and encryption
+//! # `libpep`: Library for polymorphic encryption and pseudonymization
 //!
 //! This library implements *n-PEP*, a scheme for end-to-end encrypted, asynchronous,
 //! pseudonymized data sharing between users. Every user knows its data subjects under its own
-//! pseudonyms, which cannot be linked to another user's. A sender encrypts data without the
-//! receiver being online, or even known, at that moment; *transcryptors* later blindly
-//! re-encrypt (*transcrypt*) it for the receiver's pseudonymization domain and encryption
-//! context, converting the pseudonyms in it without decrypting anything. Transcryption can be
-//! distributed over `n` transcryptors, so that every transcryptor can independently monitor and
-//! block data exchanges.
+//! pseudonyms, which cannot be linked to another user's pseudonyms for the same data subjects.
+//! A sender encrypts data without the receiver being online, or even known, at that moment;
+//! *transcryptors* later blindly re-encrypt (*transcrypt*) it for the receiver's pseudonymization
+//! domain and encryption context, converting the pseudonyms in it without decrypting anything.
+//! Transcryption can be distributed over `n` transcryptors, so that every transcryptor can
+//! independently monitor and block data exchanges.
 //!
-//! The transcryptors are *semi-trusted*, the term the n-PEP paper uses: no single transcryptor
-//! can read data or link pseudonyms, and confidentiality and pseudonym unlinkability hold as
-//! long as at least one of the `n` transcryptors remains uncompromised. n-PEP assumes they apply
-//! the right factors; the `verifiable` feature lets that be checked.
+//! The transcryptors are *semi-trusted*: no single transcryptor can read data or link
+//! pseudonyms, and confidentiality and pseudonym unlinkability hold as long as at least one of
+//! the `n` transcryptors remains uncompromised. n-PEP does not guarantee integrity: it does not
+//! show that a transcryptor applied the right factors. The `verifiable` feature lets that be
+//! checked.
 //!
 //! The cryptographic background and a quick start
 //! are in the [README](https://github.com/NOLAI/libpep#readme). The scheme is described
-//! in the paper by [Job Doesburg](https://jobdoesburg.nl),
+//! by [Job Doesburg](https://jobdoesburg.nl),
 //! [Bernard van Gastel](https://sustainablesoftware.info) and
 //! [Erik Poll](http://www.cs.ru.nl/~erikpoll/),
 //! *n-PEP: Secure Data Sharing with Transitive and Distributed Blind Pseudonymization*,
@@ -132,8 +133,8 @@
 //!   factor 1). Such pseudonyms are linkable across all domains; only use this when that
 //!   linkability is an explicit requirement.
 //! - `verifiable-derivation`: derive factors from a pair of master secrets with a Carter-Wegman
-//!   hash (Section 3.3.1 of the paper), so that a verifier computes any commitment from the
-//!   master public keys instead of storing one per factor. The factors are then linear in two
+//!   hash, so that a verifier computes any commitment from the master public keys instead of
+//!   storing one per factor. The factors are then linear in two
 //!   public hashes: knowing one derived factor reveals nothing about another, but knowing two
 //!   (n + 1 with n transcryptors) reveals the master secret and so every factor. The same holds
 //!   for anything the factors multiply: two pseudonyms of one subject, or two session keys,
