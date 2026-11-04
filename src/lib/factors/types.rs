@@ -3,12 +3,12 @@
 //!
 //! A *factor* is a single scalar operand of a PEP [primitive](crate::elgamal::primitives). An
 //! *info* is what a transcryptor computes for a transcryption from one domain and session to
-//! another: the factor ratios between the two, bundled per data type.
+//! another: the factor ratios between the two, bundled per data type. The public key a
+//! ciphertext is encrypted under after an info is applied is given by
+//! [`keys::RekeyPublicKey`](crate::keys::RekeyPublicKey).
 
 use crate::elgamal::arithmetic::group::Group;
 use crate::elgamal::arithmetic::Ristretto255;
-use crate::keys::traits::PublicKey;
-use crate::keys::types::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
 use derive_more::From;
 
 /// A factor: a single scalar operand of a PEP [primitive](crate::elgamal::primitives).
@@ -72,17 +72,6 @@ factor! {
     AttributeRekeyFactor
 }
 
-/// The public key a ciphertext is encrypted under after a transcryption with this info, given
-/// the key it was encrypted under before.
-///
-/// A transcryptor passes the key on with the ciphertext, so that the next transcryptor (or the
-/// storage) can rerandomize it. Implemented for every info and the key, or key bundle, of the
-/// data it transcrypts.
-pub trait RekeyPublicKey<K> {
-    /// The public key after rekeying `before` with this info: `k * before`.
-    fn rekey_public_key(&self, before: &K) -> K;
-}
-
 /// The information for a pseudonymization from one domain and session to another: a reshuffle
 /// factor `s` and a pseudonym rekey factor `k`, each the ratio between the factors of the
 /// source and the target.
@@ -105,15 +94,6 @@ impl<G: Group> PseudonymizationInfo<G> {
             s: ReshuffleFactor(G::scalar_inverse(&self.s.0)),
             k: PseudonymRekeyFactor(G::scalar_inverse(&self.k.0)),
         }
-    }
-}
-
-impl<G: Group> RekeyPublicKey<PseudonymSessionPublicKey<G>> for PseudonymizationInfo<G> {
-    fn rekey_public_key(
-        &self,
-        before: &PseudonymSessionPublicKey<G>,
-    ) -> PseudonymSessionPublicKey<G> {
-        PseudonymSessionPublicKey::from_point(self.k.0 * *before.value())
     }
 }
 
@@ -140,15 +120,6 @@ impl<G: Group> From<PseudonymizationInfo<G>> for PseudonymRekeyInfo<G> {
     }
 }
 
-impl<G: Group> RekeyPublicKey<PseudonymSessionPublicKey<G>> for PseudonymRekeyInfo<G> {
-    fn rekey_public_key(
-        &self,
-        before: &PseudonymSessionPublicKey<G>,
-    ) -> PseudonymSessionPublicKey<G> {
-        PseudonymSessionPublicKey::from_point(self.k.0 * *before.value())
-    }
-}
-
 /// The information for a rekeying of attributes from one session to another: the ratio between
 /// the attribute rekey factors of the source and the target session.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, From)]
@@ -163,15 +134,6 @@ impl<G: Group> AttributeRekeyInfo<G> {
         Self {
             k: AttributeRekeyFactor(G::scalar_inverse(&self.k.0)),
         }
-    }
-}
-
-impl<G: Group> RekeyPublicKey<AttributeSessionPublicKey<G>> for AttributeRekeyInfo<G> {
-    fn rekey_public_key(
-        &self,
-        before: &AttributeSessionPublicKey<G>,
-    ) -> AttributeSessionPublicKey<G> {
-        AttributeSessionPublicKey::from_point(self.k.0 * *before.value())
     }
 }
 
@@ -192,32 +154,5 @@ impl<G: Group> TranscryptionInfo<G> {
             pseudonym: self.pseudonym.reverse(),
             attribute: self.attribute.reverse(),
         }
-    }
-}
-
-impl<G: Group> RekeyPublicKey<SessionPublicKeys<G>> for TranscryptionInfo<G> {
-    fn rekey_public_key(&self, before: &SessionPublicKeys<G>) -> SessionPublicKeys<G> {
-        SessionPublicKeys {
-            pseudonym: self.pseudonym.rekey_public_key(&before.pseudonym),
-            attribute: self.attribute.rekey_public_key(&before.attribute),
-        }
-    }
-}
-
-impl<G: Group> RekeyPublicKey<PseudonymSessionPublicKey<G>> for TranscryptionInfo<G> {
-    fn rekey_public_key(
-        &self,
-        before: &PseudonymSessionPublicKey<G>,
-    ) -> PseudonymSessionPublicKey<G> {
-        self.pseudonym.rekey_public_key(before)
-    }
-}
-
-impl<G: Group> RekeyPublicKey<AttributeSessionPublicKey<G>> for TranscryptionInfo<G> {
-    fn rekey_public_key(
-        &self,
-        before: &AttributeSessionPublicKey<G>,
-    ) -> AttributeSessionPublicKey<G> {
-        self.attribute.rekey_public_key(before)
     }
 }

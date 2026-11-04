@@ -16,10 +16,12 @@
 //! - [`types`]: Key type definitions for global and session keys
 //! - [`traits`]: Traits for public and secret keys
 //! - [`generation`]: Functions for generating global and session keys
+//! - [`rekey`]: The public key a ciphertext is encrypted under after a transcryption
 //! - [`distribution`]: Distributed transcryptor key management (blinding, shares, setup)
 
 pub mod distribution;
 pub mod generation;
+pub mod rekey;
 pub mod traits;
 pub mod types;
 
@@ -30,6 +32,7 @@ pub use generation::{
     make_pseudonym_session_keys, make_pseudonym_session_keys_generic, make_session_keys,
     make_session_keys_generic,
 };
+pub use rekey::RekeyPublicKey;
 pub use traits::{KeyProvider, PublicKey, SecretKey};
 pub use types::{
     AttributeGlobalPublicKey, AttributeGlobalSecretKey, AttributeSessionKeys,

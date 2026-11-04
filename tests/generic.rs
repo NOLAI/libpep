@@ -320,7 +320,7 @@ fn distributed() {
         }
         #[cfg(not(feature = "elgamal3"))]
         {
-            use libpep::factors::RekeyPublicKey;
+            use libpep::keys::RekeyPublicKey;
             current = system.transcrypt(&current, &info, &key, rng);
             key = info.pseudonym.rekey_public_key(&key);
         }
