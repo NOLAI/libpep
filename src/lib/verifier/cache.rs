@@ -5,10 +5,10 @@
 //! rejects a different commitment for a transition it already holds.
 
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
+use crate::group::Ristretto255;
 use std::collections::HashMap;
 use std::hash::Hash;
 

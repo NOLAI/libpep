@@ -3,7 +3,7 @@
 //! the proofs are verified against.
 //!
 //! Creating and verifying a proof hash, so those take the
-//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) as a type parameter.
+//! [`Ciphersuite`](crate::ciphersuite::Ciphersuite) as a type parameter.
 
 #[macro_use]
 mod macros;

@@ -3,8 +3,8 @@
 
 use crate::data::json::data::{EncryptedPepJsonValue, PepJsonValue};
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
 use crate::factors::types::{RerandomizeFactor, TranscryptionInfo};
+use crate::group::InvertibleEncoding;
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]

@@ -1,4 +1,3 @@
-pub mod arithmetic;
 pub mod ciphertext;
 pub mod primitives;
 

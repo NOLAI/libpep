@@ -1,4 +1,4 @@
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
+use crate::group::scalars::WASMScalarNonZero;
 use crate::keys::types::{WASMAttributeGlobalSecretKey, WASMPseudonymGlobalSecretKey};
 use crate::macros::wasm_scalar_key_impl;
 use derive_more::{Deref, From, Into};

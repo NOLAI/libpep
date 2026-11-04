@@ -16,8 +16,8 @@ use libpep::data::errors::ParseError;
 use libpep::data::padding::{Padded, PaddingError};
 #[cfg(feature = "verifiable")]
 use libpep::data::verifiable::traits::VerifiableRekeyProof;
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::factors::{AttributeRekeyFactor, PseudonymRekeyFactor, ReshuffleFactor};
+use libpep::group::scalars::ScalarNonZero;
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeSessionPublicKey, AttributeSessionSecretKey,
     PseudonymGlobalPublicKey, PseudonymSessionPublicKey, PseudonymSessionSecretKey,

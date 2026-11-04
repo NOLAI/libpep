@@ -1,11 +1,11 @@
 //! Transcryptor type definitions.
 
+use crate::ciphersuite::Ciphersuite;
+use crate::ciphersuite::Ristretto255Sha512;
 use crate::contexts::*;
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::Ciphersuite;
-use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };

@@ -11,16 +11,16 @@ use super::blinding::{
     BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedPseudonymGlobalSecretKey,
     BlindingFactor,
 };
-use crate::elgamal::arithmetic::group::decode_hex;
-use crate::elgamal::arithmetic::group::Group;
 #[cfg(feature = "verifiable")]
-use crate::elgamal::arithmetic::Ciphersuite;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::ciphersuite::Ciphersuite;
 #[cfg(feature = "verifiable")]
-use crate::elgamal::arithmetic::Ristretto255Sha512;
+use crate::ciphersuite::Ristretto255Sha512;
 #[cfg(feature = "verifiable")]
 use crate::elgamal::verifiable::RekeyFactorCommitment;
 use crate::factors::types::{AttributeRekeyFactor, Factor, PseudonymRekeyFactor};
+use crate::group::decode_hex;
+use crate::group::Group;
+use crate::group::Ristretto255;
 #[cfg(feature = "verifiable")]
 use crate::keys::distribution::proofs::{BlindingCommitment, SessionKeyShareProof};
 use crate::keys::traits::SecretKey;
@@ -400,13 +400,14 @@ impl<G: Group> SessionKeyShareProof<G> {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod proof_tests {
     use super::*;
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::group_elements::G;
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::factors::{
         make_attribute_rekey_factor, make_pseudonym_rekey_factor, Factor, RekeyingSecret,
     };
+    use crate::group::group_elements::G;
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
     use crate::keys::distribution::BlindingFactor;
 
     type C = Ristretto255Sha512;

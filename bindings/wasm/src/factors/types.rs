@@ -1,9 +1,9 @@
 //! WASM bindings for factor types and the transcryption info types that bundle them.
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::{WASMPseudonymizationSecret, WASMRekeyingSecret};
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,
 };

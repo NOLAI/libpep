@@ -28,6 +28,7 @@ use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(feature = "long")]
 #[cfg(all(feature = "verifiable", feature = "batch", feature = "long"))]
 use libpep::data::verifiable::long::{
@@ -41,7 +42,6 @@ use libpep::data::verifiable::records::RecordTranscryptionBatchProof;
 use libpep::data::verifiable::simple::{
     AttributeRekeyBatchProof, PseudonymPseudonymizationBatchProof, PseudonymRekeyBatchProof,
 };
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use libpep::verifier::VerifyError;

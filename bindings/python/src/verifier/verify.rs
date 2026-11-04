@@ -15,7 +15,7 @@ use crate::factors::commitments::{
     PyVerifiableTranscryptionCommitment,
 };
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use libpep::verifier::Verifier;
@@ -542,7 +542,7 @@ impl PyVerifier {
     fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
-        rekey_commitment: &crate::elgamal::arithmetic::group_elements::PyGroupElement,
+        rekey_commitment: &crate::group::group_elements::PyGroupElement,
         proof: &crate::keys::distribution::proofs::PySessionKeyShareProof,
     ) -> PyResult<()> {
         self.0

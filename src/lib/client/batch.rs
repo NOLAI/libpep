@@ -4,7 +4,7 @@ use crate::data::batch::{BatchError, Batchable, EncryptedBatch};
 #[cfg(any(feature = "insecure", feature = "offline"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, HasStructure};
-use crate::elgamal::arithmetic::group::Group;
+use crate::group::Group;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 

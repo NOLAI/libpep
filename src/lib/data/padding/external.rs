@@ -19,7 +19,7 @@
 //! and `0x10`, so a data block is never all zeros, even when the data itself is. Every byte
 //! sequence can therefore be encoded and decoded.
 
-use crate::elgamal::arithmetic::group::Bytes;
+use crate::group::Bytes;
 
 /// Creates an external padding block: all zeros.
 pub(crate) fn create_external_padding_block<B: Bytes>() -> B {

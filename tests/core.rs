@@ -7,9 +7,9 @@ use std::collections::HashSet;
 #[macro_use]
 mod common;
 
+use libpep::ciphersuite::hashing::hash_to_group;
 #[cfg(all(feature = "batch", feature = "long"))]
 use libpep::data::records::LongEncryptedRecord;
-use libpep::elgamal::arithmetic::hashing::hash_to_group;
 use libpep::elgamal::ElGamal;
 use libpep::prelude::*;
 
@@ -642,7 +642,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
 
     let pseudonym: Pseudonym = Pseudonym::random(&mut rng);
     let malformed = EncryptedPseudonym::from_value(ElGamal {
-        gb: libpep::elgamal::arithmetic::group_elements::GroupElement::random(&mut rng),
+        gb: libpep::group::group_elements::GroupElement::random(&mut rng),
         gc: *pseudonym.value(),
         #[cfg(feature = "elgamal3")]
         gy: *from_session.pseudonym.public.value(),
@@ -667,8 +667,8 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
 /// by their secrets, and domains and sessions within a deployment by the domain and session.
 #[test]
 fn ciphersuite_separates_hashing_and_secrets_separate_deployments() {
-    use libpep::elgamal::arithmetic::hashing::hash_to_group_with_dst;
-    use libpep::elgamal::arithmetic::Ciphersuite;
+    use libpep::ciphersuite::hashing::hash_to_group_with_dst;
+    use libpep::ciphersuite::Ciphersuite;
 
     let rng = &mut rand::rng();
     let (_global_public, global_secret) = make_global_keys(rng);

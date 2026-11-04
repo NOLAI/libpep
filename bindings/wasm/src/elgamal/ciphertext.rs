@@ -1,8 +1,8 @@
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::{decrypt, encrypt};
+use libpep::group::Ristretto255;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 use wasm_bindgen::prelude::*;

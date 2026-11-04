@@ -177,7 +177,7 @@ macro_rules! py_encrypted_impl {
             #[staticmethod]
             #[pyo3(name = "from_bytes")]
             fn decode(v: &[u8]) -> Option<Self> {
-                type ElGamal = libpep::elgamal::ElGamal<libpep::elgamal::arithmetic::Ristretto255>;
+                type ElGamal = libpep::elgamal::ElGamal<libpep::group::Ristretto255>;
                 ElGamal::from_slice(v).map(|eg| Self($core { value: eg }))
             }
 

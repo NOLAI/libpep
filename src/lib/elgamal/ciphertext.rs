@@ -1,7 +1,7 @@
 //! The ElGamal ciphertext and its encryption and decryption.
 
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use base64::engine::general_purpose;
 use base64::Engine;
 use rand_core::{CryptoRng, Rng};
@@ -151,9 +151,9 @@ pub fn decrypt<G: Group>(encrypted: &ElGamal<G>, y: &G::Scalar) -> G::Element {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
 
     type ElGamal = super::ElGamal<Ristretto255>;
     const ELGAMAL_LENGTH: usize = ElGamal::LENGTH;

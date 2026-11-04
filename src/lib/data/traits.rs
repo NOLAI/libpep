@@ -1,7 +1,7 @@
 //! Core traits for encryption and decryption operations.
 
-use crate::elgamal::arithmetic::group::Group;
 use crate::factors::types::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
+use crate::group::Group;
 use rand_core::{CryptoRng, Rng};
 
 /// A trait for encryptable data types that can be encrypted into [`Encrypted`] types.
@@ -23,10 +23,10 @@ use rand_core::{CryptoRng, Rng};
 /// use libpep::client::encrypt;
 /// use libpep::contexts::EncryptionContext;
 /// use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::group::Ristretto255;
 /// use libpep::factors::RekeyingSecret;
 /// use libpep::keys::{make_global_keys, make_session_keys};
-/// use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// use libpep::ciphersuite::Ristretto255Sha512;
 ///
 /// let rng = &mut rand::rng();
 /// let (_global_public, global_secret) = make_global_keys(rng);

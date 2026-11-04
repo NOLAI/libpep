@@ -7,8 +7,8 @@
 //! ciphertext is encrypted under after an info is applied is given by
 //! [`keys::RekeyPublicKey`](crate::keys::RekeyPublicKey).
 
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use derive_more::From;
 
 /// A factor: a single scalar operand of a PEP [primitive](crate::elgamal::primitives).

@@ -3,8 +3,8 @@
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
 use crate::factors::types::{PseudonymizationInfo, RerandomizeFactor, TranscryptionInfo};
+use crate::group::Group;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
@@ -147,7 +147,7 @@ where
 /// # Examples
 /// ```
 /// # use libpep::prelude::*;
-/// # use libpep::elgamal::arithmetic::Group;
+/// # use libpep::group::Group;
 /// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
@@ -171,7 +171,7 @@ where
 /// # Examples
 /// ```
 /// # use libpep::prelude::*;
-/// # use libpep::elgamal::arithmetic::Group;
+/// # use libpep::group::Group;
 /// # use libpep::factors::{Factor, RerandomizeFactor};
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);

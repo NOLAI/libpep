@@ -3,8 +3,8 @@ mod common;
 #[cfg(feature = "legacy")]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod legacy_pep_repo_tests {
-    use libpep::elgamal::arithmetic::scalars::ScalarTraits;
     use libpep::factors::{make_pseudonymization_factor, PseudonymRekeyFactor};
+    use libpep::group::scalars::ScalarTraits;
     use libpep::keys::distribution::{
         make_pseudonym_session_key_share, BlindingFactor, SessionKeyShare,
     };

@@ -31,10 +31,11 @@
 use super::commitments::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::ciphersuite::Ciphersuite;
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -355,15 +356,15 @@ impl<G: Group> VerifiableRSK2<G> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::elgamal::primitives::{rsk, rsk2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRSK, VerifiableRSK2,
     };
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::scalars::ScalarNonZero;
 
     type C = Ristretto255Sha512;
 

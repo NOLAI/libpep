@@ -2,9 +2,9 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::hashing::hash_to_group;
-use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::ciphersuite::hashing::hash_to_group;
+use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::scalars::{ScalarNonZero, ScalarTraits};
 use rand_core::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 

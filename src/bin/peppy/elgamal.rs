@@ -6,10 +6,10 @@
 
 use crate::io::{self, Output, Result};
 use clap::Subcommand;
-use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives;
 use libpep::elgamal::{decrypt, encrypt};
+use libpep::group::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 
 #[derive(Subcommand)]

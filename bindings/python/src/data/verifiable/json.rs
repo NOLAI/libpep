@@ -11,11 +11,11 @@
 use crate::data::json::PyEncryptedPepJsonValue;
 use crate::factors::commitments::PyVerifiableTranscryptionCommitment;
 use crate::factors::types::PyTranscryptionInfo;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(all(feature = "batch", feature = "verifiable"))]
 use libpep::data::verifiable::json::JsonTranscryptionBatchProof;
 use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::factors::TranscryptionInfo;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

@@ -10,8 +10,8 @@ use crate::data::long::{
 };
 use crate::data::padding::Padded;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::InvertibleEncoding;
+use crate::group::Ristretto255;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -267,7 +267,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     /// ```
     /// use libpep::data::json::data::PepJsonValue;
     /// use libpep::data::json::structure::JsonStructure;
-    /// use libpep::elgamal::arithmetic::Ristretto255;
+    /// use libpep::group::Ristretto255;
     /// use serde_json::json;
     ///
     /// let value1 = PepJsonValue::<Ristretto255>::from_value(&json!("hi"));
@@ -391,7 +391,7 @@ impl<G: InvertibleEncoding> PepJsonValue<G> {
     /// ```
     /// use libpep::data::json::data::PepJsonValue;
     /// use libpep::data::json::structure::JsonStructure;
-    /// use libpep::elgamal::arithmetic::Ristretto255;
+    /// use libpep::group::Ristretto255;
     /// use serde_json::json;
     ///
     /// let value = PepJsonValue::<Ristretto255>::from_value(&json!({

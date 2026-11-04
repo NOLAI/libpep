@@ -9,20 +9,20 @@
 //! the shape of `HashToGroup` for ristretto255 in [RFC 9497], Section 4.1, with the library's own
 //! context string. The raw-tag functions for
 //! ristretto255, [`hash_to_group_with_dst`] and [`hash_to_scalar_with_dst`], are in
-//! [`ristretto255::hashing`](super::ristretto255::hashing) and re-exported here.
+//! [`ristretto255`](super::ristretto255) and re-exported here.
 //!
 //! [RFC 9380]: https://www.rfc-editor.org/rfc/rfc9380
 //! [RFC 9497]: https://www.rfc-editor.org/rfc/rfc9497
 
-use super::ciphersuite::Ciphersuite;
-use super::group::Group;
-use super::ristretto255::group_elements::GroupElement;
-use super::ristretto255::scalars::ScalarNonZero;
 use super::ristretto255::Ristretto255Sha512;
+use super::Ciphersuite;
+use crate::group::group_elements::GroupElement;
+use crate::group::scalars::ScalarNonZero;
+use crate::group::Group;
 use sha2::digest::common::BlockSizeUser;
 use sha2::Digest;
 
-pub use super::ristretto255::hashing::{hash_to_group_with_dst, hash_to_scalar_with_dst};
+pub use super::ristretto255::{hash_to_group_with_dst, hash_to_scalar_with_dst};
 
 /// The longest domain separation tag that is used as is; longer tags are hashed first
 /// (RFC 9380, Section 5.3.3).
@@ -135,7 +135,7 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// This is the only encoding available on every ciphersuite. It is not invertible: the origin
 /// party recognizes a pseudonym as belonging to `x` only by recomputing it. For an invertible
 /// encoding on ristretto255, see
-/// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard).
+/// [`GroupElement::from_lizard`](crate::group::group_elements::GroupElement::from_lizard).
 ///
 /// No secret enters this hash, unlike factor derivation, so another protocol hashing the same
 /// input on the same group would get the same element. The `"nPEPV1-"` prefix of the
@@ -158,10 +158,10 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// with a known discrete-log relation. Encoding an identifier `x` as `x * G`, or as any scalar
 /// multiple of a fixed element, violates this and is forbidden. This function satisfies the
 /// requirement through the random oracle property of hashing to the group.
-/// [`GroupElement::from_lizard`](super::group_elements::GroupElement::from_lizard) satisfies it
+/// [`GroupElement::from_lizard`](crate::group::group_elements::GroupElement::from_lizard) satisfies it
 /// heuristically and without proof: it is not a random oracle, but a related encoding would have
 /// to invert the map to an input that also passes its check bits. A uniformly random element
-/// from [`GroupElement::random`](super::group_elements::GroupElement::random) satisfies it, since
+/// from [`GroupElement::random`](crate::group::group_elements::GroupElement::random) satisfies it, since
 /// nobody knows its discrete logarithm.
 #[must_use]
 pub fn hash_to_group_generic<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {
@@ -186,7 +186,7 @@ pub fn hash_to_group(x: &[u8]) -> GroupElement {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
     use sha2::{Sha256, Sha512};
 
     fn q128() -> Vec<u8> {

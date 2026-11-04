@@ -12,6 +12,7 @@
 //! appropriate `Verifiable*Proof` trait (rekey / pseudonymization) so
 //! they work polymorphically with [`Verifier`](crate::verifier::Verifier).
 
+use crate::ciphersuite::Ciphersuite;
 use crate::data::elgamal::ElGamalEncrypted;
 use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
 #[cfg(feature = "batch")]
@@ -22,8 +23,6 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::{VerifiableRRSK, VerifiableRekey};
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
@@ -31,6 +30,8 @@ use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use crate::factors::types::PseudonymizationInfo;
+use crate::group::Group;
+use crate::group::Ristretto255;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]

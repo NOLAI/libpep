@@ -5,13 +5,13 @@
 //! label when standard output is a terminal and bare when it is piped; with `--json` all values
 //! of a command are printed as one JSON object instead.
 
-use libpep::elgamal::arithmetic::group::Group;
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
 use libpep::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
+use libpep::group::group_elements::GroupElement;
+use libpep::group::scalars::ScalarNonZero;
+use libpep::group::Group;
 use libpep::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;

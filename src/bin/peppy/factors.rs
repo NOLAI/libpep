@@ -4,10 +4,10 @@
 
 use crate::io::{self, Output, Result};
 use clap::{Args, Subcommand};
-use libpep::elgamal::arithmetic::scalars::ScalarTraits;
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
+use libpep::group::scalars::ScalarTraits;
 use libpep::prelude::*;
 
 #[derive(Subcommand)]

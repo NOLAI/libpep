@@ -6,8 +6,8 @@
 //! benchmarks measure a correct end-to-end flow in both ciphertext encodings.
 #![allow(dead_code, clippy::expect_used)]
 
+use libpep::ciphersuite::Ciphersuite;
 use libpep::data::traits::{Encryptable, Encrypted, HasStructure, Rekeyable, Transcryptable};
-use libpep::elgamal::arithmetic::Ciphersuite;
 use libpep::factors::types::TranscryptionInfo;
 use libpep::transcryptor::distributed::DistributedTranscryptor;
 use rand_core::{CryptoRng, Rng};

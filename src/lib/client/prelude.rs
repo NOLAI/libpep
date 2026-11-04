@@ -29,6 +29,7 @@
 //! # assert_eq!(client.decrypt(&encrypted), Some(pseudonym));
 //! ```
 
+pub use crate::ciphersuite::Ristretto255Sha512;
 #[cfg(all(feature = "offline", feature = "insecure"))]
 pub use crate::client::decrypt_global;
 #[cfg(all(feature = "batch", feature = "offline", feature = "insecure"))]
@@ -50,5 +51,5 @@ pub use crate::data::long::{
 };
 pub use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 pub use crate::data::traits::{Encryptable, Encrypted};
-pub use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+pub use crate::group::Ristretto255;
 pub use crate::keys::{GlobalPublicKeys, PublicKey, SecretKey, SessionKeys, SessionPublicKeys};

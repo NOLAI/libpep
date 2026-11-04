@@ -27,9 +27,9 @@ use crate::data::records::Record;
 use crate::data::simple::{Attribute, Pseudonym};
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Encrypted, HasStructure};
-use crate::elgamal::arithmetic::group::Group;
+use crate::group::Group;
 #[cfg(feature = "json")]
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::group::InvertibleEncoding;
 use rand_core::{CryptoRng, Rng};
 use thiserror::Error;
 
@@ -354,7 +354,7 @@ pub(crate) fn validate_structure<E: HasStructure>(encrypted: &[E]) -> Result<(),
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::group::Ristretto255;
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     use crate::keys::PublicKey;
 
@@ -365,8 +365,7 @@ mod tests {
     #[test]
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn empty_batch_is_valid() {
-        let pk =
-            PseudonymSessionPublicKey::from_point(crate::elgamal::arithmetic::group_elements::G);
+        let pk = PseudonymSessionPublicKey::from_point(crate::group::group_elements::G);
         let batch = EncryptedBatch::<EncryptedPseudonym>::new(Vec::new(), pk).expect("construct");
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);

@@ -10,10 +10,10 @@
 /// ```
 /// use libpep::client::{decrypt, encrypt};
 /// use libpep::contexts::EncryptionContext;
-/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::group::Ristretto255;
 /// use libpep::factors::RekeyingSecret;
 /// use libpep::keys::{make_global_keys, make_session_keys};
-/// use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// use libpep::ciphersuite::Ristretto255Sha512;
 /// use libpep::pep_json;
 /// use serde_json::json;
 ///
@@ -139,8 +139,8 @@ macro_rules! pep_json {
 mod tests {
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,

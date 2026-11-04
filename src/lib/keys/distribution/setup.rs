@@ -9,7 +9,7 @@
 //! ristretto255 versions (see the [crate docs](crate#groups-and-ciphersuites)).
 
 use super::blinding::*;
-use crate::elgamal::arithmetic::group::Group;
+use crate::group::Group;
 use crate::keys::generation::{
     make_attribute_global_keys_generic, make_pseudonym_global_keys_generic,
 };

@@ -1,9 +1,9 @@
 //! Python bindings for key generation functions.
 
 use super::types::*;
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
 use crate::factors::secrets::PyRekeyingSecret;
+use crate::group::group_elements::PyGroupElement;
+use crate::group::scalars::PyScalarNonZero;
 use crate::keys::types::PyAttributeSessionPublicKey;
 use crate::keys::types::PyPseudonymSessionPublicKey;
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};

@@ -2,9 +2,9 @@
 
 use super::types::*;
 use crate::contexts::WASMEncryptionContext;
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::secrets::WASMRekeyingSecret;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::prelude::*;
 use wasm_bindgen::prelude::*;

@@ -13,11 +13,11 @@ use crate::errors::{malformed_proof_err, verify_err_to_js};
 use crate::factors::commitments::WASMVerifiableTranscryptionCommitment;
 use crate::factors::types::WASMTranscryptionInfo;
 use crate::verifier::WASMVerifier;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(all(feature = "batch", feature = "verifiable"))]
 use libpep::data::verifiable::json::JsonTranscryptionBatchProof;
 use libpep::data::verifiable::json::JsonTranscryptionProof;
 use libpep::data::verifiable::traits::VerifiableTranscryptionProof;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::verifier::VerifyError;
 use wasm_bindgen::prelude::*;
 

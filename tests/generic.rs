@@ -11,20 +11,19 @@
 mod common;
 
 use libpep::ciphersuite;
+use libpep::ciphersuite::hashing::hash_to_group_generic;
+use libpep::ciphersuite::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
 use libpep::client::{encrypt, Client, Distributed};
 use libpep::contexts::{EncryptionContext, PseudonymizationDomain};
 use libpep::data::elgamal::ElGamalEncryptable;
 use libpep::data::simple::{Attribute, Pseudonym};
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::hashing::hash_to_group_generic;
-use libpep::elgamal::arithmetic::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
-use libpep::elgamal::arithmetic::{
-    Ciphersuite, CiphersuiteId, Group, InvertibleEncoding, Ristretto255, Ristretto255Sha512,
-};
 use libpep::factors::{
     make_pseudonym_rekey_factor_generic, Factor, PseudonymizationSecret, RekeyingSecret,
     TranscryptionInfo,
 };
+use libpep::group::group_elements::GroupElement;
+use libpep::group::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
+use libpep::group::{Group, InvertibleEncoding, Ristretto255};
 use libpep::keys::distribution::make_distributed_global_keys_generic;
 use libpep::keys::{make_global_keys_generic, make_session_keys_generic, SessionKeys};
 use libpep::transcryptor::{rekey, transcrypt, DistributedTranscryptor, Transcryptor};

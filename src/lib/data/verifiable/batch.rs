@@ -11,6 +11,7 @@
 //! The order of the items is preserved: the proof entries are positionally tied to the items,
 //! so, unlike the plain batch operations, the verifiable ones do not shuffle.
 
+use crate::ciphersuite::Ciphersuite;
 use crate::data::batch::EncryptedBatch;
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
@@ -18,7 +19,6 @@ use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcryptable}
 use crate::data::verifiable::traits::{
     VerifiablePseudonymizationProof, VerifiableRekeyProof, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::{VerifiableRRSKBatch, VerifiableRekeyBatch};
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::{
@@ -26,6 +26,7 @@ use crate::factors::commitments::{
     VerifiableTranscryptionCommitment,
 };
 use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
+use crate::group::Group;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]

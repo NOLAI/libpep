@@ -2,13 +2,13 @@
 
 use super::group_elements::{GroupElement, G};
 use super::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
-use crate::elgamal::arithmetic::group::{Group, InvertibleEncoding};
+use crate::group::{Group, InvertibleEncoding};
 use rand_core::{CryptoRng, Rng};
 
 /// The ristretto255 group.
 ///
 /// Elements are 32 bytes, scalars 32 bytes. The hashing that protocols build on it is in the
-/// ciphersuite [`Ristretto255Sha512`](super::Ristretto255Sha512).
+/// ciphersuite [`Ristretto255Sha512`](crate::ciphersuite::Ristretto255Sha512).
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct Ristretto255;
 
@@ -112,27 +112,6 @@ impl InvertibleEncoding for Ristretto255 {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-
-    /// RFC 9380, Appendix K.3: expand_message_xmd(SHA-512), through the shared expander in
-    /// [`super::hashing`] that `Ristretto255` hashes with.
-    #[test]
-    fn expand_message_xmd_sha512_vectors() {
-        use crate::elgamal::arithmetic::hashing::expand_message_xmd;
-        use sha2::Sha512;
-        let dst = b"QUUX-V01-CS02-with-expander-SHA512-256";
-        assert_eq!(
-            hex::encode(expand_message_xmd::<Sha512>(b"", dst, 32)),
-            "6b9a7312411d92f921c6f68ca0b6380730a1a4d982c507211a90964c394179ba"
-        );
-        assert_eq!(
-            hex::encode(expand_message_xmd::<Sha512>(b"abc", dst, 32)),
-            "0da749f12fbe5483eb066a5f595055679b976e93abe9be6f0f6318bce7aca8dc"
-        );
-        assert_eq!(
-            hex::encode(expand_message_xmd::<Sha512>(b"", dst, 128)),
-            "41b037d1734a5f8df225dd8c7de38f851efdb45c372887be655212d07251b921b052b62eaed99b46f72f2ef4cc96bfaf254ebbbec091e1a3b9e4fb5e5b619d2e0c5414800a1d882b62bb5cd1778f098b8eb6cb399d5d9d18f5d5842cf5d13d7eb00a7cff859b605da678b318bd0e65ebff70bec88c753b159a805d2c89c55961"
-        );
-    }
 
     #[test]
     fn serialization_roundtrip_and_identity_rejection() {

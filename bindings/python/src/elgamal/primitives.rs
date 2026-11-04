@@ -1,7 +1,7 @@
 use super::PyElGamal;
 #[cfg(not(feature = "elgamal3"))]
-use crate::elgamal::arithmetic::PyGroupElement;
-use crate::elgamal::arithmetic::PyScalarNonZero;
+use crate::group::PyGroupElement;
+use crate::group::PyScalarNonZero;
 use libpep::elgamal::primitives::*;
 use pyo3::prelude::*;
 

@@ -1,4 +1,3 @@
-pub mod arithmetic;
 pub mod ciphertext;
 pub mod primitives;
 
@@ -13,9 +12,6 @@ use pyo3::prelude::*;
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     ciphertext::register(m)?;
-    crate::add_submodule(m, "libpep.elgamal.arithmetic", |sm| {
-        arithmetic::register_module(sm)
-    })?;
     crate::add_submodule(m, "libpep.elgamal.primitives", |sm| {
         primitives::register(sm)
     })?;

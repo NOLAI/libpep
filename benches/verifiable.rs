@@ -9,9 +9,7 @@
 //! operation or verification itself is timed.
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::primitives::{rekey, rekey2, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2};
 use libpep::elgamal::verifiable::{
     PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK, VerifiableRRSK2,
@@ -19,6 +17,9 @@ use libpep::elgamal::verifiable::{
     VerifiableReshuffle2,
 };
 use libpep::elgamal::{encrypt, ElGamal};
+use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::scalars::ScalarNonZero;
+use libpep::group::Ristretto255;
 
 fn setup_pk() -> GroupElement {
     let mut rng = rand::rng();

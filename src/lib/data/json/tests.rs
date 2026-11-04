@@ -5,8 +5,8 @@
 use crate::client::{decrypt, encrypt};
 use crate::contexts::EncryptionContext;
 use crate::data::json::data::JsonError;
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::RekeyingSecret;
+use crate::group::Ristretto255;
 use crate::keys::{
     make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
     make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,

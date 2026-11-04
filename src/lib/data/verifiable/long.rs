@@ -6,6 +6,7 @@
 //! share the factor proofs; a rekey proof is one proof per block. A batch proof lays all blocks
 //! of all values out in one list.
 
+use crate::ciphersuite::Ciphersuite;
 use crate::data::elgamal::ElGamalEncrypted;
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 #[cfg(feature = "batch")]
@@ -22,14 +23,14 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable,
 };
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::elgamal::verifiable::VerifiableRRSKBatch;
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
 };
 use crate::factors::types::PseudonymizationInfo;
+use crate::group::Group;
+use crate::group::Ristretto255;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]
