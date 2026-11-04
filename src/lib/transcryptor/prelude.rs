@@ -40,13 +40,14 @@ pub use crate::data::verifiable::traits::{
 pub use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 pub use crate::factors::{
     AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, PseudonymizationSecret,
-    RekeyPublicKey, RekeyingSecret, TranscryptionInfo,
+    RekeyingSecret, TranscryptionInfo,
 };
 #[cfg(feature = "verifiable")]
 pub use crate::factors::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
+pub use crate::keys::RekeyPublicKey;
 pub use crate::transcryptor::{
     pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt, DistributedTranscryptor,
     Transcryptor, TranscryptorId,

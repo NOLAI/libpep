@@ -5,8 +5,8 @@ use libpep::data::records::EncryptedRecord;
 use libpep::data::simple::{
     Attribute, ElGamalEncryptable, EncryptedAttribute, EncryptedPseudonym, Pseudonym,
 };
-use libpep::factors::RekeyPublicKey;
 use libpep::factors::{PseudonymizationSecret, RekeyingSecret};
+use libpep::keys::RekeyPublicKey;
 use libpep::keys::SessionPublicKeys;
 use libpep::transcryptor::DistributedTranscryptor;
 

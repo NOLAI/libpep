@@ -33,7 +33,7 @@ pub use derivation::{
 pub use secrets::{PseudonymizationSecret, RekeyingSecret, Secret};
 pub use types::{
     AttributeRekeyFactor, AttributeRekeyInfo, Factor, PseudonymRekeyFactor, PseudonymRekeyInfo,
-    PseudonymizationInfo, RekeyPublicKey, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
+    PseudonymizationInfo, RerandomizeFactor, ReshuffleFactor, TranscryptionInfo,
 };
 
 #[cfg(feature = "verifiable")]

@@ -26,12 +26,12 @@ use crate::factors::commitments::{
     VerifiableTranscryptionCommitment,
 };
 use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
-#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-use crate::factors::RekeyPublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::traits::PublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::keys::RekeyPublicKey;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};

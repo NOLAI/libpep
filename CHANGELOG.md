@@ -45,7 +45,7 @@ a major change against the published 0.13.0.
   private: there are no public tuple constructors and no `From<ScalarNonZero>` or
   `From<GroupElement>` impls on them, so a value is made with `from_scalar` or `from_point`, or
   derived or generated. The public key a ciphertext is encrypted under after a
-  transcryption is given by the `factors::RekeyPublicKey` trait, implemented by every info for the
+  transcryption is given by the `keys::RekeyPublicKey` trait, implemented by every info for the
   key of the data it transcrypts; `TranscryptionInfo::rekey_public_keys` is now `rekey_public_key`,
   and the `convert` methods on session public keys are gone.
 - `ElGamalEncryptable::from_value` is gone; `from_point` is the constructor, as for public keys.
@@ -414,7 +414,7 @@ a major change against the published 0.13.0.
   The unreachable `PseudonymizationSecret.from` and `RekeyingSecret.from` are gone; the
   constructors do the same.
 - `rekey_public_key` on `PseudonymRekeyInfo`, `AttributeRekeyInfo`, `PseudonymizationInfo` and
-  `TranscryptionInfo` (the `factors::RekeyPublicKey` trait): the public key a transcrypted
+  `TranscryptionInfo` (the `keys::RekeyPublicKey` trait): the public key a transcrypted
   ciphertext is encrypted under, to pass along a chain of transcryptors. Exposed in the Python and JavaScript bindings; the
   CLI prints it as `key` / `keys`.
 

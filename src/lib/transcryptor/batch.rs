@@ -15,10 +15,10 @@ use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
 use crate::elgamal::arithmetic::group::Group;
 use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
-#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-use crate::factors::RekeyPublicKey;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::keys::RekeyPublicKey;
 use rand_core::{CryptoRng, Rng};
 
 /// The public key type of the data an encrypted type decrypts to.
