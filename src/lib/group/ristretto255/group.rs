@@ -1,6 +1,6 @@
 //! The `Group` instance of ristretto255.
 
-use super::group_elements::{GroupElement, G};
+use super::elements::{GroupElement, G};
 use super::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use crate::group::{Group, InvertibleEncoding};
 use rand_core::{CryptoRng, Rng};

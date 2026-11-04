@@ -1,6 +1,6 @@
 //! Python bindings for hashing to the group and to scalars (RFC 9380).
 
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::group::scalars::PyScalarCanBeZero;
 use libpep::ciphersuite::hashing;
 use pyo3::exceptions::PyValueError;

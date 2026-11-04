@@ -8,7 +8,7 @@ For high-level operations, use encrypt/decrypt from libpep and Pseudonym/Attribu
 
 import unittest
 
-from libpep.group.group_elements import GroupElement
+from libpep.group.elements import GroupElement
 from libpep.group.scalars import ScalarNonZero
 from libpep.elgamal import encrypt, decrypt, ElGamal
 from libpep.elgamal.primitives import (

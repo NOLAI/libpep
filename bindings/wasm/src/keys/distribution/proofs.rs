@@ -5,7 +5,7 @@
 #![cfg(feature = "verifiable")]
 
 use crate::errors::malformed_proof_err;
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use crate::keys::distribution::shares::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,

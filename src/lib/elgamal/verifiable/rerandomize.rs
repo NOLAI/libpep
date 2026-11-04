@@ -17,7 +17,7 @@ use crate::ciphersuite::Ristretto255Sha512;
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
 #[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
-use crate::group::group_elements::GroupElement;
+use crate::group::elements::GroupElement;
 #[cfg(feature = "insecure")]
 use crate::group::scalars::ScalarNonZero;
 use crate::group::Group;
@@ -147,7 +147,7 @@ mod tests {
     use crate::elgamal::primitives::rerandomize;
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
 

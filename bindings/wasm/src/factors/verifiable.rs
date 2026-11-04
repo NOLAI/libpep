@@ -7,7 +7,7 @@
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::errors::json_err;
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use derive_more::{From, Into};
 #[cfg(feature = "verifiable-derivation")]
 use libpep::factors::{

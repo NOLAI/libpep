@@ -14,7 +14,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::dleq;
 use libpep::elgamal::zkps;
-use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::elements::{GroupElement, G};
 use libpep::group::scalars::ScalarNonZero;
 use libpep::group::Ristretto255;
 

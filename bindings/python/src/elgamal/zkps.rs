@@ -1,6 +1,6 @@
 //! Python bindings for zero-knowledge proofs.
 
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::group::scalars::PyScalarNonZero;
 use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::zkps::{create_proof, verify_proof};

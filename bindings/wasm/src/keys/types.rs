@@ -1,4 +1,4 @@
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use crate::macros::{wasm_pair_impl, wasm_point_key_impl};
 use derive_more::{Deref, From, Into};

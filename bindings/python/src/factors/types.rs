@@ -2,7 +2,7 @@
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
 use crate::factors::secrets::{PyPseudonymizationSecret, PyRekeyingSecret};
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::group::PyScalarNonZero;
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};

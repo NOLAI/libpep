@@ -17,7 +17,7 @@ use libpep::elgamal::verifiable::{
     VerifiableReshuffle2,
 };
 use libpep::elgamal::{encrypt, ElGamal};
-use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::elements::{GroupElement, G};
 use libpep::group::scalars::ScalarNonZero;
 use libpep::group::Ristretto255;
 

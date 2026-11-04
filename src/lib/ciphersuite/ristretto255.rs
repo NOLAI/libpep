@@ -9,7 +9,7 @@
 
 use super::hashing::expand_message_xmd;
 use super::{Ciphersuite, CiphersuiteId};
-use crate::group::group_elements::GroupElement;
+use crate::group::elements::GroupElement;
 use crate::group::scalars::{ScalarCanBeZero, ScalarNonZero};
 use crate::group::{Group, Ristretto255};
 use sha2::Sha512;

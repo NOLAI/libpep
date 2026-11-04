@@ -7,7 +7,7 @@ use libpep::keys::distribution::{
     make_distributed_pseudonym_global_keys,
 };
 
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::keys::types::{
     PyAttributeGlobalPublicKey, PyGlobalPublicKeys, PyPseudonymGlobalPublicKey,
 };

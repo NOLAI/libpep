@@ -141,7 +141,7 @@ macro_rules! wasm_point_key_impl {
 
             #[wasm_bindgen(js_name = fromBytes)]
             pub fn from_bytes(bytes: Vec<u8>) -> Option<Self> {
-                use libpep::group::group_elements::GroupElement;
+                use libpep::group::elements::GroupElement;
                 GroupElement::from_slice(&bytes).map(|x| Self(x.into()))
             }
 
@@ -152,7 +152,7 @@ macro_rules! wasm_point_key_impl {
 
             #[wasm_bindgen(js_name = fromHex)]
             pub fn from_hex(hex: &str) -> Option<Self> {
-                libpep::group::group_elements::GroupElement::from_hex(hex).map(|x| Self(x.into()))
+                libpep::group::elements::GroupElement::from_hex(hex).map(|x| Self(x.into()))
             }
         }
     };

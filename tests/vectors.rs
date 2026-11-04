@@ -42,7 +42,7 @@ use libpep::elgamal::ElGamal;
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 use libpep::group::scalars::ScalarNonZero;
 #[cfg(feature = "verifiable")]
 use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
@@ -51,7 +51,7 @@ use libpep::prelude::*;
 
 use libpep::ciphersuite::Ciphersuite;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
-use libpep::group::group_elements::G;
+use libpep::group::elements::G;
 use libpep::group::scalars::ScalarTraits;
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;

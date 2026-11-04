@@ -9,7 +9,7 @@ use libpep::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use libpep::factors::derivation::MAX_INPUT_LENGTH;
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 use libpep::group::scalars::ScalarNonZero;
 use libpep::group::Group;
 use libpep::prelude::*;

@@ -12,7 +12,7 @@ For high-level operations, use Pseudonym and Attribute from libpep.data instead.
 
 import unittest
 
-from libpep.group.group_elements import GroupElement
+from libpep.group.elements import GroupElement
 from libpep.group.scalars import ScalarNonZero, ScalarCanBeZero
 
 class TestArithmetic(unittest.TestCase):

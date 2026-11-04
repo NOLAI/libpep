@@ -16,7 +16,7 @@
 
 use super::ristretto255::Ristretto255Sha512;
 use super::Ciphersuite;
-use crate::group::group_elements::GroupElement;
+use crate::group::elements::GroupElement;
 use crate::group::scalars::ScalarNonZero;
 use crate::group::Group;
 use sha2::digest::common::BlockSizeUser;
@@ -135,7 +135,7 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// This is the only encoding available on every ciphersuite. It is not invertible: the origin
 /// party recognizes a pseudonym as belonging to `x` only by recomputing it. For an invertible
 /// encoding on ristretto255, see
-/// [`GroupElement::from_lizard`](crate::group::group_elements::GroupElement::from_lizard).
+/// [`GroupElement::from_lizard`](crate::group::elements::GroupElement::from_lizard).
 ///
 /// No secret enters this hash, unlike factor derivation, so another protocol hashing the same
 /// input on the same group would get the same element. The `"nPEPV1-"` prefix of the
@@ -158,10 +158,10 @@ pub fn expand_message_xmd<H: Digest + BlockSizeUser>(
 /// with a known discrete-log relation. Encoding an identifier `x` as `x * G`, or as any scalar
 /// multiple of a fixed element, violates this and is forbidden. This function satisfies the
 /// requirement through the random oracle property of hashing to the group.
-/// [`GroupElement::from_lizard`](crate::group::group_elements::GroupElement::from_lizard) satisfies it
+/// [`GroupElement::from_lizard`](crate::group::elements::GroupElement::from_lizard) satisfies it
 /// heuristically and without proof: it is not a random oracle, but a related encoding would have
 /// to invert the map to an input that also passes its check bits. A uniformly random element
-/// from [`GroupElement::random`](crate::group::group_elements::GroupElement::random) satisfies it, since
+/// from [`GroupElement::random`](crate::group::elements::GroupElement::random) satisfies it, since
 /// nobody knows its discrete logarithm.
 #[must_use]
 pub fn hash_to_group_generic<C: Ciphersuite>(x: &[u8]) -> <C::Group as Group>::Element {

@@ -226,7 +226,7 @@ mod tests {
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{RekeyFactorCommitment, VerifiableRekey, VerifiableRekey2};
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
 
     type C = Ristretto255Sha512;

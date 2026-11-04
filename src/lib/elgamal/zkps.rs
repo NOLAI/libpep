@@ -22,7 +22,7 @@
 //! # Examples
 //!
 //! ```
-//! # use libpep::group::group_elements::{GroupElement, G};
+//! # use libpep::group::elements::{GroupElement, G};
 //! # use libpep::group::scalars::ScalarNonZero;
 //! # use libpep::ciphersuite::Ristretto255Sha512;
 //! # use libpep::elgamal::zkps::{create_proof, verify_proof};
@@ -277,7 +277,7 @@ pub fn verify_proof<C: Ciphersuite>(
 mod tests {
     use super::verify_proof_split;
     use crate::ciphersuite::Ristretto255Sha512;
-    use crate::group::group_elements::GroupElement;
+    use crate::group::elements::GroupElement;
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
     use rand_core::{CryptoRng, Rng};

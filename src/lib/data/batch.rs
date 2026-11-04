@@ -365,7 +365,7 @@ mod tests {
     #[test]
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn empty_batch_is_valid() {
-        let pk = PseudonymSessionPublicKey::from_point(crate::group::group_elements::G);
+        let pk = PseudonymSessionPublicKey::from_point(crate::group::elements::G);
         let batch = EncryptedBatch::<EncryptedPseudonym>::new(Vec::new(), pk).expect("construct");
         assert!(batch.is_empty());
         assert_eq!(batch.len(), 0);

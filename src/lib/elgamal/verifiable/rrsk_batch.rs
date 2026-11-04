@@ -204,7 +204,7 @@ mod tests {
         PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK2Batch,
         VerifiableRRSKBatch,
     };
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
 
     type C = Ristretto255Sha512;

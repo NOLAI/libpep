@@ -542,7 +542,7 @@ impl PyVerifier {
     fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
-        rekey_commitment: &crate::group::group_elements::PyGroupElement,
+        rekey_commitment: &crate::group::elements::PyGroupElement,
         proof: &crate::keys::distribution::proofs::PySessionKeyShareProof,
     ) -> PyResult<()> {
         self.0

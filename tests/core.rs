@@ -642,7 +642,7 @@ fn plaintext_injection_is_blocked_by_rerandomization() {
 
     let pseudonym: Pseudonym = Pseudonym::random(&mut rng);
     let malformed = EncryptedPseudonym::from_value(ElGamal {
-        gb: libpep::group::group_elements::GroupElement::random(&mut rng),
+        gb: libpep::group::elements::GroupElement::random(&mut rng),
         gc: *pseudonym.value(),
         #[cfg(feature = "elgamal3")]
         gy: *from_session.pseudonym.public.value(),

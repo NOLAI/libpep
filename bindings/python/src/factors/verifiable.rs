@@ -6,7 +6,7 @@
 #![cfg(feature = "verifiable-derivation")]
 
 use crate::contexts::{PyEncryptionContext, PyPseudonymizationDomain};
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 #[cfg(feature = "verifiable-derivation")]
 use libpep::factors::{
     MasterPseudonymizationPublicKey, MasterPseudonymizationSecret, MasterRekeyingPublicKey,

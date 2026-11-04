@@ -7,6 +7,15 @@ paths of 0.14.0, which `cargo semver-checks` flags as a major change.
 
 ### API changes
 
+- The group and the ciphersuite are top-level modules. `group` has the `Group` trait, its
+  ristretto255 instance (`group::ristretto255`, with `elements` and `scalars` re-exported from
+  `group`) and the element encodings. `ciphersuite` has the `Ciphersuite` trait,
+  `CiphersuiteId`, `Ristretto255Sha512`, the hashing to the group and to scalars
+  (`ciphersuite::hashing`) and the raw-tag ristretto255 hash functions
+  (`ciphersuite::ristretto255`). `elgamal` keeps the ciphertext and the primitives, generic over a
+  group. `group_elements` is `elements`, next to `scalars`. The Python module paths follow:
+  `libpep.group.elements`, `libpep.group.scalars`, `libpep.ciphersuite` and
+  `libpep.ciphersuite.hashing` replace `libpep.elgamal.arithmetic.*`.
 - `RekeyPublicKey` is `keys::RekeyPublicKey` (was `factors::RekeyPublicKey`). It is a key
   operation parameterised by an info, and `factors` no longer depends on `keys`. The
   transcryptor prelude keeps exporting it.
@@ -19,14 +28,6 @@ a major change against the published 0.13.0.
 
 ### API changes
 
-- The group and the ciphersuite are top-level modules. `group` has the `Group` trait, its
-  ristretto255 instance (`group::ristretto255`, with `group_elements` and `scalars` re-exported
-  from `group`) and the element encodings. `ciphersuite` has the `Ciphersuite` trait,
-  `CiphersuiteId`, `Ristretto255Sha512`, the hashing to the group and to scalars
-  (`ciphersuite::hashing`) and the raw-tag ristretto255 hash functions
-  (`ciphersuite::ristretto255`). `elgamal` keeps the ciphertext and the primitives, generic over a
-  group. The Python module paths follow: `libpep.group.group_elements`, `libpep.group.scalars`,
-  `libpep.ciphersuite` and `libpep.ciphersuite.hashing` replace `libpep.elgamal.arithmetic.*`.
 - `EncryptionSecret` is renamed `RekeyingSecret`, as it derives the rekey factors (the Python and
   JavaScript classes, the `encryption_secret` parameters and the `peppy` `--encryption-secret`
   option follow: `rekeying_secret` and `--rekeying-secret`).
@@ -89,9 +90,9 @@ a major change against the published 0.13.0.
   JavaScript classes follow. `data::json::utils` (the byte encodings of JSON booleans and numbers)
   is public.
 - Group arithmetic and hashing are separate traits. `Group`
-  (`group::Group`) is the group arithmetic only, including
+  (`elgamal::arithmetic::Group`) is the group arithmetic only, including
   `element_from_uniform_bytes` and `scalar_from_uniform_bytes`. `Ciphersuite`
-  (`ciphersuite::Ciphersuite`) has a `Group`, a `Hash`, a `CiphersuiteId` and the
+  (`elgamal::arithmetic::Ciphersuite`) has a `Group`, a `Hash`, a `CiphersuiteId` and the
   `hash_to_group` and `hash_to_scalar` maps. `Ristretto255Sha512` is the ciphersuite of
   ristretto255 with SHA-512, and its group is `Ristretto255`. Data types, keys, factors and proofs
   are generic over the group (`Pseudonym<G>`, `Proof<G>`); what hashes is generic over a
@@ -128,9 +129,9 @@ a major change against the published 0.13.0.
 - Module layout: `elgamal` is the generic low-level API, with the ciphertext in
   `elgamal::ciphertext` (re-exported as `elgamal::ElGamal`, `encrypt` and `decrypt`), and the
   ristretto255 group, its scalars (`ScalarNonZero`, `ScalarCanBeZero`), group elements and raw-tag
-  hash functions in `group::ristretto255` and `ciphersuite::ristretto255` (`group_elements` and `scalars` are still
-  re-exported from `group`; `hash_to_group_with_dst` and `hash_to_scalar_with_dst`
-  are in `ciphersuite::ristretto255`, re-exported from `ciphersuite::hashing`). Each module is one file, or a module
+  hash functions in `elgamal::arithmetic::ristretto255` (`group_elements` and `scalars` are still
+  re-exported from `elgamal::arithmetic`; `hash_to_group_with_dst` and `hash_to_scalar_with_dst`
+  are in `elgamal::arithmetic::ristretto255::hashing`, re-exported from `elgamal::arithmetic::hashing`). Each module is one file, or a module
   whose `mod.rs` only declares and re-exports. `TranscryptorId` lives in `contexts` (still re-exported from
   `transcryptor`), `Batchable` in `data::batch`, `SessionKeyShareProof::verify_share` in
   `keys::distribution::shares`, and the ElGamal-specific data traits (`ElGamalEncryptable`,
@@ -286,7 +287,7 @@ a major change against the published 0.13.0.
   session keys change**, and the HMAC-SHA512 derivation of 0.13 is gone: `DeriveFactor` is the
   only derivation outside `legacy`, which is unchanged and still reproduces the PEP repository
   implementation bit for bit.
-- A `Ciphersuite` (`ciphersuite::Ciphersuite`, a trait) pairs a `Group` with the hash its
+- A `Ciphersuite` (`elgamal::arithmetic::Ciphersuite`, a trait) pairs a `Group` with the hash its
   protocol hashes with, and names itself with a `CiphersuiteId` (the identifier, context string
   `"nPEPV1-" || identifier`) that domain-separates the protocol's hashes. An identifier names a
   group and a hash together (`ristretto255-SHA512`), so it is the associated constant `Ciphersuite::ID`
@@ -348,11 +349,11 @@ a major change against the published 0.13.0.
   reflexively for every key type. The same widening is in the Python bindings; the JavaScript
   bindings keep their typed parameters, as wasm-bindgen cannot discriminate between exported
   types at runtime.
-- The group abstraction `group::Group`: a marker type
+- The group abstraction `elgamal::arithmetic::Group`: a marker type
   with the scalar and element types, serialization, the maps from uniform bytes to scalars and
   elements, random scalars and elements, and the generator, with `Ristretto255` as its instance.
   `Ristretto255Sha512::hash_to_group` and `hash_to_scalar` hash with the shared
-  `expand_message_xmd` (RFC 9380) of `ciphersuite::hashing` under SHA-512 and match the
+  `expand_message_xmd` (RFC 9380) of `elgamal::arithmetic::hashing` under SHA-512 and match the
   RFC 9497 ristretto255-SHA512 test vectors. Optional encodings:
   `InvertibleEncoding` (the lizard encoding, implemented for ristretto255) and `OaepEncoding` (for
   Weierstrass curves, to be implemented).
@@ -379,12 +380,12 @@ a major change against the published 0.13.0.
   The four-element encoding in `elgamal::zkps` remains the default; proofs in the two
   encodings are not interchangeable.
 - `benches/dleq.rs`: proof size and generate/verify time for both encodings at m = 1, 10 and 100.
-- `ciphersuite::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
-  SHA-512 test vectors), and in `ciphersuite::ristretto255` (re-exported here) the raw-tag
+- `elgamal::arithmetic::hashing`: `expand_message_xmd` (RFC 9380, with the RFC's SHA-256 and
+  SHA-512 test vectors), and in `elgamal::arithmetic::ristretto255::hashing` (re-exported here) the raw-tag
   `hash_to_group_with_dst` (`hash_to_ristretto255` with SHA-512) and `hash_to_scalar_with_dst`
   (`HashToScalar`), cross-checked against the ristretto255-SHA512 test vectors of RFC 9497
   (Appendix A.1).
-- `ciphersuite::hashing::hash_to_group_generic::<C>(x)`, and `hash_to_group(x)` for
+- `elgamal::arithmetic::hashing::hash_to_group_generic::<C>(x)`, and `hash_to_group(x)` for
   ristretto255: the `hash_to_group` encoding of an identifier, with DST
   `"HashToGroup-" || contextString` derived from `C::ID`, where `C` is the `Ciphersuite`. Its docs
   state the property every encoding must have (no known discrete-log relations; encoding `x` as
@@ -401,11 +402,11 @@ a major change against the published 0.13.0.
   so that a ciphersuite whose identifier says `-SHA256` cannot hash with SHA-512. Code generic
   over a `Ciphersuite` reaches its hash through it; the ristretto255 primitives that the RFC 9380
   and RFC 9497 test vectors define keep hashing with SHA-512.
-- `ciphersuite::CiphersuiteId`, with `identifier()`, `context_string()` and `dst()`,
+- `elgamal::arithmetic::CiphersuiteId`, with `identifier()`, `context_string()` and `dst()`,
   reached through `Ciphersuite::ID` and built with the `ciphersuite!` macro so that the
   identifier appears once.
-- Python: `libpep.ciphersuite` (`CiphersuiteId`) and
-  `libpep.ciphersuite.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
+- Python: `libpep.elgamal.arithmetic.ciphersuite` (`CiphersuiteId`) and
+  `libpep.elgamal.arithmetic.hashing` (`expand_message_xmd_sha512`, `hash_to_group`,
   `hash_to_group_with_dst`, `hash_to_scalar_with_dst`). JavaScript: `CiphersuiteId`, `hashToGroup`,
   `hashToGroupWithDst`, `hashToScalarWithDst`, `expandMessageXmdSha512`.
 - `peppy point hash-to-group <IDENTIFIER>`: the origin pseudonym of an identifier under the

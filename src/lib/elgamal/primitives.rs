@@ -230,7 +230,7 @@ pub fn rrsk2<G: Group>(
 mod tests {
     use super::*;
     use crate::elgamal::test_util::{decrypt, encrypt};
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
 
     #[test]

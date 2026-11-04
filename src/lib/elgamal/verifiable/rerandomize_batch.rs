@@ -6,7 +6,7 @@ use crate::ciphersuite::Ciphersuite;
 use crate::ciphersuite::Ristretto255Sha512;
 use crate::elgamal::ElGamal;
 #[cfg(feature = "insecure")]
-use crate::group::group_elements::GroupElement;
+use crate::group::elements::GroupElement;
 use crate::group::Group;
 use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};

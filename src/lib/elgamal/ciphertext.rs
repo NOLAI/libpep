@@ -151,7 +151,7 @@ pub fn decrypt<G: Group>(encrypted: &ElGamal<G>, y: &G::Scalar) -> G::Element {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
 
