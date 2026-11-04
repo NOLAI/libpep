@@ -194,7 +194,7 @@ mod tests {
     use crate::group::Ristretto255;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
-    use crate::group::group_elements::G;
+    use crate::group::elements::G;
     use crate::keys::traits::PublicKey;
 
     #[test]

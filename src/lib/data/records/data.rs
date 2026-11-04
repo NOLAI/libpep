@@ -518,8 +518,8 @@ mod tests {
     fn ciphertext() -> ElGamal {
         let rng = &mut rand::rng();
         let y = crate::group::scalars::ScalarNonZero::random(rng);
-        let m = crate::group::group_elements::GroupElement::random(rng);
-        crate::elgamal::encrypt::<Ristretto255, _>(&m, &(y * crate::group::group_elements::G), rng)
+        let m = crate::group::elements::GroupElement::random(rng);
+        crate::elgamal::encrypt::<Ristretto255, _>(&m, &(y * crate::group::elements::G), rng)
     }
 
     /// A record of one long value without blocks is distinct from a record without values.

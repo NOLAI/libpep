@@ -338,7 +338,7 @@ mod tests {
     use crate::ciphersuite::Ristretto255Sha512;
     use crate::contexts::{EncryptionContext, PseudonymizationDomain};
     use crate::factors::Factor;
-    use crate::group::group_elements::G;
+    use crate::group::elements::G;
 
     #[test]
     fn test_master_pseudonymization_key_derivation() {

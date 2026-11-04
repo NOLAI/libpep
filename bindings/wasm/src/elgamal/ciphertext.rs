@@ -1,4 +1,4 @@
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::elgamal::{decrypt, encrypt};

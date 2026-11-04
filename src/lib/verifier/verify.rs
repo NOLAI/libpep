@@ -167,7 +167,7 @@ mod tests {
         FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
     };
     use crate::factors::VerifiablePseudonymizationCommitment;
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::Ristretto255;
 
     type Verifier = super::Verifier<Ristretto255Sha512>;

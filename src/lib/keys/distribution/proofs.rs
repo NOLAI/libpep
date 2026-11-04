@@ -180,7 +180,7 @@ impl<G: Group> SessionKeyShareProof<G> {
 #[cfg(test)]
 mod tests {
     use crate::ciphersuite::Ristretto255Sha512;
-    use crate::group::group_elements::G;
+    use crate::group::elements::G;
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
 

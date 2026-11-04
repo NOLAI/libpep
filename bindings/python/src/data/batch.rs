@@ -111,7 +111,7 @@ impl PyPseudonymBatch {
     /// `(batch-pk, !elgamal3)`).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
-        crate::keys::PyPseudonymSessionPublicKey(crate::group::group_elements::PyGroupElement(
+        crate::keys::PyPseudonymSessionPublicKey(crate::group::elements::PyGroupElement(
             *libpep::keys::PublicKey::value(self.inner.public_key()),
         ))
     }
@@ -259,7 +259,7 @@ impl PyAttributeBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
-        crate::keys::PyAttributeSessionPublicKey(crate::group::group_elements::PyGroupElement(
+        crate::keys::PyAttributeSessionPublicKey(crate::group::elements::PyGroupElement(
             *libpep::keys::PublicKey::value(self.inner.public_key()),
         ))
     }
@@ -387,7 +387,7 @@ impl PyLongPseudonymBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
-        crate::keys::PyPseudonymSessionPublicKey(crate::group::group_elements::PyGroupElement(
+        crate::keys::PyPseudonymSessionPublicKey(crate::group::elements::PyGroupElement(
             *libpep::keys::PublicKey::value(self.inner.public_key()),
         ))
     }
@@ -536,7 +536,7 @@ impl PyLongAttributeBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
-        crate::keys::PyAttributeSessionPublicKey(crate::group::group_elements::PyGroupElement(
+        crate::keys::PyAttributeSessionPublicKey(crate::group::elements::PyGroupElement(
             *libpep::keys::PublicKey::value(self.inner.public_key()),
         ))
     }
@@ -807,7 +807,7 @@ impl PyLongRecordBatch {
 fn rust_session_public_keys_to_py(
     keys: &libpep::keys::SessionPublicKeys,
 ) -> crate::keys::distribution::shares::PySessionPublicKeys {
-    use crate::group::group_elements::PyGroupElement;
+    use crate::group::elements::PyGroupElement;
     use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 
     crate::keys::distribution::shares::PySessionPublicKeys {

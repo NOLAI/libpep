@@ -2,7 +2,7 @@
 
 use crate::contexts::{WASMEncryptionContext, WASMPseudonymizationDomain};
 use crate::factors::secrets::{WASMPseudonymizationSecret, WASMRekeyingSecret};
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,

@@ -22,7 +22,7 @@ use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,

@@ -1,6 +1,6 @@
 //! Ristretto255 shorthands for the tests of this module.
 
-use crate::group::group_elements::GroupElement;
+use crate::group::elements::GroupElement;
 use crate::group::scalars::ScalarNonZero;
 use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};

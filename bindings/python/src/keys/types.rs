@@ -1,9 +1,9 @@
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::group::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeGlobalSecretKey, AttributeSessionKeys,
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,

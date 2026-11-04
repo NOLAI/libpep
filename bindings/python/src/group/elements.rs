@@ -1,6 +1,6 @@
 use crate::group::PyScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::elements::{GroupElement, G};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 use pyo3::Py;

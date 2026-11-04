@@ -18,7 +18,7 @@ pub struct ZeroArgumentError;
 
 /// Scalar, always non-zero.
 ///
-/// Can be converted to a [`GroupElement`](super::group_elements::GroupElement).
+/// Can be converted to a [`GroupElement`](super::elements::GroupElement).
 /// Supports multiplication, and inversion (so division is possible).
 /// For addition and subtraction, use [`ScalarCanBeZero`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -94,7 +94,7 @@ impl ScalarNonZero {
 
 /// Scalar, can be zero.
 ///
-/// Can be converted to a [`GroupElement`](super::group_elements::GroupElement).
+/// Can be converted to a [`GroupElement`](super::elements::GroupElement).
 /// Supports multiplication, addition and subtraction; the default value is zero.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Default)]
 pub struct ScalarCanBeZero(pub(crate) Scalar);

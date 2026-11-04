@@ -746,7 +746,7 @@ class TestSessionKeyShareBinding(unittest.TestCase):
 
     @staticmethod
     def _setup():
-        from libpep.group.group_elements import GroupElement
+        from libpep.group.elements import GroupElement
         from libpep.group.scalars import ScalarNonZero
         from libpep.keys import BlindingCommitment, SessionKeyShareProof
 
@@ -760,7 +760,7 @@ class TestSessionKeyShareBinding(unittest.TestCase):
     def test_distributed_transcryptor_proves_its_shares(self):
         # The transcryptor makes the share and its proof from its own blinding and rekey
         # factors; the user checks both halves against the published commitments.
-        from libpep.group.group_elements import GroupElement
+        from libpep.group.elements import GroupElement
         from libpep.group.scalars import ScalarNonZero
         from libpep.factors import make_attribute_rekey_factor, make_pseudonym_rekey_factor
         from libpep.keys import BlindingCommitment, BlindingFactor

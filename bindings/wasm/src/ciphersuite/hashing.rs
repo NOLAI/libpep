@@ -1,6 +1,6 @@
 //! WASM bindings for hashing to the group and to scalars (RFC 9380).
 
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarCanBeZero;
 use libpep::ciphersuite::hashing;
 use sha2::Sha512;

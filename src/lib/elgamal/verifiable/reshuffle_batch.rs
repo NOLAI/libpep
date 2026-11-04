@@ -185,7 +185,7 @@ mod tests {
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
     };
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
 
     type C = Ristretto255Sha512;

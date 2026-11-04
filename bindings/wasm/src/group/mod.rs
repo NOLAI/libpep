@@ -1,2 +1,2 @@
-pub mod group_elements;
+pub mod elements;
 pub mod scalars;

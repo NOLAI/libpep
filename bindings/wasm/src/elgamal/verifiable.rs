@@ -9,7 +9,7 @@
 use crate::elgamal::WASMElGamal;
 use crate::errors::malformed_proof_err;
 #[cfg(not(feature = "elgamal3"))]
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::ciphersuite::Ristretto255Sha512;
@@ -22,7 +22,7 @@ use libpep::elgamal::verifiable::{
     VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
 };
 #[cfg(feature = "elgamal3")]
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 use libpep::group::Ristretto255;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;

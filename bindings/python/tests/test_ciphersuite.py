@@ -7,7 +7,7 @@ import unittest
 
 from libpep.contexts import EncryptionContext, PseudonymizationDomain
 from libpep.ciphersuite import CiphersuiteId
-from libpep.group.group_elements import GroupElement
+from libpep.group.elements import GroupElement
 from libpep.ciphersuite.hashing import (
     expand_message_xmd_sha512,
     hash_to_group,

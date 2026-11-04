@@ -1,6 +1,6 @@
 //! WASM bindings for zero-knowledge proofs.
 
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
 use libpep::ciphersuite::Ristretto255Sha512;

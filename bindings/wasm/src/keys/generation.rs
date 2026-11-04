@@ -3,7 +3,7 @@
 use super::types::*;
 use crate::contexts::WASMEncryptionContext;
 use crate::factors::secrets::WASMRekeyingSecret;
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::prelude::*;

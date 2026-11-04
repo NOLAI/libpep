@@ -16,7 +16,7 @@ use libpep::elgamal::verifiable::VerifiableRRSK2;
 #[cfg(feature = "verifiable-derivation")]
 use libpep::factors::{MasterPseudonymizationSecret, MasterRekeyingSecret};
 #[cfg(feature = "verifiable-derivation")]
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 #[cfg(feature = "verifiable-derivation")]
 use libpep::group::scalars::ScalarNonZero;
 use libpep::keys::{AttributeSessionKeys, PseudonymSessionKeys, PseudonymSessionPublicKey};
@@ -1169,7 +1169,7 @@ fn mixed_gy_rejected_pseudonymization_batch() {
 #[cfg(feature = "verifiable-derivation")]
 #[test]
 fn factors_derived_from_master_keys_verify_against_computed_commitments() {
-    use libpep::group::group_elements::G;
+    use libpep::group::elements::G;
 
     let rng = &mut rand::rng();
     let master_pseudonymization = MasterPseudonymizationSecret::random(rng);

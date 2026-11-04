@@ -3,7 +3,7 @@ use libpep::elgamal::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
 use libpep::elgamal::{decrypt, encrypt};
-use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::elements::{GroupElement, G};
 use libpep::group::scalars::ScalarNonZero;
 use libpep::group::Ristretto255;
 use rand::rng;

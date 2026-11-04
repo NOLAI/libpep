@@ -11,9 +11,9 @@
 //! Edwards form of Curve25519), using the
 //! [`curve25519-dalek`](https://crates.io/crates/curve25519-dalek) crate (with its `lizard`
 //! feature for the lizard encoding). Its element and scalar types are
-//! [`GroupElement`](group_elements::GroupElement), [`ScalarNonZero`](scalars::ScalarNonZero) and
+//! [`GroupElement`](elements::GroupElement), [`ScalarNonZero`](scalars::ScalarNonZero) and
 //! [`ScalarCanBeZero`](scalars::ScalarCanBeZero). Scalars can be converted into group elements by
-//! multiplying them with the base point [`G`](group_elements::G). The two scalar types handle edge
+//! multiplying them with the base point [`G`](elements::G). The two scalar types handle edge
 //! cases in the rest of the code where a zero scalar is not allowed. The arithmetic operators for
 //! addition, subtraction and multiplication are overloaded, so that the code matches the
 //! mathematical notation of the scheme.
@@ -36,7 +36,7 @@
 
 pub mod ristretto255;
 
-pub use ristretto255::{group_elements, scalars, Ristretto255};
+pub use ristretto255::{elements, scalars, Ristretto255};
 
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]

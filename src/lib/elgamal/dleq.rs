@@ -28,7 +28,7 @@
 //! # Example
 //!
 //! ```
-//! # use libpep::group::group_elements::{GroupElement, G};
+//! # use libpep::group::elements::{GroupElement, G};
 //! # use libpep::group::scalars::{ScalarNonZero, ScalarTraits};
 //! # use libpep::ciphersuite::Ristretto255Sha512;
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
@@ -316,7 +316,7 @@ pub(crate) fn verify_proof_with<C: Ciphersuite>(
 mod tests {
     use super::*;
     use crate::ciphersuite::Ristretto255Sha512;
-    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::elements::{GroupElement, G};
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
 

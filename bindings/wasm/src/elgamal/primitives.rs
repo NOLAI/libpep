@@ -1,6 +1,6 @@
 use super::WASMElGamal;
 #[cfg(not(feature = "elgamal3"))]
-use crate::group::group_elements::WASMGroupElement;
+use crate::group::elements::WASMGroupElement;
 use crate::group::scalars::WASMScalarNonZero;
 use libpep::elgamal::primitives::*;
 use wasm_bindgen::prelude::*;

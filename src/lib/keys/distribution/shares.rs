@@ -405,7 +405,7 @@ mod proof_tests {
     use crate::factors::{
         make_attribute_rekey_factor, make_pseudonym_rekey_factor, Factor, RekeyingSecret,
     };
-    use crate::group::group_elements::G;
+    use crate::group::elements::G;
     use crate::group::scalars::ScalarNonZero;
     use crate::group::Ristretto255;
     use crate::keys::distribution::BlindingFactor;

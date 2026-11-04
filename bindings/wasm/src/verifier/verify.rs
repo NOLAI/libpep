@@ -563,7 +563,7 @@ impl WASMVerifier {
     pub fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
-        rekey_commitment: &crate::group::group_elements::WASMGroupElement,
+        rekey_commitment: &crate::group::elements::WASMGroupElement,
         proof: &crate::keys::distribution::proofs::WASMSessionKeyShareProof,
     ) -> Result<(), JsValue> {
         self.inner

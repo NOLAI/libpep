@@ -4,7 +4,7 @@
 
 #![cfg(feature = "verifiable")]
 
-use crate::group::group_elements::PyGroupElement;
+use crate::group::elements::PyGroupElement;
 use crate::group::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
 use libpep::ciphersuite::Ristretto255Sha512;

@@ -21,7 +21,7 @@ use libpep::factors::{
     make_pseudonym_rekey_factor_generic, Factor, PseudonymizationSecret, RekeyingSecret,
     TranscryptionInfo,
 };
-use libpep::group::group_elements::GroupElement;
+use libpep::group::elements::GroupElement;
 use libpep::group::scalars::{ScalarCanBeZero, ScalarNonZero, ScalarTraits};
 use libpep::group::{Group, InvertibleEncoding, Ristretto255};
 use libpep::keys::distribution::make_distributed_global_keys_generic;
