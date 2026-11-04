@@ -1,6 +1,6 @@
 {
   "name": "@nolai/libpep-wasm",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "WebAssembly bindings for libpep, polymorphic encryption and pseudonymization",
   "repository": {
     "type": "git",
