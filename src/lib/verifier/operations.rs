@@ -4,14 +4,14 @@
 use super::cache::CommitmentsCache;
 use super::errors::VerifyError;
 use super::verify::{PseudonymizationKey, RekeyTransitionKey, Verifier};
+use crate::ciphersuite::Ciphersuite;
+use crate::ciphersuite::ElementOf;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::data::traits::Encrypted;
 use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::ciphersuite::ElementOf;
-use crate::elgamal::arithmetic::Ciphersuite;
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,

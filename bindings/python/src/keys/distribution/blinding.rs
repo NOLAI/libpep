@@ -1,4 +1,4 @@
-use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::group::scalars::PyScalarNonZero;
 use crate::keys::types::{
     PyAttributeGlobalSecretKey, PyGlobalSecretKeys, PyPseudonymGlobalSecretKey,
 };

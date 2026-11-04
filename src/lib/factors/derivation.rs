@@ -7,7 +7,7 @@
 //!
 //! - The default is `DeriveFactor`: `HashToScalar` over the length-prefixed secret, the label and
 //!   the length-prefixed identifier, domain-separated with `"DeriveFactor-" || contextString` of
-//!   the [ciphersuite](crate::elgamal::arithmetic::Ciphersuite::ID). A factor that is 0 or 1 is
+//!   the [ciphersuite](crate::ciphersuite::Ciphersuite::ID). A factor that is 0 or 1 is
 //!   rejected and the derivation retried with the next counter.
 //! - `legacy`: the derivation of the legacy PEP repository, which it reproduces bit for bit.
 //!
@@ -17,12 +17,13 @@
 //!
 //! The secret is part of the hash input, so deployments with different secrets derive unrelated
 //! factors, and the domain or session identifier separates within a deployment. The ciphersuite
-//! adds its tag on top (see [`ciphersuite`](crate::elgamal::arithmetic::ciphersuite)).
+//! adds its tag on top (see [`ciphersuite`](mod@crate::ciphersuite)).
 
+use crate::ciphersuite::{Ciphersuite, Ristretto255Sha512};
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
 use crate::factors::secrets::{PseudonymizationSecret, RekeyingSecret, Secret};
 use crate::factors::types::*;
+use crate::group::Group;
 #[cfg(feature = "legacy")]
 use hmac::{Hmac, KeyInit, Mac};
 #[cfg(feature = "legacy")]
@@ -404,11 +405,11 @@ impl TranscryptionInfo {
 #[cfg(all(test, not(feature = "legacy")))]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::hashing::hash_to_scalar_with_dst;
-    use crate::elgamal::arithmetic::scalars::ScalarTraits;
-    use crate::elgamal::arithmetic::{Ciphersuite, Ristretto255Sha512};
+    use crate::ciphersuite::hashing::hash_to_scalar_with_dst;
+    use crate::ciphersuite::{Ciphersuite, Ristretto255Sha512};
     use crate::factors::secrets::Secret;
     use crate::factors::Factor;
+    use crate::group::scalars::ScalarTraits;
 
     #[test]
     fn factors_are_deterministic_and_identifier_specific() {

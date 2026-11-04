@@ -1,8 +1,8 @@
 //! WASM bindings for hashing to the group and to scalars (RFC 9380).
 
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarCanBeZero;
-use libpep::elgamal::arithmetic::hashing;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarCanBeZero;
+use libpep::ciphersuite::hashing;
 use sha2::Sha512;
 use wasm_bindgen::prelude::*;
 
@@ -32,7 +32,7 @@ pub fn wasm_expand_message_xmd_sha512(
 /// `Attribute.fromLizard` for an invertible encoding.
 #[wasm_bindgen(js_name = hashToGroup)]
 pub fn wasm_hash_to_group(x: &[u8]) -> WASMGroupElement {
-    libpep::elgamal::arithmetic::hashing::hash_to_group(x).into()
+    libpep::ciphersuite::hashing::hash_to_group(x).into()
 }
 
 /// `hash_to_ristretto255` (RFC 9380) with SHA-512 under the complete domain separation tag

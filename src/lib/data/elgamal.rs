@@ -8,8 +8,8 @@
 //! depend on this module.
 
 use crate::data::traits::{Encryptable, Encrypted};
-use crate::elgamal::arithmetic::group::{Group, InvertibleEncoding};
 use crate::elgamal::ElGamal;
+use crate::group::{Group, InvertibleEncoding};
 use rand_core::{CryptoRng, Rng};
 
 /// An encrypted type that is a single ElGamal ciphertext, with the encodings of the ciphertext.
@@ -135,7 +135,7 @@ pub trait ElGamalEncryptable: Encryptable {
     where
         Self: Sized,
     {
-        crate::elgamal::arithmetic::group::decode_hex::<<Self::Group as Group>::ElementBytes>(hex)
+        crate::group::decode_hex::<<Self::Group as Group>::ElementBytes>(hex)
             .and_then(|b| Self::from_slice(b.as_ref()))
     }
     /// Create from a 64-byte hash value.

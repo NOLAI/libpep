@@ -1,11 +1,11 @@
 use energy_bench::{EnergyBench, EnergyBenchConfig};
-use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::primitives::{
     rekey, rekey2, rerandomize, reshuffle, reshuffle2, rrsk, rrsk2, rsk, rsk2,
 };
 use libpep::elgamal::{decrypt, encrypt};
+use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::scalars::ScalarNonZero;
+use libpep::group::Ristretto255;
 use rand::rng;
 
 struct BenchMetadata {

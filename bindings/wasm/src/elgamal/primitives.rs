@@ -1,7 +1,7 @@
 use super::WASMElGamal;
 #[cfg(not(feature = "elgamal3"))]
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use libpep::elgamal::primitives::*;
 use wasm_bindgen::prelude::*;
 

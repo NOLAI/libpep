@@ -9,12 +9,12 @@
 //! element `A = a·G`; no separate proof of well-formedness is required because every
 //! verifiable operation proves a relation against `A` directly.
 
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::verifiable::{PseudonymizationFactorCommitment, RekeyFactorCommitment};
 use crate::factors::types::{
     AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
+use crate::group::Group;
+use crate::group::Ristretto255;
 
 /// The commitments to the reshuffle and rekey factors of a pseudonymization transition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

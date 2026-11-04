@@ -36,11 +36,12 @@
 //!   and JSON documents, and the traits the high-level API is generic over.
 //! - [`keys`], [`contexts`] and [`factors`] are the key, identifier and factor material that the
 //!   two roles exchange.
-//! - [`elgamal`] is the low-level layer: the ciphertext, the PEP
-//!   [primitives](elgamal::primitives), the group [arithmetic](elgamal::arithmetic), and
-//!   [hashing](elgamal::arithmetic::hashing) to the group and to scalars, which runs under a
-//!   [`Ciphersuite`](elgamal::arithmetic::Ciphersuite): a group together with the hash and the
-//!   identifier its domain separation tags are built from.
+//! - [`elgamal`] is the low-level layer: the ciphertext and the PEP
+//!   [primitives](elgamal::primitives).
+//! - [`group`] is the prime-order [`Group`](group::Group) everything is built on, with its
+//!   ristretto255 instance, and [`ciphersuite`](mod@ciphersuite) pairs a group with a hash and the identifier its
+//!   domain separation tags are built from, as a [`Ciphersuite`](ciphersuite::Ciphersuite), with
+//!   the [hashing](ciphersuite::hashing) to the group and to scalars that runs under it.
 //! - [`prelude`] imports what a typical application needs, with subsets for each role.
 //! - With the `verifiable` feature, `elgamal::verifiable` holds the primitives that emit
 //!   zero-knowledge proofs, `verifier` checks such proofs against factor commitments, and the
@@ -49,20 +50,20 @@
 //!
 //! ## Groups and ciphersuites
 //!
-//! The whole API ([`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
+//! The whole API ([`group`], [`ciphersuite`](mod@ciphersuite), [`elgamal`], [`data`], [`keys`], [`factors`], [`client`], [`transcryptor`],
 //! `verifier`) is generic, in two layers.
 //!
 //! The data types (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) and the group
 //! arithmetic are generic over the prime-order group, abstracted as the
-//! [`Group`](elgamal::arithmetic::Group) trait. Whatever hashes is generic over a
-//! [`Ciphersuite`](elgamal::arithmetic::Ciphersuite), which pairs a group with a hash: deriving
+//! [`Group`](group::Group) trait. Whatever hashes is generic over a
+//! [`Ciphersuite`](ciphersuite::Ciphersuite), which pairs a group with a hash: deriving
 //! factors, hashing an identifier to the group, creating and verifying proofs, and the roles built
 //! on them (`Transcryptor<C>`, `Verifier<C>`). Another group and hash can be used by implementing
 //! the two traits.
 //!
 //! The library is built for ristretto255 with SHA-512,
-//! [`Ristretto255`](elgamal::arithmetic::Ristretto255) with
-//! [`Ristretto255Sha512`](elgamal::arithmetic::Ristretto255Sha512), and every generic type
+//! [`Ristretto255`](group::Ristretto255) with
+//! [`Ristretto255Sha512`](ciphersuite::Ristretto255Sha512), and every generic type
 //! defaults its parameter to them: `Pseudonym` is `Pseudonym<Ristretto255>` and `Transcryptor` is
 //! `Transcryptor<Ristretto255Sha512>`. In the common case no type parameter is written, which is
 //! how `peppy` and the Python and JavaScript bindings use the library.
@@ -94,7 +95,7 @@
 //!
 //! - the plain name is the ristretto255 one, with no type parameter: [`keys::make_global_keys`],
 //!   [`keys::make_session_keys`] and the other key functions, [`factors::make_pseudonymization_factor`]
-//!   and the other factor functions, [`elgamal::arithmetic::hashing::hash_to_group`],
+//!   and the other factor functions, [`ciphersuite::hashing::hash_to_group`],
 //!   [`transcryptor::Transcryptor::new`], [`transcryptor::DistributedTranscryptor::new`],
 //!   `PseudonymizationInfo::new` (and the other info types), and with the `verifiable` feature
 //!   `Verifier::new`, the session key share functions with a proof and the master secrets;
@@ -144,11 +145,13 @@
 
 #![warn(missing_docs)]
 
+pub mod ciphersuite;
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
 pub mod factors;
+pub mod group;
 pub mod keys;
 pub mod prelude;
 pub mod transcryptor;

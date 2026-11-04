@@ -16,13 +16,13 @@ use crate::data::records::WASMEncryptedRecord;
 #[cfg(feature = "long")]
 use crate::data::records::WASMLongEncryptedRecord;
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
 use crate::errors::batch_err_to_js;
 use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
+#[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
+use crate::group::group_elements::WASMGroupElement;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{
     WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey, WASMSessionPublicKeys,

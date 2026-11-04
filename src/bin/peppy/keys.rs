@@ -5,9 +5,9 @@ use clap::Subcommand;
 use libpep::client::distributed::{
     make_session_keys_distributed, update_attribute_session_key, update_pseudonym_session_key,
 };
-use libpep::elgamal::arithmetic::group::Group;
-use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
 use libpep::factors::{make_attribute_rekey_factor, make_pseudonym_rekey_factor};
+use libpep::group::scalars::{ScalarNonZero, ScalarTraits};
+use libpep::group::Group;
 #[cfg(feature = "verifiable")]
 use libpep::keys::distribution::make_session_key_shares_with_proof;
 use libpep::keys::distribution::{

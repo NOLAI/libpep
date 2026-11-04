@@ -1,10 +1,10 @@
 //! Python bindings for zero-knowledge proofs.
 
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use crate::group::group_elements::PyGroupElement;
+use crate::group::scalars::PyScalarNonZero;
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::zkps::{create_proof, verify_proof};
+use libpep::group::Ristretto255;
 
 type Proof = libpep::elgamal::zkps::Proof<Ristretto255>;
 use pyo3::exceptions::PyValueError;

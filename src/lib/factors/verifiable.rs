@@ -28,17 +28,15 @@
 //! such structure and is the preferred scheme; choose this derivation only where commitment
 //! storage is the binding constraint and that trade-off is acceptable.
 
+use crate::ciphersuite::hashing::hash_to_nonzero_scalar_generic;
+use crate::ciphersuite::Ristretto255Sha512;
+use crate::ciphersuite::{Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf};
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::ciphersuite::{
-    Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf,
-};
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::hashing::hash_to_nonzero_scalar_generic;
-use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
 };
 use crate::factors::types::{AttributeRekeyFactor, PseudonymRekeyFactor, ReshuffleFactor};
+use crate::group::Group;
 use rand_core::{CryptoRng, Rng};
 
 /// Extract the payload of a pseudonymization domain, returning `None` for the
@@ -337,10 +335,10 @@ impl<C: Ciphersuite> zeroize::ZeroizeOnDrop for MasterRekeyingSecret<C> {}
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-    use crate::elgamal::arithmetic::group_elements::G;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
     use crate::factors::Factor;
+    use crate::group::group_elements::G;
 
     #[test]
     fn test_master_pseudonymization_key_derivation() {

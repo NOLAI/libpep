@@ -4,10 +4,10 @@
 
 #![cfg(feature = "verifiable")]
 
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::group::group_elements::PyGroupElement;
+use crate::group::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::{PyAttributeSessionKeyShare, PyPseudonymSessionKeyShare};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(feature = "verifiable")]
 use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use pyo3::exceptions::PyTypeError;

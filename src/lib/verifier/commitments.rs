@@ -4,16 +4,17 @@
 use super::cache::CommitmentsCache;
 use super::errors::{RegisterCommitmentsError, VerifyError, WeakCommitmentError};
 use super::verify::{PseudonymizationKey, RekeyTransitionKey, Verifier, VerifierCache};
+use crate::ciphersuite::Ciphersuite;
+use crate::ciphersuite::ElementOf;
 use crate::contexts::TranscryptorId;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::ciphersuite::ElementOf;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
 #[cfg(feature = "verifiable-derivation")]
 use crate::factors::verifiable::{MasterPseudonymizationPublicKey, MasterRekeyingPublicKey};
+use crate::group::Group;
 use crate::keys::distribution::proofs::BlindingCommitment;
 
 impl<C: Ciphersuite> Verifier<C> {

@@ -6,15 +6,16 @@
 //! that can generate a proof, and one for the proof type that can verify
 //! it and reconstruct the result.
 
+use crate::ciphersuite::Ciphersuite;
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
 use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
+use crate::group::Group;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{PseudonymSessionPublicKey, SessionPublicKeys};
 use rand_core::{CryptoRng, Rng};

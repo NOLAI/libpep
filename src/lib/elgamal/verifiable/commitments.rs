@@ -8,8 +8,8 @@
 //! responsibility of the verifier; no zero-knowledge proof of well-formedness
 //! is required.
 
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::Group;
+use crate::group::Ristretto255;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 

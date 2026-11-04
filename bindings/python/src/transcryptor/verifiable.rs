@@ -14,8 +14,8 @@ use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
 use crate::factors::types::{PyAttributeRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::PyPseudonymSessionPublicKey;
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 use libpep::factors::{AttributeRekeyInfo, PseudonymizationInfo, TranscryptionInfo};
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;

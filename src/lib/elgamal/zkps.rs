@@ -22,9 +22,9 @@
 //! # Examples
 //!
 //! ```
-//! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-//! # use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-//! # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+//! # use libpep::group::group_elements::{GroupElement, G};
+//! # use libpep::group::scalars::ScalarNonZero;
+//! # use libpep::ciphersuite::Ristretto255Sha512;
 //! # use libpep::elgamal::zkps::{create_proof, verify_proof};
 //! # let mut rng = rand::rng();
 //! let secret = ScalarNonZero::random(&mut rng);
@@ -37,11 +37,9 @@
 //! assert!(verify_proof::<Ristretto255Sha512>(&public_key, &message, &proof));
 //! ```
 
-use crate::elgamal::arithmetic::ciphersuite::{
-    Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf,
-};
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::ciphersuite::{Ciphersuite, ElementOf, ScalarCanBeZeroOf, ScalarOf};
+use crate::group::Group;
+use crate::group::Ristretto255;
 use base64::engine::general_purpose;
 use base64::Engine;
 use derive_more::Deref;
@@ -278,10 +276,10 @@ pub fn verify_proof<C: Ciphersuite>(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::verify_proof_split;
-    use crate::elgamal::arithmetic::group_elements::GroupElement;
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
+    use crate::group::group_elements::GroupElement;
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
     use rand_core::{CryptoRng, Rng};
 
     type C = Ristretto255Sha512;

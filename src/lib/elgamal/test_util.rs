@@ -1,8 +1,8 @@
 //! Ristretto255 shorthands for the tests of this module.
 
-use crate::elgamal::arithmetic::group_elements::GroupElement;
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::group_elements::GroupElement;
+use crate::group::scalars::ScalarNonZero;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 
 pub(crate) type ElGamal = crate::elgamal::ElGamal<Ristretto255>;

@@ -16,8 +16,8 @@ use crate::factors::commitments::{
 };
 use crate::factors::types::{WASMAttributeRekeyInfo, WASMPseudonymizationInfo};
 use crate::transcryptor::types::WASMTranscryptor;
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::data::verifiable::traits::{VerifiablePseudonymizable, VerifiableRekeyable};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use wasm_bindgen::prelude::*;

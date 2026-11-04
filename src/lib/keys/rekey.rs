@@ -2,10 +2,10 @@
 //! [`RekeyPublicKey`] trait, implemented by every [info](crate::factors::types) for the key of
 //! the data it transcrypts.
 
-use crate::elgamal::arithmetic::group::Group;
 use crate::factors::types::{
     AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, TranscryptionInfo,
 };
+use crate::group::Group;
 use crate::keys::traits::PublicKey;
 use crate::keys::types::{AttributeSessionPublicKey, PseudonymSessionPublicKey, SessionPublicKeys};
 

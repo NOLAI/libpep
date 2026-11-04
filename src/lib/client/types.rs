@@ -1,8 +1,8 @@
 //! Client type definitions.
 
 use crate::data::traits::{Encryptable, Encrypted};
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use crate::keys::traits::KeyProvider;
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;

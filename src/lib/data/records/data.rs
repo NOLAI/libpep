@@ -16,11 +16,11 @@ use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pse
 #[cfg(feature = "batch")]
 use crate::data::traits::HasStructure;
 use crate::data::traits::{Encryptable, Encrypted, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
-#[cfg(feature = "long")]
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::types::{RerandomizeFactor, TranscryptionInfo};
+use crate::group::Group;
+#[cfg(feature = "long")]
+use crate::group::InvertibleEncoding;
+use crate::group::Ristretto255;
 #[cfg(feature = "offline")]
 use crate::keys::types::GlobalPublicKeys;
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -510,20 +510,16 @@ mod tests {
     use crate::data::errors::ParseError;
     use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
     use crate::data::simple::{EncryptedAttribute, EncryptedPseudonym};
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::group::Ristretto255;
 
     type ElGamal = crate::elgamal::ElGamal<Ristretto255>;
     type LongEncryptedRecord = super::LongEncryptedRecord<Ristretto255>;
 
     fn ciphertext() -> ElGamal {
         let rng = &mut rand::rng();
-        let y = crate::elgamal::arithmetic::scalars::ScalarNonZero::random(rng);
-        let m = crate::elgamal::arithmetic::group_elements::GroupElement::random(rng);
-        crate::elgamal::encrypt::<Ristretto255, _>(
-            &m,
-            &(y * crate::elgamal::arithmetic::group_elements::G),
-            rng,
-        )
+        let y = crate::group::scalars::ScalarNonZero::random(rng);
+        let m = crate::group::group_elements::GroupElement::random(rng);
+        crate::elgamal::encrypt::<Ristretto255, _>(&m, &(y * crate::group::group_elements::G), rng)
     }
 
     /// A record of one long value without blocks is distinct from a record without values.

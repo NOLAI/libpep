@@ -1,8 +1,8 @@
 //! Python bindings for hashing to the group and to scalars (RFC 9380).
 
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::elgamal::arithmetic::scalars::PyScalarCanBeZero;
-use libpep::elgamal::arithmetic::hashing;
+use crate::group::group_elements::PyGroupElement;
+use crate::group::scalars::PyScalarCanBeZero;
+use libpep::ciphersuite::hashing;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
@@ -49,7 +49,7 @@ pub fn py_hash_to_scalar_with_dst(msg: &[u8], dst: &[u8]) -> PyScalarCanBeZero {
 #[pyfunction]
 #[pyo3(name = "hash_to_group")]
 pub fn py_hash_to_group(x: &[u8]) -> PyGroupElement {
-    libpep::elgamal::arithmetic::hashing::hash_to_group(x).into()
+    libpep::ciphersuite::hashing::hash_to_group(x).into()
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

@@ -1,12 +1,12 @@
 //! Builder pattern for constructing PepJsonValue objects.
 
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::Ristretto255;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
 use crate::data::json::data::PepJsonValue;
 use crate::data::long::LongPseudonym;
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::group::InvertibleEncoding;
 
 /// Builder for constructing PepJsonValue objects with mixed attribute and pseudonym fields.
 ///
@@ -16,10 +16,10 @@ use crate::elgamal::arithmetic::group::InvertibleEncoding;
 /// use libpep::client::{decrypt, encrypt};
 /// use libpep::contexts::EncryptionContext;
 /// use libpep::data::json::builder::PepJsonBuilder;
-/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::group::Ristretto255;
 /// use libpep::factors::RekeyingSecret;
 /// use libpep::keys::{make_global_keys, make_session_keys};
-/// use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// use libpep::ciphersuite::Ristretto255Sha512;
 /// use serde_json::json;
 ///
 /// let rng = &mut rand::rng();
@@ -74,7 +74,7 @@ impl<G: InvertibleEncoding> PepJsonBuilder<G> {
     /// ```
     /// use libpep::data::json::builder::PepJsonBuilder;
     /// use libpep::data::json::structure::JsonStructure;
-    /// use libpep::elgamal::arithmetic::Ristretto255;
+    /// use libpep::group::Ristretto255;
     /// use serde_json::json;
     ///
     /// let data = json!({
@@ -168,8 +168,8 @@ impl<G: InvertibleEncoding> Default for PepJsonBuilder<G> {
 mod tests {
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,

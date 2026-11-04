@@ -3,9 +3,9 @@
 //! The methods of the [`Transcryptor`] that perform transcryption operations and generate
 //! zero-knowledge proofs of them.
 
+use crate::ciphersuite::Ciphersuite;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 use crate::data::traits::Encrypted;
-use crate::elgamal::arithmetic::Ciphersuite;
 use crate::factors::commitments::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,

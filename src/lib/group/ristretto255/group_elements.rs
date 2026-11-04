@@ -328,7 +328,7 @@ impl std::ops::Mul<GroupElement> for ScalarCanBeZero {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+    use crate::group::scalars::ScalarNonZero;
 
     #[test]
     fn deserialization_rejects_the_identity() {
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn lizard_fails_after_scalar_multiplication() {
-        use crate::elgamal::arithmetic::scalars::ScalarNonZero;
+        use crate::group::scalars::ScalarNonZero;
         let mut rng = rand::rng();
         let mut random_bytes = [0u8; 16];
         rng.fill_bytes(&mut random_bytes);

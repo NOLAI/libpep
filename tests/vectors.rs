@@ -37,22 +37,22 @@
 
 mod common;
 
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::hashing::hash_to_group;
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
+use libpep::ciphersuite::hashing::hash_to_group;
 use libpep::elgamal::ElGamal;
 use libpep::factors::{
     make_attribute_rekey_factor, make_pseudonym_rekey_factor, make_pseudonymization_factor,
 };
+use libpep::group::group_elements::GroupElement;
+use libpep::group::scalars::ScalarNonZero;
 #[cfg(feature = "verifiable")]
 use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use libpep::keys::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use libpep::prelude::*;
 
-use libpep::elgamal::arithmetic::group_elements::G;
-use libpep::elgamal::arithmetic::scalars::ScalarTraits;
-use libpep::elgamal::arithmetic::Ciphersuite;
+use libpep::ciphersuite::Ciphersuite;
 use libpep::factors::derivation::{LABEL_REKEY_ATTRIBUTE, LABEL_REKEY_PSEUDONYM, LABEL_RESHUFFLE};
+use libpep::group::group_elements::G;
+use libpep::group::scalars::ScalarTraits;
 use rand::rngs::ChaCha20Rng;
 use rand::SeedableRng;
 use std::fmt::Write as _;

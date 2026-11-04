@@ -28,9 +28,9 @@
 //! # Example
 //!
 //! ```
-//! # use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-//! # use libpep::elgamal::arithmetic::scalars::{ScalarNonZero, ScalarTraits};
-//! # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+//! # use libpep::group::group_elements::{GroupElement, G};
+//! # use libpep::group::scalars::{ScalarNonZero, ScalarTraits};
+//! # use libpep::ciphersuite::Ristretto255Sha512;
 //! # use libpep::elgamal::dleq::{generate_proof, verify_proof};
 //! let mut rng = rand::rng();
 //!
@@ -44,11 +44,9 @@
 //! assert!(verify_proof::<Ristretto255Sha512>(&a, &b, &cs, &ds, &proof));
 //! ```
 
-use crate::elgamal::arithmetic::ciphersuite::{
-    Ciphersuite, CiphersuiteId, ElementOf, ScalarCanBeZeroOf, ScalarOf,
-};
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::ciphersuite::{Ciphersuite, CiphersuiteId, ElementOf, ScalarCanBeZeroOf, ScalarOf};
+use crate::group::Group;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 use sha2::Digest;
 
@@ -317,10 +315,10 @@ pub(crate) fn verify_proof_with<C: Ciphersuite>(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
 
     type C = Ristretto255Sha512;
 

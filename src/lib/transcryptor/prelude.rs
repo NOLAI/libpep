@@ -26,6 +26,7 @@
 //! let _back: TranscryptionInfo = info.reverse();
 //! ```
 
+pub use crate::ciphersuite::Ristretto255Sha512;
 pub use crate::contexts::{EncryptionContext, PseudonymizationDomain};
 #[cfg(feature = "long")]
 pub use crate::data::long::{
@@ -37,7 +38,6 @@ pub use crate::data::traits::{Encrypted, Pseudonymizable, Rekeyable, Transcrypta
 pub use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiableRekeyable, VerifiableTranscryptable,
 };
-pub use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 pub use crate::factors::{
     AttributeRekeyInfo, Factor, PseudonymRekeyInfo, PseudonymizationInfo, PseudonymizationSecret,
     RekeyingSecret, TranscryptionInfo,
@@ -47,6 +47,7 @@ pub use crate::factors::{
     VerifiablePseudonymizationCommitment, VerifiableRekeyCommitment,
     VerifiableTranscryptionCommitment,
 };
+pub use crate::group::Ristretto255;
 pub use crate::keys::RekeyPublicKey;
 pub use crate::transcryptor::{
     pseudonymize, rekey, rerandomize, rerandomize_known, transcrypt, DistributedTranscryptor,

@@ -289,14 +289,16 @@ The Quick start uses the two basic types, `Pseudonym` and `Attribute`, but the l
 | `keys` | Global and session key types and generation, and the distributed key setup with blinding factors and shares |
 | `contexts` | `PseudonymizationDomain` and `EncryptionContext`, the identifiers that data is pseudonymized and encrypted for, and the `TranscryptorId` that names a transcryptor |
 | `factors` | Reshuffle, rekey and rerandomize factors, the transcryption info that bundles them for one transcryption, and their derivation from secrets and contexts |
-| `elgamal` | The ElGamal ciphertext with `encrypt` and `decrypt`; the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`; in `elgamal::arithmetic` the `Group` trait (the prime-order group API) with its `Ristretto255` instance and its scalar and group element arithmetic, the `Ciphersuite` trait that pairs a group with a hash and supplies the domain separation tags of the protocol's hashes (`Ristretto255Sha512` for ristretto255 with SHA-512), and the hashing to the group and to scalars (`elgamal::arithmetic::hashing`: `expand_message_xmd`, `hash_to_group`, `hash_to_nonzero_scalar`); with the `verifiable` feature the primitives that emit proofs in `elgamal::verifiable`, and the underlying `elgamal::zkps` and `elgamal::dleq` |
+| `elgamal` | The ElGamal ciphertext with `encrypt` and `decrypt`; the PEP primitives (`rekey`, `reshuffle`, `rerandomize` and their combinations) in `elgamal::primitives`; with the `verifiable` feature the primitives that emit proofs in `elgamal::verifiable`, and the underlying `elgamal::zkps` and `elgamal::dleq` |
+| `group` | The `Group` trait (the prime-order group API) with its `Ristretto255` instance and its scalar and group element arithmetic |
+| `ciphersuite` | The `Ciphersuite` trait that pairs a group with a hash and supplies the domain separation tags of the protocol's hashes (`Ristretto255Sha512` for ristretto255 with SHA-512), and the hashing to the group and to scalars (`ciphersuite::hashing`: `expand_message_xmd`, `hash_to_group`, `hash_to_nonzero_scalar`) |
 | `prelude` | The imports a typical application needs, with subsets `prelude::client` and `prelude::transcryptor` for each role |
 | `verifier` | Verification of transcryption proofs against factor commitments, with a cache of verified commitments (`verifiable` feature) |
 
 The API is generic in two layers.
 The data types and the group arithmetic (`Pseudonym<G>`, `SessionKeys<G>`, ciphertexts, proofs, ...) take a `G: Group` parameter.
 Whatever hashes (factor derivation, `hash_to_group`, creating and verifying proofs, and with them `Transcryptor`, `DistributedTranscryptor` and `Verifier`) takes a `C: Ciphersuite`, which pairs a group with a hash.
-Both traits are in `elgamal::arithmetic`, and another group or hash is added by implementing them.
+The traits are `group::Group` and `ciphersuite::Ciphersuite`, and another group or hash is added by implementing them.
 ristretto255 is `Ristretto255` and the ciphersuite `ristretto255-SHA512` is `Ristretto255Sha512`.
 Every generic type defaults its parameter to them: `Pseudonym<G: Group = Ristretto255>`, `Transcryptor<C: Ciphersuite = Ristretto255Sha512>`.
 `Pseudonym<OtherGroup>` works like `Pseudonym`.

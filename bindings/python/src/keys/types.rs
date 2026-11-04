@@ -1,9 +1,9 @@
-use crate::elgamal::arithmetic::group_elements::PyGroupElement;
-use crate::elgamal::arithmetic::scalars::PyScalarNonZero;
+use crate::group::group_elements::PyGroupElement;
+use crate::group::scalars::PyScalarNonZero;
 use crate::keys::distribution::shares::PySessionPublicKeys;
 use crate::macros::{py_global_pubkey_impl, py_session_pubkey_impl};
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
+use libpep::group::group_elements::GroupElement;
 use libpep::keys::{
     AttributeGlobalPublicKey, AttributeGlobalSecretKey, AttributeSessionKeys,
     AttributeSessionPublicKey, AttributeSessionSecretKey, PseudonymGlobalPublicKey,

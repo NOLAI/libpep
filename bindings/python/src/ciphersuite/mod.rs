@@ -1,6 +1,8 @@
-//! Python bindings for the ciphersuite.
+//! Python bindings for the ciphersuite and the hashing that runs under it.
 
-use libpep::elgamal::arithmetic::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
+pub mod hashing;
+
+use libpep::ciphersuite::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
@@ -63,6 +65,12 @@ impl PyCiphersuiteId {
         self.0.hash(&mut hasher);
         hasher.finish()
     }
+}
+
+pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    register(m)?;
+    crate::add_submodule(m, "libpep.ciphersuite.hashing", |sm| hashing::register(sm))?;
+    Ok(())
 }
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

@@ -4,14 +4,14 @@
 
 #![cfg(feature = "verifiable")]
 
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::errors::malformed_proof_err;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use crate::keys::distribution::shares::{
     WASMAttributeSessionKeyShare, WASMPseudonymSessionKeyShare,
 };
 use derive_more::{From, Into};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(feature = "verifiable")]
 use libpep::keys::distribution::{BlindingCommitment, SessionKeyShareProof};
 use wasm_bindgen::prelude::*;

@@ -8,9 +8,9 @@
 //! towards them and they have no associated public key, so they do not implement
 //! [`SecretKey`].
 
-use crate::elgamal::arithmetic::group::decode_hex;
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
+use crate::group::decode_hex;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use crate::keys::traits::SecretKey;
 use crate::keys::types::{AttributeGlobalSecretKey, PseudonymGlobalSecretKey};
 use rand_core::{CryptoRng, Rng};

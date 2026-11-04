@@ -21,7 +21,7 @@
 //! because Cargo.toml enables PyO3's `multiple-pymethods` feature.
 
 use crate::errors::{JsonFormatError, ProofRejectedError};
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 use pyo3::prelude::*;
 
 #[cfg(feature = "serde")]

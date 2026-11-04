@@ -14,8 +14,8 @@
 //!
 //! Left out on purpose, because they are rarely needed or ambiguous when glob-imported: the
 //! ElGamal internals, the proofs (`elgamal::dleq`, `elgamal::zkps`), hashing,
-//! the [`Group`](crate::elgamal::arithmetic::Group) and
-//! [`Ciphersuite`](crate::elgamal::arithmetic::Ciphersuite) traits, the individual factor and key
+//! the [`Group`](crate::group::Group) and
+//! [`Ciphersuite`](crate::ciphersuite::Ciphersuite) traits, the individual factor and key
 //! types, and records and JSON documents. Import those from their modules.
 //!
 //! There are two subsets, each enough for its role:

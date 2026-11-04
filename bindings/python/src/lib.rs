@@ -2,11 +2,13 @@
 //! (importable as `libpep`).
 pub(crate) mod macros;
 
+pub mod ciphersuite;
 pub mod client;
 pub mod contexts;
 pub mod data;
 pub mod elgamal;
 pub mod factors;
+pub mod group;
 pub mod keys;
 pub mod transcryptor;
 
@@ -37,6 +39,10 @@ pub(crate) fn add_submodule<'py>(
 
 pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     errors::register(m)?;
+    add_submodule(m, "libpep.group", |sm| group::register_module(sm))?;
+    add_submodule(m, "libpep.ciphersuite", |sm| {
+        ciphersuite::register_module(sm)
+    })?;
     add_submodule(m, "libpep.elgamal", |sm| elgamal::register_module(sm))?;
     add_submodule(m, "libpep.client", |sm| {
         client::types::register(sm)?;

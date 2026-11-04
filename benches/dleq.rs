@@ -11,11 +11,12 @@
 #![allow(clippy::expect_used)]
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use libpep::elgamal::arithmetic::group_elements::{GroupElement, G};
-use libpep::elgamal::arithmetic::scalars::ScalarNonZero;
-use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::dleq;
 use libpep::elgamal::zkps;
+use libpep::group::group_elements::{GroupElement, G};
+use libpep::group::scalars::ScalarNonZero;
+use libpep::group::Ristretto255;
 
 const SIZES: [usize; 3] = [1, 10, 100];
 

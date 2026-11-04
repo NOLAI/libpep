@@ -6,13 +6,13 @@
 
 pub use crate::data::elgamal::{ElGamalEncryptable, ElGamalEncrypted};
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::elgamal::ElGamal;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
     TranscryptionInfo,
 };
+use crate::group::Group;
+use crate::group::Ristretto255;
 use crate::keys::traits::{PublicKey, SecretKey};
 use crate::keys::types::*;
 use derive_more::Deref;
@@ -261,8 +261,8 @@ mod tests {
     use crate::client::{decrypt, encrypt};
     use crate::contexts::EncryptionContext;
     use crate::data::simple::{ElGamalEncryptable, ElGamalEncrypted};
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::*;
 
     type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;

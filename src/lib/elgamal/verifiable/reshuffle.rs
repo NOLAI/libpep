@@ -18,10 +18,11 @@
 //! is verified against the forward commitment `A = a·G`).
 
 use super::commitments::{FactorCommitment, PseudonymizationFactorCommitment};
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::ciphersuite::Ciphersuite;
 use crate::elgamal::zkps::{create_proof, create_proofs_same_scalar, verify_proof, Proof};
 use crate::elgamal::ElGamal;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -183,15 +184,15 @@ impl<G: Group> VerifiableReshuffle2<G> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::elgamal::primitives::{reshuffle, reshuffle2};
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
     use crate::elgamal::verifiable::{
         PseudonymizationFactorCommitment, VerifiableReshuffle, VerifiableReshuffle2,
     };
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::scalars::ScalarNonZero;
 
     type C = Ristretto255Sha512;
 

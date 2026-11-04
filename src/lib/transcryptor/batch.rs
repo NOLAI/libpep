@@ -13,8 +13,8 @@ use crate::data::batch::{shuffle, validate_structure, BatchError, EncryptedBatch
 #[cfg(not(feature = "elgamal3"))]
 use crate::data::traits::Encryptable;
 use crate::data::traits::{HasStructure, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::Group;
 use crate::factors::types::{PseudonymizationInfo, TranscryptionInfo};
+use crate::group::Group;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::KeyProvider;
 #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]

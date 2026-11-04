@@ -1,10 +1,22 @@
-//! The prime-order group API the library is built on.
+//! The prime-order group the library is built on: the [`Group`] trait and its ristretto255
+//! instance.
 //!
 //! A [`Group`] is a marker type: it carries no data, and names a prime-order group together with
 //! its scalar type and encodings. The data types take it as a type parameter (`Pseudonym<G>`,
-//! `SessionKeys<G>`, ...), instantiated with [`Ristretto255`](super::Ristretto255). Hashing is not
+//! `SessionKeys<G>`, ...), instantiated with [`Ristretto255`]. Hashing is not
 //! part of the group: the functions and types that hash are generic over a
-//! [`Ciphersuite`](super::Ciphersuite), which pairs a group with a hash.
+//! [`Ciphersuite`](crate::ciphersuite::Ciphersuite), which pairs a group with a hash.
+//!
+//! [`ristretto255`] is the instance: a prime-order group built on the curve edwards25519 (the
+//! Edwards form of Curve25519), using the
+//! [`curve25519-dalek`](https://crates.io/crates/curve25519-dalek) crate (with its `lizard`
+//! feature for the lizard encoding). Its element and scalar types are
+//! [`GroupElement`](group_elements::GroupElement), [`ScalarNonZero`](scalars::ScalarNonZero) and
+//! [`ScalarCanBeZero`](scalars::ScalarCanBeZero). Scalars can be converted into group elements by
+//! multiplying them with the base point [`G`](group_elements::G). The two scalar types handle edge
+//! cases in the rest of the code where a zero scalar is not allowed. The arithmetic operators for
+//! addition, subtraction and multiplication are overloaded, so that the code matches the
+//! mathematical notation of the scheme.
 //!
 //! Beyond a bare prime-order group API, [`Group`] has what the PEP operations need:
 //! a multiplicative identity for identity factors, random elements for pseudonyms, and the
@@ -21,6 +33,10 @@
 //! encoding MUST therefore be such that its outputs are (indistinguishable from) uniformly random
 //! elements, or at least that nobody can produce two encoded inputs with a known discrete-log
 //! relation. Encoding an identifier `x` as `x * G` is forbidden.
+
+pub mod ristretto255;
+
+pub use ristretto255::{group_elements, scalars, Ristretto255};
 
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]

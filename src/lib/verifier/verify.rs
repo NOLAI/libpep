@@ -6,12 +6,14 @@ use super::cache::{
     AttributeRekeyCommitmentsCache, CommitmentsCache, PseudonymRekeyCommitmentsCache,
     PseudonymizationCommitmentsCache,
 };
+use crate::ciphersuite::Ciphersuite;
+use crate::ciphersuite::Ristretto255Sha512;
 use crate::contexts::TranscryptorId;
 use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
-use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
 #[cfg(feature = "verifiable-derivation")]
 use crate::factors::verifiable::{MasterPseudonymizationPublicKey, MasterRekeyingPublicKey};
+use crate::group::Group;
+use crate::group::Ristretto255;
 use crate::keys::distribution::proofs::BlindingCommitment;
 use std::collections::HashMap;
 
@@ -159,13 +161,14 @@ impl<C: Ciphersuite> Default for Verifier<C> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::contexts::{EncryptionContext, PseudonymizationDomain};
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
     use crate::elgamal::verifiable::{
         FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment,
     };
     use crate::factors::VerifiablePseudonymizationCommitment;
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::Ristretto255;
 
     type Verifier = super::Verifier<Ristretto255Sha512>;
 

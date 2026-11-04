@@ -3,11 +3,11 @@
 #[cfg(feature = "long")]
 use crate::data::long::{WASMLongEncryptedAttribute, WASMLongEncryptedPseudonym};
 use crate::data::simple::{WASMEncryptedAttribute, WASMEncryptedPseudonym};
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
 use crate::factors::types::WASMPseudonymRekeyInfo;
 use crate::factors::types::{
     WASMAttributeRekeyInfo, WASMPseudonymizationInfo, WASMTranscryptionInfo,
 };
+use crate::group::scalars::WASMScalarNonZero;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::{WASMAttributeSessionPublicKey, WASMPseudonymSessionPublicKey};
 use libpep::factors::{

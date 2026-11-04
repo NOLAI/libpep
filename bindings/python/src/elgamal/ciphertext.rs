@@ -1,9 +1,9 @@
 //! Python bindings for ElGamal ciphertexts.
 
-use crate::elgamal::arithmetic::{PyGroupElement, PyScalarNonZero};
+use crate::group::{PyGroupElement, PyScalarNonZero};
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255;
 use libpep::elgamal::{decrypt, encrypt};
+use libpep::group::Ristretto255;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 use pyo3::prelude::*;

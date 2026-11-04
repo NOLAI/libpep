@@ -6,13 +6,11 @@
 //! their combined commitments. Without `elgamal3` the rerandomizing proofs take the public key
 //! `gy` the ciphertexts are encrypted under; with `elgamal3` it is read from the ciphertexts.
 
-#[cfg(not(feature = "elgamal3"))]
-use crate::elgamal::arithmetic::PyGroupElement;
-use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::elgamal::PyElGamal;
-#[cfg(feature = "elgamal3")]
-use libpep::elgamal::arithmetic::group_elements::GroupElement;
-use libpep::elgamal::arithmetic::{Ristretto255, Ristretto255Sha512};
+#[cfg(not(feature = "elgamal3"))]
+use crate::group::PyGroupElement;
+use crate::group::PyScalarNonZero;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(feature = "verifiable")]
 use libpep::elgamal::verifiable::{
     FactorCommitment, PseudonymizationFactorCommitment, RekeyFactorCommitment, VerifiableRRSK,
@@ -21,6 +19,9 @@ use libpep::elgamal::verifiable::{
     VerifiableRekey2Batch, VerifiableRekeyBatch, VerifiableRerandomize, VerifiableRerandomizeBatch,
     VerifiableReshuffle, VerifiableReshuffle2, VerifiableReshuffle2Batch, VerifiableReshuffleBatch,
 };
+#[cfg(feature = "elgamal3")]
+use libpep::group::group_elements::GroupElement;
+use libpep::group::Ristretto255;
 
 type ElGamal = libpep::elgamal::ElGamal<Ristretto255>;
 #[cfg(feature = "elgamal3")]

@@ -111,11 +111,9 @@ impl PyPseudonymBatch {
     /// `(batch-pk, !elgamal3)`).
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
-        crate::keys::PyPseudonymSessionPublicKey(
-            crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(self.inner.public_key()),
-            ),
-        )
+        crate::keys::PyPseudonymSessionPublicKey(crate::group::group_elements::PyGroupElement(
+            *libpep::keys::PublicKey::value(self.inner.public_key()),
+        ))
     }
 
     /// Pseudonymize every item in the batch (shuffles).
@@ -261,11 +259,9 @@ impl PyAttributeBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
-        crate::keys::PyAttributeSessionPublicKey(
-            crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(self.inner.public_key()),
-            ),
-        )
+        crate::keys::PyAttributeSessionPublicKey(crate::group::group_elements::PyGroupElement(
+            *libpep::keys::PublicKey::value(self.inner.public_key()),
+        ))
     }
 
     // No `pseudonymize` for attribute batches (mirroring the Rust impl).
@@ -391,11 +387,9 @@ impl PyLongPseudonymBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyPseudonymSessionPublicKey {
-        crate::keys::PyPseudonymSessionPublicKey(
-            crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(self.inner.public_key()),
-            ),
-        )
+        crate::keys::PyPseudonymSessionPublicKey(crate::group::group_elements::PyGroupElement(
+            *libpep::keys::PublicKey::value(self.inner.public_key()),
+        ))
     }
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
@@ -542,11 +536,9 @@ impl PyLongAttributeBatch {
 
     #[cfg(all(not(feature = "elgamal3"), feature = "batch-pk"))]
     fn public_key(&self) -> crate::keys::PyAttributeSessionPublicKey {
-        crate::keys::PyAttributeSessionPublicKey(
-            crate::elgamal::arithmetic::group_elements::PyGroupElement(
-                *libpep::keys::PublicKey::value(self.inner.public_key()),
-            ),
-        )
+        crate::keys::PyAttributeSessionPublicKey(crate::group::group_elements::PyGroupElement(
+            *libpep::keys::PublicKey::value(self.inner.public_key()),
+        ))
     }
 
     // No `pseudonymize` for long-attribute batches (mirroring the Rust impl).
@@ -815,7 +807,7 @@ impl PyLongRecordBatch {
 fn rust_session_public_keys_to_py(
     keys: &libpep::keys::SessionPublicKeys,
 ) -> crate::keys::distribution::shares::PySessionPublicKeys {
-    use crate::elgamal::arithmetic::group_elements::PyGroupElement;
+    use crate::group::group_elements::PyGroupElement;
     use crate::keys::types::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 
     crate::keys::distribution::shares::PySessionPublicKeys {

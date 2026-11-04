@@ -5,13 +5,14 @@
 //! [`Ciphersuite`]. The plain-named functions are the ristretto255 versions (see the
 //! [crate docs](crate#groups-and-ciphersuites)).
 
+use crate::ciphersuite::{Ciphersuite, Ristretto255Sha512};
 use crate::contexts::EncryptionContext;
-use crate::elgamal::arithmetic::{Ciphersuite, Group, Ristretto255Sha512};
 use crate::factors::derivation::{
     make_attribute_rekey_factor_generic, make_pseudonym_rekey_factor_generic,
 };
 use crate::factors::types::Factor;
 use crate::factors::RekeyingSecret;
+use crate::group::Group;
 use crate::keys::traits::SecretKey;
 use crate::keys::types::*;
 use rand_core::{CryptoRng, Rng};
@@ -189,11 +190,11 @@ pub fn make_attribute_session_keys(
 mod tests {
     use super::*;
     use crate::contexts::EncryptionContext;
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::traits::SecretKey;
     // `public_key()`.
-    use crate::elgamal::arithmetic::group_elements::G;
+    use crate::group::group_elements::G;
     use crate::keys::traits::PublicKey;
 
     #[test]

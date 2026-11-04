@@ -1,8 +1,8 @@
 //! Distributed transcryptor for generating session key shares.
 
+use crate::ciphersuite::Ciphersuite;
+use crate::ciphersuite::Ristretto255Sha512;
 use crate::contexts::EncryptionContext;
-use crate::elgamal::arithmetic::Ciphersuite;
-use crate::elgamal::arithmetic::Ristretto255Sha512;
 use crate::factors::derivation::{
     make_attribute_rekey_factor_generic, make_pseudonym_rekey_factor_generic,
 };

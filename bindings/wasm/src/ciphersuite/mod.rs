@@ -1,6 +1,8 @@
-//! WASM bindings for the ciphersuite.
+//! WASM bindings for the ciphersuite and the hashing that runs under it.
 
-use libpep::elgamal::arithmetic::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
+pub mod hashing;
+
+use libpep::ciphersuite::{Ciphersuite, CiphersuiteId, Ristretto255Sha512};
 use wasm_bindgen::prelude::*;
 
 /// The ciphersuite identifier, from which the context string `"nPEPV1-" || identifier` is built.

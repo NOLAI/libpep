@@ -11,16 +11,17 @@
 //! In `elgamal3` mode `Y` is carried by the ciphertext; in the default mode
 //! the caller supplies it explicitly to the constructor and verifier.
 
-#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
-use crate::elgamal::arithmetic::group_elements::GroupElement;
+use crate::ciphersuite::Ciphersuite;
 #[cfg(feature = "insecure")]
-use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-use crate::elgamal::arithmetic::Ristretto255;
-#[cfg(feature = "insecure")]
-use crate::elgamal::arithmetic::Ristretto255Sha512;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::ciphersuite::Ristretto255Sha512;
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
 use crate::elgamal::ElGamal;
+#[cfg(all(feature = "insecure", not(feature = "elgamal3")))]
+use crate::group::group_elements::GroupElement;
+#[cfg(feature = "insecure")]
+use crate::group::scalars::ScalarNonZero;
+use crate::group::Group;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -142,13 +143,13 @@ pub fn verifiable_rerandomize<R: Rng + CryptoRng>(
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::{GroupElement, G};
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
     use crate::elgamal::primitives::rerandomize;
     use crate::elgamal::test_util::encrypt;
     use crate::elgamal::test_util::ElGamal;
+    use crate::group::group_elements::{GroupElement, G};
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
 
     type C = Ristretto255Sha512;
 

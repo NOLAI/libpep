@@ -7,7 +7,7 @@
 //! and multiplies in the new one.
 
 use crate::client::types::Client;
-use crate::elgamal::arithmetic::group::Group;
+use crate::group::Group;
 use crate::keys::distribution::blinding::{
     BlindedAttributeGlobalSecretKey, BlindedGlobalSecretKey, BlindedGlobalSecretKeys,
     BlindedPseudonymGlobalSecretKey,

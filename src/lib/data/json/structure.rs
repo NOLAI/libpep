@@ -1,7 +1,7 @@
 //! JSON structure descriptors and related operations.
 
 use super::data::EncryptedPepJsonValue;
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
+use crate::group::InvertibleEncoding;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -233,8 +233,8 @@ mod tests {
     use crate::client::encrypt;
     use crate::contexts::EncryptionContext;
     use crate::data::json::data::PepJsonValue;
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys, AttributeSessionKeys, PseudonymSessionKeys, SessionKeys,

@@ -14,7 +14,7 @@ use crate::factors::commitments::{
     WASMVerifiablePseudonymizationCommitment, WASMVerifiableRekeyCommitment,
     WASMVerifiableTranscryptionCommitment,
 };
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 #[cfg(not(feature = "elgamal3"))]
 use libpep::keys::PublicKey;
 use libpep::verifier::Verifier;
@@ -563,7 +563,7 @@ impl WASMVerifier {
     pub fn verify_session_key_share_with_commitment(
         &self,
         transcryptor_id: &str,
-        rekey_commitment: &crate::elgamal::arithmetic::group_elements::WASMGroupElement,
+        rekey_commitment: &crate::group::group_elements::WASMGroupElement,
         proof: &crate::keys::distribution::proofs::WASMSessionKeyShareProof,
     ) -> Result<(), JsValue> {
         self.inner

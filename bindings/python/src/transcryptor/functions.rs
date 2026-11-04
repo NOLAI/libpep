@@ -6,10 +6,10 @@ use crate::data::json::PyEncryptedPepJsonValue;
 use crate::data::long::{PyLongEncryptedAttribute, PyLongEncryptedPseudonym};
 use crate::data::records::PyEncryptedRecord;
 use crate::data::simple::{PyEncryptedAttribute, PyEncryptedPseudonym};
-use crate::elgamal::arithmetic::PyScalarNonZero;
 use crate::factors::types::{
     PyAttributeRekeyInfo, PyPseudonymRekeyInfo, PyPseudonymizationInfo, PyTranscryptionInfo,
 };
+use crate::group::PyScalarNonZero;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::{PyAttributeSessionPublicKey, PyPseudonymSessionPublicKey};
 use libpep::factors::{

@@ -1,11 +1,11 @@
 //! WASM bindings for zero-knowledge proofs.
 
-use crate::elgamal::arithmetic::group_elements::WASMGroupElement;
-use crate::elgamal::arithmetic::scalars::WASMScalarNonZero;
+use crate::group::group_elements::WASMGroupElement;
+use crate::group::scalars::WASMScalarNonZero;
 use derive_more::{Deref, From, Into};
-use libpep::elgamal::arithmetic::Ristretto255;
-use libpep::elgamal::arithmetic::Ristretto255Sha512;
+use libpep::ciphersuite::Ristretto255Sha512;
 use libpep::elgamal::zkps::{create_proof, verify_proof};
+use libpep::group::Ristretto255;
 
 type Proof = libpep::elgamal::zkps::Proof<Ristretto255>;
 use wasm_bindgen::prelude::*;

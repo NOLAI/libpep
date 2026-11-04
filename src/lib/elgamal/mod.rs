@@ -1,10 +1,9 @@
-//! ElGamal [encrypt]ion and [decrypt]ion, the underlying group [arithmetic], and the low-level
-//! (n)-PEP [primitives] that operate on ElGamal ciphertexts.
+//! ElGamal [encrypt]ion and [decrypt]ion over a [`Group`](crate::group::Group), and the
+//! low-level (n)-PEP [primitives] that operate on ElGamal ciphertexts.
 //!
 //! Use this module when the individual (n)-PEP primitives are needed. Most callers should use the
 //! [high-level](crate::transcryptor) API, which also takes care of rerandomization.
 
-pub mod arithmetic;
 mod ciphertext;
 pub mod primitives;
 #[cfg(test)]

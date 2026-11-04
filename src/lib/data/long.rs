@@ -16,12 +16,12 @@ use crate::data::padding::internal::unpad_block;
 use crate::data::padding::PaddingError;
 use crate::data::simple::{Attribute, EncryptedAttribute, EncryptedPseudonym, Pseudonym};
 use crate::data::traits::{Encryptable, Encrypted, Pseudonymizable, Rekeyable, Transcryptable};
-use crate::elgamal::arithmetic::group::{Bytes, Group, InvertibleEncoding};
-use crate::elgamal::arithmetic::Ristretto255;
 use crate::factors::types::{
     AttributeRekeyInfo, PseudonymRekeyInfo, PseudonymizationInfo, RerandomizeFactor,
     TranscryptionInfo,
 };
+use crate::group::Ristretto255;
+use crate::group::{Bytes, Group, InvertibleEncoding};
 #[cfg(feature = "offline")]
 use crate::keys::types::{AttributeGlobalPublicKey, PseudonymGlobalPublicKey};
 #[cfg(all(feature = "offline", feature = "insecure"))]
@@ -55,7 +55,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 ///
 /// ```
 /// use libpep::data::long::LongPseudonym;
-/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::group::Ristretto255;
 ///
 /// let long_pseudo = LongPseudonym::<Ristretto255>::from_string_padded("some-identifier1@example.com");
 /// assert_eq!(long_pseudo.len(), 2);
@@ -486,8 +486,8 @@ mod tests {
     use crate::data::elgamal::ElGamalEncryptable;
     use crate::data::errors::ParseError;
     use crate::data::padding::PaddingError;
-    use crate::elgamal::arithmetic::Ristretto255;
     use crate::factors::RekeyingSecret;
+    use crate::group::Ristretto255;
     use crate::keys::{
         make_attribute_global_keys, make_attribute_session_keys, make_pseudonym_global_keys,
         make_pseudonym_session_keys,

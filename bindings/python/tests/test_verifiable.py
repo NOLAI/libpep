@@ -746,8 +746,8 @@ class TestSessionKeyShareBinding(unittest.TestCase):
 
     @staticmethod
     def _setup():
-        from libpep.elgamal.arithmetic.group_elements import GroupElement
-        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.group.group_elements import GroupElement
+        from libpep.group.scalars import ScalarNonZero
         from libpep.keys import BlindingCommitment, SessionKeyShareProof
 
         blinding = ScalarNonZero.random()
@@ -760,8 +760,8 @@ class TestSessionKeyShareBinding(unittest.TestCase):
     def test_distributed_transcryptor_proves_its_shares(self):
         # The transcryptor makes the share and its proof from its own blinding and rekey
         # factors; the user checks both halves against the published commitments.
-        from libpep.elgamal.arithmetic.group_elements import GroupElement
-        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.group.group_elements import GroupElement
+        from libpep.group.scalars import ScalarNonZero
         from libpep.factors import make_attribute_rekey_factor, make_pseudonym_rekey_factor
         from libpep.keys import BlindingCommitment, BlindingFactor
 
@@ -794,7 +794,7 @@ class TestSessionKeyShareBinding(unittest.TestCase):
         self.assertTrue(proof.verify_share(share, commitment, rekey_commitment))
 
     def test_verify_share_rejects_a_share_that_does_not_match(self):
-        from libpep.elgamal.arithmetic.scalars import ScalarNonZero
+        from libpep.group.scalars import ScalarNonZero
         from libpep.keys import PseudonymSessionKeyShare
 
         _, _, rekey_commitment, proof, commitment = self._setup()

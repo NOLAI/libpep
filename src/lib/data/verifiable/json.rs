@@ -2,6 +2,7 @@
 //!
 //! Mirrors [`crate::data::json::data`].
 
+use crate::ciphersuite::Ciphersuite;
 use crate::data::json::data::EncryptedPepJsonValue;
 #[cfg(feature = "batch")]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
@@ -13,13 +14,12 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::group::InvertibleEncoding;
-use crate::elgamal::arithmetic::Ciphersuite;
-use crate::elgamal::arithmetic::Ristretto255;
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::VerifiableTranscryptionCommitment;
 use crate::factors::types::TranscryptionInfo;
+use crate::group::InvertibleEncoding;
+use crate::group::Ristretto255;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::SessionPublicKeys;
 use rand_core::{CryptoRng, Rng};

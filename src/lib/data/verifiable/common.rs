@@ -1,9 +1,9 @@
 //! Helpers shared by the batch and long verifiable proofs.
 
 #[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
-use crate::elgamal::arithmetic::group::Group;
-#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
 use crate::elgamal::ElGamal;
+#[cfg(all(feature = "elgamal3", any(feature = "batch", feature = "long")))]
+use crate::group::Group;
 
 /// The public key carried by every one of `ciphertexts`, which a proof over all of them folds
 /// into its transcript, or `None` if they carry different keys. Picking the first one's key

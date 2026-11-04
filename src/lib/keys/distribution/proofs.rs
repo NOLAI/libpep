@@ -39,9 +39,10 @@
 //!   is gone), the per-share proofs in this module guarantee correctness of
 //!   each transcryptor's contribution at session-derivation time.
 
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
+use crate::ciphersuite::Ciphersuite;
 use crate::elgamal::zkps::{create_proof, verify_proof, Proof};
+use crate::group::Group;
+use crate::group::Ristretto255;
 use rand_core::{CryptoRng, Rng};
 
 #[cfg(feature = "serde")]
@@ -178,10 +179,10 @@ impl<G: Group> SessionKeyShareProof<G> {
 
 #[cfg(test)]
 mod tests {
-    use crate::elgamal::arithmetic::group_elements::G;
-    use crate::elgamal::arithmetic::scalars::ScalarNonZero;
-    use crate::elgamal::arithmetic::Ristretto255;
-    use crate::elgamal::arithmetic::Ristretto255Sha512;
+    use crate::ciphersuite::Ristretto255Sha512;
+    use crate::group::group_elements::G;
+    use crate::group::scalars::ScalarNonZero;
+    use crate::group::Ristretto255;
 
     type C = Ristretto255Sha512;
 

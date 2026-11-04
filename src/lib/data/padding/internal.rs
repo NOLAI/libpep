@@ -18,7 +18,7 @@
 use super::PaddingError;
 use crate::data::elgamal::ElGamalEncryptable;
 use crate::data::simple::{Attribute, Pseudonym};
-use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
+use crate::group::{Bytes, InvertibleEncoding};
 
 /// A trait for encryptable types that support PKCS#7 padding for single-block (16 byte) encoding.
 ///
@@ -36,7 +36,7 @@ use crate::elgamal::arithmetic::group::{Bytes, InvertibleEncoding};
 /// ```
 /// use libpep::data::padding::Padded;
 /// use libpep::data::simple::Attribute;
-/// use libpep::elgamal::arithmetic::Ristretto255;
+/// use libpep::group::Ristretto255;
 ///
 /// // Encode a string
 /// let attr = Attribute::<Ristretto255>::from_string_padded("hello")?;
@@ -152,7 +152,7 @@ impl<G: InvertibleEncoding> Padded for Attribute<G> {}
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::elgamal::arithmetic::Ristretto255;
+    use crate::group::Ristretto255;
 
     type Attribute = crate::data::simple::Attribute<Ristretto255>;
     type Pseudonym = crate::data::simple::Pseudonym<Ristretto255>;

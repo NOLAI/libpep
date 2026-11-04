@@ -1,7 +1,7 @@
 //! Polymorphic encryption and decryption helper functions for client operations.
 
 use crate::data::traits::{Encryptable, Encrypted};
-use crate::elgamal::arithmetic::group::Group;
+use crate::group::Group;
 use crate::keys::KeyProvider;
 use rand_core::{CryptoRng, Rng};
 
@@ -15,10 +15,10 @@ use rand_core::{CryptoRng, Rng};
 /// # use libpep::client::encrypt;
 /// # use libpep::contexts::EncryptionContext;
 /// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::group::Ristretto255;
 /// # use libpep::factors::RekeyingSecret;
 /// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ciphersuite::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
@@ -52,10 +52,10 @@ where
 /// # use libpep::client::{decrypt, encrypt};
 /// # use libpep::contexts::EncryptionContext;
 /// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::group::Ristretto255;
 /// # use libpep::factors::RekeyingSecret;
 /// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ciphersuite::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
@@ -82,10 +82,10 @@ where
 /// # use libpep::client::{decrypt, encrypt};
 /// # use libpep::contexts::EncryptionContext;
 /// # use libpep::data::simple::{Attribute, ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::group::Ristretto255;
 /// # use libpep::factors::RekeyingSecret;
 /// # use libpep::keys::{make_global_keys, make_session_keys};
-/// # use libpep::elgamal::arithmetic::Ristretto255Sha512;
+/// # use libpep::ciphersuite::Ristretto255Sha512;
 /// # let rng = &mut rand::rng();
 /// # let (_global_public, global_secret) = make_global_keys(rng);
 /// # let secret = RekeyingSecret::from(b"rekeying secret".to_vec());
@@ -111,7 +111,7 @@ where
 /// ```
 /// # use libpep::client::encrypt_global;
 /// # use libpep::data::simple::{ElGamalEncryptable, Pseudonym};
-/// # use libpep::elgamal::arithmetic::Ristretto255;
+/// # use libpep::group::Ristretto255;
 /// # use libpep::keys::make_global_keys;
 /// # let rng = &mut rand::rng();
 /// # let (global_public, _global_secret) = make_global_keys(rng);

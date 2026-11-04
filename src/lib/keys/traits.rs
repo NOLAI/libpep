@@ -6,7 +6,7 @@
 //! [`distribution`](super::distribution).
 
 use super::types::*;
-use crate::elgamal::arithmetic::group::{decode_hex, Group};
+use crate::group::{decode_hex, Group};
 
 /// A public key: a group element of the form `sk * G`, which can be encoded to and decoded
 /// from byte arrays and hex strings.

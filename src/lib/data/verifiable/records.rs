@@ -5,6 +5,7 @@
 //! A proof of a record is one proof per pseudonym and per attribute; a batch proof lays all
 //! pseudonyms and all attributes of all records out in two lists.
 
+use crate::ciphersuite::Ciphersuite;
 #[cfg(all(feature = "batch", feature = "long"))]
 use crate::data::long::{LongEncryptedAttribute, LongEncryptedPseudonym};
 use crate::data::records::EncryptedRecord;
@@ -21,12 +22,12 @@ use crate::data::verifiable::traits::{
     VerifiablePseudonymizable, VerifiablePseudonymizationProof, VerifiableRekeyProof,
     VerifiableRekeyable, VerifiableTranscryptable, VerifiableTranscryptionProof,
 };
-use crate::elgamal::arithmetic::Ristretto255;
-use crate::elgamal::arithmetic::{Ciphersuite, Group};
 #[cfg(feature = "batch")]
 use crate::elgamal::ElGamal;
 use crate::factors::commitments::VerifiableTranscryptionCommitment;
 use crate::factors::types::TranscryptionInfo;
+use crate::group::Group;
+use crate::group::Ristretto255;
 #[cfg(not(feature = "elgamal3"))]
 use crate::keys::types::SessionPublicKeys;
 use rand_core::{CryptoRng, Rng};

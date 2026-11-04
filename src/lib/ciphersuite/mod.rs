@@ -1,4 +1,5 @@
-//! The [`Ciphersuite`]: a [`Group`] together with the hash its protocol runs on.
+//! The [`Ciphersuite`]: a [`Group`] together with the hash its protocol runs on, and the
+//! [`hashing`] to the group and to scalars that runs under it.
 //!
 //! A [`Group`] is pure group arithmetic. Everything that hashes (encoding an identifier as a
 //! group element, deriving factors, the Fiat-Shamir challenges of the proofs) needs more: a hash
@@ -8,7 +9,7 @@
 //! [crate docs](crate#groups-and-ciphersuites).
 //!
 //! A ciphersuite is named by a [`CiphersuiteId`], such as `ristretto255-SHA512` for ristretto255
-//! with SHA-512 (the marker [`Ristretto255Sha512`](super::Ristretto255Sha512)). The identifier is
+//! with SHA-512 (the marker [`Ristretto255Sha512`]). The identifier is
 //! written out in full for each ciphersuite and not composed from the names of the group and the
 //! hash, because those do not always combine into the usual identifier: P-256 with SHA-256 is
 //! `P256-SHA256`.
@@ -17,7 +18,7 @@
 //!
 //! Separation by ciphersuite matters for hashes that take no secret: the input alone determines
 //! the output, so another protocol hashing the same input on the same group would get the same
-//! element. [`hash_to_group`](super::hashing::hash_to_group) is such a hash, and the [`PREFIX`]
+//! element. [`hash_to_group`](hashing::hash_to_group) is such a hash, and the [`PREFIX`]
 //! (`"nPEPV1-"`, versioned independently of the crate) keeps a pseudonym apart from those.
 //!
 //! Factor [derivation](crate::factors::derivation) hashes the transcryptor secret, so two
@@ -30,7 +31,12 @@
 //! [`PseudonymizationDomain`](crate::contexts::PseudonymizationDomain): it names the hash domain
 //! of the whole protocol, while those name a session and a domain within a deployment.
 
-use super::group::Group;
+pub mod hashing;
+pub mod ristretto255;
+
+pub use ristretto255::Ristretto255Sha512;
+
+use crate::group::Group;
 use sha2::digest::common::BlockSizeUser;
 use sha2::Digest;
 use std::fmt;
@@ -57,8 +63,8 @@ pub(crate) type ScalarCanBeZeroOf<C> = <<C as Ciphersuite>::Group as Group>::Sca
 /// and scalars that the protocol's hashes are built from.
 ///
 /// A ciphersuite is a marker type: it carries no data. Implement it for a new unit struct, naming
-/// its group and hash, and give it an identifier with the [`ciphersuite!`](crate::ciphersuite)
-/// macro. [`Ristretto255Sha512`](super::Ristretto255Sha512) is the ciphersuite of ristretto255
+/// its group and hash, and give it an identifier with the [`ciphersuite!`](macro@crate::ciphersuite)
+/// macro. [`Ristretto255Sha512`] is the ciphersuite of ristretto255
 /// with SHA-512.
 pub trait Ciphersuite:
     Copy + Clone + std::fmt::Debug + Default + Eq + Send + Sync + 'static
@@ -77,7 +83,7 @@ pub trait Ciphersuite:
     /// The identifier of this ciphersuite, whose context string the protocol's domain separation
     /// tags are built from.
     ///
-    /// Build it with the [`ciphersuite!`](crate::ciphersuite) macro from the identifier, for
+    /// Build it with the [`ciphersuite!`](macro@crate::ciphersuite) macro from the identifier, for
     /// example `"ristretto255-SHA512"`.
     const ID: CiphersuiteId;
 
@@ -104,7 +110,7 @@ pub struct CiphersuiteId {
 impl CiphersuiteId {
     /// The identifier with the given name and the context string it implies.
     ///
-    /// Public only for the [`ciphersuite!`](crate::ciphersuite) macro, which a [`Ciphersuite`]
+    /// Public only for the [`ciphersuite!`](macro@crate::ciphersuite) macro, which a [`Ciphersuite`]
     /// implementation outside this crate expands; it builds `context_string` as
     /// `"nPEPV1-" || identifier` at compile time, so the two cannot disagree.
     #[doc(hidden)]
@@ -153,23 +159,20 @@ impl fmt::Display for CiphersuiteId {
 ///
 /// ```
 /// # use libpep::ciphersuite;
-/// # use libpep::elgamal::arithmetic::CiphersuiteId;
+/// # use libpep::ciphersuite::CiphersuiteId;
 /// const SUITE: CiphersuiteId = ciphersuite!("ristretto255-SHA512");
 /// assert_eq!(SUITE.context_string(), b"nPEPV1-ristretto255-SHA512");
 /// ```
 #[macro_export]
 macro_rules! ciphersuite {
     ($identifier:literal) => {
-        $crate::elgamal::arithmetic::CiphersuiteId::new(
-            $identifier,
-            concat!("nPEPV1-", $identifier),
-        )
+        $crate::ciphersuite::CiphersuiteId::new($identifier, concat!("nPEPV1-", $identifier))
     };
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::Ristretto255Sha512;
+    use super::Ristretto255Sha512;
     use super::*;
 
     #[test]
