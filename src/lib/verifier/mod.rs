@@ -47,7 +47,9 @@
 //! [`attribute_rekey_commitments`](Verifier::attribute_rekey_commitments).
 
 pub mod cache;
+mod commitments;
 mod errors;
+mod operations;
 mod verify;
 
 pub use cache::{

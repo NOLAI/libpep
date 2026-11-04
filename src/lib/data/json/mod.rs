@@ -6,10 +6,14 @@
 
 pub mod builder;
 pub mod data;
+pub mod encryption;
 #[macro_use]
 pub mod macros;
 pub mod structure;
 pub mod utils;
+
+#[cfg(test)]
+mod tests;
 
 pub use builder::PepJsonBuilder;
 pub use data::{EncryptedPepJsonValue, JsonError, PepJsonValue};
